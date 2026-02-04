@@ -338,10 +338,11 @@ def generate_manifest_opml(categories, output_file):
         category_data = categories[category_key]
 
         # Create outline element with transclusion link (absolute GitHub URL for Drummer)
+        # Category files are in integration_tests/ subdirectory
         category_outline = SubElement(body, 'outline')
         category_outline.set('text', sanitize_xml_text(category_data['pretty_name']))
         category_outline.set('type', 'link')
-        category_outline.set('url', f'https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests_{category_key}.opml')
+        category_outline.set('url', f'https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/{category_key}.opml')
 
     # Write OPML to file only if content changed
     write_opml_if_changed(opml, output_file)
@@ -351,7 +352,8 @@ def export_hierarchical_opml(test_dir, output_dir):
     """
     Generate hierarchical OPML structure.
 
-    Creates one manifest file and one file per category.
+    Creates one manifest file in output_dir and category files in
+    output_dir/integration_tests/ subdirectory.
 
     Args:
         test_dir: Path to tests/integration/test_cases/
@@ -369,14 +371,18 @@ def export_hierarchical_opml(test_dir, output_dir):
 
     generated_files = []
 
-    # Generate each category file
+    # Create subdirectory for category files
+    category_dir = output_dir / 'integration_tests'
+    category_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate each category file in subdirectory
     for category_key, category_data in categories.items():
-        category_file = output_dir / f'integration_tests_{category_key}.opml'
+        category_file = category_dir / f'{category_key}.opml'
         generate_category_opml(category_key, category_data, category_file)
         generated_files.append(category_file)
-        print(f"Generated: {category_file.name} ({category_data['test_count']} tests)")
+        print(f"Generated: integration_tests/{category_file.name} ({category_data['test_count']} tests)")
 
-    # Generate manifest file
+    # Generate manifest file in output_dir (not subdirectory)
     manifest_file = output_dir / 'integration_tests.opml'
     generate_manifest_opml(categories, manifest_file)
     generated_files.append(manifest_file)
@@ -522,8 +528,8 @@ def main():
         total_tests = sum(cat['test_count'] for cat in categories.values())
 
         print(f"\nSuccessfully generated hierarchical OPML:")
-        print(f"  Manifest: integration_tests.opml")
-        print(f"  Category files: {len(categories)} files")
+        print(f"  Manifest: reports/integration_tests.opml")
+        print(f"  Category files: reports/integration_tests/ ({len(categories)} files)")
         print(f"  Total tests: {total_tests}")
     else:
         print("Error: No files were generated", file=sys.stderr)

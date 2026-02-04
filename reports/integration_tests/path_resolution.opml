@@ -1,0 +1,354 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Path Resolution (path_resolution)</title>
+    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="defined() - path entry 'webserver' exists - CRITICAL TEST: defined(webserver) should return TRUE because &quot;webserver&quot;&#10;is a path entry name in system.paths, regardless of what's inside&#10;builtins.webserver table.&#10;&#10;Bug behavior: Returns FALSE (looks inside builtins.webserver for &quot;webserver&quot;)&#10;Fixed behavior: Returns TRUE (matches path entry name &quot;webserver&quot;)&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - path entry 'op' exists - Verify defined(op) returns TRUE because &quot;op&quot; is a path entry name,&#10;even though &quot;op&quot; may not exist as a child inside the resolved table.&#10;&#10;This tests the same bug with a different path entry.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - path entry 'html' exists - Test another common path entry to ensure the fix works consistently&#10;across different entries in system.paths.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(html)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - path entry 'xml' exists - Verify defined(xml) returns TRUE (xml is a path entry)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(xml)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - path entry 'file' exists - Verify defined(file) returns TRUE (file is a path entry)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(file)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - nested lookup 'webserver.init' - Verify defined(webserver.init) returns TRUE:&#10;1. Resolve &quot;webserver&quot; path entry → builtins.webserver table&#10;2. Look for &quot;init&quot; child inside builtins.webserver&#10;&#10;This is the CORRECT behavior - path resolves first, then child lookup.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - nested lookup 'op.firstSummit' - Test nested lookup with op.firstSummit:&#10;1. Resolve &quot;op&quot; path entry → builtins.op table&#10;2. Look for &quot;firstSummit&quot; verb inside builtins.op&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op.firstSummit)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - deep nested lookup 'system.verbs.builtins.string.lower' - Test multi-level path resolution:&#10;1. &quot;system&quot; resolves via hardcoded system table check&#10;2. Navigate through verbs → builtins → string&#10;3. Find &quot;lower&quot; verb inside string table&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system.verbs.builtins.string.lower)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - non-existent child 'webserver.nonexistent' - Verify defined(webserver.nonexistent) returns FALSE:&#10;1. Resolve &quot;webserver&quot; path entry → builtins.webserver (SUCCESS)&#10;2. Look for &quot;nonexistent&quot; inside builtins.webserver (FAIL)&#10;3. Return FALSE (correct - path exists but child doesn't)&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.nonexistent)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - non-existent child 'op.fakeVerb' - Path entry 'op' exists, but 'fakeVerb' child does not">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op.fakeVerb)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - non-existent child 'html.notAVerb' - Path entry 'html' exists, but 'notAVerb' child does not">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(html.notAVerb)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - completely non-existent identifier - Verify defined(totallyFakeIdentifier) returns FALSE.&#10;No path entry with this name, and it's not defined anywhere else.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(totallyFakeIdentifier)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - non-existent identifier 'notInPaths' - Identifier doesn't exist in system.paths or anywhere else">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(notInPaths)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - typo in path entry name 'webservr' - Close to 'webserver' but not exact match - should be FALSE">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webservr)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - hardcoded 'system' table - Regression test: system table is hardcoded (not from paths).&#10;Should continue to work after bug fix.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - built-in verb 'string.lower' - Regression test: Built-in verb lookup via path resolution.&#10;Should continue to work after bug fix.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(string.lower)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - local variable - Regression test: Local variable defined in script scope.&#10;Should be found immediately (not via path search).&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(myVar = 42)"/>
+        <outline text="return defined(myVar)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - table entry created at runtime - Regression test: Dynamically created table entry should be found.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.dynamicEntry = &quot;value&quot;"/>
+        <outline text="return defined(t.dynamicEntry)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - case sensitivity for path entries - UserTalk is case-insensitive. Verify defined(WEBSERVER) works&#10;even though path entry is lowercase &quot;webserver&quot;.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(WEBSERVER)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - mixed case 'WebServer' - Case-insensitive matching for path entry names">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(WebServer)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - empty system.paths behavior - Edge case: If system.paths were empty (shouldn't happen in practice),&#10;defined() should still work for hardcoded tables like system/builtins.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(system)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - multiple path entries to same table - If system.paths has multiple entries pointing to the same table,&#10;defined() should return TRUE for all entry names.&#10;(This tests that we match on entry NAME, not table identity)&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op) and defined(webserver)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - path entry with standard name - Path entry name should come from system.paths hash node name,&#10;not from the bs parameter after getaddressvalue().&#10;&#10;system.paths.webserver points to @builtins.webserver&#10;- Hash node name: &quot;webserver&quot; (THIS is what we should match)&#10;- Address leaf name: &quot;webserver&quot; (happens to be same, but irrelevant)&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - verify path entry aliases work correctly - If system.paths has an alias (e.g., system.paths.foo → @other.bar),&#10;then defined(foo) should be TRUE (matches path entry name &quot;foo&quot;),&#10;and defined(bar) should depend on whether &quot;bar&quot; is ALSO a path entry.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op)"/>
+      </outline>
+    </outline>
+    <outline text="Evaluate expression using path-resolved identifier - Test that webserver.init() can be evaluated after defined(webserver)&#10;returns TRUE. This ensures path resolution works end-to-end.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if defined(webserver)">
+          <outline text="return true"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return false"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="Call verb via path-resolved identifier - Verify we can call a verb using the path entry name after defined()&#10;confirms it exists.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if defined(op)">
+          <outline text="return typeof(op.firstSummit) == &quot;scpt&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return false"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="Conditional logic based on defined() path check - Real-world scenario: UserTalk code checks if a path entry exists&#10;before using it, to handle missing extensions gracefully.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: webserver extension loaded"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if defined(webserver)">
+          <outline text="return &quot;webserver extension loaded&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;webserver extension missing&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="defined() - child of path entry (not entry itself) - &quot;init&quot; is a common verb inside many tables, but &quot;init&quot; itself is not&#10;a path entry name. defined(init) should return FALSE unless there's&#10;a path entry named &quot;init&quot;.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(init)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - partial path entry name - &quot;web&quot; is a prefix of &quot;webserver&quot;, but not a path entry itself.&#10;Should return FALSE (no partial matching).&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(web)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - defined(webserver.init) - external script object - CRITICAL REGRESSION TEST: webserver.init is an external scriptType object.&#10;&#10;Current behavior (BROKEN after PR #337):&#10;  defined(webserver.init) → FALSE&#10;  Error: &quot;Can't evaluate the expression because the name init hasn't been defined.&quot;&#10;&#10;Expected behavior after fix:&#10;  defined(webserver.init) → TRUE&#10;&#10;Root cause: langgettableval() calls tablevaltotable() which rejects non-tables.&#10;webserver.init has type idscriptprocessor, not idtableprocessor.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - typeof(webserver.init) - verify script type - Verify webserver.init is actually a script (scpt type).&#10;This confirms the type mismatch that caused the regression.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(builtins.webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - defined(op.firstSummit) - another script object - op.firstSummit is also an external script object.&#10;Test that the fix works for multiple script objects, not just webserver.init.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op.firstSummit)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - typeof(op.firstSummit) - verify script type - Confirm op.firstSummit is a script type">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(builtins.op.firstSummit)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - webserver path entry still works after fix - Ensure the PR #337 fix (path entry name matching) still works&#10;after we fix the script object regression.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver)"/>
+      </outline>
+    </outline>
+    <outline text="REGRESSION - op path entry still works after fix - Verify op path entry continues to work (PR #337 fix)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(op)"/>
+      </outline>
+    </outline>
+    <outline text="Mixed types - table child after path resolution - Verify tables inside path-resolved entries still work.&#10;builtins.webserver is a table, and may contain child tables.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: tabl"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(builtins.webserver)"/>
+      </outline>
+    </outline>
+    <outline text="Edge case - non-existent script in path entry - Verify defined() returns FALSE for non-existent script children.&#10;webserver.fakeScript doesn't exist, should return FALSE.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.fakeScript)"/>
+      </outline>
+    </outline>
+    <outline text="Integration - calling webserver.init after defined() check - Real-world scenario: After confirming webserver.init exists,&#10;we should be able to reference it in expressions.&#10;&#10;This test doesn't call the script (no ()) but verifies we can&#10;check its type after defined() returns TRUE.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if defined(webserver.init)">
+          <outline text="return typeof(builtins.webserver.init)"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;not found&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="Integration - conditional script loading pattern - Common UserTalk pattern: Check if extension is loaded before using it.&#10;After the fix, this pattern should work correctly.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: webserver fully available"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if defined(webserver) and defined(webserver.init)">
+          <outline text="return &quot;webserver fully available&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="if defined(webserver)">
+            <outline text="return &quot;webserver table exists but init missing&quot;"/>
+          </outline>
+          <outline text="} else">
+            <outline text="return &quot;webserver not loaded&quot;"/>
+          </outline>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

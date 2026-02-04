@@ -1,0 +1,399 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Callback Database (callback_database)</title>
+    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="callback - single string parameter - Verify callback receives and processes single string parameter">
+      <outline text="Metadata">
+        <outline text="expected_result: Received: Hello, World!"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on testCallback(message)">
+          <outline text="return &quot;Received: &quot; + message"/>
+        </outline>
+        <outline text="testCallback(&quot;Hello, World!&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - boolean return value - Verify callback can return boolean for allow/deny pattern">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on testCallback(value)">
+          <outline text="return string.length(value) &gt; 0"/>
+        </outline>
+        <outline text="testCallback(&quot;non-empty&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - boolean false on empty string - Verify callback returns false for empty string">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on testCallback(value)">
+          <outline text="return string.length(value) &gt; 0"/>
+        </outline>
+        <outline text="testCallback(&quot;&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - closeObject with title parameter - Simulate database close callback receiving database title">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on closeObject(title)">
+          <outline text="return title == &quot;TestDatabase&quot;"/>
+        </outline>
+        <outline text="closeObject(&quot;TestDatabase&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - closeObject cancel case - Verify closeObject can cancel operation by returning false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on closeObject(title)">
+          <outline text="return not (title == &quot;Protected&quot;)"/>
+        </outline>
+        <outline text="closeObject(&quot;Protected&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - saveObject with title parameter - Simulate database save callback receiving database title">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on saveObject(title)">
+          <outline text="return not (title == &quot;ReadOnly&quot;)"/>
+        </outline>
+        <outline text="saveObject(&quot;MyDatabase&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - saveObject cancel for read-only - Verify saveObject can prevent saving read-only databases">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on saveObject(title)">
+          <outline text="return not (title == &quot;ReadOnly&quot;)"/>
+        </outline>
+        <outline text="saveObject(&quot;ReadOnly&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - openObject with path parameter - Simulate database open callback receiving path">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on openObject(dbPath)">
+          <outline text="return string.length(dbPath) &gt; 0"/>
+        </outline>
+        <outline text="openObject(&quot;/path/to/database.root&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - two string parameters - Test callback with multiple string parameters">
+      <outline text="Metadata">
+        <outline text="expected_result: Hello, World!"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on doubleString(str1, str2)">
+          <outline text="return str1 + str2"/>
+        </outline>
+        <outline text="doubleString(&quot;Hello, &quot;, &quot;World!&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - three string parameters - Test callback with three string parameters (concat)">
+      <outline text="Metadata">
+        <outline text="expected_result: One Two Three"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on tripleString(str1, str2, str3)">
+          <outline text="return str1 + str2 + str3"/>
+        </outline>
+        <outline text="tripleString(&quot;One &quot;, &quot;Two &quot;, &quot;Three&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - validation on save - Use callback to validate database before saving">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on validateBeforeSave(dbName, itemCount)">
+          <outline text="return itemCount &gt; 0"/>
+        </outline>
+        <outline text="validateBeforeSave(&quot;MyDB&quot;, 5)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - reject empty database save - Callback prevents saving empty database">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on validateBeforeSave(dbName, itemCount)">
+          <outline text="return itemCount &gt; 0"/>
+        </outline>
+        <outline text="validateBeforeSave(&quot;EmptyDB&quot;, 0)"/>
+      </outline>
+    </outline>
+    <outline text="callback - complex logic with locals - Verify callback can use local variables and complex logic">
+      <outline text="Metadata">
+        <outline text="expected_result: 10"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on complexCallback(name, value)">
+          <outline text="local(nameLen = string.length(name))"/>
+          <outline text="local(valueLen = string.length(value))"/>
+          <outline text="local(totalLen = nameLen + valueLen)"/>
+          <outline text="return string(totalLen)"/>
+        </outline>
+        <outline text="complexCallback(&quot;Hello&quot;, &quot;World&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - generate log message on close - Callback generates informational message on database close">
+      <outline text="Metadata">
+        <outline text="expected_result: Closing database: MyDatabase"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on closeLogger(dbName)">
+          <outline text="return &quot;Closing database: &quot; + dbName"/>
+        </outline>
+        <outline text="closeLogger(&quot;MyDatabase&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - error message generation - Callback detects error condition and returns message">
+      <outline text="Metadata">
+        <outline text="expected_result: Operation save failed"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on errorDetector(operation, status)">
+          <outline text="if status == &quot;error&quot;">
+            <outline text="return &quot;Operation &quot; + operation + &quot; failed&quot;"/>
+          </outline>
+          <outline text="else">
+            <outline text="return &quot;Operation &quot; + operation + &quot; succeeded&quot;"/>
+          </outline>
+        </outline>
+        <outline text="errorDetector(&quot;save&quot;, &quot;error&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - success message generation - Callback detects success condition">
+      <outline text="Metadata">
+        <outline text="expected_result: Operation open succeeded"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on errorDetector(operation, status)">
+          <outline text="if status == &quot;error&quot;">
+            <outline text="return &quot;Operation &quot; + operation + &quot; failed&quot;"/>
+          </outline>
+          <outline text="else">
+            <outline text="return &quot;Operation &quot; + operation + &quot; succeeded&quot;"/>
+          </outline>
+        </outline>
+        <outline text="errorDetector(&quot;open&quot;, &quot;ok&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - table address parameter concept - Test callback receiving table address (foundation for future work)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @testTable)"/>
+        <outline text="testTable.name = &quot;TestDB&quot;"/>
+        <outline text="testTable.itemCount = 42"/>
+        <outline text="on tableCallback(addr)">
+          <outline text="return typeof(addr) == addressType"/>
+        </outline>
+        <outline text="tableCallback(@testTable)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - extract data from table address - Callback dereferences address to read table data">
+      <outline text="Metadata">
+        <outline text="expected_result: Production"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @testTable)"/>
+        <outline text="testTable.dbName = &quot;Production&quot;"/>
+        <outline text="on getDbName(tableAddr)">
+          <outline text="return tableAddr^.dbName"/>
+        </outline>
+        <outline text="getDbName(@testTable)"/>
+      </outline>
+    </outline>
+    <outline text="callback - nested invocation pattern - Test callback that invokes another callback">
+      <outline text="Metadata">
+        <outline text="expected_result: Outer(Inner: test)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on innerCallback(value)">
+          <outline text="return &quot;Inner: &quot; + value"/>
+        </outline>
+        <outline text="on outerCallback(value)">
+          <outline text="local(innerResult = innerCallback(value))"/>
+          <outline text="return &quot;Outer(&quot; + innerResult + &quot;)&quot;"/>
+        </outline>
+        <outline text="outerCallback(&quot;test&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - empty string parameter handling - Verify callback handles empty string correctly">
+      <outline text="Metadata">
+        <outline text="expected_result: empty"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on emptyHandler(value)">
+          <outline text="if value == &quot;&quot;">
+            <outline text="return &quot;empty&quot;"/>
+          </outline>
+          <outline text="else">
+            <outline text="return &quot;non-empty&quot;"/>
+          </outline>
+        </outline>
+        <outline text="emptyHandler(&quot;&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - special characters in string parameters - Verify callback handles special characters correctly">
+      <outline text="Metadata">
+        <outline text="expected_result: Received: Hello&#10;World&#9;Tab"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on specialCharHandler(value)">
+          <outline text="return &quot;Received: &quot; + value"/>
+        </outline>
+        <outline text="specialCharHandler(&quot;Hello\nWorld\tTab&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - realistic save validation - Realistic callback validates database state before save">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @dbContext)"/>
+        <outline text="dbContext.title = &quot;MyDatabase&quot;"/>
+        <outline text="dbContext.modified = true"/>
+        <outline text="dbContext.hasErrors = false"/>
+        <outline text="on canSaveDatabase(contextAddr)">
+          <outline text="local(ctx = contextAddr^)"/>
+          <outline text="if ctx.hasErrors">
+            <outline text="return false"/>
+          </outline>
+          <outline text="if not ctx.modified">
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+        <outline text="canSaveDatabase(@dbContext)"/>
+      </outline>
+    </outline>
+    <outline text="database callback - prevent save with errors - Callback prevents save when database has errors">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @dbContext)"/>
+        <outline text="dbContext.title = &quot;ErrorDB&quot;"/>
+        <outline text="dbContext.modified = true"/>
+        <outline text="dbContext.hasErrors = true"/>
+        <outline text="on canSaveDatabase(contextAddr)">
+          <outline text="local(ctx = contextAddr^)"/>
+          <outline text="if ctx.hasErrors">
+            <outline text="return false"/>
+          </outline>
+          <outline text="if not ctx.modified">
+            <outline text="return false"/>
+          </outline>
+          <outline text="return true"/>
+        </outline>
+        <outline text="canSaveDatabase(@dbContext)"/>
+      </outline>
+    </outline>
+    <outline text="callback - single parameter defined, single provided - Verify callback with 1 param works when 1 arg provided">
+      <outline text="Metadata">
+        <outline text="expected_result: value1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on oneParam(arg1)">
+          <outline text="return arg1"/>
+        </outline>
+        <outline text="oneParam(&quot;value1&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - two parameters defined, two provided - Verify callback with 2 params works when 2 args provided">
+      <outline text="Metadata">
+        <outline text="expected_result: value1,value2"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on twoParams(arg1, arg2)">
+          <outline text="return arg1 + &quot;,&quot; + arg2"/>
+        </outline>
+        <outline text="twoParams(&quot;value1&quot;, &quot;value2&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="database callbacks - complete lifecycle workflow - Test sequence of callbacks for database lifecycle">
+      <outline text="Metadata">
+        <outline text="expected_result: open:TestDB,save:TestDB,close:TestDB"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(log = &quot;&quot;)"/>
+        <outline text="on logEvent(event, dbName)">
+          <outline text="return event + &quot;:&quot; + dbName"/>
+        </outline>
+        <outline text="local(openEvent = logEvent(&quot;open&quot;, &quot;TestDB&quot;))"/>
+        <outline text="local(saveEvent = logEvent(&quot;save&quot;, &quot;TestDB&quot;))"/>
+        <outline text="local(closeEvent = logEvent(&quot;close&quot;, &quot;TestDB&quot;))"/>
+        <outline text="return openEvent + &quot;,&quot; + saveEvent + &quot;,&quot; + closeEvent"/>
+      </outline>
+    </outline>
+    <outline text="callback - numeric return value - Callback performs calculation and returns number">
+      <outline text="Metadata">
+        <outline text="expected_result: 50"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on calculateTotal(count, price)">
+          <outline text="local(total = count * price)"/>
+          <outline text="return total"/>
+        </outline>
+        <outline text="calculateTotal(5, 10)"/>
+      </outline>
+    </outline>
+    <outline text="callback - multiple conditional branches - Callback with complex branching logic">
+      <outline text="Metadata">
+        <outline text="expected_result: save cancelled"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on statusMessage(operation, code)">
+          <outline text="if code == &quot;0&quot;">
+            <outline text="return operation + &quot; succeeded&quot;"/>
+          </outline>
+          <outline text="else">
+            <outline text="if code == &quot;1&quot;">
+              <outline text="return operation + &quot; failed&quot;"/>
+            </outline>
+            <outline text="else">
+              <outline text="if code == &quot;2&quot;">
+                <outline text="return operation + &quot; cancelled&quot;"/>
+              </outline>
+              <outline text="else">
+                <outline text="return operation + &quot; unknown status&quot;"/>
+              </outline>
+            </outline>
+          </outline>
+        </outline>
+        <outline text="statusMessage(&quot;save&quot;, &quot;2&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="callback - UserTalk string manipulation - Callback uses UserTalk string verbs for processing">
+      <outline text="Metadata">
+        <outline text="expected_result: MyDatabase"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on formatDbTitle(rawTitle)">
+          <outline text="local(trimmed = string.trimWhitespace(rawTitle))"/>
+          <outline text="local(formatted = string.upper(string.mid(trimmed, 1, 1)) + string.mid(trimmed, 2, infinity))"/>
+          <outline text="return formatted"/>
+        </outline>
+        <outline text="formatDbTitle(&quot;  myDatabase  &quot;)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

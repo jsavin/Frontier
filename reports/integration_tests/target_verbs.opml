@@ -1,0 +1,506 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Target Verbs (target_verbs)</title>
+    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="target.get - no target set returns nil - When no explicit target is set, target.get() returns nil (no implicit target in headless)">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear()"/>
+        <outline text="return typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.get - no target set (initial state) - On fresh execution with no prior target.set(), target.get() returns nil">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.set - simple table - Set a table as target and verify it was set">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.testTarget)"/>
+        <outline text="target.set(@workspace.testTarget)"/>
+        <outline text="return defined(workspace.testTarget)"/>
+      </outline>
+    </outline>
+    <outline text="target.set - returns previous target (nil initially) - target.set() returns previous target value (nil if none was set)">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear()"/>
+        <outline text="lang.new(tableType, @workspace.t1)"/>
+        <outline text="return typeof(target.set(@workspace.t1))"/>
+      </outline>
+    </outline>
+    <outline text="target.set - returns previous target (non-nil) - target.set() returns previous target when one was set">
+      <outline text="Metadata">
+        <outline text="expected_result: workspace.t1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.t1)"/>
+        <outline text="lang.new(tableType, @workspace.t2)"/>
+        <outline text="target.set(@workspace.t1)"/>
+        <outline text="local(prev = target.set(@workspace.t2))"/>
+        <outline text="return string(prev)"/>
+      </outline>
+    </outline>
+    <outline text="target.get - returns set target - After target.set(), target.get() returns the address that was set">
+      <outline text="Metadata">
+        <outline text="expected_result: workspace.myTarget"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.myTarget)"/>
+        <outline text="target.set(@workspace.myTarget)"/>
+        <outline text="return string(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.get - returns addresstype - target.get() returns an address type when target is set">
+      <outline text="Metadata">
+        <outline text="expected_result: addr"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.targetTable)"/>
+        <outline text="target.set(@workspace.targetTable)"/>
+        <outline text="return typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.get - persists across operations - Target persists across multiple operations until explicitly changed">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.persistent)"/>
+        <outline text="target.set(@workspace.persistent)"/>
+        <outline text="local(first = string(target.get()))"/>
+        <outline text="local(second = string(target.get()))"/>
+        <outline text="return first == second"/>
+      </outline>
+    </outline>
+    <outline text="target.clear - clears set target - After target.clear(), target.get() returns nil">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.t)"/>
+        <outline text="target.set(@workspace.t)"/>
+        <outline text="target.clear()"/>
+        <outline text="return typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.clear - returns boolean true on success - target.clear() returns true when successful">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.t)"/>
+        <outline text="target.set(@workspace.t)"/>
+        <outline text="return target.clear()"/>
+      </outline>
+    </outline>
+    <outline text="target.clear - idempotent (multiple clears) - Clearing an already-clear target returns false (no target to clear)">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear()"/>
+        <outline text="return target.clear()"/>
+      </outline>
+    </outline>
+    <outline text="target.clear - when no target set - Clearing when no target is set should succeed (idempotent)">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear()"/>
+        <outline text="target.clear()"/>
+        <outline text="return typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target workflow - full cycle - Complete workflow: clear → set → get → verify → clear → verify">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear()"/>
+        <outline text="lang.new(tableType, @workspace.cycleTest)"/>
+        <outline text="workspace.cycleTest.value = 42"/>
+        <outline text="target.set(@workspace.cycleTest)"/>
+        <outline text="local(retrieved = string(target.get()))"/>
+        <outline text="local(ok1 = retrieved == &quot;workspace.cycleTest&quot;)"/>
+        <outline text="target.clear()"/>
+        <outline text="local(ok2 = typeof(target.get()) == &quot;????&quot;)"/>
+        <outline text="return ok1 and ok2"/>
+      </outline>
+    </outline>
+    <outline text="target workflow - multiple set operations - Setting different targets in sequence works correctly">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.target1)"/>
+        <outline text="lang.new(tableType, @workspace.target2)"/>
+        <outline text="lang.new(tableType, @workspace.target3)"/>
+        <outline text="target.set(@workspace.target1)"/>
+        <outline text="local(ok1 = string(target.get()) == &quot;workspace.target1&quot;)"/>
+        <outline text="target.set(@workspace.target2)"/>
+        <outline text="local(ok2 = string(target.get()) == &quot;workspace.target2&quot;)"/>
+        <outline text="target.set(@workspace.target3)"/>
+        <outline text="local(ok3 = string(target.get()) == &quot;workspace.target3&quot;)"/>
+        <outline text="return ok1 and ok2 and ok3"/>
+      </outline>
+    </outline>
+    <outline text="target.set - nested table - Set a nested table as target">
+      <outline text="Metadata">
+        <outline text="expected_result: workspace.parent.child"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.parent)"/>
+        <outline text="lang.new(tableType, @workspace.parent.child)"/>
+        <outline text="target.set(@workspace.parent.child)"/>
+        <outline text="return string(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.set - deeply nested table - Set a deeply nested table as target">
+      <outline text="Metadata">
+        <outline text="expected_result: workspace.level1.level2.level3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.level1)"/>
+        <outline text="lang.new(tableType, @workspace.level1.level2)"/>
+        <outline text="lang.new(tableType, @workspace.level1.level2.level3)"/>
+        <outline text="target.set(@workspace.level1.level2.level3)"/>
+        <outline text="return string(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target operations - read from target - After setting target, can read values from the target table">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.data)"/>
+        <outline text="workspace.data.key = &quot;testValue&quot;"/>
+        <outline text="target.set(@workspace.data)"/>
+        <outline text="local(targetAddr = target.get())"/>
+        <outline text="return defined(workspace.data.key)"/>
+      </outline>
+    </outline>
+    <outline text="target operations - modify target contents - Can modify contents of table that is set as target">
+      <outline text="Metadata">
+        <outline text="expected_result: 100"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.mutable)"/>
+        <outline text="target.set(@workspace.mutable)"/>
+        <outline text="workspace.mutable.field = 100"/>
+        <outline text="return workspace.mutable.field"/>
+      </outline>
+    </outline>
+    <outline text="target operations - target persists after modification - Modifying target contents doesn't affect target itself">
+      <outline text="Metadata">
+        <outline text="expected_result: workspace.stable"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.stable)"/>
+        <outline text="target.set(@workspace.stable)"/>
+        <outline text="workspace.stable.x = 1"/>
+        <outline text="workspace.stable.y = 2"/>
+        <outline text="return string(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.get - no parameters - target.get() takes no parameters (zero parameters valid)">
+      <outline text="Script">
+        <outline text="typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.get - extra parameters should fail - target.get() with extra parameters should error">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.get(123)"/>
+      </outline>
+    </outline>
+    <outline text="target.clear - no parameters - target.clear() takes no parameters, returns false when no target set">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear()"/>
+      </outline>
+    </outline>
+    <outline text="target.clear - extra parameters should fail - target.clear() with extra parameters should error">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear(123)"/>
+      </outline>
+    </outline>
+    <outline text="target.set - no parameters - target.set() requires exactly one parameter (address)">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.set()"/>
+      </outline>
+    </outline>
+    <outline text="target.set - extra parameters should fail - target.set() with extra parameters should error">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.t)"/>
+        <outline text="target.set(@workspace.t, &quot;extra&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="target.set - undefined variable address - Setting target to undefined variable should error">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.set(@workspace.doesNotExist)"/>
+      </outline>
+    </outline>
+    <outline text="target.set - non-address type (string) - Setting target with non-address type should error">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.set(&quot;not an address&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="target.set - non-address type (number) - Setting target with numeric value should error">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.set(42)"/>
+      </outline>
+    </outline>
+    <outline text="target.set - nil value clears target - Setting target to nil/noval should clear the target">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.t)"/>
+        <outline text="target.set(@workspace.t)"/>
+        <outline text="local(x)"/>
+        <outline text="target.set(@x)"/>
+        <outline text="return typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target.set - table with string value - Set target to table containing string value">
+      <outline text="Metadata">
+        <outline text="expected_result: Hello World"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.stringTable)"/>
+        <outline text="workspace.stringTable.text = &quot;Hello World&quot;"/>
+        <outline text="target.set(@workspace.stringTable)"/>
+        <outline text="return workspace.stringTable.text"/>
+      </outline>
+    </outline>
+    <outline text="target.set - table with numeric value - Set target to table containing numeric value">
+      <outline text="Metadata">
+        <outline text="expected_result: 999"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.numTable)"/>
+        <outline text="workspace.numTable.count = 999"/>
+        <outline text="target.set(@workspace.numTable)"/>
+        <outline text="return workspace.numTable.count"/>
+      </outline>
+    </outline>
+    <outline text="target.set - table with boolean value - Set target to table containing boolean value">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.boolTable)"/>
+        <outline text="workspace.boolTable.flag = true"/>
+        <outline text="target.set(@workspace.boolTable)"/>
+        <outline text="return workspace.boolTable.flag"/>
+      </outline>
+    </outline>
+    <outline text="target.set - empty table - Set target to empty table (no entries)">
+      <outline text="Metadata">
+        <outline text="expected_result: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.emptyTable)"/>
+        <outline text="target.set(@workspace.emptyTable)"/>
+        <outline text="return sizeof(workspace.emptyTable)"/>
+      </outline>
+    </outline>
+    <outline text="target.set - table with nested tables - Set target to table containing nested tables">
+      <outline text="Metadata">
+        <outline text="expected_result: 42"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.outer)"/>
+        <outline text="lang.new(tableType, @workspace.outer.inner)"/>
+        <outline text="workspace.outer.inner.value = 42"/>
+        <outline text="target.set(@workspace.outer)"/>
+        <outline text="return workspace.outer.inner.value"/>
+      </outline>
+    </outline>
+    <outline text="target lifecycle - delete target clears it - Deleting the target variable clears the target as a side-effect (legacy behavior)">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.temporary)"/>
+        <outline text="target.set(@workspace.temporary)"/>
+        <outline text="lang.delete(@workspace.temporary)"/>
+        <outline text="return typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="target persistence - across multiple scripts - Target set in one operation persists for next operation">
+      <outline text="Metadata">
+        <outline text="expected_result: workspace.persist"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.persist)"/>
+        <outline text="workspace.persist.value = &quot;persistent&quot;"/>
+        <outline text="target.set(@workspace.persist)"/>
+        <outline text="return string(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="headless behavior - no implicit target from windows - In headless mode, no implicit target fallback (GUI-specific feature)">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear()"/>
+        <outline text="local(result = target.get())"/>
+        <outline text="return typeof(result)"/>
+      </outline>
+    </outline>
+    <outline text="headless behavior - target.set always succeeds (no window open failure) - In headless, target.set() never fails due to window opening (no windows exist)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.headlessTarget)"/>
+        <outline text="target.set(@workspace.headlessTarget)"/>
+        <outline text="return typeof(target.get()) == &quot;addr&quot;"/>
+      </outline>
+    </outline>
+    <outline text="headless behavior - target.clear no window cleanup - In headless, target.clear() doesn't close hidden windows (no windows exist)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.t)"/>
+        <outline text="target.set(@workspace.t)"/>
+        <outline text="local(cleared = target.clear())"/>
+        <outline text="return cleared and (typeof(target.get()) == &quot;????&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="stress test - rapid set/clear cycle - Rapidly setting and clearing target multiple times">
+      <outline text="Metadata">
+        <outline text="expected_result: ????"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.stress)"/>
+        <outline text="local(i)"/>
+        <outline text="for i = 1 to 10">
+          <outline text="target.set(@workspace.stress)"/>
+          <outline text="target.clear()"/>
+        </outline>
+        <outline text="return typeof(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="stress test - many sequential target changes - Setting many different targets in sequence">
+      <outline text="Metadata">
+        <outline text="expected_result: workspace.t5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.t1)"/>
+        <outline text="lang.new(tableType, @workspace.t2)"/>
+        <outline text="lang.new(tableType, @workspace.t3)"/>
+        <outline text="lang.new(tableType, @workspace.t4)"/>
+        <outline text="lang.new(tableType, @workspace.t5)"/>
+        <outline text="target.set(@workspace.t1)"/>
+        <outline text="target.set(@workspace.t2)"/>
+        <outline text="target.set(@workspace.t3)"/>
+        <outline text="target.set(@workspace.t4)"/>
+        <outline text="target.set(@workspace.t5)"/>
+        <outline text="return string(target.get())"/>
+      </outline>
+    </outline>
+    <outline text="integration - target with sizeof - Get sizeof() on target table">
+      <outline text="Metadata">
+        <outline text="expected_result: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.sized)"/>
+        <outline text="workspace.sized.a = 1"/>
+        <outline text="workspace.sized.b = 2"/>
+        <outline text="workspace.sized.c = 3"/>
+        <outline text="target.set(@workspace.sized)"/>
+        <outline text="return sizeof(workspace.sized)"/>
+      </outline>
+    </outline>
+    <outline text="integration - target with typeof - Get typeof() on target table">
+      <outline text="Metadata">
+        <outline text="expected_result: tabl"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.typed)"/>
+        <outline text="target.set(@workspace.typed)"/>
+        <outline text="return typeof(workspace.typed)"/>
+      </outline>
+    </outline>
+    <outline text="integration - target with defined - Check defined() on target">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.exists)"/>
+        <outline text="target.set(@workspace.exists)"/>
+        <outline text="return defined(workspace.exists)"/>
+      </outline>
+    </outline>
+    <outline text="integration - target with table.assign - Use table.assign() on target table">
+      <outline text="Metadata">
+        <outline text="expected_result: assigned"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.assign)"/>
+        <outline text="target.set(@workspace.assign)"/>
+        <outline text="table.assign(@workspace.assign.key, &quot;assigned&quot;)"/>
+        <outline text="return workspace.assign.key"/>
+      </outline>
+    </outline>
+    <outline text="integration - target with pack/unpack - Pack target table to binary">
+      <outline text="Metadata">
+        <outline text="expected_result: data"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.packable)"/>
+        <outline text="workspace.packable.data = &quot;test&quot;"/>
+        <outline text="target.set(@workspace.packable)"/>
+        <outline text="pack(workspace.packable, @packed)"/>
+        <outline text="return typeof(packed)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

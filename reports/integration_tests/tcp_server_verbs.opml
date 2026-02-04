@@ -1,0 +1,689 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Tcp Server Verbs (tcp_server_verbs)</title>
+    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="tcp.listenStream - basic listener startup - Start listener on localhost port 9000 and verify listenID returned">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Requires tcp.listenStream() implementation"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9000, 5, &quot;&quot;))"/>
+        <outline text="local(valid = listenID &gt; 0)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return valid"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - return type validation - listenStream returns long type (listenID)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify return type is long (listenID)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9001, 5, &quot;&quot;))"/>
+        <outline text="local(valid = typeof(listenID) == longType)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return valid"/>
+      </outline>
+    </outline>
+    <outline text="tcp.closeListen - basic listener shutdown - Start listener, close it, verify returns true">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify closeListen returns boolean true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9002, 5, &quot;&quot;))"/>
+        <outline text="local(result = tcp.closeListen(listenID))"/>
+        <outline text="return result == true"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - callback receives connection - Verify callback is invoked with correct parameters when client connects">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Requires P0a callback infrastructure (PR #328)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.callbackInvoked = false"/>
+        <outline text="system.temp.tcpTest.streamID = 0"/>
+        <outline text="system.temp.tcpTest.remoteAddr = 0"/>
+        <outline text="system.temp.tcpTest.remotePort = 0"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.callbackInvoked = true"/>
+          <outline text="system.temp.tcpTest.streamID = streamID"/>
+          <outline text="system.temp.tcpTest.remoteAddr = remoteAddr"/>
+          <outline text="system.temp.tcpTest.remotePort = remotePort"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9003, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9003))"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="while (not defined(system.temp.tcpTest.callbackInvoked)) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(invoked = defined(system.temp.tcpTest.callbackInvoked))"/>
+        <outline text="local(validStream = system.temp.tcpTest.streamID &gt; 0)"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return invoked and validStream"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - callback receives correct remote address - Verify callback receives 127.0.0.1 as remote address">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify callback receives correct remote IP address parameter"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.remoteAddr = 0"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.remoteAddr = remoteAddr"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9004, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9004))"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="while (not defined(system.temp.tcpTest.remoteAddr)) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(validAddr = system.temp.tcpTest.remoteAddr == tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return validAddr"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - callback receives correct remote port - Verify callback receives ephemeral port number from client">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify callback receives correct remote port parameter"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.remotePort = 0"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.remotePort = remotePort"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9005, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9005))"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="while (not defined(system.temp.tcpTest.remotePort)) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(validPort = (system.temp.tcpTest.remotePort &gt; 0) and (system.temp.tcpTest.remotePort &lt; 65536))"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return validPort"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - read/write on accepted connection - Verify data can be read and written on accepted connection">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify read/write operations work on accepted connections"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="local(data = tcp.readStream(streamID, 1024))"/>
+          <outline text="tcp.writeStream(streamID, &quot;ECHO: &quot; + data)"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9006, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9006))"/>
+        <outline text="tcp.writeStream(clientStream, &quot;Hello Server&quot;)"/>
+        <outline text="thread.sleepFor(100)"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="local(response = &quot;&quot;)"/>
+        <outline text="while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) &lt; 200)">
+          <outline text="response = tcp.readStream(clientStream, 1024)"/>
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(validResponse = response == &quot;ECHO: Hello Server&quot;)"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return validResponse"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - connection closes after callback returns - Verify connection is properly closed when callback closes stream">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify graceful connection close in callback"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="tcp.writeStream(streamID, &quot;OK&quot;)"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9007, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9007))"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="local(response = &quot;&quot;)"/>
+        <outline text="while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="response = tcp.readStream(clientStream, 1024)"/>
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(validResponse = response == &quot;OK&quot;)"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return validResponse"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - listener restart on same port - Verify listener can be stopped and restarted on same port">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify SO_REUSEADDR allows port reuse"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID1 = tcp.listenStream(9008, 5, &quot;&quot;))"/>
+        <outline text="tcp.closeListen(listenID1)"/>
+        <outline text="thread.sleepFor(100)"/>
+        <outline text="local(listenID2 = tcp.listenStream(9008, 5, &quot;&quot;))"/>
+        <outline text="local(validRestart = listenID2 &gt; 0)"/>
+        <outline text="tcp.closeListen(listenID2)"/>
+        <outline text="return validRestart"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - sequential connections - Verify listener accepts multiple connections sequentially">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify listener can accept multiple sequential connections"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.count = 0"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.count = system.temp.tcpTest.count + 1"/>
+          <outline text="tcp.writeStream(streamID, &quot;OK&quot;)"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9009, 5, @tcpHandler)"/>
+        <outline text="local(i)"/>
+        <outline text="for i = 1 to 3">
+          <outline text="local(stream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9009))"/>
+          <outline text="local(response = &quot;&quot;)"/>
+          <outline text="local(startTicks = clock.ticks())"/>
+          <outline text="while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) &lt; 60)">
+            <outline text="response = tcp.readStream(stream, 1024)"/>
+            <outline text="thread.sleepFor(10)"/>
+          </outline>
+          <outline text="tcp.closeStream(stream)"/>
+        </outline>
+        <outline text="thread.sleepFor(100)"/>
+        <outline text="local(allAccepted = system.temp.tcpTest.count == 3)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return allAccepted"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - concurrent connections - Verify listener accepts multiple concurrent connections">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify listener handles concurrent connections"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.count = 0"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.count = system.temp.tcpTest.count + 1"/>
+          <outline text="tcp.writeStream(streamID, &quot;OK&quot;)"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9010, 5, @tcpHandler)"/>
+        <outline text="local(stream1 = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9010))"/>
+        <outline text="local(stream2 = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9010))"/>
+        <outline text="local(stream3 = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9010))"/>
+        <outline text="thread.sleepFor(200)"/>
+        <outline text="local(allAccepted = system.temp.tcpTest.count == 3)"/>
+        <outline text="tcp.closeStream(stream1)"/>
+        <outline text="tcp.closeStream(stream2)"/>
+        <outline text="tcp.closeStream(stream3)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return allAccepted"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - queue depth limiting - Verify queue depth (backlog) parameter is respected">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Behavioral spec: depth parameter controls accept queue backlog"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9011, 1, &quot;&quot;)"/>
+        <outline text="local(validListen = listenID &gt; 0)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return validListen"/>
+      </outline>
+    </outline>
+    <outline text="tcp.countConnections - includes accepted connections - Verify countConnections includes server-accepted connections">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify countConnections tracks all connections (client and server)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.connected = false"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.connected = true"/>
+          <outline text="system.temp.tcpTest.serverStream = streamID"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(initialCount = tcp.countConnections())"/>
+        <outline text="local(listenID = tcp.listenStream(9012, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9012))"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(newCount = tcp.countConnections())"/>
+        <outline text="local(countIncreased = newCount &gt;= initialCount + 2)"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeStream(system.temp.tcpTest.serverStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return countIncreased"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - invalid port (negative) - Negative port number should raise error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Validate port number range"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.listenStream(-1, 5, &quot;&quot;))"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - invalid port (zero) - Port 0 should raise error for explicit listen (OS may allow for ephemeral assignment)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Port 0 is invalid for explicit listen (ephemeral ports are OS-assigned)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.listenStream(0, 5, &quot;&quot;))"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - invalid port (too large) - Port &gt; 65535 should raise error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Port must be in valid range (1-65535)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.listenStream(70000, 5, &quot;&quot;))"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - port already in use - Attempting to listen on already-bound port should raise error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify bind() fails when port already in use"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9013, 5, &quot;&quot;))"/>
+        <outline text="try">
+          <outline text="tcp.listenStream(9013, 5, &quot;&quot;))"/>
+          <outline text="tcp.closeListen(listenID)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="tcp.closeListen(listenID)"/>
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - invalid queue depth (negative) - Negative queue depth should raise error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Queue depth must be positive"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.listenStream(9014, -1, &quot;&quot;))"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - invalid queue depth (zero) - Zero queue depth should raise error (must be at least 1)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Queue depth must be positive (&gt;= 1)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.listenStream(9015, 0, &quot;&quot;))"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.closeListen - invalid listenID (negative) - Negative listenID should raise error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Validate listenID parameter"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.closeListen(-1)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.closeListen - invalid listenID (zero) - Zero listenID should raise error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - ListenID 0 is invalid (reserved)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.closeListen(0)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.closeListen - listener not found - Closing non-existent listenID should raise error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify error when listenID doesn't exist"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="tcp.closeListen(999999)"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.closeListen - idempotent behavior - Calling closeListen twice on same listenID should be safe (idempotent)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Behavioral spec: closeListen should be idempotent or fail gracefully"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9016, 5, &quot;&quot;))"/>
+        <outline text="local(result1 = tcp.closeListen(listenID))"/>
+        <outline text="local(validFirstClose = result1 == true)"/>
+        <outline text="try">
+          <outline text="tcp.closeListen(listenID)"/>
+          <outline text="local(validSecondClose = true)"/>
+        </outline>
+        <outline text="else">
+          <outline text="local(validSecondClose = true)  // Expected to fail"/>
+        </outline>
+        <outline text="return validFirstClose and validSecondClose"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - connections survive listener close - Verify accepted connections remain open after listener closes">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify closeListen only stops accepting new connections, doesn't close established ones"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.connected = false"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.connected = true"/>
+          <outline text="system.temp.tcpTest.serverStream = streamID"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9017, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9017))"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="tcp.writeStream(clientStream, &quot;test&quot;)"/>
+        <outline text="tcp.writeStream(system.temp.tcpTest.serverStream, &quot;response&quot;)"/>
+        <outline text="local(startTicks2 = clock.ticks())"/>
+        <outline text="local(response = &quot;&quot;)"/>
+        <outline text="while (sizeOf(response) == 0) and ((clock.ticks() - startTicks2) &lt; 60)">
+          <outline text="response = tcp.readStream(clientStream, 1024)"/>
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(connectionSurvived = response == &quot;response&quot;)"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeStream(system.temp.tcpTest.serverStream)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return connectionSurvived"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - graceful shutdown (close all before closeListen) - Verify pattern: close all accepted connections before closing listener">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Best practice: close all connections before listener shutdown"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.streams = {}"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="local(idx = sizeOf(system.temp.tcpTest.streams) + 1)"/>
+          <outline text="system.temp.tcpTest.streams[idx] = streamID"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9018, 5, @tcpHandler)"/>
+        <outline text="local(client1 = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9018))"/>
+        <outline text="local(client2 = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9018))"/>
+        <outline text="thread.sleepFor(100)"/>
+        <outline text="local(i)"/>
+        <outline text="for i = 1 to sizeOf(system.temp.tcpTest.streams)">
+          <outline text="tcp.closeStream(system.temp.tcpTest.streams[i])"/>
+        </outline>
+        <outline text="tcp.closeStream(client1)"/>
+        <outline text="tcp.closeStream(client2)"/>
+        <outline text="local(result = tcp.closeListen(listenID))"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return result == true"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - new connections rejected after closeListen - Verify no new connections accepted after listener is closed">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify listener stops accepting connections after closeListen"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9019, 5, &quot;&quot;))"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="thread.sleepFor(50)"/>
+        <outline text="try">
+          <outline text="tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9019)"/>
+          <outline text="return &quot;false&quot;  // Should not succeed"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;true&quot;  // Expected connection refused"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - callback executes in separate thread - Behavioral spec: callback executes asynchronously in worker thread">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Behavioral spec: callbacks execute asynchronously in worker threads"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.callbackComplete = false"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.callbackComplete = true"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9020, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9020))"/>
+        <outline text="local(mainThreadContinued = true)"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="while (not system.temp.tcpTest.callbackComplete) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(callbackRan = system.temp.tcpTest.callbackComplete)"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return mainThreadContinued and callbackRan"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - callback parameter types - Verify all callback parameters are longType (streamID, remoteAddr, remotePort)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify callback parameter types (all long)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.streamType = typeof(streamID)"/>
+          <outline text="system.temp.tcpTest.addrType = typeof(remoteAddr)"/>
+          <outline text="system.temp.tcpTest.portType = typeof(remotePort)"/>
+          <outline text="tcp.closeStream(streamID)"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9021, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9021))"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="while (not defined(system.temp.tcpTest.streamType)) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="local(validTypes = (system.temp.tcpTest.streamType == longType) and">
+          <outline text="(system.temp.tcpTest.addrType == longType) and"/>
+          <outline text="(system.temp.tcpTest.portType == longType))"/>
+        </outline>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return validTypes"/>
+      </outline>
+    </outline>
+    <outline text="tcp.statusStream - query pending bytes on accepted connection - Verify statusStream works on server-accepted connections">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify statusStream works on accepted server connections"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.tcpTest)"/>
+        <outline text="system.temp.tcpTest.connected = false"/>
+        <outline text="on tcpHandler(streamID, remoteAddr, remotePort)">
+          <outline text="system.temp.tcpTest.connected = true"/>
+          <outline text="system.temp.tcpTest.serverStream = streamID"/>
+          <outline text="return true"/>
+        </outline>
+        <outline text="local(listenID = tcp.listenStream(9022, 5, @tcpHandler)"/>
+        <outline text="local(clientStream = tcp.openStream(tcp.addressEncode(&quot;127.0.0.1&quot;), 9022))"/>
+        <outline text="local(startTicks = clock.ticks())"/>
+        <outline text="while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) &lt; 60)">
+          <outline text="thread.sleepFor(10)"/>
+        </outline>
+        <outline text="tcp.writeStream(clientStream, &quot;test data&quot;)"/>
+        <outline text="thread.sleepFor(50)"/>
+        <outline text="local(bytesPending)"/>
+        <outline text="local(status = tcp.statusStream(system.temp.tcpTest.serverStream, @bytesPending))"/>
+        <outline text="local(hasData = bytesPending &gt; 0)"/>
+        <outline text="tcp.closeStream(clientStream)"/>
+        <outline text="tcp.closeStream(system.temp.tcpTest.serverStream)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="delete(@system.temp.tcpTest)"/>
+        <outline text="return hasData"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - return type spec - Spec: listenStream returns positive long (listenID)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Behavioral spec: listenStream returns positive long (listenID &gt; 0)"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9023, 5, &quot;&quot;))"/>
+        <outline text="local(validType = typeof(listenID) == longType)"/>
+        <outline text="local(validValue = listenID &gt; 0)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return validType and validValue"/>
+      </outline>
+    </outline>
+    <outline text="tcp.closeListen - return type spec - Spec: closeListen returns boolean true">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Behavioral spec: closeListen returns boolean true on success"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9024, 5, &quot;&quot;))"/>
+        <outline text="local(result = tcp.closeListen(listenID))"/>
+        <outline text="local(validType = typeof(result) == booleanType)"/>
+        <outline text="local(validValue = result == true)"/>
+        <outline text="return validType and validValue"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - wildcard address (0.0.0.0) - Verify listener can bind to INADDR_ANY (0.0.0.0)">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: 5-parameter tcp.listenStream with address binding not yet implemented"/>
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify INADDR_ANY (0.0.0.0) binding works"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9025, 5, &quot;&quot;, 0, tcp.addressEncode(&quot;0.0.0.0&quot;)))"/>
+        <outline text="local(validBind = listenID &gt; 0)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return validBind"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - explicit localhost binding - Verify listener can bind explicitly to 127.0.0.1">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Verify explicit 127.0.0.1 binding works"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9026, 5, &quot;&quot;))"/>
+        <outline text="local(validBind = listenID &gt; 0)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return validBind"/>
+      </outline>
+    </outline>
+    <outline text="tcp.listenStream - maximum queue depth - Verify listener accepts large queue depth value">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="notes: Phase 3 - Behavioral spec: privileged ports (&lt;1024) require root/admin privileges"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(listenID = tcp.listenStream(9027, 128, &quot;&quot;)"/>
+        <outline text="local(validDepth = listenID &gt; 0)"/>
+        <outline text="tcp.closeListen(listenID)"/>
+        <outline text="return validDepth"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

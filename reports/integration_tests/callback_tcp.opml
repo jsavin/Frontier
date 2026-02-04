@@ -1,0 +1,258 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Callback Tcp (callback_tcp)</title>
+    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="TCP callback - basic parameter passing - Verify callback receives stream_id, remote_addr, remote_port correctly">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on handleConnection(stream, addr, port)">
+          <outline text="return (stream &gt; 0) and (addr &gt; 0) and (port &gt; 0)"/>
+        </outline>
+        <outline text="handleConnection(1, 2130706433, 8080)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - parameter access by name - Verify callback can access parameters by declared names">
+      <outline text="Metadata">
+        <outline text="expected_result: 600"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on tcpHandler(stream, addr, port)">
+          <outline text="local(s = stream)"/>
+          <outline text="local(a = addr)"/>
+          <outline text="local(p = port)"/>
+          <outline text="return s + a + p"/>
+        </outline>
+        <outline text="tcpHandler(100, 200, 300)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - connection handler with address decoding - Simulate real TCP connection handler with IP address operations">
+      <outline text="Metadata">
+        <outline text="expected_result: 42"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on handleTCPConnection(stream_id, remote_addr, remote_port)">
+          <outline text="local(ip = tcp.addressDecode(remote_addr))"/>
+          <outline text="return stream_id"/>
+        </outline>
+        <outline text="local(localhost = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
+        <outline text="handleTCPConnection(42, localhost, 8080)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - with refcon parameter - Test 4-parameter callback including refcon user data">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on listenHandler(stream, addr, port, refcon)">
+          <outline text="return refcon == 12345"/>
+        </outline>
+        <outline text="listenHandler(1, 2, 3, 12345)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - boolean return for connection filtering - Callback returns true to accept connection, false to reject">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on connectionFilter(stream, addr, port)">
+          <outline text="local(localhost = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
+          <outline text="return addr == localhost"/>
+        </outline>
+        <outline text="local(localhost = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
+        <outline text="connectionFilter(1, localhost, 8080)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - reject non-localhost connections - Verify callback can reject connections by returning false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on connectionFilter(stream, addr, port)">
+          <outline text="local(localhost = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
+          <outline text="return addr == localhost"/>
+        </outline>
+        <outline text="local(remote = tcp.addressEncode(&quot;192.168.1.100&quot;))"/>
+        <outline text="connectionFilter(1, remote, 8080)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - stream operation simulation - Callback extracts and returns stream ID for stream operations">
+      <outline text="Metadata">
+        <outline text="expected_result: 99"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on connectionHandler(stream, addr, port)">
+          <outline text="if stream &gt; 0">
+            <outline text="return stream"/>
+          </outline>
+          <outline text="return 0"/>
+        </outline>
+        <outline text="connectionHandler(99, 0, 0)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - port range validation - Verify callback can validate port numbers">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on portValidator(stream, addr, port)">
+          <outline text="return (port &gt;= 1024) and (port &lt;= 65535)"/>
+        </outline>
+        <outline text="portValidator(1, 2, 8080)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - reject privileged port - Callback rejects connections on privileged ports">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on portValidator(stream, addr, port)">
+          <outline text="return (port &gt;= 1024) and (port &lt;= 65535)"/>
+        </outline>
+        <outline text="portValidator(1, 2, 80)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - complex parameter calculation - Callback performs calculations with all parameters">
+      <outline text="Metadata">
+        <outline text="expected_result: 13080"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on complexHandler(stream, addr, port)">
+          <outline text="local(result = (stream * 1000) + port)"/>
+          <outline text="return result"/>
+        </outline>
+        <outline text="complexHandler(5, 0, 8080)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - conditional parameter handling - Callback uses conditional logic based on parameters">
+      <outline text="Metadata">
+        <outline text="expected_result: 2"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on conditionalHandler(stream, addr, port)">
+          <outline text="if port == 80">
+            <outline text="return 1"/>
+          </outline>
+          <outline text="if port == 443">
+            <outline text="return 2"/>
+          </outline>
+          <outline text="return 3"/>
+        </outline>
+        <outline text="conditionalHandler(1, 0, 443)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - string return value - Callback can return string for logging/diagnostic purposes">
+      <outline text="Metadata">
+        <outline text="expected_result: stream:42,port:8080"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on diagnosticHandler(stream, addr, port)">
+          <outline text="return &quot;stream:&quot; + stream + &quot;,port:&quot; + port"/>
+        </outline>
+        <outline text="diagnosticHandler(42, 0, 8080)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - local variable scope - Verify callback local variables don't leak to caller">
+      <outline text="Metadata">
+        <outline text="expected_result: 300"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on scopeTest(stream, addr, port)">
+          <outline text="local(temp = stream + port)"/>
+          <outline text="return temp"/>
+        </outline>
+        <outline text="local(result = scopeTest(100, 0, 200))"/>
+        <outline text="result"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - parameter type preservation - Verify parameters maintain correct types (long integers)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on typeTest(stream, addr, port)">
+          <outline text="return typeof(stream) == longType"/>
+        </outline>
+        <outline text="typeTest(1, 2, 3)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - refcon as table reference - Refcon can pass complex data structures to callback">
+      <outline text="Metadata">
+        <outline text="expected_result: 100"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(config)"/>
+        <outline text="new(tableType, @config)"/>
+        <outline text="config.maxConnections = 100"/>
+        <outline text="on configuredHandler(stream, addr, port, cfg)">
+          <outline text="return cfg^.maxConnections"/>
+        </outline>
+        <outline text="configuredHandler(1, 2, 3, @config)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - address equality comparison - Verify address parameters can be compared for equality">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on addressTest(stream, addr1, addr2)">
+          <outline text="return addr1 == addr2"/>
+        </outline>
+        <outline text="local(ip1 = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
+        <outline text="local(ip2 = tcp.addressEncode(&quot;127.0.0.1&quot;))"/>
+        <outline text="addressTest(1, ip1, ip2)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - zero stream ID edge case - Callback handles stream ID of 0 (invalid stream)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on edgeHandler(stream, addr, port)">
+          <outline text="return stream == 0"/>
+        </outline>
+        <outline text="edgeHandler(0, 0, 0)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - maximum port number - Verify callback handles maximum valid port (65535)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on maxPortTest(stream, addr, port)">
+          <outline text="return port == 65535"/>
+        </outline>
+        <outline text="maxPortTest(1, 0, 65535)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - arithmetic with all parameters - Perform complex arithmetic using all callback parameters">
+      <outline text="Metadata">
+        <outline text="expected_result: 858"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on arithmeticTest(stream, addr, port)">
+          <outline text="return (stream * 10) + (port / 10)"/>
+        </outline>
+        <outline text="arithmeticTest(5, 0, 8080)"/>
+      </outline>
+    </outline>
+    <outline text="TCP callback - nested function calls - Callback can invoke other UserTalk functions">
+      <outline text="Metadata">
+        <outline text="expected_result: 60"/>
+      </outline>
+      <outline text="Script">
+        <outline text="on helper(x)">
+          <outline text="return x * 2"/>
+        </outline>
+        <outline text="on mainHandler(stream, addr, port)">
+          <outline text="return helper(stream) + helper(port)"/>
+        </outline>
+        <outline text="mainHandler(10, 0, 20)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

@@ -1,0 +1,1236 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Xml Verbs (xml_verbs)</title>
+    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="xml.frontiervaluetotaggedtext - simple string">
+      <outline text="Metadata">
+        <outline text="expected_output: hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(s = &quot;hello&quot;)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@s, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - string with XML entities">
+      <outline text="Metadata">
+        <outline text="expected_output: a &amp;lt; b &amp;amp; c &amp;gt; d"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(s = &quot;a &lt; b &amp; c &gt; d&quot;)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@s, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - string with quotes">
+      <outline text="Metadata">
+        <outline text="expected_output: say &quot;hello&quot;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(s = &quot;say \&quot;hello\&quot;&quot;)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@s, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - empty string">
+      <outline text="Metadata">
+        <outline text="expected_output: "/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(s = &quot;&quot;)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@s, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - positive integer">
+      <outline text="Metadata">
+        <outline text="expected_output: &lt;i4&gt;42&lt;/i4&gt;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(n = 42)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@n, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - negative integer">
+      <outline text="Metadata">
+        <outline text="expected_output: &lt;i4&gt;-100&lt;/i4&gt;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(n = -100)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@n, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - zero">
+      <outline text="Metadata">
+        <outline text="expected_output: &lt;i4&gt;0&lt;/i4&gt;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(n = 0)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@n, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - boolean true">
+      <outline text="Metadata">
+        <outline text="expected_output: &lt;boolean&gt;1&lt;/boolean&gt;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(b = true)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@b, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - boolean false">
+      <outline text="Metadata">
+        <outline text="expected_output: &lt;boolean&gt;0&lt;/boolean&gt;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(b = false)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@b, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - double value">
+      <outline text="Metadata">
+        <outline text="expected_pattern: ^&lt;double&gt;3\.14159.*&lt;/double&gt;$"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(d = 3.14159)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@d, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - negative double">
+      <outline text="Metadata">
+        <outline text="expected_pattern: ^&lt;double&gt;-2\.5.*&lt;/double&gt;$"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(d = -2.5)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@d, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - date value">
+      <outline text="Metadata">
+        <outline text="expected_pattern: ^&lt;dateTime\.iso8601&gt;20240115T10:30:00&lt;/dateTime\.iso8601&gt;$"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(dt = date.set(15, 1, 2024, 10, 30, 0))"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@dt, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - simple table">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;struct&gt;', '&lt;member&gt;', '&lt;name&gt;name&lt;/name&gt;', '&lt;value&gt;John&lt;/value&gt;', '&lt;name&gt;age&lt;/name&gt;', '&lt;i4&gt;30&lt;/i4&gt;', '&lt;/member&gt;', '&lt;/struct&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="t.name = &quot;John&quot;"/>
+        <outline text="t.age = 30"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@t, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - empty table">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;struct&gt;', '&lt;/struct&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@t, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - nested table">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;struct&gt;', '&lt;member&gt;', '&lt;name&gt;address&lt;/name&gt;', '&lt;name&gt;city&lt;/name&gt;', '&lt;value&gt;Boston&lt;/value&gt;', '&lt;name&gt;zip&lt;/name&gt;', '&lt;i4&gt;2101&lt;/i4&gt;', '&lt;/struct&gt;', '&lt;/member&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="new(tableType, @t.address)"/>
+        <outline text="t.address.city = &quot;Boston&quot;"/>
+        <outline text="t.address.zip = 02101"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@t, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - simple list">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;array&gt;', '&lt;data&gt;', '&lt;i4&gt;10&lt;/i4&gt;', '&lt;i4&gt;20&lt;/i4&gt;', '&lt;i4&gt;30&lt;/i4&gt;', '&lt;/data&gt;', '&lt;/array&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(lst)"/>
+        <outline text="new(listType, @lst)"/>
+        <outline text="lst[1] = 10"/>
+        <outline text="lst[2] = 20"/>
+        <outline text="lst[3] = 30"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@lst, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - empty list">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;array&gt;', '&lt;data&gt;', '&lt;/data&gt;', '&lt;/array&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(lst)"/>
+        <outline text="new(listType, @lst)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@lst, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - mixed type list">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;array&gt;', '&lt;data&gt;', '&lt;value&gt;hello&lt;/value&gt;', '&lt;i4&gt;42&lt;/i4&gt;', '&lt;boolean&gt;1&lt;/boolean&gt;', '&lt;/data&gt;', '&lt;/array&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(lst)"/>
+        <outline text="new(listType, @lst)"/>
+        <outline text="lst[1] = &quot;hello&quot;"/>
+        <outline text="lst[2] = 42"/>
+        <outline text="lst[3] = true"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@lst, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - with indent level 0">
+      <outline text="Metadata">
+        <outline text="expected_output: test"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(s = &quot;test&quot;)"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@s, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - with indent level 1">
+      <outline text="Metadata">
+        <outline text="expected_output: 14"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="t.key = &quot;value&quot;"/>
+        <outline text="local(result = xml.frontiervaluetotaggedtext(@t, 1))"/>
+        <outline text="return string.countFields(result, string.filledString(&quot;\t&quot;, 1))"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - local variable with nested external">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;title&lt;/name&gt;', '&lt;value&gt;Test&lt;/value&gt;', '&lt;name&gt;items&lt;/name&gt;', '&lt;array&gt;', '&lt;data&gt;', '&lt;value&gt;a&lt;/value&gt;', '&lt;value&gt;b&lt;/value&gt;', '&lt;/data&gt;', '&lt;/array&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(testroot)"/>
+        <outline text="new(tableType, @testroot)"/>
+        <outline text="testroot.title = &quot;Test&quot;"/>
+        <outline text="new(listType, @testroot.items)"/>
+        <outline text="testroot.items[1] = &quot;a&quot;"/>
+        <outline text="testroot.items[2] = &quot;b&quot;"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@testroot, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - global variable (no local shadow)">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;value&lt;/name&gt;', '&lt;i4&gt;42&lt;/i4&gt;', '&lt;/struct&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @workspace.globaltest)"/>
+        <outline text="workspace.globaltest.value = 42"/>
+        <outline text="local(result = xml.frontiervaluetotaggedtext(@workspace.globaltest, 0))"/>
+        <outline text="delete(@workspace.globaltest)"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - with statement scope">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;test&lt;/value&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @workspace.outer)"/>
+        <outline text="local(data)"/>
+        <outline text="new(tableType, @data)"/>
+        <outline text="data.value = &quot;inner&quot;"/>
+        <outline text="with workspace.outer">
+          <outline text="local(data)"/>
+          <outline text="new(tableType, @data)"/>
+          <outline text="data.value = &quot;test&quot;"/>
+          <outline text="local(result = xml.frontiervaluetotaggedtext(@data, 0))"/>
+          <outline text="delete(@workspace.outer)"/>
+          <outline text="return result"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - deeply nested local structure">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;name&gt;level1&lt;/name&gt;', '&lt;name&gt;level2&lt;/name&gt;', '&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;deep&lt;/value&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(obj)"/>
+        <outline text="new(tableType, @obj)"/>
+        <outline text="new(tableType, @obj.level1)"/>
+        <outline text="new(tableType, @obj.level1.level2)"/>
+        <outline text="obj.level1.level2.value = &quot;deep&quot;"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@obj, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - table with special chars in keys">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;struct&gt;', '&lt;member&gt;', '&lt;name&gt;key&amp;lt;&amp;gt;&amp;amp;&lt;/name&gt;', '&lt;value&gt;value&lt;/value&gt;', '&lt;/member&gt;', '&lt;/struct&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="t.[&quot;key&lt;&gt;&amp;&quot;] = &quot;value&quot;"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@t, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.frontiervaluetotaggedtext - deeply nested tables">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;level1&lt;/name&gt;', '&lt;name&gt;level2&lt;/name&gt;', '&lt;name&gt;level3&lt;/name&gt;', '&lt;name&gt;value&lt;/name&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="new(tableType, @t.level1)"/>
+        <outline text="new(tableType, @t.level1.level2)"/>
+        <outline text="new(tableType, @t.level1.level2.level3)"/>
+        <outline text="t.level1.level2.level3.value = &quot;deep&quot;"/>
+        <outline text="return xml.frontiervaluetotaggedtext(@t, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.compile - simple element">
+      <outline text="Metadata">
+        <outline text="expected_output: John"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;name&gt;John&lt;/name&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(result)"/>
+        <outline text="new(tableType, @result)"/>
+        <outline text="if xml.compile(xmlText, @result)">
+          <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+          <outline text="local(nameAddr = xml.getAddress(rootAddr, &quot;name&quot;))"/>
+          <outline text="return nameAddr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.compile - multiple elements">
+      <outline text="Metadata">
+        <outline text="expected_output: John Doe"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;first&gt;John&lt;/first&gt;&lt;last&gt;Doe&lt;/last&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(result)"/>
+        <outline text="new(tableType, @result)"/>
+        <outline text="if xml.compile(xmlText, @result)">
+          <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+          <outline text="local(firstAddr = xml.getAddress(rootAddr, &quot;first&quot;))"/>
+          <outline text="local(lastAddr = xml.getAddress(rootAddr, &quot;last&quot;))"/>
+          <outline text="return firstAddr^ + &quot; &quot; + lastAddr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.compile - nested elements">
+      <outline text="Metadata">
+        <outline text="expected_output: John"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;person&gt;&lt;name&gt;John&lt;/name&gt;&lt;age&gt;30&lt;/age&gt;&lt;/person&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(result)"/>
+        <outline text="new(tableType, @result)"/>
+        <outline text="if xml.compile(xmlText, @result)">
+          <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+          <outline text="local(personAddr = xml.getAddress(rootAddr, &quot;person&quot;))"/>
+          <outline text="local(nameAddr = xml.getAddress(personAddr, &quot;name&quot;))"/>
+          <outline text="return nameAddr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.compile - element with attributes">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot; type=\&quot;test\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(result)"/>
+        <outline text="new(tableType, @result)"/>
+        <outline text="if xml.compile(xmlText, @result)">
+          <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+          <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+          <outline text="return defined(itemAddr)"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.compile - XML entities">
+      <outline text="Metadata">
+        <outline text="expected_output: a &lt; b &amp; c &gt; d"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;text&gt;a &amp;lt; b &amp;amp; c &amp;gt; d&lt;/text&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(result)"/>
+        <outline text="new(tableType, @result)"/>
+        <outline text="if xml.compile(xmlText, @result)">
+          <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+          <outline text="local(textAddr = xml.getAddress(rootAddr, &quot;text&quot;))"/>
+          <outline text="return textAddr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.compile - empty element">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;empty/&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(result)"/>
+        <outline text="new(tableType, @result)"/>
+        <outline text="if xml.compile(xmlText, @result)">
+          <outline text="local(rootAddr = xml.getAddress(@result, &quot;root&quot;))"/>
+          <outline text="local(emptyAddr = xml.getAddress(rootAddr, &quot;empty&quot;))"/>
+          <outline text="return defined(emptyAddr)"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.compile - malformed XML">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_contains: Script execution failed"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;unclosed&gt;&quot;)"/>
+        <outline text="local(result)"/>
+        <outline text="new(tableType, @result)"/>
+        <outline text="return xml.compile(xmlText, @result)"/>
+      </outline>
+    </outline>
+    <outline text="xml.decompile - simple structure">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;name&gt;John&lt;/name&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="t.name = &quot;John&quot;"/>
+        <outline text="return xml.decompile(@t)"/>
+      </outline>
+    </outline>
+    <outline text="xml.decompile - nested structure">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&lt;person&gt;', '&lt;name&gt;John&lt;/name&gt;', '&lt;age&gt;&lt;i4&gt;30&lt;/i4&gt;&lt;/age&gt;', '&lt;/person&gt;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="new(tableType, @t.person)"/>
+        <outline text="t.person.name = &quot;John&quot;"/>
+        <outline text="t.person.age = 30"/>
+        <outline text="return xml.decompile(@t)"/>
+      </outline>
+    </outline>
+    <outline text="xml.decompile - round trip with compile">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(temp)"/>
+        <outline text="new(tableType, @temp)"/>
+        <outline text="xml.addTable(@temp, &quot;root&quot;)"/>
+        <outline text="local(rootAddr = xml.getAddress(@temp, &quot;root&quot;))"/>
+        <outline text="xml.addValue(rootAddr, &quot;item&quot;, &quot;test&quot;)"/>
+        <outline text="local(result = xml.decompile(@temp))"/>
+        <outline text="return (string.patternMatch(&quot;item&quot;, result) &gt; 0) and (string.patternMatch(&quot;test&quot;, result) &gt; 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.decompile - empty table">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_contains: Script execution failed"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="return xml.decompile(@t)"/>
+      </outline>
+    </outline>
+    <outline text="xml.decompile - special characters">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.addTable(@t, &quot;data&quot;)"/>
+        <outline text="local(dataAddr = xml.getAddress(@t, &quot;data&quot;))"/>
+        <outline text="xml.addValue(dataAddr, &quot;text&quot;, &quot;special chars in value&quot;)"/>
+        <outline text="local(result = xml.decompile(@t))"/>
+        <outline text="return (string.patternMatch(&quot;text&quot;, result) &gt; 0) and (string.patternMatch(&quot;special&quot;, result) &gt; 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAddress - simple lookup">
+      <outline text="Metadata">
+        <outline text="expected_output: John"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;name&gt;John&lt;/name&gt;&lt;age&gt;30&lt;/age&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(nameAddr = xml.getAddress(rootAddr, &quot;name&quot;))"/>
+        <outline text="return nameAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAddress - nested element">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;person&gt;&lt;name&gt;John&lt;/name&gt;&lt;/person&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(personAddr = xml.getAddress(rootAddr, &quot;person&quot;))"/>
+        <outline text="local(nameAddr = xml.getAddress(personAddr, &quot;name&quot;))"/>
+        <outline text="return defined(nameAddr)"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAddress - element not found">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;name&gt;John&lt;/name&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="try">
+          <outline text="local(addr = xml.getAddress(rootAddr, &quot;missing&quot;))"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getAddress - multiple elements (returns first)">
+      <outline text="Metadata">
+        <outline text="expected_output: first"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="return itemAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAddressList - multiple elements">
+      <outline text="Metadata">
+        <outline text="expected_output: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item&gt;a&lt;/item&gt;&lt;item&gt;b&lt;/item&gt;&lt;item&gt;c&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(addrList)"/>
+        <outline text="new(listType, @addrList)"/>
+        <outline text="if xml.getAddressList(rootAddr, &quot;item&quot;, @addrList)">
+          <outline text="return sizeof(addrList)"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getAddressList - single element">
+      <outline text="Metadata">
+        <outline text="expected_output: 1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item&gt;single&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(addrList)"/>
+        <outline text="new(listType, @addrList)"/>
+        <outline text="if xml.getAddressList(rootAddr, &quot;item&quot;, @addrList)">
+          <outline text="return sizeof(addrList)"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getAddressList - no matching elements">
+      <outline text="Metadata">
+        <outline text="expected_output: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;other&gt;value&lt;/other&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(addrList)"/>
+        <outline text="new(listType, @addrList)"/>
+        <outline text="if xml.getAddressList(rootAddr, &quot;item&quot;, @addrList)">
+          <outline text="return sizeof(addrList)"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return 0"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getAddressList - verify list contents">
+      <outline text="Metadata">
+        <outline text="expected_output: first,second"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="new(tableType, @workspace.xmltest)"/>
+        <outline text="xml.compile(xmlText, @workspace.xmltest)"/>
+        <outline text="local(rootAddr = xml.getAddress(@workspace.xmltest, &quot;root&quot;))"/>
+        <outline text="local(addrList)"/>
+        <outline text="new(listType, @addrList)"/>
+        <outline text="if xml.getAddressList(rootAddr, &quot;item&quot;, @addrList)">
+          <outline text="return addrList[1]^ + &quot;,&quot; + addrList[2]^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getAttribute - simple attribute">
+      <outline text="Metadata">
+        <outline text="expected_output: 123"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="local(attrAddr = xml.getAttribute(itemAddr, &quot;id&quot;))"/>
+        <outline text="return attrAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAttribute - multiple attributes">
+      <outline text="Metadata">
+        <outline text="expected_output: test"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot; type=\&quot;test\&quot; active=\&quot;true\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="local(attrAddr = xml.getAttribute(itemAddr, &quot;type&quot;))"/>
+        <outline text="return attrAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAttribute - attribute not found">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="try">
+          <outline text="local(attrAddr = xml.getAttribute(itemAddr, &quot;missing&quot;))"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getAttribute - no attributes">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="try">
+          <outline text="local(attrAddr = xml.getAttribute(itemAddr, &quot;id&quot;))"/>
+          <outline text="return &quot;false&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;true&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getAttributeValue - simple attribute">
+      <outline text="Metadata">
+        <outline text="expected_output: 123"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="return xml.getAttributeValue(itemAddr, &quot;id&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAttributeValue - numeric attribute">
+      <outline text="Metadata">
+        <outline text="expected_output: 42"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item count=\&quot;42\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="return xml.getAttributeValue(itemAddr, &quot;count&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAttributeValue - attribute with entities">
+      <outline text="Metadata">
+        <outline text="expected_output: a &lt; b"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item text=\&quot;a &amp;lt; b\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="return xml.getAttributeValue(itemAddr, &quot;text&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="xml.getAttributeValue - attribute not found">
+      <outline text="Metadata">
+        <outline text="expected_output: error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="try">
+          <outline text="return xml.getAttributeValue(itemAddr, &quot;missing&quot;)"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;error&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - simple path">
+      <outline text="Metadata">
+        <outline text="expected_output: John"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;person&gt;&lt;name&gt;John&lt;/name&gt;&lt;/person&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/person/name&quot;, @adr)">
+          <outline text="return adr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - deep path">
+      <outline text="Metadata">
+        <outline text="expected_output: deep"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;a&gt;&lt;b&gt;&lt;c&gt;&lt;d&gt;deep&lt;/d&gt;&lt;/c&gt;&lt;/b&gt;&lt;/a&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/a/b/c/d&quot;, @adr)">
+          <outline text="return adr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - path not found">
+      <outline text="Metadata">
+        <outline text="expected_output: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;person&gt;&lt;name&gt;John&lt;/name&gt;&lt;/person&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="return xml.getPathAddress(@t, &quot;person/missing&quot;, @adr)"/>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - single element path">
+      <outline text="Metadata">
+        <outline text="expected_output: John"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;name&gt;John&lt;/name&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/name&quot;, @adr)">
+          <outline text="return adr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - path with array index">
+      <outline text="Metadata">
+        <outline text="expected_output: second"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;items&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/items&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/items/item[2]&quot;, @adr)">
+          <outline text="return adr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - array index [1] (first element)">
+      <outline text="Metadata">
+        <outline text="expected_output: first"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;items&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/items&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/items/item[1]&quot;, @adr)">
+          <outline text="return adr^"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - array index [0] (invalid, treated as literal)">
+      <outline text="Metadata">
+        <outline text="expected_output: not found"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;items&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/items&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/items/item[0]&quot;, @adr)">
+          <outline text="return &quot;found&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;not found&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - array index out of bounds">
+      <outline text="Metadata">
+        <outline text="expected_output: not found"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;items&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/items&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/items/item[999]&quot;, @adr)">
+          <outline text="return &quot;found&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;not found&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - malformed array index (empty brackets)">
+      <outline text="Metadata">
+        <outline text="expected_output: not found"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;items&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/items&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/items/item[]&quot;, @adr)">
+          <outline text="return &quot;found&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;not found&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.getPathAddress - malformed array index (non-numeric)">
+      <outline text="Metadata">
+        <outline text="expected_output: not found"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;items&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/items&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(adr)"/>
+        <outline text="if xml.getPathAddress(@t, &quot;root/items/item[abc]&quot;, @adr)">
+          <outline text="return &quot;found&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;not found&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.addTable - add to empty parent">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(parent)"/>
+        <outline text="new(tableType, @parent)"/>
+        <outline text="xml.addTable(@parent, &quot;child&quot;)"/>
+        <outline text="local(childAddr = xml.getAddress(@parent, &quot;child&quot;))"/>
+        <outline text="return defined(childAddr)"/>
+      </outline>
+    </outline>
+    <outline text="xml.addTable - add multiple children">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(parent)"/>
+        <outline text="new(tableType, @parent)"/>
+        <outline text="xml.addTable(@parent, &quot;first&quot;)"/>
+        <outline text="xml.addTable(@parent, &quot;second&quot;)"/>
+        <outline text="local(firstAddr = xml.getAddress(@parent, &quot;first&quot;))"/>
+        <outline text="local(secondAddr = xml.getAddress(@parent, &quot;second&quot;))"/>
+        <outline text="return defined(firstAddr) and defined(secondAddr)"/>
+      </outline>
+    </outline>
+    <outline text="xml.addTable - nested tables">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(root)"/>
+        <outline text="new(tableType, @root)"/>
+        <outline text="xml.addTable(@root, &quot;level1&quot;)"/>
+        <outline text="local(level1Addr = xml.getAddress(@root, &quot;level1&quot;))"/>
+        <outline text="xml.addTable(level1Addr, &quot;level2&quot;)"/>
+        <outline text="local(level2Addr = xml.getAddress(level1Addr, &quot;level2&quot;))"/>
+        <outline text="return defined(level2Addr)"/>
+      </outline>
+    </outline>
+    <outline text="xml.addTable - verify table type">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(parent)"/>
+        <outline text="new(tableType, @parent)"/>
+        <outline text="xml.addTable(@parent, &quot;child&quot;)"/>
+        <outline text="local(childAddr = xml.getAddress(@parent, &quot;child&quot;))"/>
+        <outline text="return typeof(childAddr^) == &quot;tabl&quot;"/>
+      </outline>
+    </outline>
+    <outline text="xml.addValue - string value">
+      <outline text="Metadata">
+        <outline text="expected_output: John"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(parent)"/>
+        <outline text="new(tableType, @parent)"/>
+        <outline text="xml.addValue(@parent, &quot;name&quot;, &quot;John&quot;)"/>
+        <outline text="local(nameAddr = xml.getAddress(@parent, &quot;name&quot;))"/>
+        <outline text="return nameAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.addValue - integer value">
+      <outline text="Metadata">
+        <outline text="expected_output: 30"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(parent)"/>
+        <outline text="new(tableType, @parent)"/>
+        <outline text="xml.addValue(@parent, &quot;age&quot;, 30)"/>
+        <outline text="local(ageAddr = xml.getAddress(@parent, &quot;age&quot;))"/>
+        <outline text="return ageAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.addValue - boolean value">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(parent)"/>
+        <outline text="new(tableType, @parent)"/>
+        <outline text="xml.addValue(@parent, &quot;active&quot;, true)"/>
+        <outline text="local(activeAddr = xml.getAddress(@parent, &quot;active&quot;))"/>
+        <outline text="return activeAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.addValue - multiple values">
+      <outline text="Metadata">
+        <outline text="expected_output: ab"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(parent)"/>
+        <outline text="new(tableType, @parent)"/>
+        <outline text="xml.addValue(@parent, &quot;first&quot;, &quot;a&quot;)"/>
+        <outline text="xml.addValue(@parent, &quot;second&quot;, &quot;b&quot;)"/>
+        <outline text="local(firstAddr = xml.getAddress(@parent, &quot;first&quot;))"/>
+        <outline text="local(secondAddr = xml.getAddress(@parent, &quot;second&quot;))"/>
+        <outline text="return firstAddr^ + secondAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.addValue - overwrite existing">
+      <outline text="Metadata">
+        <outline text="expected_output: new"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(parent)"/>
+        <outline text="new(tableType, @parent)"/>
+        <outline text="xml.addValue(@parent, &quot;value&quot;, &quot;old&quot;)"/>
+        <outline text="xml.addValue(@parent, &quot;value&quot;, &quot;new&quot;)"/>
+        <outline text="local(valueAddr = xml.getAddress(@parent, &quot;value&quot;))"/>
+        <outline text="return valueAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml.valToString - string value">
+      <outline text="Metadata">
+        <outline text="expected_output: hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(s = &quot;hello&quot;)"/>
+        <outline text="return xml.valToString(s, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.valToString - integer value">
+      <outline text="Metadata">
+        <outline text="expected_output: &lt;i4&gt;42&lt;/i4&gt;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(n = 42)"/>
+        <outline text="return xml.valToString(n, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.valToString - boolean value">
+      <outline text="Metadata">
+        <outline text="expected_output: &lt;boolean&gt;1&lt;/boolean&gt;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(b = true)"/>
+        <outline text="return xml.valToString(b, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.valToString - with indent level">
+      <outline text="Metadata">
+        <outline text="expected_output: &lt;i4&gt;10&lt;/i4&gt;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(n = 10)"/>
+        <outline text="local(result = xml.valToString(n, 1))"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="xml.valToString - entity encoding">
+      <outline text="Metadata">
+        <outline text="expected_contains: ['&amp;lt;', '&amp;amp;']"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(s = &quot;a &lt; b &amp; c &gt; d&quot;)"/>
+        <outline text="return xml.valToString(s, 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml.structToFrontierValue - simple struct">
+      <outline text="Metadata">
+        <outline text="expected_output: John"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlStruct)"/>
+        <outline text="new(tableType, @xmlStruct)"/>
+        <outline text="xmlStruct.name = &quot;John&quot;"/>
+        <outline text="xmlStruct.age = 30"/>
+        <outline text="local(frontierVal)"/>
+        <outline text="if xml.structToFrontierValue(@xmlStruct, @frontierVal)">
+          <outline text="return frontierVal.name"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.structToFrontierValue - nested struct">
+      <outline text="Metadata">
+        <outline text="expected_output: John"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlStruct)"/>
+        <outline text="new(tableType, @xmlStruct)"/>
+        <outline text="new(tableType, @xmlStruct.person)"/>
+        <outline text="xmlStruct.person.name = &quot;John&quot;"/>
+        <outline text="local(frontierVal)"/>
+        <outline text="if xml.structToFrontierValue(@xmlStruct, @frontierVal)">
+          <outline text="return frontierVal.person.name"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.structToFrontierValue - with type tags">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlStruct)"/>
+        <outline text="new(tableType, @xmlStruct)"/>
+        <outline text="new(tableType, @xmlStruct.value)"/>
+        <outline text="xmlStruct.value.type = &quot;i4&quot;"/>
+        <outline text="xmlStruct.value.data = &quot;42&quot;"/>
+        <outline text="local(frontierVal)"/>
+        <outline text="if xml.structToFrontierValue(@xmlStruct, @frontierVal)">
+          <outline text="return typeof(frontierVal.value) == &quot;long&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="xml.structToFrontierValue - empty struct">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlStruct)"/>
+        <outline text="new(tableType, @xmlStruct)"/>
+        <outline text="local(frontierVal)"/>
+        <outline text="return xml.structToFrontierValue(@xmlStruct, @frontierVal)"/>
+      </outline>
+    </outline>
+    <outline text="xml.convertToDisplayName - no encoding">
+      <outline text="Metadata">
+        <outline text="expected_output: normalName"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return xml.convertToDisplayName(&quot;normalName&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="xml.convertToDisplayName - with hex encoding">
+      <outline text="Metadata">
+        <outline text="expected_output: name with spaces"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return xml.convertToDisplayName(&quot;name0x20with0x20spaces&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="xml.convertToDisplayName - special characters">
+      <outline text="Metadata">
+        <outline text="expected_output: name&lt;with&gt;angle"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return xml.convertToDisplayName(&quot;name0x3cwith0x3eangle&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="xml.convertToDisplayName - multiple encodings">
+      <outline text="Metadata">
+        <outline text="expected_output: a b c"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return xml.convertToDisplayName(&quot;a0x20b0x20c&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="xml.convertToDisplayName - preserve case">
+      <outline text="Metadata">
+        <outline text="expected_output: MyName"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return xml.convertToDisplayName(&quot;MyName&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="xml - full round trip compile/decompile">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(original = &quot;&lt;root&gt;&lt;person&gt;&lt;name&gt;John&lt;/name&gt;&lt;age&gt;30&lt;/age&gt;&lt;/person&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(original, @t)"/>
+        <outline text="local(reconstructed = xml.decompile(@t))"/>
+        <outline text="return (string.patternMatch(&quot;&lt;name&gt;John&lt;/name&gt;&quot;, reconstructed) &gt; 0) and (string.patternMatch(&quot;&lt;age&gt;30&lt;/age&gt;&quot;, reconstructed) &gt; 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml - compile then navigate with getPathAddress">
+      <outline text="Metadata">
+        <outline text="expected_output: localhost:8080"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;config&gt;&lt;server&gt;&lt;host&gt;localhost&lt;/host&gt;&lt;port&gt;8080&lt;/port&gt;&lt;/server&gt;&lt;/config&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(configAddr = xml.getAddress(@t, &quot;config&quot;))"/>
+        <outline text="local(serverAddr = xml.getAddress(configAddr, &quot;server&quot;))"/>
+        <outline text="local(hostAddr = xml.getAddress(serverAddr, &quot;host&quot;))"/>
+        <outline text="local(portAddr = xml.getAddress(serverAddr, &quot;port&quot;))"/>
+        <outline text="return hostAddr^ + &quot;:&quot; + portAddr^"/>
+      </outline>
+    </outline>
+    <outline text="xml - build structure with addTable/addValue then decompile">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(root)"/>
+        <outline text="new(tableType, @root)"/>
+        <outline text="xml.addTable(@root, &quot;person&quot;)"/>
+        <outline text="local(personAddr = xml.getAddress(@root, &quot;person&quot;))"/>
+        <outline text="xml.addValue(personAddr, &quot;name&quot;, &quot;Jane&quot;)"/>
+        <outline text="xml.addValue(personAddr, &quot;age&quot;, 25)"/>
+        <outline text="local(xmlResult = xml.decompile(@root))"/>
+        <outline text="return (string.patternMatch(&quot;&lt;name&gt;Jane&lt;/name&gt;&quot;, xmlResult) &gt; 0) and (string.patternMatch(&quot;&lt;i4&gt;25&lt;/i4&gt;&quot;, xmlResult) &gt; 0)"/>
+      </outline>
+    </outline>
+    <outline text="xml - compile with attributes then getAttribute">
+      <outline text="Metadata">
+        <outline text="expected_output: 123:test"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item id=\&quot;123\&quot; type=\&quot;test\&quot;&gt;Value&lt;/item&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlText, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(itemAddr = xml.getAddress(rootAddr, &quot;item&quot;))"/>
+        <outline text="local(id = xml.getAttributeValue(itemAddr, &quot;id&quot;))"/>
+        <outline text="local(type = xml.getAttributeValue(itemAddr, &quot;type&quot;))"/>
+        <outline text="return id + &quot;:&quot; + type"/>
+      </outline>
+    </outline>
+    <outline text="xml - getAddressList and iterate">
+      <outline text="Metadata">
+        <outline text="expected_output: 6"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlText = &quot;&lt;root&gt;&lt;num&gt;1&lt;/num&gt;&lt;num&gt;2&lt;/num&gt;&lt;num&gt;3&lt;/num&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="new(tableType, @workspace.xmltest)"/>
+        <outline text="xml.compile(xmlText, @workspace.xmltest)"/>
+        <outline text="local(rootAddr = xml.getAddress(@workspace.xmltest, &quot;root&quot;))"/>
+        <outline text="local(addrList)"/>
+        <outline text="new(listType, @addrList)"/>
+        <outline text="xml.getAddressList(rootAddr, &quot;num&quot;, @addrList)"/>
+        <outline text="local(sum = 0)"/>
+        <outline text="local(i)"/>
+        <outline text="for i = 1 to sizeof(addrList)">
+          <outline text="sum = sum + long(addrList[i]^)"/>
+        </outline>
+        <outline text="return sum"/>
+      </outline>
+    </outline>
+    <outline text="xml - entity encoding roundtrip (encode→decode = identity)">
+      <outline text="Metadata">
+        <outline text="expected_output: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(xmlWithEntities = &quot;&lt;root&gt;&lt;data&gt;Test &amp;lt;tag&amp;gt; &amp;amp; text &amp;amp; ]]&amp;gt; sequence&lt;/data&gt;&lt;/root&gt;&quot;)"/>
+        <outline text="local(t)"/>
+        <outline text="new(tableType, @t)"/>
+        <outline text="xml.compile(xmlWithEntities, @t)"/>
+        <outline text="local(rootAddr = xml.getAddress(@t, &quot;root&quot;))"/>
+        <outline text="local(dataAddr = xml.getAddress(rootAddr, &quot;data&quot;))"/>
+        <outline text="local(decoded = dataAddr^)"/>
+        <outline text="local(expected = &quot;Test &lt;tag&gt; &amp; text &amp; ]]&gt; sequence&quot;)"/>
+        <outline text="return decoded == expected"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

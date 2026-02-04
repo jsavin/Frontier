@@ -1,0 +1,209 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Runtime Error Halting (runtime_error_halting)</title>
+    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="defined() - webserver.init EFP table should exist - CRITICAL: webserver.init is an EFP table in system root. defined() should return true. Currently returns false (BUG)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.init)"/>
+      </outline>
+    </outline>
+    <outline text="defined() - webserver.nonexistent should not exist - Verify defined() returns false for non-existent path under webserver table">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.nonexistent)"/>
+      </outline>
+    </outline>
+    <outline text="Table index error - out of bounds positive index halts execution - CRITICAL: Access t[100] on table with 1 item should throw scriptError and halt. executionContinued should remain false">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.a = 1"/>
+        <outline text="local(executionContinued = false)"/>
+        <outline text="t[100]"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Table index error - zero index halts execution - CRITICAL: t[0] is invalid (tables are 1-indexed). Should throw scriptError and halt">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.a = 1"/>
+        <outline text="local(executionContinued = false)"/>
+        <outline text="t[0]"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Table index error - negative index halts execution - CRITICAL: Negative table index t[-1] should throw scriptError and halt">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.a = 1"/>
+        <outline text="local(executionContinued = false)"/>
+        <outline text="t[-1]"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Table index error - string key not found halts execution - Access non-existent string key in table should throw scriptError and halt">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.a = 1"/>
+        <outline text="local(executionContinued = false)"/>
+        <outline text="local(val = t[&quot;nonexistent&quot;])"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Table index error - deeply nested missing key halts execution - Access t.a.b.c where t.a exists but t.a.b does not. Should halt at missing nested path">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.a = 1"/>
+        <outline text="local(executionContinued = false)"/>
+        <outline text="local(val = t.a.b.c)"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Table index error - index on empty table halts execution - Access t[1] when table is empty should throw scriptError and halt">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="local(executionContinued = false)"/>
+        <outline text="t[1]"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Array access error - integer value indexed like array halts execution - Attempting to index an integer value as if it were a table should halt">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(num = 42)"/>
+        <outline text="local(executionContinued = false)"/>
+        <outline text="num[1]"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Undefined path access - nonexistent.deep.path halts execution - CRITICAL: Accessing completely undefined nested path should throw scriptError and halt">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(executionContinued = false)"/>
+        <outline text="local(val = nonexistent.deep.path)"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Undefined variable - accessing undefined local halts execution - Accessing undefined local variable should throw scriptError and halt">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(executionContinued = false)"/>
+        <outline text="local(val = undefinedVariable)"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Type error - calling non-existent verb halts execution - Calling verb that doesn't exist should throw scriptError and halt">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="expected_error_type: script_error"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(executionContinued = false)"/>
+        <outline text="nonexistent.verb.call()"/>
+        <outline text="executionContinued = true"/>
+        <outline text="return executionContinued"/>
+      </outline>
+    </outline>
+    <outline text="Valid table index - t[1] on single-item table succeeds - POSITIVE: Access t[1] when table has 1 item should succeed and return value">
+      <outline text="Metadata">
+        <outline text="expected_result: 42"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.a = 42"/>
+        <outline text="return t[1]"/>
+      </outline>
+    </outline>
+    <outline text="Valid table index - t[2] on two-item table succeeds - POSITIVE: Access t[2] when table has 2 items should succeed">
+      <outline text="Metadata">
+        <outline text="expected_result: 20"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.a = 10"/>
+        <outline text="t.b = 20"/>
+        <outline text="return t[2]"/>
+      </outline>
+    </outline>
+    <outline text="Valid string key access - existing key succeeds - POSITIVE: Access existing string key in table should succeed">
+      <outline text="Metadata">
+        <outline text="expected_result: myvalue"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="t.mykey = &quot;myvalue&quot;"/>
+        <outline text="return t[&quot;mykey&quot;]"/>
+      </outline>
+    </outline>
+    <outline text="Valid nested path access - defined nested path succeeds - POSITIVE: Access valid nested path in table hierarchy should succeed">
+      <outline text="Metadata">
+        <outline text="expected_result: 99"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(t)"/>
+        <outline text="lang.new(tableType, @t)"/>
+        <outline text="lang.new(tableType, @t.sub)"/>
+        <outline text="t.sub.value = 99"/>
+        <outline text="return t.sub.value"/>
+      </outline>
+    </outline>
+  </body>
+</opml>
