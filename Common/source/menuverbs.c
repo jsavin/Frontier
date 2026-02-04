@@ -219,6 +219,16 @@ static boolean menuverbinmemory (hdlmenuvariable hvariable) {
 	db_context_init(&ctx);
 	ctx.database = (**hvariable).hdatabase;
 
+	/* Fix: Detect database format and set context mode accordingly */
+	if (ctx.database != nil) {
+		boolean is_legacy = db_format_is_legacy_db(ctx.database);
+		ctx.mode.use_64bit_format = !is_legacy;
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_OP, "menuverbinmemory: detected db format: is_legacy=%d use_64bit_format=%d",
+		        (int)is_legacy, (int)ctx.mode.use_64bit_format);
+#endif
+	}
+
 	return menuverbinmemory_context(&ctx, hvariable);
 	} /*menuverbinmemory*/
 

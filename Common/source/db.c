@@ -81,7 +81,8 @@ static void db_sync_use64_to_current_db(void);
 #if defined(FRONTIER_HEADLESS)
 static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree) {
 	long eof = 0;
-    const long header_size = (databasedata != nil && db_format_is_legacy_db(databasedata)) ? sizeheader_v6 : sizeheader;
+    boolean is_legacy = (databasedata != nil && db_format_is_legacy_db(databasedata));
+    const long header_size = is_legacy ? sizeheader_v6 : sizeheader;
 
 	if (adr == nildbaddress)
 		return false;
@@ -509,6 +510,7 @@ boolean dbrelease_context(const db_context *context, dbaddress adr);
 boolean dbassign_internal(dbaddress *padr, long newsize, ptrvoid pdata);
 boolean dbcopy_internal(dbaddress adrorig, dbaddress *adrcopy);
 boolean dbreference_internal(dbaddress adr, long maxbytes, ptrvoid pdata);
+boolean dbreference_with_header_size(dbaddress adr, long maxbytes, ptrvoid pdata, long header_size);
 boolean dbgetsize_internal(dbaddress adr, long *logicalsize);
 
 
@@ -1583,7 +1585,7 @@ boolean dbreference_internal (dbaddress adr, long maxbytes, ptrvoid pdata) {
 	long ctbytes;
 	boolean flfree;
 	tyvariance variance;
-	
+
     #if defined(FRONTIER_HEADLESS)
     (void) dbnormalizeaddress(&adr);
     #endif
@@ -1601,22 +1603,97 @@ boolean dbreference_internal (dbaddress adr, long maxbytes, ptrvoid pdata) {
 	return (dbread (adr + sizeheader, min (maxbytes, ctbytes - (long) variance), pdata));
 	} /*dbreference_internal*/
 
+boolean dbreference_with_header_size(dbaddress adr, long maxbytes, ptrvoid pdata, long header_size) {
+	/*
+	Like dbreference_internal but uses explicit header size instead of sizeheader macro.
+	Needed during migration when global mode is locked but we need to read v6 blocks.
+	*/
+	long ctbytes;
+	boolean flfree;
+	tyvariance variance;
+
+#if defined(FRONTIER_HEADLESS)
+	(void) dbnormalizeaddress(&adr);
+#endif
+
+	if (!dbreadheader(adr, &flfree, &ctbytes, &variance))
+		return (false);
+
+	if (flfree || (ctbytes < 0)) {
+		dberror(dbfreeblockerror);
+		return (false);
+	}
+
+	return (dbread(adr + header_size, min(maxbytes, ctbytes - (long) variance), pdata));
+}
+
 boolean dbreference (dbaddress adr, long maxbytes, ptrvoid pdata) {
     db_context *ctx = db_context_refresh_default();
     return dbreference_context(ctx, adr, maxbytes, pdata);
 }
 	
 
+boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size) {
+	/*
+	Like dbrefhandle but uses explicit header size instead of sizeheader macro.
+	Needed during migration when global mode is locked but we need to read v6 blocks.
+	*/
+	dbaddress a = adr;
+	register boolean fl;
+	register Handle hregister;
+	register long ct;
+	long ctbytes;
+	boolean flfree;
+	tyvariance variance;
+
+	*h = nil;
+
+	if (a == nildbaddress)
+		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+	(void) dbnormalizeaddress(&a);
+#endif
+
+	if (!dbreadheader(a, &flfree, &ctbytes, &variance))
+		return (false);
+
+	ct = ctbytes - (long) variance;
+
+	if (flfree || (ct < 0)) {
+		dberror(dbfreeblockerror);
+		return (false);
+	}
+
+	if (!newclearhandle(ct, h))
+		return (false);
+
+	hregister = *h;
+	lockhandle(hregister);
+
+	fl = dbread(a + header_size, ct, *hregister);
+
+	unlockhandle(hregister);
+
+	if (!fl) {
+		disposehandle(hregister);
+		*h = nil;
+		return (false);
+	}
+
+	return (true);
+}
+
 boolean dbrefhandle (dbaddress adr, Handle *h) {
 
 	/*
 	copy a block from the database into a handle which we allocate.
-	
+
 	the caller must dispose of the handle.
-	
+
 	5.0.1 dmb: added freeblock error; don't fail silently
 	*/
-	
+
     dbaddress a = adr;
 	register boolean fl;
 	register Handle hregister;
@@ -1624,9 +1701,9 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 	long ctbytes;
 	boolean flfree;
 	tyvariance variance;
-		
+
 	*h = nil;
-		
+
 	if (a == nildbaddress) /*defensive driving*/
 		return (false);
 
@@ -1648,7 +1725,7 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 #endif
         return (false);
         }
-		
+
 	if (!newclearhandle (ct, h))
 		return (false);
 
@@ -1657,7 +1734,7 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
         log_trace(LOG_COMP_DB, "dbrefhandle watch allocated handle size=%ld", ct);
     }
 #endif
-	
+
 	hregister = *h;
 
 	lockhandle (hregister);

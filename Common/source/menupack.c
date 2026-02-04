@@ -745,6 +745,9 @@ typedef struct tysavedmenuinfo_disk_legacy {
 } tysavedmenuinfo_disk_legacy;
 #pragma options align=reset
 
+/* Verify the legacy struct size matches v6 format expectations (112 bytes) */
+_Static_assert(sizeof(tysavedmenuinfo_disk_legacy) == 112, "v6 menu struct must be exactly 112 bytes");
+
 typedef struct tysavedmenuinfo_v7 {
 	uint16_t versionnumber;     /* v7+ marker */
 	uint16_t _pad;              /* align to 64-bit */
@@ -986,32 +989,44 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 #if defined(FRONTIER_HEADLESS)
 		{
 			unsigned char *p = (unsigned char *)&legacy_info;
-			log_error(LOG_COMP_OP, "meloadmenurecord_internal: raw bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+			log_error(LOG_COMP_OP, "meloadmenurecord_internal: raw bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 			        p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
-			        p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
+			        p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15],
+			        p[16], p[17], p[18], p[19]);
 		}
 #endif
 
 		/* Convert legacy 32-bit disk format to in-memory 64-bit format */
+		/* All values in the legacy struct are stored big-endian on disk */
 		clearbytes (&info, sizeof (info));
-		info.versionnumber = legacy_info.versionnumber;
+		info.versionnumber = conditionalshortswap(legacy_info.versionnumber);
 		/* Legacy 32-bit address is stored big-endian on disk */
 		outline_adr = (dbaddress) conditionallongswap (legacy_info.adroutline);
 #if defined(FRONTIER_HEADLESS)
-		log_error(LOG_COMP_OP, "meloadmenurecord_internal: v6 legacy_info.adroutline raw=0x%08x swapped=0x%llx versionnumber=%d",
-		        legacy_info.adroutline, (unsigned long long)outline_adr, (int)legacy_info.versionnumber);
+		log_error(LOG_COMP_OP, "meloadmenurecord_internal: v6 versionnumber=%d (raw=0x%04x BE) legacy_info.adroutline raw=0x%08x swapped=0x%llx",
+		        (int)info.versionnumber, (unsigned)legacy_info.versionnumber,
+		        legacy_info.adroutline, (unsigned long long)outline_adr);
 #endif
 		info.adroutline = outline_adr;
-		info.vertmin = legacy_info.vertmin;
-		info.vertmax = legacy_info.vertmax;
-		info.vertcurrent = legacy_info.vertcurrent;
-		info.scriptwindowrect = legacy_info.scriptwindowrect;
-		info.flags = legacy_info.flags;
-		info.menuactivelayer = legacy_info.menuactivelayer;
-		info.lnumcursor = legacy_info.lnumcursor;
+		info.vertmin = conditionalshortswap(legacy_info.vertmin);
+		info.vertmax = conditionalshortswap(legacy_info.vertmax);
+		info.vertcurrent = conditionalshortswap(legacy_info.vertcurrent);
+		/* scriptwindowrect is a diskrect with 4 shorts */
+		info.scriptwindowrect.top = conditionalshortswap(legacy_info.scriptwindowrect.top);
+		info.scriptwindowrect.left = conditionalshortswap(legacy_info.scriptwindowrect.left);
+		info.scriptwindowrect.bottom = conditionalshortswap(legacy_info.scriptwindowrect.bottom);
+		info.scriptwindowrect.right = conditionalshortswap(legacy_info.scriptwindowrect.right);
+		info.flags = conditionalshortswap(legacy_info.flags);
+		info.menuactivelayer = conditionalshortswap(legacy_info.menuactivelayer);
+		info.lnumcursor = conditionalshortswap(legacy_info.lnumcursor);
+		/* diskfontstring is a pascal string - first byte is length, don't swap */
 		memcpy(info.defaultscriptfontname, legacy_info.defaultscriptfontname, sizeof(diskfontstring));
-		info.defaultscriptfontsize = legacy_info.defaultscriptfontsize;
-		info.menuwindowrect = legacy_info.menuwindowrect;
+		info.defaultscriptfontsize = conditionalshortswap(legacy_info.defaultscriptfontsize);
+		/* menuwindowrect is a diskrect with 4 shorts */
+		info.menuwindowrect.top = conditionalshortswap(legacy_info.menuwindowrect.top);
+		info.menuwindowrect.left = conditionalshortswap(legacy_info.menuwindowrect.left);
+		info.menuwindowrect.bottom = conditionalshortswap(legacy_info.menuwindowrect.bottom);
+		info.menuwindowrect.right = conditionalshortswap(legacy_info.menuwindowrect.right);
 	}
 
 #if defined(FRONTIER_HEADLESS)
@@ -1043,7 +1058,16 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 
 boolean meloadmenurecord (dbaddress adr, hdlmenurecord *hmenurecord) {
 	db_context ctx;
-	db_context_init(&ctx);
+
+	/* Detect if we're reading from a legacy (v6) database.
+	   During migration, the global mode may be v7, but we need to read
+	   v6 data with v6 header sizes (8 bytes, not 12). */
+	if (db_format_is_legacy_db(databasedata)) {
+		db_context_init_legacy_read(&ctx, databasedata);
+	} else {
+		db_context_init(&ctx);
+	}
+
 	return meloadmenurecord_internal(&ctx, adr, hmenurecord);
 } /*meloadmenurecord*/
 
