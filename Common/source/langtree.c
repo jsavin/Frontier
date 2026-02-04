@@ -43,7 +43,6 @@
 #include "db_format.h" /* 2025-11-23 Codex: BE helpers for tree packing */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "logging.h"
-#include <stdint.h>  /* 2026-02-03: for fixed-width int32_t in disk structs */
 
 #pragma pack(2)
 typedef struct tydisktreenode {
