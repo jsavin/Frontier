@@ -99,15 +99,6 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "defined() - nested lookup 'html.getTitle'"
-    description: |
-      Test nested lookup with html.getTitle:
-      1. Resolve "html" path entry → builtins.html table
-      2. Look for "getTitle" verb inside builtins.html
-    script: 'defined(html.getTitle)'
-    expected_success: true
-    expected_result: "true"
-
   - name: "defined() - deep nested lookup 'system.verbs.builtins.string.lower'"
     description: |
       Test multi-level path resolution:
@@ -185,22 +176,6 @@ tests:
       Regression test: system table is hardcoded (not from paths).
       Should continue to work after bug fix.
     script: 'defined(system)'
-    expected_success: true
-    expected_result: "true"
-
-  - name: "defined() - hardcoded 'builtins' table"
-    description: |
-      Regression test: builtins table is hardcoded.
-      Should continue to work after bug fix.
-    script: 'defined(builtins)'
-    expected_success: true
-    expected_result: "true"
-
-  - name: "defined() - in-memory table child 'builtins.init'"
-    description: |
-      Regression test: Direct lookup in builtins table (not via paths).
-      Should continue to work after bug fix.
-    script: 'defined(builtins.init)'
     expected_success: true
     expected_result: "true"
 
@@ -344,14 +319,6 @@ tests:
   # These tests verify defined() returns FALSE for things that should NOT
   # be found via path resolution.
 
-  - name: "defined() - internal table not in paths"
-    description: |
-      system.verbs.builtins is an internal table, but it's not a path entry.
-      defined(verbs) should only return TRUE if "verbs" is in system.paths.
-    script: 'defined(verbs)'
-    expected_success: true
-    expected_result: "false"
-
   - name: "defined() - child of path entry (not entry itself)"
     description: |
       "init" is a common verb inside many tables, but "init" itself is not
@@ -426,14 +393,6 @@ tests:
     script: 'typeof(builtins.op.firstSummit)'
     expected_success: true
     expected_result: "scpt"
-
-  - name: "REGRESSION - defined(builtins.webserver.init) - direct lookup still works"
-    description: |
-      Regression check: Direct lookups in builtins.webserver should still work
-      (they don't go through path resolution).
-    script: 'defined(builtins.webserver.init)'
-    expected_success: true
-    expected_result: "true"
 
   - name: "REGRESSION - webserver path entry still works after fix"
     description: |

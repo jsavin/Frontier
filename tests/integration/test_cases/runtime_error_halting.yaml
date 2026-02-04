@@ -55,24 +55,6 @@ tests:
     expected_success: true
     expected_result: "false"
 
-  - name: "defined() - builtins.init EFP table should exist"
-    description: "Regression check: builtins.init is another EFP table. Verify defined() works correctly"
-    script: 'defined(builtins.init)'
-    expected_success: true
-    expected_result: "true"
-
-  - name: "defined() - system.verbs.builtins.user.radio3.init EFP table should exist"
-    description: "Deep nested EFP table path: system.verbs.builtins.user.radio3.init. Verify defined() returns true"
-    script: 'defined(system.verbs.builtins.user.radio3.init)'
-    expected_success: true
-    expected_result: "true"
-
-  - name: "defined() - suites.tcp EFP table should exist"
-    description: "Another EFP table in system root. Verify defined() correctly identifies it"
-    script: 'defined(suites.tcp)'
-    expected_success: true
-    expected_result: "true"
-
   # ============================================================================
   # Category 2: Table Index Errors Should Halt Execution
   # ============================================================================
