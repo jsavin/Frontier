@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Html Text Processing Phase2 Tests (html_text_processing_phase2_tests)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>Html Text Processing Phase2 Tests (html_text_processing_phase2_tests) - 30 tests: 24 pass (80%) 6 skip (20%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="html.iso8859encode - basic ASCII text - Plain ASCII should pass through unchanged">

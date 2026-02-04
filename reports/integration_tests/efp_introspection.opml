@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Efp Introspection (efp_introspection)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>Efp Introspection (efp_introspection) - 14 tests: 14 pass (100%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="parentOf(string.mid) - returns database path - CRITICAL TEST: parentOf(string.mid) should return the database path&#10;@system.verbs.builtins.string, not the EFP internal path&#10;@system.compiler.[&quot;kernel&quot;].string.&#10;&#10;Bug behavior: Returns @system.compiler.[&quot;kernel&quot;].string&#10;Fixed behavior: Returns @system.verbs.builtins.string&#10;">

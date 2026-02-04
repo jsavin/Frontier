@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Dialog Verbs (dialog_verbs)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>Dialog Verbs (dialog_verbs) - 48 tests: 48 pass (100%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="lang.msg - basic output to stdout - lang.msg() should output text to stdout">

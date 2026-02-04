@@ -41,6 +41,74 @@ def extract_category_key(filename):
     return filename.replace('.yaml', '')
 
 
+def count_test_stats(tests):
+    """
+    Count pass/skip/fail statistics for a list of tests.
+
+    Args:
+        tests: List of test dictionaries from YAML
+
+    Returns:
+        dict: {'total': int, 'pass': int, 'skip': int, 'fail': int}
+    """
+    total = len(tests)
+    skip_count = 0
+    fail_count = 0
+
+    for test in tests:
+        if test.get('skip', False):
+            skip_count += 1
+        elif test.get('expected_success', True) is False:
+            # Tests with expected_success=false are expected error tests
+            # They pass when the error occurs, so count as expected passes
+            pass
+
+    pass_count = total - skip_count - fail_count
+
+    return {
+        'total': total,
+        'pass': pass_count,
+        'skip': skip_count,
+        'fail': fail_count
+    }
+
+
+def format_stats_summary(stats):
+    """
+    Format statistics as a summary string.
+
+    Args:
+        stats: dict with 'total', 'pass', 'skip', 'fail' keys
+
+    Returns:
+        str: e.g., "45 tests: 40 pass (89%), 3 skip (7%), 2 fail (4%)"
+    """
+    total = stats['total']
+    if total == 0:
+        return "0 tests"
+
+    parts = [f"{total} tests:"]
+
+    # Pass count
+    pass_count = stats['pass']
+    pass_pct = (pass_count * 100) // total
+    parts.append(f"{pass_count} pass ({pass_pct}%)")
+
+    # Skip count (only if non-zero)
+    skip_count = stats['skip']
+    if skip_count > 0:
+        skip_pct = (skip_count * 100) // total
+        parts.append(f"{skip_count} skip ({skip_pct}%)")
+
+    # Fail count (only if non-zero)
+    fail_count = stats['fail']
+    if fail_count > 0:
+        fail_pct = (fail_count * 100) // total
+        parts.append(f"{fail_count} fail ({fail_pct}%)")
+
+    return ' '.join(parts)
+
+
 def group_tests_by_category(test_dir):
     """
     Group test files by category.
@@ -53,7 +121,8 @@ def group_tests_by_category(test_dir):
             'filename': Path,
             'pretty_name': str,
             'tests': list,
-            'test_count': int
+            'test_count': int,
+            'stats': dict  # pass/skip/fail counts
         }}
     """
     test_files = sorted(Path(test_dir).glob('*.yaml'))
@@ -72,11 +141,14 @@ def group_tests_by_category(test_dir):
             continue
 
         tests = data['tests']
+        stats = count_test_stats(tests)
+
         categories[category_key] = {
             'filename': test_file,
             'pretty_name': pretty_name,
             'tests': tests,
-            'test_count': len(tests)
+            'test_count': len(tests),
+            'stats': stats
         }
 
     return categories
@@ -244,7 +316,7 @@ def generate_category_opml(category_key, category_data, output_file):
 
     Args:
         category_key: Base category name (e.g., 'db_verbs')
-        category_data: Dict with 'pretty_name', 'tests', etc.
+        category_data: Dict with 'pretty_name', 'tests', 'stats', etc.
         output_file: Path to output OPML file
     """
     # Create OPML structure
@@ -254,7 +326,9 @@ def generate_category_opml(category_key, category_data, output_file):
     # Head section
     head = SubElement(opml, 'head')
     title = SubElement(head, 'title')
-    title.text = category_data['pretty_name']
+    # Include stats in title: "String Verbs (string_verbs) - 45 tests: 40 pass (89%), 3 skip (7%)"
+    stats_summary = format_stats_summary(category_data['stats'])
+    title.text = f"{category_data['pretty_name']} - {stats_summary}"
     date_created = SubElement(head, 'dateCreated')
     date_created.text = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S GMT')
 
@@ -319,6 +393,17 @@ def generate_manifest_opml(categories, output_file):
         categories: Dict mapping category_key -> category_data
         output_file: Path to output manifest OPML file
     """
+    # Calculate total stats across all categories
+    total_stats = {'total': 0, 'pass': 0, 'skip': 0, 'fail': 0}
+    for category_data in categories.values():
+        stats = category_data['stats']
+        total_stats['total'] += stats['total']
+        total_stats['pass'] += stats['pass']
+        total_stats['skip'] += stats['skip']
+        total_stats['fail'] += stats['fail']
+
+    total_summary = format_stats_summary(total_stats)
+
     # Create OPML structure
     opml = Element('opml')
     opml.set('version', '2.0')
@@ -326,7 +411,7 @@ def generate_manifest_opml(categories, output_file):
     # Head section
     head = SubElement(opml, 'head')
     title = SubElement(head, 'title')
-    title.text = 'Frontier Integration Test Categories'
+    title.text = f'Frontier Integration Tests - {total_summary}'
     date_created = SubElement(head, 'dateCreated')
     date_created.text = datetime.now(timezone.utc).strftime('%a, %d %b %Y %H:%M:%S GMT')
 
@@ -339,8 +424,12 @@ def generate_manifest_opml(categories, output_file):
 
         # Create outline element with transclusion link (absolute GitHub URL for Drummer)
         # Category files are in integration_tests/ subdirectory
+        # Include stats summary: "String Verbs (string_verbs) - 45 tests: 40 pass (89%), 3 skip (7%)"
+        stats_summary = format_stats_summary(category_data['stats'])
+        display_text = f"{category_data['pretty_name']} - {stats_summary}"
+
         category_outline = SubElement(body, 'outline')
-        category_outline.set('text', sanitize_xml_text(category_data['pretty_name']))
+        category_outline.set('text', sanitize_xml_text(display_text))
         category_outline.set('type', 'link')
         category_outline.set('url', f'https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/{category_key}.opml')
 
@@ -380,7 +469,8 @@ def export_hierarchical_opml(test_dir, output_dir):
         category_file = category_dir / f'{category_key}.opml'
         generate_category_opml(category_key, category_data, category_file)
         generated_files.append(category_file)
-        print(f"Generated: integration_tests/{category_file.name} ({category_data['test_count']} tests)")
+        stats = category_data['stats']
+        print(f"Generated: integration_tests/{category_file.name} ({stats['total']} tests: {stats['pass']} pass, {stats['skip']} skip)")
 
     # Generate manifest file in output_dir (not subdirectory)
     manifest_file = output_dir / 'integration_tests.opml'

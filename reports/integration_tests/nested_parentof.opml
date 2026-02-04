@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Nested Parentof (nested_parentof)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>Nested Parentof (nested_parentof) - 18 tests: 13 pass (72%) 5 skip (27%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="parentOf(string.mid) - single level - BASELINE TEST: Single parentOf() call works correctly.&#10;Returns the parent table of string.mid.&#10;">

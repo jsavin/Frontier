@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Target Verbs (target_verbs)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>Target Verbs (target_verbs) - 46 tests: 46 pass (100%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="target.get - no target set returns nil - When no explicit target is set, target.get() returns nil (no implicit target in headless)">

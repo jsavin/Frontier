@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Path Resolution (path_resolution)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>Path Resolution (path_resolution) - 39 tests: 39 pass (100%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="defined() - path entry 'webserver' exists - CRITICAL TEST: defined(webserver) should return TRUE because &quot;webserver&quot;&#10;is a path entry name in system.paths, regardless of what's inside&#10;builtins.webserver table.&#10;&#10;Bug behavior: Returns FALSE (looks inside builtins.webserver for &quot;webserver&quot;)&#10;Fixed behavior: Returns TRUE (matches path entry name &quot;webserver&quot;)&#10;">

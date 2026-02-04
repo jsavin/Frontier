@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Migration Externals (migration_externals)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>Migration Externals (migration_externals) - 19 tests: 16 pass (84%) 3 skip (15%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="Deep script execution - system.verbs.globals.string - The string verb should work after migration">

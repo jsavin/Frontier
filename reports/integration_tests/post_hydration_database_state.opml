@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Post Hydration Database State (post_hydration_database_state)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>Post Hydration Database State (post_hydration_database_state) - 34 tests: 30 pass (88%) 4 skip (11%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="CRITICAL - string(123) works after hydration - This is THE test for the bug we fixed. If hydrate_system_root_database()&#10;closes the database on success, this test WILL FAIL because:&#10;1. CLI starts up, calls hydrate_system_root_database()&#10;2. (Bug) hydrate closes DB, databasedata = nil&#10;3. Test runs, calls string(123)&#10;4. langfindsymbol() tries to resolve &quot;string&quot; via system.paths&#10;5. system.paths lookup requires database access&#10;6. databasedata is nil -&gt; crash or &quot;Can't find verb&quot; error&#10;&#10;After the fix, the database stays open and string() resolves correctly.&#10;">

@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>File Verbs (file_verbs)</title>
-    <dateCreated>Wed, 04 Feb 2026 09:05:10 GMT</dateCreated>
+    <title>File Verbs (file_verbs) - 81 tests: 78 pass (96%) 3 skip (3%)</title>
+    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
