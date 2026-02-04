@@ -21,11 +21,13 @@
 #include "standard.h"
 
 #include "menuverbs.h"  /* includes menueditor.h which includes menubar.h */
+#include "menuinternal.h" /* megetmenuiteminfo, mesetmenuiteminfo */
 #include "op.h"
 #include "opinternal.h"
 #include "memory.h"
 #include "db.h"
 #include "db_format.h"
+#include "logging.h"  /* For meloadscriptoutline diagnostics */
 
 #ifdef FRONTIER_HEADLESS
 
@@ -276,9 +278,8 @@ boolean meresetwindowrects (hdlwindowinfo hw) {
     return (false);
 }
 
-boolean meresize (void) {
-    /* GUI-only operation - return false */
-    return (false);
+void meresize (void) {
+    /* GUI-only operation - no-op */
 }
 
 void meinit (void) {
@@ -341,14 +342,20 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
 
     *houtline = nil;
 
+    log_debug(LOG_COMP_OP, "meloadoutline_internal: START adr=0x%llx ctx_db=%p",
+            (unsigned long long)adr, (void*)(ctx ? ctx->database : nil));
+
     oppushoutline (nil);
 
     if (adr == nildbaddress) {
-        /* New empty outline */
-        Rect r = {0, 0, 100, 100};
-        fl = opnewrecord (r, houtline);
+        /* New empty outline - use newoutlinerecord which doesn't require window info */
+        fl = newoutlinerecord (houtline);
+        log_debug(LOG_COMP_OP, "meloadoutline_internal: created new outline fl=%d", (int)fl);
     }
     else {
+        log_error(LOG_COMP_OP, "meloadoutline_internal: reading adr=0x%llx ctx_db=%p global_db=%p",
+                (unsigned long long)adr, (void*)(ctx ? ctx->database : nil), (void*)databasedata);
+
         if (ctx != nil) {
             fl = dbrefhandle_context (ctx, adr, &hpackedoutline);
         } else {
@@ -357,11 +364,24 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
 
         if (!fl) {
             /* Database read failed - leave *houtline as nil */
+            log_error(LOG_COMP_OP, "meloadoutline_internal: dbrefhandle FAILED adr=0x%llx", (unsigned long long)adr);
             oppopoutline ();
             return (false);
         }
 
+        {
+            long hsize = gethandlesize(hpackedoutline);
+            unsigned char *p = (unsigned char *) *hpackedoutline;
+            log_error(LOG_COMP_OP, "meloadoutline_internal: dbrefhandle OK, unpacking size=%ld first_bytes=%02x%02x%02x%02x",
+                    hsize, hsize > 0 ? p[0] : 0, hsize > 1 ? p[1] : 0, hsize > 2 ? p[2] : 0, hsize > 3 ? p[3] : 0);
+        }
+
         fl = opunpack (hpackedoutline, &ixload, houtline);
+
+        if (!fl) {
+            log_error(LOG_COMP_OP, "meloadoutline_internal: opunpack FAILED");
+        }
+
         disposehandle (hpackedoutline);
     }
 
@@ -373,6 +393,7 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
     if (*houtline != nil)
         opvalidate (*houtline);
 
+    log_debug(LOG_COMP_OP, "meloadoutline_internal: SUCCESS");
     return (true);
 }
 
@@ -399,13 +420,65 @@ boolean mesaveoutline (hdloutlinerecord ho, dbaddress *adr) {
 boolean meloadscriptoutline (hdlmenurecord hm, hdlheadrecord hnode,
                              hdloutlinerecord *houtline, boolean *fljustloaded) {
     /*
-     * Load script outline attached to a menu item. Simplified for headless.
+     * Load script outline attached to a menu item.
+     *
+     * This function is called during menu packing when fldatabasesaveas and
+     * flconvertingolddatabase are true (i.e., during migration). It needs to
+     * load attached scripts so they can be re-saved to the destination database.
+     *
+     * Returns true if successful (even if no script is attached - *houtline=nil).
+     * Returns false only on actual errors (e.g., database read failure).
      */
-    (void) hm;
-    (void) hnode;
+    tymenuiteminfo item;
+    dbaddress adr;
+    Handle hpackedoutline;
+    long ixload = 0;
+    boolean fl;
+
+    (void) hm; /* Menu record not needed - script address is in node refcon */
+
     *houtline = nil;
     if (fljustloaded) *fljustloaded = false;
-    return (false); /* Scripts not loaded in headless mode */
+
+    /* Get the script info from the node's refcon */
+    if (!megetmenuiteminfo (hnode, &item)) {
+        /* No refcon data - no script attached, this is OK */
+        log_trace(LOG_COMP_OP, "meloadscriptoutline: no refcon data, returning OK");
+        return (true);
+    }
+
+    adr = item.linkedscript.adrlink;
+
+    if (adr == nildbaddress) {
+        /* No linked script - this is OK */
+        log_trace(LOG_COMP_OP, "meloadscriptoutline: no linked script (adr=nil), returning OK");
+        return (true);
+    }
+
+    log_trace(LOG_COMP_OP, "meloadscriptoutline: loading script from adr=0x%llx", (unsigned long long)adr);
+
+    /* Load the packed script outline from database */
+    fl = dbrefhandle (adr, &hpackedoutline);
+    if (!fl) {
+        /* Database read error */
+        log_error(LOG_COMP_OP, "meloadscriptoutline: dbrefhandle failed for adr=0x%llx", (unsigned long long)adr);
+        return (false);
+    }
+
+    /* Unpack into outline record */
+    fl = opunpack (hpackedoutline, &ixload, houtline);
+
+    if (!fl) {
+        log_error(LOG_COMP_OP, "meloadscriptoutline: opunpack failed for adr=0x%llx", (unsigned long long)adr);
+    }
+
+    disposehandle (hpackedoutline);
+
+    if (fl && fljustloaded) {
+        *fljustloaded = true;
+    }
+
+    return (fl);
 }
 
 /*

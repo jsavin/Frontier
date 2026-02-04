@@ -987,6 +987,9 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 	 * NO GLOBAL MODE CHANGES - all context passed explicitly
 	 * ================================================================
 	 */
+	log_debug(LOG_COMP_EXTERNAL, "langexternalpack_internal: START id=%d adapter_repack=%d flinmemory=%d",
+	        (int)(**hv).id, (int)adapter_repack, (int)(**hv).flinmemory);
+
 	if (adapter_repack) {
 		/* If not already in memory, load from v6 source */
 		if (!(**hv).flinmemory) {
@@ -994,12 +997,16 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 			legacy_context = working_context;
 			legacy_context.mode.use_64bit_format = false;
 			legacy_context.mode.adapter_repack = false;  /* Pure read mode */
+			/* CRITICAL: Use the external's own database handle for reading, not the current global */
+			legacy_context.database = (**hv).hdatabase;
 
-			log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external from v6 id=%d (explicit context)",
-			        (int)(**hv).id);
+			log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external from v6 id=%d (explicit context) db=%p",
+			        (int)(**hv).id, (void*)legacy_context.database);
 
 			/* Load external into memory using explicit v6 context */
 			if (!ensure_external_in_memory (&legacy_context, hv)) {
+				log_error(LOG_COMP_EXTERNAL, "langexternalpack_internal: ensure_external_in_memory FAILED id=%d",
+				        (int)(**hv).id);
 				return (false);
 			}
 
@@ -1014,6 +1021,9 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 
 		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: using v7 write context flinmemory=%d (no global mode set)",
 		        (int)(**hv).flinmemory);
+	} else {
+		log_debug(LOG_COMP_EXTERNAL, "langexternalpack_internal: NOT adapter_repack - skipping load! id=%d flinmemory=%d",
+		        (int)(**hv).id, (int)(**hv).flinmemory);
 	}
 
 	/* ================================================================

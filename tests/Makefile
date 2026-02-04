@@ -111,6 +111,7 @@ MIGRATION_SOURCES = \
     headless_shell.c \
     components/test_migration_portable.c
 
+# Note: ophoist.c is required because opverbnew() calls oppopallhoists() defined there.
 LANG_RUNTIME_SOURCES = \
     ../Common/source/logging.c \
     ../Common/source/lang.c \
@@ -163,6 +164,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/legacy/oppack_legacy.c \
     ../Common/source/opverbs.c \
     ../Common/source/legacy/opverbs_legacy.c \
+    ../Common/source/ophoist.c \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
     $(HEADLESS_VERBS_SOURCES) \
@@ -232,7 +234,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #219 tracks verb runtime fixes)
@@ -322,6 +324,11 @@ test_callback_infrastructure: test_callback_infrastructure.c $(LANG_RUNTIME_SOUR
 tcp_phase1a_unit_tests: tcp_phase1a_unit_tests.c ../Common/source/tcpverbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		tcp_phase1a_unit_tests.c ../Common/source/tcpverbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+
+# Menu v7 refcon table format tests - validates mecreaterefcontable_v7/meunpackrefcontable_v7
+menu_v7_refcon_tests: menu_v7_refcon_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menupack.c headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
+		menu_v7_refcon_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menupack.c headless_shell.c -o $@ $(LINK_LIBS)
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)

@@ -46,6 +46,10 @@
 #include "byteorder_helpers.h" /* 2026-02-02 Codex: Consolidated host/disk byte order helpers */
 #include "logging.h"    /* For structured logging of v7→legacy truncation warnings */
 #include <limits.h>     /* For SHRT_MAX */
+#include "lang.h"       /* For langassign* functions and langpackvalue/langunpackvalue */
+#include "langexternal.h" /* For langexternalnewvalue, idscriptprocessor */
+#include "opverbs.h"    /* For opvaltoscript */
+#include "tableinternal.h" /* For tablenewtablevalue */
 
 	
 
@@ -720,6 +724,30 @@ static boolean meunpackmenustructure_legacy (Handle hpacked, hdlmenurecord *hmen
 
 /* Byte order helpers now in byteorder_helpers.h (2026-02-02 consolidation) */
 
+/*
+ * Legacy (v6 and earlier) disk format structure.
+ * The key difference from tysavedmenuinfo is that dbaddress was 32-bit on disk.
+ * This structure must match what was written by Frontier 4.x-9.x on v6 databases.
+ */
+#pragma pack(2)
+typedef struct tysavedmenuinfo_disk_legacy {
+	short versionnumber;         /* structure version on disk */
+	int32_t adroutline;          /* 32-bit address of menubar outline (BE on disk) */
+	short vertmin, vertmax, vertcurrent;  /* scrollbar state */
+	diskrect scriptwindowrect;   /* script window position */
+	short flags;
+	short menuactivelayer;
+	short lnumcursor;
+	diskfontstring defaultscriptfontname;
+	short defaultscriptfontsize;
+	diskrect menuwindowrect;     /* menu window position */
+	char waste[42];              /* padding for growth */
+} tysavedmenuinfo_disk_legacy;
+#pragma options align=reset
+
+/* Verify the legacy struct size matches v6 format expectations (112 bytes) */
+_Static_assert(sizeof(tysavedmenuinfo_disk_legacy) == 112, "v6 menu struct must be exactly 112 bytes");
+
 typedef struct tysavedmenuinfo_v7 {
 	uint16_t versionnumber;     /* v7+ marker */
 	uint16_t _pad;              /* align to 64-bit */
@@ -906,10 +934,15 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 	Postconditions:
 	  - *hmenurecord contains loaded menu structure
 	  - Returns true on success, false on failure
+
+	Note: v6 databases store menu info with 32-bit addresses, while the in-memory
+	tysavedmenuinfo has 64-bit dbaddress. We must read the correct disk format
+	and convert.
 	*/
 
 	hdloutlinerecord houtline;
 	tysavedmenuinfo info;
+	dbaddress outline_adr;
 
 	if (!ctx) {
 		db_context default_ctx;
@@ -917,26 +950,112 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 		return meloadmenurecord_internal(&default_ctx, adr, hmenurecord);
 	}
 
-	if (!dbreference (adr, sizeof (info), &info))
-		return (false);
+	boolean is_v7_format = ctx->mode.use_64bit_format;
 
-	if (!meloadoutline_internal (ctx, conditionallongswap (info.adroutline), &houtline))
+#if defined(FRONTIER_HEADLESS)
+	log_debug(LOG_COMP_OP, "meloadmenurecord_internal: START adr=0x%llx ctx_db=%p is_v7=%d",
+	        (unsigned long long)adr, (void*)ctx->database, (int)is_v7_format);
+#endif
+
+	if (is_v7_format) {
+		/* v7 format: read the full tysavedmenuinfo with 64-bit addresses */
+		if (!dbreference_context (ctx, adr, sizeof (info), &info)) {
+#if defined(FRONTIER_HEADLESS)
+			log_error(LOG_COMP_OP, "meloadmenurecord_internal: dbreference_context FAILED (v7) adr=0x%llx",
+			        (unsigned long long)adr);
+#endif
+			return (false);
+		}
+		outline_adr = conditionallongswap (info.adroutline);
+	}
+	else {
+		/* v6 format: read the legacy disk format with 32-bit addresses */
+		tysavedmenuinfo_disk_legacy legacy_info;
+
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: reading v6 adr=0x%llx sizeof(legacy_info)=%zu",
+		        (unsigned long long)adr, sizeof(legacy_info));
+#endif
+
+		if (!dbreference_context (ctx, adr, sizeof (legacy_info), &legacy_info)) {
+#if defined(FRONTIER_HEADLESS)
+			log_error(LOG_COMP_OP, "meloadmenurecord_internal: dbreference_context FAILED (v6) adr=0x%llx",
+			        (unsigned long long)adr);
+#endif
+			return (false);
+		}
+
+		/* Convert legacy 32-bit disk format to in-memory 64-bit format */
+		/* All values in the legacy struct are stored big-endian on disk */
+		clearbytes (&info, sizeof (info));
+		info.versionnumber = conditionalshortswap(legacy_info.versionnumber);
+		/* Legacy 32-bit address is stored big-endian on disk */
+		outline_adr = (dbaddress) conditionallongswap (legacy_info.adroutline);
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: v6 versionnumber=%d outline_adr=0x%llx",
+		        (int)info.versionnumber, (unsigned long long)outline_adr);
+#endif
+		info.adroutline = outline_adr;
+		info.vertmin = conditionalshortswap(legacy_info.vertmin);
+		info.vertmax = conditionalshortswap(legacy_info.vertmax);
+		info.vertcurrent = conditionalshortswap(legacy_info.vertcurrent);
+		/* scriptwindowrect is a diskrect with 4 shorts */
+		info.scriptwindowrect.top = conditionalshortswap(legacy_info.scriptwindowrect.top);
+		info.scriptwindowrect.left = conditionalshortswap(legacy_info.scriptwindowrect.left);
+		info.scriptwindowrect.bottom = conditionalshortswap(legacy_info.scriptwindowrect.bottom);
+		info.scriptwindowrect.right = conditionalshortswap(legacy_info.scriptwindowrect.right);
+		info.flags = conditionalshortswap(legacy_info.flags);
+		info.menuactivelayer = conditionalshortswap(legacy_info.menuactivelayer);
+		info.lnumcursor = conditionalshortswap(legacy_info.lnumcursor);
+		/* diskfontstring is a pascal string - first byte is length, don't swap */
+		memcpy(info.defaultscriptfontname, legacy_info.defaultscriptfontname, sizeof(diskfontstring));
+		info.defaultscriptfontsize = conditionalshortswap(legacy_info.defaultscriptfontsize);
+		/* menuwindowrect is a diskrect with 4 shorts */
+		info.menuwindowrect.top = conditionalshortswap(legacy_info.menuwindowrect.top);
+		info.menuwindowrect.left = conditionalshortswap(legacy_info.menuwindowrect.left);
+		info.menuwindowrect.bottom = conditionalshortswap(legacy_info.menuwindowrect.bottom);
+		info.menuwindowrect.right = conditionalshortswap(legacy_info.menuwindowrect.right);
+	}
+
+#if defined(FRONTIER_HEADLESS)
+	log_debug(LOG_COMP_OP, "meloadmenurecord_internal: outline_adr=0x%llx", (unsigned long long)outline_adr);
+#endif
+
+	if (!meloadoutline_internal (ctx, outline_adr, &houtline)) {
+#if defined(FRONTIER_HEADLESS)
+		log_error(LOG_COMP_OP, "meloadmenurecord_internal: meloadoutline_internal FAILED");
+#endif
 		return (false);
+	}
 
 	if (!mesetupmenurecord (&info, houtline, hmenurecord)) {
-
+#if defined(FRONTIER_HEADLESS)
+		log_error(LOG_COMP_OP, "meloadmenurecord_internal: mesetupmenurecord FAILED");
+#endif
 		opdisposeoutline (houtline, false);
 
 		return (false);
 	}
 
+#if defined(FRONTIER_HEADLESS)
+	log_debug(LOG_COMP_OP, "meloadmenurecord_internal: SUCCESS hmenurecord=%p", (void*)*hmenurecord);
+#endif
 	return (true);
 } /*meloadmenurecord_internal*/
 
 
 boolean meloadmenurecord (dbaddress adr, hdlmenurecord *hmenurecord) {
 	db_context ctx;
-	db_context_init(&ctx);
+
+	/* Detect if we're reading from a legacy (v6) database.
+	   During migration, the global mode may be v7, but we need to read
+	   v6 data with v6 header sizes (8 bytes, not 12). */
+	if (db_format_is_legacy_db(databasedata)) {
+		db_context_init_legacy_read(&ctx, databasedata);
+	} else {
+		db_context_init(&ctx);
+	}
+
 	return meloadmenurecord_internal(&ctx, adr, hmenurecord);
 } /*meloadmenurecord*/
 
@@ -1038,3 +1157,231 @@ boolean mescraphook (Handle hscrap) {
 	
 	return (true); /*keep going*/
 	} /*mescraphook*/
+
+
+/*
+ * V7 Menu Refcon Table Functions
+ *
+ * These functions create and unpack the v7 format for menu item refcons.
+ * The v7 format stores menu item data as a packed table with:
+ * - keyBinding (char): command key character or 0 if none
+ * - modifiers (table): {shift, control, option, command} booleans
+ * - handlerScript (script): the script object or nil if none
+ *
+ * 2026-02-03: Initial implementation for menu v6->v7 migration.
+ */
+
+/* String constants for table keys - use BIGSTRING macro for pointer to string literals
+ * Note: Hex escapes are greedy in C, so "\x07control" becomes "\x7c" + "ontrol".
+ * Use string concatenation to break: "\x07" "control" */
+#define bsKeyBinding      BIGSTRING("\x0a" "keyBinding")
+#define bsModifiers       BIGSTRING("\x09" "modifiers")
+#define bsHandlerScript   BIGSTRING("\x0d" "handlerScript")
+#define bsShift           BIGSTRING("\x05" "shift")
+#define bsControl         BIGSTRING("\x07" "control")
+#define bsOption          BIGSTRING("\x06" "option")
+#define bsCommand         BIGSTRING("\x07" "command")
+
+
+boolean mecreaterefcontable_v7 (byte cmdkey, tykeyflags modifiers,
+                                 hdloutlinerecord hscript,
+                                 Handle *hpackedtable) {
+	/*
+	 * Create a v7 table refcon from menu item data.
+	 *
+	 * The table contains:
+	 * - keyBinding (char): command key character or 0 if none
+	 * - modifiers (table): {shift, control, option, command} booleans
+	 * - handlerScript (script): the script object or nil if none
+	 *
+	 * Implementation:
+	 * 1. Create temporary in-memory hash table
+	 * 2. Add keyBinding char value
+	 * 3. Create modifiers sub-table with boolean flags
+	 * 4. If hscript != nil, create script external and add as handlerScript
+	 * 5. Pack the table using langpackvalue()
+	 * 6. Dispose the temporary table
+	 *
+	 * Returns true on success, false on failure.
+	 */
+
+	hdlhashtable htable = nil;
+	hdlhashtable hmodifiers = nil;
+	tyvaluerecord tableval = {0};  /* Initialize to prevent uninitialized access in cleanup */
+	boolean fl = false;
+
+	*hpackedtable = nil;
+
+	/* Create the main table */
+	if (!tablenewtablevalue(&htable, &tableval))
+		goto exit;
+
+	/* Add keyBinding (always present, 0 means no keybinding) */
+	if (!langassigncharvalue(htable, bsKeyBinding, cmdkey))
+		goto exit;
+
+	/* Create and populate the modifiers sub-table */
+	if (!langassignnewtablevalue(htable, bsModifiers, &hmodifiers))
+		goto exit;
+
+	/* Add modifier boolean flags */
+	if (!langassignbooleanvalue(hmodifiers, bsShift, (modifiers & keyshift) != 0))
+		goto exit;
+	if (!langassignbooleanvalue(hmodifiers, bsControl, (modifiers & keycontrol) != 0))
+		goto exit;
+	if (!langassignbooleanvalue(hmodifiers, bsOption, (modifiers & keyoption) != 0))
+		goto exit;
+	if (!langassignbooleanvalue(hmodifiers, bsCommand, (modifiers & keycommand) != 0))
+		goto exit;
+
+	/* Add handlerScript if present */
+	if (hscript != nil) {
+		tyvaluerecord scriptval;
+
+		/* Create a script external value from the outline.
+		 * Note: We need to copy the outline since langexternalnewvalue takes ownership.
+		 */
+		hdloutlinerecord hscriptcopy;
+		if (!opcopyoutlinerecord(hscript, &hscriptcopy))
+			goto exit;
+
+		if (!langexternalnewvalue(idscriptprocessor, (Handle)hscriptcopy, &scriptval)) {
+			opdisposeoutline(hscriptcopy, false);
+			goto exit;
+		}
+
+		/* hashtableassign() transfers ownership of scriptval on success.
+		 * On failure, we must dispose scriptval ourselves. */
+		if (!hashtableassign(htable, bsHandlerScript, scriptval)) {
+			disposevaluerecord(scriptval, false);
+			goto exit;
+		}
+	}
+
+	/* Pack the table */
+	if (!langpackvalue(tableval, hpackedtable, HNoNode))
+		goto exit;
+
+	fl = true;
+
+exit:
+	/* Clean up the temporary table.
+	 * Note: tableval holds the external wrapper around htable.
+	 * Disposing the value will clean up the table and any nested tables. */
+	if (tableval.valuetype == externalvaluetype) {
+		disposevaluerecord(tableval, false);
+	}
+
+	return fl;
+} /*mecreaterefcontable_v7*/
+
+
+boolean meunpackrefcontable_v7 (Handle hpackedtable,
+                                 byte *cmdkey,
+                                 tykeyflags *modifiers,
+                                 hdloutlinerecord *hscript) {
+	/*
+	 * Unpack a v7 table refcon and extract menu item info.
+	 * Inverse of mecreaterefcontable_v7().
+	 *
+	 * Implementation:
+	 * 1. Unpack the table using langunpackvalue()
+	 * 2. Look up keyBinding, convert to byte
+	 * 3. Look up modifiers sub-table, extract boolean flags
+	 * 4. Look up handlerScript, if exists extract the script outline
+	 * 5. Dispose the unpacked value
+	 *
+	 * Returns true on success, false on failure.
+	 */
+
+	tyvaluerecord tableval;
+	hdlhashtable htable;
+	hdlhashnode hnode;
+	boolean fl = false;
+
+	/* Initialize outputs */
+	*cmdkey = 0;
+	*modifiers = keynormal;
+	*hscript = nil;
+
+	/* Unpack the table */
+	if (!langunpackvalue(hpackedtable, &tableval))
+		return false;
+
+	if (tableval.valuetype != externalvaluetype) {
+		disposevaluerecord(tableval, false);
+		return false;
+	}
+
+	/* Get the hash table from the external value */
+	if (!langexternalvaltotable(tableval, &htable, HNoNode)) {
+		disposevaluerecord(tableval, false);
+		return false;
+	}
+
+	/* Extract keyBinding */
+	{
+		tyvaluerecord keyval;
+		if (hashtablelookup(htable, bsKeyBinding, &keyval, &hnode)) {
+			if (keyval.valuetype == charvaluetype) {
+				*cmdkey = keyval.data.chvalue;
+			}
+		}
+	}
+
+	/* Extract modifiers */
+	{
+		tyvaluerecord modval;
+		if (hashtablelookup(htable, bsModifiers, &modval, &hnode)) {
+			hdlhashtable hmodifiers;
+			if (langexternalvaltotable(modval, &hmodifiers, HNoNode)) {
+				tyvaluerecord boolval;
+				tykeyflags flags = keynormal;
+
+				if (hashtablelookup(hmodifiers, bsShift, &boolval, &hnode)) {
+					if (boolval.valuetype == booleanvaluetype && boolval.data.flvalue)
+						flags |= keyshift;
+				}
+				if (hashtablelookup(hmodifiers, bsControl, &boolval, &hnode)) {
+					if (boolval.valuetype == booleanvaluetype && boolval.data.flvalue)
+						flags |= keycontrol;
+				}
+				if (hashtablelookup(hmodifiers, bsOption, &boolval, &hnode)) {
+					if (boolval.valuetype == booleanvaluetype && boolval.data.flvalue)
+						flags |= keyoption;
+				}
+				if (hashtablelookup(hmodifiers, bsCommand, &boolval, &hnode)) {
+					if (boolval.valuetype == booleanvaluetype && boolval.data.flvalue)
+						flags |= keycommand;
+				}
+
+				*modifiers = flags;
+			}
+		}
+	}
+
+	/* Extract handlerScript if present */
+	{
+		tyvaluerecord scriptval;
+		if (hashtablelookup(htable, bsHandlerScript, &scriptval, &hnode)) {
+			if (scriptval.valuetype == externalvaluetype) {
+				hdloutlinerecord houtline;
+				if (opvaltoscript(scriptval, &houtline)) {
+					/* Copy the outline since we're about to dispose the table */
+					if (!opcopyoutlinerecord(houtline, hscript)) {
+						log_error(LOG_COMP_OP, "meunpackrefcontable_v7: failed to copy script outline");
+						disposevaluerecord(tableval, false);
+						return false;
+					}
+				}
+			}
+		}
+	}
+
+	fl = true;
+
+	/* Dispose the unpacked value (this will clean up the table) */
+	disposevaluerecord(tableval, false);
+
+	return fl;
+} /*meunpackrefcontable_v7*/

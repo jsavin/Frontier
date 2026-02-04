@@ -2528,11 +2528,18 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
     2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
     Set mode directly from context, call function, done.
     Caller ensures correct database is active.
+
+    2026-02-03: During migration, global mode may be locked to v7.
+    Use explicit header size from context instead of global mode.
     */
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
-        db_format_mode_apply(&context->mode);
+
+        /* During migration with mode lock, can't downgrade global mode to v6.
+           Pass explicit header size based on context mode. */
+        long header_size = context->mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
+        return dbrefhandle_with_header_size(adr, h, header_size);
     }
     return dbrefhandle(adr, h);
 }
@@ -2570,11 +2577,18 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
     2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
     Set mode directly from context, call function, done.
     Caller ensures correct database is active.
+
+    2026-02-03: During migration, global mode may be locked to v7.
+    Use explicit header size from context instead of global mode.
     */
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
-        db_format_mode_apply(&context->mode);
+
+        /* During migration with mode lock, can't downgrade global mode to v6.
+           Pass explicit header size based on context mode. */
+        long header_size = context->mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
+        return dbreference_with_header_size(adr, ctbytes, pdata, header_size);
     }
     return dbreference_internal(adr, ctbytes, pdata);
 }

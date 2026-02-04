@@ -133,19 +133,19 @@
 
 	/* using AT&T x86 assembly code syntax */
 
-	inline long dolongswap (long foo) {
+	static inline long dolongswap (long foo) {
 
 		__asm__("mov foo,%eax\nbswap %eax\nmov %eax,foo\n");
 
 		return (foo);
 		} /*dolongswap*/
 
-	inline long long dolonglongswap (long long foo) {
+	static inline long long dolonglongswap (long long foo) {
 
 		return __builtin_bswap64(foo);
 		} /*dolonglongswap*/
 
-	inline short doshortswap (short foo) {
+	static inline short doshortswap (short foo) {
 
 		__asm__("mov foo,%ax\n mov %al,%bh\nmov %ah,%bl\nmov %bx,foo");
 
@@ -210,7 +210,7 @@
 
 	/* portable code using only C operators */
 
-	inline long dolongswap (long foo) {
+	static inline long dolongswap (long foo) {
 
 		foo = ((((foo) >> 24) & 0x000000ff)
 				| (((foo) & 0x00ff0000) >> 8)
@@ -220,7 +220,7 @@
 		return (foo);
 		} /*dolongswap*/
 
-	inline long long dolonglongswap (long long foo) {
+	static inline long long dolonglongswap (long long foo) {
 
 		foo = ((((foo) >> 56) & 0x00000000000000ffLL)
 				| (((foo) >> 40) & 0x000000000000ff00LL)
@@ -234,7 +234,7 @@
 		return (foo);
 		} /*dolonglongswap*/
 
-	inline short doshortswap (short foo) {
+	static inline short doshortswap (short foo) {
 
 		foo = ((((foo) >> 8) & 0x00ff)
 				| (((foo) << 8) & 0xff00));

@@ -159,13 +159,17 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 		}
 
 		/* If result contains warning/error patterns, fall through to line-by-line parsing */
+		/* New structured logging format uses [component-LEVEL] like [startup-WARN] */
 		if (strstr(result_token, "system=") != NULL ||
-		    strstr(result_token, "[WARN]") != NULL ||
-		    strstr(result_token, "[ERROR]") != NULL ||
+		    strstr(result_token, "-WARN]") != NULL ||   /* New format: [xxx-WARN] */
+		    strstr(result_token, "-ERROR]") != NULL ||  /* New format: [xxx-ERROR] */
+		    strstr(result_token, "[WARN]") != NULL ||   /* Old format */
+		    strstr(result_token, "[ERROR]") != NULL ||  /* Old format */
 		    strstr(result_token, "ix=") != NULL ||  /* Memory error messages */
 		    strstr(result_token, "caller=") != NULL ||
 		    strstr(result_token, "Cant ") != NULL ||  /* UserTalk error messages */
-		    strstr(result_token, "hasnt ") != NULL) {
+		    strstr(result_token, "hasnt ") != NULL ||
+		    strstr(result_token, "completed with errors") != NULL) {  /* Startup warnings */
 			result_token[0] = '\0';  /* Clear and fall through */
 		}
 	}
@@ -189,15 +193,20 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 			current_line[line_len] = '\0';
 
 			/* Skip log lines, warnings, errors, and memory messages */
+			/* New structured logging format uses [component-LEVEL] like [startup-WARN] */
 			if (strstr(current_line, "[headless]") == NULL &&
-			    strstr(current_line, "[WARN]") == NULL &&
-			    strstr(current_line, "[ERROR]") == NULL &&
+			    strstr(current_line, "-WARN]") == NULL &&   /* New format: [xxx-WARN] */
+			    strstr(current_line, "-ERROR]") == NULL &&  /* New format: [xxx-ERROR] */
+			    strstr(current_line, "[WARN]") == NULL &&   /* Old format */
+			    strstr(current_line, "[ERROR]") == NULL &&  /* Old format */
 			    strstr(current_line, "[2025") == NULL &&
+			    strstr(current_line, "[2026") == NULL &&
 			    strstr(current_line, "system=") == NULL &&
 			    strstr(current_line, "ix=") == NULL &&  /* Memory error messages */
 			    strstr(current_line, "caller=") == NULL &&
 			    strstr(current_line, "Cant ") == NULL &&  /* UserTalk error messages */
 			    strstr(current_line, "hasnt ") == NULL &&
+			    strstr(current_line, "completed with errors") == NULL &&  /* Startup warnings */
 			    strlen(current_line) > 0) {
 				strncpy(result_token, current_line, sizeof(result_token) - 1);
 				result_token[sizeof(result_token) - 1] = '\0';

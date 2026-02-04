@@ -48,6 +48,7 @@
 #include "ops.h"
 #include "op.h"
 #include "opinternal.h"
+#include "oppack_legacy.h" /* For dispatching to legacy v2/v3 unpackers during migration */
 #include "db_format.h" /* 2025-11-23 Codex: explicit BE writes for outline headers */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 #include "logging.h"
@@ -1154,12 +1155,19 @@ boolean opunpack (Handle hpackedoutline, long *ixload, hdloutlinerecord *houtlin
 
 	oppushoutline (ho);
 
-	/* V7 oppack only handles v4 portable format */
+	/* V7 oppack handles v4 portable format, dispatches v2/v3 to legacy */
 	if (versionnumber == 4) {
 		fl = opunpackversion4 (&packstream);
 	}
+	else if (versionnumber == 2 || versionnumber == 3) {
+		/* Legacy v2/v3 format - dispatch to oppack_legacy.c */
+		oppopoutline (); /* We pushed ho above, but legacy will create its own */
+		opdisposeoutline (ho, false); /* Don't need this one */
+		closehandlestream (&packstream);
+		return opunpack_legacy (hpackedoutline, ixload, houtline);
+	}
 	else {
-		/* Legacy v2/v3 should be handled by oppack_legacy.c */
+		/* Unknown format version */
 		shellinternalerror (idbadopversionnumber, STR_bad_outline_version_number);
 		fl = false;
 	}

@@ -190,6 +190,12 @@ extern boolean dbreference (dbaddress, long, ptrvoid);
 
 extern boolean dbrefhandle (dbaddress, Handle *);
 
+/* Explicit header size versions for migration (v6=8 bytes, v7=12 bytes).
+ * These bypass the global format mode lock during v6→v7 migration. */
+extern boolean dbreference_with_header_size(dbaddress adr, long maxbytes, ptrvoid pdata, long header_size);
+
+extern boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size);
+
 extern boolean dbassign (dbaddress *, long, ptrvoid);
 
 extern boolean dbcopy (dbaddress, dbaddress *);
