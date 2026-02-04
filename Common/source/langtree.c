@@ -53,7 +53,7 @@ typedef struct tydisktreenode {
 	tytreetype nodetype; /*add, subtract, if, etc.*/
 #endif
 
-	long nodevalsize;
+	int32_t nodevalsize;  /* Must be 4 bytes on all platforms for disk format */
 	
 	short lnum; /*which line number in the source was this node generated from?*/
 	
@@ -100,15 +100,15 @@ typedef enum tydisktreenodeparaminfo {
 
 #pragma pack(2)
 typedef struct tydisktreerec {
-	
+
 	short version;
-	
-	long ctnodes;
-	
-	long flags; /*currently unused*/
-	
+
+	int32_t ctnodes;  /* Must be 4 bytes on all platforms for disk format */
+
+	int32_t flags; /*currently unused - must be 4 bytes for disk format*/
+
 	byte waste [8];
-	
+
 	tydisktreenode nodes [];
 	} tydisktreerec, *ptrdisktreerec, **hdldisktreerec;
 
@@ -122,7 +122,7 @@ typedef struct tyOLD42disktreenode {
 	short nodetype;
 	#endif
 
-	long nodevalsize;
+	int32_t nodevalsize;  /* Must be 4 bytes on all platforms for disk format */
 	
 	short lnum; /*which line number in the source was this node generated from?*/
 	
