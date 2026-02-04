@@ -163,6 +163,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/legacy/oppack_legacy.c \
     ../Common/source/opverbs.c \
     ../Common/source/legacy/opverbs_legacy.c \
+    ../Common/source/ophoist.c \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
     $(HEADLESS_VERBS_SOURCES) \

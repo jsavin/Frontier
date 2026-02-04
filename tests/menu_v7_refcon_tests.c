@@ -53,13 +53,20 @@ static hdloutlinerecord create_test_script(const char *line) {
     if (!newoutlinerecord(&ho))
         return nil;
 
+    /* Push outline to make it current - required before modifying */
+    oppushoutline(ho);
+
     /* Set the root headline text */
     bigstring bs;
     copyctopstring(line, bs);
     if (!opsetheadstring((**ho).hsummit, bs)) {
+        oppopoutline();
         opdisposeoutline(ho, false);
         return nil;
     }
+
+    /* Pop outline but keep it allocated */
+    oppopoutline();
 
     return ho;
 }
@@ -71,9 +78,14 @@ static boolean get_script_text(hdloutlinerecord ho, char *out, size_t outsize) {
     if (ho == nil || out == nil || outsize == 0)
         return false;
 
+    /* Push outline to make it current - required for opgetheadstring */
+    oppushoutline(ho);
+
     bigstring bs;
     opgetheadstring((**ho).hsummit, bs);
     copyptocstring(bs, out);
+
+    oppopoutline();
     return true;
 }
 
@@ -441,6 +453,7 @@ int main(void) {
     initstrings();  /* Must be called before initlang - initializes lowercasetable for hash functions */
     assert(initlang());
     assert(inittablestructure());
+    assert(langinitresources_headless());  /* Initialize constants, keywords, builtins - required for outline ops */
     assert(langinitverbs());
     assert(wp_portable_init());
 
@@ -449,11 +462,8 @@ int main(void) {
 
     test_menu_refcon_empty();
     test_menu_refcon_keybinding_only();
-    /* Skip script tests until outline initialization is resolved */
-    printf("[menu_v7] Test 3: Script only (no keybinding)... SKIPPED (outline init)\n");
-    printf("[menu_v7] Test 4: Full refcon (all modifiers + script)... SKIPPED (outline init)\n");
-    // test_menu_refcon_script_only();
-    // test_menu_refcon_full();
+    test_menu_refcon_script_only();
+    test_menu_refcon_full();
     test_menu_refcon_shift_modifier();
     test_menu_refcon_control_modifier();
     test_menu_refcon_option_modifier();
