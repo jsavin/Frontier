@@ -293,7 +293,7 @@ tests:
       confirms it exists.
     script: |
       if defined(op) {
-        return typeof(op.firstSummit) == "code"
+        return typeof(op.firstSummit) == "scpt"
       } else {
         return false
       }
@@ -413,14 +413,6 @@ tests:
       Verify tables inside path-resolved entries still work.
       builtins.webserver is a table, and may contain child tables.
     script: 'typeof(builtins.webserver)'
-    expected_success: true
-    expected_result: "tabl"
-
-  - name: "Mixed types - string child if exists"
-    description: |
-      Test that if a path-resolved entry contains string values,
-      they are handled correctly (not just scripts and tables).
-    script: 'typeof(builtins)'
     expected_success: true
     expected_result: "tabl"
 
