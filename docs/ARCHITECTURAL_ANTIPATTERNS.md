@@ -385,3 +385,81 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 - Future developers won't know if file can be regenerated
 - Creates confusion about which version is authoritative
 - Violates the principle of keeping generator as source of truth
+
+---
+
+## Disk Format Structs - Use Fixed-Width Integer Types ⚠️
+
+**Added**: 2026-02-03 (Issue #386, PR #387)
+
+**CRITICAL**: Structs used for disk serialization must use fixed-width integer types (`int32_t`, `int64_t`, `uint32_t`, etc.) instead of platform-dependent types (`long`, `int`, `size_t`).
+
+**The Problem**:
+On LP64 platforms (64-bit Unix/macOS), `long` is 8 bytes. On Windows and 32-bit platforms, `long` is 4 bytes. If a disk format struct uses `long` for a field that the format expects to be 4 bytes, you get:
+- Struct size mismatches (e.g., 16 bytes instead of 12)
+- Data corruption when reading/writing databases
+- Assertion failures at runtime
+
+**Example - The Bug (Issue #386)**:
+```c
+// ❌ WRONG - long is 8 bytes on LP64
+#pragma pack(2)
+typedef struct tydisktreenode {
+    short nodetype;
+    long nodevalsize;    // 8 bytes on 64-bit!
+    short lnum;
+    short charnum;
+    short paraminfo;
+} tydisktreenode;        // Expected 12 bytes, got 16-18 bytes
+```
+
+**The Fix**:
+```c
+// ✅ CORRECT - int32_t is always 4 bytes
+#include <stdint.h>
+
+#pragma pack(2)
+typedef struct tydisktreenode {
+    short nodetype;
+    int32_t nodevalsize;  // Always 4 bytes
+    short lnum;
+    short charnum;
+    short paraminfo;
+} tydisktreenode;         // Always 12 bytes
+
+_Static_assert(sizeof(tydisktreenode) == 12, "tydisktreenode must be 12 bytes");
+```
+
+**Rules for Disk Format Structs**:
+
+1. **Always use fixed-width types** from `<stdint.h>`:
+   - `int32_t` / `uint32_t` for 4-byte fields
+   - `int64_t` / `uint64_t` for 8-byte fields
+   - `int16_t` / `uint16_t` for 2-byte fields (or `short` which is always 2 bytes)
+
+2. **Add static assertions** after struct definitions:
+   ```c
+   _Static_assert(sizeof(mystruct) == EXPECTED_SIZE, "mystruct size mismatch");
+   ```
+
+3. **Never use these types in packed disk structs**:
+   - `long` (4 or 8 bytes depending on platform)
+   - `int` (usually 4 bytes but not guaranteed)
+   - `size_t` / `ptrdiff_t` (pointer-sized)
+   - `void*` or any pointer type (4 or 8 bytes)
+
+4. **Document size requirements** in comments:
+   ```c
+   int32_t nodevalsize;  /* Must be 4 bytes on all platforms for disk format */
+   ```
+
+**Where to Check**:
+- Any struct with `#pragma pack()` or `#pragma options align=mac68k`
+- Structs in: `langtree.c`, `oppack*.c`, `tablepack.c`, `menupack.c`, `db.c`
+- Any struct written directly to database blocks
+
+**Why Static Assertions**:
+- Catch problems at compile time, not runtime
+- Zero runtime cost
+- Self-documenting: the assertion explains the requirement
+- Fails fast on new platforms or compiler changes

@@ -144,6 +144,13 @@ typedef struct tyOLD42disktreenode {
 	} tyOLD42disktreenode, *ptrOLD42disktreenode, **hdlOLD42disktreenode;
 #pragma options align=reset
 
+/* Compile-time assertions for disk struct sizes - catch platform issues early.
+ * These must match the exact byte layout expected by the disk format.
+ * See Issue #386: LP64 platforms have 8-byte long, breaking 4-byte assumptions. */
+_Static_assert(sizeof(tydisktreenode) == 12, "tydisktreenode must be 12 bytes for disk format");
+_Static_assert(sizeof(tydisktreerec) == 18, "tydisktreerec must be 18 bytes for disk format");
+_Static_assert(sizeof(tyOLD42disktreenode) == 12, "tyOLD42disktreenode must match tydisktreenode size");
+
 #ifdef fldebug
 
 	static long cttreenodes = 0;
