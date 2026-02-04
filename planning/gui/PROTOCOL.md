@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0.0 |
+| **Version** | 1.0.1 |
 | **Status** | Draft |
 | **Last Updated** | 2026-02-04 |
 
@@ -10,6 +10,7 @@
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.0.1 | 2026-02-04 | Jake Savin, Claude | Added odb/move and odb/copy operations |
 | 1.0.0 | 2026-02-04 | Jake Savin, Claude | Initial specification |
 
 ---
@@ -31,11 +32,10 @@ This document specifies the JSON-based protocol for communication between GUI cl
 **Version 1.0 (this document):**
 - Session/capabilities
 - ODB read operations (get, children)
-- ODB write operations (create, setValue, delete, rename)
+- ODB write operations (create, setValue, delete, rename, move, copy)
 - Event subscriptions
 
 **Future versions:**
-- ODB move/copy operations
 - Context menus
 - Script execution
 - Editor-specific protocols
@@ -261,8 +261,8 @@ WebSocket equivalent:
     "odb": {
       "read": true,
       "write": true,
-      "move": false,
-      "copy": false
+      "move": true,
+      "copy": true
     },
     "subscriptions": {
       "supported": true,
@@ -658,6 +658,115 @@ POST /api/odb/rename
 - `2001` - Object not found
 - `2003` - Name already exists
 - `2007` - Invalid name (empty, contains invalid characters)
+- `2010` - Permission denied
+
+### 6.9 odb/move - Move Object
+
+Moves an object to a new location in the ODB.
+
+**HTTP:**
+```http
+POST /api/odb/move
+{
+  "path": "workspace.scratchpad.item",
+  "destination": "workspace.archive",
+  "newName": "archivedItem"
+}
+```
+
+**WebSocket:**
+```json
+{
+  "op": "odb/move",
+  "id": 7,
+  "params": {
+    "path": "workspace.scratchpad.item",
+    "destination": "workspace.archive",
+    "newName": "archivedItem"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | Current path to object |
+| `destination` | string | Yes | Path to destination table |
+| `newName` | string | No | New name at destination (default: keep current name) |
+| `position` | string | No | `"first"`, `"last"` (default), or sibling name to insert after |
+
+**Response:**
+```json
+{
+  "id": 7,
+  "result": {
+    "oldPath": "workspace.scratchpad.item",
+    "newPath": "workspace.archive.archivedItem"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `2002` - Destination table not found
+- `2003` - Name already exists at destination
+- `2010` - Permission denied
+- `2012` - Circular reference (cannot move table into itself or descendant)
+
+### 6.10 odb/copy - Copy Object
+
+Copies an object to a new location in the ODB.
+
+**HTTP:**
+```http
+POST /api/odb/copy
+{
+  "path": "workspace.scratchpad.template",
+  "destination": "workspace.projects.newProject",
+  "newName": "config"
+}
+```
+
+**WebSocket:**
+```json
+{
+  "op": "odb/copy",
+  "id": 8,
+  "params": {
+    "path": "workspace.scratchpad.template",
+    "destination": "workspace.projects.newProject",
+    "newName": "config"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | Path to object to copy |
+| `destination` | string | Yes | Path to destination table |
+| `newName` | string | No | Name for copy (default: same as original) |
+| `position` | string | No | `"first"`, `"last"` (default), or sibling name to insert after |
+| `deep` | boolean | No | For tables: copy all descendants (default: true) |
+
+**Response:**
+```json
+{
+  "id": 8,
+  "result": {
+    "sourcePath": "workspace.scratchpad.template",
+    "newPath": "workspace.projects.newProject.config",
+    "created": "2026-02-04T12:15:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `2002` - Destination table not found
+- `2003` - Name already exists at destination
 - `2010` - Permission denied
 
 ---
@@ -1093,6 +1202,8 @@ URL paths do not contain version numbers:
 | POST | `/api/odb/setValue` | Update value |
 | POST | `/api/odb/delete` | Delete object |
 | POST | `/api/odb/rename` | Rename object |
+| POST | `/api/odb/move` | Move object |
+| POST | `/api/odb/copy` | Copy object |
 | POST | `/api/subscribe` | Create subscription |
 | POST | `/api/unsubscribe` | Remove subscription |
 
@@ -1107,6 +1218,8 @@ URL paths do not contain version numbers:
 | `odb/setValue` | Update value |
 | `odb/delete` | Delete object |
 | `odb/rename` | Rename object |
+| `odb/move` | Move object |
+| `odb/copy` | Copy object |
 | `subscribe` | Create subscription |
 | `subscribe/renew` | Renew subscription |
 | `unsubscribe` | Remove subscription |
@@ -1184,4 +1297,5 @@ X-Frontier-Protocol-Version: 1.0
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.0.1 | 2026-02-04 | Added odb/move and odb/copy operations |
 | 1.0.0 | 2026-02-04 | Initial specification |
