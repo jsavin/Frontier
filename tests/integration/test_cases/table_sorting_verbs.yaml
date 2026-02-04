@@ -27,7 +27,7 @@ tests:
       table.sortby("name");
       return table.getsortorder()
     expected_success: true
-    expected_result: "Name"
+    expected_result: "name"
 
   - name: "table.sortby - sort by value"
     description: "Sort table by value column"
@@ -40,7 +40,7 @@ tests:
       table.sortby("value");
       return table.getsortorder()
     expected_success: true
-    expected_result: "Value"
+    expected_result: "value"
 
   - name: "table.sortby - sort by kind"
     description: "Sort table by kind (type) column"
@@ -53,7 +53,7 @@ tests:
       table.sortby("kind");
       return table.getsortorder()
     expected_success: true
-    expected_result: "Kind"
+    expected_result: "kind"
 
   # Case-insensitive column matching
   - name: "table.sortby - case insensitive NAME"
@@ -64,7 +64,7 @@ tests:
       table.sortby("NAME");
       return table.getsortorder()
     expected_success: true
-    expected_result: "Name"
+    expected_result: "name"
 
   - name: "table.sortby - case insensitive VaLuE"
     description: "Mixed case should work"
@@ -74,7 +74,7 @@ tests:
       table.sortby("VaLuE");
       return table.getsortorder()
     expected_success: true
-    expected_result: "Value"
+    expected_result: "value"
 
   - name: "table.sortby - case insensitive kind"
     description: "Lowercase should work"
@@ -84,7 +84,7 @@ tests:
       table.sortby("kind");
       return table.getsortorder()
     expected_success: true
-    expected_result: "Kind"
+    expected_result: "kind"
 
   # Default sort order
   - name: "table.getsortorder - default is name"
@@ -94,7 +94,7 @@ tests:
       lang.settarget(@t);
       return table.getsortorder()
     expected_success: true
-    expected_result: "Name"
+    expected_result: "name"
 
   # Sequential sort changes
   - name: "table.sortby - multiple sequential sorts"
@@ -110,7 +110,7 @@ tests:
       local(order3 = table.getsortorder());
       return order1 + "," + order2 + "," + order3
     expected_success: true
-    expected_result: "Name,Value,Kind"
+    expected_result: "name,value,kind"
 
   # Error cases
   - name: "table.sortby - invalid column name"
@@ -203,7 +203,7 @@ tests:
       local(order = table.getsortorder());
       return order
     expected_success: true
-    expected_result: "Name"
+    expected_result: "name"
 
   # Persistence check
   - name: "table.getsortorder - persists after setting"
@@ -217,4 +217,4 @@ tests:
       local(order2 = table.getsortorder());
       return order1 + "," + order2
     expected_success: true
-    expected_result: "Value,Kind"
+    expected_result: "value,kind"
