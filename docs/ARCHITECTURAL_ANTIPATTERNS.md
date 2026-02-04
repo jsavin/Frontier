@@ -388,78 +388,149 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 
 ---
 
-## Disk Format Structs - Use Fixed-Width Integer Types ⚠️
+## Disk Format Structs - Size Verification and When to Change Types ⚠️
 
 **Added**: 2026-02-03 (Issue #386, PR #387)
+**Updated**: 2026-02-04 (Comprehensive audit findings)
 
-**CRITICAL**: Structs used for disk serialization must use fixed-width integer types (`int32_t`, `int64_t`, `uint32_t`, etc.) instead of platform-dependent types (`long`, `int`, `size_t`).
+### The General Rule
 
-**The Problem**:
-On LP64 platforms (64-bit Unix/macOS), `long` is 8 bytes. On Windows and 32-bit platforms, `long` is 4 bytes. If a disk format struct uses `long` for a field that the format expects to be 4 bytes, you get:
-- Struct size mismatches (e.g., 16 bytes instead of 12)
-- Data corruption when reading/writing databases
-- Assertion failures at runtime
+Structs used for disk serialization should use fixed-width integer types (`int32_t`, `int64_t`) instead of platform-dependent types (`long`). However, **most existing disk structs in Frontier are already correct** and should NOT be modified.
 
-**Example - The Bug (Issue #386)**:
+### Why Most Disk Structs Don't Need Changes
+
+**Audit Finding (2026-02-04)**: A comprehensive audit of disk format structs found that most already have correct sizes despite using `long`:
+
+| Struct | Expected Size | Actual Size | Status |
+|--------|---------------|-------------|--------|
+| `tydatabaserecord` | 118 bytes | 118 bytes | ✅ Correct |
+| `tydatabaserecord_64` | 90 bytes | 90 bytes | ✅ Correct |
+| `tyversion1tablediskrecord` | 152 bytes | 152 bytes | ✅ Correct |
+| `tywpheader` | varies | matches expected | ✅ Correct |
+| `tydiskpictrecord` | varies | matches expected | ✅ Correct |
+
+**Why They Work Despite `long` = 8 bytes**:
+
+1. **Union Padding Absorbs Size Differences**:
+   ```c
+   union {
+       char growthspace[50];  // This absorbs alignment differences
+       struct { ... } extensions;
+   } u;
+   ```
+
+2. **Explicit Padding Bytes**:
+   ```c
+   unsigned char _pad[2];  // Explicit padding for alignment
+   ```
+
+3. **`#pragma pack(2)` Tight Packing**: Fields are packed at 2-byte boundaries, not natural alignment
+
+4. **Runtime Assertions Validate Sizes**:
+   ```c
+   assert(sizeof(tydatabaserecord) == 118);  // Validates at runtime
+   ```
+
+### The Exception: `tydisktreenode` (Issue #386)
+
+The `tydisktreenode` struct in `langtree.c` WAS different because:
+- No union padding or growth space
+- Struct size was genuinely wrong on LP64 (16+ bytes instead of 12)
+- Breaking the disk format silently
+
+**The Fix Was Correct**:
 ```c
-// ❌ WRONG - long is 8 bytes on LP64
+// ✅ CORRECT - Fixed in PR #387
 #pragma pack(2)
 typedef struct tydisktreenode {
     short nodetype;
-    long nodevalsize;    // 8 bytes on 64-bit!
+    int32_t nodevalsize;  // Changed from long
     short lnum;
     short charnum;
     short paraminfo;
-} tydisktreenode;        // Expected 12 bytes, got 16-18 bytes
-```
-
-**The Fix**:
-```c
-// ✅ CORRECT - int32_t is always 4 bytes
-#include <stdint.h>
-
-#pragma pack(2)
-typedef struct tydisktreenode {
-    short nodetype;
-    int32_t nodevalsize;  // Always 4 bytes
-    short lnum;
-    short charnum;
-    short paraminfo;
-} tydisktreenode;         // Always 12 bytes
+} tydisktreenode;
 
 _Static_assert(sizeof(tydisktreenode) == 12, "tydisktreenode must be 12 bytes");
 ```
 
-**Rules for Disk Format Structs**:
+### Decision Tree: Should I Change `long` to `int32_t`?
 
-1. **Always use fixed-width types** from `<stdint.h>`:
+**Step 1: Check if the struct has size validation**
+```c
+assert(sizeof(mystruct) == EXPECTED_SIZE);
+```
+If yes, and assertion passes → **DO NOT CHANGE**. The struct is already correct.
+
+**Step 2: Check for union padding / growth space**
+```c
+union { char growthspace[N]; ... } u;
+```
+If present → **Probably DO NOT CHANGE**. Padding absorbs differences.
+
+**Step 3: Calculate actual vs expected size**
+```bash
+# In LLDB or test program:
+printf("sizeof(mystruct): %zu\n", sizeof(mystruct));
+```
+If actual == expected → **DO NOT CHANGE**.
+
+**Step 4: Only if size is WRONG**
+If struct size doesn't match disk format requirements → Change `long` to `int32_t` AND add `_Static_assert`.
+
+### Anti-Pattern: Blindly Changing `long` to `int32_t`
+
+**❌ WRONG - Breaks working code**:
+```c
+// Original: sizeof = 118 bytes (CORRECT!)
+typedef struct tydatabaserecord {
+    ...
+    long fnumdatabase;   // 8 bytes on LP64
+    long headerLength;   // 8 bytes on LP64
+    ...
+} tydatabaserecord;
+
+// After blind change: sizeof = 110 bytes (BREAKS DISK FORMAT!)
+typedef struct tydatabaserecord {
+    ...
+    int32_t fnumdatabase;  // 4 bytes
+    int32_t headerLength;  // 4 bytes
+    ...
+} tydatabaserecord;
+// Assertion fails: expected 118, got 110
+```
+
+**Why This Breaks Things**:
+- Field offsets shift (e.g., `headerLength` moves from offset 56 to offset 52)
+- Subsequent fields also shift
+- Disk reads/writes access wrong byte positions
+- Database corruption
+
+### Rules for NEW Disk Format Structs
+
+When creating NEW disk format structs:
+
+1. **Use fixed-width types from `<stdint.h>`**:
    - `int32_t` / `uint32_t` for 4-byte fields
    - `int64_t` / `uint64_t` for 8-byte fields
-   - `int16_t` / `uint16_t` for 2-byte fields (or `short` which is always 2 bytes)
+   - `int16_t` / `uint16_t` for 2-byte fields
 
-2. **Add static assertions** after struct definitions:
+2. **Add static assertions**:
    ```c
    _Static_assert(sizeof(mystruct) == EXPECTED_SIZE, "mystruct size mismatch");
    ```
 
-3. **Never use these types in packed disk structs**:
-   - `long` (4 or 8 bytes depending on platform)
-   - `int` (usually 4 bytes but not guaranteed)
-   - `size_t` / `ptrdiff_t` (pointer-sized)
-   - `void*` or any pointer type (4 or 8 bytes)
-
-4. **Document size requirements** in comments:
+3. **Document size requirements**:
    ```c
-   int32_t nodevalsize;  /* Must be 4 bytes on all platforms for disk format */
+   int32_t nodevalsize;  /* Must be 4 bytes for disk format */
    ```
 
-**Where to Check**:
-- Any struct with `#pragma pack()` or `#pragma options align=mac68k`
-- Structs in: `langtree.c`, `oppack*.c`, `tablepack.c`, `menupack.c`, `db.c`
-- Any struct written directly to database blocks
+### Files Reference
 
-**Why Static Assertions**:
-- Catch problems at compile time, not runtime
-- Zero runtime cost
-- Self-documenting: the assertion explains the requirement
-- Fails fast on new platforms or compiler changes
+**Structs with existing size validation (DO NOT MODIFY)**:
+- `Common/headers/db.h` - `tydatabaserecord`, `tydatabaserecord_64`
+- `Common/headers/tableformats.h` - `tyversion1tablediskrecord`
+- `Common/source/wpengine.c` - `tywpheader`, `tyOLD42wpheader`
+- `Common/source/pict.c` - `tydiskpictrecord`, `tyOLD42diskpictrecord`
+
+**Structs fixed in PR #387 (reference implementation)**:
+- `Common/source/langtree.c` - `tydisktreenode`, `tydisktreerec`, `tyOLD42disktreenode`
