@@ -356,7 +356,7 @@ boolean opbeginprint (void) { return false; }
 boolean opbuttonstatus (void) { return false; }
 boolean opbutton (void) { return false; }
 boolean oppostfontchange (void) { return true; }
-void oprestorehoists (void) { }
+/* oprestorehoists provided by ophoist.c in headless build */
 boolean oprestorescrollposition (void) { return false; }
 void opsetdisplaydefaults (hdloutlinerecord ho) { (void)ho; }
 
@@ -426,9 +426,7 @@ boolean opscroll (tydirection dir, boolean f, long n) { (void)dir; (void)f; (voi
 boolean opscrollto (long a, long b) { (void)a; (void)b; return false; }
 boolean opsetprintinfo (void) { return false; }
 boolean oprmousedown (Point pt, tyclickflags flags) { (void)pt; (void)flags; return false; }
-boolean oppushhoist (hdlheadrecord h) { (void)h; return false; }
-boolean oppophoist (void) { return false; }
-boolean oppopallhoists (void) { return false; }
+/* oppushhoist, oppophoist, oppopallhoists provided by ophoist.c in headless build */
 // traversal functions provided by opvisit.c in headless build
 void opscrollrect (Rect r, long dh, long dv) { (void)r; (void)dh; (void)dv; }
 

@@ -94,3 +94,19 @@ extern boolean editnamedmenubaropen (hdlhashtable, bigstring);
 extern boolean menustart (void);
 
 
+/*
+ * V7 Menu Refcon Table Functions (menupack.c)
+ *
+ * These functions create and unpack the v7 format for menu item refcons.
+ * Used for the menu v6->v7 migration.
+ */
+
+extern boolean mecreaterefcontable_v7 (byte cmdkey, tykeyflags modifiers,
+                                        hdloutlinerecord hscript,
+                                        Handle *hpackedtable);
+
+extern boolean meunpackrefcontable_v7 (Handle hpackedtable,
+                                        byte *cmdkey,
+                                        tykeyflags *modifiers,
+                                        hdloutlinerecord *hscript);
+

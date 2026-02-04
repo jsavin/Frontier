@@ -125,6 +125,7 @@ RUNTIME_SOURCES = \
     ../Common/source/op_context.c \
     ../Common/source/opinit.c \
     ../Common/source/opexpand.c \
+    ../Common/source/ophoist.c \
     ../Common/source/opvisit.c \
     ../Common/source/opedit.c \
     ../Common/source/opops.c \

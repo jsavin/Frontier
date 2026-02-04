@@ -178,18 +178,24 @@ boolean menuverbinmemory_context (const db_context *ctx, hdlexternalvariable hva
 		return (true);
 
 #if defined(FRONTIER_HEADLESS)
-	log_debug(LOG_COMP_OP, "menuverbinmemory_context: loading menu from hdatabase=%p (current=%p) variabledata=0x%llx",
+	log_error(LOG_COMP_OP, "menuverbinmemory_context: START hdatabase=%p current=%p variabledata=0x%llx ctx=%p ctx_db=%p ctx_use64=%d",
 	        (void*)(**hv).hdatabase,
 	        (void*)databasedata,
-	        (unsigned long long)(**hv).variabledata);
+	        (unsigned long long)(**hv).variabledata,
+	        (void*)ctx,
+	        (void*)(ctx ? ctx->database : nil),
+	        ctx ? (int)ctx->mode.use_64bit_format : -1);
 #endif
 
 	adr = (dbaddress) (**hv).variabledata;
 
 	fl = meloadmenurecord_internal(ctx, adr, &hmenurecord);
 
-	if (!fl)
+	if (!fl) {
+		log_error(LOG_COMP_OP, "menuverbinmemory_context: meloadmenurecord_internal FAILED adr=0x%llx",
+		        (unsigned long long)adr);
 		return (false);
+	}
 
 	(**hv).variabledata = (long) hmenurecord;
 
@@ -397,9 +403,15 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 
 	const boolean adapter_repack = db_format_adapter_force_repack();
 
+#if defined(FRONTIER_HEADLESS)
+	log_debug(LOG_COMP_OP, "menuverbpack_internal: flinmemory=%d adapter_repack=%d ctx=%p",
+	        (int)(**hv).flinmemory, (int)adapter_repack, (void*)ctx);
+#endif
+
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		log_error(LOG_COMP_OP, "menuverbpack_internal: FAIL - flinmemory=0, caller should have loaded it");
 		return (false);
 	}
 
@@ -929,20 +941,35 @@ static boolean menudisposevariable (hdlexternalvariable hvariable, boolean fldis
 
 
 boolean menuverbdispose (hdlexternalvariable hvariable, boolean fldisk) {
-	
+
 	/*
-	12/22/91 dmb: in order to release all db nodes properly, must force 
+	12/22/91 dmb: in order to release all db nodes properly, must force
 	menubar to be loaded when fldisk is true
 	*/
-	
+
 	register hdlexternalvariable hv = hvariable;
-	
+
+#ifdef FRONTIER_HEADLESS
+	/*
+	 * In headless mode, skip loading menu from disk during dispose.
+	 * The purpose of loading is to release database nodes used by scripts
+	 * attached to menu items, but:
+	 * 1. In headless mode we don't run menu scripts
+	 * 2. During migration, the source database addresses may be invalid
+	 * 3. We're disposing the database anyway, so node release is moot
+	 *
+	 * This prevents crashes during migration cleanup where the old v6
+	 * addresses are no longer valid in the new context.
+	 */
+	(void)fldisk; /* unused in headless mode */
+#else
 	if (fldisk) { /*load menubar into memory so that scripts can release their db nodes*/
-		
+
 		if (!menuverbinmemory ((hdlmenuvariable) hv))
 			return (false);
 		}
-	
+#endif
+
 	return (langexternaldisposevariable (hv, fldisk, &menudisposevariable));
 	} /*menuverbdispose*/
 
