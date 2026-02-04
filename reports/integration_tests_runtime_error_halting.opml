@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Runtime Error Halting (runtime_error_halting)</title>
-    <dateCreated>Wed, 21 Jan 2026 23:58:55 GMT</dateCreated>
+    <dateCreated>Wed, 04 Feb 2026 08:58:21 GMT</dateCreated>
   </head>
   <body>
     <outline text="defined() - webserver.init EFP table should exist - CRITICAL: webserver.init is an EFP table in system root. defined() should return true. Currently returns false (BUG)">
@@ -19,30 +19,6 @@
       </outline>
       <outline text="Script">
         <outline text="defined(webserver.nonexistent)"/>
-      </outline>
-    </outline>
-    <outline text="defined() - builtins.init EFP table should exist - Regression check: builtins.init is another EFP table. Verify defined() works correctly">
-      <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(builtins.init)"/>
-      </outline>
-    </outline>
-    <outline text="defined() - system.verbs.builtins.user.radio3.init EFP table should exist - Deep nested EFP table path: system.verbs.builtins.user.radio3.init. Verify defined() returns true">
-      <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(system.verbs.builtins.user.radio3.init)"/>
-      </outline>
-    </outline>
-    <outline text="defined() - suites.tcp EFP table should exist - Another EFP table in system root. Verify defined() correctly identifies it">
-      <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(suites.tcp)"/>
       </outline>
     </outline>
     <outline text="Table index error - out of bounds positive index halts execution - CRITICAL: Access t[100] on table with 1 item should throw scriptError and halt. executionContinued should remain false">

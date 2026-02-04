@@ -2,13 +2,13 @@
 <opml version="2.0">
   <head>
     <title>Menu Data Verbs (menu_data_verbs)</title>
-    <dateCreated>Tue, 03 Feb 2026 05:54:13 GMT</dateCreated>
+    <dateCreated>Wed, 04 Feb 2026 08:07:40 GMT</dateCreated>
   </head>
   <body>
     <outline text="menu.addMenuCommand - create new menu and add item - Add a command to a new menubar, creating the menu if it doesn't exist">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -20,8 +20,8 @@
     </outline>
     <outline text="menu.addMenuCommand - add multiple items to same menu - Add multiple commands to the same menu">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -35,8 +35,8 @@
     </outline>
     <outline text="menu.addMenuCommand - replace existing item script - Adding an item that already exists should replace its script">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -51,8 +51,8 @@
     </outline>
     <outline text="menu.addMenuCommand - create multiple menus - Add items to different menus in the same menubar">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -66,8 +66,8 @@
     </outline>
     <outline text="menu.deleteMenuCommand - delete existing item - Delete a command that exists in the menu">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -80,8 +80,8 @@
     </outline>
     <outline text="menu.deleteMenuCommand - delete nonexistent item returns false - Attempting to delete a nonexistent item should return false">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -94,8 +94,8 @@
     </outline>
     <outline text="menu.deleteMenuCommand - delete from nonexistent menu returns false - Deleting from a menu that doesn't exist should return false">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -108,8 +108,8 @@
     </outline>
     <outline text="menu.deleteMenuCommand - verify item is actually removed - After deletion, adding same item again should work">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -125,8 +125,8 @@
     </outline>
     <outline text="menu.getScript - retrieve script from menu item - Get the script attached to a menu item">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -148,8 +148,8 @@
     </outline>
     <outline text="menu.setScript - change script on menu item - Set a new script on a menu item using address">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -170,8 +170,8 @@
     </outline>
     <outline text="menu.getScript and setScript - round-trip verification - Set a script, get it back, verify they match">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -193,8 +193,8 @@
     </outline>
     <outline text="menu.setCommandKey - set keyboard shortcut - Set a command key (keyboard shortcut) on a menu item">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -211,8 +211,8 @@
     </outline>
     <outline text="menu.getCommandKey - retrieve keyboard shortcut - Get the command key from a menu item">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -231,8 +231,8 @@
     </outline>
     <outline text="menu.setCommandKey - clear shortcut with empty string - Setting empty string should clear the command key">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -252,8 +252,8 @@
     </outline>
     <outline text="menu.getCommandKey and setCommandKey - round-trip - Set a key, get it back, verify round-trip works">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -272,8 +272,8 @@
     </outline>
     <outline text="menu.addMenuCommand - empty menu name creates unnamed menu - Using empty string for menu name should still work">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -286,8 +286,8 @@
     </outline>
     <outline text="menu.addMenuCommand - empty item name - Using empty string for item name">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -300,8 +300,8 @@
     </outline>
     <outline text="menu.addMenuCommand - special characters in item name - Item names with special characters should work">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -314,8 +314,8 @@
     </outline>
     <outline text="menu.addMenuCommand - separator item - Using dash for item name may create separator">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -328,8 +328,8 @@
     </outline>
     <outline text="menu.addMenuCommand - multiline script - Script parameter can contain multiple lines">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -342,8 +342,8 @@
     </outline>
     <outline text="menu.buildMenuBar - stubbed in headless mode - Display verb should return false in headless mode">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -357,8 +357,8 @@
     </outline>
     <outline text="menu.install - stubbed in headless mode - menu.install should return false without GUI">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -373,8 +373,8 @@
     </outline>
     <outline text="menu.isInstalled - stubbed in headless mode - menu.isInstalled should return false without GUI">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -388,8 +388,8 @@
     </outline>
     <outline text="menu verbs - build complete menu structure - Create a realistic menu structure with multiple menus and items">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -416,8 +416,8 @@
     </outline>
     <outline text="menu verbs - modify existing menu - Add items, delete some, modify others">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -438,8 +438,8 @@
     </outline>
     <outline text="menu.addSubMenu - add submenu to existing menu - Add a pre-existing menubar as a submenu within another menubar">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -460,8 +460,8 @@
     </outline>
     <outline text="menu.addSubMenu - add as new top-level menu with empty menuName - Using empty string for menuName adds submenu as new top-level menu">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -478,8 +478,8 @@
     </outline>
     <outline text="menu.addSubMenu - creates menu if menuName doesn't exist - If menuName doesn't exist, it should be created">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -496,8 +496,8 @@
     </outline>
     <outline text="menu.addSubMenu - submenu address must exist - Adding a submenu from nonexistent address should fail">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: error_caught"/>
       </outline>
       <outline text="Script">
@@ -516,8 +516,8 @@
     </outline>
     <outline text="menu.deleteSubMenu - delete existing submenu - Delete a menu from the menubar by name">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -534,8 +534,8 @@
     </outline>
     <outline text="menu.deleteSubMenu - delete nonexistent menu returns false - Attempting to delete a menu that doesn't exist returns false">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -549,8 +549,8 @@
     </outline>
     <outline text="menu.deleteSubMenu - can delete single item too - deleteSubMenu can delete a single item, not just a submenu">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -564,8 +564,8 @@
     </outline>
     <outline text="sizeOf - empty menubar - sizeOf on empty menubar returns 0">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: 0"/>
       </outline>
       <outline text="Script">
@@ -577,8 +577,8 @@
     </outline>
     <outline text="sizeOf - counts all items - sizeOf counts menus and their items">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: 4"/>
       </outline>
       <outline text="Script">
@@ -594,8 +594,8 @@
     </outline>
     <outline text="sizeOf - counts multiple menus - sizeOf counts all headings across multiple menus">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: 7"/>
       </outline>
       <outline text="Script">
@@ -615,8 +615,8 @@
     </outline>
     <outline text="sizeOf - counts submenus and their contents - sizeOf includes submenu items in the count">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -629,19 +629,20 @@
         <outline text="menu.addMenuCommand(@workspace.subMenu, &quot;Recent&quot;, &quot;Doc2&quot;, &quot;open2()&quot;)"/>
         <outline text="# Add submenu to File"/>
         <outline text="menu.addSubMenu(@workspace.parentMenu, &quot;File&quot;, @workspace.subMenu)"/>
-        <outline text="# Expected: File(1) + New(1) + Recent submenu structure"/>
-        <outline text="# The exact count depends on how submenus are represented"/>
+        <outline text="# Expected count: File(1) + New(1) + Recent(1) + Doc1(1) + Doc2(1) = 5 minimum"/>
+        <outline text="# May include additional structure nodes depending on representation"/>
         <outline text="local(size = sizeOf(@workspace.parentMenu))"/>
         <outline text="delete(@workspace.parentMenu)"/>
         <outline text="delete(@workspace.subMenu)"/>
-        <outline text="# Size should be &gt; 2 (at minimum File + New + submenu content)"/>
-        <outline text="return (size &gt; 2)"/>
+        <outline text="# Verify size is at least the expected minimum (5 headings)"/>
+        <outline text="local(expectedMinimum = 5)"/>
+        <outline text="return (size &gt;= expectedMinimum)"/>
       </outline>
     </outline>
     <outline text="cursor navigation - navigate to item and getScript - Navigate to specific menu item using op verbs, then get its script">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -668,8 +669,8 @@
     </outline>
     <outline text="cursor navigation - navigate and setScript - Navigate to item, change its script, verify change">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -694,8 +695,8 @@
     </outline>
     <outline text="cursor navigation - navigate to third item - Navigate deeper into menu structure">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -720,8 +721,8 @@
     </outline>
     <outline text="menu.zoomScript - returns false in headless mode - zoomScript is a GUI operation, should return false headless">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -739,8 +740,8 @@
     </outline>
     <outline text="persistence - save and reload menubar structure - Create menubar, save to file, reload, verify structure intact">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -774,8 +775,8 @@
     </outline>
     <outline text="persistence - script content survives save/reload - Verify script text is preserved through save/reload cycle">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -811,8 +812,8 @@
     </outline>
     <outline text="persistence - menu names survive save/reload - Verify menu and item names are preserved">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -844,8 +845,8 @@
     </outline>
     <outline text="menu.buildMenuBar - returns false without error - buildMenuBar should return false in headless without throwing error">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -860,8 +861,8 @@
     </outline>
     <outline text="menu.install - returns false without error - install should return false in headless without throwing error">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -876,8 +877,8 @@
     </outline>
     <outline text="menu.isInstalled - returns false without error - isInstalled should return false in headless without throwing error">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -891,8 +892,8 @@
     </outline>
     <outline text="menu.remove - returns false without error - remove should return false in headless without throwing error">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -907,22 +908,21 @@
     </outline>
     <outline text="menu.clearMenubar - returns true without error - clearMenubar affects OS menubar, but should not error in headless">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="# clearMenubar operates on OS menu bar, not a menubar object"/>
         <outline text="# In headless, it should be a noop that returns true"/>
         <outline text="local(result = menu.clearMenubar())"/>
-        <outline text="local(noError = true)"/>
-        <outline text="return noError"/>
+        <outline text="return (result == true)"/>
       </outline>
     </outline>
     <outline text="menu.toggle - returns false without error - toggle should return false in headless without throwing error">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: TDD: Menu verb implementations pending in headless_menu_verbs.c"/>
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">

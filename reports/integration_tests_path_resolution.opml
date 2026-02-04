@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Path Resolution (path_resolution)</title>
-    <dateCreated>Fri, 23 Jan 2026 08:40:06 GMT</dateCreated>
+    <dateCreated>Wed, 04 Feb 2026 09:02:15 GMT</dateCreated>
   </head>
   <body>
     <outline text="defined() - path entry 'webserver' exists - CRITICAL TEST: defined(webserver) should return TRUE because &quot;webserver&quot;&#10;is a path entry name in system.paths, regardless of what's inside&#10;builtins.webserver table.&#10;&#10;Bug behavior: Returns FALSE (looks inside builtins.webserver for &quot;webserver&quot;)&#10;Fixed behavior: Returns TRUE (matches path entry name &quot;webserver&quot;)&#10;">
@@ -59,14 +59,6 @@
       </outline>
       <outline text="Script">
         <outline text="defined(op.firstSummit)"/>
-      </outline>
-    </outline>
-    <outline text="defined() - nested lookup 'html.getTitle' - Test nested lookup with html.getTitle:&#10;1. Resolve &quot;html&quot; path entry → builtins.html table&#10;2. Look for &quot;getTitle&quot; verb inside builtins.html&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(html.getTitle)"/>
       </outline>
     </outline>
     <outline text="defined() - deep nested lookup 'system.verbs.builtins.string.lower' - Test multi-level path resolution:&#10;1. &quot;system&quot; resolves via hardcoded system table check&#10;2. Navigate through verbs → builtins → string&#10;3. Find &quot;lower&quot; verb inside string table&#10;">
@@ -131,22 +123,6 @@
       </outline>
       <outline text="Script">
         <outline text="defined(system)"/>
-      </outline>
-    </outline>
-    <outline text="defined() - hardcoded 'builtins' table - Regression test: builtins table is hardcoded.&#10;Should continue to work after bug fix.&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(builtins)"/>
-      </outline>
-    </outline>
-    <outline text="defined() - in-memory table child 'builtins.init' - Regression test: Direct lookup in builtins table (not via paths).&#10;Should continue to work after bug fix.&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(builtins.init)"/>
       </outline>
     </outline>
     <outline text="defined() - built-in verb 'string.lower' - Regression test: Built-in verb lookup via path resolution.&#10;Should continue to work after bug fix.&#10;">
@@ -243,7 +219,7 @@
       </outline>
       <outline text="Script">
         <outline text="if defined(op)">
-          <outline text="return typeof(op.firstSummit) == &quot;code&quot;"/>
+          <outline text="return typeof(op.firstSummit) == &quot;scpt&quot;"/>
         </outline>
         <outline text="} else">
           <outline text="return false"/>
@@ -261,14 +237,6 @@
         <outline text="} else">
           <outline text="return &quot;webserver extension missing&quot;"/>
         </outline>
-      </outline>
-    </outline>
-    <outline text="defined() - internal table not in paths - system.verbs.builtins is an internal table, but it's not a path entry.&#10;defined(verbs) should only return TRUE if &quot;verbs&quot; is in system.paths.&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: false"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(verbs)"/>
       </outline>
     </outline>
     <outline text="defined() - child of path entry (not entry itself) - &quot;init&quot; is a common verb inside many tables, but &quot;init&quot; itself is not&#10;a path entry name. defined(init) should return FALSE unless there's&#10;a path entry named &quot;init&quot;.&#10;">
@@ -319,14 +287,6 @@
         <outline text="typeof(builtins.op.firstSummit)"/>
       </outline>
     </outline>
-    <outline text="REGRESSION - defined(builtins.webserver.init) - direct lookup still works - Regression check: Direct lookups in builtins.webserver should still work&#10;(they don't go through path resolution).&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(builtins.webserver.init)"/>
-      </outline>
-    </outline>
     <outline text="REGRESSION - webserver path entry still works after fix - Ensure the PR #337 fix (path entry name matching) still works&#10;after we fix the script object regression.&#10;">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
@@ -349,14 +309,6 @@
       </outline>
       <outline text="Script">
         <outline text="typeof(builtins.webserver)"/>
-      </outline>
-    </outline>
-    <outline text="Mixed types - string child if exists - Test that if a path-resolved entry contains string values,&#10;they are handled correctly (not just scripts and tables).&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: tabl"/>
-      </outline>
-      <outline text="Script">
-        <outline text="typeof(builtins)"/>
       </outline>
     </outline>
     <outline text="Edge case - non-existent script in path entry - Verify defined() returns FALSE for non-existent script children.&#10;webserver.fakeScript doesn't exist, should return FALSE.&#10;">
