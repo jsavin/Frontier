@@ -915,6 +915,34 @@ boolean langrunhandle (Handle htext, bigstring bsresult) {
 	} /*langrunhandle*/
 
 
+boolean langrunhandle_value (Handle htext, tyvaluerecord *vreturned) {
+
+	/*
+	Like langrunhandle, but returns the raw tyvaluerecord instead of coercing
+	to a bigstring. This avoids the 255-byte limitation of bigstrings.
+
+	The caller is responsible for disposing the value with disposevaluerecord().
+
+	we consume the text handle -- it is disposed by langrun
+	*/
+
+	register boolean fl;
+	register boolean flpushpop = !flscriptrunning;
+
+	initvalue (vreturned, novaluetype);
+
+	if (flpushpop)
+		flpushpop = pushprocess (nil);
+
+	fl = langrun (htext, vreturned);
+
+	if (flpushpop)
+		popprocess ();
+
+	return (fl);
+	} /*langrunhandle_value*/
+
+
 static boolean langtraperror (bigstring bsmsg, ptrstring perrorstring) {
 	
 	/*

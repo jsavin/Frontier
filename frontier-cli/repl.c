@@ -1046,15 +1046,16 @@ static boolean process_line(const char *line, boolean *running) {
     // Evaluate as UserTalk with persistent variables
     g_script_running = 1;  // Mark script as running for interrupt handling
 
-    bigstring result;
+    tyvaluerecord val;
     bigstring error_msg;
-    boolean success = repl_eval_with_variables(line, result, error_msg);
+    boolean success = repl_eval_with_variables_value(line, &val, error_msg);
 
     g_script_running = 0;  // Script finished
 
     if (success) {
-        // Success - display result
-        repl_output_result(result);
+        // Success - display result (handles strings >255 chars)
+        repl_output_value(&val);
+        disposevaluerecord(val, false);
     } else {
         // Error - display error
         char error_buf[256];

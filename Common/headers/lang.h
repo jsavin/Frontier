@@ -789,6 +789,8 @@ extern boolean langruntraperror (Handle, tyvaluerecord *, bigstring);
 
 extern boolean langrunhandle (Handle, bigstring);
 
+extern boolean langrunhandle_value (Handle, tyvaluerecord *);
+
 extern boolean langrunhandletraperror (Handle, bigstring, bigstring);
 
 extern boolean langrunstring (const bigstring, bigstring);

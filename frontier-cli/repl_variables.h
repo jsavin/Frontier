@@ -68,6 +68,23 @@ boolean repl_eval_with_variables(
 );
 
 /*
+ * Execute a UserTalk script and return the result as a tyvaluerecord.
+ * Unlike repl_eval_with_variables(), this does not truncate strings at 255 chars.
+ *
+ * Parameters:
+ *   script    - IN:  The UserTalk script to execute (C string)
+ *   vreturned - OUT: The result value (caller must dispose with disposevaluerecord)
+ *   error_msg - OUT: Error message if execution failed (bigstring)
+ *
+ * Returns: true if evaluation succeeded, false on error
+ */
+boolean repl_eval_with_variables_value(
+    const char *script,
+    tyvaluerecord *vreturned,
+    bigstring error_msg
+);
+
+/*
  * Update the focus address to match the current /jump table.
  * Called by /jump command after successful navigation.
  *

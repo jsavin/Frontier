@@ -120,10 +120,13 @@ static long count_hashtable_items(hdlhashtable htable) {
 	return count;
 }
 
-/* Displays a tyvaluerecord, with special formatting for tables and strings. */
+/* Displays a tyvaluerecord, with special formatting for tables and strings.
+ * Note: This function does NOT dispose the value - caller retains ownership.
+ * However, calling coercetostring mutates the value to string type. */
 void repl_output_value(tyvaluerecord *val) {
-	bigstring bs;
-	tyvaluerecord val_copy;
+	Handle hstring;
+	long len;
+	boolean was_string;
 
 	if (val == nil) {
 		return;
@@ -149,28 +152,30 @@ void repl_output_value(tyvaluerecord *val) {
 		}
 	}
 
-	/* Use coercetostring() for all other types */
-	val_copy = *val;  /* Don't mutate original */
+	/* Remember if this was originally a string (for quoting) */
+	was_string = (val->valuetype == stringvaluetype);
 
-	if (!coercetostring(&val_copy)) {
+	/* Coerce to string for display - mutates the value */
+	if (!coercetostring(val)) {
 		printf("[unable to display value of type %d]\n", val->valuetype);
 		fflush(stdout);
 		return;
 	}
 
-	/* Extract string from coerced value */
-	copyheapstring(val_copy.data.stringvalue, bs);
+	/* Get string handle directly - don't copy to bigstring which truncates at 255 */
+	hstring = val->data.stringvalue;
+	len = gethandlesize(hstring);
 
-	/* Print value - add quotes for string types */
-	if (val->valuetype == stringvaluetype) {
-		printf("\"%.*s\"\n", (int)stringlength(bs), stringbaseaddress(bs));
+	/* Print value - add quotes for original string types, convert CR to LF for terminal */
+	if (was_string) {
+		putchar('"');
+		fputs_cr_to_lf((const char *)*hstring, len, stdout);
+		putchar('"');
 	} else {
-		printf("%.*s\n", (int)stringlength(bs), stringbaseaddress(bs));
+		fputs_cr_to_lf((const char *)*hstring, len, stdout);
 	}
+	putchar('\n');
 	fflush(stdout);
-
-	/* Clean up coerced value */
-	disposevaluerecord(val_copy, false);
 }
 
 /* Displays evaluation result as a string (empty results are suppressed). */

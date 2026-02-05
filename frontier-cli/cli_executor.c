@@ -110,45 +110,17 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     cli_log_debug("before execute currenthashtable=%p", (void *)currenthashtable);
 #endif
 
-    /* For short scripts, prefer langrunstring to avoid compiler overhead */
-    if (len <= lenbigstring) {
-        bigstring program;
-        bigstring result;
-        copyctopstring(execution->script_source, program);
-        extern hdlhashtable currenthashtable;
-        extern hdlhashtable roottable;
-        extern boolean pushhashtable(hdlhashtable);
-        extern boolean pophashtable(void);
-        extern boolean langrunstring(const bigstring, bigstring);
-        hdlhashtable saved_current = currenthashtable;
-        hdlhashtable target_table = (roottable != NULL) ? roottable : saved_current;
-        currenthashtable = target_table;
-        boolean pushed = (target_table != NULL) ? pushhashtable(target_table) : false;
-        boolean ok = langrunstring(program, result);
-        if (pushed)
-            pophashtable();
-        currenthashtable = saved_current;
-        if (!ok) {
-            cli_set_execution_error_internal(execution, "Script execution failed");
-            return false;
-        }
-
-#if defined(FRONTIER_HEADLESS)
-        cli_log_debug("langrunstring ok; result length=%ld", (long) stringlength(result));
-#endif
-
-        execution->result = cli_malloc((size_t)stringlength(result) + 1);
-        if (execution->result == NULL) {
-            cli_set_execution_error_internal(execution, "Out of memory while copying result");
-            return false;
-        }
-        memcpy(execution->result, stringbaseaddress(result), stringlength(result));
-        execution->result[stringlength(result)] = '\0';
-        return true;
-    }
-
-    tyvaluerecord value; setnilvalue(&value);
+    /*
+     * NOTE: We used to have a short-script optimization that used langrunstring()
+     * for scripts <= 255 bytes. This was removed because langrunstring() returns
+     * results in a bigstring (max 255 chars), truncating longer results.
+     * Now all scripts use langrunhandle_value() which supports arbitrary length results.
+     */
+    tyvaluerecord value;
     Handle htext = NULL;
+
+    initvalue(&value, novaluetype);
+
     if (!newemptyhandle(&htext)) {
         cli_set_execution_error_internal(execution, "Unable to allocate script handle");
         return false;
@@ -164,24 +136,41 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     memcpy(*htext, execution->script_source, len);
     HUnlock(htext);
 
-    bigstring bsresult;
-    setemptystring(bsresult);
-    if (!langrunhandle(htext, bsresult)) {
+    /* Use langrunhandle_value to avoid 255-byte bigstring truncation */
+    if (!langrunhandle_value(htext, &value)) {
         cli_set_execution_error_internal(execution, "Failed to execute script");
         return false;
     }
 
+    /* Coerce result to string for output */
+    if (value.valuetype == novaluetype) {
+        /* No result - use empty string */
+        execution->result = cli_strdup("");
+    } else if (!coercetostring(&value)) {
+        disposevaluerecord(value, false);
+        cli_set_execution_error_internal(execution, "Failed to coerce result to string");
+        return false;
+    } else {
+        /* Copy string handle contents to execution result */
+        Handle hstring = value.data.stringvalue;
+        long slen = gethandlesize(hstring);
+
 #if defined(FRONTIER_HEADLESS)
-    cli_log_debug("langrunhandle ok; result length=%ld", (long) stringlength(bsresult));
+        cli_log_debug("langrunhandle_value ok; result length=%ld", slen);
 #endif
 
-    execution->result = cli_malloc((size_t)stringlength(bsresult) + 1);
-    if (execution->result == NULL) {
-        cli_set_execution_error_internal(execution, "Out of memory while copying result");
-        return false;
+        execution->result = cli_malloc((size_t)slen + 1);
+        if (execution->result == NULL) {
+            disposevaluerecord(value, false);
+            cli_set_execution_error_internal(execution, "Out of memory while copying result");
+            return false;
+        }
+        memcpy(execution->result, *hstring, slen);
+        execution->result[slen] = '\0';
+
+        disposevaluerecord(value, false);
     }
-    memcpy(execution->result, stringbaseaddress(bsresult), stringlength(bsresult));
-    execution->result[stringlength(bsresult)] = '\0';
+
 #if defined(FRONTIER_HEADLESS)
     cli_log_debug("after execute currenthashtable=%p", (void *)currenthashtable);
 #endif

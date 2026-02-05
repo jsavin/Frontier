@@ -397,6 +397,65 @@ boolean repl_eval_with_variables(
     return ok;
 }
 
+boolean repl_eval_with_variables_value(
+    const char *script,
+    tyvaluerecord *vreturned,
+    bigstring error_msg
+) {
+    Handle htext = nil;
+
+    if (script == NULL || vreturned == NULL || error_msg == NULL) {
+        if (error_msg != NULL) {
+            copyctopstring("Invalid parameters", error_msg);
+        }
+        return false;
+    }
+
+    /* Initialize result and error */
+    initvalue(vreturned, novaluetype);
+    setemptystring(error_msg);
+
+    /* If variables table not initialized, fall back to regular eval */
+    if (g_repl_variables_table == nil) {
+        log_warn(LOG_COMP_GENERAL, "REPL variables not initialized, using direct eval");
+
+        /* Regular evaluation without wrapping */
+        size_t script_len = strlen(script);
+
+        if (!newemptyhandle(&htext)) {
+            copyctopstring("Out of memory allocating script handle", error_msg);
+            return false;
+        }
+
+        if (!sethandlesize(htext, (long)script_len)) {
+            disposehandle(htext);
+            copyctopstring("Out of memory resizing script handle", error_msg);
+            return false;
+        }
+
+        HLock(htext);
+        memcpy(*htext, script, script_len);
+        HUnlock(htext);
+
+        return langrunhandle_value(htext, vreturned);
+    }
+
+    /* Build wrapped script: with system.temp.FrontierREPL.variables { ... } */
+    if (!build_wrapped_script(script, &htext)) {
+        copyctopstring("Failed to wrap script", error_msg);
+        return false;
+    }
+
+    /* Use langruntraperror which returns value and traps errors */
+    g_repl_eval_active = true;
+
+    boolean ok = langruntraperror(htext, vreturned, error_msg);
+
+    g_repl_eval_active = false;
+
+    return ok;
+}
+
 void repl_set_focus(hdlhashtable htable) {
     /*
      * Update system.temp.FrontierREPL.focus to point to the given table.
