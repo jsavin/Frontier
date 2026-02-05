@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.1.0 |
+| **Version** | 0.2.0 |
 | **Status** | Draft |
 | **Last Updated** | 2026-02-04 |
 
@@ -10,6 +10,7 @@
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 0.2.0 | 2026-02-04 | Jake Savin, Claude | Fixed refcon attributes to match v7 format; added inline text conventions section |
 | 0.1.0 | 2026-02-04 | Jake Savin, Claude | Initial draft |
 
 ---
@@ -21,12 +22,14 @@ The menu editor is a specialized editor for creating, viewing, and editing menu 
 Menus are stored as outline externals in the ODB, where:
 - The hierarchical structure defines menu/submenu organization
 - Each menu item can have an attached script (stored in refcon)
-- Items have attributes for keyboard shortcuts, enabled/disabled state, and checked state
+- Items have refcon data for keyboard shortcuts and handler scripts
+- Enabled/disabled and checked states are controlled by inline text conventions
 
 **Key design decisions:**
 - **Outline-based editing** - Same paradigm as outline editor (indent/outdent, expand/collapse)
 - **Script attachment** - Each item can reference a script via refcon
-- **Attribute-driven behavior** - Keyboard shortcuts, enabled state, and checked state are per-node attributes
+- **Refcon-based shortcuts** - Keyboard shortcuts stored as structured data in node refcons
+- **Text-convention driven states** - Enabled/disabled and checked states controlled by text prefixes
 - **Install/Test workflow** - Menus can be installed to the menu bar or tested as popups
 - **Multi-column display** - Name, Script, and Cmd Key columns for at-a-glance editing
 
@@ -86,9 +89,9 @@ Menus are stored as outline externals in the ODB, where:
 
 | Column | Description | Editable |
 |--------|-------------|----------|
-| **Name** | Menu item display text | Yes (inline) |
+| **Name** | Menu item display text (may include prefix codes like `(` or `!`) | Yes (inline) |
 | **Script** | Address of attached script or "(inline)" | Yes (click to edit) |
-| **Cmd Key** | Keyboard shortcut assignment | Yes (capture keypress) |
+| **Cmd Key** | Full keyboard shortcut with modifiers (e.g., `Cmd+S`, `Cmd+Shift+S`, `Ctrl+Option+X`) | Yes (capture keypress) |
 
 ---
 
@@ -139,31 +142,80 @@ The bar cursor is a full-line highlight showing the currently selected item:
 
 ---
 
-## Menu Item Attributes
+## Menu Item Refcon Structure
 
-Each menu item stores its configuration in attributes (packed in the refcon). The menu editor interprets these attributes for display and behavior.
+Each menu item stores its configuration in the refcon (reference constant). In v7 format, the refcon is a packed table with the following structure:
 
-### Built-in Attributes
+### V7 Refcon Format
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `script` | address/string | Script address (e.g., `@user.scripts.fileNew`) or inline script code |
-| `cmdKey` | string | Keyboard shortcut (e.g., `"Cmd+N"`, `"Cmd+Shift+P"`) |
-| `enabled` | boolean | Whether item is currently enabled (default: true) |
-| `checked` | boolean | Whether item shows checkmark (default: false) |
-| `separator` | boolean | If true, item renders as a separator line |
+```
+{
+  keyBinding: 'S',           // char - command key character or 0 if none
+  modifiers: {               // table - modifier key flags
+    shift: false,
+    control: false,
+    option: false,
+    command: true
+  },
+  handlerScript: script(...) // script - the attached script object
+}
+```
 
-### Attribute Display
+### Refcon Fields
 
-| Attribute | Display in Editor |
-|-----------|-------------------|
-| `script` (address) | Shows address in Script column (e.g., `@scripts.fileNew`) |
-| `script` (inline) | Shows "(inline)" in Script column |
-| `script` (none) | Script column empty |
-| `cmdKey` | Shows shortcut in Cmd Key column |
-| `enabled: false` | Item text appears grayed/dimmed |
-| `checked: true` | Checkmark icon before item name |
-| `separator: true` | Item displays as `--------` line |
+| Field | Type | Description |
+|-------|------|-------------|
+| `keyBinding` | char | Command key character (e.g., `'S'`, `'O'`) or 0 if no shortcut |
+| `modifiers` | table | Sub-table with boolean keys: `shift`, `control`, `option`, `command` |
+| `handlerScript` | script | The script object (outline type with script flag), or nil if none |
+
+### Refcon Display in Editor
+
+| Refcon State | Display in Editor |
+|--------------|-------------------|
+| `handlerScript` (address ref) | Shows address in Script column (e.g., `@scripts.fileNew`) |
+| `handlerScript` (inline) | Shows "(inline)" in Script column |
+| `handlerScript` (nil) | Script column empty |
+| `keyBinding` + `modifiers` | Full shortcut in Cmd Key column (e.g., `Cmd+S`, `Cmd+Shift+S`) |
+
+**Note**: Enabled/disabled state, checked state, and separators are NOT stored in the refcon. They are controlled by inline text conventions in the item name (see next section).
+
+---
+
+## Inline Text Conventions
+
+Certain prefixes and patterns in the menu item text control how the item is rendered. These conventions are parsed at render time by `mereducemenucodes()` in menubar.c.
+
+### Text Patterns
+
+| Text Pattern | Effect | Example Text | Rendered As |
+|--------------|--------|--------------|-------------|
+| Normal text | Enabled item | `Open...` | Open... |
+| `-` (single dash) | Separator line | `-` | (horizontal line) |
+| `(` prefix (no closing `)` at end) | Disabled item | `(Open...` | Open... (grayed out) |
+| `!` prefix | Checked item | `!Show Toolbar` | Show Toolbar (with checkmark) |
+
+### Examples
+
+| Menu Item Text | Enabled | Checked | Separator | Display |
+|----------------|---------|---------|-----------|---------|
+| `Open...` | Yes | No | No | Open... |
+| `(Open...` | No | No | No | Open... (grayed) |
+| `!Show Toolbar` | Yes | Yes | No | (check) Show Toolbar |
+| `(!Show Toolbar` | No | Yes | No | (check) Show Toolbar (grayed) |
+| `-` | No | No | Yes | (horizontal line) |
+
+### Important Notes
+
+1. **Separator**: A single dash (`-`) as the entire item text creates a separator. The dash is not displayed; instead, a horizontal line is rendered.
+
+2. **Disabled**: An open parenthesis `(` prefix disables the item ONLY if there is no matching `)` at the end of the text. This allows item names like `(untitled)` to remain enabled.
+
+3. **Checked**: An exclamation point `!` prefix causes a checkmark to appear before the item name. The `!` is stripped from the displayed text.
+
+4. **Combining**: Prefixes can be combined. For example, `(!Show Toolbar` creates a disabled, checked item.
+
+5. **Not Attributes**: These states are NOT stored as separate attributes or refcon fields. The menu editor displays the actual text including prefixes, which control rendering behavior.
 
 ---
 
@@ -211,16 +263,33 @@ When a menu item is selected (by user clicking the menu):
 
 ## Keyboard Shortcut Assignment
 
-### Shortcut Format
+### Shortcut Storage
 
-Keyboard shortcuts are stored in the `cmdKey` attribute as strings:
+Keyboard shortcuts are stored in the refcon as two fields:
 
-| Format | Example | Display |
-|--------|---------|---------|
-| Cmd+key | `"Cmd+N"` | Cmd+N |
-| Cmd+Shift+key | `"Cmd+Shift+P"` | Cmd+Shift+P |
-| Cmd+Option+key | `"Cmd+Opt+S"` | Cmd+Opt+S |
-| Cmd+Ctrl+key | `"Cmd+Ctrl+K"` | Cmd+Ctrl+K |
+- **`keyBinding`**: The key character (e.g., `'S'`, `'N'`, `'P'`)
+- **`modifiers`**: A table with boolean flags for each modifier key
+
+```
+modifiers: {
+  shift: false,    // Shift key
+  control: false,  // Control key
+  option: false,   // Option/Alt key
+  command: true    // Command key (Mac) / Windows key
+}
+```
+
+### Display Format
+
+The editor displays shortcuts in human-readable format:
+
+| Modifiers | Key | Display |
+|-----------|-----|---------|
+| command=true | 'N' | Cmd+N |
+| command=true, shift=true | 'P' | Cmd+Shift+P |
+| command=true, option=true | 'S' | Cmd+Option+S |
+| control=true, option=true | 'X' | Ctrl+Option+X |
+| command=true, shift=true, option=true | 'K' | Cmd+Shift+Option+K |
 
 On Windows/Linux, `Cmd` maps to `Ctrl`.
 
@@ -252,43 +321,70 @@ The editor warns when attempting to assign reserved shortcuts.
 
 ## Separators
 
-Separators are special menu items that display as horizontal lines.
+Separators are created by setting the menu item text to a single dash (`-`).
 
 ### Creating Separators
 
-1. **Type pattern** - Enter `----` (four or more dashes) as item name
+1. **Type pattern** - Enter `-` (single dash) as item name
 2. **Menu command** - Insert > Separator
 3. **Keyboard** - Cmd+Shift+- (hyphen)
 
 ### Separator Behavior
 
 - Separators display as horizontal lines in the rendered menu
+- They are automatically disabled (cannot be selected)
 - They cannot have scripts or keyboard shortcuts
 - They cannot have children (not expandable)
-- In the editor, they display as `--------` in the Name column
+- In the editor, they may display as `--------` in the Name column for visibility
 
-### Separator Attribute
+### How Separators Work
 
-Separators have `separator: true` in their attributes. The name text is not displayed in the rendered menu.
+Separators are NOT an attribute or refcon field. A separator is simply a menu item whose text is exactly `-` (single dash). The `mereducemenucodes()` function detects this pattern and renders a horizontal line instead of text.
+
+```c
+// From menubar.c - separator detection
+*flenabled = (stringlength (bs) > 1) || (getstringcharacter (bs, 0) != '-');
+```
+
+If the text is a single dash, the item is disabled and rendered as a separator line.
 
 ---
 
 ## Enabled/Disabled State
 
-Menu items can be enabled or disabled.
+Menu items can be enabled or disabled using the `(` prefix convention.
 
-### Static Enabled State
+### Disabling an Item
 
-Set the `enabled` attribute directly:
-- `enabled: true` - Item is clickable (default)
-- `enabled: false` - Item is grayed out and non-clickable
+Add an open parenthesis `(` at the start of the item text (without a matching `)` at the end):
+
+| Item Text | Enabled | Notes |
+|-----------|---------|-------|
+| `Open...` | Yes | Normal item |
+| `(Open...` | No | Disabled (grayed out) |
+| `(untitled)` | Yes | Enabled - has matching `)` at end |
+| `(Recent Files` | No | Disabled - no matching `)` |
+
+### How It Works
+
+The `mereducemenucodes()` function checks for the `(` prefix:
+
+```c
+// From menubar.c
+if (getstringcharacter (bs, 0) == '(' && lastchar (bs) != ')') {
+    deletestring (bs, 1, 1);  // Remove the '(' for display
+    *flenabled = false;
+}
+```
+
+The parenthesis is stripped from the displayed text, and the item is rendered as disabled (grayed out).
 
 ### Dynamic Enabled State (Future)
 
-A future enhancement will support dynamic enabled state via scripts:
-- `enabledScript` attribute points to a script that returns true/false
+A future enhancement may support dynamic enabled state via scripts:
+- A script could modify the item text to add/remove the `(` prefix
 - Script runs when menu is about to display
-- Result determines whether item is enabled
+- Result determines whether item appears enabled
 
 ### Visual Indication
 
@@ -296,32 +392,65 @@ Disabled items in the editor:
 - Item text appears grayed/dimmed
 - Still editable (can change name, script, etc.)
 - Status bar shows "Disabled" when selected
+- The `(` prefix is visible in the Name column
 
 ---
 
 ## Checked State
 
-Menu items can display a checkmark to indicate toggle state.
+Menu items can display a checkmark to indicate toggle state using the `!` prefix convention.
 
-### Setting Checked State
+### Checking an Item
 
-The `checked` attribute controls the checkmark:
-- `checked: true` - Checkmark appears before item name
-- `checked: false` - No checkmark (default)
+Add an exclamation point `!` at the start of the item text:
+
+| Item Text | Checked | Displayed As |
+|-----------|---------|--------------|
+| `Show Toolbar` | No | Show Toolbar |
+| `!Show Toolbar` | Yes | (check) Show Toolbar |
+| `!Dark Mode` | Yes | (check) Dark Mode |
+
+### How It Works
+
+The `mereducemenucodes()` function checks for the `!` prefix:
+
+```c
+// From menubar.c
+if ((stringlength (bs) > 1) && (getstringcharacter (bs, 0) == '!')) {
+    deletestring (bs, 1, 1);  // Remove the '!' for display
+    *flchecked = true;
+}
+```
+
+The exclamation point is stripped from the displayed text, and a checkmark is rendered before the item name.
 
 ### Toggle Pattern
 
 Common pattern for toggle menu items:
 1. Script reads current state
 2. Script toggles the state
-3. Script updates the `checked` attribute
+3. Script modifies the item text to add/remove the `!` prefix
 
 Example script:
 ```
 on toggleDarkMode()
    user.prefs.darkMode = not user.prefs.darkMode
-   menu.setItemChecked(@user.menus.viewMenu.darkMode, user.prefs.darkMode)
+   local itemText = op.getLineText(@user.menus.viewMenu.darkMode)
+   if user.prefs.darkMode
+      if itemText[1] != '!'
+         op.setLineText(@user.menus.viewMenu.darkMode, "!" + itemText)
+   else
+      if itemText[1] == '!'
+         op.setLineText(@user.menus.viewMenu.darkMode, string.mid(itemText, 2, infinity))
 ```
+
+### Combining with Disabled
+
+You can combine `!` and `(` prefixes to create a disabled, checked item:
+
+| Item Text | Enabled | Checked | Displayed As |
+|-----------|---------|---------|--------------|
+| `(!Show Toolbar` | No | Yes | (check) Show Toolbar (grayed) |
 
 ---
 
@@ -444,22 +573,23 @@ Retrieves the full menu structure.
         "id": "item_1",
         "text": "File",
         "expanded": true,
-        "attributes": {},
+        "refcon": {},
         "children": [
           {
             "id": "item_2",
             "text": "New",
             "expanded": false,
-            "attributes": {
-              "script": "@user.scripts.fileNew",
-              "cmdKey": "Cmd+N"
+            "refcon": {
+              "keyBinding": "N",
+              "modifiers": {"shift": false, "control": false, "option": false, "command": true},
+              "handlerScript": "@user.scripts.fileNew"
             },
             "children": []
           },
           {
             "id": "item_3",
-            "text": "----",
-            "attributes": {"separator": true},
+            "text": "-",
+            "refcon": {},
             "children": []
           }
         ]
@@ -473,6 +603,11 @@ Retrieves the full menu structure.
   }
 }
 ```
+
+**Note**: The `text` field may contain inline text conventions:
+- `"-"` for separators
+- `"(Item Name"` for disabled items
+- `"!Item Name"` for checked items
 
 ### menu/update - Update Menu Structure
 
@@ -521,10 +656,10 @@ Updates a single menu item without sending the full menu.
     "path": "user.menus.myMenu",
     "itemId": "item_2",
     "text": "New Document",
-    "attributes": {
-      "script": "@user.scripts.fileNew",
-      "cmdKey": "Cmd+N",
-      "enabled": true
+    "refcon": {
+      "keyBinding": "N",
+      "modifiers": {"shift": false, "control": false, "option": false, "command": true},
+      "handlerScript": "@user.scripts.fileNew"
     }
   }
 }
@@ -536,8 +671,8 @@ Updates a single menu item without sending the full menu.
 |-------|------|----------|-------------|
 | `path` | string | Yes | Dot-path to menu |
 | `itemId` | string | Yes | ID of item to update |
-| `text` | string | No | New item text |
-| `attributes` | object | No | New attributes (replaces all attributes) |
+| `text` | string | No | New item text (may include `(`, `!`, or `-` conventions) |
+| `refcon` | object | No | New refcon data (keyBinding, modifiers, handlerScript) |
 
 ### menu/setItemScript - Set Script for Item
 
@@ -564,19 +699,20 @@ Sets the script attachment for a menu item.
 | `itemId` | string | Yes | ID of item |
 | `script` | string | Yes | Script address or inline code (empty string to clear) |
 
-### menu/setItemCmdKey - Set Keyboard Shortcut
+### menu/setItemShortcut - Set Keyboard Shortcut
 
 Sets the keyboard shortcut for a menu item.
 
 **WebSocket:**
 ```json
 {
-  "op": "menu/setItemCmdKey",
+  "op": "menu/setItemShortcut",
   "id": 5,
   "params": {
     "path": "user.menus.myMenu",
     "itemId": "item_2",
-    "cmdKey": "Cmd+Shift+N"
+    "keyBinding": "N",
+    "modifiers": {"shift": true, "control": false, "option": false, "command": true}
   }
 }
 ```
@@ -587,7 +723,8 @@ Sets the keyboard shortcut for a menu item.
 |-------|------|----------|-------------|
 | `path` | string | Yes | Dot-path to menu |
 | `itemId` | string | Yes | ID of item |
-| `cmdKey` | string | Yes | Shortcut string (empty string to clear) |
+| `keyBinding` | string | Yes | Key character (e.g., "N", "S") or empty string to clear |
+| `modifiers` | object | No | Modifier flags: `{shift, control, option, command}` (all default to false) |
 
 **Response includes conflict info:**
 ```json
@@ -595,7 +732,8 @@ Sets the keyboard shortcut for a menu item.
   "id": 5,
   "result": {
     "itemId": "item_2",
-    "cmdKey": "Cmd+Shift+N",
+    "keyBinding": "N",
+    "modifiers": {"shift": true, "control": false, "option": false, "command": true},
     "conflict": {
       "itemId": "item_15",
       "itemText": "Save As...",
@@ -788,8 +926,8 @@ Notifies when a user selects a menu item (useful for testing/debugging).
 | Edit script | Cmd+E | Ctrl+E |
 | Set keyboard shortcut | Cmd+K | Ctrl+K |
 | Clear keyboard shortcut | Delete (in Cmd Key column) | Delete |
-| Toggle enabled | Cmd+/ | Ctrl+/ |
-| Toggle checked | Cmd+Shift+/ | Ctrl+Shift+/ |
+| Toggle disabled prefix `(` | Cmd+/ | Ctrl+/ |
+| Toggle checked prefix `!` | Cmd+Shift+/ | Ctrl+Shift+/ |
 
 ### Menu Operations
 
@@ -822,7 +960,7 @@ Implementation will proceed in phases, with each phase building on the previous.
 |-------|----------|
 | **MVP** | Core menu editing, expand/collapse, columns display, script attachment (address only), separator support |
 | **Phase 2** | Keyboard shortcut assignment with conflict detection, Install/Uninstall, basic Test popup |
-| **Phase 3** | Inline script editing, enabled/checked state, dynamic state scripts |
+| **Phase 3** | Inline script editing, text prefix toggle shortcuts (`(`, `!`), dynamic state scripts |
 | **Phase 4** | Advanced features: menu templates, menu bar position control, live preview |
 
 ### MVP Scope
@@ -849,10 +987,9 @@ Adds menu deployment features:
 ### Phase 3: States and Inline Scripts
 
 Adds runtime behavior features:
-- Enabled/disabled state attribute
-- Checked state attribute
+- Toggle shortcuts for `(` (disabled) and `!` (checked) text prefixes
 - Inline script editing
-- Visual indicators for disabled/checked items
+- Visual indicators for disabled/checked items (items with `(` or `!` prefixes)
 
 ### Phase 4: Advanced Features
 
@@ -868,7 +1005,7 @@ Advanced editing capabilities:
 
 1. **Inline script editing UI:** Should inline scripts open in a dialog, a split pane, or a mini-editor embedded in the row?
 
-2. **Shortcut format:** Should shortcuts be stored as strings (`"Cmd+N"`) or structured (`{cmd: true, key: "N"}`)?
+2. **~~Shortcut format~~:** RESOLVED - Shortcuts are stored as structured data: `keyBinding` (char) + `modifiers` table with `{shift, control, option, command}` booleans. See v7 refcon format.
 
 3. **Menu bar vs popup:** Should there be a visible indicator distinguishing menus intended for menu bar vs popup use?
 
