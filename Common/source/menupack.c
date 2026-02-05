@@ -498,7 +498,7 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 	
 	opgetnodeline (hcursor, &lnumcursor);
 
-	info.lnumcursor = conditionalshortswap (loword (lnumcursor));
+	info.lnumcursor = lnumcursor; /* 64-bit in-memory format, byte-swapping happens in pack functions */
 	
 	oppopallhoists (); /*pop hoists, save state to be restored after saving*/
 	
@@ -958,15 +958,39 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 #endif
 
 	if (is_v7_format) {
-		/* v7 format: read the full tysavedmenuinfo with 64-bit addresses */
-		if (!dbreference_context (ctx, adr, sizeof (info), &info)) {
+		/* v7 format: read the v7 disk format and convert to memory format */
+		tysavedmenuinfo_v7 v7_info;
+
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: reading v7 adr=0x%llx sizeof(v7_info)=%zu",
+		        (unsigned long long)adr, sizeof(v7_info));
+#endif
+
+		if (!dbreference_context (ctx, adr, sizeof (v7_info), &v7_info)) {
 #if defined(FRONTIER_HEADLESS)
 			log_error(LOG_COMP_OP, "meloadmenurecord_internal: dbreference_context FAILED (v7) adr=0x%llx",
 			        (unsigned long long)adr);
 #endif
 			return (false);
 		}
-		outline_adr = conditionallongswap (info.adroutline);
+
+		/* Convert v7 disk format (64-bit, big-endian) to in-memory format */
+		clearbytes (&info, sizeof (info));
+		info.versionnumber = disk_to_host_uint16(v7_info.versionnumber);
+		outline_adr = (dbaddress) disk_to_host_uint64(v7_info.adroutline);
+		info.adroutline = outline_adr;
+
+		/* lnumcursor is 64-bit in both v7 disk format and memory format */
+		info.lnumcursor = (int64_t) disk_to_host_uint64(v7_info.lnumcursor);
+
+		/* Extract flags and menuactivelayer from v7 format */
+		info.flags = (short) disk_to_host_uint32(v7_info.flags);
+		info.menuactivelayer = (short) disk_to_host_uint32(v7_info.menuactiveitem);
+
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: v7 versionnumber=%d outline_adr=0x%llx lnumcursor=%lld",
+		        (int)info.versionnumber, (unsigned long long)outline_adr, (long long)info.lnumcursor);
+#endif
 	}
 	else {
 		/* v6 format: read the legacy disk format with 32-bit addresses */

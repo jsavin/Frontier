@@ -89,16 +89,16 @@ typedef struct tysavedmenuinfo {
 	short flags;
 	
 	short menuactivelayer;
-	
-	short lnumcursor;
-	
+
+	int64_t lnumcursor; /* 2026-02-05: expanded to 64-bit for consistency with v7 disk format */
+
 	diskfontstring defaultscriptfontname; /*new scripts start in this font*/
-	
-	short defaultscriptfontsize; /*and this size*/ 
-	
+
+	short defaultscriptfontsize; /*and this size*/
+
 	diskrect menuwindowrect; /*the window size and position last time it was open*/
-	
-	char waste [42]; /*room to grow*/
+
+	char waste [36]; /*room to grow - reduced from 42 to account for lnumcursor expansion*/
 	} tysavedmenuinfo;
 #pragma options align=reset
 
