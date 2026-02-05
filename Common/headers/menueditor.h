@@ -102,6 +102,9 @@ typedef struct tysavedmenuinfo {
 	} tysavedmenuinfo;
 #pragma options align=reset
 
+/* Verify in-memory struct size remains stable - must match tyOLD42savedmenuinfo for compatibility */
+_Static_assert(sizeof(tysavedmenuinfo) == 116, "tysavedmenuinfo must be exactly 116 bytes");
+
 	#define flautosmash_mask 0x8000
 
 
