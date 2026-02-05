@@ -744,7 +744,7 @@ static void log_system_subtable_status(const char *phase,
         phase = "unknown";
     }
 
-    cli_log_warn("system table snapshot (%s): system=%p verbs=%p builtins=%p agents=%p paths=%p resources=%p menubar=%p objectmodel=%p",
+    cli_log_debug("system table snapshot (%s): system=%p verbs=%p builtins=%p agents=%p paths=%p resources=%p menubar=%p objectmodel=%p",
                  phase,
                  (void *)system,
                  (void *)verbs,
