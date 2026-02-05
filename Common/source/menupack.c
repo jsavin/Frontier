@@ -456,7 +456,7 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 	tysavedmenuinfo info;
 	register WindowPtr w;
 	Rect r;
-	long lnumcursor;
+	int64_t lnumcursor;
 	
 	opvalidate (ho);
 	

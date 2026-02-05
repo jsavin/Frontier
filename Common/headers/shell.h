@@ -288,7 +288,7 @@ typedef boolean (*shellexportscrapcallback) (void *, tyscraptype, Handle *, bool
 
 typedef void (*shelldisposescrapcallback) (void *);
 
-typedef boolean (*shellscrollcallback) (tydirection, boolean, long);
+typedef boolean (*shellscrollcallback) (tydirection, boolean, int64_t);
 
 typedef boolean (*shellgetundoglobalscallback) (long *);
 

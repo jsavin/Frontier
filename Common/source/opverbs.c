@@ -1293,7 +1293,7 @@ boolean opverbnew (short id, Handle hdata, hdlexternalvariable *hvariable) {
 	if (hdata != nil) {
 		
 		register hdloutlinerecord hsource = (hdloutlinerecord) hdata;
-		long lnumcursor;
+		int64_t lnumcursor;
 		boolean flpoppedhoists;
 		
 		oppushoutline (hsource);

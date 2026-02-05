@@ -30,9 +30,9 @@
 
 extern short opnodeindent (hdlheadrecord);
 
-extern void oplineinval (long);
+extern void oplineinval (int64_t);
 
-extern void opscrollrect (Rect r, long dh, long dv);
+extern void opscrollrect (Rect r, int64_t dh, int64_t dv);
 
 extern hdlheadrecord oppointnode (Point);
 
@@ -48,13 +48,13 @@ extern short opgetlineheight (hdlheadrecord);
 
 extern short opgetlinewidth (hdlheadrecord);
 
-extern long opgetnodelinecount (hdlheadrecord);
+extern int64_t opgetnodelinecount (hdlheadrecord);
 
 extern boolean opgetnoderect (hdlheadrecord, Rect *);
 
 extern void operaserect (Rect r);
 
-extern boolean opgetscreenline (hdlheadrecord, long *);
+extern boolean opgetscreenline (hdlheadrecord, int64_t *);
 
 extern boolean opinvalnode (hdlheadrecord);
 
@@ -74,7 +74,7 @@ extern boolean oppostfontchange (void);
 
 extern void opgetlineselected (hdlheadrecord, boolean *, boolean *);
 
-extern boolean opgetlinerect (long, Rect *);
+extern boolean opgetlinerect (int64_t, Rect *);
 
 extern void opdrawicon (hdlheadrecord, Rect);
 
@@ -84,17 +84,17 @@ extern void opindenteddisplay (void);
 
 extern void opdocursor (boolean);
 
-extern void opmakegap (long, short);
+extern void opmakegap (int64_t, short);
 
 extern void opexpandupdate (hdlheadrecord);
 
-extern boolean opscroll (tydirection, boolean, long);
+extern boolean opscroll (tydirection, boolean, int64_t);
 
 extern void opjumpdisplayto (hdlheadrecord, hdlheadrecord);
 
-extern boolean opneedvisiscroll (hdlheadrecord, long *, long *, boolean);
+extern boolean opneedvisiscroll (hdlheadrecord, int64_t *, int64_t *, boolean);
 
-extern void opdovisiscroll (long, long);
+extern void opdovisiscroll (int64_t, int64_t);
 
 extern boolean opnodevisible (hdlheadrecord);
 

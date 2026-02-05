@@ -68,9 +68,9 @@ typedef struct tytableformats { /*one of these for every window that's open*/
 	
 	short fontnum, fontsize, fontstyle; // only meaningful when outline was not saved and hasn't been recreated
 	
-	long lnumcursor; // ditto
-	
-	long vertcurrent; // ditto
+	int64_t lnumcursor; // ditto
+
+	int64_t vertcurrent; // ditto
 	
 	short ctcols;
 	

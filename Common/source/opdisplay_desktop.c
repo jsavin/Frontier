@@ -1393,7 +1393,7 @@ void opjumpdisplayto (hdlheadrecord holdcursor, hdlheadrecord hnewcursor) {
 	} /*opjumpdisplayto*/
 
 
-boolean opscrollto (long h, long v) {
+boolean opscrollto (int64_t h, int64_t v) {
 	
 	/*
 	DW 10/27/93: new version bends over backwards to avoid 
@@ -1514,7 +1514,7 @@ static long getdownpagescrolllines (void) {
 	} /*getdownpagescrolllines*/
 
 
-boolean opscroll (tydirection dir, boolean flpage, long ctscroll) {
+boolean opscroll (tydirection dir, boolean flpage, int64_t ctscroll) {
 	
 	/*
 	5.1.5b12 dmb: check for nil outline

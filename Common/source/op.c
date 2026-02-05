@@ -983,7 +983,7 @@ static boolean opcmdmove (tydirection dir) {
 	} /*opcmdmove*/
 	
 	
-boolean opmotionkey (tydirection dir, long units, boolean flextendselection) {
+boolean opmotionkey (tydirection dir, int64_t units, boolean flextendselection) {
 
 	/*
 	Phase 2: Headless support - Skip display operations when no window present
@@ -1694,7 +1694,7 @@ boolean opselectall (void) {
 	} /*opselectall*/
 
 
-void opgetcursorinfo (long *row, short *col) {
+void opgetcursorinfo (int64_t *row, short *col) {
 	
 	/*
 	translate the cursor position into a set of numbers.
@@ -1706,7 +1706,7 @@ void opgetcursorinfo (long *row, short *col) {
 	} /*opgetcursorinfo*/
 	
 	
-void opsetcursorinfo (long row, short col) {
+void opsetcursorinfo (int64_t row, short col) {
 #pragma unused (col)
 
 	/*

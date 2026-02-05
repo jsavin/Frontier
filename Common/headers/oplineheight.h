@@ -32,14 +32,14 @@ extern short opgetline1top (void);
 
 extern hdlheadrecord opgetlastvisiblenode (void);
 
-extern long opgetcurrentscreenlines (boolean);
+extern int64_t opgetcurrentscreenlines (boolean);
 
-extern long opsumprevlineheights (long, short *);
+extern int64_t opsumprevlineheights (int64_t, short *);
 
-extern long opsumalllineheights (void);
+extern int64_t opsumalllineheights (void);
 
-extern long opgetlinestoscrollupforvisi (hdlheadrecord);
+extern int64_t opgetlinestoscrollupforvisi (hdlheadrecord);
 
-extern long opgetlinestoscrolldownforvisi (hdlheadrecord);
+extern int64_t opgetlinestoscrolldownforvisi (hdlheadrecord);
 
 

@@ -518,7 +518,7 @@ static boolean initializetableoutline (hdloutlinerecord ho, hdlhashtable ht) {
 	tybrowserspec fsroot;
 	tyexpandinfo expandinfo;
 	hdlwindowinfo hinfo;
-	long lnumcursor;
+	int64_t lnumcursor;
 	boolean fl = false;
 	
 	oppushoutline (ho);

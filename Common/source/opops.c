@@ -782,7 +782,7 @@ hdlheadrecord opbumpflatup (hdlheadrecord hnode, boolean flexpanded) {
 	} /*opbumpflatup*/
 
 
-hdlheadrecord oprepeatedbump (tydirection dir, long ctbumps, hdlheadrecord hstart, boolean flexpanded) {
+hdlheadrecord oprepeatedbump (tydirection dir, int64_t ctbumps, hdlheadrecord hstart, boolean flexpanded) {
 	
 	/*
 	navigate from hstart in the indicated tydirection, ctbumps times.
@@ -796,10 +796,10 @@ hdlheadrecord oprepeatedbump (tydirection dir, long ctbumps, hdlheadrecord hstar
 	*/
 	
 	register hdlheadrecord nomad = hstart;
-	register long ct = ctbumps;
+	register int64_t ct = ctbumps;
 	register boolean fl = flexpanded;
 	register hdlheadrecord lastnomad;
-	register long i;
+	register int64_t i;
 	
 	if (nomad == nil) /*defensive driving*/
 		return (nil);
@@ -1189,7 +1189,7 @@ boolean opcontainsnode (hdlheadrecord hlookunder, hdlheadrecord hlookfor) {
 	} /*opcontainsnode*/
 	
 
-void opgetnodeline (hdlheadrecord hnode, long *lnum) {
+void opgetnodeline (hdlheadrecord hnode, int64_t *lnum) {
 	
 	/*
 	get the node line number for the indicated node.  the first summit is

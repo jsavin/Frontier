@@ -217,7 +217,7 @@ extern hdlheadrecord opbumpflatdown (hdlheadrecord, boolean);
 
 extern hdlheadrecord opbumpflatup (hdlheadrecord, boolean);
 
-extern hdlheadrecord oprepeatedbump (tydirection, long, hdlheadrecord, boolean);
+extern hdlheadrecord oprepeatedbump (tydirection, int64_t, hdlheadrecord, boolean);
 
 extern boolean opnavigate (tydirection, hdlheadrecord *);
 
@@ -237,7 +237,7 @@ extern void opsetexpandedbits (hdlheadrecord, boolean);
 
 extern boolean opcontainsnode (hdlheadrecord, hdlheadrecord);
 
-extern void opgetnodeline (hdlheadrecord, long *);
+extern void opgetnodeline (hdlheadrecord, int64_t *);
 
 extern boolean opnewheadrecord (Handle, hdlheadrecord *);
 
@@ -339,7 +339,7 @@ extern boolean opafterstrucchange (hdlscreenmap, boolean);
 
 extern boolean opsortlevel (hdlheadrecord);
 
-extern boolean opreorgcursor (tydirection, long);
+extern boolean opreorgcursor (tydirection, int64_t);
 
 extern void opsetline1 (hdlheadrecord);
 

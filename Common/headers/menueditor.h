@@ -278,7 +278,7 @@ extern void meupdate (void);
 
 extern void meactivate (boolean);
 
-extern boolean mescroll (tydirection, boolean, long);
+extern boolean mescroll (tydirection, boolean, int64_t);
 
 extern void megetscrollbarinfo (void);
 
