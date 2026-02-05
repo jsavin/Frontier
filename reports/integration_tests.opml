@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 1782 tests: 1631 pass (91%) 151 skip (8%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:53 GMT</dateCreated>
+    <title>Frontier Integration Tests - 1794 tests: 1643 pass (91%) 151 skip (8%)</title>
+    <dateCreated>Thu, 05 Feb 2026 07:07:01 GMT</dateCreated>
   </head>
   <body>
     <outline text="Builtins Priority (builtins_priority) - 25 tests: 25 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
@@ -23,6 +23,7 @@
     <outline text="Menu Data Verbs (menu_data_verbs) - 49 tests: 49 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/menu_data_verbs.opml"/>
     <outline text="Migration Externals (migration_externals) - 19 tests: 16 pass (84%) 3 skip (15%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/migration_externals.opml"/>
     <outline text="Nested Parentof (nested_parentof) - 18 tests: 13 pass (72%) 5 skip (27%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/nested_parentof.opml"/>
+    <outline text="Op Outlinetoxml Headless (op_outlinetoxml_headless) - 12 tests: 12 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/op_outlinetoxml_headless.opml"/>
     <outline text="Op Verbs (op_verbs) - 265 tests: 253 pass (95%) 12 skip (4%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/op_verbs.opml"/>
     <outline text="Opattributes Verbs (opattributes_verbs) - 7 tests: 0 pass (0%) 7 skip (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/opattributes_verbs.opml"/>
     <outline text="Path Resolution (path_resolution) - 39 tests: 39 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/path_resolution.opml"/>

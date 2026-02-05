@@ -1,0 +1,220 @@
+# Integration tests for op.outlineToXml headless mode fix
+# Tests the bug fix for stack overflow on empty outlines and segfaults with content
+#
+# Bug context: op.outlineToXml was calling GUI-dependent functions (opxmlensureopenwindow,
+# langzoomvalwindow) which fail in headless mode. Per OPML 2.0 spec, head elements are
+# all optional, so we skip window-related metadata in headless mode.
+
+tests:
+  # ====================================================================
+  # Empty Outline Tests (Previously caused stack overflow)
+  # ====================================================================
+
+  - name: "op.outlineToXml - empty outline returns valid OPML"
+    description: "Convert empty outline to OPML (previously caused stack overflow)"
+    script: |
+      lang.new(outlineType, @workspace.emptyOutline);
+      local(xml = op.outlineToXml(@workspace.emptyOutline, "TestUser", "test@example.com"));
+      return string.mid(xml, 1, 5) == "<?xml"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlineToXml - empty outline contains opml tag"
+    description: "Empty outline OPML contains proper opml root element"
+    script: |
+      lang.new(outlineType, @workspace.emptyOutline);
+      local(xml = op.outlineToXml(@workspace.emptyOutline, "TestUser", "test@example.com"));
+      return string.patternMatch("<opml", xml) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlineToXml - empty outline contains head section"
+    description: "Empty outline OPML contains head element"
+    script: |
+      lang.new(outlineType, @workspace.emptyOutline);
+      local(xml = op.outlineToXml(@workspace.emptyOutline, "TestUser", "test@example.com"));
+      return string.patternMatch("<head>", xml) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlineToXml - empty outline contains body section"
+    description: "Empty outline OPML contains body element"
+    script: |
+      lang.new(outlineType, @workspace.emptyOutline);
+      local(xml = op.outlineToXml(@workspace.emptyOutline, "TestUser", "test@example.com"));
+      return string.patternMatch("<body>", xml) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Single Line Tests (Previously caused segfault)
+  # ====================================================================
+
+  - name: "op.outlineToXml - single line outline"
+    description: "Convert single-line outline to OPML (previously caused segfault)"
+    script: |
+      lang.new(outlineType, @workspace.singleLine);
+      target.set(@workspace.singleLine);
+      op.setLineText("Hello World");
+      local(xml = op.outlineToXml(@workspace.singleLine, "TestUser", "test@example.com"));
+      return string.patternMatch("Hello World", xml) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlineToXml - single line has outline element"
+    description: "Single-line OPML contains outline element with text attribute"
+    script: |
+      lang.new(outlineType, @workspace.singleLine);
+      target.set(@workspace.singleLine);
+      op.setLineText("Test Line");
+      local(xml = op.outlineToXml(@workspace.singleLine, "TestUser", "test@example.com"));
+      return string.patternMatch("<outline text=", xml) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Multi-line and Hierarchy Tests
+  # ====================================================================
+
+  - name: "op.outlineToXml - multiple lines"
+    description: "Convert multi-line outline preserves all content"
+    script: |
+      lang.new(outlineType, @workspace.multiLine);
+      target.set(@workspace.multiLine);
+      op.insert("Line 1", down);
+      op.insert("Line 2", down);
+      op.insert("Line 3", down);
+      local(xml = op.outlineToXml(@workspace.multiLine, "TestUser", "test@example.com"));
+      local(has1 = string.patternMatch("Line 1", xml) > 0);
+      local(has2 = string.patternMatch("Line 2", xml) > 0);
+      local(has3 = string.patternMatch("Line 3", xml) > 0);
+      return has1 and has2 and has3
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlineToXml - nested hierarchy"
+    description: "Convert nested outline preserves parent-child structure"
+    script: |
+      lang.new(outlineType, @workspace.nested);
+      target.set(@workspace.nested);
+      op.insert("Parent", down);
+      op.insert("Child 1", right);
+      op.insert("Child 2", down);
+      local(xml = op.outlineToXml(@workspace.nested, "TestUser", "test@example.com"));
+      local(hasParent = string.patternMatch("Parent", xml) > 0);
+      local(hasChild1 = string.patternMatch("Child 1", xml) > 0);
+      local(hasChild2 = string.patternMatch("Child 2", xml) > 0);
+      return hasParent and hasChild1 and hasChild2
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Owner Metadata Tests
+  # ====================================================================
+
+  - name: "op.outlineToXml - includes owner name"
+    description: "OPML includes ownerName in head section"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setLineText("Content");
+      local(xml = op.outlineToXml(@workspace.outline, "John Doe", "john@example.com"));
+      return string.patternMatch("John Doe", xml) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlineToXml - includes owner email"
+    description: "OPML includes ownerEmail in head section"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setLineText("Content");
+      local(xml = op.outlineToXml(@workspace.outline, "John Doe", "john@example.com"));
+      return string.patternMatch("john@example.com", xml) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # OPML Structure Validation Tests
+  # ====================================================================
+
+  - name: "op.outlineToXml - valid OPML structure"
+    description: "OPML has proper document structure (opml > head + body)"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setLineText("Test");
+      local(xml = op.outlineToXml(@workspace.outline, "User", "user@example.com"));
+      local(hasOpml = string.patternMatch("<opml", xml) > 0);
+      local(hasHead = string.patternMatch("<head>", xml) > 0);
+      local(hasBody = string.patternMatch("<body>", xml) > 0);
+      local(hasCloseOpml = string.patternMatch("</opml>", xml) > 0);
+      return hasOpml and hasHead and hasBody and hasCloseOpml
+    expected_success: true
+    expected_result: "true"
+
+  - name: "op.outlineToXml - has XML declaration"
+    description: "OPML starts with XML declaration"
+    script: |
+      lang.new(outlineType, @workspace.outline);
+      target.set(@workspace.outline);
+      op.setLineText("Test");
+      local(xml = op.outlineToXml(@workspace.outline, "User", "user@example.com"));
+      return string.mid(xml, 1, 5) == "<?xml"
+    expected_success: true
+    expected_result: "true"
+
+  # ====================================================================
+  # Round-trip Tests (outlineToXml -> xmlToOutline)
+  # ====================================================================
+
+  - name: "round-trip - single line preserves content"
+    description: "Converting outline to XML and back preserves line text"
+    script: |
+      lang.new(outlineType, @workspace.rtSrc);
+      target.set(@workspace.rtSrc);
+      op.setLineText("RoundTripTest");
+      local(xml = op.outlineToXml(@workspace.rtSrc, "User", "test@example.com"));
+      lang.new(outlineType, @workspace.rtDst);
+      op.xmlToOutline(xml, @workspace.rtDst);
+      target.set(@workspace.rtDst);
+      op.firstSummit();
+      return op.getLineText() == "RoundTripTest"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip - multiple lines preserved"
+    description: "Converting multi-line outline to XML and back preserves first and second lines"
+    script: |
+      lang.new(outlineType, @workspace.rtMultiSrc);
+      target.set(@workspace.rtMultiSrc);
+      op.setLineText("First");
+      op.insert("Second", down);
+      local(xml = op.outlineToXml(@workspace.rtMultiSrc, "User", "test@example.com"));
+      lang.new(outlineType, @workspace.rtMultiDst);
+      op.xmlToOutline(xml, @workspace.rtMultiDst);
+      target.set(@workspace.rtMultiDst);
+      op.firstSummit();
+      local(hasFirst = op.getLineText() == "First");
+      op.go(right, 1);
+      local(hasSecond = op.getLineText() == "Second");
+      return hasFirst and hasSecond
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip - nested hierarchy preserved"
+    description: "Converting nested outline to XML and back preserves structure"
+    script: |
+      lang.new(outlineType, @workspace.rtNestedSrc);
+      target.set(@workspace.rtNestedSrc);
+      op.setLineText("Parent");
+      op.insert("Child", right);
+      local(xml = op.outlineToXml(@workspace.rtNestedSrc, "User", "test@example.com"));
+      lang.new(outlineType, @workspace.rtNestedDst);
+      op.xmlToOutline(xml, @workspace.rtNestedDst);
+      target.set(@workspace.rtNestedDst);
+      op.firstSummit();
+      local(hasChild = op.go(right, 1));
+      return hasChild
+    expected_success: true
+    expected_result: "true"

@@ -1,0 +1,159 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Op Outlinetoxml Headless (op_outlinetoxml_headless) - 12 tests: 12 pass (100%)</title>
+    <dateCreated>Thu, 05 Feb 2026 07:07:01 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="op.outlineToXml - empty outline returns valid OPML - Convert empty outline to OPML (previously caused stack overflow)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.emptyOutline)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="return string.mid(xml, 1, 5) == &quot;&lt;?xml&quot;"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - empty outline contains opml tag - Empty outline OPML contains proper opml root element">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.emptyOutline)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="return string.patternMatch(&quot;&lt;opml&quot;, xml) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - empty outline contains head section - Empty outline OPML contains head element">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.emptyOutline)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="return string.patternMatch(&quot;&lt;head&gt;&quot;, xml) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - empty outline contains body section - Empty outline OPML contains body element">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.emptyOutline)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="return string.patternMatch(&quot;&lt;body&gt;&quot;, xml) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - single line outline - Convert single-line outline to OPML (previously caused segfault)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.singleLine)"/>
+        <outline text="target.set(@workspace.singleLine)"/>
+        <outline text="op.setLineText(&quot;Hello World&quot;)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.singleLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="return string.patternMatch(&quot;Hello World&quot;, xml) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - single line has outline element - Single-line OPML contains outline element with text attribute">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.singleLine)"/>
+        <outline text="target.set(@workspace.singleLine)"/>
+        <outline text="op.setLineText(&quot;Test Line&quot;)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.singleLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="return string.patternMatch(&quot;&lt;outline text=&quot;, xml) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - multiple lines - Convert multi-line outline preserves all content">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.multiLine)"/>
+        <outline text="target.set(@workspace.multiLine)"/>
+        <outline text="op.insert(&quot;Line 1&quot;, down)"/>
+        <outline text="op.insert(&quot;Line 2&quot;, down)"/>
+        <outline text="op.insert(&quot;Line 3&quot;, down)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.multiLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(has1 = string.patternMatch(&quot;Line 1&quot;, xml) &gt; 0)"/>
+        <outline text="local(has2 = string.patternMatch(&quot;Line 2&quot;, xml) &gt; 0)"/>
+        <outline text="local(has3 = string.patternMatch(&quot;Line 3&quot;, xml) &gt; 0)"/>
+        <outline text="return has1 and has2 and has3"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - nested hierarchy - Convert nested outline preserves parent-child structure">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.nested)"/>
+        <outline text="target.set(@workspace.nested)"/>
+        <outline text="op.insert(&quot;Parent&quot;, down)"/>
+        <outline text="op.insert(&quot;Child 1&quot;, right)"/>
+        <outline text="op.insert(&quot;Child 2&quot;, down)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.nested, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(hasParent = string.patternMatch(&quot;Parent&quot;, xml) &gt; 0)"/>
+        <outline text="local(hasChild1 = string.patternMatch(&quot;Child 1&quot;, xml) &gt; 0)"/>
+        <outline text="local(hasChild2 = string.patternMatch(&quot;Child 2&quot;, xml) &gt; 0)"/>
+        <outline text="return hasParent and hasChild1 and hasChild2"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - includes owner name - OPML includes ownerName in head section">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.outline)"/>
+        <outline text="target.set(@workspace.outline)"/>
+        <outline text="op.setLineText(&quot;Content&quot;)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;John Doe&quot;, &quot;john@example.com&quot;))"/>
+        <outline text="return string.patternMatch(&quot;John Doe&quot;, xml) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - includes owner email - OPML includes ownerEmail in head section">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.outline)"/>
+        <outline text="target.set(@workspace.outline)"/>
+        <outline text="op.setLineText(&quot;Content&quot;)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;John Doe&quot;, &quot;john@example.com&quot;))"/>
+        <outline text="return string.patternMatch(&quot;john@example.com&quot;, xml) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - valid OPML structure - OPML has proper document structure (opml &gt; head + body)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.outline)"/>
+        <outline text="target.set(@workspace.outline)"/>
+        <outline text="op.setLineText(&quot;Test&quot;)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;User&quot;, &quot;user@example.com&quot;))"/>
+        <outline text="local(hasOpml = string.patternMatch(&quot;&lt;opml&quot;, xml) &gt; 0)"/>
+        <outline text="local(hasHead = string.patternMatch(&quot;&lt;head&gt;&quot;, xml) &gt; 0)"/>
+        <outline text="local(hasBody = string.patternMatch(&quot;&lt;body&gt;&quot;, xml) &gt; 0)"/>
+        <outline text="local(hasCloseOpml = string.patternMatch(&quot;&lt;/opml&gt;&quot;, xml) &gt; 0)"/>
+        <outline text="return hasOpml and hasHead and hasBody and hasCloseOpml"/>
+      </outline>
+    </outline>
+    <outline text="op.outlineToXml - has XML declaration - OPML starts with XML declaration">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.outline)"/>
+        <outline text="target.set(@workspace.outline)"/>
+        <outline text="op.setLineText(&quot;Test&quot;)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;User&quot;, &quot;user@example.com&quot;))"/>
+        <outline text="return string.mid(xml, 1, 5) == &quot;&lt;?xml&quot;"/>
+      </outline>
+    </outline>
+  </body>
+</opml>
