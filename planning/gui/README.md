@@ -29,4 +29,28 @@ Planning in this directory covers:
 
 ## Documents
 
-*(To be added as planning progresses)*
+| Document | Description |
+|----------|-------------|
+| [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Overall GUI architecture, multi-user model, authentication, federation |
+| [`PROTOCOL.md`](./PROTOCOL.md) | JSON protocol specification for client-server communication |
+| [`TABLE_BROWSER.md`](./TABLE_BROWSER.md) | Table browser / ODB navigator specification |
+| [`SCRIPT_EDITOR.md`](./SCRIPT_EDITOR.md) | Outline-based script editor with debugging |
+| [`OUTLINE_EDITOR.md`](./OUTLINE_EDITOR.md) | Outline editor with hoisting, attributes, render modes |
+| [`MENU_EDITOR.md`](./MENU_EDITOR.md) | Menu bar and popup menu editor |
+| [`WPTEXT_EDITOR.md`](./WPTEXT_EDITOR.md) | Rich text (RTF) editor |
+| [`CONSOLE.md`](./CONSOLE.md) | Unified REPL and QuickScript console |
+
+## External Types and Editors
+
+| Type | Editor | Notes |
+|------|--------|-------|
+| `table` | Table Browser | Hierarchical ODB navigation and editing |
+| `script` | Script Editor | Outline-based with debugging support |
+| `outline` | Outline Editor | General-purpose hierarchical editor |
+| `menubar` | Menu Editor | Menu structure with script attachment |
+| `wptext` | wptext Editor | Rich text using platform RTF components |
+| `filespec` | Table Browser | Edited inline as string values |
+| `picture` | *(none)* | No native editor in legacy or planned |
+| `binary` | *(none)* | No native editor in legacy or planned |
+| `alias` | *(deprecated)* | Not supported in v7 |
+| `objspec` | *(deprecated)* | Legacy Apple Events type, not supported |
