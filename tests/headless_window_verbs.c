@@ -5,13 +5,20 @@
  * Implements window verbs with reasonable defaults for headless operation.
  *
  * Key stubs that return defaults (not errors):
- * - window.getSize: returns 400x500 (reasonable default)
- * - window.getPosition: returns 100,100 (reasonable default)
- * - window.setSize/setPosition: accept and ignore (no-op)
- * - window.getTitle: returns object name
- * - window.setTitle: accepts and ignores (no-op)
+ * - window.getSize: returns 400x500 (reasonable default), returns true
+ * - window.getPosition: returns 100,100 (reasonable default), returns true
+ * - window.setSize/setPosition: accept params but return false (no-op indicator)
+ * - window.getTitle: returns object's full dot-path, returns the path string
+ * - window.setTitle: accepts params but returns false (no-op indicator)
  *
- * This allows UserTalk glue scripts (like op.outlineToXml) to work in headless mode.
+ * Note on setter return values: Setter verbs (setSize, setPosition, setTitle)
+ * return false in headless mode to indicate the operation was a no-op. This
+ * allows callers to detect headless mode if needed, while still allowing
+ * scripts to run without errors.
+ *
+ * This allows UserTalk glue scripts (like op.outlineToXml) to work in headless
+ * mode. Per OPML 2.0 spec, window-related metadata (expansionState, scrollState,
+ * windowTop/Left/Bottom/Right) are all optional, so using defaults is valid.
  */
 
 #include "frontier.h"
@@ -231,7 +238,8 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
         case winv_gettitle: {
             /* window.getTitle(adr)
              * In headless mode, return the full dot-path to the object.
-             * This allows UserTalk scripts that call window.getTitle to work. */
+             * This allows UserTalk scripts that call window.getTitle to work.
+             * Per OPML 2.0 spec, window title is optional metadata. */
             tyvaluerecord val;
             hdlhashtable htable;
             bigstring bspath;
@@ -245,6 +253,8 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
 
             if (!getaddressvalue(val, &htable, bspath))
                 return false;
+
+            (void)htable;  /* htable retrieved but unused - we only need the path */
 
             /* Return the full path as the "window title" */
             return setstringvalue(bspath, vreturned);
