@@ -204,11 +204,13 @@ KERNELVERBS_PARSER = ../tools/kernelverbs_parser/parse_kernelverbs.py
 KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
 KERNELVERBS_CLI = ../tools/kernelverbs_parser/cli.py
 
-# Fast build target - just the binary (for quick iteration)
-build: strings_generated kernel_verbs_generated $(TARGET)
-
 # Full distribution build (required for testing mainResponder/Manila)
+# This is the default target (first in Makefile) - always keeps dist/ up to date
 all: build dist
+
+# Fast build target - just the binary (for quick iteration)
+# Use 'make build' when you don't need dist/ updated
+build: strings_generated kernel_verbs_generated $(TARGET)
 
 $(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB) $(LINENOISE_SRC)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
