@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Op Outlinetoxml Headless (op_outlinetoxml_headless) - 12 tests: 12 pass (100%)</title>
-    <dateCreated>Thu, 05 Feb 2026 07:07:01 GMT</dateCreated>
+    <title>Op Outlinetoxml Headless (op_outlinetoxml_headless) - 15 tests: 15 pass (100%)</title>
+    <dateCreated>Fri, 06 Feb 2026 06:03:28 GMT</dateCreated>
   </head>
   <body>
     <outline text="op.outlineToXml - empty outline returns valid OPML - Convert empty outline to OPML (previously caused stack overflow)">
@@ -153,6 +153,60 @@
         <outline text="op.setLineText(&quot;Test&quot;)"/>
         <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;User&quot;, &quot;user@example.com&quot;))"/>
         <outline text="return string.mid(xml, 1, 5) == &quot;&lt;?xml&quot;"/>
+      </outline>
+    </outline>
+    <outline text="round-trip - single line preserves content - Converting outline to XML and back preserves line text">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.rtSrc)"/>
+        <outline text="target.set(@workspace.rtSrc)"/>
+        <outline text="op.setLineText(&quot;RoundTripTest&quot;)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.rtSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @workspace.rtDst)"/>
+        <outline text="op.xmlToOutline(xml, @workspace.rtDst)"/>
+        <outline text="target.set(@workspace.rtDst)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="return op.getLineText() == &quot;RoundTripTest&quot;"/>
+      </outline>
+    </outline>
+    <outline text="round-trip - multiple lines preserved - Converting multi-line outline to XML and back preserves first and second lines">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.rtMultiSrc)"/>
+        <outline text="target.set(@workspace.rtMultiSrc)"/>
+        <outline text="op.setLineText(&quot;First&quot;)"/>
+        <outline text="op.insert(&quot;Second&quot;, down)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.rtMultiSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @workspace.rtMultiDst)"/>
+        <outline text="op.xmlToOutline(xml, @workspace.rtMultiDst)"/>
+        <outline text="target.set(@workspace.rtMultiDst)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="local(hasFirst = op.getLineText() == &quot;First&quot;)"/>
+        <outline text="op.go(right, 1)"/>
+        <outline text="local(hasSecond = op.getLineText() == &quot;Second&quot;)"/>
+        <outline text="return hasFirst and hasSecond"/>
+      </outline>
+    </outline>
+    <outline text="round-trip - nested hierarchy preserved - Converting nested outline to XML and back preserves structure">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(outlineType, @workspace.rtNestedSrc)"/>
+        <outline text="target.set(@workspace.rtNestedSrc)"/>
+        <outline text="op.setLineText(&quot;Parent&quot;)"/>
+        <outline text="op.insert(&quot;Child&quot;, right)"/>
+        <outline text="local(xml = op.outlineToXml(@workspace.rtNestedSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @workspace.rtNestedDst)"/>
+        <outline text="op.xmlToOutline(xml, @workspace.rtNestedDst)"/>
+        <outline text="target.set(@workspace.rtNestedDst)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="local(hasChild = op.go(right, 1))"/>
+        <outline text="return hasChild"/>
       </outline>
     </outline>
   </body>

@@ -1,0 +1,84 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Menu Value Copy (menu_value_copy) - 5 tests: 4 pass (80%) 1 skip (20%)</title>
+    <dateCreated>Fri, 06 Feb 2026 06:03:28 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="mbar copy - copy menubar value to new location - Create a menubar at workspace.src, copy to workspace.dst, verify typeof is mbar">
+      <outline text="Metadata">
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.src)"/>
+        <outline text="workspace.dst = workspace.src"/>
+        <outline text="local (result = typeof(workspace.dst) == 'mbar')"/>
+        <outline text="delete(@workspace.src)"/>
+        <outline text="delete(@workspace.dst)"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="mbar copy - defined() works after copy - Create menubar, copy it, verify defined() returns true on the copy">
+      <outline text="Metadata">
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.src)"/>
+        <outline text="workspace.dst = workspace.src"/>
+        <outline text="local (result = defined(@workspace.dst))"/>
+        <outline text="delete(@workspace.src)"/>
+        <outline text="delete(@workspace.dst)"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="mbar copy - copy menubar with items preserves content - Create menubar with items, copy it, verify the copy has the items via getScript">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: menu.addMenuCommand and related menu editing verbs not implemented in headless"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(menubarType, @workspace.src)"/>
+        <outline text="menu.addMenuCommand(@workspace.src, &quot;File&quot;, &quot;Open&quot;, &quot;fileOpen()&quot;)"/>
+        <outline text="workspace.dst = workspace.src"/>
+        <outline text="target.set(@workspace.dst)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="op.expand()"/>
+        <outline text="op.go(right, 1)"/>
+        <outline text="menu.getScript(@workspace.retrieved)"/>
+        <outline text="local (result = (workspace.retrieved == &quot;fileOpen()&quot;))"/>
+        <outline text="delete(@workspace.src)"/>
+        <outline text="delete(@workspace.dst)"/>
+        <outline text="try {delete(@workspace.retrieved)}"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="mbar read - typeof userland.virginBookmarkMenu is mbar - Verify we can access userland.virginBookmarkMenu and its type is mbar">
+      <outline text="Metadata">
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return typeof(userland.virginBookmarkMenu) == 'mbar'"/>
+      </outline>
+    </outline>
+    <outline text="mbar copy - copy userland.virginBookmarkMenu to workspace - Copy userland.virginBookmarkMenu to workspace location - this is the exact operation that was failing">
+      <outline text="Metadata">
+        <outline text="skip: False"/>
+        <outline text="skip_reason: "/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="workspace.testCopy = userland.virginBookmarkMenu"/>
+        <outline text="local (result = typeof(workspace.testCopy) == 'mbar')"/>
+        <outline text="delete(@workspace.testCopy)"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+  </body>
+</opml>
