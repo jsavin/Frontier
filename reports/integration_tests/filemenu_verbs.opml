@@ -1,0 +1,319 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Filemenu Verbs (filemenu_verbs) - 22 tests: 15 pass (68%) 7 skip (31%)</title>
+    <dateCreated>Fri, 06 Feb 2026 08:23:43 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="fileMenu.new - returns not implemented - fileMenu.new is a stub verb that returns 'not implemented' error">
+      <outline text="Metadata">
+        <outline text="expected_result: error_caught"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="fileMenu.new(&quot;test&quot;)"/>
+          <outline text="return &quot;should_have_failed&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;error_caught&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="fileMenu.savecopy - returns not implemented - fileMenu.savecopy is a stub verb that returns 'not implemented' error">
+      <outline text="Metadata">
+        <outline text="expected_result: error_caught"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="fileMenu.savecopy(&quot;test&quot;)"/>
+          <outline text="return &quot;should_have_failed&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;error_caught&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="fileMenu.revert - returns not implemented - fileMenu.revert is a stub verb that returns 'not implemented' error">
+      <outline text="Metadata">
+        <outline text="expected_result: error_caught"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="fileMenu.revert()"/>
+          <outline text="return &quot;should_have_failed&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;error_caught&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="fileMenu stub verbs - multiple stubs return not implemented - Verify that new, savecopy, and revert all return errors">
+      <outline text="Metadata">
+        <outline text="expected_result: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(caught = 0)"/>
+        <outline text="try { fileMenu.new(&quot;test&quot;) } else { caught = caught + 1 }"/>
+        <outline text="try { fileMenu.savecopy(&quot;test&quot;) } else { caught = caught + 1 }"/>
+        <outline text="try { fileMenu.revert() } else { caught = caught + 1 }"/>
+        <outline text="return caught"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.closeall - no databases open - closeall with no guest databases open should succeed (no-op)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return fileMenu.closeall()"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.close - no target set - close with no target set should succeed (no-op returning true)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.clear()"/>
+        <outline text="return fileMenu.close()"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.close - target is not a guest database - close when target points at a non-guest-database table is a no-op">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new(tableType, @workspace.notADb)"/>
+        <outline text="target.set(@workspace.notADb)"/>
+        <outline text="local(result = fileMenu.close())"/>
+        <outline text="target.clear()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.open - nonexistent file - Opening a file that doesn't exist should fail">
+      <outline text="Metadata">
+        <outline text="expected_result: error_caught"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="fileMenu.open(&quot;/tmp/nonexistent_database_12345.root7&quot;)"/>
+          <outline text="return &quot;should_have_failed&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;error_caught&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="fileMenu.open - open a new guest database - Create a database with db.new, then open it with fileMenu.open">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_guest.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="local(result = fileMenu.open(dbPath))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.open - open same database twice returns true - Opening an already-open guest database should return true (idempotent)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_double_open.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="local(result = fileMenu.open(dbPath))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.open - with hidden parameter - Opening with optional hidden parameter (ignored in headless) should succeed">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_hidden.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="local(result = fileMenu.open(dbPath, true))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.close - close targeted guest database - Open a guest database, set it as target, then close it">
+      <outline text="Metadata">
+        <outline text="skip: fileMenu.close requires target to be in system.compiler.files; target.set uses workspace addresses"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_close_target.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="target.set(@[dbPath])"/>
+        <outline text="local(result = fileMenu.close())"/>
+        <outline text="target.clear()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.closeall - close single open database - Open one guest database then close all">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_single.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="local(result = fileMenu.closeall())"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.closeall - close multiple open databases - Open two guest databases then close all">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath1 = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_multi1.root7&quot;)"/>
+        <outline text="local(dbPath2 = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_multi2.root7&quot;)"/>
+        <outline text="db.new(dbPath1)"/>
+        <outline text="db.new(dbPath2)"/>
+        <outline text="fileMenu.open(dbPath1)"/>
+        <outline text="fileMenu.open(dbPath2)"/>
+        <outline text="local(result = fileMenu.closeall())"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.closeall - idempotent (call twice) - Calling closeall twice should succeed both times">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_twice.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="local(result = fileMenu.closeall())"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.save - save system root (no params) - Calling fileMenu.save() with no parameters saves the system root database">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: Pre-existing issue: examples.cleanupWindows entry cannot be packed, blocking system root save"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return fileMenu.save()"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.save - save guest database by path - Open a guest database, write a value, then save it by path">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: Requires fileMenu.save guest db path matching to work - db.setvalue/fileMenu.save path interop needs verification"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_save_guest.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="db.setvalue(dbPath, &quot;testKey&quot;, &quot;testValue&quot;)"/>
+        <outline text="local(result = fileMenu.save(dbPath))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.save - save nonexistent guest database fails - Saving a database that isn't open should fail">
+      <outline text="Metadata">
+        <outline text="expected_result: error_caught"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="fileMenu.save(&quot;/tmp/not_open_database_12345.root7&quot;)"/>
+          <outline text="return &quot;should_have_failed&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;error_caught&quot;"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="fileMenu lifecycle - open, write, save, closeall, reopen, verify - Full lifecycle test: create database, open with fileMenu, write data, save, close all, reopen with db.open, and verify persisted data">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: Depends on fileMenu.save guest db working - requires path matching and save interop verification"/>
+        <outline text="expected_result: lifecycleValue"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_lifecycle.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="db.setvalue(dbPath, &quot;lifecycleKey&quot;, &quot;lifecycleValue&quot;)"/>
+        <outline text="fileMenu.save(dbPath)"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="db.open(dbPath, false)"/>
+        <outline text="local(val = db.getvalue(dbPath, &quot;lifecycleKey&quot;))"/>
+        <outline text="db.close(dbPath)"/>
+        <outline text="return val"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.open + db.setvalue/getvalue - database interop - Guest database opened via fileMenu.open is accessible via db.* verbs">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: db.setvalue path lookup may not match fileMenu.open filespec - needs path resolution investigation"/>
+        <outline text="expected_result: 42"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_interop.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="db.setvalue(dbPath, &quot;interopTest&quot;, 42)"/>
+        <outline text="local(val = db.getvalue(dbPath, &quot;interopTest&quot;))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return val"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.open + db.newtable - create table in guest db - Can create tables in guest database opened via fileMenu.open">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: db.newtable path lookup may not match fileMenu.open filespec - needs path resolution investigation"/>
+        <outline text="expected_result: 1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_table.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="db.newtable(dbPath, &quot;myTable&quot;)"/>
+        <outline text="db.setvalue(dbPath, &quot;myTable.key1&quot;, &quot;value1&quot;)"/>
+        <outline text="local(count = db.countitems(dbPath, &quot;myTable&quot;))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return count"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.open + db.defined - check existence in guest db - db.defined works on guest database opened via fileMenu.open">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: db.defined path lookup may not match fileMenu.open filespec - needs path resolution investigation"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_defined.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="db.setvalue(dbPath, &quot;existsTest&quot;, &quot;yes&quot;)"/>
+        <outline text="local(exists = db.defined(dbPath, &quot;existsTest&quot;))"/>
+        <outline text="local(notExists = db.defined(dbPath, &quot;doesNotExist&quot;))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return exists and (not notExists)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>
