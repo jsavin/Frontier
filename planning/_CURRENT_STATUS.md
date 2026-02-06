@@ -1,57 +1,62 @@
 # Current Status
 
-Last Updated: 2026-01-31
+Last Updated: 2026-02-05
 
-## Current Focus: Webserver Working & REPL Transformation 🚀
+## Current Focus: Startup Scripts, Menu System & GUI Planning
 
-**Status**: Major milestone achieved - **the webserver works!** Full web application layer functional in headless mode. REPL transformed with persistent variables, navigation commands, and event loop architecture.
+**Status**: Startup script execution working in headless mode. Menu system stabilized with migration fixes. GUI application planning complete with full protocol and editor specifications. Compiler warnings eliminated.
 
 **Latest Release**: **v1.0.0-alpha.4** (January 31, 2026)
 
 **Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete.
 
-## Recent Achievements (January 25-31, 2026)
+## Recent Achievements (February 1-5, 2026)
 
-### Webserver & inetd Working - ✅ RELEASED
-- **PR #366**: Enable webserver Hello World in headless mode
-- **PR #363**: Webserver Hello World initial implementation
-- `inetd.startOne()` and webserver responders now functional
-- Full HTTP request/response handling via UserTalk callbacks
-- Visit `http://localhost:8080/helloworld` after starting
+### Startup Scripts & Path-Based File Verbs - ✅ MERGED
+- **PR #378**: Enable `system.startup.startupScript` execution in headless mode
+- **PR #382**: Startup scripts and path-based file verbs
+- **PR #389**: Fix startup warnings #2 and #3 (menupack and startup script)
+- Startup script now runs at boot, enabling daemon-mode workflows
+- Path-based file verbs operational
 
-**Quick Start:**
-```usertalk
-[root]> user.inetd.config.http.port = 8080
-[root]> user.webserver.responders.helloWorld.enabled = true
-[root]> inetd.startOne (@user.inetd.config.http)
-# Visit http://localhost:8080/helloworld
-```
+### Menu System Stabilization - ✅ MERGED
+- **PR #383**: Add proper `menubarType` data access for headless mode
+- **PR #384**: Comprehensive menu integration tests for headless mode
+- **PR #385**: Fix V6 menu loading during migration and byte-swap linkage
+- **PR #387**: Fix `int32_t` for disk struct fields to ensure 4-byte size on 64-bit
+- **PR #388**: Fix `op.outlineToXml` for headless mode via window verb stubs
+- Static assertions added for disk struct sizes (anti-pattern documented)
 
-### REPL Transformation - ✅ RELEASED
-- **PR #371**: Persistent variables, focus tracking, tab completion
-  - Variables persist across evaluations in `system.temp.FrontierREPL.variables`
-  - Focus tracked in `system.temp.FrontierREPL.focus`
-  - Tab completion for `/list` command paths
-- **PR #370**: Navigation commands (`/jump`, `/list`)
-  - `/jump [path]` - Navigate to tables (like `cd`)
-  - `/list [path]` - List table contents (like `ls`)
-  - Prompt updates to show current location
-- **PR #368**: Event loop architecture
-  - Non-blocking REPL using linenoise async API
-  - TCP callbacks process while waiting for input
-  - Ctrl-C handling at prompt and during scripts
-  - `msg()` output prefixed with "msg: " for clarity
+### Compiler Warning Elimination - ✅ COMPLETE
+- **PR #372**: Reduce compiler warnings from 154 to 24 (84% reduction)
+- **PR #373**: Eliminate remaining 24 warnings (Phase 2)
+- Zero compiler warnings achieved
 
-### 100% TCP Verb Coverage - ✅ COMPLETE
-- **PR #361**: All TCP verbs implemented, legacy API migrated
-- Removed 2,406 lines of legacy code
-- Security hardening: ARM64 type safety, DoS protection
+### Build & Distribution Improvements - ✅ MERGED
+- **PR #381**: Add `make dist` target for legacy-compatible distribution
+- **PR #377**: Add `--migrate` flag for standalone database migration
+- Default Makefile target now builds `all` (with dist)
 
-### Bug Fixes - ✅ MERGED
-- **PR #371**: Fix double-free crash in REPL variable sync
-- **PR #371**: Fix crash when defining functions (skip code values gracefully)
-- **PR #360**: Fix 51 NULL context calls to *verbinmemory functions
-- **PR #359**: Fix defined() error suppression
+### GUI Application Planning - ✅ DOCUMENTED
+- Complete planning directory: `planning/gui/`
+- **ARCHITECTURE.md**: Overall GUI architecture, multi-user model, authentication, federation
+- **PROTOCOL.md**: JSON protocol specification for client-server communication
+- **TABLE_BROWSER.md**: Table browser / ODB navigator specification
+- **SCRIPT_EDITOR.md**: Outline-based script editor with debugging
+- **OUTLINE_EDITOR.md**: Outline editor with hoisting, attributes, render modes
+- **MENU_EDITOR.md**: Menu bar and popup menu editor
+- **WPTEXT_EDITOR.md**: Rich text (RTF) editor specification
+- **CONSOLE.md**: Unified REPL and QuickScript console
+- External types documented (table, script, outline, menubar, wptext, etc.)
+
+### Quality & Documentation - ✅ MERGED
+- Demoted system table snapshot logging from WARN to DEBUG
+- Removed 255-byte result truncation in CLI and REPL output
+- Suppressed error logging for caught try block errors
+- Changed menu loading diagnostics from ERROR to DEBUG level
+- Added disk struct audit findings to anti-patterns guide
+- Window verb stub documentation improved
+- OPML test export with pass/skip/fail statistics
 
 ## Active Development Status
 
@@ -71,10 +76,9 @@ Last Updated: 2026-01-31
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: 1,698 tests total
-- **Passing**: 1,451 (85.4%)
+- **Current**: 1,777 tests total (up from 1,698)
 - **Skipped**: 151
-- **Failing**: 96 (pre-existing issues)
+- New tests added for menus, path resolution, and startup scripts
 
 All tests running via:
 - `./tools/run_headless_tests.sh` - C unit tests
@@ -98,18 +102,18 @@ All tests running via:
 
 ### Queued Work
 
-**GUI Application** (In Planning):
-- Planning documents in `docs/planning/gui/`
+**GUI Application** (Planning Complete - Ready for Implementation):
+- Full planning documents in `planning/gui/`
+- Protocol specification, all editor specs documented
 - Native macOS application with documented API
 - Third-party UI connection support
-- Reference: docs/planning/gui/ARCHITECTURE.md
+- Reference: planning/gui/ARCHITECTURE.md, planning/gui/PROTOCOL.md
 
 **Phase 4 P0a: Global State Elimination** (Queued - Launch Blocking):
 - Hash table context migration
 - Parser state migration
 - Control flow & error state cleanup
 - Reference: planning/phase4/INDEX.md, planning/phase4/p0a-critical-thread-safety/README.md
-- Timeline: 3-week effort when prioritized
 
 **REPL Enhancements** (Future):
 - Function persistence (requires code tree copying)
@@ -119,14 +123,14 @@ All tests running via:
 
 ### Immediate Priorities
 
-1. **GUI Application Planning**
-   - Finalize architecture for native macOS app
-   - Document API for third-party connections
-   - Begin prototype implementation
+1. **GUI Application Prototype**
+   - Planning is complete; begin prototype implementation
+   - Start with table browser and protocol layer
+   - Native macOS app using specs in `planning/gui/`
 
-2. **Documentation Updates**
-   - Update CLI usage guide with new REPL commands
-   - Document `system.temp.FrontierREPL` structure for users
+2. **Startup Script Hardening**
+   - Validate all critical-path kernel verbs for daemon mode
+   - Long-running HTTP process testing
 
 ### Strategic Decisions Required
 
@@ -140,7 +144,9 @@ Before resuming major infrastructure work, need decisions on:
 - **Phase 4 Overview**: planning/phase4/INDEX.md
 - **Threading Plan**: planning/phase4/threading/README.md
 - **Networking Plan**: planning/phase4/networking/INDEX.md
-- **GUI Architecture**: docs/planning/gui/ARCHITECTURE.md
+- **GUI Planning**: planning/gui/README.md
+- **GUI Architecture**: planning/gui/ARCHITECTURE.md
+- **GUI Protocol**: planning/gui/PROTOCOL.md
 - **CRDT Foundation**: planning/CRDT_FOUNDATION_ROADMAP.md
 
 ### Implementation Guides

@@ -1,40 +1,52 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-01-31)
+Status: In Progress (Updated 2026-02-05)
 
-## 🎉 Recently Completed Milestones
+## Recently Completed Milestones
 
-### Webserver & inetd Working - ✅ RELEASED (v1.0.0-alpha.4)
-**Resolution**: PRs #366, #363 merged (2026-01-31)
-- `inetd.startOne()` and webserver responders functional in headless mode
-- Full HTTP request/response handling via UserTalk callbacks
-- Fixed `grabthreadglobals()` to return success in headless mode
-- Initialized Frontier verbs in headless `sysinitverbs()`
-- Integration tests validate full request/response cycle
+### Startup Scripts & Path-Based File Verbs - ✅ MERGED (Feb 1-5)
+**Resolution**: PRs #378, #382, #389 merged
+- `system.startup.startupScript` execution enabled in headless mode
+- Path-based file verbs operational
+- Startup warnings #2 and #3 fixed (menupack and startup script)
+- Enables daemon-mode workflows
 
-### REPL Transformation - ✅ RELEASED (v1.0.0-alpha.4)
-**Resolution**: PRs #371, #370, #368 merged (2026-01-31)
-- **Persistent Variables**: Variables survive across evaluations in `system.temp.FrontierREPL.variables`
-- **Navigation Commands**: `/jump` and `/list` for database exploration
-- **Event Loop**: Non-blocking REPL with concurrent TCP callback processing
-- **Focus Tracking**: Current location in `system.temp.FrontierREPL.focus`
-- **Tab Completion**: Path completion for `/list` command
+### Menu System Stabilization - ✅ MERGED (Feb 2-5)
+**Resolution**: PRs #383, #384, #385, #387, #388 merged
+- Proper `menubarType` data access for headless mode
+- Comprehensive menu integration tests added
+- V6 menu loading fixed during migration (byte-swap linkage)
+- Disk struct fields fixed to `int32_t` for 64-bit safety
+- `op.outlineToXml` fixed for headless mode via window verb stubs
+- Static assertions added; disk struct anti-pattern documented
 
-### TCP Verbs 100% Coverage - ✅ COMPLETE
-**Resolution**: PR #361 merged (2026-01-28)
-- All 23 TCP verbs implemented
-- Migrated from legacy `fwsNetEvent*` to `tcp_*` API
-- Removed 2,406 lines of legacy code
-- Security hardening: ARM64 type safety, DoS protection
+### Compiler Warning Elimination - ✅ COMPLETE (Feb 1)
+**Resolution**: PRs #372, #373 merged
+- Phase 1: 154 → 24 warnings (84% reduction)
+- Phase 2: 24 → 0 warnings (100% elimination)
+- Zero compiler warnings achieved
 
-### Issue #347 (P0): NULL context audit - ✅ CLOSED
-**Resolution**: PR #360 merged (2026-01-28)
-- Fixed 51 NULL context calls to *verbinmemory functions
-- Added explicit `db_context` structs with hard assertions
+### Build & Distribution - ✅ MERGED (Feb 1)
+**Resolution**: PRs #377, #381 merged
+- `make dist` target for legacy-compatible distribution
+- `--migrate` flag for standalone database migration
+- Default Makefile target now builds `all` (with dist)
+
+### GUI Application Planning - ✅ DOCUMENTED (Feb 2-5)
+**Resolution**: 8 specification documents in `planning/gui/`
+- Architecture, protocol, and all editor specifications complete
+- Table browser, script editor, outline editor, menu editor, wptext editor, console
+- External types and editor mapping documented
+
+### Quality Improvements - ✅ MERGED (Feb 1-5)
+- Removed 255-byte result truncation in CLI and REPL output
+- Demoted noisy logging (system table snapshots, menu loading, caught try errors)
+- OPML test export with pass/skip/fail statistics
+- Window verb stub documentation improved
 
 ---
 
-## 📋 P0 Architectural Decisions (Strategic - Block Launch)
+## P0 Architectural Decisions (Strategic - Block Launch)
 
 These require design/planning before implementation can proceed.
 
@@ -63,9 +75,9 @@ These require design/planning before implementation can proceed.
 
 ---
 
-## 📊 Current Work Status
+## Current Work Status
 
-### Verb Coverage: 68% (482/710) ✅
+### Verb Coverage: 68% (482/710)
 
 **Complete Processors** (100%):
 - base64, clock, crypt, date, db, dialog, file, html, inetd
@@ -84,34 +96,31 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,698 total (1,451 passing)
+### Integration Tests: 1,777 total (up from 1,698)
+- 151 skipped
+- New tests for menus, path resolution, startup scripts
 
 ---
 
-## 🚀 Next Milestones
+## Next Milestones
 
-### 1. GUI Application Development
-**Status**: In Planning
-**Goal**: Native macOS application with documented API for third-party connections
+### 1. GUI Application Prototype
+**Status**: Planning complete - ready for implementation
+**Goal**: Native macOS application communicating with frontier-cli
 **What's Ready**:
-- Planning documents in `docs/planning/gui/`
-- CLI proves the runtime works end-to-end
-- Webserver validates complex subsystem integration
+- Full planning directory: `planning/gui/`
+- Protocol specification (JSON over stdin/stdout or socket)
+- All editor specifications (table browser, script, outline, menu, wptext, console)
+- Architecture with multi-user model, authentication, federation
 
 **Approach**:
-1. Finalize GUI architecture document
-2. Document connection API for third-party apps
-3. Build native macOS prototype
-4. Iterate based on real usage
+1. Implement protocol layer in frontier-cli
+2. Build table browser (core ODB navigation)
+3. Add script editor with debugging
+4. Iterate on remaining editors
 
-### 2. REPL Function Persistence
-**Status**: Known limitation, future work
-**Goal**: Allow function definitions to persist across evaluations
-**Challenge**: Code values (codevaluetype) require special handling for tree copying
-**Current Behavior**: Functions defined but not callable in subsequent evaluations
-
-### 3. system.startup.startupScript Analysis
-**Status**: Not started
+### 2. Startup Script Hardening
+**Status**: Startup scripts working, needs validation
 **Goal**: Ensure all critical-path kernel verbs for daemon mode are available
 **Prerequisites for**: Long-running HTTP process, daemon mode
 **What it validates**:
@@ -119,15 +128,21 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - All verbs in startup critical path are identified
 - Gaps in kernel verb coverage are surfaced
 
+### 3. REPL Function Persistence
+**Status**: Known limitation, future work
+**Goal**: Allow function definitions to persist across evaluations
+**Challenge**: Code values (codevaluetype) require special handling for tree copying
+**Current Behavior**: Functions defined but not callable in subsequent evaluations
+
 ---
 
-## 🎯 Recommended Work Priority
+## Recommended Work Priority
 
 ### Tier 1: GUI Application (User-Facing Value)
-1. **GUI Architecture Finalization**
-   - Document API for third-party connections
-   - Design native macOS application structure
-   - Begin prototype implementation
+1. **GUI Prototype Implementation**
+   - Protocol layer in frontier-cli
+   - Table browser as first editor
+   - Specs ready in `planning/gui/`
 
 ### Tier 2: Strategic Decisions (Gate Major Features)
 2. **Resolve Issue #86** (Runtime context architecture)
@@ -141,7 +156,7 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Tier 3: Major Feature Work (After Decisions)
 4. **Phase 4 P0a** (Global State Elimination)
-   - 3-week effort, launch blocking
+   - Launch blocking
    - Hash table context migration
    - Parser state migration
    - Control flow & error state cleanup
@@ -162,7 +177,7 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ---
 
-## 🔍 P1 Issues - High Priority
+## P1 Issues - High Priority
 
 ### Testing & Quality
 - **Issue #357** (P2): Add integration tests for REPL word navigation
@@ -198,39 +213,43 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ---
 
-## 🎉 Recently Completed (Jan 25-31, 2026)
+## Recently Completed (Feb 1-5, 2026)
 
-### Webserver & inetd
-- **PR #366**: Enable webserver Hello World in headless mode
-- **PR #363**: Webserver Hello World initial implementation
+### Startup Scripts & Menus
+- **PR #389**: Fix startup warnings #2 and #3 (menupack and startup script)
+- **PR #388**: Fix op.outlineToXml for headless mode
+- **PR #387**: Fix int32_t for disk struct fields on 64-bit
+- **PR #385**: Fix V6 menu loading during migration and byte-swap linkage
+- **PR #384**: Comprehensive menu integration tests for headless mode
+- **PR #383**: Add proper menubarType data access for headless mode
+- **PR #382**: Startup scripts and path-based file verbs
+- **PR #381**: Add make dist target for legacy-compatible distribution
+- **PR #378**: Enable system.startup.startupScript execution in headless mode
+- **PR #377**: Add --migrate flag for standalone database migration
 
-### REPL Transformation
-- **PR #371**: Persistent variables, focus tracking, tab completion
-- **PR #370**: Navigation commands (`/jump`, `/list`)
-- **PR #368**: Event loop architecture and display improvements
+### Compiler & Quality
+- **PR #373**: Eliminate remaining 24 compiler warnings (Phase 2)
+- **PR #372**: Reduce compiler warnings from 154 to 24 (84% reduction)
 
-### TCP & Bug Fixes
-- **PR #361**: 100% TCP verbs coverage and legacy API migration
-- **PR #360**: Fix 51 NULL context calls (Issue #347)
-- **PR #359**: Fix defined() error suppression (Issue #325)
-
-### Earlier Completions (Jan 19-28)
+### Earlier Completions (Jan 25-31)
 See planning/_STATUS_ARCHIVE.md for:
-- TCP Networking Phase 1A/1B/3 (PRs #327, #329, #330)
-- Thread Registry & Testing Foundation (PRs #317, #318)
-- Database Migration & Path Resolution Fixes (PRs #336, #337, #342)
-- REPL improvements (PRs #356, #358)
-- Infrastructure Improvements (PRs #338, #340, #343, #326)
+- Webserver & inetd working (PRs #366, #363)
+- REPL transformation (PRs #371, #370, #368)
+- TCP verbs 100% coverage (PR #361)
+- NULL context audit (PR #360)
+- Error suppression fix (PR #359)
 
 ---
 
-## 📚 Reference Documentation
+## Reference Documentation
 
 ### Planning Documents
 - **Phase 4 Overview**: planning/phase4/INDEX.md
 - **Threading Plan**: planning/phase4/threading/README.md
 - **Networking Plan**: planning/phase4/networking/INDEX.md
-- **GUI Architecture**: docs/planning/gui/ARCHITECTURE.md
+- **GUI Planning**: planning/gui/README.md
+- **GUI Architecture**: planning/gui/ARCHITECTURE.md
+- **GUI Protocol**: planning/gui/PROTOCOL.md
 - **CRDT Foundation**: planning/CRDT_FOUNDATION_ROADMAP.md
 
 ### Implementation Guides
@@ -257,7 +276,7 @@ See planning/_STATUS_ARCHIVE.md for:
 
 ---
 
-## 🗑️ Deferred / Design-Dependent (Phase 2+)
+## Deferred / Design-Dependent (Phase 2+)
 
 ### Major Architectural Decisions (Not Blocking Current Work)
 - **Issue #85** (P1): UI boundary via Ports & Adapters (depends on #86)
@@ -283,19 +302,25 @@ See planning/_STATUS_ARCHIVE.md for:
 
 ---
 
-## 📝 Notes
+## Notes
 
 ### Strategic Context
-- **Current focus**: GUI application development, documentation
-- **Major milestone achieved**: Webserver works, REPL transformed
+- **Current focus**: GUI application prototype, startup script hardening
+- **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: 1,698 integration tests (1,451 passing)
+- **Test health**: 1,777 integration tests (151 skipped)
 - **Latest release**: v1.0.0-alpha.4 (January 31, 2026)
+- **Compiler warnings**: Zero (fully eliminated)
 
 ### Workstream Status
+- **Startup Scripts**: ✅ WORKING - Boot-time execution in headless mode
+- **Menu System**: ✅ STABILIZED - Migration, headless access, integration tests
+- **GUI Planning**: ✅ COMPLETE - Full specs ready for implementation
 - **Webserver**: ✅ WORKING - Full web application layer functional
 - **REPL**: ✅ TRANSFORMED - Persistent variables, navigation, event loop
 - **TCP Networking**: ✅ 100% COMPLETE (23/23 verbs)
+- **Compiler Warnings**: ✅ ELIMINATED - Zero warnings
+- **Build/Dist**: ✅ IMPROVED - make dist, --migrate flag
 - **Threading**: Phase 1 foundation complete (11 verbs), P0a queued
-- **GUI**: In planning - next major focus
-- **Documentation**: Strong - comprehensive guides in place
+- **GUI Implementation**: Ready to begin - planning complete
+- **Documentation**: Strong - comprehensive guides and GUI specs in place
