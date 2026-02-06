@@ -1049,6 +1049,40 @@ boolean menuverbnew (Handle hdata, hdlexternalvariable *hvariable) {
 	} /*menuverbnew*/
 
 
+boolean menuverbcopyvalue (hdlexternalvariable hsource, hdlexternalvariable *hcopy) {
+
+	/*
+	2026-02-05: new routine, so we don't have to pack/unpack for menu copies.
+
+	Always loads the menu into memory first (if not already loaded), then copies
+	from the in-memory outline representation. This avoids format mismatch issues
+	that can occur when the database stores legacy (v6) format data but the global
+	format mode is set to v7.
+
+	The load-then-copy approach follows the same pattern as opverbcopyvalue but
+	uses menuverbinmemory() which has proper format detection via
+	db_format_is_legacy_db().
+	*/
+
+	register hdlmenuvariable hv = (hdlmenuvariable) hsource;
+	hdlmenurecord hm;
+	boolean fl;
+
+	/* Ensure the menu is loaded into memory with correct format detection */
+	if (!menuverbinmemory (hv))
+		return (false);
+
+	hm = (hdlmenurecord) (**hv).variabledata;
+
+	fl = menuverbnew ((Handle) (**hm).menuoutline, hcopy);
+
+	if (fl)
+		(***hcopy).id = (**hv).id;
+
+	return (fl);
+	} /*menuverbcopyvalue*/
+
+
 static boolean menubuildverb (void) {
 	
 	/*

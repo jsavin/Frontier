@@ -591,6 +591,10 @@ boolean menuverbnew (Handle hdata, hdlexternalvariable *hv) {
     (void) hdata; (void) hv; return false;
 }
 
+boolean menuverbcopyvalue (hdlexternalvariable hsource, hdlexternalvariable *hcopy) {
+    (void) hsource; (void) hcopy; return false;
+}
+
 boolean menuverbinmemory_context (const db_context *ctx, hdlexternalvariable hvariable) {
     /*
      * Menu externals are not materialized during headless migration.

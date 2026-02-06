@@ -83,6 +83,8 @@ extern boolean menuverbdispose (hdlexternalvariable, boolean);
 
 extern boolean menuverbnew (Handle, hdlexternalvariable *);
 
+extern boolean menuverbcopyvalue (hdlexternalvariable, hdlexternalvariable *);
+
 extern boolean menunewmenubar (hdlhashtable, bigstring, hdlmenurecord *);
 
 extern boolean menugetmenubar (hdlhashtable, bigstring, boolean, hdlmenurecord *);
