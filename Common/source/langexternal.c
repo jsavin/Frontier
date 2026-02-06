@@ -1324,7 +1324,7 @@ boolean langexternalcopyvalue (const tyvaluerecord *v1, tyvaluerecord *v2) {
 
 			return (true);
 
-		case idmenuprocessor:
+		case idmenuprocessor: /* dedicated copy for proper v6/v7 format detection */
 			if (!menuverbcopyvalue (h, &h))
 				return (false);
 
