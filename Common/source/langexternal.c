@@ -1314,16 +1314,24 @@ boolean langexternalcopyvalue (const tyvaluerecord *v1, tyvaluerecord *v2) {
 	boolean fl;
 	
 	switch ((**h).id) {
-		
-		case idoutlineprocessor: 
+
+		case idoutlineprocessor:
 		case idscriptprocessor:
 			if (!opverbcopyvalue (h, &h))
 				return (false);
-			
+
 			setexternalvalue ((Handle) h, v2);
-			
+
 			return (true);
-			
+
+		case idmenuprocessor:
+			if (!menuverbcopyvalue (h, &h))
+				return (false);
+
+			setexternalvalue ((Handle) h, v2);
+
+			return (true);
+
 		default:
 			if (!langpackvalue (*v1, &x, HNoNode))
 				return (false);

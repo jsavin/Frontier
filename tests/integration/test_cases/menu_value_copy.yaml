@@ -1,0 +1,104 @@
+# Integration tests for copying/assigning menubar (mbar) type values
+#
+# These tests verify that menubar values can be copied and assigned between
+# ODB locations, which was previously broken in headless mode. The core issue
+# was that assigning an mbar value from one location to another would fail,
+# preventing operations like:
+#   workspace.copy = userland.virginBookmarkMenu
+#
+# Test Strategy:
+#   - Test basic copy of empty menubar
+#   - Verify typeof() and defined() work on copied values
+#   - Test reading userland.virginBookmarkMenu (real ODB value)
+#   - Test copying userland.virginBookmarkMenu (the exact failing operation)
+
+tests:
+  # ==========================================================================
+  # Basic Menubar Value Copy Tests
+  # ==========================================================================
+
+  - name: "mbar copy - copy menubar value to new location"
+    description: "Create a menubar at workspace.src, copy to workspace.dst, verify typeof is mbar"
+    skip: false
+    skip_reason: ""
+    script: |
+      new(menubarType, @workspace.src);
+      workspace.dst = workspace.src;
+      local (result = typeof(workspace.dst) == 'mbar');
+      delete(@workspace.src);
+      delete(@workspace.dst);
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # defined() After Copy
+  # ==========================================================================
+
+  - name: "mbar copy - defined() works after copy"
+    description: "Create menubar, copy it, verify defined() returns true on the copy"
+    skip: false
+    skip_reason: ""
+    script: |
+      new(menubarType, @workspace.src);
+      workspace.dst = workspace.src;
+      local (result = defined(@workspace.dst));
+      delete(@workspace.src);
+      delete(@workspace.dst);
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Copy Menubar With Menu Items (requires menu.addMenuCommand, not yet implemented)
+  # ==========================================================================
+
+  - name: "mbar copy - copy menubar with items preserves content"
+    description: "Create menubar with items, copy it, verify the copy has the items via getScript"
+    skip: true
+    skip_reason: "menu.addMenuCommand and related menu editing verbs not implemented in headless"
+    script: |
+      new(menubarType, @workspace.src);
+      menu.addMenuCommand(@workspace.src, "File", "Open", "fileOpen()");
+      workspace.dst = workspace.src;
+      target.set(@workspace.dst);
+      op.firstSummit();
+      op.expand();
+      op.go(right, 1);
+      menu.getScript(@workspace.retrieved);
+      local (result = (workspace.retrieved == "fileOpen()"));
+      delete(@workspace.src);
+      delete(@workspace.dst);
+      try {delete(@workspace.retrieved)};
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Read userland.virginBookmarkMenu
+  # ==========================================================================
+
+  - name: "mbar read - typeof userland.virginBookmarkMenu is mbar"
+    description: "Verify we can access userland.virginBookmarkMenu and its type is mbar"
+    skip: false
+    skip_reason: ""
+    script: |
+      return typeof(userland.virginBookmarkMenu) == 'mbar'
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Copy userland.virginBookmarkMenu - The Exact Failing Operation
+  # ==========================================================================
+
+  - name: "mbar copy - copy userland.virginBookmarkMenu to workspace"
+    description: "Copy userland.virginBookmarkMenu to workspace location - this is the exact operation that was failing"
+    skip: false
+    skip_reason: ""
+    script: |
+      workspace.testCopy = userland.virginBookmarkMenu;
+      local (result = typeof(workspace.testCopy) == 'mbar');
+      delete(@workspace.testCopy);
+      return result
+    expected_success: true
+    expected_result: "true"
