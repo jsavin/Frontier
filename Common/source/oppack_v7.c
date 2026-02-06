@@ -406,7 +406,7 @@ boolean oppack (Handle *hpackedoutline) {
 	boolean flallocated = false;
 	boolean flpoppedhoists = false;
 	boolean flerror = false;
-	long lnumcursor;
+	int64_t lnumcursor;
 	long textbytes = 0;
 	long linetablebytes = 0;
 	
@@ -1009,7 +1009,7 @@ static boolean opunpackversion4 (handlestream *packstream) {
 	handlestream stream;
 	hdlheadrecord hsummit, hline1, hcursor;
 	typortablediskheader header;
-	long lnumcursor;
+	int64_t lnumcursor;
 	boolean fl;
 
 	ho = op_get_outlinedata(); /*copy into register*/

@@ -46,6 +46,7 @@
 #include "byteorder_helpers.h" /* 2026-02-02 Codex: Consolidated host/disk byte order helpers */
 #include "logging.h"    /* For structured logging of v7→legacy truncation warnings */
 #include <limits.h>     /* For SHRT_MAX */
+#include <inttypes.h>   /* For PRIu32, PRIx64, PRId64 format macros */
 #include "lang.h"       /* For langassign* functions and langpackvalue/langunpackvalue */
 #include "langexternal.h" /* For langexternalnewvalue, idscriptprocessor */
 #include "opverbs.h"    /* For opvaltoscript */
@@ -456,7 +457,7 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 	tysavedmenuinfo info;
 	register WindowPtr w;
 	Rect r;
-	long lnumcursor;
+	int64_t lnumcursor;
 	
 	opvalidate (ho);
 	
@@ -498,7 +499,7 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 	
 	opgetnodeline (hcursor, &lnumcursor);
 
-	info.lnumcursor = conditionalshortswap (loword (lnumcursor));
+	info.lnumcursor = lnumcursor; /* 64-bit in-memory format, byte-swapping happens in pack functions */
 	
 	oppopallhoists (); /*pop hoists, save state to be restored after saving*/
 	
@@ -758,6 +759,8 @@ typedef struct tysavedmenuinfo_v7 {
 	uint8_t  reserved[1024];    /* 1KB future padding */
 } tysavedmenuinfo_v7;
 
+_Static_assert(sizeof(tysavedmenuinfo_v7) == 1056, "v7 menu struct must be exactly 1056 bytes");
+
 static boolean mepackmenustructure_v7(tysavedmenuinfo *legacy, Handle *hpacked) {
 	tysavedmenuinfo_v7 modern;
 	clearbytes(&modern, sizeof(modern));
@@ -958,15 +961,60 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 #endif
 
 	if (is_v7_format) {
-		/* v7 format: read the full tysavedmenuinfo with 64-bit addresses */
-		if (!dbreference_context (ctx, adr, sizeof (info), &info)) {
+		/* v7 format: read the v7 disk format and convert to memory format */
+		tysavedmenuinfo_v7 v7_info;
+
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: reading v7 adr=0x%llx sizeof(v7_info)=%zu",
+		        (unsigned long long)adr, sizeof(v7_info));
+#endif
+
+		if (!dbreference_context (ctx, adr, sizeof (v7_info), &v7_info)) {
 #if defined(FRONTIER_HEADLESS)
 			log_error(LOG_COMP_OP, "meloadmenurecord_internal: dbreference_context FAILED (v7) adr=0x%llx",
 			        (unsigned long long)adr);
 #endif
 			return (false);
 		}
-		outline_adr = conditionallongswap (info.adroutline);
+
+		/* Convert v7 disk format (64-bit, big-endian) to in-memory format */
+		clearbytes (&info, sizeof (info));
+		info.versionnumber = disk_to_host_uint16(v7_info.versionnumber);
+		outline_adr = (dbaddress) disk_to_host_uint64(v7_info.adroutline);
+		info.adroutline = outline_adr;
+
+		/* lnumcursor is 64-bit in both v7 disk format and memory format */
+		info.lnumcursor = (int64_t) disk_to_host_uint64(v7_info.lnumcursor);
+
+		/* flags: bit flags stored as uint32 on disk, fits in short for defined flags.
+		 * menuactiveitem → menuactivelayer: renamed field, same semantics (active menu layer index).
+		 * Validate both fit in short to catch corrupted data. */
+		uint32_t flags_value = disk_to_host_uint32(v7_info.flags);
+		if (flags_value > SHRT_MAX) {
+#if defined(FRONTIER_HEADLESS)
+			log_error(LOG_COMP_OP, "meloadmenurecord_internal: flags value %" PRIu32 " exceeds SHRT_MAX", flags_value);
+#endif
+			return (false);
+		}
+		info.flags = (short) flags_value;
+
+		uint32_t menuactive_value = disk_to_host_uint32(v7_info.menuactiveitem);
+		if (menuactive_value > SHRT_MAX) {
+#if defined(FRONTIER_HEADLESS)
+			log_error(LOG_COMP_OP, "meloadmenurecord_internal: menuactivelayer value %" PRIu32 " exceeds SHRT_MAX", menuactive_value);
+#endif
+			return (false);
+		}
+		info.menuactivelayer = (short) menuactive_value;
+
+		/* Note: v7 format intentionally omits GUI-only fields (vertmin/max/current, window rects,
+		 * font settings). These are zeroed by clearbytes() above - correct for both headless and
+		 * desktop builds since v7 format does not store them. */
+
+#if defined(FRONTIER_HEADLESS)
+		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: v7 versionnumber=%d outline_adr=0x%" PRIx64 " lnumcursor=%" PRId64,
+		        (int)info.versionnumber, (uint64_t)outline_adr, info.lnumcursor);
+#endif
 	}
 	else {
 		/* v6 format: read the legacy disk format with 32-bit addresses */

@@ -96,9 +96,9 @@ boolean opcollapse_ctx (op_context_t *ctx, hdlheadrecord hnode) {
 	op_context_version_bump(ctx);
 
 	register hdloutlinerecord ho = op_get_outlinedata();
-	long origct = (**ho).ctexpanded;
-	long ctscroll;
-	long lnum;
+	int64_t origct = (**ho).ctexpanded;
+	int64_t ctscroll;
+	int64_t lnum;
 	Rect linerect;
 
 	pixelscollapsed = 0;
@@ -223,10 +223,10 @@ boolean opexpand_ctx (op_context_t *ctx, hdlheadrecord hnode, short level, boole
 
 	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect outlinerect = (**ho).outlinerect;
-	long origct = (**ho).ctexpanded;
-	long lnum;
+	int64_t origct = (**ho).ctexpanded;
+	int64_t lnum;
 	Rect linerect, r;
-	long hscroll, vscroll;
+	int64_t hscroll, vscroll;
 
 	if (!(*(**ho).preexpandcallback) (hnode, level, flmaycreatesubs))
 		return (false);
@@ -440,14 +440,14 @@ void opexpandtoggle (void) {
 
 
 void opexpandupdate (hdlheadrecord hnewnode) {
-	
+
 	/*
 	5.0b6 dmb: allow for partially-visible lines
 	*/
-	
+
 	register hdloutlinerecord ho = op_get_outlinedata();
-	long ctlines;
-	long lnum;
+	int64_t ctlines;
+	int64_t lnum;
 	
 	(**hnewnode).flexpanded = true; 
 	

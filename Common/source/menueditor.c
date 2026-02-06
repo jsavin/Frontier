@@ -134,10 +134,10 @@ static void megetcursornode (hdlmenurecord hm, hdlheadrecord *hcursor) {
 	} /*megetcursornode*/
 
 
-boolean mescroll (tydirection dir, boolean flpage, long amount) {	
-	
+boolean mescroll (tydirection dir, boolean flpage, int64_t amount) {
+
 	mecheckglobals ();
-	
+
 	return (opscroll (dir, flpage, amount));
 	} /*mescroll*/
 	

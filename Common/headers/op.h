@@ -139,8 +139,8 @@ typedef struct tyhoistelement {
 	
 	hdlheadrecord hsummit;
 	
-	long lnumbarcursor;
-	
+	int64_t lnumbarcursor;
+
 	hdlheadrecord hline1;
 	} tyhoistelement;
 	
@@ -229,8 +229,8 @@ typedef struct tyoutlinerecord {
 	
 	hdlheadrecord hline1; /*this node is displayed on the 0th line in the window*/
 	
-	long lnumbarcursor; /*line number that the bar cursor is on, may be off screen*/
-	
+	int64_t lnumbarcursor; /*line number that the bar cursor is on, may be off screen*/
+
 	short line1linesabove; /*text lines of hline1 that are scrolled above the display*/
 	
 	long ctexpanded; /*number of nodes expanded*/
@@ -511,11 +511,11 @@ extern boolean opsetscrap (hdlheadrecord);
 
 extern boolean opgetscrap (hdlheadrecord *, boolean *);
 
-extern boolean opmotionkey (tydirection, long, boolean);
+extern boolean opmotionkey (tydirection, int64_t, boolean);
 
-extern void opgetcursorinfo (long *, short *);
+extern void opgetcursorinfo (int64_t *, short *);
 
-extern void opsetcursorinfo (long, short);
+extern void opsetcursorinfo (int64_t, short);
 
 extern boolean opcloseoutline (void);
 
@@ -719,9 +719,9 @@ extern boolean opvisitmarked (tydirection, opvisitcallback, ptrvoid);
 extern boolean opbumpvisit (hdlheadrecord, tydirection, opvisitcallback, ptrvoid);
 
 
-extern boolean opscroll (tydirection, boolean, long);
+extern boolean opscroll (tydirection, boolean, int64_t);
 
-extern boolean opscrollto (long, long);
+extern boolean opscrollto (int64_t, int64_t);
 
 extern void opsetdisplaydefaults (hdloutlinerecord);
 

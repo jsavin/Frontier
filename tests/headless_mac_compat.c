@@ -195,10 +195,10 @@ void setcursortype (tycursortype c) { (void)c; }
 // Opscreenmap/opdisplay shims
 boolean opinitdisplayvariables (void) { return false; }
 void opgettextrect (hdlheadrecord h, const Rect *linerect, Rect *textrect) { (void)h; if (textrect) { if (linerect) *textrect = *linerect; else memset(textrect,0,sizeof(*textrect)); } }
-long opgetnodelinecount (hdlheadrecord h) { (void)h; return 1; }
+int64_t opgetnodelinecount (hdlheadrecord h) { (void)h; return 1; }
 boolean opgetnoderect (hdlheadrecord h, Rect *r) { (void)h; if (r) memset(r,0,sizeof(*r)); return false; }
-boolean opgetscreenline (hdlheadrecord h, long *ln) { (void)h; if (ln) *ln = 0; return false; }
-long opgetcurrentscreenlines (boolean flscrollwise) { (void)flscrollwise; return 0; }
+boolean opgetscreenline (hdlheadrecord h, int64_t *ln) { (void)h; if (ln) *ln = 0; return false; }
+int64_t opgetcurrentscreenlines (boolean flscrollwise) { (void)flscrollwise; return 0; }
 boolean opgetscrollbarinfo (boolean f) { (void)f; return false; }
 void opinvaldirtynodes (void) { }
 void opinvaldisplay (void) { }
@@ -207,7 +207,7 @@ void opinvalstructure (hdlheadrecord h) { (void)h; }
 boolean opnewscreenmap (hdlscreenmap *m) { if (m) *m = nil; return false; }
 void opinvalscreenmap (hdlscreenmap m) { (void)m; }
 void opjumpdisplayto (hdlheadrecord a, hdlheadrecord b) { (void)a; (void)b; }
-boolean opneedvisiscroll (hdlheadrecord h, long *hs, long *vs, boolean f) { (void)h; (void)f; if (hs) *hs=0; if (vs) *vs=0; return false; }
+boolean opneedvisiscroll (hdlheadrecord h, int64_t *hs, int64_t *vs, boolean f) { (void)h; (void)f; if (hs) *hs=0; if (vs) *vs=0; return false; }
 boolean opsetscrollpositiontoline1 (void) { return false; }
 boolean opprint (short style) { (void)style; return false; }
 
@@ -217,8 +217,8 @@ void opupdatenow (void) { }
 void opupdate (void) { }
 void opsmashdisplay (void) { }
 void opdocursor (boolean flon) { (void)flon; }
-void opdovisiscroll (long hs, long vs) { (void)hs; (void)vs; }
-boolean opgetlinerect (long lnum, Rect *r) { (void)lnum; if (r) memset(r,0,sizeof(*r)); return false; }
+void opdovisiscroll (int64_t hs, int64_t vs) { (void)hs; (void)vs; }
+boolean opgetlinerect (int64_t lnum, Rect *r) { (void)lnum; if (r) memset(r,0,sizeof(*r)); return false; }
 short opgetlineheight (hdlheadrecord hnode) { (void)hnode; if (op_get_outlinedata()) return (short)((**op_get_outlinedata()).defaultlineheight + 2*textvertinset); return (short)(12 + 2*textvertinset); }
 short opgetlinewidth (hdlheadrecord hnode) { (void)hnode; return 0; }
 void opdrawicon (hdlheadrecord hnode, Rect linerect) { (void)hnode; (void)linerect; }
@@ -229,7 +229,7 @@ boolean opendprint (void) { return false; }
 boolean opisdraggingmove (Point p, unsigned long t) { (void)p; (void)t; return false; }
 void opdraggingmove (Point ptstart, hdlheadrecord hsource) { (void)ptstart; (void)hsource; }
 void opinvalafter (hdlheadrecord h) { (void)h; }
-void opmakegap (long lnum, short lineheight) { (void)lnum; (void)lineheight; }
+void opmakegap (int64_t lnum, short lineheight) { (void)lnum; (void)lineheight; }
 void opvisisubheads (hdlheadrecord h) { (void)h; }
 boolean opgetoutinesize (long *w, long *h) { if (w) *w = 0; if (h) *h = 0; return true; }
 boolean shellupdatenow (WindowPtr w) { (void)w; return false; }
@@ -422,13 +422,13 @@ hdlheadrecord oppointnode (Point pt) { (void)pt; return nil; }
 boolean opnodevisible (hdlheadrecord h) { (void)h; return true; }
 void opredrawscrollbars (void) { }
 void opresetscrollbars (void) { }
-boolean opscroll (tydirection dir, boolean f, long n) { (void)dir; (void)f; (void)n; return false; }
-boolean opscrollto (long a, long b) { (void)a; (void)b; return false; }
+boolean opscroll (tydirection dir, boolean f, int64_t n) { (void)dir; (void)f; (void)n; return false; }
+boolean opscrollto (int64_t a, int64_t b) { (void)a; (void)b; return false; }
 boolean opsetprintinfo (void) { return false; }
 boolean oprmousedown (Point pt, tyclickflags flags) { (void)pt; (void)flags; return false; }
 /* oppushhoist, oppophoist, oppopallhoists provided by ophoist.c in headless build */
 // traversal functions provided by opvisit.c in headless build
-void opscrollrect (Rect r, long dh, long dv) { (void)r; (void)dh; (void)dv; }
+void opscrollrect (Rect r, int64_t dh, int64_t dv) { (void)r; (void)dh; (void)dv; }
 
 // OSA stubs
 boolean osagetcode (Handle htext, OSType idserver, boolean fljustexecutable, tyvaluerecord *vcode) {

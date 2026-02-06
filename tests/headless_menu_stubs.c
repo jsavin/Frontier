@@ -201,7 +201,7 @@ boolean meadjustcursor (Point pt) {
     return (false);
 }
 
-boolean mescroll (tydirection dir, boolean flpage, long amount) {
+boolean mescroll (tydirection dir, boolean flpage, int64_t amount) {
     /* GUI-only operation - return false */
     (void) dir; (void) flpage; (void) amount;
     return (false);

@@ -197,10 +197,10 @@ short opgetlinewidth (hdlheadrecord hnode) {
 	} /*opgetlinewidth*/
 
 
-long opgetnodelinecount (hdlheadrecord hnode) {
-	
+int64_t opgetnodelinecount (hdlheadrecord hnode) {
+
 	register hdloutlinerecord ho = op_get_outlinedata();
-	
+
 	if (opisfatheadlines (ho))
 		return (opgetlineheight (hnode) / (**ho).defaultlineheight);
 	else
@@ -355,25 +355,25 @@ void opupdatenow (void) {
 	} /*opupdatenow*/
 	
 	
-boolean opgetlinerect (long lnum, Rect *r) {
+boolean opgetlinerect (int64_t lnum, Rect *r) {
 
 	/*
-	lnum is a 0-based index into the window. lnum 0 refers to the line 
+	lnum is a 0-based index into the window. lnum 0 refers to the line
 	displayed at the top of the window.
-	
-	6.0b2 dmb: always calculate a rect, even if it's above the screen and 
+
+	6.0b2 dmb: always calculate a rect, even if it's above the screen and
 	we return false
 	*/
-	
+
 	register hdloutlinerecord ho = op_get_outlinedata();
 	short heightthisline;
-	
+
 	*r = (**ho).outlinerect; /*set left and right*/
 
 	(*r).top += opsumprevlineheights (lnum, &heightthisline);
-	
+
 	(*r).bottom = (*r).top + heightthisline;
-	
+
 	return (lnum >= 0);
 	} /*opgetlinerect*/
 	
@@ -405,19 +405,19 @@ hdlheadrecord oppointnode (Point pt) {
 	} /*oppointnode*/
 	
 
-boolean opgetscreenline (hdlheadrecord hnode, long *lnum) {
+boolean opgetscreenline (hdlheadrecord hnode, int64_t *lnum) {
 
 	/*
 	give me a headrecord handle and I'll return the line it's displayed
 	on.  it's a virtual line number, ie it can be less than 0 or greater
 	than the number of lines on the screen.
-	
+
 	the line indicated by (**op_get_outlinedata()).hline1 is on line 0.
-	
+
 	return false if the node isn't expanded or visible in this window.
 	*/
-	
-	long uplnum, downlnum;
+
+	int64_t uplnum, downlnum;
 	hdlheadrecord upnomad, downnomad, lastnomad;
 	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord hline1 = (**ho).hline1;
@@ -475,13 +475,13 @@ boolean opgetscreenline (hdlheadrecord hnode, long *lnum) {
 
 
 boolean opgetnoderect (hdlheadrecord hnode, Rect *r) {
-	
+
 	/*
 	6.0b2 dmb: only return false if the node isn't displayed at all, not if
 	it's above the display -- the rect is now meaningfull.
 	*/
-	
-	long lnum;
+
+	int64_t lnum;
 	
 	if (!opgetscreenline (hnode, &lnum)) 
 		return (false);
@@ -544,41 +544,41 @@ static boolean oppushclip (Rect *rclip) {
 	} /*oppushclip*/
 	
 
-void oplineinval (long lnum) {
-	
+void oplineinval (int64_t lnum) {
+
 	Rect r;
-	
+
 	if (!opdisplayenabled ())
 		return;
-	
+
 	if (opgetlinerect (lnum, &r))
 		invalrect (r);
 	} /*oplineinval*/
 	
 
-static void oprangeinval (long firstlnum, long lastlnum) {
-	
+static void oprangeinval (int64_t firstlnum, int64_t lastlnum) {
+
 	Rect r1, r2;
-	
+
 	opgetlinerect (firstlnum, &r1);
-	
+
 	opgetlinerect (lastlnum, &r2);
-	
+
 	r1.bottom = r2.bottom;
-	
+
 	invalrect (r1);
 	} /*oprangeinval*/
 	
 
 boolean opinvalnode (hdlheadrecord hnode) {
-	
+
 	/*
 	1/6/97 dmb: don't inval if getting line returns false
-	
+
 	2/19/97 dmb: don't even opgetscreenline if display is disabled
 	*/
-	
-	long lnum;
+
+	int64_t lnum;
 	
 	if (opdisplayenabled ()) {
 		
@@ -616,11 +616,11 @@ void opinvalstructure (hdlheadrecord hnode) {
 
 
 void opinvalafter (hdlheadrecord hnode) {
-	
-	long lnum;
-	
+
+	int64_t lnum;
+
 	opgetscreenline (hnode, &lnum);
-	
+
 	oprangeinval (lnum, opgetcurrentscreenlines (false));
 	} /*opinvalafter*/
 	
@@ -1109,9 +1109,9 @@ void opupdate (void) {
 
 
 void opdocursor (boolean flon) {
-	
+
 	register hdloutlinerecord ho = op_get_outlinedata();
-	long lnumcursor;
+	int64_t lnumcursor;
 	Rect r;
 	
 	if (!opdisplayenabled ())
@@ -1138,39 +1138,39 @@ void opdocursor (boolean flon) {
 	} /*opdocursor*/
 	
 	
-void opscrollrect (Rect r, long dh, long dv) {
-	
+void opscrollrect (Rect r, int64_t dh, int64_t dv) {
+
 	pushbackcolor (&(**op_get_outlinedata()).backcolor); /*so that erasures use the right color*/
-	
+
 	scrollrect (r, dh, dv);
-	
+
 	popbackcolor ();
 	} /*opscrollrect*/
 	
 	
-void opmakegap (long lnum, short lineheight) {
-	
+void opmakegap (int64_t lnum, short lineheight) {
+
 	/*
 	create a gap in the display after the indicated line number.
-	
-	5.0d18 dmb: handle lnum < 0 (-1) so opexpandupdate will work when 
+
+	5.0d18 dmb: handle lnum < 0 (-1) so opexpandupdate will work when
 	new node is first in list
 	*/
-	
+
 	register hdloutlinerecord ho = op_get_outlinedata();
 	Rect r;
-	
+
 	if (lnum < 0)
 		opgetlinerect (0, &r);
-	
+
 	else {
 		opgetlinerect (lnum, &r);
-		
+
 		r.top = r.bottom;
 		}
-	
+
 	r.bottom = (**ho).outlinerect.bottom;
-	
+
 	opscrollrect (r, 0, lineheight);
 	} /*opmakegap*/
 	
@@ -1350,23 +1350,23 @@ static boolean opvertscroll (long ctlines) {
 
 
 void opjumpdisplayto (hdlheadrecord holdcursor, hdlheadrecord hnewcursor) {
-	
+
 	/*
-	a special way to move the cursor when you know it's going a long 
+	a special way to move the cursor when you know it's going a long
 	distance. no point erasing the old cursor. no point trying to scroll
 	or erase the display. everything is going to be updated. do it all
 	in one shot for nicer staging.
-	
+
 	DW 8/15/93: try to make it sexier if there is no scrolling required.
-	
+
 	DW 10/17/93: erase the display in addition to inval'ing it. cb can
-	take a few seconds to redraw the window, this makes for better 
+	take a few seconds to redraw the window, this makes for better
 	staging.
-	
+
 	6.0a12 dmb: need resetscrollbars here
 	*/
-	
-	long hscroll, vscroll;
+
+	int64_t hscroll, vscroll;
 	
 	opinvalnode (holdcursor);
 	
@@ -1393,7 +1393,7 @@ void opjumpdisplayto (hdlheadrecord holdcursor, hdlheadrecord hnewcursor) {
 	} /*opjumpdisplayto*/
 
 
-boolean opscrollto (long h, long v) {
+boolean opscrollto (int64_t h, int64_t v) {
 	
 	/*
 	DW 10/27/93: new version bends over backwards to avoid 
@@ -1514,7 +1514,7 @@ static long getdownpagescrolllines (void) {
 	} /*getdownpagescrolllines*/
 
 
-boolean opscroll (tydirection dir, boolean flpage, long ctscroll) {
+boolean opscroll (tydirection dir, boolean flpage, int64_t ctscroll) {
 	
 	/*
 	5.1.5b12 dmb: check for nil outline
@@ -1591,20 +1591,20 @@ boolean opscroll (tydirection dir, boolean flpage, long ctscroll) {
 
 
 
-boolean opneedvisiscroll (hdlheadrecord hnode, long *hscroll, long *vscroll, boolean flcheckhoriz) {
-	
+boolean opneedvisiscroll (hdlheadrecord hnode, int64_t *hscroll, int64_t *vscroll, boolean flcheckhoriz) {
+
 	/*
 	return true if one of hscroll or vscroll is non-zero.
-	
+
 	6.0b2 dmb: return false when window isn't open instead of when display is disabled.
-	this allows script-generated visiing to work, but protects opverbfind from 
+	this allows script-generated visiing to work, but protects opverbfind from
 	screwing the display.
 	*/
-	
+
 	register hdloutlinerecord ho = op_get_outlinedata();
-	register long leftdiff, rightdiff;
+	register int64_t leftdiff, rightdiff;
 	Rect r;
-	long lnum;
+	int64_t lnum;
 	
 	*hscroll = *vscroll = 0;
 	
@@ -1616,9 +1616,9 @@ boolean opneedvisiscroll (hdlheadrecord hnode, long *hscroll, long *vscroll, boo
 	
 	if (lnum <= 0)/*line is scrolled off the top of the window*/
 		*vscroll = opgetlinestoscrolldownforvisi (hnode);
-	
+
 	else {
-		long ct = opgetlinestoscrollupforvisi (hnode); 
+		int64_t ct = opgetlinestoscrollupforvisi (hnode); 
 		
 		if (ct > 0)
 			*vscroll = -ct;		
@@ -1651,10 +1651,10 @@ boolean opneedvisiscroll (hdlheadrecord hnode, long *hscroll, long *vscroll, boo
 	} /*opneedvisiscroll*/
 
 
-void opdovisiscroll (long hscroll, long vscroll) {
-	
+void opdovisiscroll (int64_t hscroll, int64_t vscroll) {
+
 //	hdlheadrecord oldline1 = (**outlinedata).hline1;
-	long vpixels;
+	int64_t vpixels;
 	
 	if (!(**op_get_outlinedata()).blockvisiupdate)
 		opupdatenow ();
@@ -1685,8 +1685,8 @@ void opdovisiscroll (long hscroll, long vscroll) {
 
 
 boolean opnodevisible (hdlheadrecord hnode) {
-	
-	long hscroll, vscroll;
+
+	int64_t hscroll, vscroll;
 	
 	return (!opneedvisiscroll (hnode, &hscroll, &vscroll, false));
 	} /*opnodevisible*/
@@ -1695,14 +1695,14 @@ boolean opnodevisible (hdlheadrecord hnode) {
 boolean opvisinode (hdlheadrecord hnode, boolean flhoriz) {
 
 	/*
-	make the node vertically visible in the window.  
-	
+	make the node vertically visible in the window.
+
 	return true if scrolling was necessary.
-	
+
 	dmb 9/21/90: take flhoriz parameter to permit vertical-only visiing
 	*/
-	
-	long hscroll, vscroll;
+
+	int64_t hscroll, vscroll;
 	
 	if (!opneedvisiscroll (hnode, &hscroll, &vscroll, flhoriz))
 		return (false);

@@ -81,21 +81,21 @@ hdlheadrecord opgetlastvisiblenode (void) {
 	} /*opgetlastvisiblenode*/
 
 
-long opgetcurrentscreenlines (boolean flscrollwise) {
-	
+int64_t opgetcurrentscreenlines (boolean flscrollwise) {
+
 	/*
 	return the number of lines currently showing in the window.
-	
+
 	6.0a12 dmb: added flscrollwise parameter. If true, return the number
-	of scroll lines on the screen; otherwise return the number of headlines, 
+	of scroll lines on the screen; otherwise return the number of headlines,
 	the original meaning if this function
 	*/
-	
+
 	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1, nextnomad;
 	Rect r = (**ho).outlinerect;
-	long vertpixels = r.bottom - r.top;
-	short ctpixels = 0, ctlines = 0;
+	int64_t vertpixels = r.bottom - r.top;
+	int64_t ctpixels = 0, ctlines = 0;
 	
 	ctpixels += opgetline1top ();
 	
@@ -138,21 +138,21 @@ long opgetcurrentscreenlines (boolean flscrollwise) {
 	} /*opgetcurrentscreenlines*/
 	
 	
-long opsumprevlineheights (long lnum, short *heightthisline) {
-	
+int64_t opsumprevlineheights (int64_t lnum, short *heightthisline) {
+
 	/*
 	return the sum of the lineheights of all lines above this one.
-	
+
 	lnum is 0-based.
-	
+
 	6.0b2 dmb: work with negative lnums, with the same semantics (return
 	a negative number)
 	*/
-	
+
 	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1;
-	long sum = 0;
-	long i;
+	int64_t sum = 0;
+	int64_t i;
 	
 	sum += opgetline1top ();
 	
@@ -183,10 +183,10 @@ long opsumprevlineheights (long lnum, short *heightthisline) {
 	} /*opsumprevlineheights*/
 	
 	
-long opsumalllineheights (void) {
-	
+int64_t opsumalllineheights (void) {
+
 	hdlheadrecord nomad = (**op_get_outlinedata()).hsummit, nextnomad;
-	long sum = 0;
+	int64_t sum = 0;
 	
 	while (true) {
 		
@@ -202,26 +202,26 @@ long opsumalllineheights (void) {
 	} /*opsumalllineheights*/
 	
 	
-long opgetlinestoscrollupforvisi (hdlheadrecord hnode) {
-	
+int64_t opgetlinestoscrollupforvisi (hdlheadrecord hnode) {
+
 	/*
 	return the number of lines you have to scroll to make the node
 	visible. assume the node lies off the bottom of the window.
-	
+
 	first we figure out how many pixels off we are (ctneeded).
-	
+
 	then we loop up from the first line until we equal or exceed
 	that number.
 	*/
-	
+
 	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1;
 	Rect r = (**ho).outlinerect;
-	short vertpixels = r.bottom - r.top;
-	long ctpixels = 0;
-	long ctneeded = 0;
-	long ctlines;
-	long ctscroll;
+	int64_t vertpixels = r.bottom - r.top;
+	int64_t ctpixels = 0;
+	int64_t ctneeded = 0;
+	int64_t ctlines;
+	int64_t ctscroll;
 	short lh;	
 	
 	ctpixels = opgetline1top (); //measure  from top of line1
@@ -275,24 +275,24 @@ long opgetlinestoscrollupforvisi (hdlheadrecord hnode) {
 	} /*opgetlinestoscrollupforvisi*/
 
 
-long opgetlinestoscrolldownforvisi (hdlheadrecord hnode) {
-	
+int64_t opgetlinestoscrolldownforvisi (hdlheadrecord hnode) {
+
 	/*
 	return the number of lines you have to scroll to make the node
 	visible. assume the node lies above the top of the window.
-	
+
 	we count the number of scroll lines above hline1, up to and including
 	hnode
-	
+
 	6.0b2 dmb: account for text selection in headlines taller than the screen
 	*/
-	
+
 	hdloutlinerecord ho = op_get_outlinedata();
 	hdlheadrecord nomad = (**ho).hline1;
 	hdlheadrecord hsummit = (**ho).hsummit;
-	long defaultlineheight = (**ho).defaultlineheight;
-	long ctscroll = 0;
-	long ctpixels = 0;
+	int64_t defaultlineheight = (**ho).defaultlineheight;
+	int64_t ctscroll = 0;
+	int64_t ctpixels = 0;
 	Point ptsel;
 	Rect r;
 	

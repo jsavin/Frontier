@@ -622,7 +622,7 @@ boolean opmoveto (hdlheadrecord hnode) {
 
 	register hdloutlinerecord ho = op_get_outlinedata();
 	register hdlheadrecord h = hnode;
-	long hscroll, vscroll;
+	int64_t hscroll, vscroll;
 	register boolean flvisiscroll = false;
 	boolean fldisplay = opdisplayenabled();
 
@@ -669,15 +669,15 @@ boolean opmoveto (hdlheadrecord hnode) {
 #if false
 
 static boolean oldopjumpto (hdlheadrecord hnode) {
-	
+
 	/*
-	a special way to move the cursor when you know it's going a long 
+	a special way to move the cursor when you know it's going a long
 	distance. no point erasing the old cursor. no point trying to scroll
 	or erase the display. everything is going to be updated. do it all
 	in one shot for nice staging.
 	*/
-	
-	long hscroll, vscroll;
+
+	int64_t hscroll, vscroll;
 	
 	opinvaldisplay (); /*everything will get redrawn*/
 	
@@ -1511,7 +1511,7 @@ static boolean opmoveoutlinevisit (hdlheadrecord hnode, ptrvoid dir) {
 	} /*opmoveoutlinevisit*/
 
 		
-boolean opreorgcursor (tydirection dir, long units) {
+boolean opreorgcursor (tydirection dir, int64_t units) {
 	
 	/*
 	reorganize the structure so that the cursor line is moved in the 
@@ -2017,7 +2017,7 @@ boolean opcopyoutlinerecord (hdloutlinerecord horig, hdloutlinerecord *hcopy) {
 	register hdloutlinerecord ho;
 	hdlheadrecord hnewsummit;
 	Handle hnew;
-	long lnumline1, lnumcursor;
+	int64_t lnumline1, lnumcursor;
 	//hdloutlinerecord hsave = outlinedata;
 	boolean fl;
 	
