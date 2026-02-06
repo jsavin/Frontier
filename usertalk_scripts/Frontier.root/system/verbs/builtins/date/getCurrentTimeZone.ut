@@ -1,1 +1,2 @@
-on getCurrentTimeZone () {	kernel (date.getCurrentTimeZone)}
+on getCurrentTimeZone () {
+	kernel (date.getCurrentTimeZone)}

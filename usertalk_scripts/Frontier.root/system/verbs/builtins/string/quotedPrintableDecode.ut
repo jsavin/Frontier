@@ -1,1 +1,39 @@
-on quotedPrintableDecode (s) {	«3/1/01; 4:16:00 PM by JES		«Convert quoted printable text to ASCII text.			«Cribbed from contentServer.textCleaners.repairQP.	«Changes:		«3/1/01; 6:30:40 PM by JES			«Convert soft carriage returns to the empty sring.		«3/1/01; 7:21:30 PM by JES			«Optimization: let the kernel translate the hexidecimal number, instead of doing it in script code.	local (ix = 1, ch, flhex = false, hexstring);	on translateHexString (hexstring) {		hexstring = "0x" + hexstring;		return (char (number (hexstring)))};	bundle { //decode soft carriage returns		s = string.replaceAll (s, "=\r\n", "")};	loop {		ch = s [ix];		if flhex {			if (ch >= 65 and ch <= 70) or string.isNumeric (ch) { //0-9, A-F				hexstring = hexstring + ch;				if sizeOf (hexstring) == 2 {					s = string.replaceAll (s, "=" + hexstring, translateHexString (hexstring));					flhex = false;					hexstring = "";					ix = ix - 2}}			else {				flhex = false}}		else {			if ch == '=' {				flhex = true}};		ix++;		if ix > sizeOf (s) {			break}};	return (s)};«bundle //test code	«string.quotedPrintableDecode ("Here's some more accented text: =E5=E9=EE=F8=FC=F1") //Windows		«"Here's some more accented text: åéîøüñ"	«string.latinToMac (string.quotedPrintableDecode ("Here's some more accented text: =E5=E9=EE=F8=FC=F1")) //Mac		«"Here's some more accented text: Œ”¿Ÿ–"
+on quotedPrintableDecode (s) {
+	Â«3/1/01; 4:16:00 PM by JES
+		Â«Convert quoted printable text to ASCII text.
+			Â«Cribbed from contentServer.textCleaners.repairQP.
+	Â«Changes:
+		Â«3/1/01; 6:30:40 PM by JES
+			Â«Convert soft carriage returns to the empty sring.
+		Â«3/1/01; 7:21:30 PM by JES
+			Â«Optimization: let the kernel translate the hexidecimal number, instead of doing it in script code.
+	local (ix = 1, ch, flhex = false, hexstring);
+	on translateHexString (hexstring) {
+		hexstring = "0x" + hexstring;
+		return (char (number (hexstring)))};
+	bundle { //decode soft carriage returns
+		s = string.replaceAll (s, "=\r\n", "")};
+	loop {
+		ch = s [ix];
+		if flhex {
+			if (ch >= 65 and ch <= 70) or string.isNumeric (ch) { //0-9, A-F
+				hexstring = hexstring + ch;
+				if sizeOf (hexstring) == 2 {
+					s = string.replaceAll (s, "=" + hexstring, translateHexString (hexstring));
+					flhex = false;
+					hexstring = "";
+					ix = ix - 2}}
+			else {
+				flhex = false}}
+		else {
+			if ch == '=' {
+				flhex = true}};
+		ix++;
+		if ix > sizeOf (s) {
+			break}};
+	return (s)};
+Â«bundle //test code
+	Â«string.quotedPrintableDecode ("Here's some more accented text: =E5=E9=EE=F8=FC=F1") //Windows
+		Â«"Here's some more accented text: Ã¥Ã©Ã®Ã¸Ã¼Ã±"
+	Â«string.latinToMac (string.quotedPrintableDecode ("Here's some more accented text: =E5=E9=EE=F8=FC=F1")) //Mac
+		Â«"Here's some more accented text: Å’Å½â€Â¿Å¸â€“"

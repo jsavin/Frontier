@@ -1,1 +1,2 @@
-on hasChildren (adrelement) {	return (boolean (soap.xmlutils.getFirstChildElement (adrelement)))}
+on hasChildren (adrelement) {
+	return (boolean (soap.xmlutils.getFirstChildElement (adrelement)))}

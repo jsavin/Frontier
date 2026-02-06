@@ -1,1 +1,9 @@
-on setTarget (name) {	target.set (cardOutline);	op.firstsummit ();	loop {		local (linetext = op.getlinetext ());		if string.nthfield (linetext, ';', 1) == name {			return (true)};		if not op.go (down, 1) {			return (false)}}}
+on setTarget (name) {
+	target.set (cardOutline);
+	op.firstsummit ();
+	loop {
+		local (linetext = op.getlinetext ());
+		if string.nthfield (linetext, ';', 1) == name {
+			return (true)};
+		if not op.go (down, 1) {
+			return (false)}}}

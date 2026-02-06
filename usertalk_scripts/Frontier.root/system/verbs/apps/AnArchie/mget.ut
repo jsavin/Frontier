@@ -1,1 +1,14 @@
-on mget (filename=nil, searchpath, hostName=nil, destPath, binary=nil) { « kinda simulates how a FTP server does it	local(tmpFile = file.getSpecialFolderPath("", "Temporary Items", true)+"anarchieTMP");	with anarchie, eventInfo, utilities {		case (typeof(searchPath)) {			recordType {				filename = searchPath[1];				hostName = searchPath[host];				searchPath = searchPath[path]}};				nlist(tmpFile, hostName, searchpath + "/*"+filename+"*");		fList = fileToList(tmpFile);		file.delete(tmpFile); « all done with it				fetch(destPath, hostName, fList)}}
+on mget (filename=nil, searchpath, hostName=nil, destPath, binary=nil) { Â« kinda simulates how a FTP server does it
+	local(tmpFile = file.getSpecialFolderPath("", "Temporary Items", true)+"anarchieTMP");
+	with anarchie, eventInfo, utilities {
+		case (typeof(searchPath)) {
+			recordType {
+				filename = searchPath[1];
+				hostName = searchPath[host];
+				searchPath = searchPath[path]}};
+		
+		nlist(tmpFile, hostName, searchpath + "/*"+filename+"*");
+		fList = fileToList(tmpFile);
+		file.delete(tmpFile); Â« all done with it
+		
+		fetch(destPath, hostName, fList)}}

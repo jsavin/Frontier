@@ -1,1 +1,11 @@
-on getSiteName (siteUrl) {	«Changes		«9/6/01; 8:01:35 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	local (host, port, urlParts = string.urlSplit (siteUrl));	host = urlParts[2];	if host contains ":" {		port = string.nthField (host, ':', 2);		host = string.nthField (host, ':', 1)};	local (params = {"siteUrl":siteUrl});	return (manila.callHandler (host, port, "manila.getSiteName", @params, rpcPath:"/RPC2"))}
+on getSiteName (siteUrl) {
+	Â«Changes
+		Â«9/6/01; 8:01:35 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	local (host, port, urlParts = string.urlSplit (siteUrl));
+	host = urlParts[2];
+	if host contains ":" {
+		port = string.nthField (host, ':', 2);
+		host = string.nthField (host, ':', 1)};
+	local (params = {"siteUrl":siteUrl});
+	return (manila.callHandler (host, port, "manila.getSiteName", @params, rpcPath:"/RPC2"))}

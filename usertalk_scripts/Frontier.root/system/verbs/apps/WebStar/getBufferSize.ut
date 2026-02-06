@@ -1,1 +1,3 @@
-on getBufferSize (appID = WebStar.id) { «gets dump buffer size setting	with objectModel, WebStar.eventInfo {		return (core.get (appID, BufferSize))}}
+on getBufferSize (appID = WebStar.id) { Â«gets dump buffer size setting
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, BufferSize))}}

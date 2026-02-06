@@ -1,1 +1,2 @@
-on code (s) {	return ("<code>" + s + "</code>")}
+on code (s) {
+	return ("<code>" + s + "</code>")}

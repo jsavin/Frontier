@@ -1,1 +1,25 @@
-on urlJumper (url) {	if sys.appIsRunning (netscape.id) {		netscape.bringToFront ()}	else {		«12/30/94			«Netscape 1.0N is very picky about how it gets launched			«Can't use app.startWithDocument in this situation			«We have to launch it using the Finder			«And the Finder must be in front when its launched			«And we must wait a few seconds (!)			«dwiner@well.com 				local (path = netscape.appinfo.path);		if not file.exists (path) {			path = file.findApplication (netscape.id);			if not file.getFileDialog ("Where is Netscape?", @path, 'APPL') {				return};			netscape.appinfo.path = path};		finder.bringtofront ();		finder.open (netscape.appinfo.path);		while not sys.appIsRunning (netscape.id) {};		clock.waitSeconds (2)};		if sizeof (url) > 0 {		netscape.openUrl (url)}}
+on urlJumper (url) {
+	if sys.appIsRunning (netscape.id) {
+		netscape.bringToFront ()}
+	else {
+		Â«12/30/94
+			Â«Netscape 1.0N is very picky about how it gets launched
+			Â«Can't use app.startWithDocument in this situation
+			Â«We have to launch it using the Finder
+			Â«And the Finder must be in front when its launched
+			Â«And we must wait a few seconds (!)
+			Â«dwiner@well.com 
+		
+		local (path = netscape.appinfo.path);
+		if not file.exists (path) {
+			path = file.findApplication (netscape.id);
+			if not file.getFileDialog ("Where is Netscape?", @path, 'APPL') {
+				return};
+			netscape.appinfo.path = path};
+		finder.bringtofront ();
+		finder.open (netscape.appinfo.path);
+		while not sys.appIsRunning (netscape.id) {};
+		clock.waitSeconds (2)};
+	
+	if sizeof (url) > 0 {
+		netscape.openUrl (url)}}

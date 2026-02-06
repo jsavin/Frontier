@@ -1,1 +1,9 @@
-on send (drivername, username, messagetext) {	«Changes		«5/6/02; 8:42:12 PM by DW			«Created.	local (adrdriver);	if tcp.im.findDriver (drivername, @adrdriver) {		return (adrdriver^.send (username, messagetext))}	else {		scriptError ("Can't send the instant message because there is no driver named  \"" + drivername + "\".")}}
+on send (drivername, username, messagetext) {
+	Â«Changes
+		Â«5/6/02; 8:42:12 PM by DW
+			Â«Created.
+	local (adrdriver);
+	if tcp.im.findDriver (drivername, @adrdriver) {
+		return (adrdriver^.send (username, messagetext))}
+	else {
+		scriptError ("Can't send the instant message because there is no driver named  \"" + drivername + "\".")}}

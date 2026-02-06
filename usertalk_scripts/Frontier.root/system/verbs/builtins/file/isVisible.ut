@@ -1,1 +1,2 @@
-on isVisible (path) {	kernel (file.isVisible)}
+on isVisible (path) {
+	kernel (file.isVisible)}

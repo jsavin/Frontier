@@ -1,1 +1,2 @@
-on join (s, strList) {	kernel (re.join)}
+on join (s, strList) {
+	kernel (re.join)}

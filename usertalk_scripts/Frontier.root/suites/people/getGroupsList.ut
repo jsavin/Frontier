@@ -1,1 +1,8 @@
-on getGroupsList () {	«Return a list of all the groups.	local (adrGroups = @user.people.groups);	local (i, groupsList = {});	for i = 1 to sizeOf (adrGroups^) {		if people.groupExists (nameOf (adrGroups^ [i]), @adrGroups^ [i]) {			groupsList = groupsList + nameOf (adrGroups^ [i])}};	return (groupsList)}
+on getGroupsList () {
+	Â«Return a list of all the groups.
+	local (adrGroups = @user.people.groups);
+	local (i, groupsList = {});
+	for i = 1 to sizeOf (adrGroups^) {
+		if people.groupExists (nameOf (adrGroups^ [i]), @adrGroups^ [i]) {
+			groupsList = groupsList + nameOf (adrGroups^ [i])}};
+	return (groupsList)}

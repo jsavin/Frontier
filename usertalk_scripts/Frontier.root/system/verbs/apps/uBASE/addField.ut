@@ -1,1 +1,2 @@
-on addField (fnum, fieldName, fieldType) {	return (systemEvent ('ubas', 'addf', 'fref', short (fnum), 'fnam', long (fieldName), 'ftyp', long (fieldType)))}
+on addField (fnum, fieldName, fieldType) {
+	return (systemEvent ('ubas', 'addf', 'fref', short (fnum), 'fnam', long (fieldName), 'ftyp', long (fieldType)))}

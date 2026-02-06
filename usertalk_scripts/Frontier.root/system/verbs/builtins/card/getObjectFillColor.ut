@@ -1,1 +1,5 @@
-on getObjectFillColor (name) {	local (atts);	if not card.getObjectAttributes (name, @atts) {		return ("")};	return (atts.filc)}
+on getObjectFillColor (name) {
+	local (atts);
+	if not card.getObjectAttributes (name, @atts) {
+		return ("")};
+	return (atts.filc)}

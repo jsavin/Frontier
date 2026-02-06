@@ -1,1 +1,209 @@
-on browser (adroutline, pagename="Preferences", flAddSubmitButton=true, nextLinkText="Next", prevLinkText="Previous", submitButtonText="Submit") {	«Changes		«9/27/05; 12:53:34 AM by JES			«When running in mainResponder, parse searchArgs if needed. Ensure correct macro start and end characters, and reset if needed after building a page.		«10/12/02; 1:44:56 AM by JES			«Three new parameters to facilitate localization: nextLinkText, prevLinkText and submitButtonText. These parameters specify the text for the next and previous links, and the text for the submit button.		«9/24/02; 12:51:38 AM by JES			«Decode ampersand entities in category and topic names. Needed for localization.		«6/26/02; 11:51:52 PM by JES			«Before adding the Submit button, check to see if pta^.flAddSubmitButton is defined. If defined and false, don't add the button. This allows macros in a prefs outline to suppress the Submit button, and add their own button(s) if desired.		«2/5/02; 11:26:46 AM by PBS			«Conditionalized to work in Frontier.		«1/9/02; 5:03:56 PM by JES			«Call radio.prefs.compileIfDirty, instead of compiling the xml and caching home page text, next-prev links, and page titles here.		«12/10/01; 10:21:06 PM by JES			«Include the full path in the link to sub-pages, since Opera doesn't know how to link to the same page, adding just the searchArgs. Fixes a bug where none of the Prefs or Help sub-pages could be reached in Opera.		«11/24/01; 5:18:15 PM by JES			«Set pta^.headTitle, which is used for the <%title%> in the header of the page (when rendered in the context of an #flUseHomeTitle true directive).			«See radio.webserver.setTemplate for the code that handles the #flUseHomeTitle directive.			«New optional parameter, flAddSubmitButton. If true, then the Submit button will be added at the bottom of the page. If false, there's no submit button. Default is true. This is needed in order to remove the Submit button from the bottom of the help pages.		«11/23/01; 9:17:39 PM by DW			«Put the address of the prefs outline into pta^.radioResponder.adrPrefsOutline.			«It's picked up in radio.prefs.seeAlso, to determine which element of the cache it should use.		«11/23/01; 9:06:49 PM by DW			«Add a second parameter which is the name of the home page of the sub-site.		«11/18/01; 5:48:45 PM by DW			«Not content with my most recent one, now I'm swingin for the fences.			«This browser runs off a single outline. It's not XML. It's just an outline.			«Where it requires user input -- a checkbox or a number-entry box, it calls macros.			«We do a directory-like browser for prefs, breaking it down to sections.			«The key thing about this approach is that the writer gets to use a writing tool, not an XML editor, and not a bunch of scattered strings. This makes it possible for docs and settings to be mixed in a single presentation. This is how docs were supposed to work.	local (pta = html.getpagetableaddress ());		local (macroStart = "{", macroEnd = "}");	bundle { //set macro characters to <% and %>, cachine original values if present		if defined (pta^.macroStartCharacters) {			macroStart = pta^.macroStartCharacters};		if defined (pta^.macroEndCharacters) {			macroEnd = pta^.macroEndCharacters};		pta^.macroStartCharacters = "<%";		pta^.macroEndCharacters = "%>"};		if system.environment.isRadio { //PBS 02/05/02: conditionalized for Frontier		pta^.radioResponder.adrPrefsOutline = adroutline}	else {		pta^.adrPrefsOutline = adroutline};	pta^.title = " ";	local (titleBarColor = "#" + gainsboro, titleBarTextColor = "#" + black);	titleBarColor = "#859EC9"; titleBarTextColor = "#" + white; //matches the coffee-cup background color	titleBarcolor = "#C5CEDE";	titleBarcolor = "#" + whitesmoke;	«scratchpad.params = pta^		«1/9/02; 7:08:11 PM by JES: call radio.prefs.compileIfDirty to set home page cache, build next/prev's and get page titles		«This prevents a crash on Help pages which link to related Prefs pages, when the Prefs have not been viewed since Radio was launched.		«bundle //original code			«local (adrcache)			«bundle //find the cache for this outline				«local (adr = @system.temp.radio.prefsCache)				«if not defined (adr^)					«new (tabletype, adr)				«adr = @adr^.[string (adroutline)]				«if not defined (adr^)					«new (tabletype, adr)				«adrcache = adr			«			«local (flcompile, adrxstruct = @adrcache^.xstruct)			«bundle //compile the outline if it changed				«flcompile = true				«if defined (adrxstruct^)					«if timemodified (adroutline) <= timemodified (adrxstruct)						«flcompile = false				«if flcompile					«xml.compile (op.outlinetoxml (adroutline), adrxstruct)			«			«local (adropml = xml.getAddress (adrxstruct, "opml"))			«local (adrbody = xml.getAddress (adropml, "body"))			«			«local (adrhomepagehtml = @adrcache^.homePageHtml, adrnextprevlist = @adrcache^.nextPrevList, adrpagetitles = @adrcache^.pagetitles)			«if flcompile //cache the text for the home page, create next-prevs list and cache it, and the page-titles table				«adrnextprevlist^ = {}				«new (tabletype, adrpagetitles)				«local (htmltext = "", indentlevel = 0)				«on add (s)					«htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"				«local (adrcat, catnum = 1)				«for adrcat in adrbody					«if not (nameof (adrcat^) beginswith "/")						«local (catname = xml.getattributevalue (adrcat, "text"), adrtopic, topicnum = 1)						«add ("<h4>" + catname + "</h4>")						«add ("<ul>"); indentlevel++						«for adrtopic in adrcat							«if not (nameof (adrtopic^) beginswith "/")								«local (dottedid = catnum + "." + topicnum)								«adrnextprevlist^ = adrnextprevlist^ + {dottedid}								«local (url = pta^.URI + "?page=" + dottedid)								«local (pagetitle = xml.getattributevalue (adrtopic, "text"))								«adrpagetitles^.[pagetitle] = dottedid								«add ("<li><a href=\"" + url + "\">" + pagetitle + "</a></li>")								«topicnum++						«add ("</ul>"); indentlevel--						«catnum++				«adrhomepagehtml^ = htmltext	local (adrcache = radio.prefs.compileIfDirty (adroutline));	local (adrxstruct = @adrcache^.xstruct);	local (adropml = xml.getAddress (adrxstruct, "opml"));	local (adrbody = xml.getAddress (adropml, "body"));	local (adrhomepagehtml = @adrcache^.homePageHtml, adrnextprevlist = @adrcache^.nextPrevList);		local (navigationpath = "");	if system.environment.isRadio { //PBS 02/05/02: conditionalized for Frontier		if defined (pta^.radioresponder.getargs.page) {			navigationpath = pta^.radioresponder.getargs.page}}	else { //assume mainResponder		if not defined (pta^.searchArgTable) {			if defined (pta^.searchArgs) {				if pta^.searchArgs != "" {					new (tableType, @pta^.searchArgTable);					webServer.parseArgs (pta^.searchArgs, @pta^.searchArgTable)}}};		if defined (pta^.searchArgTable.page) {			navigationpath = pta^.searchArgTable.page}};		local (adrframe, fltoplevel);	bundle { //set adrframe, fltoplevel		local (ctfields = string.countfields (navigationpath, "."));		if ctfields >= 2 {			local (i, ix, nomad = adrbody);			for i = 1 to ctfields {				ix = number (string.nthfield (navigationpath, ".", i));				if defined (nomad^.["/atts"]) { //skip over /atts					ix++};				nomad = @nomad^ [ix]};			adrframe = nomad;			fltoplevel = false}		else {			adrframe = adrbody;			fltoplevel = true}};		local (htmltext = "", indentlevel = 0);	on add (s) {		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};		bundle { //display the frame		if fltoplevel { //adrframe points to the first category			add (adrhomepagehtml^);			pta^.headTitle = pagename}		else {			local (category);			bundle { //set category				local (categoryname = xml.getattributevalue (parentof (adrframe^), "text"));				categoryname = string.replaceAll (categoryname, "&amp;", "&");				category = categoryname};			local (nextprev);			bundle { //set nextprev				local (ixmyself, i);				for i = 1 to sizeof (adrnextprevlist^) {					if adrnextprevlist^ [i] == navigationpath {						ixmyself = i;						break}};								local (next, prev);				if ixmyself == sizeof (adrnextprevlist^) {					next = nextLinkText}				else {					next = "<a href=\"?page=" + adrnextprevlist^ [ixmyself + 1] + "\">" + nextLinkText + "</a>"};				if ixmyself == 1 {					prev = prevLinkText}				else {					prev = "<a href=\"?page=" + adrnextprevlist^ [ixmyself - 1] + "\">" + prevLinkText + "</a>"};				nextprev = prev + "/" + next};			on blankLine () {				return ("<tr height=\"15\"><td colspan=\"2\">&nbsp;</td></tr>")};			on titleBar (s) {				return ("<tr bgcolor=\"" + titleBarColor + "\"><td colspan=\"2\"><b><font color=\"" + titlebartextcolor + "\">" + s + "</font></b></td></tr>")};			add ("<form method=\"POST\">"); indentlevel++;			add ("<table border=\"0\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td><a href=\"?page=1\">" + pagename + "</a>&nbsp;>&nbsp;" + category + "</td><td align=\"right\">" + nextprev + "</td></tr></table>");			add ("<h3>" + string.replaceAll (adrframe^.["/atts"].text, "&amp;", "&") + "</h3>");			pta^.headTitle = category + ": " + adrframe^.["/atts"].text;			add ("<table border=\"0\" cellspacing=\"0\" cellpadding=\"4\" width=\"100%\">"); indentlevel++;			bundle { //add the sub-elements				local (adr);				for adr in adrframe {					if not (nameof (adr^) beginswith "/") {						local (s = xml.entitydecode (adr^.["/atts"].text, true));						if s beginswith "<%" {							add (html.processmacros (s, adrPageTable:pta))}						else {							add ("<tr><td colspan=\"2\">" + html.processmacros (s, adrPageTable:pta) + "</td></tr>")}}}};			if defined (pta^.flAddSubmitButton) { //JES 6/26/02: allow macros to suppress the Submit button				flAddSubmitButton = pta^.flAddSubmitButton};			if flAddSubmitButton { //add the Submit button				add (blankline () + "<tr><td colspan=\"2\"><input type=\"submit\" value=\"" + submitButtonText + "\"></td></tr>")};			add ("</table>"); indentlevel--;			add ("</form>"); indentlevel--}};		bundle { //restore macro start and end characters		if macroStart == "{" {			delete (@pta^.macroStartCharacters)}		else {			pta^.macroStartCharacters = macroStart};		if macroEnd == "}" {			delete (@pta^.macroEndCharacters)}		else {			pta^.macroEndCharacters = macroEnd}};		return (htmltext)};«bundle //test code	«html.setpagetableaddress (@workspace.pt)	«radio.prefs.browser ("")
+on browser (adroutline, pagename="Preferences", flAddSubmitButton=true, nextLinkText="Next", prevLinkText="Previous", submitButtonText="Submit") {
+	Â«Changes
+		Â«9/27/05; 12:53:34 AM by JES
+			Â«When running in mainResponder, parse searchArgs if needed. Ensure correct macro start and end characters, and reset if needed after building a page.
+		Â«10/12/02; 1:44:56 AM by JES
+			Â«Three new parameters to facilitate localization: nextLinkText, prevLinkText and submitButtonText. These parameters specify the text for the next and previous links, and the text for the submit button.
+		Â«9/24/02; 12:51:38 AM by JES
+			Â«Decode ampersand entities in category and topic names. Needed for localization.
+		Â«6/26/02; 11:51:52 PM by JES
+			Â«Before adding the Submit button, check to see if pta^.flAddSubmitButton is defined. If defined and false, don't add the button. This allows macros in a prefs outline to suppress the Submit button, and add their own button(s) if desired.
+		Â«2/5/02; 11:26:46 AM by PBS
+			Â«Conditionalized to work in Frontier.
+		Â«1/9/02; 5:03:56 PM by JES
+			Â«Call radio.prefs.compileIfDirty, instead of compiling the xml and caching home page text, next-prev links, and page titles here.
+		Â«12/10/01; 10:21:06 PM by JES
+			Â«Include the full path in the link to sub-pages, since Opera doesn't know how to link to the same page, adding just the searchArgs. Fixes a bug where none of the Prefs or Help sub-pages could be reached in Opera.
+		Â«11/24/01; 5:18:15 PM by JES
+			Â«Set pta^.headTitle, which is used for the <%title%> in the header of the page (when rendered in the context of an #flUseHomeTitle true directive).
+			Â«See radio.webserver.setTemplate for the code that handles the #flUseHomeTitle directive.
+			Â«New optional parameter, flAddSubmitButton. If true, then the Submit button will be added at the bottom of the page. If false, there's no submit button. Default is true. This is needed in order to remove the Submit button from the bottom of the help pages.
+		Â«11/23/01; 9:17:39 PM by DW
+			Â«Put the address of the prefs outline into pta^.radioResponder.adrPrefsOutline.
+			Â«It's picked up in radio.prefs.seeAlso, to determine which element of the cache it should use.
+		Â«11/23/01; 9:06:49 PM by DW
+			Â«Add a second parameter which is the name of the home page of the sub-site.
+		Â«11/18/01; 5:48:45 PM by DW
+			Â«Not content with my most recent one, now I'm swingin for the fences.
+			Â«This browser runs off a single outline. It's not XML. It's just an outline.
+			Â«Where it requires user input -- a checkbox or a number-entry box, it calls macros.
+			Â«We do a directory-like browser for prefs, breaking it down to sections.
+			Â«The key thing about this approach is that the writer gets to use a writing tool, not an XML editor, and not a bunch of scattered strings. This makes it possible for docs and settings to be mixed in a single presentation. This is how docs were supposed to work.
+	local (pta = html.getpagetableaddress ());
+	
+	local (macroStart = "{", macroEnd = "}");
+	bundle { //set macro characters to <% and %>, cachine original values if present
+		if defined (pta^.macroStartCharacters) {
+			macroStart = pta^.macroStartCharacters};
+		if defined (pta^.macroEndCharacters) {
+			macroEnd = pta^.macroEndCharacters};
+		pta^.macroStartCharacters = "<%";
+		pta^.macroEndCharacters = "%>"};
+	
+	if system.environment.isRadio { //PBS 02/05/02: conditionalized for Frontier
+		pta^.radioResponder.adrPrefsOutline = adroutline}
+	else {
+		pta^.adrPrefsOutline = adroutline};
+	pta^.title = " ";
+	local (titleBarColor = "#" + gainsboro, titleBarTextColor = "#" + black);
+	titleBarColor = "#859EC9"; titleBarTextColor = "#" + white; //matches the coffee-cup background color
+	titleBarcolor = "#C5CEDE";
+	titleBarcolor = "#" + whitesmoke;
+	Â«scratchpad.params = pta^
+	
+	Â«1/9/02; 7:08:11 PM by JES: call radio.prefs.compileIfDirty to set home page cache, build next/prev's and get page titles
+		Â«This prevents a crash on Help pages which link to related Prefs pages, when the Prefs have not been viewed since Radio was launched.
+		Â«bundle //original code
+			Â«local (adrcache)
+			Â«bundle //find the cache for this outline
+				Â«local (adr = @system.temp.radio.prefsCache)
+				Â«if not defined (adr^)
+					Â«new (tabletype, adr)
+				Â«adr = @adr^.[string (adroutline)]
+				Â«if not defined (adr^)
+					Â«new (tabletype, adr)
+				Â«adrcache = adr
+			Â«
+			Â«local (flcompile, adrxstruct = @adrcache^.xstruct)
+			Â«bundle //compile the outline if it changed
+				Â«flcompile = true
+				Â«if defined (adrxstruct^)
+					Â«if timemodified (adroutline) <= timemodified (adrxstruct)
+						Â«flcompile = false
+				Â«if flcompile
+					Â«xml.compile (op.outlinetoxml (adroutline), adrxstruct)
+			Â«
+			Â«local (adropml = xml.getAddress (adrxstruct, "opml"))
+			Â«local (adrbody = xml.getAddress (adropml, "body"))
+			Â«
+			Â«local (adrhomepagehtml = @adrcache^.homePageHtml, adrnextprevlist = @adrcache^.nextPrevList, adrpagetitles = @adrcache^.pagetitles)
+			Â«if flcompile //cache the text for the home page, create next-prevs list and cache it, and the page-titles table
+				Â«adrnextprevlist^ = {}
+				Â«new (tabletype, adrpagetitles)
+				Â«local (htmltext = "", indentlevel = 0)
+				Â«on add (s)
+					Â«htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"
+				Â«local (adrcat, catnum = 1)
+				Â«for adrcat in adrbody
+					Â«if not (nameof (adrcat^) beginswith "/")
+						Â«local (catname = xml.getattributevalue (adrcat, "text"), adrtopic, topicnum = 1)
+						Â«add ("<h4>" + catname + "</h4>")
+						Â«add ("<ul>"); indentlevel++
+						Â«for adrtopic in adrcat
+							Â«if not (nameof (adrtopic^) beginswith "/")
+								Â«local (dottedid = catnum + "." + topicnum)
+								Â«adrnextprevlist^ = adrnextprevlist^ + {dottedid}
+								Â«local (url = pta^.URI + "?page=" + dottedid)
+								Â«local (pagetitle = xml.getattributevalue (adrtopic, "text"))
+								Â«adrpagetitles^.[pagetitle] = dottedid
+								Â«add ("<li><a href=\"" + url + "\">" + pagetitle + "</a></li>")
+								Â«topicnum++
+						Â«add ("</ul>"); indentlevel--
+						Â«catnum++
+				Â«adrhomepagehtml^ = htmltext
+	local (adrcache = radio.prefs.compileIfDirty (adroutline));
+	local (adrxstruct = @adrcache^.xstruct);
+	local (adropml = xml.getAddress (adrxstruct, "opml"));
+	local (adrbody = xml.getAddress (adropml, "body"));
+	local (adrhomepagehtml = @adrcache^.homePageHtml, adrnextprevlist = @adrcache^.nextPrevList);
+	
+	local (navigationpath = "");
+	if system.environment.isRadio { //PBS 02/05/02: conditionalized for Frontier
+		if defined (pta^.radioresponder.getargs.page) {
+			navigationpath = pta^.radioresponder.getargs.page}}
+	else { //assume mainResponder
+		if not defined (pta^.searchArgTable) {
+			if defined (pta^.searchArgs) {
+				if pta^.searchArgs != "" {
+					new (tableType, @pta^.searchArgTable);
+					webServer.parseArgs (pta^.searchArgs, @pta^.searchArgTable)}}};
+		if defined (pta^.searchArgTable.page) {
+			navigationpath = pta^.searchArgTable.page}};
+	
+	local (adrframe, fltoplevel);
+	bundle { //set adrframe, fltoplevel
+		local (ctfields = string.countfields (navigationpath, "."));
+		if ctfields >= 2 {
+			local (i, ix, nomad = adrbody);
+			for i = 1 to ctfields {
+				ix = number (string.nthfield (navigationpath, ".", i));
+				if defined (nomad^.["/atts"]) { //skip over /atts
+					ix++};
+				nomad = @nomad^ [ix]};
+			adrframe = nomad;
+			fltoplevel = false}
+		else {
+			adrframe = adrbody;
+			fltoplevel = true}};
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};
+	
+	bundle { //display the frame
+		if fltoplevel { //adrframe points to the first category
+			add (adrhomepagehtml^);
+			pta^.headTitle = pagename}
+		else {
+			local (category);
+			bundle { //set category
+				local (categoryname = xml.getattributevalue (parentof (adrframe^), "text"));
+				categoryname = string.replaceAll (categoryname, "&amp;", "&");
+				category = categoryname};
+			local (nextprev);
+			bundle { //set nextprev
+				local (ixmyself, i);
+				for i = 1 to sizeof (adrnextprevlist^) {
+					if adrnextprevlist^ [i] == navigationpath {
+						ixmyself = i;
+						break}};
+				
+				local (next, prev);
+				if ixmyself == sizeof (adrnextprevlist^) {
+					next = nextLinkText}
+				else {
+					next = "<a href=\"?page=" + adrnextprevlist^ [ixmyself + 1] + "\">" + nextLinkText + "</a>"};
+				if ixmyself == 1 {
+					prev = prevLinkText}
+				else {
+					prev = "<a href=\"?page=" + adrnextprevlist^ [ixmyself - 1] + "\">" + prevLinkText + "</a>"};
+				nextprev = prev + "/" + next};
+			on blankLine () {
+				return ("<tr height=\"15\"><td colspan=\"2\">&nbsp;</td></tr>")};
+			on titleBar (s) {
+				return ("<tr bgcolor=\"" + titleBarColor + "\"><td colspan=\"2\"><b><font color=\"" + titlebartextcolor + "\">" + s + "</font></b></td></tr>")};
+			add ("<form method=\"POST\">"); indentlevel++;
+			add ("<table border=\"0\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td><a href=\"?page=1\">" + pagename + "</a>&nbsp;>&nbsp;" + category + "</td><td align=\"right\">" + nextprev + "</td></tr></table>");
+			add ("<h3>" + string.replaceAll (adrframe^.["/atts"].text, "&amp;", "&") + "</h3>");
+			pta^.headTitle = category + ": " + adrframe^.["/atts"].text;
+			add ("<table border=\"0\" cellspacing=\"0\" cellpadding=\"4\" width=\"100%\">"); indentlevel++;
+			bundle { //add the sub-elements
+				local (adr);
+				for adr in adrframe {
+					if not (nameof (adr^) beginswith "/") {
+						local (s = xml.entitydecode (adr^.["/atts"].text, true));
+						if s beginswith "<%" {
+							add (html.processmacros (s, adrPageTable:pta))}
+						else {
+							add ("<tr><td colspan=\"2\">" + html.processmacros (s, adrPageTable:pta) + "</td></tr>")}}}};
+			if defined (pta^.flAddSubmitButton) { //JES 6/26/02: allow macros to suppress the Submit button
+				flAddSubmitButton = pta^.flAddSubmitButton};
+			if flAddSubmitButton { //add the Submit button
+				add (blankline () + "<tr><td colspan=\"2\"><input type=\"submit\" value=\"" + submitButtonText + "\"></td></tr>")};
+			add ("</table>"); indentlevel--;
+			add ("</form>"); indentlevel--}};
+	
+	bundle { //restore macro start and end characters
+		if macroStart == "{" {
+			delete (@pta^.macroStartCharacters)}
+		else {
+			pta^.macroStartCharacters = macroStart};
+		if macroEnd == "}" {
+			delete (@pta^.macroEndCharacters)}
+		else {
+			pta^.macroEndCharacters = macroEnd}};
+	
+	return (htmltext)};
+Â«bundle //test code
+	Â«html.setpagetableaddress (@workspace.pt)
+	Â«radio.prefs.browser ("")

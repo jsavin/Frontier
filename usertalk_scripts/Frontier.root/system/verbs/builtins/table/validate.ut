@@ -1,1 +1,2 @@
-on validate (adrtable) {	kernel (table.validate)}
+on validate (adrtable) {
+	kernel (table.validate)}

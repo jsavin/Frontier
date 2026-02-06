@@ -1,1 +1,70 @@
-on getPagePref (prefName, adrPage, adrPageTable=@websites.["#data"]) { «new in 5.0	«Similar to html.getPref, except that it retrieves a pref from a remote page.		«Whenever you need to find an attribute of a page other than		«the one that's being rendered, call this script.		«Friday, January 02, 1998 at 10:44:23 PM by PBS		on coerceVal (value) { //Coerce "on" to true, "off" to false, and so on		case value {			"yes";			"true" {				return (true)};			"no";			"false" {				return (false)}};		return (value)};		try { //check to see if we're getting a pref from the current page		if adrPage == adrPageTable^.adrObject {			return (html.getPref (prefName, adrPageTable))}};		if prefName beginswith "#" { //pop off leading # character		prefName = string.delete (prefName, 1, 1)};		local (nomad = adrPage);		if typeOf (adrPage^) != tableType { //Try to get it from that page.		local (val);		val = html.getOneDirective (prefName, adrPage^);		if val != "" {			return (coerceVal (val))};		nomad = parentOf (adrPage^)};		loop { // Pop out to the root.		on foundIt (adrPref) {			if typeOf (adrPref^) == tableType {				return (adrPref)};			return (coerceVal (adrPref^))};				case string.lower (prefName) {			"tools";			"images";			"glossary" {				if defined (nomad^.[prefName]) {					return (foundIt (@nomad^.[prefName]))}}};				if defined (nomad^.["#" + prefName]) {			return (foundIt (@nomad^.["#" + prefName]))};		if defined (nomad^.["#prefs"].["#" + prefName]) {			return (foundIt (@nomad^.["#prefs"].["#" + prefName]))};		if defined (nomad^.["#prefs"].[prefName]) {			return (foundIt (@nomad^.["#prefs"].[prefName]))};				nomad = parentOf (nomad^);		if nomad == nil or nomad == @root {			break}};		try { // Try to get it from user.html.prefs.		return (user.html.prefs.[prefName])};		case string.lower (prefName) { // Return a default value.		"fileextension" {			return (".html")};		"maxfilenamelength" {			return (31)};		"defaulttemplate" {			return ("normal")};		"defaultfilename" {			return ("index")}};		return (true)} //Unknown or default prefs are true.
+on getPagePref (prefName, adrPage, adrPageTable=@websites.["#data"]) { Â«new in 5.0
+	Â«Similar to html.getPref, except that it retrieves a pref from a remote page.
+		Â«Whenever you need to find an attribute of a page other than
+		Â«the one that's being rendered, call this script.
+		Â«Friday, January 02, 1998 at 10:44:23 PM by PBS
+	
+	on coerceVal (value) { //Coerce "on" to true, "off" to false, and so on
+		case value {
+			"yes";
+			"true" {
+				return (true)};
+			"no";
+			"false" {
+				return (false)}};
+		return (value)};
+	
+	try { //check to see if we're getting a pref from the current page
+		if adrPage == adrPageTable^.adrObject {
+			return (html.getPref (prefName, adrPageTable))}};
+	
+	if prefName beginswith "#" { //pop off leading # character
+		prefName = string.delete (prefName, 1, 1)};
+	
+	local (nomad = adrPage);
+	
+	if typeOf (adrPage^) != tableType { //Try to get it from that page.
+		local (val);
+		val = html.getOneDirective (prefName, adrPage^);
+		if val != "" {
+			return (coerceVal (val))};
+		nomad = parentOf (adrPage^)};
+	
+	loop { // Pop out to the root.
+		on foundIt (adrPref) {
+			if typeOf (adrPref^) == tableType {
+				return (adrPref)};
+			return (coerceVal (adrPref^))};
+		
+		case string.lower (prefName) {
+			"tools";
+			"images";
+			"glossary" {
+				if defined (nomad^.[prefName]) {
+					return (foundIt (@nomad^.[prefName]))}}};
+		
+		if defined (nomad^.["#" + prefName]) {
+			return (foundIt (@nomad^.["#" + prefName]))};
+		if defined (nomad^.["#prefs"].["#" + prefName]) {
+			return (foundIt (@nomad^.["#prefs"].["#" + prefName]))};
+		if defined (nomad^.["#prefs"].[prefName]) {
+			return (foundIt (@nomad^.["#prefs"].[prefName]))};
+		
+		nomad = parentOf (nomad^);
+		if nomad == nil or nomad == @root {
+			break}};
+	
+	try { // Try to get it from user.html.prefs.
+		return (user.html.prefs.[prefName])};
+	
+	case string.lower (prefName) { // Return a default value.
+		"fileextension" {
+			return (".html")};
+		"maxfilenamelength" {
+			return (31)};
+		"defaulttemplate" {
+			return ("normal")};
+		"defaultfilename" {
+			return ("index")}};
+	
+	return (true)} //Unknown or default prefs are true.

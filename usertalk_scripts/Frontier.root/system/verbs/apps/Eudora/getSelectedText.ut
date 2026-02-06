@@ -1,1 +1,3 @@
-on getSelectedText () {	with objectModel, Eudora, eventInfo {		return (core.get (id, selectedText))}}
+on getSelectedText () {
+	with objectModel, Eudora, eventInfo {
+		return (core.get (id, selectedText))}}

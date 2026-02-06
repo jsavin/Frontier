@@ -1,1 +1,2 @@
-on getValue (adrtable, name) { //return the contents of the indicated object	kernel (xml.getValue)}
+on getValue (adrtable, name) { //return the contents of the indicated object
+	kernel (xml.getValue)}

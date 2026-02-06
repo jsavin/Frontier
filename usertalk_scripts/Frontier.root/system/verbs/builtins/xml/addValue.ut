@@ -1,1 +1,2 @@
-on addValue (adrparent, name, value) {	kernel (xml.addValue)}
+on addValue (adrparent, name, value) {
+	kernel (xml.addValue)}

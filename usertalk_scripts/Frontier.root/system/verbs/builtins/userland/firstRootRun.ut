@@ -1,1 +1,264 @@
-«New in 5.0, this script runs only the first time Frontier is run	«It makes it easy for us to move code between cleanRoot	«and the first time the code runs on the user's machine.	«New: 11/5/97 at 12:10:37 PM by DWbundle { //set up user.backups	try {delete (@user.backups.folder)};	try {delete (@user.backups.lastFname)};	try {delete (@user.backups.nextBackup)};	backups.init ();	if not (file.exists (user.backups.folder)) {		try {file.newFolder (user.backups.folder)}}};bundle { //set up user.batchExporter	try {table.emptyTable (@user.batchExporter)};	batchExporter.init ()};bundle { //set up user.prefs and its sub-tables	user.prefs.agentsEnabled = true;	user.prefs.name = "";	user.prefs.initials = "";	user.prefs.mailAddress = "";	user.prefs.organization = "";	user.prefs.mailHost = "";	user.prefs.frontierIsServer = false;	if not defined (user.prefs.serialNumber) {		user.prefs.serialNumber = ""};	bundle { //set up user.prefs.fonts		local (defaultfont, defaultsize);		new (tableType, @user.prefs.fonts);		case sys.os () {			"MacOS" {				defaultfont = "Geneva";				defaultsize = 12;				if system.environment.isCarbon {					defaultsize = 10}};			"WinNT";			"Win95" {				defaultfont = "Arial";				defaultsize = 10}};		if not defined (user.prefs.fonts.outlineFont) {			user.prefs.fonts.outlineFont = defaultfont};		if not defined (user.prefs.fonts.outlineFontSize) {			user.prefs.fonts.outlineFontSize = defaultsize};		if not defined (user.prefs.fonts.tableFont) {			user.prefs.fonts.tableFont = defaultfont};		if not defined (user.prefs.fonts.tableFontSize) {			user.prefs.fonts.tableFontSize = defaultsize};		if not defined (user.prefs.fonts.wptextFont) {			user.prefs.fonts.wptextFont = defaultfont};		if not defined (user.prefs.fonts.wptextFontSize) {			user.prefs.fonts.wptextFontSize = defaultsize};		if not defined (user.prefs.fonts.scriptFont) {			user.prefs.fonts.scriptFont = defaultfont};		if not defined (user.prefs.fonts.scriptFontSize) {			user.prefs.fonts.scriptFontSize = defaultsize};		if not defined (user.prefs.fonts.menuBarFont) {			case sys.os () {				"Win95";				"WinNT" {					user.prefs.fonts.menuBarFont = defaultfont};				"MacOS" {					«Chicago with System 7, Charcoal with OS 8.					if system.environment.isCarbon {						user.prefs.fonts.menuBarFont = defaultfont}					else {						if sys.osVersion () beginsWith "8" {							user.prefs.fonts.menuBarFont = "Charcoal"}						else {							user.prefs.fonts.menuBarFont = "Chicago"}}}}};		if not defined (user.prefs.fonts.menuBarFontSize) {			user.prefs.fonts.menuBarFontSize = defaultsize}};	bundle { //set up user.prefs.dialogs		new (tableType, @user.prefs.dialogs);		user.prefs.dialogs.newSuiteName = "";		user.prefs.dialogs.jumpAddress = "websites"};	bundle { //set up user.prefs.search		new (tableType, @user.prefs.search);		user.prefs.search.searchFor = "7.0.1";		user.prefs.search.replaceWith = "8.0";		user.prefs.search.caseSensitive = false;		user.prefs.search.closeWindows = true;		user.prefs.search.flatSearch = false;		user.prefs.search.frontWindowOnly = false;		user.prefs.search.wholeWords = false;		user.prefs.search.wrapAround = true;		user.prefs.search.winStandardFindCommand = false};	bundle { //set up user.prefs.commonStyles		case sys.os () {			"MacOS" {				if system.environment.isCarbon {					user.prefs.commonStyles = userland.commonStylesMacCarbon}				else {					user.prefs.commonStyles = userland.commonStylesMac}};			"Win95";			"WinNT" {				user.prefs.commonStyles = userland.commonStylesWin}}}};bundle { //clean out the user.callbacks table	new (tabletype, @user.callbacks);	new (tabletype, @user.callbacks.closeWindow);	new (tabletype, @user.callbacks.cmd2click);	new (tabletype, @user.callbacks.compileChangedScript);	new (tabletype, @user.callbacks.control2click);	new (tabletype, @user.callbacks.fileWriteWholeFile);	new (tabletype, @user.callbacks.opCollapse);	new (tabletype, @user.callbacks.opCursorMoved);	new (tabletype, @user.callbacks.openWindow);	new (tabletype, @user.callbacks.opExpand);	new (tabletype, @user.callbacks.opInsert);	new (tabletype, @user.callbacks.opReturnKey);	new (tabletype, @user.callbacks.opRightClick);	new (tabletype, @user.callbacks.opStruct2Click);	new (tabletype, @user.callbacks.option2click);	new (tabletype, @user.callbacks.resume);	new (tabletype, @user.callbacks.saveWindow);	new (tabletype, @user.callbacks.shutdown);	new (tabletype, @user.callbacks.startup);	new (tabletype, @user.callbacks.suspend);	new (tableType, @user.callbacks.systemTrayIcon2Click);	new (tableType, @user.callbacks.systemTrayIconRightClick)};bundle { //set up user.export	export.init ();	user.export.lastaddress = @workspace.notepad;	user.export.lastcompression = "None";	user.export.lastfolder = "";	user.export.lastkind = "Packed object";	user.export.lastlocation = "File";	user.export.ok = false;		new (outlineType, @user.export.importLog);	user.export.importLogEnabled = true;	user.export.importLogOpen = false};bundle { //set up user.menus	new (tableType, @user.menus);	user.menus.bookmarkMenu = userland.virginBookmarkMenu;	user.menus.customMenu = userland.virginCustomMenu};with websites.["#ftpSite"] {	folder = file.folderFromPath (Frontier.getProgramPath ()) + "Websites" + file.getPathChar ();	«file.sureFolder (folder)	url = file.fileToURL (folder);	isLocal = true};user.html.sites.default = websites.["#ftpSite"];bundle { //delete all the user.xxx tables we possibly can	try {delete (@user.log)};	try {delete (@user.stack)};	new (tableType, @user.databases)};bundle { //intialize user.scheduler	table.emptyTable (@user.scheduler.hourly);	table.emptyTable (@user.scheduler.overnight);	new (outlineType, @user.scheduler.log);	local (day, month, year, hour, minute, second);	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);	user.scheduler.tasks.hourly.tasktime = date.set (day, month, year, hour, 0, 0);	user.scheduler.tasks.overnight.tasktime = date.set (day, month, year, 23, 59, 00);		«Monday, March 29, 1999 at 12:51:52 AM by BS	user.scheduler.prefs.keepLog = false;	«user.scheduler.prefs.logInGuestDatabase = true	user.scheduler.prefs.logInGuestDatabase = false; //PBS 06/24/00: no logging by default	user.scheduler.prefs.runThreads = true};bundle { //initialize logging prefs	try {delete (@user.logs)};	if not defined (user.log) {		new (tableType, @user.log)};	new (tableType, @user.log.outlines);	new (tableType, @user.log.prefs);	user.log.prefs.flLogToGuestDatabase = false;	user.log.prefs.flLogToOutline = false;	user.log.prefs.flLogToTextFile = false;	user.log.prefs.flViewLog = false;	log.startup ()};bundle { //initialize user.webBrowser	«new (tableType, @user.webBrowser)	user.webBrowser.currentid = 'NONE';	user.webBrowser.webPreviewSerialNumber = 1;	user.webBrowser.winDefaultBrowserApp = "";	user.webBrowser.bringToFrontOnPreview = true;	on proxyInit () { //make sure proxy prefs exist		if not defined (user.webBrowser.proxy) {			new (tableType, @user.webBrowser.proxy)};		if not defined (user.webBrowser.proxy.domain) {			user.webBrowser.proxy.domain = ""};		if not defined (user.webBrowser.proxy.password) {			user.webBrowser.proxy.password = ""};		if not defined (user.webBrowser.proxy.port) {			user.webBrowser.proxy.port = 80};		if not defined (user.webBrowser.proxy.username) {			user.webBrowser.proxy.username = ""}};	proxyInit ()};bundle { //user.html	user.html.prefs = userland.htmlprefs;	html.init ();	case sys.os () {		"Win95";		"WinNT" {			user.html.prefs.addLineFeeds = true};		"MacOS" {			user.html.prefs.addLineFeeds = false}};		user.html.menu.lastUrl = "http://frontier.userland.com/"};bundle { //initialize betty, webserver, people, custody, root updates, webEdit	webserver.init ();	betty.init ();	people.init ();	custody.init ();	webEdit.init ();	rootUpdates.init ();	soap.init ();		user.betty.rpcHandlers.examples = betty.data.rpcHandlers.examples;		user.betty.prefs.rpcClientDefaultTimeout = 7200};bundle { //initialize responders	«user.webserver.responders.websiteFramework.data.docTree.samples = @websites.samples	«try		«delete (@user.webserver.responders.websiteFramework.data.docTree.allSites)	«try		«delete (@user.webserver.responders.websiteFramework.data.docTree.contents)		«PBS 11/11/99: set up the default responder (mainResponder).	local (adrResponder = @user.webserver.responders.default);	new (tableType, adrResponder);	adrResponder^.condition = "(string.lower (path) beginsWith \"mainResponder\")";	adrResponder^.enabled = true;	new (tableType, @adrResponder^.methods);	script.newScriptObject ("on any (adrParamTable)\r\treturn (mainResponder.respond (adrParamTable))", @adrResponder^.methods.any);		«PBS 02/10/02: worm defense responder	if not defined (user.webserver.responders.wormDefense) {		user.webserver.responders.wormDefense = @webserver.responders.wormDefense};	if defined (user.webserver.responders.manilaEdit) {		delete (@user.webserver.responders.manilaEdit)}};new (outlineType, @user.html.macroErrors);new (outlineType, @user.html.changedPages);new (outlineType, @workspace.notepad);bundle { //misc Frontier 8 stuff	if not defined (user.protocols) {		new (tableType, @user.protocols)};	user.soap.prefs.rpcClientDefaultTimeout = 7200;	new (tableType, @websites.["#data"]);		local (adr, sizeTable = sizeOf (workspace), i);	for i = sizeTable downTo 1 {		local (adr = @workspace [i]);		local (name = nameOf (adr^));		case string.lower (name) {			"notepad";			"userlandsamples" {				continue}};		delete (adr)};		table.emptyTable (@scratchpad);	table.emptyTable (@system.deskscripts)};«Set lastUpdate time for Frontier.root.user.rootUpdates.servers.Frontier.lastUpdate = userland.initialLastUpdateTime;user.rootUpdates.servers.Frontier.url = "http://frontier.userland.com/updates/Frontier";user.rootUpdates.servers.Frontier.server = "updates.userland.com";return (true)
+Â«New in 5.0, this script runs only the first time Frontier is run
+	Â«It makes it easy for us to move code between cleanRoot
+	Â«and the first time the code runs on the user's machine.
+	Â«New: 11/5/97 at 12:10:37 PM by DW
+
+bundle { //set up user.backups
+	try {delete (@user.backups.folder)};
+	try {delete (@user.backups.lastFname)};
+	try {delete (@user.backups.nextBackup)};
+	backups.init ();
+	if not (file.exists (user.backups.folder)) {
+		try {file.newFolder (user.backups.folder)}}};
+bundle { //set up user.batchExporter
+	try {table.emptyTable (@user.batchExporter)};
+	batchExporter.init ()};
+bundle { //set up user.prefs and its sub-tables
+	user.prefs.agentsEnabled = true;
+	user.prefs.name = "";
+	user.prefs.initials = "";
+	user.prefs.mailAddress = "";
+	user.prefs.organization = "";
+	user.prefs.mailHost = "";
+	user.prefs.frontierIsServer = false;
+	if not defined (user.prefs.serialNumber) {
+		user.prefs.serialNumber = ""};
+	bundle { //set up user.prefs.fonts
+		local (defaultfont, defaultsize);
+		new (tableType, @user.prefs.fonts);
+		case sys.os () {
+			"MacOS" {
+				defaultfont = "Geneva";
+				defaultsize = 12;
+				if system.environment.isCarbon {
+					defaultsize = 10}};
+			"WinNT";
+			"Win95" {
+				defaultfont = "Arial";
+				defaultsize = 10}};
+		if not defined (user.prefs.fonts.outlineFont) {
+			user.prefs.fonts.outlineFont = defaultfont};
+		if not defined (user.prefs.fonts.outlineFontSize) {
+			user.prefs.fonts.outlineFontSize = defaultsize};
+		if not defined (user.prefs.fonts.tableFont) {
+			user.prefs.fonts.tableFont = defaultfont};
+		if not defined (user.prefs.fonts.tableFontSize) {
+			user.prefs.fonts.tableFontSize = defaultsize};
+		if not defined (user.prefs.fonts.wptextFont) {
+			user.prefs.fonts.wptextFont = defaultfont};
+		if not defined (user.prefs.fonts.wptextFontSize) {
+			user.prefs.fonts.wptextFontSize = defaultsize};
+		if not defined (user.prefs.fonts.scriptFont) {
+			user.prefs.fonts.scriptFont = defaultfont};
+		if not defined (user.prefs.fonts.scriptFontSize) {
+			user.prefs.fonts.scriptFontSize = defaultsize};
+		if not defined (user.prefs.fonts.menuBarFont) {
+			case sys.os () {
+				"Win95";
+				"WinNT" {
+					user.prefs.fonts.menuBarFont = defaultfont};
+				"MacOS" {
+					Â«Chicago with System 7, Charcoal with OS 8.
+					if system.environment.isCarbon {
+						user.prefs.fonts.menuBarFont = defaultfont}
+					else {
+						if sys.osVersion () beginsWith "8" {
+							user.prefs.fonts.menuBarFont = "Charcoal"}
+						else {
+							user.prefs.fonts.menuBarFont = "Chicago"}}}}};
+		if not defined (user.prefs.fonts.menuBarFontSize) {
+			user.prefs.fonts.menuBarFontSize = defaultsize}};
+	bundle { //set up user.prefs.dialogs
+		new (tableType, @user.prefs.dialogs);
+		user.prefs.dialogs.newSuiteName = "";
+		user.prefs.dialogs.jumpAddress = "websites"};
+	bundle { //set up user.prefs.search
+		new (tableType, @user.prefs.search);
+		user.prefs.search.searchFor = "7.0.1";
+		user.prefs.search.replaceWith = "8.0";
+		user.prefs.search.caseSensitive = false;
+		user.prefs.search.closeWindows = true;
+		user.prefs.search.flatSearch = false;
+		user.prefs.search.frontWindowOnly = false;
+		user.prefs.search.wholeWords = false;
+		user.prefs.search.wrapAround = true;
+		user.prefs.search.winStandardFindCommand = false};
+	bundle { //set up user.prefs.commonStyles
+		case sys.os () {
+			"MacOS" {
+				if system.environment.isCarbon {
+					user.prefs.commonStyles = userland.commonStylesMacCarbon}
+				else {
+					user.prefs.commonStyles = userland.commonStylesMac}};
+			"Win95";
+			"WinNT" {
+				user.prefs.commonStyles = userland.commonStylesWin}}}};
+
+bundle { //clean out the user.callbacks table
+	new (tabletype, @user.callbacks);
+	new (tabletype, @user.callbacks.closeWindow);
+	new (tabletype, @user.callbacks.cmd2click);
+	new (tabletype, @user.callbacks.compileChangedScript);
+	new (tabletype, @user.callbacks.control2click);
+	new (tabletype, @user.callbacks.fileWriteWholeFile);
+	new (tabletype, @user.callbacks.opCollapse);
+	new (tabletype, @user.callbacks.opCursorMoved);
+	new (tabletype, @user.callbacks.openWindow);
+	new (tabletype, @user.callbacks.opExpand);
+	new (tabletype, @user.callbacks.opInsert);
+	new (tabletype, @user.callbacks.opReturnKey);
+	new (tabletype, @user.callbacks.opRightClick);
+	new (tabletype, @user.callbacks.opStruct2Click);
+	new (tabletype, @user.callbacks.option2click);
+	new (tabletype, @user.callbacks.resume);
+	new (tabletype, @user.callbacks.saveWindow);
+	new (tabletype, @user.callbacks.shutdown);
+	new (tabletype, @user.callbacks.startup);
+	new (tabletype, @user.callbacks.suspend);
+	new (tableType, @user.callbacks.systemTrayIcon2Click);
+	new (tableType, @user.callbacks.systemTrayIconRightClick)};
+bundle { //set up user.export
+	export.init ();
+	user.export.lastaddress = @workspace.notepad;
+	user.export.lastcompression = "None";
+	user.export.lastfolder = "";
+	user.export.lastkind = "Packed object";
+	user.export.lastlocation = "File";
+	user.export.ok = false;
+	
+	new (outlineType, @user.export.importLog);
+	user.export.importLogEnabled = true;
+	user.export.importLogOpen = false};
+bundle { //set up user.menus
+	new (tableType, @user.menus);
+	user.menus.bookmarkMenu = userland.virginBookmarkMenu;
+	user.menus.customMenu = userland.virginCustomMenu};
+
+with websites.["#ftpSite"] {
+	folder = file.folderFromPath (Frontier.getProgramPath ()) + "Websites" + file.getPathChar (); file.sureFolder (folder)
+	url = file.fileToURL (folder);
+	isLocal = true};
+
+user.html.sites.default = websites.["#ftpSite"];
+
+bundle { //delete all the user.xxx tables we possibly can
+	try {delete (@user.log)};
+	try {delete (@user.stack)};
+	new (tableType, @user.databases)};
+bundle { //intialize user.scheduler
+	table.emptyTable (@user.scheduler.hourly);
+	table.emptyTable (@user.scheduler.overnight);
+	new (outlineType, @user.scheduler.log);
+	local (day, month, year, hour, minute, second);
+	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+	user.scheduler.tasks.hourly.tasktime = date.set (day, month, year, hour, 0, 0);
+	user.scheduler.tasks.overnight.tasktime = date.set (day, month, year, 23, 59, 00);
+	
+	Â«Monday, March 29, 1999 at 12:51:52 AM by BS
+	user.scheduler.prefs.keepLog = false;
+	Â«user.scheduler.prefs.logInGuestDatabase = true
+	user.scheduler.prefs.logInGuestDatabase = false; //PBS 06/24/00: no logging by default
+	user.scheduler.prefs.runThreads = true};
+bundle { //initialize logging prefs
+	try {delete (@user.logs)};
+	if not defined (user.log) {
+		new (tableType, @user.log)};
+	new (tableType, @user.log.outlines);
+	new (tableType, @user.log.prefs);
+	user.log.prefs.flLogToGuestDatabase = false;
+	user.log.prefs.flLogToOutline = false;
+	user.log.prefs.flLogToTextFile = false;
+	user.log.prefs.flViewLog = false;
+	log.startup ()};
+bundle { //initialize user.webBrowser
+	Â«new (tableType, @user.webBrowser)
+	user.webBrowser.currentid = 'NONE';
+	user.webBrowser.webPreviewSerialNumber = 1;
+	user.webBrowser.winDefaultBrowserApp = "";
+	user.webBrowser.bringToFrontOnPreview = true;
+	on proxyInit () { //make sure proxy prefs exist
+		if not defined (user.webBrowser.proxy) {
+			new (tableType, @user.webBrowser.proxy)};
+		if not defined (user.webBrowser.proxy.domain) {
+			user.webBrowser.proxy.domain = ""};
+		if not defined (user.webBrowser.proxy.password) {
+			user.webBrowser.proxy.password = ""};
+		if not defined (user.webBrowser.proxy.port) {
+			user.webBrowser.proxy.port = 80};
+		if not defined (user.webBrowser.proxy.username) {
+			user.webBrowser.proxy.username = ""}};
+	proxyInit ()};
+bundle { //user.html
+	user.html.prefs = userland.htmlprefs;
+	html.init ();
+	case sys.os () {
+		"Win95";
+		"WinNT" {
+			user.html.prefs.addLineFeeds = true};
+		"MacOS" {
+			user.html.prefs.addLineFeeds = false}};
+	
+	user.html.menu.lastUrl = "http://frontier.userland.com/"};
+bundle { //initialize betty, webserver, people, custody, root updates, webEdit
+	webserver.init ();
+	betty.init ();
+	people.init ();
+	custody.init ();
+	webEdit.init ();
+	rootUpdates.init ();
+	soap.init ();
+	
+	user.betty.rpcHandlers.examples = betty.data.rpcHandlers.examples;
+	
+	user.betty.prefs.rpcClientDefaultTimeout = 7200};
+
+bundle { //initialize responders
+	Â«user.webserver.responders.websiteFramework.data.docTree.samples = @websites.samples
+	Â«try
+		Â«delete (@user.webserver.responders.websiteFramework.data.docTree.allSites)
+	Â«try
+		Â«delete (@user.webserver.responders.websiteFramework.data.docTree.contents)
+	
+	Â«PBS 11/11/99: set up the default responder (mainResponder).
+	local (adrResponder = @user.webserver.responders.default);
+	new (tableType, adrResponder);
+	adrResponder^.condition = "(string.lower (path) beginsWith \"mainResponder\")";
+	adrResponder^.enabled = true;
+	new (tableType, @adrResponder^.methods);
+	script.newScriptObject ("on any (adrParamTable)\r\treturn (mainResponder.respond (adrParamTable))", @adrResponder^.methods.any);
+	
+	Â«PBS 02/10/02: worm defense responder
+	if not defined (user.webserver.responders.wormDefense) {
+		user.webserver.responders.wormDefense = @webserver.responders.wormDefense};
+	if defined (user.webserver.responders.manilaEdit) {
+		delete (@user.webserver.responders.manilaEdit)}};
+
+new (outlineType, @user.html.macroErrors);
+new (outlineType, @user.html.changedPages);
+new (outlineType, @workspace.notepad);
+
+bundle { //misc Frontier 8 stuff
+	if not defined (user.protocols) {
+		new (tableType, @user.protocols)};
+	user.soap.prefs.rpcClientDefaultTimeout = 7200;
+	new (tableType, @websites.["#data"]);
+	
+	local (adr, sizeTable = sizeOf (workspace), i);
+	for i = sizeTable downTo 1 {
+		local (adr = @workspace [i]);
+		local (name = nameOf (adr^));
+		case string.lower (name) {
+			"notepad";
+			"userlandsamples" {
+				continue}};
+		delete (adr)};
+	
+	table.emptyTable (@scratchpad);
+	table.emptyTable (@system.deskscripts)};
+
+Â«Set lastUpdate time for Frontier.root.
+user.rootUpdates.servers.Frontier.lastUpdate = userland.initialLastUpdateTime;
+user.rootUpdates.servers.Frontier.url = "http://frontier.userland.com/updates/Frontier";
+user.rootUpdates.servers.Frontier.server = "updates.userland.com";
+
+return (true)

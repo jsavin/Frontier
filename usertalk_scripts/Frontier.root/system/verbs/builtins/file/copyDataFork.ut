@@ -1,1 +1,2 @@
-on copyDataFork (sourcepath, destpath) {	kernel (file.copydatafork)}
+on copyDataFork (sourcepath, destpath) {
+	kernel (file.copydatafork)}

@@ -1,1 +1,4 @@
-on setCardBackColor (color) {	new (tableType, @atts);	atts.bakc = rgb (color);	return (cardEditor.setCardAttributes (@atts))}
+on setCardBackColor (color) {
+	new (tableType, @atts);
+	atts.bakc = rgb (color);
+	return (cardEditor.setCardAttributes (@atts))}

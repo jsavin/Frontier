@@ -1,1 +1,2 @@
-on close (obj, saving = nil, savingIn = nil) { «Closes the designated window.	return (appleEvent (BBEdit.id, 'core', 'clos', '----', objspec (obj), 'savo', enum (saving), 'kfil', alias (savingIn)))}
+on close (obj, saving = nil, savingIn = nil) { Â«Closes the designated window.
+	return (appleEvent (BBEdit.id, 'core', 'clos', '----', objspec (obj), 'savo', enum (saving), 'kfil', alias (savingIn)))}

@@ -1,1 +1,100 @@
-on save (adr, flClosing=false) {	«Changes:		«10/14/05; 10:06:03 PM by JES			«Call op.outlineToXml with flDehoist as true.		«6/25/02; 1:06:47 AM by JES			«Set the title attribute of the window after it's been saved. The title attribute is used when creating bookmarks for disk-based outline files.		«3/26/02; 6:30:59 PM by JES			«If the window has an adrCloud attribute, add a <cloud> element to the OPML file.			«We make a local copy of the cloudData table, rename server to domain.			«If the window has a requestNotificationProcedure attribute, use its value for the registerProcedure cloudData sub-element.		«8/9/01; 1:11:41 AM by JES			«Preserve line endings for non-OPML files.			«On MacOS X, default to LF for the line ending.	local (atts);	window.attributes.getAll (@atts, adr);	local (f = window.getTitle (adr));	if not (string.lower (f) endsWith (".opml")) {		if not (f contains ".") {			f = f + ".opml"}};		on saveFile () {		try {			msg ("Saving \"" + f + "\"."); //Monday, August 21, 2000 at 5:47:45 AM by DW			atts.title = file.fileFromPath (f);			window.setTitle (adr, atts.title);			local (xmlText);			if defined (atts.flOutlineDocument) { //PBS 09/15/00: it may be raw XML				if not (atts.flOutlineDocument) {					xmlText = string (adr^); //raw XML is just string of the outline					if defined (atts.lineEnding) { //use the same line ending as the original document						xmlText = string.replaceAll (xmlText, "\r", atts.lineEnding)}					else { //add linefeeds if this is Windows or change to LF's if MacOS X						bundle {							if system.environment.isWindows {								xmlText = string.replaceAll (xmlText, "\r", "\r\n")};							if system.environment.isCarbon {								xmlText = string.replaceAll (xmlText, "\r", "\n")}}};					if defined (atts.fileCreator) { //02/21/2001 JES: save with recorded type/creator						file.writeWholeFile (f, xmlText, atts.fileType, atts.fileCreator)}					else {						file.writeWholeFile (f, xmlText, 'TEXT', 'Radu')}}};			if xmlText == nil { //if it's an outlineDocument, xmlText is not yet set				local (cloud, adrcloud);				if defined (atts.adrCloud) {					cloud = atts.adrCloud^;					if not defined (cloud.domain) {						table.rename (@cloud.server, "domain")};					if defined (atts.requestNotificationProcedure) {						cloud.registerProcedure = atts.requestNotificationProcedure};					adrcloud = @cloud};				xmlText = op.outlineToXml (adr, adrcloud:adrcloud, flDehoist:true); //convert to outlineDocument				bundle { //01/23/01 JES: support style sheet declarations					if defined (atts.xmlHeaders) {						local (ix = string.patternMatch ("?>", xmlText) + 3);						xmlText = string.insert (atts.xmlHeaders, xmlText, ix)}};				if defined (atts.lineEnding) { //02/21/2001 JES: save the file with the recorded line-endings					xmlText = string.replaceAll (xmlText, "\r", atts.lineEnding)};				if system.environment.isMac { //12/31/00 JES: convert Mac text to latin					xmlText = string.macToLatin (xmlText)};				if defined (atts.fileCreator) { //02/21/2001 JES: save with recorded type/creator					file.writeWholeFile (f, xmlText, atts.fileType, atts.fileCreator)}				else {					file.writeWholeFile (f, xmlText, 'OPML', 'Radu')}}; //PBS 09/21/00: save with Mac codes			window.attributes.setOne ("f", f, adr);			window.attributes.setOne ("title", atts.title);			msg ("");			return (true)}		else {			window.attributes.setOne ("savingError", tryError, adr);			dialog.alert (tryError);			return (false)}};		if defined (atts.f) { //save files whose path is already known		f = atts.f;		if f != "" {			return (saveFile ())}};		if not (file.putFileDialog ("Save as:", @f)) {		return (false)}; //prevent other callbacks from running	local (defaultExtension = ".opml");	local (flOutlineDocument = false);	if defined (atts.flOutlineDocument) { //PBS 12/26/00: check extension only with OPML documents		flOutlineDocument = atts.flOutlineDocument}	else { //it's a new document, so it's opml		flOutlineDocument = true};		if flOutlineDocument { //ensure .opml extension		if not (string.lower (f) endsWith defaultExtension) {			f = f + defaultExtension}}	else { //PBS 12/26/00: if no extension, use .txt extension		local (fname = file.fileFromPath (f));		if not (fname contains ".") {			f = f + ".txt"}};		return (saveFile ());		return (true)};«bundle //debugging	«save (window.frontMost (), false)
+on save (adr, flClosing=false) {
+	Â«Changes:
+		Â«10/14/05; 10:06:03 PM by JES
+			Â«Call op.outlineToXml with flDehoist as true.
+		Â«6/25/02; 1:06:47 AM by JES
+			Â«Set the title attribute of the window after it's been saved. The title attribute is used when creating bookmarks for disk-based outline files.
+		Â«3/26/02; 6:30:59 PM by JES
+			Â«If the window has an adrCloud attribute, add a <cloud> element to the OPML file.
+			Â«We make a local copy of the cloudData table, rename server to domain.
+			Â«If the window has a requestNotificationProcedure attribute, use its value for the registerProcedure cloudData sub-element.
+		Â«8/9/01; 1:11:41 AM by JES
+			Â«Preserve line endings for non-OPML files.
+			Â«On MacOS X, default to LF for the line ending.
+	local (atts);
+	window.attributes.getAll (@atts, adr);
+	local (f = window.getTitle (adr));
+	if not (string.lower (f) endsWith (".opml")) {
+		if not (f contains ".") {
+			f = f + ".opml"}};
+	
+	on saveFile () {
+		try {
+			msg ("Saving \"" + f + "\"."); //Monday, August 21, 2000 at 5:47:45 AM by DW
+			atts.title = file.fileFromPath (f);
+			window.setTitle (adr, atts.title);
+			local (xmlText);
+			if defined (atts.flOutlineDocument) { //PBS 09/15/00: it may be raw XML
+				if not (atts.flOutlineDocument) {
+					xmlText = string (adr^); //raw XML is just string of the outline
+					if defined (atts.lineEnding) { //use the same line ending as the original document
+						xmlText = string.replaceAll (xmlText, "\r", atts.lineEnding)}
+					else { //add linefeeds if this is Windows or change to LF's if MacOS X
+						bundle {
+							if system.environment.isWindows {
+								xmlText = string.replaceAll (xmlText, "\r", "\r\n")};
+							if system.environment.isCarbon {
+								xmlText = string.replaceAll (xmlText, "\r", "\n")}}};
+					if defined (atts.fileCreator) { //02/21/2001 JES: save with recorded type/creator
+						file.writeWholeFile (f, xmlText, atts.fileType, atts.fileCreator)}
+					else {
+						file.writeWholeFile (f, xmlText, 'TEXT', 'Radu')}}};
+			if xmlText == nil { //if it's an outlineDocument, xmlText is not yet set
+				local (cloud, adrcloud);
+				if defined (atts.adrCloud) {
+					cloud = atts.adrCloud^;
+					if not defined (cloud.domain) {
+						table.rename (@cloud.server, "domain")};
+					if defined (atts.requestNotificationProcedure) {
+						cloud.registerProcedure = atts.requestNotificationProcedure};
+					adrcloud = @cloud};
+				xmlText = op.outlineToXml (adr, adrcloud:adrcloud, flDehoist:true); //convert to outlineDocument
+				bundle { //01/23/01 JES: support style sheet declarations
+					if defined (atts.xmlHeaders) {
+						local (ix = string.patternMatch ("?>", xmlText) + 3);
+						xmlText = string.insert (atts.xmlHeaders, xmlText, ix)}};
+				if defined (atts.lineEnding) { //02/21/2001 JES: save the file with the recorded line-endings
+					xmlText = string.replaceAll (xmlText, "\r", atts.lineEnding)};
+				if system.environment.isMac { //12/31/00 JES: convert Mac text to latin
+					xmlText = string.macToLatin (xmlText)};
+				if defined (atts.fileCreator) { //02/21/2001 JES: save with recorded type/creator
+					file.writeWholeFile (f, xmlText, atts.fileType, atts.fileCreator)}
+				else {
+					file.writeWholeFile (f, xmlText, 'OPML', 'Radu')}}; //PBS 09/21/00: save with Mac codes
+			window.attributes.setOne ("f", f, adr);
+			window.attributes.setOne ("title", atts.title);
+			msg ("");
+			return (true)}
+		else {
+			window.attributes.setOne ("savingError", tryError, adr);
+			dialog.alert (tryError);
+			return (false)}};
+	
+	if defined (atts.f) { //save files whose path is already known
+		f = atts.f;
+		if f != "" {
+			return (saveFile ())}};
+	
+	if not (file.putFileDialog ("Save as:", @f)) {
+		return (false)}; //prevent other callbacks from running
+	local (defaultExtension = ".opml");
+	local (flOutlineDocument = false);
+	if defined (atts.flOutlineDocument) { //PBS 12/26/00: check extension only with OPML documents
+		flOutlineDocument = atts.flOutlineDocument}
+	else { //it's a new document, so it's opml
+		flOutlineDocument = true};
+	
+	if flOutlineDocument { //ensure .opml extension
+		if not (string.lower (f) endsWith defaultExtension) {
+			f = f + defaultExtension}}
+	else { //PBS 12/26/00: if no extension, use .txt extension
+		local (fname = file.fileFromPath (f));
+		if not (fname contains ".") {
+			f = f + ".txt"}};
+	
+	return (saveFile ());
+	
+	return (true)};
+
+Â«bundle //debugging
+	Â«save (window.frontMost (), false)

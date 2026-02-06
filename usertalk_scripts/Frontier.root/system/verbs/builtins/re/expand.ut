@@ -1,1 +1,2 @@
-on expand (s, adrMatchInfoTable) {	kernel (re.expand)}
+on expand (s, adrMatchInfoTable) {
+	kernel (re.expand)}

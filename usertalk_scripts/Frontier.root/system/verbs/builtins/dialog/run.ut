@@ -1,1 +1,2 @@
-on run (resnum, defaultitem, itemhitcallback) {	kernel (dialog.run)}
+on run (resnum, defaultitem, itemhitcallback) {
+	kernel (dialog.run)}

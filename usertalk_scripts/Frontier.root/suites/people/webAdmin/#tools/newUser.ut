@@ -1,1 +1,24 @@
-on newUser () {	local (userName, htmlText, flNew);	local (password, emailAddress);		bundle { //get args		local (args, argTable);		new (tableType, @argTable);		args = html.getPageTableAddress ()^.tools^.getArgs ();		webserver.parseArgs (args, @argTable);		userName = argTable.userName;		password = argTable.password;		emailAddress = argTable.emailAddress};		flNew = people.newUser (userName, password, emailAddress);		on add (s) {		htmlText = htmlText + s};		if flNew {		add ("User \"" + userName + "\" created.")}	else {		add ("User \"" + userName + "\" already exists.")};		return (htmlText)}
+on newUser () {
+	local (userName, htmlText, flNew);
+	local (password, emailAddress);
+	
+	bundle { //get args
+		local (args, argTable);
+		new (tableType, @argTable);
+		args = html.getPageTableAddress ()^.tools^.getArgs ();
+		webserver.parseArgs (args, @argTable);
+		userName = argTable.userName;
+		password = argTable.password;
+		emailAddress = argTable.emailAddress};
+	
+	flNew = people.newUser (userName, password, emailAddress);
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	if flNew {
+		add ("User \"" + userName + "\" created.")}
+	else {
+		add ("User \"" + userName + "\" already exists.")};
+	
+	return (htmlText)}

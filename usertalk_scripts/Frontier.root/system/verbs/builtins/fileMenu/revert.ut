@@ -1,1 +1,2 @@
-on revert () {	kernel (filemenu.revert)}
+on revert () {
+	kernel (filemenu.revert)}

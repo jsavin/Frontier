@@ -1,1 +1,3 @@
-local (f = "Macintosh HD:Websites:Yabbadabba Website:Software:Netscape.Frontier");commercial.createinstallfile ("Netscape", Netscape.id, f);finder.reveal (f)
+local (f = "Macintosh HD:Websites:Yabbadabba Website:Software:Netscape.Frontier");
+commercial.createinstallfile ("Netscape", Netscape.id, f);
+finder.reveal (f)

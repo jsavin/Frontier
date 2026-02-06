@@ -1,1 +1,2 @@
-on delete (adr) {	kernel (lang.delete)}
+on delete (adr) {
+	kernel (lang.delete)}

@@ -1,1 +1,115 @@
-on batchExport (exportoutline = @user.batchExporter.list, log = @user.batchExporter.log) {	«http://www.scripting.com/frontier/snippets/batchExporter.html		«Sat, Nov 1, 1997 at 7:15:08 AM by DW		«Fixed two minor bugs, it wasn't respecting the second parameter.		«Fixed path characters, replaced hard-coded colons with calls to file.getPathChar		local (pathchar = file.getPathChar ());	batchExporter.init ();		local (baseFolder = user.batchExporter.folder);	file.sureFolder (baseFolder);		local (exportList = {});	bundle { //fill up exportList		target.set (exportoutline);		op.firstSummit ();		loop {			if not script.isComment () {				exportList = exportList + op.getlinetext ()};			if not op.go (down, 1) {				break}};		target.clear ()};		local (logdir = right);	on addtolog (s) {		if user.batchExporter.keepLog {			target.set (log);			op.insert (s, logdir);			logdir = down}};	on closelog () {		if user.batchExporter.keepLog {			target.set (log);			op.go (left, 1)}};	if user.batchExporter.keepLog { «set up the log outline		local (s = "Batch Exporter run on " + clock.now ());		if defined (log^) {			target.set (log);			op.firstSummit ();			op.insert (s, up)}		else {			new (outlinetype, log);			target.set (log);			op.setLineText (s)};		edit (log)};		local (ctexportedobjects = 0);	on cleanFileName (adr, isFolder=false) {		«Monday, March 02, 1998 at 12:20:00 AM by PBS			«Add suffixes on Windows -- Macs too if pref is set.		local (name = nameOf (adr^));		local (maxlen);		case sys.os () {			"WinNT";			"Win95" {				maxlen = 250};			"MacOS" {				maxlen = 26}};		if isFolder {			maxlen = maxlen + 5};		if sizeof (name) > maxlen {			name = string.mid (name, 1, maxlen)};		if not isFolder {			case sys.os () {				"WinNT";				"Win95" {					name = name + "." + frontier.getFileSuffix (typeOf (adr^))};				"MacOS" {					if not defined (user.prefs.appendFileSuffixes) {						user.prefs.appendFileSuffixes = false};					if user.prefs.appendFileSuffixes {						name = name + "." + string.lower (frontier.getFileType (typeOf (adr^)))}}}};		name = string.replaceAll (name, pathchar, "-");		return (name)};	on exportItemsSeparately (adritem) { «always returns false		«Change in policy -- Sun, Feb 2, 1997 at 10:36:22 AM by DW			«Now we only export sub-items separately if we failed when when we tried to export the whole thing			«See readme doc for details.		return (false);		if not table.tableContains (@user.website, adritem) {			return (false)};		if typeOf (adritem^) != tableType {			return (false)};		local (i);		for i = 1 to sizeOf (adritem^) {			if typeOf (adritem^ [i]) == tableType {				return (true)}};		return (false)};	on saveTable (adrTable, parentFolder) {		local (folder = parentFolder + cleanFileName (adrTable, isFolder:true) + pathchar);		file.sureFolder (folder);		local (i, adrItem, name);		for i = 1 to sizeof (adrTable^) {			adrItem = @adrTable^ [i];			name = cleanFileName (adrItem);			if exportItemsSeparately (adrItem) {				saveTable (adrItem, folder)}			else {				local (f = folder + name);				try {					export.sendObject (adrItem, f);					ctexportedobjects++;					msg ("#" + ctexportedobjects + ": " + f);					addtolog (string (adrItem) + " is safe.")}				else {					try {file.delete (f)};					if typeOf (adrItem^) == tableType {						saveTable (adrItem, folder)}					else {						addtolog (string (adrItem) + " has a problem: " + tryError)}}}}};	local (item);	for item in exportList {		saveTable (item, baseFolder)};	addtolog (ctexportedobjects + " objects exported to \"" + baseFolder + "\".");	closelog ()}
+on batchExport (exportoutline = @user.batchExporter.list, log = @user.batchExporter.log) {
+	Â«http://www.scripting.com/frontier/snippets/batchExporter.html
+	
+	Â«Sat, Nov 1, 1997 at 7:15:08 AM by DW
+		Â«Fixed two minor bugs, it wasn't respecting the second parameter.
+		Â«Fixed path characters, replaced hard-coded colons with calls to file.getPathChar
+	
+	local (pathchar = file.getPathChar ());
+	batchExporter.init ();
+	
+	local (baseFolder = user.batchExporter.folder);
+	file.sureFolder (baseFolder);
+	
+	local (exportList = {});
+	bundle { //fill up exportList
+		target.set (exportoutline);
+		op.firstSummit ();
+		loop {
+			if not script.isComment () {
+				exportList = exportList + op.getlinetext ()};
+			if not op.go (down, 1) {
+				break}};
+		target.clear ()};
+	
+	local (logdir = right);
+	on addtolog (s) {
+		if user.batchExporter.keepLog {
+			target.set (log);
+			op.insert (s, logdir);
+			logdir = down}};
+	on closelog () {
+		if user.batchExporter.keepLog {
+			target.set (log);
+			op.go (left, 1)}};
+	if user.batchExporter.keepLog { Â«set up the log outline
+		local (s = "Batch Exporter run on " + clock.now ());
+		if defined (log^) {
+			target.set (log);
+			op.firstSummit ();
+			op.insert (s, up)}
+		else {
+			new (outlinetype, log);
+			target.set (log);
+			op.setLineText (s)};
+		edit (log)};
+	
+	local (ctexportedobjects = 0);
+	on cleanFileName (adr, isFolder=false) {
+		Â«Monday, March 02, 1998 at 12:20:00 AM by PBS
+			Â«Add suffixes on Windows -- Macs too if pref is set.
+		local (name = nameOf (adr^));
+		local (maxlen);
+		case sys.os () {
+			"WinNT";
+			"Win95" {
+				maxlen = 250};
+			"MacOS" {
+				maxlen = 26}};
+		if isFolder {
+			maxlen = maxlen + 5};
+		if sizeof (name) > maxlen {
+			name = string.mid (name, 1, maxlen)};
+		if not isFolder {
+			case sys.os () {
+				"WinNT";
+				"Win95" {
+					name = name + "." + frontier.getFileSuffix (typeOf (adr^))};
+				"MacOS" {
+					if not defined (user.prefs.appendFileSuffixes) {
+						user.prefs.appendFileSuffixes = false};
+					if user.prefs.appendFileSuffixes {
+						name = name + "." + string.lower (frontier.getFileType (typeOf (adr^)))}}}};
+		name = string.replaceAll (name, pathchar, "-");
+		return (name)};
+	on exportItemsSeparately (adritem) { Â«always returns false
+		Â«Change in policy -- Sun, Feb 2, 1997 at 10:36:22 AM by DW
+			Â«Now we only export sub-items separately if we failed when when we tried to export the whole thing
+			Â«See readme doc for details.
+		return (false);
+		if not table.tableContains (@user.website, adritem) {
+			return (false)};
+		if typeOf (adritem^) != tableType {
+			return (false)};
+		local (i);
+		for i = 1 to sizeOf (adritem^) {
+			if typeOf (adritem^ [i]) == tableType {
+				return (true)}};
+		return (false)};
+	on saveTable (adrTable, parentFolder) {
+		local (folder = parentFolder + cleanFileName (adrTable, isFolder:true) + pathchar);
+		file.sureFolder (folder);
+		local (i, adrItem, name);
+		for i = 1 to sizeof (adrTable^) {
+			adrItem = @adrTable^ [i];
+			name = cleanFileName (adrItem);
+			if exportItemsSeparately (adrItem) {
+				saveTable (adrItem, folder)}
+			else {
+				local (f = folder + name);
+				try {
+					export.sendObject (adrItem, f);
+					ctexportedobjects++;
+					msg ("#" + ctexportedobjects + ": " + f);
+					addtolog (string (adrItem) + " is safe.")}
+				else {
+					try {file.delete (f)};
+					if typeOf (adrItem^) == tableType {
+						saveTable (adrItem, folder)}
+					else {
+						addtolog (string (adrItem) + " has a problem: " + tryError)}}}}};
+	local (item);
+	for item in exportList {
+		saveTable (item, baseFolder)};
+	addtolog (ctexportedobjects + " objects exported to \"" + baseFolder + "\".");
+	closelog ()}

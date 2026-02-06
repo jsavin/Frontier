@@ -1,1 +1,28 @@
-on renderOnServer (userName, password, adrObject) {	«Render a page on the server.	«Changes		«7/6/05; 7:44:31 PM by JES			«Remove file-part from address in error messages.		local (adrPreCallback = @user.webEditServer.callbacks.preRenderOnServer);	local (adrCallback = @user.webEditServer.callbacks.renderOnServer);	local (now = clock.now ());		if not (people.authenticateUser (userName, password, "WebEdit")) {		scriptError ("Can't render " + string.popFileFromAddress (adrObject) + " because an invalid username or password was supplied.")};		local (adrPageTables = @system.temp.webEditPageTables);	if not defined (adrPageTables^) {		new (tableType, adrPageTables)};	local (adrPageTable = @adrPageTables^.[thread.getCurrentID ()]);	new (tableType, adrPageTable);		adrObject = webeditServer.fixGuestDbAdr (adrObject);		webEditServer.callbackLoop (adrPreCallback, adrObject, userName, now, "");		html.buildOnePage (adrObject, adrPageTable);		webEditServer.callbackLoop (adrCallback, adrObject, userName, now, "");		return (adrPageTable^.url)}
+on renderOnServer (userName, password, adrObject) {
+	Â«Render a page on the server.
+	Â«Changes
+		Â«7/6/05; 7:44:31 PM by JES
+			Â«Remove file-part from address in error messages.
+	
+	local (adrPreCallback = @user.webEditServer.callbacks.preRenderOnServer);
+	local (adrCallback = @user.webEditServer.callbacks.renderOnServer);
+	local (now = clock.now ());
+	
+	if not (people.authenticateUser (userName, password, "WebEdit")) {
+		scriptError ("Can't render " + string.popFileFromAddress (adrObject) + " because an invalid username or password was supplied.")};
+	
+	local (adrPageTables = @system.temp.webEditPageTables);
+	if not defined (adrPageTables^) {
+		new (tableType, adrPageTables)};
+	local (adrPageTable = @adrPageTables^.[thread.getCurrentID ()]);
+	new (tableType, adrPageTable);
+	
+	adrObject = webeditServer.fixGuestDbAdr (adrObject);
+	
+	webEditServer.callbackLoop (adrPreCallback, adrObject, userName, now, "");
+	
+	html.buildOnePage (adrObject, adrPageTable);
+	
+	webEditServer.callbackLoop (adrCallback, adrObject, userName, now, "");
+	
+	return (adrPageTable^.url)}

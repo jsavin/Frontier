@@ -1,1 +1,7 @@
-on getDiskFile () { «4.2.3	local (s);	with objectModel, BBEdit, eventInfo {		try {			s = get (window [1].file)}		else {			scriptError ("There are no windows open in BBEdit.")}}}
+on getDiskFile () { Â«4.2.3
+	local (s);
+	with objectModel, BBEdit, eventInfo {
+		try {
+			s = get (window [1].file)}
+		else {
+			scriptError ("There are no windows open in BBEdit.")}}}

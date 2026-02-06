@@ -1,1 +1,11 @@
-on checkIn (adrSitePrefs) {	«Release custody of the editorial outline.		«11/14/00; 2:57:15 AM by JES	«Changes		«9/6/01; 7:57:02 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		local (methodName = "manila.editorialOutline.checkIn");	with adrSitePrefs^ {		local (params = {"siteName":siteName, "username":username, "password":string (password)});		return (manila.callHandler (host, port, methodName, @params, rpcPath:rpcPath))}}
+on checkIn (adrSitePrefs) {
+	Â«Release custody of the editorial outline.
+		Â«11/14/00; 2:57:15 AM by JES
+	Â«Changes
+		Â«9/6/01; 7:57:02 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	local (methodName = "manila.editorialOutline.checkIn");
+	with adrSitePrefs^ {
+		local (params = {"siteName":siteName, "username":username, "password":string (password)});
+		return (manila.callHandler (host, port, methodName, @params, rpcPath:rpcPath))}}

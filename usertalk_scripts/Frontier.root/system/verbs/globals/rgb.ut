@@ -1,1 +1,2 @@
-on rgb (val) {	kernel (lang.rgb)}
+on rgb (val) {
+	kernel (lang.rgb)}

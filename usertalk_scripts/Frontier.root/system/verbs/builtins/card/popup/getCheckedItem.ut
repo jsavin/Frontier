@@ -1,1 +1,6 @@
-on getCheckedItem (objectname) {	local (atts);	new (tabletype, @atts);	if not card.getObjectAttributes (objectname, @atts) {		return (-1)};	return (short (atts.seln))}
+on getCheckedItem (objectname) {
+	local (atts);
+	new (tabletype, @atts);
+	if not card.getObjectAttributes (objectname, @atts) {
+		return (-1)};
+	return (short (atts.seln))}

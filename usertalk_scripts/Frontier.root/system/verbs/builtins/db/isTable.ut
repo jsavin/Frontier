@@ -1,1 +1,2 @@
-on isTable (f, path) {	kernel (db.isTable)}
+on isTable (f, path) {
+	kernel (db.isTable)}

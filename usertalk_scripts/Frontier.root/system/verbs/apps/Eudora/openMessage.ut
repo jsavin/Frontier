@@ -1,1 +1,3 @@
-on openMessage (msgObj) {	with objectModel, Eudora, eventInfo {		return (core.open (id, msgObj))}}
+on openMessage (msgObj) {
+	with objectModel, Eudora, eventInfo {
+		return (core.open (id, msgObj))}}

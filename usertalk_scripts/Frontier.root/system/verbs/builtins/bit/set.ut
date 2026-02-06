@@ -1,1 +1,2 @@
-on set (num, bit) {	kernel (bit.set)}
+on set (num, bit) {
+	kernel (bit.set)}

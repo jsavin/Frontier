@@ -1,1 +1,69 @@
-on glossSub (whatGlossEntry, whatText, whatTarget=nil, anchor=nil, class=nil, title=nil, accesskey=nil, hreflang=nil, tabindex=nil, onmouseover="", onmouseout="", onclick="") {	«Changes:		«05/04/13, 10:13:40 by DAB			«Add optional paramaters for link attributes title, accesskey, hreflang, tabindex, onmouseover, onmouseout, onclick.		«11/19/97 at 2:37:30 PM by DW			«Written by Matt Neuburg, matt@tidbits.com, 				«Here's Matt's original posting that went with this script:					«Date:        08/17  5:07 PM					«Received:    08/17  5:26 PM					«From:        Matt Neuburg, matt@tidbits.com					«Reply-To:    frontier-central@scripting.com					«To:          frontier-central@scripting.com					«					«Here's a new version of glossSub() I just knocked together. As you know,					«glossSub() is a script you're supposed to call from a macro in a Web page					«object; it lets you use live link glossary entries, either normal <a>-type					«or automatically-generated glossPatch type, in such a way that the live					«link emanates from *any* text you desire, not just the text "hard-coded"					«into the link.					«					«This new version has two changes: (1) it decodes glossPatch expressions 					«all the way to HTML, and (2) it does targets, which a number of people have					«asked me about.					«					«Hope this proves useful. Share and enjoy (meaning, if there's something					«wrong with it, please post a fix!) - m.				«Converted to UserLand-style code, 11/19/97 at 2:37:30 PM by DW.				«For samples of calls see websites.samples.testNewFeatures.		local (adrPageTable = html.getPageTableAddress ());	local (s = html.refGlossary (whatGlossEntry));		if string.patternMatch ("[[#glosspatch ", string.lower (s)) == 1 {		adrPageTable^.renderedText = string.nthField (s, ' ', 1) + " " + whatText + "|" + string.nthField (s, '|', 2) + "|]]";		html.data.standardmacros.glossaryPatcher ();		s = adrPageTable^.renderedText}	else {		s = string.nthField (s, '>', 1) + ">" + whatText + "<" + string.nthField (s, '<', 3)};		if anchor != nil { //add anchor -- PBS 5/16/98		if not (anchor beginsWith "#") {			anchor = "#" + anchor};		if s contains "'>" {			s = string.replace (s, "'>", anchor + "'>")} //01/04/28, 17:54:30 by DAB		else {			s = string.replace (s, "\">", anchor + "\">")}};		if whatTarget != nil {		s = string.replace (s, ">", " target=\"" + whatTarget + "\">")};		if class != nil {		s = string.replace (s, "<a ", "<a class=\"" + class + "\" ")};		if title != nil {		s = string.replace (s, "<a ", "<a title=\"" + title + "\" ")};	if accesskey != nil {		s = string.replace (s, "<a ", "<a accesskey=\"" + accesskey + "\" ")};	if hreflang != nil {		s = string.replace (s, "<a ", "<a hreflang=\"" + hreflang + "\" ")};	if tabindex != nil {		s = string.replace (s, "<a ", "<a tabindex=\"" + tabindex + "\" ")};	if onmouseover != nil {		s = string.replace (s, "<a ", "<a onmouseover=\"" + onmouseover + "\" ")};	if onmouseout != nil {		s = string.replace (s, "<a ", "<a onmouseout=\"" + onmouseout + "\" ")};	if onclick != nil {		s = string.replace (s, "<a ", "<a onclick=\"" + onclick + "\" ")};		return (s)}
+on glossSub (whatGlossEntry, whatText, whatTarget=nil, anchor=nil, class=nil, title=nil, accesskey=nil, hreflang=nil, tabindex=nil, onmouseover="", onmouseout="", onclick="") {
+	Â«Changes:
+		Â«05/04/13, 10:13:40 by DAB
+			Â«Add optional paramaters for link attributes title, accesskey, hreflang, tabindex, onmouseover, onmouseout, onclick.
+		Â«11/19/97 at 2:37:30 PM by DW
+			Â«Written by Matt Neuburg, matt@tidbits.com, 
+				Â«Here's Matt's original posting that went with this script:
+					Â«Date:        08/17  5:07 PM
+					Â«Received:    08/17  5:26 PM
+					Â«From:        Matt Neuburg, matt@tidbits.com
+					Â«Reply-To:    frontier-central@scripting.com
+					Â«To:          frontier-central@scripting.com
+					Â«
+					Â«Here's a new version of glossSub() I just knocked together. As you know,
+					Â«glossSub() is a script you're supposed to call from a macro in a Web page
+					Â«object; it lets you use live link glossary entries, either normal <a>-type
+					Â«or automatically-generated glossPatch type, in such a way that the live
+					Â«link emanates from *any* text you desire, not just the text "hard-coded"
+					Â«into the link.
+					Â«
+					Â«This new version has two changes: (1) it decodes glossPatch expressions 
+					Â«all the way to HTML, and (2) it does targets, which a number of people have
+					Â«asked me about.
+					Â«
+					Â«Hope this proves useful. Share and enjoy (meaning, if there's something
+					Â«wrong with it, please post a fix!) - m.
+				Â«Converted to UserLand-style code, 11/19/97 at 2:37:30 PM by DW.
+				Â«For samples of calls see websites.samples.testNewFeatures.
+	
+	local (adrPageTable = html.getPageTableAddress ());
+	local (s = html.refGlossary (whatGlossEntry));
+	
+	if string.patternMatch ("[[#glosspatch ", string.lower (s)) == 1 {
+		adrPageTable^.renderedText = string.nthField (s, ' ', 1) + " " + whatText + "|" + string.nthField (s, '|', 2) + "|]]";
+		html.data.standardmacros.glossaryPatcher ();
+		s = adrPageTable^.renderedText}
+	else {
+		s = string.nthField (s, '>', 1) + ">" + whatText + "<" + string.nthField (s, '<', 3)};
+	
+	if anchor != nil { //add anchor -- PBS 5/16/98
+		if not (anchor beginsWith "#") {
+			anchor = "#" + anchor};
+		if s contains "'>" {
+			s = string.replace (s, "'>", anchor + "'>")} //01/04/28, 17:54:30 by DAB
+		else {
+			s = string.replace (s, "\">", anchor + "\">")}};
+	
+	if whatTarget != nil {
+		s = string.replace (s, ">", " target=\"" + whatTarget + "\">")};
+	
+	if class != nil {
+		s = string.replace (s, "<a ", "<a class=\"" + class + "\" ")};
+	
+	if title != nil {
+		s = string.replace (s, "<a ", "<a title=\"" + title + "\" ")};
+	if accesskey != nil {
+		s = string.replace (s, "<a ", "<a accesskey=\"" + accesskey + "\" ")};
+	if hreflang != nil {
+		s = string.replace (s, "<a ", "<a hreflang=\"" + hreflang + "\" ")};
+	if tabindex != nil {
+		s = string.replace (s, "<a ", "<a tabindex=\"" + tabindex + "\" ")};
+	if onmouseover != nil {
+		s = string.replace (s, "<a ", "<a onmouseover=\"" + onmouseover + "\" ")};
+	if onmouseout != nil {
+		s = string.replace (s, "<a ", "<a onmouseout=\"" + onmouseout + "\" ")};
+	if onclick != nil {
+		s = string.replace (s, "<a ", "<a onclick=\"" + onclick + "\" ")};
+	
+	return (s)}

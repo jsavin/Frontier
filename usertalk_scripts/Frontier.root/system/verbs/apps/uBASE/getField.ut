@@ -1,1 +1,4 @@
-on getField (fnum, key, field) {	«Return the value found in field in record for key in database fnum	«Mon, Apr 12, 1993 at 23:11:08 by JWB  using new wire	return (systemEvent ('ubas', 'getf', 'fref', short (fnum), 'key ', string (key), 'fnam', long (field)))}
+on getField (fnum, key, field) {
+	Â«Return the value found in field in record for key in database fnum
+	Â«Mon, Apr 12, 1993 at 23:11:08 by JWB  using new wire
+	return (systemEvent ('ubas', 'getf', 'fref', short (fnum), 'key ', string (key), 'fnam', long (field)))}

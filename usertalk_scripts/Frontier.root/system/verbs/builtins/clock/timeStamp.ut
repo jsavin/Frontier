@@ -1,1 +1,55 @@
-on timeStamp () {	«Changes		«Saturday, December 30, 2000 at 10:42:56 AM by DW			«This script is ancient and frustrating. 			«I like short timestamps, not the long string you see at the head of this comment. 			«So let's create a new preference, user.prefs.flShortTimeStamp. If it doesn't exist, we create it. It defaults to false. So if you prefer the current behavior, you do nothing. If you want a shorter stamp, set it true.		«12/30/2000; 10:48:54 AM by DW			«It works! ;->		«12/30/2000; 10:52:56 AM by DW			«When timestamping in a table, add the stamp in the table your cursor is in. This feature is so old it predates the outline browser for the object db tables.		«12/30/00; 12:21:14 PM by DW			«Chopped off the first two numbers of the year. You can figure it out. 	local (flshortstamp);	bundle { //get flshortstamp		if not defined (user.prefs.flShortTimeStamp) {			user.prefs.flShortTimeStamp = false};		flshortstamp = user.prefs.flShortTimeStamp};	local (s);	bundle { //set the timestamp string		if flshortstamp {			local (year = date.year ());			s = string.replaceall (clock.now (), year, string.mid (year, 3, 2)) + " by " + user.prefs.initials}		else {			s = string.dateString () + " at " + string.timeString () + " by " + user.prefs.initials}};	local (adr, type);	bundle { //set adr and type		adr = target.get ();		if defined (adr^) {			type =  typeOf (adr^)}		else {			if window.isMenuScript (window.frontmost ()) {				type = outlinetype}			else {				type = unknowntype}}};	case type {		outlinetype;		scripttype;		menubartype {			if wp.inTextMode () {				wp.insert (s)}			else {				local (dir = down);				if op.subsExpanded () {					dir = right};				if op.insert (s, dir) {					script.makeComment ()}}};		wptexttype {			wp.insert (s)};		tabletype {			local (adrparent = parentof (table.getcursoraddress ()^));			adrparent^ ["stampedTime"] = s}}	else {		return (false)};		return (true)}
+on timeStamp () {
+	Â«Changes
+		Â«Saturday, December 30, 2000 at 10:42:56 AM by DW
+			Â«This script is ancient and frustrating. 
+			Â«I like short timestamps, not the long string you see at the head of this comment. 
+			Â«So let's create a new preference, user.prefs.flShortTimeStamp. If it doesn't exist, we create it. It defaults to false. So if you prefer the current behavior, you do nothing. If you want a shorter stamp, set it true.
+		Â«12/30/2000; 10:48:54 AM by DW
+			Â«It works! ;->
+		Â«12/30/2000; 10:52:56 AM by DW
+			Â«When timestamping in a table, add the stamp in the table your cursor is in. This feature is so old it predates the outline browser for the object db tables.
+		Â«12/30/00; 12:21:14 PM by DW
+			Â«Chopped off the first two numbers of the year. You can figure it out. 
+	local (flshortstamp);
+	bundle { //get flshortstamp
+		if not defined (user.prefs.flShortTimeStamp) {
+			user.prefs.flShortTimeStamp = false};
+		flshortstamp = user.prefs.flShortTimeStamp};
+	local (s);
+	bundle { //set the timestamp string
+		if flshortstamp {
+			local (year = date.year ());
+			s = string.replaceall (clock.now (), year, string.mid (year, 3, 2)) + " by " + user.prefs.initials}
+		else {
+			s = string.dateString () + " at " + string.timeString () + " by " + user.prefs.initials}};
+	local (adr, type);
+	bundle { //set adr and type
+		adr = target.get ();
+		if defined (adr^) {
+			type =  typeOf (adr^)}
+		else {
+			if window.isMenuScript (window.frontmost ()) {
+				type = outlinetype}
+			else {
+				type = unknowntype}}};
+	case type {
+		outlinetype;
+		scripttype;
+		menubartype {
+			if wp.inTextMode () {
+				wp.insert (s)}
+			else {
+				local (dir = down);
+				if op.subsExpanded () {
+					dir = right};
+				if op.insert (s, dir) {
+					script.makeComment ()}}};
+		wptexttype {
+			wp.insert (s)};
+		tabletype {
+			local (adrparent = parentof (table.getcursoraddress ()^));
+			adrparent^ ["stampedTime"] = s}}
+	else {
+		return (false)};
+	
+	return (true)}

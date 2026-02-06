@@ -1,1 +1,7 @@
-on removeUserFromGroup (userName, groupName) {	«Remove a user from a group.	local (adrGroup = people.getGroupTable (groupName));	if not (people.userIsGroupMember (userName, groupName, adrGroup:adrGroup)) {		return (false)};	delete (@adrGroup^.members.[userName]);	return (true)}
+on removeUserFromGroup (userName, groupName) {
+	Â«Remove a user from a group.
+	local (adrGroup = people.getGroupTable (groupName));
+	if not (people.userIsGroupMember (userName, groupName, adrGroup:adrGroup)) {
+		return (false)};
+	delete (@adrGroup^.members.[userName]);
+	return (true)}

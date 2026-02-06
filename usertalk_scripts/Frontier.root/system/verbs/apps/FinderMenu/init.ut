@@ -1,1 +1,2 @@
-if not defined (user.FinderMenu) {	new (tableType, @user.FinderMenu)}
+if not defined (user.FinderMenu) {
+	new (tableType, @user.FinderMenu)}

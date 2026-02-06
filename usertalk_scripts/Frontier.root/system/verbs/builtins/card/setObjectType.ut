@@ -1,1 +1,4 @@
-on setObjectType (name, type) {	new (tableType, @atts);	atts.type = number (type);	return (card.setObjectAttributes (name, @atts))}
+on setObjectType (name, type) {
+	new (tableType, @atts);
+	atts.type = number (type);
+	return (card.setObjectAttributes (name, @atts))}

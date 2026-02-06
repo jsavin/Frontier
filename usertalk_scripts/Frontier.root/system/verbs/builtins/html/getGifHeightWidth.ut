@@ -1,1 +1,36 @@
-on getGifHeightWidth (f) {	«Change notes:		«7/30/97 PBS: f can be an address or a file path.		«10/31/97 at 8:19:56 AM by DW -- moved from toys.getGifHeightWidth			«Old script version:				«local (signature, version, height, width, s, t, hwlist = {})				«signature = string (file.read (path, 3))				«version = string (file.read (path, 3))				«s = file.read (path, 1) « reverse byte order				«t = file.read (path, 1)				«if sys.os() == "MacOS"					«width = number (t + s)				«else					«width = number (s + t)				«s = file.read (path, 1)				«t = file.read (path, 1)				«if sys.os() == "MacOS"					«height = number (t + s)				«else					«height = number (s + t)				«file.close (path)				«hwList = hwList + height				«hwList = hwList + width				«return (hwList)		«5/19/96 MAH			«takes file path to gif image as parameter			«returns list {height, width} of image in pixels	if typeOf (f) == addressType {		on numberFromBytes (ix) {			local (low = string.mid (string.hex (f^ [ix]), 5, 2));			local (hi = string.mid (string.hex (f^ [ix + 1]), 5, 2));			return (number ("0x" + hi + low))};		return ({numberFromBytes (9), numberFromBytes (7)})}; //{height, width}	on kernelcall (f) {		kernel (string.getGifHeightWidth)};	return (kernelcall (f))}
+on getGifHeightWidth (f) {
+	Â«Change notes:
+		Â«7/30/97 PBS: f can be an address or a file path.
+		Â«10/31/97 at 8:19:56 AM by DW -- moved from toys.getGifHeightWidth
+			Â«Old script version:
+				Â«local (signature, version, height, width, s, t, hwlist = {})
+				Â«signature = string (file.read (path, 3))
+				Â«version = string (file.read (path, 3))
+				Â«s = file.read (path, 1) Â« reverse byte order
+				Â«t = file.read (path, 1)
+				Â«if sys.os() == "MacOS"
+					Â«width = number (t + s)
+				Â«else
+					Â«width = number (s + t)
+				Â«s = file.read (path, 1)
+				Â«t = file.read (path, 1)
+				Â«if sys.os() == "MacOS"
+					Â«height = number (t + s)
+				Â«else
+					Â«height = number (s + t)
+				Â«file.close (path)
+				Â«hwList = hwList + height
+				Â«hwList = hwList + width
+				Â«return (hwList)
+		Â«5/19/96 MAH
+			Â«takes file path to gif image as parameter
+			Â«returns list {height, width} of image in pixels
+	if typeOf (f) == addressType {
+		on numberFromBytes (ix) {
+			local (low = string.mid (string.hex (f^ [ix]), 5, 2));
+			local (hi = string.mid (string.hex (f^ [ix + 1]), 5, 2));
+			return (number ("0x" + hi + low))};
+		return ({numberFromBytes (9), numberFromBytes (7)})}; //{height, width}
+	on kernelcall (f) {
+		kernel (string.getGifHeightWidth)};
+	return (kernelcall (f))}

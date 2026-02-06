@@ -1,1 +1,2 @@
-on getFolderDialog (prompt, stringaddress) {	kernel (file.getfolderdialog)}
+on getFolderDialog (prompt, stringaddress) {
+	kernel (file.getfolderdialog)}

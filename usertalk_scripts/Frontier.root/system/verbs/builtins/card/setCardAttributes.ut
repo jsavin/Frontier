@@ -1,1 +1,7 @@
-on setCardAttributes (tableAdr) {	local (result);	tableEvent (tableAdr, @result, 0, card.id, 'sacd');	adrResult = @result.['----'];	if not defined (adrResult^) {		return (false)};	return (adrResult^)}
+on setCardAttributes (tableAdr) {
+	local (result);
+	tableEvent (tableAdr, @result, 0, card.id, 'sacd');
+	adrResult = @result.['----'];
+	if not defined (adrResult^) {
+		return (false)};
+	return (adrResult^)}

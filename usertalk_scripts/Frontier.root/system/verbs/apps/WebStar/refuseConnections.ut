@@ -1,1 +1,2 @@
-on refuseConnections (flag, appID = WebStar.id) { «Toggle incoming connections on or off	return (appleEvent (appID, 'WWW½', 'fcon', '----', boolean (flag)))}
+on refuseConnections (flag, appID = WebStar.id) { Â«Toggle incoming connections on or off
+	return (appleEvent (appID, 'WWWÂ½', 'fcon', '----', boolean (flag)))}

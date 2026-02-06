@@ -1,1 +1,2 @@
-on setBarValue (n, value) { «set the value of the nth bar	return (appleEvent (BarChart.id, 'BARC', 'sval', '----', short (n), 'vbar', long (value)))}
+on setBarValue (n, value) { Â«set the value of the nth bar
+	return (appleEvent (BarChart.id, 'BARC', 'sval', '----', short (n), 'vbar', long (value)))}

@@ -1,1 +1,19 @@
-local (url = html.data.standardmacros.qBullet.url);local (folder = "Internal:Apps:WebStar:images:matterform:", f);local (htmltext = "");on add (s) {	htmltext = htmltext + s};add ("<table cellspacing=0 cellpadding=2>\r");fileloop (f in folder) {	if f endswith ".gif" {		local (name = file.filefrompath (f), hw);		add ("<tr>\r");		add ("<td bgcolor=\"gainsboro\"><b>" + (name - ".gif") + "</b></td>\r");		hw = html.getGifHeightWidth (f);		html.data.standardmacros.qBullet.heightWidth.[name - ".gif"] = string (hw) - "{" - "}" - " ";		add ("<td bgcolor=\"lemonchiffon\"><center>" + "<img src=\"" + url + name + "\" height=" + hw [1] + " width=" + hw [2] + "></center></td>\r");		add ("</tr>\r");		msg (f)}};add ("</table>\r");return (htmltext)
+local (url = html.data.standardmacros.qBullet.url);
+local (folder = "Internal:Apps:WebStar:images:matterform:", f);
+local (htmltext = "");
+on add (s) {
+	htmltext = htmltext + s};
+
+add ("<table cellspacing=0 cellpadding=2>\r");
+fileloop (f in folder) {
+	if f endswith ".gif" {
+		local (name = file.filefrompath (f), hw);
+		add ("<tr>\r");
+		add ("<td bgcolor=\"gainsboro\"><b>" + (name - ".gif") + "</b></td>\r");
+		hw = html.getGifHeightWidth (f);
+		html.data.standardmacros.qBullet.heightWidth.[name - ".gif"] = string (hw) - "{" - "}" - " ";
+		add ("<td bgcolor=\"lemonchiffon\"><center>" + "<img src=\"" + url + name + "\" height=" + hw [1] + " width=" + hw [2] + "></center></td>\r");
+		add ("</tr>\r");
+		msg (f)}};
+add ("</table>\r");
+return (htmltext)

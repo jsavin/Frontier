@@ -1,1 +1,19 @@
-on opStruct2Click () {	«Created, 1/15/00; 7:45:16 PM by DW		«This script is called when the user 2clicks on a headline in an outline to expand or collapse it. It loops over scripts in user.callbacks.opStruct2Click.		«Add your callback scripts to user.callbacks.opStruct2Click. Return true if you "consume" the 2click, return false if you want other callback scripts to get a shot at it.	«Changes:		«Thursday, September 28, 2000 at 6:16:58 PM by JES			«Allow the callback to be an address or the address of an address...	local (adrscript);	if not defined (user.callbacks.opStruct2Click) {		new (tableType, @user.callbacks.opStruct2Click)};	for adrscript in @user.callbacks.opStruct2Click {		try {			while typeOf (adrScript^) == addressType {				adrScript = adrScript^};			if adrscript^ () {				return (true)}}}; //consumed	return (false)}; //not consumed«bundle //test code	«opStruct2Click ()
+on opStruct2Click () {
+	Â«Created, 1/15/00; 7:45:16 PM by DW
+		Â«This script is called when the user 2clicks on a headline in an outline to expand or collapse it. It loops over scripts in user.callbacks.opStruct2Click.
+		Â«Add your callback scripts to user.callbacks.opStruct2Click. Return true if you "consume" the 2click, return false if you want other callback scripts to get a shot at it.
+	Â«Changes:
+		Â«Thursday, September 28, 2000 at 6:16:58 PM by JES
+			Â«Allow the callback to be an address or the address of an address...
+	local (adrscript);
+	if not defined (user.callbacks.opStruct2Click) {
+		new (tableType, @user.callbacks.opStruct2Click)};
+	for adrscript in @user.callbacks.opStruct2Click {
+		try {
+			while typeOf (adrScript^) == addressType {
+				adrScript = adrScript^};
+			if adrscript^ () {
+				return (true)}}}; //consumed
+	return (false)}; //not consumed
+Â«bundle //test code
+	Â«opStruct2Click ()

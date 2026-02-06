@@ -1,1 +1,2 @@
-on setValue (adrserver, path, value) {	return (appleEvent (adrserver, 'ODBF', 'SETV', '----', string (path), 'Valu', string (value)))}
+on setValue (adrserver, path, value) {
+	return (appleEvent (adrserver, 'ODBF', 'SETV', '----', string (path), 'Valu', string (value)))}

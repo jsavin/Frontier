@@ -1,1 +1,7 @@
-on set (adrSitePrefs, shortcutName, shortcutData) {	«Changes		«9/6/01; 8:30:05 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename, "shortcutName":shortcutName, "shortcutData":shortcutData});		return (manila.callHandler (host, port, "manila.shortcut.set", @params, rpcPath:rpcPath))}}
+on set (adrSitePrefs, shortcutName, shortcutData) {
+	Â«Changes
+		Â«9/6/01; 8:30:05 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename, "shortcutName":shortcutName, "shortcutData":shortcutData});
+		return (manila.callHandler (host, port, "manila.shortcut.set", @params, rpcPath:rpcPath))}}

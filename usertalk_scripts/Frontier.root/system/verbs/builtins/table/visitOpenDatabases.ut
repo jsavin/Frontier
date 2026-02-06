@@ -1,1 +1,43 @@
-on visitOpenDatabases (adrvisitproc, flReverse=false) {	«Changes:		«2/8/03; 7:21:48 PM by JES			«Fix a bug which could cause databases to be skipped on MacOS X if their type/creator codes are not set.		«7/30/02; 11:55:33 PM by JES			«Released for Frontier with the flReverse optional parameter. Brings this verb into synch with the Radio version. Also, the Frontier version was calling frontier.getFilePath instead of window.getFile, which fails to produce the correct path for Frontier.root if the frontmost window is owned by another database.		«10/26/00 at 7:06:18 PM by PBS			«New optional parameter: flReverse. It's false by default, preserving current behavior. If true, visit in reverse order. This is needed when you're closing databases.		«12/15/1999; 3:28:07 PM by AR			«Visit all open databases including Frontier.root and call the script pointed to by adrvisitproc for every database. That script should take a single parameter, the file path of the database.		on isGDB (f) {		if file.exists (f) {			if system.environment.isMac {				if file.type (f) == 'TABL' and file.creator (f) == 'LAND' {					return (true)};				if defined (system.environment.isCarbon) and system.environment.isCarbon {					if string.lower (f) endsWith ".root" {						return (true)}}};			if system.environment.isWindows {				if string.lower (f) endsWith ".root" {					return (true)}}};		return (false)};	on visit (i) {		local (f = nameOf (system.compiler.files [i]));		if isGDB (f) {			if not adrVisitProc^ (fileSpec (f)) {				return (false)}}};		local (i);	local (first = 1, last = sizeOf (system.compiler.files));		if flReverse { //PBS 10/26/00: visit in reverse order		for i = last downTo first {			if not (visit (i)) {				return (false)}}}	else { //first-to-last order		for i = first to last {			if not (visit (i)) {				return (false)}}};		local (rootPath = window.getFile (@root));	return (adrVisitProc^ (rootPath))} //visit the system root
+on visitOpenDatabases (adrvisitproc, flReverse=false) {
+	Â«Changes:
+		Â«2/8/03; 7:21:48 PM by JES
+			Â«Fix a bug which could cause databases to be skipped on MacOS X if their type/creator codes are not set.
+		Â«7/30/02; 11:55:33 PM by JES
+			Â«Released for Frontier with the flReverse optional parameter. Brings this verb into synch with the Radio version. Also, the Frontier version was calling frontier.getFilePath instead of window.getFile, which fails to produce the correct path for Frontier.root if the frontmost window is owned by another database.
+		Â«10/26/00 at 7:06:18 PM by PBS
+			Â«New optional parameter: flReverse. It's false by default, preserving current behavior. If true, visit in reverse order. This is needed when you're closing databases.
+		Â«12/15/1999; 3:28:07 PM by AR
+			Â«Visit all open databases including Frontier.root and call the script pointed to by adrvisitproc for every database. That script should take a single parameter, the file path of the database.
+	
+	on isGDB (f) {
+		if file.exists (f) {
+			if system.environment.isMac {
+				if file.type (f) == 'TABL' and file.creator (f) == 'LAND' {
+					return (true)};
+				if defined (system.environment.isCarbon) and system.environment.isCarbon {
+					if string.lower (f) endsWith ".root" {
+						return (true)}}};
+			if system.environment.isWindows {
+				if string.lower (f) endsWith ".root" {
+					return (true)}}};
+		return (false)};
+	on visit (i) {
+		local (f = nameOf (system.compiler.files [i]));
+		if isGDB (f) {
+			if not adrVisitProc^ (fileSpec (f)) {
+				return (false)}}};
+	
+	local (i);
+	local (first = 1, last = sizeOf (system.compiler.files));
+	
+	if flReverse { //PBS 10/26/00: visit in reverse order
+		for i = last downTo first {
+			if not (visit (i)) {
+				return (false)}}}
+	else { //first-to-last order
+		for i = first to last {
+			if not (visit (i)) {
+				return (false)}}};
+	
+	local (rootPath = window.getFile (@root));
+	return (adrVisitProc^ (rootPath))} //visit the system root

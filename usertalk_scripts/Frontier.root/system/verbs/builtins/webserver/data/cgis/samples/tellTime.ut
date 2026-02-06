@@ -1,1 +1,17 @@
-on tellTime (adrParams) {	local (htmltext = webserver.httpHeader ());	on add (s) {		htmltext = htmltext + s + cr};		add ("<html>");	add ("<head>");	add ("<title>Time and Date at the Server</title>");	add ("<body bgcolor =\"#D0D0FF\">");		add ("Current date at the server: " + string.dateString () + "<br>");	add ("Current time at the server: " + string.timeString () + "<br>");		add ("</body>");	add ("</html>");		return (htmltext)}
+on tellTime (adrParams) {
+	local (htmltext = webserver.httpHeader ());
+	on add (s) {
+		htmltext = htmltext + s + cr};
+	
+	add ("<html>");
+	add ("<head>");
+	add ("<title>Time and Date at the Server</title>");
+	add ("<body bgcolor =\"#D0D0FF\">");
+	
+	add ("Current date at the server: " + string.dateString () + "<br>");
+	add ("Current time at the server: " + string.timeString () + "<br>");
+	
+	add ("</body>");
+	add ("</html>");
+	
+	return (htmltext)}

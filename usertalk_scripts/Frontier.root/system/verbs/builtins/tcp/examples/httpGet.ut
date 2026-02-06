@@ -1,1 +1,56 @@
-on httpGet (domainName, path, port, adrheader=nil) {	«Do an HTTP get request		«We return the page text, if adrheader is not nil we return the header.		«Mon, Feb 3, 1997 at 4:47:34 AM by DW		local (stream, s = "", bytespending, status);	local (request);		if not (path beginsWith "/") {		«Monday, January 05, 1998 at 9:51:43 PM by PBS			«Add leading slash if it doesn't exist.		path = "/" + path};		stream = tcp.openStream (domainName, port);		«Monday, January 05, 1998 at 9:52:15 PM by PBS		«The request now includes the Host: field,		«to work with virtual domain servers.	request = "GET " + path + " HTTP/1.0\r\n";	request = request + "User-Agent: Frontier/" + frontier.version () + " (" +sys.os () + ") \r\n";	if port != 80 {		request = request + "Host: " + domainname + ":" + port}	else {		request = request + "Host: " + domainname};	request = request + "\r\n\r\n";	tcp.writeStream (stream, request);		loop {		status = tcp.statusStream (stream, @bytespending);		case status {			"DATA" {				s = s + tcp.readStream (stream, bytespending)};			"CLOSED";			"INACTIVE" {				break}}};	tcp.closeStream (stream);		bundle { «split the returned text into the header and the page text		local (headerkey = "\r\n\r\n", ixheaderkey, ixendkey);		ixheaderkey = string.patternMatch (headerkey, s);		ixendkey = ixheaderkey + sizeof (headerkey);		if adrheader != nil {			adrheader^ = string.mid (s, 1, ixendkey - 1)};		s = string.mid (s, ixendkey, sizeof (s) - ixendkey + 1)};		return (s)};«bundle «test code	«for i = 1 to 10		«local (s, header)		«local (path = "/default.html")		«msg (i)		«s = httpGet ("www.userland.com", path, 80, @header)		«wp.newTextObject (s, @scratchpad.s)		«wp.newTextObject (header, @scratchpad.header)	«edit (@scratchpad.s)	«edit (@scratchpad.header)
+on httpGet (domainName, path, port, adrheader=nil) {
+	Â«Do an HTTP get request
+		Â«We return the page text, if adrheader is not nil we return the header.
+		Â«Mon, Feb 3, 1997 at 4:47:34 AM by DW
+	
+	local (stream, s = "", bytespending, status);
+	local (request);
+	
+	if not (path beginsWith "/") {
+		Â«Monday, January 05, 1998 at 9:51:43 PM by PBS
+			Â«Add leading slash if it doesn't exist.
+		path = "/" + path};
+	
+	stream = tcp.openStream (domainName, port);
+	
+	Â«Monday, January 05, 1998 at 9:52:15 PM by PBS
+		Â«The request now includes the Host: field,
+		Â«to work with virtual domain servers.
+	request = "GET " + path + " HTTP/1.0\r\n";
+	request = request + "User-Agent: Frontier/" + frontier.version () + " (" +sys.os () + ") \r\n";
+	if port != 80 {
+		request = request + "Host: " + domainname + ":" + port}
+	else {
+		request = request + "Host: " + domainname};
+	request = request + "\r\n\r\n";
+	tcp.writeStream (stream, request);
+	
+	loop {
+		status = tcp.statusStream (stream, @bytespending);
+		case status {
+			"DATA" {
+				s = s + tcp.readStream (stream, bytespending)};
+			"CLOSED";
+			"INACTIVE" {
+				break}}};
+	tcp.closeStream (stream);
+	
+	bundle { Â«split the returned text into the header and the page text
+		local (headerkey = "\r\n\r\n", ixheaderkey, ixendkey);
+		ixheaderkey = string.patternMatch (headerkey, s);
+		ixendkey = ixheaderkey + sizeof (headerkey);
+		if adrheader != nil {
+			adrheader^ = string.mid (s, 1, ixendkey - 1)};
+		s = string.mid (s, ixendkey, sizeof (s) - ixendkey + 1)};
+	
+	return (s)};
+Â«bundle Â«test code
+	Â«for i = 1 to 10
+		Â«local (s, header)
+		Â«local (path = "/default.html")
+		Â«msg (i)
+		Â«s = httpGet ("www.userland.com", path, 80, @header)
+		Â«wp.newTextObject (s, @scratchpad.s)
+		Â«wp.newTextObject (header, @scratchpad.header)
+	Â«edit (@scratchpad.s)
+	Â«edit (@scratchpad.header)

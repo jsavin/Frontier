@@ -1,1 +1,2 @@
-on reset () {	kernel (search.reset)}
+on reset () {
+	kernel (search.reset)}

@@ -1,1 +1,19 @@
-if user.prefs.mailhost == "" { //hasn't been set yet	if not dialog.ask ("Enter the name of your mail host:", @user.prefs.mailhost) {		return}};local (otheruser);if op.attributes.getone ("email", @otheruser) {		local (t); new (tableType, @t);	t.subject = "Radio UserLand email message";		local (adrtype = parentOf (parentOf (this^)^));	local (adrdialogs = @adrtype^.data.dialogs);	if system.environment.isMac {		card.run (@adrdialogs^.cards.emailUser)}	else { // HTML dialog on Windows		html.dialog.run (@adrdialogs^.wizard, 4, @t)};	if defined (t.userClickedOk) {		tcp.sendMail (otheruser, t.subject, t.text, user.playlist.prefs.account.email)};	return (true)}
+if user.prefs.mailhost == "" { //hasn't been set yet
+	if not dialog.ask ("Enter the name of your mail host:", @user.prefs.mailhost) {
+		return}};
+
+local (otheruser);
+if op.attributes.getone ("email", @otheruser) {
+	
+	local (t); new (tableType, @t);
+	t.subject = "Radio UserLand email message";
+	
+	local (adrtype = parentOf (parentOf (this^)^));
+	local (adrdialogs = @adrtype^.data.dialogs);
+	if system.environment.isMac {
+		card.run (@adrdialogs^.cards.emailUser)}
+	else { // HTML dialog on Windows
+		html.dialog.run (@adrdialogs^.wizard, 4, @t)};
+	if defined (t.userClickedOk) {
+		tcp.sendMail (otheruser, t.subject, t.text, user.playlist.prefs.account.email)};
+	return (true)}

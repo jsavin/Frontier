@@ -1,1 +1,63 @@
-«Changes:	«5/13/02; 11:04:24 PM by JB		«Changelog created. This script cleans out the id tables and maintains the system.temp.jabber.connection connection.on shouldJabberBeOn ( ) {	«Decides whether the framework-maintained Jabber connection should be off or on. true for on, false for off.	if tcp.isOffline() {		return false};	if not defined ( user.im.jabber.flActive ) or user.im.jabber.flActive == false {		return false};		if defined(user.im.jabber.prefs.forceActive) and user.im.jabber.prefs.forceActive {		// FIXME: Remove this if it's unused		return true};	// we have to see if there are any handlers	local ( handlerTable = @user.im.jabber.handlers["system.temp.jabber.connection"] );	if not defined (handlerTable^) {		return false};	// any handlers?	for handlers in handlerTable {		if sizeOf ( handlers^ ) > 0 {			return true}};		// no reason to turn the connection on	return false};local ( jabberOn );try {	jabberOn = shouldJabberBeOn()}else {	jabberOn = false};if jabberOn { // ensure the connection exists	if not defined ( system.temp.jabber.connection ) {		try {			tcp.im.builtinDrivers.jabber.code.openConnection(loginTimeout: 60*30)}}} // wait only 30 seconds, since we run every 60...else { // shut the connection down, if one exists	try {		for connection in @system.temp.jabber.connections {			jabber.closeConnection()}}};local ( i, idTbl );for i = sizeOf  ( system.temp.jabber.idTables ) downto 1 { // cleanup the id tables	idTbl = @system.temp.jabber.idTables[i];	if typeOf ( idTbl^ ) == tableType {		if defined (idTbl^.expireTime) {			if clock.now() > idTbl^.expireTime {				tcp.im.builtinDrivers.jabber.code.idTables.delete ( idTbl )}}		else {			tcp.im.builtinDrivers.jabber.code.idTables.delete ( idTbl )}}}; // tables without expire times are illegalreturn;«bundle //commented code	«if not defined ( user.im.jabber.lastXSSSubUpdate )		«user.im.jabber.lastXSSSubUpdate = date(0)	«if defined ( user.im.jabber.prefs ) and not defined ( user.im.jabber.prefs.acceptXSSpubs ) // run only if a previous init has run		«jabber.init()	«if jabberOn and user.im.jabber.prefs.acceptXSSpubs and clock.now() - user.im.jabber.lastXSSSubUpdate > 24*60*60 and defined(system.temp.jabber.connection) // refresh subscriptions		«for subscription in @aggregatorData.services			«local ( url = nameOf ( subscription^ ) )			«if defined ( subscription^.compilation.cloud )				«with subscription^.compilation.cloud					«tcp.im.builtinDrivers.jabber.code.messages.pubsubSubscribe(user.im.jabber.prefs.xssBridge, protocol + "@" + domain + ":" + port + path + "/" + registerProcedure, url)		«radio.log.add("Jabber", "Adding in jabber subscriptions.", clock.ticks())		«user.im.jabber.lastXSSSubUpdate = clock.now()
+Â«Changes:
+	Â«5/13/02; 11:04:24 PM by JB
+		Â«Changelog created. This script cleans out the id tables and maintains the system.temp.jabber.connection connection.
+on shouldJabberBeOn ( ) {
+	Â«Decides whether the framework-maintained Jabber connection should be off or on. true for on, false for off.
+	if tcp.isOffline() {
+		return false};
+	if not defined ( user.im.jabber.flActive ) or user.im.jabber.flActive == false {
+		return false};
+	
+	if defined(user.im.jabber.prefs.forceActive) and user.im.jabber.prefs.forceActive {
+		// FIXME: Remove this if it's unused
+		return true};
+	// we have to see if there are any handlers
+	local ( handlerTable = @user.im.jabber.handlers["system.temp.jabber.connection"] );
+	if not defined (handlerTable^) {
+		return false};
+	// any handlers?
+	for handlers in handlerTable {
+		if sizeOf ( handlers^ ) > 0 {
+			return true}};
+	
+	// no reason to turn the connection on
+	return false};
+local ( jabberOn );
+try {
+	jabberOn = shouldJabberBeOn()}
+else {
+	jabberOn = false};
+if jabberOn { // ensure the connection exists
+	if not defined ( system.temp.jabber.connection ) {
+		try {
+			tcp.im.builtinDrivers.jabber.code.openConnection(loginTimeout: 60*30)}}} // wait only 30 seconds, since we run every 60...
+else { // shut the connection down, if one exists
+	try {
+		for connection in @system.temp.jabber.connections {
+			jabber.closeConnection()}}};
+
+local ( i, idTbl );
+for i = sizeOf  ( system.temp.jabber.idTables ) downto 1 { // cleanup the id tables
+	idTbl = @system.temp.jabber.idTables[i];
+	if typeOf ( idTbl^ ) == tableType {
+		if defined (idTbl^.expireTime) {
+			if clock.now() > idTbl^.expireTime {
+				tcp.im.builtinDrivers.jabber.code.idTables.delete ( idTbl )}}
+		else {
+			tcp.im.builtinDrivers.jabber.code.idTables.delete ( idTbl )}}}; // tables without expire times are illegal
+
+return;
+
+Â«bundle //commented code
+	Â«if not defined ( user.im.jabber.lastXSSSubUpdate )
+		Â«user.im.jabber.lastXSSSubUpdate = date(0)
+	Â«if defined ( user.im.jabber.prefs ) and not defined ( user.im.jabber.prefs.acceptXSSpubs ) // run only if a previous init has run
+		Â«jabber.init()
+	Â«if jabberOn and user.im.jabber.prefs.acceptXSSpubs and clock.now() - user.im.jabber.lastXSSSubUpdate > 24*60*60 and defined(system.temp.jabber.connection) // refresh subscriptions
+		Â«for subscription in @aggregatorData.services
+			Â«local ( url = nameOf ( subscription^ ) )
+			Â«if defined ( subscription^.compilation.cloud )
+				Â«with subscription^.compilation.cloud
+					Â«tcp.im.builtinDrivers.jabber.code.messages.pubsubSubscribe(user.im.jabber.prefs.xssBridge, protocol + "@" + domain + ":" + port + path + "/" + registerProcedure, url)
+		Â«radio.log.add("Jabber", "Adding in jabber subscriptions.", clock.ticks())
+		Â«user.im.jabber.lastXSSSubUpdate = clock.now()

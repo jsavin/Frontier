@@ -1,1 +1,2 @@
-on formfinish (buttonname) {	return ("<p><input type=\"submit\" value=\"" + buttonname + "\">\r</form>")}
+on formfinish (buttonname) {
+	return ("<p><input type=\"submit\" value=\"" + buttonname + "\">\r</form>")}

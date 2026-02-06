@@ -1,1 +1,2 @@
-on CHAT_JOIN(adrSelf, roomID, roomName) {	return("on chat join")}
+on CHAT_JOIN(adrSelf, roomID, roomName) {
+	return("on chat join")}

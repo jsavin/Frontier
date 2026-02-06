@@ -1,1 +1,2 @@
-on CONFIG (adrSelf, data) {	return(msg("on config"))}
+on CONFIG (adrSelf, data) {
+	return(msg("on config"))}

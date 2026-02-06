@@ -1,1 +1,5 @@
-on closeInfo (windowpath) { « retained for compatibility with old scripts and non-scriptable Finder	local (fwindow);	if not Finder.makeWindow (windowpath, 11, @fwindow) {		return (false)};	return (finderEvent (Finder.id, Finder.class, 'clos', '----', fwindow))}
+on closeInfo (windowpath) { Â« retained for compatibility with old scripts and non-scriptable Finder
+	local (fwindow);
+	if not Finder.makeWindow (windowpath, 11, @fwindow) {
+		return (false)};
+	return (finderEvent (Finder.id, Finder.class, 'clos', '----', fwindow))}

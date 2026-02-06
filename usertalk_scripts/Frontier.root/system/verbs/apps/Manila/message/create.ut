@@ -1,1 +1,34 @@
-on create (adrSitePrefs, subject, body, bodyType, inResponseTo, windowInfoTable, rendererInfoTable=nil) {	«Create a new message on a Manila site.	«Changes:		«02/05/00; 5:28:03 PM by PBS			«Send the windowInfoTable. If it fails, try sending without the windowInfoTable. This is needed while we transition the Manila RPC interface.		«02/19/00; 6:52:14 PM by PBS			«Removed the try statement. now that manila.root has been updated.		«03/23/00; 2:57:22 PM by PBS			«Don't let httpClient display messages in the About Window -- Pike wants to display messges in the About Window.		«03/23/00; 6:30:33 PM by PBS			«New parameter: rendererInfo. It's a table with two items: name (the name of the renderer to use) and a boolean, flRenderOnEntry, which specifies whether or not the outline can be rendered on entering the system (as opposed to rendering at request time).		«04/09/00; 3:47:33 PM by PBS			«Convert		«11/20/00; 5:16:07 PM by JES			«Enocde ampersands as &amp; when using SOAP to transmit opml-based messages, since entities are decoded twice -- once by the SOAP decoder and once by op.xmlToOutline.		«01/02/01; 12:44:12 AM by JES			«On Macs, convert the message subject to latin text.		«9/6/01; 8:19:54 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		if system.environment.isMac { //PBS 04/09/00: convert from Mac to latin text		body = latinToMac.macToLatin (body);		subject = latinToMac.macToLatin (subject)}; //JES 01/02/00		with adrSitePrefs^ {		if rendererInfoTable == nil {			new (tableType, @rendererInfoTable);			rendererInfoTable.name = "pikeRenderer";			rendererInfoTable.flRenderOnEntry = true};		if bodyType == "text/x-opml" { //11/20/00 JES: enocde quote characters as &amp;quot; if the transport is SOAP.			if defined (manila.flUseSoap) and manila.flUseSoap {				body = string.replaceAll (body, "&", "&amp;")}};		local (params = {"username":username, "password":string (password), "siteName":sitename, "subject":subject, "body":body, "bodyType":bodyType, "inResponseTo":inResponseTo, "windowInfo":windowInfoTable, "rendererInfo":rendererInfoTable});		return (manila.callHandler (host, port, "manila.message.create", @params, rpcPath:rpcPath, flShowMessages:false))}}
+on create (adrSitePrefs, subject, body, bodyType, inResponseTo, windowInfoTable, rendererInfoTable=nil) {
+	Â«Create a new message on a Manila site.
+	Â«Changes:
+		Â«02/05/00; 5:28:03 PM by PBS
+			Â«Send the windowInfoTable. If it fails, try sending without the windowInfoTable. This is needed while we transition the Manila RPC interface.
+		Â«02/19/00; 6:52:14 PM by PBS
+			Â«Removed the try statement. now that manila.root has been updated.
+		Â«03/23/00; 2:57:22 PM by PBS
+			Â«Don't let httpClient display messages in the About Window -- Pike wants to display messges in the About Window.
+		Â«03/23/00; 6:30:33 PM by PBS
+			Â«New parameter: rendererInfo. It's a table with two items: name (the name of the renderer to use) and a boolean, flRenderOnEntry, which specifies whether or not the outline can be rendered on entering the system (as opposed to rendering at request time).
+		Â«04/09/00; 3:47:33 PM by PBS
+			Â«Convert
+		Â«11/20/00; 5:16:07 PM by JES
+			Â«Enocde ampersands as &amp; when using SOAP to transmit opml-based messages, since entities are decoded twice -- once by the SOAP decoder and once by op.xmlToOutline.
+		Â«01/02/01; 12:44:12 AM by JES
+			Â«On Macs, convert the message subject to latin text.
+		Â«9/6/01; 8:19:54 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	if system.environment.isMac { //PBS 04/09/00: convert from Mac to latin text
+		body = latinToMac.macToLatin (body);
+		subject = latinToMac.macToLatin (subject)}; //JES 01/02/00
+	
+	with adrSitePrefs^ {
+		if rendererInfoTable == nil {
+			new (tableType, @rendererInfoTable);
+			rendererInfoTable.name = "pikeRenderer";
+			rendererInfoTable.flRenderOnEntry = true};
+		if bodyType == "text/x-opml" { //11/20/00 JES: enocde quote characters as &amp;quot; if the transport is SOAP.
+			if defined (manila.flUseSoap) and manila.flUseSoap {
+				body = string.replaceAll (body, "&", "&amp;")}};
+		local (params = {"username":username, "password":string (password), "siteName":sitename, "subject":subject, "body":body, "bodyType":bodyType, "inResponseTo":inResponseTo, "windowInfo":windowInfoTable, "rendererInfo":rendererInfoTable});
+		return (manila.callHandler (host, port, "manila.message.create", @params, rpcPath:rpcPath, flShowMessages:false))}}

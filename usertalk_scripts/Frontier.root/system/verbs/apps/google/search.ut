@@ -1,1 +1,32 @@
-on search (queryString, start=0, ctResults=10, restrict="", languageRestrict="", safeSearch=false, inputEncoding="latin1", outputEncoding="latin1", key=user.google.key) {	«Changes		«4/15/02; 9:27:47 AM by DW			«Set fldebug false on the call to soap.rpc.client.		«4/14/02; 12:25:18 PM by DW			«Add optional param for the key; defaults to user.google.key. 		«2/21/02; 11:37:29 PM by JES			«Created.			«SOAP parameters and types for the Google-API:				«messageName: doGoogleSearch					«key: string					«q: string					«start: int					«maxResults: int					«filter: boolean					«restrict: string					«safeSearch: boolean					«lr: string					«ie: string					«oe: string	google.init ();	if system.environment.isMac {		queryString = string.macToLatin (queryString)};	local (result);	with google.data {		local (params = {"key":key, "q":queryString, "start":start, "maxResults":ctResults, "filter":false, "restrict":restrict, "safeSearch":safeSearch, "lr":languageRestrict, "ie":inputEncoding, "oe":outputEncoding});		result = soap.rpc.client (path, methods.search, @params, server, port, soapAction:soapAction, methodNamespace:"m", methodNamespaceUri:namespace, fldebug:false)};	return (result)};«bundle //testing	«local (queryString = "\"Bull Mancuso\"")	«scratchpad.googleSearch = search (queryString)	«edit (@scratchpad.googleSearch)
+on search (queryString, start=0, ctResults=10, restrict="", languageRestrict="", safeSearch=false, inputEncoding="latin1", outputEncoding="latin1", key=user.google.key) {
+	Â«Changes
+		Â«4/15/02; 9:27:47 AM by DW
+			Â«Set fldebug false on the call to soap.rpc.client.
+		Â«4/14/02; 12:25:18 PM by DW
+			Â«Add optional param for the key; defaults to user.google.key. 
+		Â«2/21/02; 11:37:29 PM by JES
+			Â«Created.
+			Â«SOAP parameters and types for the Google-API:
+				Â«messageName: doGoogleSearch
+					Â«key: string
+					Â«q: string
+					Â«start: int
+					Â«maxResults: int
+					Â«filter: boolean
+					Â«restrict: string
+					Â«safeSearch: boolean
+					Â«lr: string
+					Â«ie: string
+					Â«oe: string
+	google.init ();
+	if system.environment.isMac {
+		queryString = string.macToLatin (queryString)};
+	local (result);
+	with google.data {
+		local (params = {"key":key, "q":queryString, "start":start, "maxResults":ctResults, "filter":false, "restrict":restrict, "safeSearch":safeSearch, "lr":languageRestrict, "ie":inputEncoding, "oe":outputEncoding});
+		result = soap.rpc.client (path, methods.search, @params, server, port, soapAction:soapAction, methodNamespace:"m", methodNamespaceUri:namespace, fldebug:false)};
+	return (result)};
+Â«bundle //testing
+	Â«local (queryString = "\"Bull Mancuso\"")
+	Â«scratchpad.googleSearch = search (queryString)
+	Â«edit (@scratchpad.googleSearch)

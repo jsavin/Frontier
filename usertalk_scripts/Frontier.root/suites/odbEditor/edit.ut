@@ -1,1 +1,39 @@
-on edit (adrobject) {	bundle { «make sure that the user table is set up		if not defined (user.odbEditors) {			new (tabletype, @user.odbEditors)};		«if not defined (user.odbEditors.data)			«new (tabletype, @user.odbEditors.data)};		local (adreditor = nil);	with odbEditor { «find an editor for this object		for i = 1 to sizeof (editors) {			if editors [i].canEdit (adrobject) {				adreditor = @editors [i];				break}}};	if adreditor == nil {		dialog.alert ("CanÕt edit this object externally.");		return};		local (type = nameOf (adreditor^));	bundle { «locate an editor for this object		adreditorapp = @user.odbEditors.[type + "Editor"];		if defined (adreditorapp^) and not file.exists (adreditorapp^) {			delete (adreditorapp)};		if not defined (adreditorapp^) { «look for compatible app			local (app);			for app in adreditor^.apps {				f = file.findapplication (app);				if f != "" {					adreditorapp^ = f;					break}}};		if not defined (adreditorapp^) {			if not file.getFileDialog ("Choose a compatible " + type + " editor", adreditorapp, 'APPL') {				return}}};		local (ideditorapp = file.creator (adreditorapp^));	if not sys.appIsRunning (ideditorapp) {		launch.application (adreditorapp^)}; «make sure the editor is running	sys.bringAppToFront (ideditorapp);		adreditor^.edit (adrobject)}
+on edit (adrobject) {
+	bundle { Â«make sure that the user table is set up
+		if not defined (user.odbEditors) {
+			new (tabletype, @user.odbEditors)};
+		Â«if not defined (user.odbEditors.data)
+			Â«new (tabletype, @user.odbEditors.data)};
+	
+	local (adreditor = nil);
+	with odbEditor { Â«find an editor for this object
+		for i = 1 to sizeof (editors) {
+			if editors [i].canEdit (adrobject) {
+				adreditor = @editors [i];
+				break}}};
+	if adreditor == nil {
+		dialog.alert ("CanÃ•t edit this object externally.");
+		return};
+	
+	local (type = nameOf (adreditor^));
+	bundle { Â«locate an editor for this object
+		adreditorapp = @user.odbEditors.[type + "Editor"];
+		if defined (adreditorapp^) and not file.exists (adreditorapp^) {
+			delete (adreditorapp)};
+		if not defined (adreditorapp^) { Â«look for compatible app
+			local (app);
+			for app in adreditor^.apps {
+				f = file.findapplication (app);
+				if f != "" {
+					adreditorapp^ = f;
+					break}}};
+		if not defined (adreditorapp^) {
+			if not file.getFileDialog ("Choose a compatible " + type + " editor", adreditorapp, 'APPL') {
+				return}}};
+	
+	local (ideditorapp = file.creator (adreditorapp^));
+	if not sys.appIsRunning (ideditorapp) {
+		launch.application (adreditorapp^)}; Â«make sure the editor is running
+	sys.bringAppToFront (ideditorapp);
+	
+	adreditor^.edit (adrobject)}

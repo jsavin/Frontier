@@ -1,1 +1,45 @@
-on edit (adrobject) {	local (objecttext = string (adrobject^));	local (adrfiletable); «associates filespecs with object db addresses		bundle { «make sure that the user table is set up		if not defined (user.odbEditors.textFileExtension) { «4/16/97 DW: add support for text file extensions			user.odbEditors.textFileExtension = ".html"}; «BBEdit will display this file with html coloring		if not defined (user.odbEditors.data) {			new (tabletype, @user.odbEditors.data)};		if not defined (user.odbEditors.data.serialnum) {			user.odbEditors.data.serialnum = 1};		adrfiletable = @user.odbEditors.data.openfiles;		if not defined (adrfiletable^) {			new (tabletype, adrfiletable)}};		local (extension = user.odbEditors.textFileExtension);	local (ideditorapp = file.creator (user.odbEditors.TextEditor));	local (tempfile, fname);	bundle { «create a temporary file containing the text of the object		local (folder = file.getPrefsSubFolder ("Frontier Text Files"));		fname = string (adrobject);		local (ct = string.countFields (fname, "."));		fname = string.nthfield (fname, '.', ct-1) + "." + string.nthfield (fname, '.', ct);		fname = string.replaceAll (fname, ":", "-");		local (maxlen = 31 - sizeof (extension));		if sizeof (fname) > maxlen {			fname = string.mid (fname, 1, maxlen)};		fname = fname + extension;		tempfile = folder + fname;		file.writeWholeFile (tempfile, objecttext, 'TEXT', ideditorapp, clock.now ())};		bundle { «add an item to the openfiles table		adrfiletable^.[user.odbEditors.data.serialnum++] = {tempfile, string (adrobject)}};		bundle { «set up the Apple Event handler in system.verbs.traps		local (adrtraptable = @system.verbs.traps.[ideditorapp]);		if not defined (adrtraptable^) {			new (tabletype, adrtraptable)};		table.copy (@odbEditor.editors.Text.traps.FMod, adrtraptable);		table.copy (@odbEditor.editors.Text.traps.FCls, adrtraptable)};		bundle { «send an Apple Event to the editor to open the temp file		«use an open protocol that's implemented by BBEdit 4.0 and greater			«the extra parameter to the odoc event is Frontier's app id		appleEvent (ideditorapp, 'aevt', 'odoc', '----', alias (tempfile), 'FSnd', Frontier.id)}}
+on edit (adrobject) {
+	local (objecttext = string (adrobject^));
+	local (adrfiletable); Â«associates filespecs with object db addresses
+	
+	bundle { Â«make sure that the user table is set up
+		if not defined (user.odbEditors.textFileExtension) { Â«4/16/97 DW: add support for text file extensions
+			user.odbEditors.textFileExtension = ".html"}; Â«BBEdit will display this file with html coloring
+		if not defined (user.odbEditors.data) {
+			new (tabletype, @user.odbEditors.data)};
+		if not defined (user.odbEditors.data.serialnum) {
+			user.odbEditors.data.serialnum = 1};
+		adrfiletable = @user.odbEditors.data.openfiles;
+		if not defined (adrfiletable^) {
+			new (tabletype, adrfiletable)}};
+	
+	local (extension = user.odbEditors.textFileExtension);
+	local (ideditorapp = file.creator (user.odbEditors.TextEditor));
+	local (tempfile, fname);
+	bundle { Â«create a temporary file containing the text of the object
+		local (folder = file.getPrefsSubFolder ("Frontier Text Files"));
+		fname = string (adrobject);
+		local (ct = string.countFields (fname, "."));
+		fname = string.nthfield (fname, '.', ct-1) + "." + string.nthfield (fname, '.', ct);
+		fname = string.replaceAll (fname, ":", "-");
+		local (maxlen = 31 - sizeof (extension));
+		if sizeof (fname) > maxlen {
+			fname = string.mid (fname, 1, maxlen)};
+		fname = fname + extension;
+		tempfile = folder + fname;
+		file.writeWholeFile (tempfile, objecttext, 'TEXT', ideditorapp, clock.now ())};
+	
+	bundle { Â«add an item to the openfiles table
+		adrfiletable^.[user.odbEditors.data.serialnum++] = {tempfile, string (adrobject)}};
+	
+	bundle { Â«set up the Apple Event handler in system.verbs.traps
+		local (adrtraptable = @system.verbs.traps.[ideditorapp]);
+		if not defined (adrtraptable^) {
+			new (tabletype, adrtraptable)};
+		table.copy (@odbEditor.editors.Text.traps.FMod, adrtraptable);
+		table.copy (@odbEditor.editors.Text.traps.FCls, adrtraptable)};
+	
+	bundle { Â«send an Apple Event to the editor to open the temp file
+		Â«use an open protocol that's implemented by BBEdit 4.0 and greater
+			Â«the extra parameter to the odoc event is Frontier's app id
+		appleEvent (ideditorapp, 'aevt', 'odoc', '----', alias (tempfile), 'FSnd', Frontier.id)}}

@@ -1,1 +1,2 @@
-on copyResourceFork (sourcepath, destpath) {	kernel (file.copyresourcefork)}
+on copyResourceFork (sourcepath, destpath) {
+	kernel (file.copyresourcefork)}

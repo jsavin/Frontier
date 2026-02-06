@@ -1,1 +1,8 @@
-on setSelectedText (objectName, itemString) {	local (menuStr = card.popup.getMenu (objectName));	local (menuCt = string.countFields (menuStr, ";"));	local (i);	for i = 1 to menuCt {		if string.lower (string.nthField (menuStr, ";", i)) == string.lower (itemString) {			card.popup.setCheckedItem (objectName, i);			break}}}
+on setSelectedText (objectName, itemString) {
+	local (menuStr = card.popup.getMenu (objectName));
+	local (menuCt = string.countFields (menuStr, ";"));
+	local (i);
+	for i = 1 to menuCt {
+		if string.lower (string.nthField (menuStr, ";", i)) == string.lower (itemString) {
+			card.popup.setCheckedItem (objectName, i);
+			break}}}

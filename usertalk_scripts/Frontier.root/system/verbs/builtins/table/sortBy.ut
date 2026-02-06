@@ -1,1 +1,2 @@
-on sortBy (columnTitle) {	kernel (table.sortBy)}
+on sortBy (columnTitle) {
+	kernel (table.sortBy)}

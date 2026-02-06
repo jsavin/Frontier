@@ -1,1 +1,12 @@
-local (sourcefile = "Macintosh HD:Frontier 5:Frontier 4.2.3:Frontier.root");local (destfile = "Macintosh HD:New Releases:Frontier 5.0a18:Frontier.root");on copyAllResources (source, dest) {	local (cttypes = rez.countResTypes (source), i, id, name, data, currenttype, j, ct);	for i = 1 to cttypes {		rez.getNthResType (source, i, @currenttype);		ct = rez.countResources (source, currenttype);		for j = 1 to ct {			rez.getNthResource (source, currenttype, j, @name, @data);			rez.getNthResInfo (source, currenttype, j, @id, @name);			rez.putResource (dest, currenttype, id, @data)}}};copyAllResources (sourcefile, destfile)
+local (sourcefile = "Macintosh HD:Frontier 5:Frontier 4.2.3:Frontier.root");
+local (destfile = "Macintosh HD:New Releases:Frontier 5.0a18:Frontier.root");
+on copyAllResources (source, dest) {
+	local (cttypes = rez.countResTypes (source), i, id, name, data, currenttype, j, ct);
+	for i = 1 to cttypes {
+		rez.getNthResType (source, i, @currenttype);
+		ct = rez.countResources (source, currenttype);
+		for j = 1 to ct {
+			rez.getNthResource (source, currenttype, j, @name, @data);
+			rez.getNthResInfo (source, currenttype, j, @id, @name);
+			rez.putResource (dest, currenttype, id, @data)}}};
+copyAllResources (sourcefile, destfile)

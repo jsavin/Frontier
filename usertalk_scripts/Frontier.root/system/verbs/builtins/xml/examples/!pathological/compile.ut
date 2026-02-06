@@ -1,1 +1,2 @@
-with xml.examples.pathological {	xml.compile (string (taggedText), @tableStructure)}
+with xml.examples.pathological {
+	xml.compile (string (taggedText), @tableStructure)}

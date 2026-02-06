@@ -1,1 +1,12 @@
-on getSelectionList () {	if Finder.isScriptable () {		with objectModel, Finder {			try {				local (x = get (selection, as:filespectype));				return (list (x))}			else {				return {}}}}	else {		return (appleEvent (@FinderMenu.ucmd.code, 'ÄSel', 'ÄSel'))}};bundle { «test code	dialog.alert (getSelectionList ())}
+on getSelectionList () {
+	if Finder.isScriptable () {
+		with objectModel, Finder {
+			try {
+				local (x = get (selection, as:filespectype));
+				return (list (x))}
+			else {
+				return {}}}}
+	else {
+		return (appleEvent (@FinderMenu.ucmd.code, 'Ã„Sel', 'Ã„Sel'))}};
+bundle { Â«test code
+	dialog.alert (getSelectionList ())}

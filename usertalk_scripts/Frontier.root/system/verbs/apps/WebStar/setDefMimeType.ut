@@ -1,1 +1,3 @@
-on setDefMimeType (x, appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.set (appID, defMimeType, x))}}
+on setDefMimeType (x, appID = WebStar.id) {
+	with objectModel, WebStar.eventInfo {
+		return (core.set (appID, defMimeType, x))}}

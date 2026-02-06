@@ -1,1 +1,12 @@
-local (ct=0, statenum = 1, s);loop {	local (query = string (system.verbs.builtins.tcp.examples.xmlQuery));	query = string.replace (query, "xxx", string (statenum++));	if statenum > 50 {		statenum = 1};	s = tcp.httpClient (method:"POST", server:"betty.userland.com", port:81, path:"xmlGateway", data:query, datatype:"text/xml", debug:true);	if ct == 0 {		edit (@scratchpad.httpCommand);		edit (@scratchpad.httpResult);		window.about ()};	msg (ct++)}
+local (ct=0, statenum = 1, s);
+loop {
+	local (query = string (system.verbs.builtins.tcp.examples.xmlQuery));
+	query = string.replace (query, "xxx", string (statenum++));
+	if statenum > 50 {
+		statenum = 1};
+	s = tcp.httpClient (method:"POST", server:"betty.userland.com", port:81, path:"xmlGateway", data:query, datatype:"text/xml", debug:true);
+	if ct == 0 {
+		edit (@scratchpad.httpCommand);
+		edit (@scratchpad.httpResult);
+		window.about ()};
+	msg (ct++)}

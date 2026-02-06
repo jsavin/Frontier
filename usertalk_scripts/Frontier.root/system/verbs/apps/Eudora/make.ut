@@ -1,1 +1,2 @@
-on make (new, at, withData = nil) { «Make a new element	return (appleEvent (Eudora.id, 'core', 'crel', 'kocl', string4 (new), 'insh', at, 'data', withData))}
+on make (new, at, withData = nil) { Â«Make a new element
+	return (appleEvent (Eudora.id, 'core', 'crel', 'kocl', string4 (new), 'insh', at, 'data', withData))}

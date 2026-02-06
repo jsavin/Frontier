@@ -1,1 +1,38 @@
-on msgBox (message, buttonsNum, title) {	«Display a VBScript dialog box.		«Parameters:			«message is the message to place in the window contents.			«buttonsNum is the added-together value for these options:				«vbOKOnly    0 Display OK button only. 				«vbOKCancel    1 Display OK and Cancel buttons. 				«vbAbortRetryIgnore    2 Display Abort, Retry, and Ignore buttons. 				«vbYesNoCancel    3 Display Yes, No, and Cancel buttons. 				«vbYesNo    4 Display Yes and No buttons. 				«vbRetryCancel    5 Display Retry and Cancel buttons.				«vbCritical   16 Display Critical Message icon.  				«vbQuestion   32 Display Warning Query icon. 				«vbExclamation   48 Display Warning Message icon. 				«vbInformation   64 Display Information Message icon. 				«vbDefaultButton1    0 First button is default. 				«vbDefaultButton2  256 Second button is default. 				«vbDefaultButton3  512 Third button is default. 				«vbDefaultButton4  768 Fourth button is default. 				«vbApplicationModal    0 Application modal; the user must respond to the message box before continuing work in the current application. 				«vbSystemModal 4096 System modal; all applications are suspended until the user responds to the message box. 			«title is the title of the dialog box.		«Return values:			«Which button was clicked?			«1 OK 			«2 Cancel 			«3 Abort 			«4 Retry 			«5 Ignore 			«6 Yes 			«7 No 		local (s = string (winShell.data.scripts.msgBox));		return (com.callScript (s, "VBScript", "Main", {message, buttonsNum, title}))};«bundle //test code	«winShell.msgBox ("Hello Frontier!", 2 + 48 + 512, "UserLand Frontier")		«"5"
+on msgBox (message, buttonsNum, title) {
+	Â«Display a VBScript dialog box.
+		Â«Parameters:
+			Â«message is the message to place in the window contents.
+			Â«buttonsNum is the added-together value for these options:
+				Â«vbOKOnly    0 Display OK button only. 
+				Â«vbOKCancel    1 Display OK and Cancel buttons. 
+				Â«vbAbortRetryIgnore    2 Display Abort, Retry, and Ignore buttons. 
+				Â«vbYesNoCancel    3 Display Yes, No, and Cancel buttons. 
+				Â«vbYesNo    4 Display Yes and No buttons. 
+				Â«vbRetryCancel    5 Display Retry and Cancel buttons.
+				Â«vbCritical   16 Display Critical Message icon.  
+				Â«vbQuestion   32 Display Warning Query icon. 
+				Â«vbExclamation   48 Display Warning Message icon. 
+				Â«vbInformation   64 Display Information Message icon. 
+				Â«vbDefaultButton1    0 First button is default. 
+				Â«vbDefaultButton2  256 Second button is default. 
+				Â«vbDefaultButton3  512 Third button is default. 
+				Â«vbDefaultButton4  768 Fourth button is default. 
+				Â«vbApplicationModal    0 Application modal; the user must respond to the message box before continuing work in the current application. 
+				Â«vbSystemModal 4096 System modal; all applications are suspended until the user responds to the message box. 
+			Â«title is the title of the dialog box.
+		Â«Return values:
+			Â«Which button was clicked?
+			Â«1 OK 
+			Â«2 Cancel 
+			Â«3 Abort 
+			Â«4 Retry 
+			Â«5 Ignore 
+			Â«6 Yes 
+			Â«7 No 
+	
+	local (s = string (winShell.data.scripts.msgBox));
+	
+	return (com.callScript (s, "VBScript", "Main", {message, buttonsNum, title}))};
+Â«bundle //test code
+	Â«winShell.msgBox ("Hello Frontier!", 2 + 48 + 512, "UserLand Frontier")
+		Â«"5"

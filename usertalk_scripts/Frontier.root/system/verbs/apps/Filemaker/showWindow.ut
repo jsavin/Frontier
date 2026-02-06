@@ -1,1 +1,6 @@
-on showWindow (db) {	try {		with objectModel, Filemaker {			return (set (database[db].window[1].visible, true))}}	else {		return (false)}}
+on showWindow (db) {
+	try {
+		with objectModel, Filemaker {
+			return (set (database[db].window[1].visible, true))}}
+	else {
+		return (false)}}

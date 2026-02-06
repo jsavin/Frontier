@@ -1,1 +1,2 @@
-on go (dir, count) {	kernel (wp.go)}
+on go (dir, count) {
+	kernel (wp.go)}

@@ -1,1 +1,33 @@
-on fixGuestDbAdr (adrObject) { //possibly convert for guest database	« 9/29/98; 2:43:24 PM by DW		«Turn something like: (websites\guest2.root).["#enhancedState"]		«Into: ["C:\\Palm Springs\\Websites\\guest2.root"].["#enhancedState"]	local (s = string (adrObject));	local (pc = file.getPathChar ());		if s beginswith "(" { //convert a relative address to a full address		local (ix = string.patternmatch (").", s));		local (relativePath = string.mid (s, 2, ix - 2));				relativePath = string.replaceAll (relativePath, "\\", pc); //convert PC paths		relativePath = string.replaceAll (relativePath, ":", pc); //convert Macintosh paths				local (f = Frontier.pathString + relativePath);		if not (file.exists (f)) {			«Translate Nirvana Server to Guest Databases (and vice versa) as needed, but only if user.prefs.flNirvanaTester is true.				«Wed, Mar 3, 1999 at 5:48:38 PM by PBS			if defined (user.prefs.flNirvanaTester) and user.prefs.flNirvanaTester {				«Translate Nirvana Server to Guest Databases.				if (string.lower (relativePath) beginsWith "nirvana server") and not (file.exists (Frontier.pathString + "Nirvana Server" + pc)) {					f = frontier.pathString + "Guest Databases" + string.delete (relativePath, 1, sizeOf ("Nirvana Server"))}				else { //translate Guest Databases to Nirvana Server					if (string.lower (relativePath) beginsWith "guest databases") and not (file.exists (Frontier.pathString + "Guest Databases")) {						f = frontier.pathString + "Nirvana Server" + string.delete (relativePath, 1, sizeOf ("Guest Databases"))}}}};				if not window.isOpen (f) {			fileMenu.open (f);			window.hide (f)};				adrObject = "[\"" + string.replaceall (f, "\\", "\\\\") + "\"]" + string.delete (s, 1, ix)};		return (address (adrObject))}
+on fixGuestDbAdr (adrObject) { //possibly convert for guest database
+	Â« 9/29/98; 2:43:24 PM by DW
+		Â«Turn something like: (websites\guest2.root).["#enhancedState"]
+		Â«Into: ["C:\\Palm Springs\\Websites\\guest2.root"].["#enhancedState"]
+	local (s = string (adrObject));
+	local (pc = file.getPathChar ());
+	
+	if s beginswith "(" { //convert a relative address to a full address
+		local (ix = string.patternmatch (").", s));
+		local (relativePath = string.mid (s, 2, ix - 2));
+		
+		relativePath = string.replaceAll (relativePath, "\\", pc); //convert PC paths
+		relativePath = string.replaceAll (relativePath, ":", pc); //convert Macintosh paths
+		
+		local (f = Frontier.pathString + relativePath);
+		if not (file.exists (f)) {
+			Â«Translate Nirvana Server to Guest Databases (and vice versa) as needed, but only if user.prefs.flNirvanaTester is true.
+				Â«Wed, Mar 3, 1999 at 5:48:38 PM by PBS
+			if defined (user.prefs.flNirvanaTester) and user.prefs.flNirvanaTester {
+				Â«Translate Nirvana Server to Guest Databases.
+				if (string.lower (relativePath) beginsWith "nirvana server") and not (file.exists (Frontier.pathString + "Nirvana Server" + pc)) {
+					f = frontier.pathString + "Guest Databases" + string.delete (relativePath, 1, sizeOf ("Nirvana Server"))}
+				else { //translate Guest Databases to Nirvana Server
+					if (string.lower (relativePath) beginsWith "guest databases") and not (file.exists (Frontier.pathString + "Guest Databases")) {
+						f = frontier.pathString + "Nirvana Server" + string.delete (relativePath, 1, sizeOf ("Guest Databases"))}}}};
+		
+		if not window.isOpen (f) {
+			fileMenu.open (f);
+			window.hide (f)};
+		
+		adrObject = "[\"" + string.replaceall (f, "\\", "\\\\") + "\"]" + string.delete (s, 1, ix)};
+	
+	return (address (adrObject))}

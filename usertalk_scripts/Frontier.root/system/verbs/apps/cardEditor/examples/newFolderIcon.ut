@@ -1,1 +1,14 @@
-on newFolderIcon (folder, iconresource) {	local (quote = ì"î);	local (iconlabel = file.fileFromPath (folder) - ":");	local (objectname = cardEditor.uniqueName (iconlabel));	local (script = "file.openFolder (" + quote + folder + quote + ")");		cardEditor.newObject (card.types.iconType, objectname, iconlabel, script);	cardEditor.cleanObject (objectname);		bundle { ´set up attributes of new object		local (atts);		new (tableType, @atts);		atts.rsnm = short (iconresource);		cardEditor.setObjectAttributes (objectname, @atts)}}
+on newFolderIcon (folder, iconresource) {
+	local (quote = ‚Äú"‚Äù);
+	local (iconlabel = file.fileFromPath (folder) - ":");
+	local (objectname = cardEditor.uniqueName (iconlabel));
+	local (script = "file.openFolder (" + quote + folder + quote + ")");
+	
+	cardEditor.newObject (card.types.iconType, objectname, iconlabel, script);
+	cardEditor.cleanObject (objectname);
+	
+	bundle { ¬´set up attributes of new object
+		local (atts);
+		new (tableType, @atts);
+		atts.rsnm = short (iconresource);
+		cardEditor.setObjectAttributes (objectname, @atts)}}

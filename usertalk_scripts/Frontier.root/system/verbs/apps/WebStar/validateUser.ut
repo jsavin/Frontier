@@ -1,1 +1,2 @@
-on validateUser (x, password, realm, appID = WebStar.id) { «Validate that a given password is correct for a user in a specific realm	return (appleEvent (appID, 'WWW½', 'Vusr', '----', x, 'AUpw', password, 'AUrm', realm))}
+on validateUser (x, password, realm, appID = WebStar.id) { Â«Validate that a given password is correct for a user in a specific realm
+	return (appleEvent (appID, 'WWWÂ½', 'Vusr', '----', x, 'AUpw', password, 'AUrm', realm))}

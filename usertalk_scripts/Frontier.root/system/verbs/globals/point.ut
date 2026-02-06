@@ -1,1 +1,2 @@
-on point (val) {	kernel (lang.point)}
+on point (val) {
+	kernel (lang.point)}

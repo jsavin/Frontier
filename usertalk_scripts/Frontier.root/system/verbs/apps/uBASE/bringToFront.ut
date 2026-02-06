@@ -1,1 +1,2 @@
-on bringToFront () {	return (sys.bringAppToFront (ubase.appInfo.path))}
+on bringToFront () {
+	return (sys.bringAppToFront (ubase.appInfo.path))}

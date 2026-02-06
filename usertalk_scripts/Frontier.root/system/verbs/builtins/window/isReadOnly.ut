@@ -1,1 +1,2 @@
-on isReadOnly (adr) { //7.0b17	kernel (window.isReadOnly)}
+on isReadOnly (adr) { //7.0b17
+	kernel (window.isReadOnly)}

@@ -1,1 +1,2 @@
-on setWordChar (ch) {	kernel (string.setwordchar)}
+on setWordChar (ch) {
+	kernel (string.setwordchar)}

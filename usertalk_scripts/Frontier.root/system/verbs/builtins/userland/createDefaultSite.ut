@@ -1,1 +1,96 @@
-on createDefaultSite (siteName="createASiteManilaWebsite", password=nil, serverName=nil, displaySiteName=nil, tagline=nil, theme=nil, path="/", flHostingSite=false) {	«Changes		«8/21/02; 2:28:49 PM by JES			«Create a default Manila site. There may be more than one. Cribbed from userland.createDefaultIspSite.				«Return true if it gets created, return false if it already exists and thus doesn't get created.				«This is a wrapper for manilaSuite.clone. It's called from userland.finishInstall.	if flHostingSite { //set up ISP prefs in config.root		if not defined (config.manila.hosting) {			new (tableType, @config.manila.hosting)};		if not defined (config.manila.hosting.sites) {			new (tableType, @config.manila.hosting.sites)};		if not defined (config.manila.hosting.sites.default) {			new (tableType, @config.manila.hosting.sites.default)};		config.manila.hosting.sites.default.baseDomain = serverName;		config.manila.hosting.sites.default.canonicalSiteName = siteName;		if not defined (config.manila.hosting.sites.default.flEditorsOnlyCreateSites) {			config.manila.hosting.sites.default.flEditorsOnlyCreateSites = false};		if not defined (config.manila.hosting.sites.default.flSubSites) {			config.manila.hosting.sites.default.flSubSites = true}};		if not defined (config.manila.prefs.hostingGdbName) {		config.manila.prefs.hostingGdbName = "manilaWebsites.root"};	local (gdbName = config.manila.prefs.hostingGdbName);	local (gdbPath = Frontier.getSubFolder ("www") + gdbName);	if not (defined ([gdbPath])) { //is it already open?		if file.exists (gdbPath) {			fileMenu.open (gdbPath, true)} //it does, open it		else {			fileMenu.new (gdbPath);			window.hide (@[gdbPath]);			}};«fileMenu.save (gdbPath)		bundle { //add hosting gdb to user.databases		local (adrTable = @user.databases.[gdbName]);		if not defined (adrtable^) {			new (tableType, adrTable)};		if not defined (adrTable^.f) {			adrTable^.f = gdbPath};		if not defined (adrTable^.openOnStartup) {			adrTable^.openOnStartup = true};		if not defined (adrTable^.runStartupScript) {			adrTable^.runStartupScript = false};		if not defined (adrTable^.supportsIndexing) {			adrTable^.supportsIndexing = true};		if not defined (adrTable^.supportsSubscribe) {			adrTable^.supportsSubscribe = false}};		if file.exists (Frontier.getSubFolder ("www") + siteName + ".root") { //does the site already exist in a separate file?		return (false)}; //the file exists		local (dgName = siteName + "Discuss");	local (groupName = siteName + "Members");	local (sysopName = user.prefs.name);	local (sysopEmail = user.prefs.mailAddress);	local (sysopPassword);		if password == nil { //create a new password		local (i);		for i = 1 to 12 {			sysopPassword = sysopPassword + char (random ('A', 'Z'))}}	else {		sysopPassword = password};		if serverName == nil { //figure out the server name		serverName = tcp.dns.getMyDomainName ();		if not (serverName contains ".") {			serverName = tcp.myDottedId ()}};		if not (path beginsWith "/") {		path = "/" + path};	if not (path endsWith "/") {		path = path + "/"};	local (siteUrl = "http://" + serverName + path);		if theme == nil { //default to ISP2 theme		theme = "ISP2"};	local (siteInfo);	siteInfo = manilaSuite.clone (siteName, groupName, dgName, sysopEmail, sysopPassword, sysopName, siteUrl, false, true, true, gdbName, siteName, theme, false);	delete (@siteInfo.adrSite^.["#navigator"].structure);		bundle { //tag line, siteName, dg access		local (adrSite = siteInfo.adrSite);		if displaySiteName == nil {			displaySiteName = siteName};		if tagline == nil {			tagline = ""};		wp.newTextObject (tagline, @adrSite^.["#newsSite"].tagLine);		adrSite^.["#newsSite"].siteName = displaySiteName;		if flHostingSite {			try {delete (@adrSite^.discuss.edit.["#members"])};			adrSite^.discuss.["#members"] = adrSite^.["#prefs"].defaultMembershipGroup}};		bundle { //set up the domain for this site		mainResponder.siteTree.addSiteToTree ("default", path, siteInfo.adrSite, true, true)};		return (true)}
+on createDefaultSite (siteName="createASiteManilaWebsite", password=nil, serverName=nil, displaySiteName=nil, tagline=nil, theme=nil, path="/", flHostingSite=false) {
+	Â«Changes
+		Â«8/21/02; 2:28:49 PM by JES
+			Â«Create a default Manila site. There may be more than one. Cribbed from userland.createDefaultIspSite.
+				Â«Return true if it gets created, return false if it already exists and thus doesn't get created.
+				Â«This is a wrapper for manilaSuite.clone. It's called from userland.finishInstall.
+	if flHostingSite { //set up ISP prefs in config.root
+		if not defined (config.manila.hosting) {
+			new (tableType, @config.manila.hosting)};
+		if not defined (config.manila.hosting.sites) {
+			new (tableType, @config.manila.hosting.sites)};
+		if not defined (config.manila.hosting.sites.default) {
+			new (tableType, @config.manila.hosting.sites.default)};
+		config.manila.hosting.sites.default.baseDomain = serverName;
+		config.manila.hosting.sites.default.canonicalSiteName = siteName;
+		if not defined (config.manila.hosting.sites.default.flEditorsOnlyCreateSites) {
+			config.manila.hosting.sites.default.flEditorsOnlyCreateSites = false};
+		if not defined (config.manila.hosting.sites.default.flSubSites) {
+			config.manila.hosting.sites.default.flSubSites = true}};
+	
+	if not defined (config.manila.prefs.hostingGdbName) {
+		config.manila.prefs.hostingGdbName = "manilaWebsites.root"};
+	local (gdbName = config.manila.prefs.hostingGdbName);
+	local (gdbPath = Frontier.getSubFolder ("www") + gdbName);
+	if not (defined ([gdbPath])) { //is it already open?
+		if file.exists (gdbPath) {
+			fileMenu.open (gdbPath, true)} //it does, open it
+		else {
+			fileMenu.new (gdbPath);
+			window.hide (@[gdbPath]);
+			}};Â«fileMenu.save (gdbPath)
+	
+	bundle { //add hosting gdb to user.databases
+		local (adrTable = @user.databases.[gdbName]);
+		if not defined (adrtable^) {
+			new (tableType, adrTable)};
+		if not defined (adrTable^.f) {
+			adrTable^.f = gdbPath};
+		if not defined (adrTable^.openOnStartup) {
+			adrTable^.openOnStartup = true};
+		if not defined (adrTable^.runStartupScript) {
+			adrTable^.runStartupScript = false};
+		if not defined (adrTable^.supportsIndexing) {
+			adrTable^.supportsIndexing = true};
+		if not defined (adrTable^.supportsSubscribe) {
+			adrTable^.supportsSubscribe = false}};
+	
+	if file.exists (Frontier.getSubFolder ("www") + siteName + ".root") { //does the site already exist in a separate file?
+		return (false)}; //the file exists
+	
+	local (dgName = siteName + "Discuss");
+	local (groupName = siteName + "Members");
+	local (sysopName = user.prefs.name);
+	local (sysopEmail = user.prefs.mailAddress);
+	local (sysopPassword);
+	
+	if password == nil { //create a new password
+		local (i);
+		for i = 1 to 12 {
+			sysopPassword = sysopPassword + char (random ('A', 'Z'))}}
+	else {
+		sysopPassword = password};
+	
+	if serverName == nil { //figure out the server name
+		serverName = tcp.dns.getMyDomainName ();
+		if not (serverName contains ".") {
+			serverName = tcp.myDottedId ()}};
+	
+	if not (path beginsWith "/") {
+		path = "/" + path};
+	if not (path endsWith "/") {
+		path = path + "/"};
+	local (siteUrl = "http://" + serverName + path);
+	
+	if theme == nil { //default to ISP2 theme
+		theme = "ISP2"};
+	local (siteInfo);
+	siteInfo = manilaSuite.clone (siteName, groupName, dgName, sysopEmail, sysopPassword, sysopName, siteUrl, false, true, true, gdbName, siteName, theme, false);
+	delete (@siteInfo.adrSite^.["#navigator"].structure);
+	
+	bundle { //tag line, siteName, dg access
+		local (adrSite = siteInfo.adrSite);
+		if displaySiteName == nil {
+			displaySiteName = siteName};
+		if tagline == nil {
+			tagline = ""};
+		wp.newTextObject (tagline, @adrSite^.["#newsSite"].tagLine);
+		adrSite^.["#newsSite"].siteName = displaySiteName;
+		if flHostingSite {
+			try {delete (@adrSite^.discuss.edit.["#members"])};
+			adrSite^.discuss.["#members"] = adrSite^.["#prefs"].defaultMembershipGroup}};
+	
+	bundle { //set up the domain for this site
+		mainResponder.siteTree.addSiteToTree ("default", path, siteInfo.adrSite, true, true)};
+	
+	return (true)}

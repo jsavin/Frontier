@@ -1,1 +1,20 @@
-on start () {	«Changes		«If we're already connected, return false. Close invalid streams before trying to start.	if defined (system.temp.im.aim) { //JES 7/30/02: Handle start calls if we're already connected.		if defined (system.temp.im.aim._socket) {			try {				local (bytes = 0);				case tcp.statusStream (system.temp.im.aim._socket, @bytes) {					"OPEN";					"DATA" {						return (false)}} //already connected				else { //try to close an old stream					try {tcp.closeStream (system.temp.im.aim._socket) }}}			else { //most likely invalid stream error -- delete the table and start over				delete (@system.temp.im.aim)}}};	tcp.im.builtinDrivers.aim.init ();	tcp.im.builtinDrivers.aim.code.core.__init__(@system.temp.im.aim, user.im.aim.username, string (user.im.aim.password), @tcp.im.builtinDrivers.aim.code.responderCallbacks);	tcp.im.builtinDrivers.aim.code.core.go (@system.temp.im.aim)};«bundle //test code	«start ()
+on start () {
+	Â«Changes
+		Â«If we're already connected, return false. Close invalid streams before trying to start.
+	if defined (system.temp.im.aim) { //JES 7/30/02: Handle start calls if we're already connected.
+		if defined (system.temp.im.aim._socket) {
+			try {
+				local (bytes = 0);
+				case tcp.statusStream (system.temp.im.aim._socket, @bytes) {
+					"OPEN";
+					"DATA" {
+						return (false)}} //already connected
+				else { //try to close an old stream
+					try {tcp.closeStream (system.temp.im.aim._socket) }}}
+			else { //most likely invalid stream error -- delete the table and start over
+				delete (@system.temp.im.aim)}}};
+	tcp.im.builtinDrivers.aim.init ();
+	tcp.im.builtinDrivers.aim.code.core.__init__(@system.temp.im.aim, user.im.aim.username, string (user.im.aim.password), @tcp.im.builtinDrivers.aim.code.responderCallbacks);
+	tcp.im.builtinDrivers.aim.code.core.go (@system.temp.im.aim)};
+Â«bundle //test code
+	Â«start ()

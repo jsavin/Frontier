@@ -1,1 +1,14 @@
-on counter (scriptName) {	local (x);	if not defined (webserver.utilities.counters) {		new (tableType, @webserver.utilities.counters)};	semaphores.lock (scriptName, 3600);	try {		if not defined (webserver.utilities.counters.[scriptName]) {			webserver.utilities.counters.[scriptName] = 0};		x = ++webserver.utilities.counters.[scriptName];		semaphores.unlock (scriptName)}	else {		semaphores.unlock (scriptName);		scriptError (tryError)};	return (string.addCommas (x))}
+on counter (scriptName) {
+	local (x);
+	if not defined (webserver.utilities.counters) {
+		new (tableType, @webserver.utilities.counters)};
+	semaphores.lock (scriptName, 3600);
+	try {
+		if not defined (webserver.utilities.counters.[scriptName]) {
+			webserver.utilities.counters.[scriptName] = 0};
+		x = ++webserver.utilities.counters.[scriptName];
+		semaphores.unlock (scriptName)}
+	else {
+		semaphores.unlock (scriptName);
+		scriptError (tryError)};
+	return (string.addCommas (x))}

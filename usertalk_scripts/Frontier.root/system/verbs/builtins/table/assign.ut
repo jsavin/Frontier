@@ -1,1 +1,2 @@
-on assign (adr, val) {	kernel (table.assign)}
+on assign (adr, val) {
+	kernel (table.assign)}

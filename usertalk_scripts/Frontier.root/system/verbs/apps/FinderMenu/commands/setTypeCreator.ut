@@ -1,1 +1,6 @@
-on setTypeCreator (type, creator) {	local (f);	for f in FinderMenu.getSelectionList () {		file.settype (f, type);		file.setcreator (f, creator);		file.setmodified (file.folderfrompath (f), clock.now())}}
+on setTypeCreator (type, creator) {
+	local (f);
+	for f in FinderMenu.getSelectionList () {
+		file.settype (f, type);
+		file.setcreator (f, creator);
+		file.setmodified (file.folderfrompath (f), clock.now())}}

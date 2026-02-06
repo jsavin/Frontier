@@ -1,1 +1,2 @@
-on launch () {	return (app.start ("ubase"))}
+on launch () {
+	return (app.start ("ubase"))}

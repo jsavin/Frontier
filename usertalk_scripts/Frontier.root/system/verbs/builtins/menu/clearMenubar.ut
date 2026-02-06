@@ -1,1 +1,6 @@
-on clearMenubar () {	on kernelcall () {		kernel (menu.clearmenubar)};	kernelcall ();	system.menus.data.currentSuite = "";	system.menus.data.currentmenu = '????'}
+on clearMenubar () {
+	on kernelcall () {
+		kernel (menu.clearmenubar)};
+	kernelcall ();
+	system.menus.data.currentSuite = "";
+	system.menus.data.currentmenu = '????'}

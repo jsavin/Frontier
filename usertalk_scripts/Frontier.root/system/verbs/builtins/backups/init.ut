@@ -1,1 +1,7 @@
-if not defined (user.backups) {	new (tableType, @user.backups)};if not defined (user.backups.nextBackup) {	user.backups.nextBackup = 0};if not defined (user.backups.folder) {	«user.backups.folder = Frontier.pathstring + "backups" + file.getPathChar ()	user.backups.folder = Frontier.getSubFolder ("ops/backups/")} //PBS 06/24/00: put backups in ops/backups/
+if not defined (user.backups) {
+	new (tableType, @user.backups)};
+if not defined (user.backups.nextBackup) {
+	user.backups.nextBackup = 0};
+if not defined (user.backups.folder) {
+	Â«user.backups.folder = Frontier.pathstring + "backups" + file.getPathChar ()
+	user.backups.folder = Frontier.getSubFolder ("ops/backups/")} //PBS 06/24/00: put backups in ops/backups/

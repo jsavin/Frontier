@@ -1,1 +1,6 @@
-on IM_IN (adrSelf, data) {	local {		screenName = string.nthField(data, ':',1);		flAutoresponse=(string.nthField(data,':',2) equals 'T');		message = string.mid(data, sizeOf(screenName)+4, infinity)};	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "IM_IN", {adrSelf, screenName, message, flAutoresponse}, adrSelf^._adrSubCallbacks ))};
+on IM_IN (adrSelf, data) {
+	local {
+		screenName = string.nthField(data, ':',1);
+		flAutoresponse=(string.nthField(data,':',2) equals 'T');
+		message = string.mid(data, sizeOf(screenName)+4, infinity)};
+	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "IM_IN", {adrSelf, screenName, message, flAutoresponse}, adrSelf^._adrSubCallbacks ))};

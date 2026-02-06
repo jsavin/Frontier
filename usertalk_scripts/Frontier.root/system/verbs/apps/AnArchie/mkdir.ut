@@ -1,1 +1,2 @@
-on mkdir (host, path, user, password, url) { «Make directory	return (appleEvent (AnArchie.id, 'Arch', 'MkDr', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}
+on mkdir (host, path, user, password, url) { Â«Make directory
+	return (appleEvent (AnArchie.id, 'Arch', 'MkDr', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}

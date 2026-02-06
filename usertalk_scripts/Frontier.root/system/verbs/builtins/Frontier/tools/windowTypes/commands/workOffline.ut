@@ -1,1 +1,14 @@
-«Toggle the offline flag.	«09/23/00; 4:23:09 PM by PBS	«Changes:		«12/02/00; 4:43:29 PM by PBS			«When going offline, shut down all daemons, including the web server.			«When going online, start up all daemons with startup set to true.if defined (tcp.isOffline) and defined (tcp.setOffline) {	local (flOffline = tcp.isOffline ());	if flOffline { //already offline?		tcp.setOffline (false); //go online		inetd.start ()}	else { //nope, online right now		tcp.setOffline (true); //go offline		inetd.stop ()}}
+Â«Toggle the offline flag.
+	Â«09/23/00; 4:23:09 PM by PBS
+	Â«Changes:
+		Â«12/02/00; 4:43:29 PM by PBS
+			Â«When going offline, shut down all daemons, including the web server.
+			Â«When going online, start up all daemons with startup set to true.
+if defined (tcp.isOffline) and defined (tcp.setOffline) {
+	local (flOffline = tcp.isOffline ());
+	if flOffline { //already offline?
+		tcp.setOffline (false); //go online
+		inetd.start ()}
+	else { //nope, online right now
+		tcp.setOffline (true); //go offline
+		inetd.stop ()}}

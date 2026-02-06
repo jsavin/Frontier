@@ -1,1 +1,66 @@
-on writeReport (f) {	file.new (f); «create the file	file.setType (f, 'TEXT'); «it's a text file	file.setCreator (f, Netscape.id);	file.open (f);	on add (s) {		file.write (f, s)};	add ("<html>\r");	add ("<body bgcolor=\"#FFFFFF\">\r");	add ("<code>Last build on " + clock.now () + ".</code>");	bundle { «popular pages		local (lastRanking = user.webstar.lastRanking);		user.webstar.lastranking = {};		local (colwidths = {50, 50, 0});		add ("<br><br><h2>The most popular pages</h2>");		add ("<blockquote>\r");		add ("<table cellpadding=2 border=0>\r");		on addRow (rowlist) {			local (s = "", i);			s = s + "<tr>";			for i = 1 to sizeof (rowlist) {				if colwidths [i] != 0 {					s = s + "<td width=" + colwidths [i] + "><code><center>" + rowlist [i] + "</center></code></td>"}				else {					s = s + "<td><code>" + rowlist [i] + "</code></td>"}};			s = s + "</tr>\r";			file.write (f, s)};		addRow ({"Rank", "Last", "Page"});		local (i, j, url, val, link, lastrankstring);		local (ct = sizeof (user.webstar.urls));		local (lastitem = ct - user.webstar.ctreporturls + 1);		if lastitem < 1 {			lastitem = 1};		for i = ct downto lastitem {			msg (i);			val = user.webstar.urls [i];			if val > 1 {				url = string.replaceall (nameof (user.webstar.urls [i]), ":", "/");				link = "<a href=\"" + "http://" + user.webstar.domainname + url + "\">" + url + "</a>";				lastrankstring = "";				for j = 1 to sizeof (lastranking) {					if lastranking [j] == url {						lastrankstring = j;						break}};				addRow ({ct - i + 1, lastrankstring, link});				user.webstar.lastranking = user.webstar.lastranking + url}};		add ("</table>\r");		add ("</blockquote>\r")};	«bundle «active readers		«add ("<br><br><h2>The most active readers</h2>")		«add ("<blockquote>\r")		«add ("<pre>\r")		«add ("<b>reads\tuser\r\r</b>")		«for i = sizeof (user.webstar.hosts) downto 1			«msg (i)			«val = user.webstar.hosts [i]			«if val > 1				«file.write (f, val + "\t" + nameof (user.webstar.hosts [i]) + "\r")		«add ("</pre>\r")		«add ("</blockquote>\r")	add ("</body>\r</html>");	file.close (f);	filemenu.save ()};bundle { «test code	writeReport ("jaz disk 1:tmp.html");	webbrowser.opendocument ("jaz disk 1:tmp.html")}
+on writeReport (f) {
+	file.new (f); Â«create the file
+	file.setType (f, 'TEXT'); Â«it's a text file
+	file.setCreator (f, Netscape.id);
+	file.open (f);
+	on add (s) {
+		file.write (f, s)};
+	add ("<html>\r");
+	add ("<body bgcolor=\"#FFFFFF\">\r");
+	add ("<code>Last build on " + clock.now () + ".</code>");
+	bundle { Â«popular pages
+		local (lastRanking = user.webstar.lastRanking);
+		user.webstar.lastranking = {};
+		local (colwidths = {50, 50, 0});
+		add ("<br><br><h2>The most popular pages</h2>");
+		add ("<blockquote>\r");
+		add ("<table cellpadding=2 border=0>\r");
+		on addRow (rowlist) {
+			local (s = "", i);
+			s = s + "<tr>";
+			for i = 1 to sizeof (rowlist) {
+				if colwidths [i] != 0 {
+					s = s + "<td width=" + colwidths [i] + "><code><center>" + rowlist [i] + "</center></code></td>"}
+				else {
+					s = s + "<td><code>" + rowlist [i] + "</code></td>"}};
+			s = s + "</tr>\r";
+			file.write (f, s)};
+		addRow ({"Rank", "Last", "Page"});
+		local (i, j, url, val, link, lastrankstring);
+		local (ct = sizeof (user.webstar.urls));
+		local (lastitem = ct - user.webstar.ctreporturls + 1);
+		if lastitem < 1 {
+			lastitem = 1};
+		for i = ct downto lastitem {
+			msg (i);
+			val = user.webstar.urls [i];
+			if val > 1 {
+				url = string.replaceall (nameof (user.webstar.urls [i]), ":", "/");
+				link = "<a href=\"" + "http://" + user.webstar.domainname + url + "\">" + url + "</a>";
+				lastrankstring = "";
+				for j = 1 to sizeof (lastranking) {
+					if lastranking [j] == url {
+						lastrankstring = j;
+						break}};
+				addRow ({ct - i + 1, lastrankstring, link});
+				user.webstar.lastranking = user.webstar.lastranking + url}};
+		add ("</table>\r");
+		add ("</blockquote>\r")};
+	Â«bundle Â«active readers
+		Â«add ("<br><br><h2>The most active readers</h2>")
+		Â«add ("<blockquote>\r")
+		Â«add ("<pre>\r")
+		Â«add ("<b>reads\tuser\r\r</b>")
+		Â«for i = sizeof (user.webstar.hosts) downto 1
+			Â«msg (i)
+			Â«val = user.webstar.hosts [i]
+			Â«if val > 1
+				Â«file.write (f, val + "\t" + nameof (user.webstar.hosts [i]) + "\r")
+		Â«add ("</pre>\r")
+		Â«add ("</blockquote>\r")
+	add ("</body>\r</html>");
+	file.close (f);
+	filemenu.save ()};
+bundle { Â«test code
+	writeReport ("jaz disk 1:tmp.html");
+	webbrowser.opendocument ("jaz disk 1:tmp.html")}

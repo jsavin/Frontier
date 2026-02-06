@@ -1,1 +1,13 @@
-on lockObjectsTable () {	«Get a semaphore lock on user.custody.objects.		«Wed, Jun 10, 1998 at 7:27:42 PM by PBS		local (adrTable = @user.custody.objects);		try { //lock the semaphore		semaphore.lock (adrTable, 60 * 5)} //5 seconds	else {		semaphore.unlock (adrTable);		scriptError (tryError)};		return (true)}
+on lockObjectsTable () {
+	Â«Get a semaphore lock on user.custody.objects.
+		Â«Wed, Jun 10, 1998 at 7:27:42 PM by PBS
+	
+	local (adrTable = @user.custody.objects);
+	
+	try { //lock the semaphore
+		semaphore.lock (adrTable, 60 * 5)} //5 seconds
+	else {
+		semaphore.unlock (adrTable);
+		scriptError (tryError)};
+	
+	return (true)}

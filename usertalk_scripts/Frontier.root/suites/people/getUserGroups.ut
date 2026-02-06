@@ -1,1 +1,13 @@
-on getUserGroups (userName) {	«Returns all the groups a user belongs to.		«Returns false if the user doesn't exist.	local (adrUser = people.getUserTable (userName));	if not (people.userExists (userName, adrUser)) {		return (false)};	local (allGroups, groupsList = {});	local (i);	allGroups = people.getGroupsList ();	for i = 1 to sizeOf (allGroups) {		if people.userIsGroupMember (userName, allGroups [i], adrUser) {			groupsList = groupsList + allGroups [i]}};	return (groupsList)}
+on getUserGroups (userName) {
+	Â«Returns all the groups a user belongs to.
+		Â«Returns false if the user doesn't exist.
+	local (adrUser = people.getUserTable (userName));
+	if not (people.userExists (userName, adrUser)) {
+		return (false)};
+	local (allGroups, groupsList = {});
+	local (i);
+	allGroups = people.getGroupsList ();
+	for i = 1 to sizeOf (allGroups) {
+		if people.userIsGroupMember (userName, allGroups [i], adrUser) {
+			groupsList = groupsList + allGroups [i]}};
+	return (groupsList)}

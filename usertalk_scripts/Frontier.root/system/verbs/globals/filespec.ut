@@ -1,1 +1,2 @@
-on filespec (path) {	kernel (lang.filespec)}
+on filespec (path) {
+	kernel (lang.filespec)}

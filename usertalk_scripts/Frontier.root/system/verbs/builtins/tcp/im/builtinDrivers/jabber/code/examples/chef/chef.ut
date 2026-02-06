@@ -1,1 +1,31 @@
-on chef (s, flBork = true) {	«Chunges:		«5/13/02; 11:07:02 PM by JB			«Chungeloog created.			«			«Bork bork bork!	s = string.replaceAll (s, "an", "un" );	s = string.replaceAll (s, "An", "Un" );	s = string.replaceAll (s, "au", "oo" );	s = string.replaceAll (s, "Au", "Oo" );	s = string.replaceAll (s, "en ", "ee " );	s = string.replaceAll (s, "en.", "ee." );	s = string.replaceAll (s, "en,", "ee," );	s = string.replaceAll (s, "en!", "ee!" );	s = string.replaceAll (s, "f", "ff" );	s = string.replaceAll (s, "ir", "ur" );	s = string.replaceAll (s, "ow", "oo" );	s = string.replaceAll (s, "o", "oo" );	s = string.replaceAll (s, "O", "Oo" );	s = string.replaceAll (s, "the", "zee" );	s = string.replaceAll (s, "The", "Zee" );	s = string.replaceAll (s, "th", "t" );	s = string.replaceAll (s, "tion", "shun" );	s = string.replaceAll (s, "v", "f" );	s = string.replaceAll (s, "V", "F" );	s = string.replaceAll (s, "w", "v" );	s = string.replaceAll (s, "W", "V" );	if flBork {		s = s + "\n\nBork bork bork!"};	return s};dialog.alert(chef("This is a test of the emergency Swedish Chef system. Had this been a real emergency, you would already be flashing back to hilarity by now.") )
+on chef (s, flBork = true) {
+	Â«Chunges:
+		Â«5/13/02; 11:07:02 PM by JB
+			Â«Chungeloog created.
+			Â«
+			Â«Bork bork bork!
+	s = string.replaceAll (s, "an", "un" );
+	s = string.replaceAll (s, "An", "Un" );
+	s = string.replaceAll (s, "au", "oo" );
+	s = string.replaceAll (s, "Au", "Oo" );
+	s = string.replaceAll (s, "en ", "ee " );
+	s = string.replaceAll (s, "en.", "ee." );
+	s = string.replaceAll (s, "en,", "ee," );
+	s = string.replaceAll (s, "en!", "ee!" );
+	s = string.replaceAll (s, "f", "ff" );
+	s = string.replaceAll (s, "ir", "ur" );
+	s = string.replaceAll (s, "ow", "oo" );
+	s = string.replaceAll (s, "o", "oo" );
+	s = string.replaceAll (s, "O", "Oo" );
+	s = string.replaceAll (s, "the", "zee" );
+	s = string.replaceAll (s, "The", "Zee" );
+	s = string.replaceAll (s, "th", "t" );
+	s = string.replaceAll (s, "tion", "shun" );
+	s = string.replaceAll (s, "v", "f" );
+	s = string.replaceAll (s, "V", "F" );
+	s = string.replaceAll (s, "w", "v" );
+	s = string.replaceAll (s, "W", "V" );
+	if flBork {
+		s = s + "\n\nBork bork bork!"};
+	return s};
+dialog.alert(chef("This is a test of the emergency Swedish Chef system. Had this been a real emergency, you would already be flashing back to hilarity by now.") )

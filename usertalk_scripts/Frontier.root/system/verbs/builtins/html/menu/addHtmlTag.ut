@@ -1,1 +1,16 @@
-on addHtmlTag (tag) {	local (start, end, x);	tag = html.menu.setTagCase (tag);	wp.setTextMode (true);	wp.getSelect (@start, @end);	if start == end { // Nothing selected		wp.insert ("<" + tag + "></" + tag + ">");		wp.setSelect (start + (sizeOf (tag) + 2) , start + (sizeOf (tag) + 2))}	else {		local (source, html);		source = wp.getSelText ();		html = "<" + tag + ">" + source + "</" + tag + ">";		wp.insert (html);		wp.setSelect (start + (sizeOf (tag) + 2), end + sizeOf (tag) + 2)};	window.update (window.frontmost ());	return (true)}
+on addHtmlTag (tag) {
+	local (start, end, x);
+	tag = html.menu.setTagCase (tag);
+	wp.setTextMode (true);
+	wp.getSelect (@start, @end);
+	if start == end { // Nothing selected
+		wp.insert ("<" + tag + "></" + tag + ">");
+		wp.setSelect (start + (sizeOf (tag) + 2) , start + (sizeOf (tag) + 2))}
+	else {
+		local (source, html);
+		source = wp.getSelText ();
+		html = "<" + tag + ">" + source + "</" + tag + ">";
+		wp.insert (html);
+		wp.setSelect (start + (sizeOf (tag) + 2), end + sizeOf (tag) + 2)};
+	window.update (window.frontmost ());
+	return (true)}

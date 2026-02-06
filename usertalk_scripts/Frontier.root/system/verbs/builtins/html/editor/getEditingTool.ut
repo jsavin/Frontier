@@ -1,1 +1,87 @@
-on getEditingTool (pta=nil) {	«Changes		«1/4/12; 4:21:48 PM by JES			«Remove max version limit for IE check.		«4/26/2011; 12:55:42 AM by JES			«Add support for IE 9 and Firefox 4.		«3/19/09; 9:39:30 PM by LL			«Add support for Win IE 8.		«2/7/06; 2:01:13 AM by JES			«Add support for Win IE 7. Restructured logic for determining whether we're serving to a compatible version of IE Win.		«11/3/05; 2:55:43 AM by JES			«Camino doesn't support the Mozilla WYSIWYG editor.		«8/5/03; 4:00:01 PM by JES			«Added support for Mozilla's rich text editor.		«8/31/01; 12:33:31 PM by JES			«Return the name of the editing tool to use: tagEditor, wysiwygEditor, or none.			«Factored from html.editor.get.		if pta == nil {		pta = html.getPageTableAddress ()};	«workspace.pt = pta^; edit (@workspace.pt) //debugging		local (flWysEditor = false, flTagEditor = true, flMozilla = false);	local (editingToolName = "tagEditor");	if defined (pta^.editingToolName) {		editingToolName = pta^.editingToolName;		if string.lower (pta^.editingToolName) == "wysiwyg" {			flWysEditor = true;			flTagEditor = false}};		local (flIeWin5OrGreater = false);	local (flMozilla13OrGreater = false);	bundle { //find reasons not to display an editor		if string.lower (editingToolName) == "none" { //no editor			return ("")};		if defined (pta^.responderAttributes.flDiscussHtmlEditor) {			if not (pta^.responderAttributes.flDiscussHtmlEditor) {				return ("")}};		if not defined (pta^.requestHeaders.["User-Agent"]) {			return ("")};		«msg (pta^.requestHeaders.["User-Agent"])				local (lowerUserAgent = string.lower (pta^.requestHeaders.["User-Agent"]));		bundle { //Set flags for which supported browser the request came from			flIeWin5OrGreater = (lowerUserAgent contains "windows") and (lowerUserAgent contains "msie");			if flIeWin5OrGreater {				case true { //set flIeWin5OrGreater					lowerUserAgent contains "msie 2.";					lowerUserAgent contains "msie 3.";					lowerUserAgent contains "msie 4." {						flIeWin5OrGreater = false}}};			«bundle //old code				«flIeWin5OrGreater = lowerUserAgent contains "msie 5"				«flIeWin5OrGreater = flIeWin5OrGreater or (lowerUserAgent contains "msie 6")				«flIeWin5OrGreater = flIeWin5OrGreater and (lowerUserAgent contains "windows")						flMozilla = (lowerUserAgent contains "mozilla") and (lowerUserAgent contains "gecko"); // and (lowerUserAgent contains " u;")			if flMozilla {				ix = string.patternMatch ("rv:", lowerUserAgent);				if ix > 0 {					ix = ix + 3;					local (mozVers = string.mid (lowerUserAgent, ix, infinity));					mozVers = string.popSuffix (mozVers, ")");					«msg (mozVers)					flMozilla13OrGreater = not date.versionLessThan (mozVers, "1.3")}}};		if not (flIeWin5OrGreater or flMozilla13OrGreater) {			return ("")};		if pta^.requestHeaders.["User-Agent"] contains "Camino/" {			return ("")}};		if flWysEditor {		if flMozilla {			editingToolName = "wysiwygEditorMozilla"}		else { //must be IE Win			editingToolName = "wysiwygEditor"}}	else {		if flTagEditor { //classic source-view editor, raw HTML			if flIeWin5OrGreater {				editingToolName = "tagEditor"}			else {				editingToolName = "none"}}		else {			editingToolName = "none"}};		return (editingToolName)};«bundle //test code	«dialog.alert (getEditingTool (@workspace.pt))
+on getEditingTool (pta=nil) {
+	Â«Changes
+		Â«1/4/12; 4:21:48 PM by JES
+			Â«Remove max version limit for IE check.
+		Â«4/26/2011; 12:55:42 AM by JES
+			Â«Add support for IE 9 and Firefox 4.
+		Â«3/19/09; 9:39:30 PM by LL
+			Â«Add support for Win IE 8.
+		Â«2/7/06; 2:01:13 AM by JES
+			Â«Add support for Win IE 7. Restructured logic for determining whether we're serving to a compatible version of IE Win.
+		Â«11/3/05; 2:55:43 AM by JES
+			Â«Camino doesn't support the Mozilla WYSIWYG editor.
+		Â«8/5/03; 4:00:01 PM by JES
+			Â«Added support for Mozilla's rich text editor.
+		Â«8/31/01; 12:33:31 PM by JES
+			Â«Return the name of the editing tool to use: tagEditor, wysiwygEditor, or none.
+			Â«Factored from html.editor.get.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	Â«workspace.pt = pta^; edit (@workspace.pt) //debugging
+	
+	local (flWysEditor = false, flTagEditor = true, flMozilla = false);
+	local (editingToolName = "tagEditor");
+	if defined (pta^.editingToolName) {
+		editingToolName = pta^.editingToolName;
+		if string.lower (pta^.editingToolName) == "wysiwyg" {
+			flWysEditor = true;
+			flTagEditor = false}};
+	
+	local (flIeWin5OrGreater = false);
+	local (flMozilla13OrGreater = false);
+	bundle { //find reasons not to display an editor
+		if string.lower (editingToolName) == "none" { //no editor
+			return ("")};
+		if defined (pta^.responderAttributes.flDiscussHtmlEditor) {
+			if not (pta^.responderAttributes.flDiscussHtmlEditor) {
+				return ("")}};
+		if not defined (pta^.requestHeaders.["User-Agent"]) {
+			return ("")};
+		Â«msg (pta^.requestHeaders.["User-Agent"])
+		
+		local (lowerUserAgent = string.lower (pta^.requestHeaders.["User-Agent"]));
+		bundle { //Set flags for which supported browser the request came from
+			flIeWin5OrGreater = (lowerUserAgent contains "windows") and (lowerUserAgent contains "msie");
+			if flIeWin5OrGreater {
+				case true { //set flIeWin5OrGreater
+					lowerUserAgent contains "msie 2.";
+					lowerUserAgent contains "msie 3.";
+					lowerUserAgent contains "msie 4." {
+						flIeWin5OrGreater = false}}};
+			Â«bundle //old code
+				Â«flIeWin5OrGreater = lowerUserAgent contains "msie 5"
+				Â«flIeWin5OrGreater = flIeWin5OrGreater or (lowerUserAgent contains "msie 6")
+				Â«flIeWin5OrGreater = flIeWin5OrGreater and (lowerUserAgent contains "windows")
+			
+			flMozilla = (lowerUserAgent contains "mozilla") and (lowerUserAgent contains "gecko"); // and (lowerUserAgent contains " u;")
+			if flMozilla {
+				ix = string.patternMatch ("rv:", lowerUserAgent);
+				if ix > 0 {
+					ix = ix + 3;
+					local (mozVers = string.mid (lowerUserAgent, ix, infinity));
+					mozVers = string.popSuffix (mozVers, ")");
+					Â«msg (mozVers)
+					flMozilla13OrGreater = not date.versionLessThan (mozVers, "1.3")}}};
+		if not (flIeWin5OrGreater or flMozilla13OrGreater) {
+			return ("")};
+		if pta^.requestHeaders.["User-Agent"] contains "Camino/" {
+			return ("")}};
+	
+	if flWysEditor {
+		if flMozilla {
+			editingToolName = "wysiwygEditorMozilla"}
+		else { //must be IE Win
+			editingToolName = "wysiwygEditor"}}
+	else {
+		if flTagEditor { //classic source-view editor, raw HTML
+			if flIeWin5OrGreater {
+				editingToolName = "tagEditor"}
+			else {
+				editingToolName = "none"}}
+		else {
+			editingToolName = "none"}};
+	
+	return (editingToolName)};
+Â«bundle //test code
+	Â«dialog.alert (getEditingTool (@workspace.pt))

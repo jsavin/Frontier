@@ -1,1 +1,18 @@
-on write (adrData, path, type, creator, creationDate, adrPageTable, adrStorage) {	«This script is called whenever a file needs to be written somewhere.		«Parameters:			«adrData: this is the address of data the file should contain.			«path: path is a relative, /-delimited path.				«It's relative to the ftpSite^.folder.			«type: the file type.			«creator: the file creator.			«creationDate: should be the creation data of the file.			«adrPageTable: the address of the current page data table.			«adrStorage: the address of private storage for this file writer for this session.		«This script doesn't have to write the file immediately --			«it could defer writing until the shutdown script is called.	local (f = html.getPref ("siteRootFolder", adrPageTable));	f = f + string.replaceAll (path, "/", file.getPathChar ());	file.sureFilePath (f);	file.writeWholeFile (f, adrData^, type, creator, creationDate);	return (true)}
+on write (adrData, path, type, creator, creationDate, adrPageTable, adrStorage) {
+	Â«This script is called whenever a file needs to be written somewhere.
+		Â«Parameters:
+			Â«adrData: this is the address of data the file should contain.
+			Â«path: path is a relative, /-delimited path.
+				Â«It's relative to the ftpSite^.folder.
+			Â«type: the file type.
+			Â«creator: the file creator.
+			Â«creationDate: should be the creation data of the file.
+			Â«adrPageTable: the address of the current page data table.
+			Â«adrStorage: the address of private storage for this file writer for this session.
+		Â«This script doesn't have to write the file immediately --
+			Â«it could defer writing until the shutdown script is called.
+	local (f = html.getPref ("siteRootFolder", adrPageTable));
+	f = f + string.replaceAll (path, "/", file.getPathChar ());
+	file.sureFilePath (f);
+	file.writeWholeFile (f, adrData^, type, creator, creationDate);
+	return (true)}

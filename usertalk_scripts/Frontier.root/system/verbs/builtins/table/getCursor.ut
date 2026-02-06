@@ -1,1 +1,2 @@
-on getCursor () {	kernel (table.getCursor)}
+on getCursor () {
+	kernel (table.getCursor)}

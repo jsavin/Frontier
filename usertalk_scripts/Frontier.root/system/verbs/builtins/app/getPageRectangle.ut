@@ -1,1 +1,2 @@
-on getPageRectangle () {	return (appleEvent (app.id, 'app1', 'gprc'))}
+on getPageRectangle () {
+	return (appleEvent (app.id, 'app1', 'gprc'))}

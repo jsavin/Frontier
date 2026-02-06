@@ -1,1 +1,2 @@
-on setFormattedText (fl) {	user.html.menu.formatText = fl}
+on setFormattedText (fl) {
+	user.html.menu.formatText = fl}

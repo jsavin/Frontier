@@ -1,1 +1,2 @@
-on getInfo () {	Frontier.tools.nodeTypes.getInfo ()}
+on getInfo () {
+	Frontier.tools.nodeTypes.getInfo ()}

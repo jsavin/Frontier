@@ -1,1 +1,109 @@
-on doExport (adr, kind, location, compression) {	«Changes		«3/18/04; 7:42:04 PM by JES			«Add file extenion on Mac as well as Windows -- needed for proper OS X typing, and mime-type sending in static web servers. Also, smart-limit file name to 31 characters (limit imposed by OS 9 and Carbon API).	bundle { «be sure kind and type are compatible		on check () {			if kind == "Folder" {				if typeOf (adr^) != tableType {					scriptError ("Only tables can be exported in this format.")}				else {					return}}; «it's ok			if typeOf (adr^) != scriptType {				if kind != "Packed object" {					scriptError ("Only scripts can be exported in this format.")}				else {					return}}};		check ()};	local (f, fname, objectname);	bundle { «set fname		local (tablename, quotedname);		objectname = nameOf (adr^);		if string.hasSuffix (“"]”, adr) {			quotedname = “["” + objectname + “"]”}		else {			quotedname = objectname};		tablename = nameOf (address (string (adr) - ('.' + quotedname))^);		if kind == "Desktop script" {			fname = objectname}		else { //calculate name based on object name and parent table name			local (longname = tablename + '.' + objectname);			if system.environment.isMac { //limit to 31 chars (with extension)				if sizeOf (longname) > 26 { //don't add table name					longname = objectname};				if sizeOf (longname) > 26 { //truncate object name					longname = string.mid (longname, 1, 26)}};			fname = longname};		objectname = fname;		case typeOf (adr^) {			scriptType {				if kind == "Desktop script" {					fname = fname + ".ftds"}				else {					fname = fname + ".ftsc"}};			wptextType {				fname = fname + ".ftwp"};			outlineType {				fname = fname + ".ftop"};			tableType {				fname = fname + ".fttb"}}		else {			fname = fname + ".fatp"};		if compression != "None" {			fname = fname + compression}};	case location {		"File" {			local (lastfolder = user.export.lastfolder);			if not (lastfolder endswith file.getPathChar ()) {				lastfolder = lastfolder + file.getPathChar ()};			if not file.exists (lastfolder) {				lastfolder = file.folderFromPath (Frontier.getProgramPath ())};			f = lastfolder + fname;			«Append file suffixes if pref is set to true				«Mon, Jan 26, 1998 at 5:10:25 PM by PBS			if not defined (user.prefs.appendFileSuffixes) {				user.prefs.appendFileSuffixes = false};			if user.prefs.appendFileSuffixes {				local (suffix = "." + string.lower (Frontier.getFileType (typeOf (adr^))));				if kind == "Desktop script" {					suffix = ".ftds"};				f = f + suffix};			if not file.putFileDialog ("Export to what file?", @f) {				return (false)};			user.export.lastfolder = file.folderFromPath (f)};		"Eudora attachment" {			local (folder = Eudora.getScriptPrefsFolder () + "Outgoing Frontier Objects:");			file.sureFolder (folder);			f = folder + fname}};	local (packedfile);	if compression == "None" {		packedfile = f}	else { «must create it in a temporary location		local (tempfolder = file.getSpecialFolderPath ("", "Temporary Items", true));		packedfile = tempfolder + objectname};	case kind {		"Packed object" {			export.sendObject (adr, packedfile)};		"Desktop script" {			export.sendToDesktop (adr, packedfile)};		"Script Editor format" {			export.sendOSAScript (adr, packedfile)};		"Folder" {			export.sendFolder (adr, packedfile + file.getPathChar ())}};	if compression != "None" {		local (sitfile = f);		if sitfile endsWith ".hqx" {			sitfile = sitfile - ".hqx"};		local (flbinhex = compression == ".sit.hqx");		stuff.createArchive (sitfile, {packedfile}, flbinhex);		file.delete (packedfile);		Frontier.bringToFront ()};	if location == "Eudora attachment" {		Eudora.launch ();		try {			Eudora.attachFiles (Eudora.getCurrentMessageObject (), f)}		else {			try {				Eudora.attachFiles (Eudora.createMessage (), f)}			else {				scriptError ("Couldn't attach the exported object to a Eudora message.")}}}}
+on doExport (adr, kind, location, compression) {
+	Â«Changes
+		Â«3/18/04; 7:42:04 PM by JES
+			Â«Add file extenion on Mac as well as Windows -- needed for proper OS X typing, and mime-type sending in static web servers. Also, smart-limit file name to 31 characters (limit imposed by OS 9 and Carbon API).
+	bundle { Â«be sure kind and type are compatible
+		on check () {
+			if kind == "Folder" {
+				if typeOf (adr^) != tableType {
+					scriptError ("Only tables can be exported in this format.")}
+				else {
+					return}}; Â«it's ok
+			if typeOf (adr^) != scriptType {
+				if kind != "Packed object" {
+					scriptError ("Only scripts can be exported in this format.")}
+				else {
+					return}}};
+		check ()};
+	local (f, fname, objectname);
+	bundle { Â«set fname
+		local (tablename, quotedname);
+		objectname = nameOf (adr^);
+		if string.hasSuffix (â€œ"]â€, adr) {
+			quotedname = â€œ["â€ + objectname + â€œ"]â€}
+		else {
+			quotedname = objectname};
+		tablename = nameOf (address (string (adr) - ('.' + quotedname))^);
+		if kind == "Desktop script" {
+			fname = objectname}
+		else { //calculate name based on object name and parent table name
+			local (longname = tablename + '.' + objectname);
+			if system.environment.isMac { //limit to 31 chars (with extension)
+				if sizeOf (longname) > 26 { //don't add table name
+					longname = objectname};
+				if sizeOf (longname) > 26 { //truncate object name
+					longname = string.mid (longname, 1, 26)}};
+			fname = longname};
+		objectname = fname;
+		case typeOf (adr^) {
+			scriptType {
+				if kind == "Desktop script" {
+					fname = fname + ".ftds"}
+				else {
+					fname = fname + ".ftsc"}};
+			wptextType {
+				fname = fname + ".ftwp"};
+			outlineType {
+				fname = fname + ".ftop"};
+			tableType {
+				fname = fname + ".fttb"}}
+		else {
+			fname = fname + ".fatp"};
+		if compression != "None" {
+			fname = fname + compression}};
+	case location {
+		"File" {
+			local (lastfolder = user.export.lastfolder);
+			if not (lastfolder endswith file.getPathChar ()) {
+				lastfolder = lastfolder + file.getPathChar ()};
+			if not file.exists (lastfolder) {
+				lastfolder = file.folderFromPath (Frontier.getProgramPath ())};
+			f = lastfolder + fname;
+			Â«Append file suffixes if pref is set to true
+				Â«Mon, Jan 26, 1998 at 5:10:25 PM by PBS
+			if not defined (user.prefs.appendFileSuffixes) {
+				user.prefs.appendFileSuffixes = false};
+			if user.prefs.appendFileSuffixes {
+				local (suffix = "." + string.lower (Frontier.getFileType (typeOf (adr^))));
+				if kind == "Desktop script" {
+					suffix = ".ftds"};
+				f = f + suffix};
+			if not file.putFileDialog ("Export to what file?", @f) {
+				return (false)};
+			user.export.lastfolder = file.folderFromPath (f)};
+		"Eudora attachment" {
+			local (folder = Eudora.getScriptPrefsFolder () + "Outgoing Frontier Objects:");
+			file.sureFolder (folder);
+			f = folder + fname}};
+	local (packedfile);
+	if compression == "None" {
+		packedfile = f}
+	else { Â«must create it in a temporary location
+		local (tempfolder = file.getSpecialFolderPath ("", "Temporary Items", true));
+		packedfile = tempfolder + objectname};
+	case kind {
+		"Packed object" {
+			export.sendObject (adr, packedfile)};
+		"Desktop script" {
+			export.sendToDesktop (adr, packedfile)};
+		"Script Editor format" {
+			export.sendOSAScript (adr, packedfile)};
+		"Folder" {
+			export.sendFolder (adr, packedfile + file.getPathChar ())}};
+	if compression != "None" {
+		local (sitfile = f);
+		if sitfile endsWith ".hqx" {
+			sitfile = sitfile - ".hqx"};
+		local (flbinhex = compression == ".sit.hqx");
+		stuff.createArchive (sitfile, {packedfile}, flbinhex);
+		file.delete (packedfile);
+		Frontier.bringToFront ()};
+	if location == "Eudora attachment" {
+		Eudora.launch ();
+		try {
+			Eudora.attachFiles (Eudora.getCurrentMessageObject (), f)}
+		else {
+			try {
+				Eudora.attachFiles (Eudora.createMessage (), f)}
+			else {
+				scriptError ("Couldn't attach the exported object to a Eudora message.")}}}}

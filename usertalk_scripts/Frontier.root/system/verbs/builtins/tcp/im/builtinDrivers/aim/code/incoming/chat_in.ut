@@ -1,1 +1,7 @@
-on CHAT_IN(adrSelf, data) {	local {		roomId = string.nthField(data,':',1);		screenName = string.nthField(data, ':',2);		flWhisper=(string.nthField(data,':',3) equals 'T');		message = string.mid(data, sizeOf(roomId) + sizeOf(screenName)+5, infinity)};	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "CHAT_IN", {adrSelf, roomId, screenName, message, flWhisper}, adrSelf^._adrSubCallbacks ))}
+on CHAT_IN(adrSelf, data) {
+	local {
+		roomId = string.nthField(data,':',1);
+		screenName = string.nthField(data, ':',2);
+		flWhisper=(string.nthField(data,':',3) equals 'T');
+		message = string.mid(data, sizeOf(roomId) + sizeOf(screenName)+5, infinity)};
+	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "CHAT_IN", {adrSelf, roomId, screenName, message, flWhisper}, adrSelf^._adrSubCallbacks ))}

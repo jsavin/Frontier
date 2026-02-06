@@ -1,1 +1,2 @@
-on memAvail () {	return (appleEvent (cardEditor.id, 'IOWA', 'mema'))}
+on memAvail () {
+	return (appleEvent (cardEditor.id, 'IOWA', 'mema'))}

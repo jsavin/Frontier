@@ -1,1 +1,2 @@
-on get (type, adr) {	kernel (clipboard.get)}
+on get (type, adr) {
+	kernel (clipboard.get)}

@@ -1,1 +1,63 @@
-cardEditor.setCardSize (276, 168);bundle { «add the frame object to the card	cardEditor.newObject (card.types.frameType, "item1", "Droplet Name:", "");	bundle { «set up attributes of new object		local (atts);		new (tableType, @atts);		atts.rect = rectangle.set (12, 12, 108, 264);		atts.font = "Chicago";		atts.size = 12;		atts.styl = 0;		atts.tran = true;		cardEditor.setObjectAttributes ("item1", @atts)}};bundle { «add the description text object to the card	cardEditor.newObject (card.types.statictextType, "item2", "", "");	bundle { «set up attributes of new object		local (atts);		new (tableType, @atts);		atts.rect = rectangle.set (24, 24, 92, 249);		atts.font = "Geneva";		atts.size = 9;		atts.styl = 0;		bundle { «set the text of the object			atts.text = "Briefly describe your droplet in this text box. How will I use it? How does it process each file or folder? What other software does it require? Does it delete files? Take a long time to run?"};		cardEditor.setObjectAttributes ("item2", @atts)}};bundle { «add the OK button	cardEditor.newObject (card.types.buttonType, "item3", "OK", "process (); card.close ()");	bundle { «set up attributes of new object		local (atts);		new (tableType, @atts);		atts.rect = rectangle.set (120, 204, 144, 264);		atts.flag = true; «it's the default button		atts.font = "Geneva";		atts.size = 9;		atts.styl = 0;		cardEditor.setObjectAttributes ("item3", @atts)}};bundle { «add the Cancel button	cardEditor.newObject (card.types.buttonType, "item4", "Cancel", "card.close ()");	bundle { «set up attributes of new object		local (atts);		new (tableType, @atts);		atts.rect = rectangle.set (120, 120, 144, 180);		atts.font = "Geneva";		atts.size = 9;		atts.styl = 0;		cardEditor.setObjectAttributes ("item4", @atts)}};bundle { «add the author box	local (s);	s = "Author: " + user.name + ", " + user.organization + "." + cr;	s = s + "Created on " + clock.now () + ".";	cardEditor.newObject (card.types.statictextType, "item5", s, "");	bundle { «set up attributes of new object		local (atts);		new (tableType, @atts);		atts.rect = rectangle.set (180, 0, 206, 278);		atts.font = "Monaco";		atts.size = 9;		atts.styl = 0;		cardEditor.setObjectAttributes ("item5", @atts)}}
+cardEditor.setCardSize (276, 168);
+
+bundle { Â«add the frame object to the card
+	cardEditor.newObject (card.types.frameType, "item1", "Droplet Name:", "");
+	bundle { Â«set up attributes of new object
+		local (atts);
+		new (tableType, @atts);
+		atts.rect = rectangle.set (12, 12, 108, 264);
+		atts.font = "Chicago";
+		atts.size = 12;
+		atts.styl = 0;
+		atts.tran = true;
+		cardEditor.setObjectAttributes ("item1", @atts)}};
+
+bundle { Â«add the description text object to the card
+	cardEditor.newObject (card.types.statictextType, "item2", "", "");
+	bundle { Â«set up attributes of new object
+		local (atts);
+		new (tableType, @atts);
+		atts.rect = rectangle.set (24, 24, 92, 249);
+		atts.font = "Geneva";
+		atts.size = 9;
+		atts.styl = 0;
+		bundle { Â«set the text of the object
+			atts.text = "Briefly describe your droplet in this text box. How will I use it? How does it process each file or folder? What other software does it require? Does it delete files? Take a long time to run?"};
+		cardEditor.setObjectAttributes ("item2", @atts)}};
+
+bundle { Â«add the OK button
+	cardEditor.newObject (card.types.buttonType, "item3", "OK", "process (); card.close ()");
+	bundle { Â«set up attributes of new object
+		local (atts);
+		new (tableType, @atts);
+		atts.rect = rectangle.set (120, 204, 144, 264);
+		atts.flag = true; Â«it's the default button
+		atts.font = "Geneva";
+		atts.size = 9;
+		atts.styl = 0;
+		cardEditor.setObjectAttributes ("item3", @atts)}};
+
+bundle { Â«add the Cancel button
+	cardEditor.newObject (card.types.buttonType, "item4", "Cancel", "card.close ()");
+	bundle { Â«set up attributes of new object
+		local (atts);
+		new (tableType, @atts);
+		atts.rect = rectangle.set (120, 120, 144, 180);
+		atts.font = "Geneva";
+		atts.size = 9;
+		atts.styl = 0;
+		cardEditor.setObjectAttributes ("item4", @atts)}};
+
+bundle { Â«add the author box
+	local (s);
+	s = "Author: " + user.name + ", " + user.organization + "." + cr;
+	s = s + "Created on " + clock.now () + ".";
+	cardEditor.newObject (card.types.statictextType, "item5", s, "");
+	bundle { Â«set up attributes of new object
+		local (atts);
+		new (tableType, @atts);
+		atts.rect = rectangle.set (180, 0, 206, 278);
+		atts.font = "Monaco";
+		atts.size = 9;
+		atts.styl = 0;
+		cardEditor.setObjectAttributes ("item5", @atts)}}

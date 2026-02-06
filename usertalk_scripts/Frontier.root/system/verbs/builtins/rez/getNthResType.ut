@@ -1,1 +1,2 @@
-on getNthResType (path, n, adr) {	kernel (rez.getnthrestype)}
+on getNthResType (path, n, adr) {
+	kernel (rez.getnthrestype)}

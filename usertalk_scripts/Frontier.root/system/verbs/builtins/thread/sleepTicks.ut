@@ -1,1 +1,2 @@
-on sleepTicks (ticks) { //6.1	kernel (thread.sleepTicks)}
+on sleepTicks (ticks) { //6.1
+	kernel (thread.sleepTicks)}

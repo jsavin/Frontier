@@ -1,1 +1,2 @@
-on about () {	kernel (window.about)}
+on about () {
+	kernel (window.about)}

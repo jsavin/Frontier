@@ -1,1 +1,2 @@
-on goTo (obj) { «Go to an object	return (appleEvent (Filemaker.id, 'FMPR', 'GOTO', '----', objspec (obj)))}
+on goTo (obj) { Â«Go to an object
+	return (appleEvent (Filemaker.id, 'FMPR', 'GOTO', '----', objspec (obj)))}

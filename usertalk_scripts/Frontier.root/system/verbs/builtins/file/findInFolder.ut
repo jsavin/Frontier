@@ -1,1 +1,5 @@
-on findInFolder (path, level, pattern) {	fileloop (f in path, level) {		if file.findInFile (f, pattern) {			return (f)}};	return ("")}
+on findInFolder (path, level, pattern) {
+	fileloop (f in path, level) {
+		if file.findInFile (f, pattern) {
+			return (f)}};
+	return ("")}

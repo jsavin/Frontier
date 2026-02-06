@@ -1,1 +1,5 @@
-on lastField (s, ch) {	«Changes		«3/14/05; 1:23:27 AM by JES			«Created. Return the last field of the string, s, as determined by delimiter, ch.	return (string.nthField (s, ch, string.countFields (s, ch)))}
+on lastField (s, ch) {
+	Â«Changes
+		Â«3/14/05; 1:23:27 AM by JES
+			Â«Created. Return the last field of the string, s, as determined by delimiter, ch.
+	return (string.nthField (s, ch, string.countFields (s, ch)))}

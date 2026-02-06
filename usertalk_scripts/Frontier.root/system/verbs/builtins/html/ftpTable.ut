@@ -1,1 +1,77 @@
-on ftpTable (adrTable, flDialog=true, flDisplayInBrowser=false, adrPageTable=nil, template=nil) {	«Publish an entire table and its subtables.		«When rendering scalable content, call html.ftpTable multiple times,		«each time with a different template parameter.		«(To use the default template, don't pass a template parameter,		«or pass nil.)	«Changes		«10/4/04; 11:27:20 PM by JES			«When calling html.callFileWriterStartup and html.callFileWriterShutdown, pass the value of the template parameter. Change suggested by DAB.		local (f = "", url = "", siteTableAdr);	local (flDisplay = true, pageTable);		if adrPageTable == nil {		new (tableType, @pageTable);		adrPageTable = @pageTable};		html.callFileWriterStartup (adrTable, adrPageTable, template); //DrMatt 00/12/28, 12:31:42 by DAB		on doTable (adrTable) {		local (i, ct = sizeOf (adrTable^), adr);		for i = 1 to ct {			adr = @adrTable^ [i];			window.msg (string.popFileFromAddress(adr));			if not html.traversalSkip (adr) {				if typeOf (adr^) == tableType {					doTable (adr)}				else {					local (s);										table.emptyTable (adrPageTable);										s = html.buildObject (adr, adrPageTable, template);										if flDisplayInBrowser {						«If this is the default page for this site, save the path.						local (default = html.getPref ("defaultFileName", adrPageTable));												if string.lower (nameOf (adr^)) == string.lower (default) {							if f != "" and url != "" {								if adr == @adrPageTable^.adrSiteRootTable^.[default] {									f = adrPageTable^.f;									url = adrPageTable^.url}}							else {								f = adrPageTable^.f;								url = adrPageTable^.url}}};										html.ftpText (s, adrPageTable)}}}};		doTable (adrTable);		html.callFileWriterShutdown (adrTable, adrPageTable, template); //drMatt 00/12/28, 12:31:50 by DAB		window.msg ("");		«Display in browser.	if flDisplayInBrowser {		siteTableAdr = html.getSiteTable (adrPageTable);				if f == "" or url == "" { //didn't find default, get last page rendered			f = adrPageTable^.f;			url = adrPageTable^.url};				if string.lower (html.getPref ("fileWriter")) == "file" {			webBrowser.openDocument (f)}		else {			webBrowser.openUrl (url)};				if user.webBrowser.bringToFrontOnPreview {			webBrowser.bringToFront ()}};		«Show a dialog.	if flDialog {		speaker.beep (); //4.2.1		dialog.notify ("The \"" + nameOf (adrTable^) + "\" table has been published.")}; //4.2.1		return (true)}
+on ftpTable (adrTable, flDialog=true, flDisplayInBrowser=false, adrPageTable=nil, template=nil) {
+	Â«Publish an entire table and its subtables.
+		Â«When rendering scalable content, call html.ftpTable multiple times,
+		Â«each time with a different template parameter.
+		Â«(To use the default template, don't pass a template parameter,
+		Â«or pass nil.)
+	Â«Changes
+		Â«10/4/04; 11:27:20 PM by JES
+			Â«When calling html.callFileWriterStartup and html.callFileWriterShutdown, pass the value of the template parameter. Change suggested by DAB.
+	
+	local (f = "", url = "", siteTableAdr);
+	local (flDisplay = true, pageTable);
+	
+	if adrPageTable == nil {
+		new (tableType, @pageTable);
+		adrPageTable = @pageTable};
+	
+	html.callFileWriterStartup (adrTable, adrPageTable, template); //DrMatt 00/12/28, 12:31:42 by DAB
+	
+	on doTable (adrTable) {
+		local (i, ct = sizeOf (adrTable^), adr);
+		for i = 1 to ct {
+			adr = @adrTable^ [i];
+			window.msg (string.popFileFromAddress(adr));
+			if not html.traversalSkip (adr) {
+				if typeOf (adr^) == tableType {
+					doTable (adr)}
+				else {
+					local (s);
+					
+					table.emptyTable (adrPageTable);
+					
+					s = html.buildObject (adr, adrPageTable, template);
+					
+					if flDisplayInBrowser {
+						Â«If this is the default page for this site, save the path.
+						local (default = html.getPref ("defaultFileName", adrPageTable));
+						
+						if string.lower (nameOf (adr^)) == string.lower (default) {
+							if f != "" and url != "" {
+								if adr == @adrPageTable^.adrSiteRootTable^.[default] {
+									f = adrPageTable^.f;
+									url = adrPageTable^.url}}
+							else {
+								f = adrPageTable^.f;
+								url = adrPageTable^.url}}};
+					
+					html.ftpText (s, adrPageTable)}}}};
+	
+	doTable (adrTable);
+	
+	html.callFileWriterShutdown (adrTable, adrPageTable, template); //drMatt 00/12/28, 12:31:50 by DAB
+	
+	window.msg ("");
+	
+	Â«Display in browser.
+	if flDisplayInBrowser {
+		siteTableAdr = html.getSiteTable (adrPageTable);
+		
+		if f == "" or url == "" { //didn't find default, get last page rendered
+			f = adrPageTable^.f;
+			url = adrPageTable^.url};
+		
+		if string.lower (html.getPref ("fileWriter")) == "file" {
+			webBrowser.openDocument (f)}
+		else {
+			webBrowser.openUrl (url)};
+		
+		if user.webBrowser.bringToFrontOnPreview {
+			webBrowser.bringToFront ()}};
+	
+	Â«Show a dialog.
+	if flDialog {
+		speaker.beep (); //4.2.1
+		dialog.notify ("The \"" + nameOf (adrTable^) + "\" table has been published.")}; //4.2.1
+	
+	return (true)}

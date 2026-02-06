@@ -1,1 +1,4 @@
-on unregisterviewer (x, unregisterviewerFor) { «Notifies that the sending application is no longer wishes to handle documents of the specified MIMEType.	case sys.os () {		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'UNVW', '----', x, 'MIME', string (unregisterviewerFor)))}}}
+on unregisterviewer (x, unregisterviewerFor) { Â«Notifies that the sending application is no longer wishes to handle documents of the specified MIMEType.
+	case sys.os () {
+		"MacOS" {
+			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'UNVW', '----', x, 'MIME', string (unregisterviewerFor)))}}}

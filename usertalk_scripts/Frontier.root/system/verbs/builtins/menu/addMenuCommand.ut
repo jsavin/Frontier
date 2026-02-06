@@ -1,1 +1,2 @@
-on addMenuCommand (adrmenubar, menuname, itemstring, itemcommand) {	kernel (menu.addMenuCommand)}
+on addMenuCommand (adrmenubar, menuname, itemstring, itemcommand) {
+	kernel (menu.addMenuCommand)}

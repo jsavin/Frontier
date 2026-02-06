@@ -1,1 +1,7 @@
-on myDottedID () {	return (tcp.addressDecode (tcp.myAddress ()))};«bundle //test code	«local (i)	«window.about ()	«for i = 1 to 1000		«msg (myDottedID () + ", " + i)
+on myDottedID () {
+	return (tcp.addressDecode (tcp.myAddress ()))};
+Â«bundle //test code
+	Â«local (i)
+	Â«window.about ()
+	Â«for i = 1 to 1000
+		Â«msg (myDottedID () + ", " + i)

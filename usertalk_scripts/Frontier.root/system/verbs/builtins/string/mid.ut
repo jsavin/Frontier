@@ -1,1 +1,2 @@
-on mid (s, ix, ct) {	kernel (string.mid)}
+on mid (s, ix, ct) {
+	kernel (string.mid)}

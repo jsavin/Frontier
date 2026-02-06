@@ -1,1 +1,2 @@
-on clearTabs () {	kernel (wp.cleartabs)}
+on clearTabs () {
+	kernel (wp.cleartabs)}

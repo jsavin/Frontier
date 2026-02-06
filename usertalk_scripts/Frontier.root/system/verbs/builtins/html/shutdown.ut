@@ -1,1 +1,9 @@
-«Sun, May 5, 1996 at 10:15:38 AM by DW	«Found major problem with macroprocessor UCMD		«osafrontier.c, which it uses to call back to Frontier, is designed for apps, not UCMDs.		«It assumes that its globals won't be preserved across runs. Frontier is a little too cool about this.		«Solution: add html.shutdown, which sends a message to the UCMD to reset its globals.		«Call it from system.shutdown.html (a new script).local(theOS = sys.os());if theOS == "MacOS" || theOS == "MacCn" {	appleEvent (@html.ucmds.macroprocessor, '----', 'SHUT')}
+Â«Sun, May 5, 1996 at 10:15:38 AM by DW
+	Â«Found major problem with macroprocessor UCMD
+		Â«osafrontier.c, which it uses to call back to Frontier, is designed for apps, not UCMDs.
+		Â«It assumes that its globals won't be preserved across runs. Frontier is a little too cool about this.
+		Â«Solution: add html.shutdown, which sends a message to the UCMD to reset its globals.
+		Â«Call it from system.shutdown.html (a new script).
+local(theOS = sys.os());
+if theOS == "MacOS" || theOS == "MacCn" {
+	appleEvent (@html.ucmds.macroprocessor, '----', 'SHUT')}

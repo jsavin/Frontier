@@ -1,1 +1,5 @@
-if not defined (system.temp.windowTypes) {	new (tableType, @system.temp.windowTypes)};if not defined (system.temp.windowTypes.windows) {	new (tableType, @system.temp.windowTypes.windows)};return (@system.temp.windowTypes.windows)
+if not defined (system.temp.windowTypes) {
+	new (tableType, @system.temp.windowTypes)};
+if not defined (system.temp.windowTypes.windows) {
+	new (tableType, @system.temp.windowTypes.windows)};
+return (@system.temp.windowTypes.windows)

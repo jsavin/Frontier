@@ -1,1 +1,2 @@
-on suspendLogging (flag, appID = WebStar.id) { «Turn logging on or off	return (appleEvent (appID, 'WWW½', 'flog', '----', boolean (flag)))}
+on suspendLogging (flag, appID = WebStar.id) { Â«Turn logging on or off
+	return (appleEvent (appID, 'WWWÂ½', 'flog', '----', boolean (flag)))}

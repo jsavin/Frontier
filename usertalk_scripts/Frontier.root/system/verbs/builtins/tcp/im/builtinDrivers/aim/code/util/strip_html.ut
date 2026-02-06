@@ -1,1 +1,16 @@
-on strip_html ( htmltext) {	«from string.htmlToEmail, cause I don't want to use regex.	bundle { //strip all remaining markup		local (ixopen, ixclose);		loop {			ixopen = string.patternmatch ("<", htmltext);			if ixopen == 0 {				break};			ixclose = string.patternmatch (">", htmltext);			if ixopen > ixclose {				htmltext = string.delete (htmltext, ixclose, 1);				continue};			if ixclose == 0 {				break};			htmltext = string.delete (htmltext, ixopen, ixclose - ixopen + 1)}};	return(htmltext)}
+on strip_html ( htmltext) {
+	Â«from string.htmlToEmail, cause I don't want to use regex.
+	bundle { //strip all remaining markup
+		local (ixopen, ixclose);
+		loop {
+			ixopen = string.patternmatch ("<", htmltext);
+			if ixopen == 0 {
+				break};
+			ixclose = string.patternmatch (">", htmltext);
+			if ixopen > ixclose {
+				htmltext = string.delete (htmltext, ixclose, 1);
+				continue};
+			if ixclose == 0 {
+				break};
+			htmltext = string.delete (htmltext, ixopen, ixclose - ixopen + 1)}};
+	return(htmltext)}

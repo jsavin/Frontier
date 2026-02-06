@@ -1,1 +1,4 @@
-on getPrivilege (path) { «open the Sharing window for the indicated file	if not Finder.folderVerb ('sprv', path) {		return (false)};	return (Finder.bringToFront ())}
+on getPrivilege (path) { Â«open the Sharing window for the indicated file
+	if not Finder.folderVerb ('sprv', path) {
+		return (false)};
+	return (Finder.bringToFront ())}

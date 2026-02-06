@@ -1,1 +1,134 @@
-on synchTableWithFolder (folder, adrtable, adrcallback=nil) {	«Changes		«2/11/02; 2:17:35 AM by JES			«Fix for MacOS X users: Skip all files and folders whose names begin with a "." character, before doing any mod-date checking. This test was being done before, but too late for it to have worked properly.		«2/4/02; 9:55:40 AM by DW			«Fix for Mac OS X users. Ignore all files whose names begin with a dot.		«1/30/02; 7:54:08 PM by DW			«Earlier versions couldn't work with scalars because timeModified verb doesn't work with scalars. The problem was that the type "code" is a scalar type, and that's what we were working with. So the contents of the Macros folder was loaded every ten seconds whether or not there were any changes. 			«We now keep a cache at system.temp.fileSynchCache, with an entry for each scalar we're managing, indexed by its file path, with a value of the last time it was loaded. This way if the file changes, we reload it, but otherwise we have a reliable mod date for the scalar.		«1/5/02; 1:00:36 PM by DW			«Added callback, called when a new object is loaded, the callback can do type coercion if it wants something other than the default, or it can delete the object.		«1/1/02; 7:44:23 AM by DW			«Created. I don't know why we didn't do this verb sooner, but it's killer, and very fast, something you can call from a background thread script to keep an object database table synchronized with a folder. We need this in work we're doing with Radio, where there's a new CMS where the content lives in the file system, now we can have renderers, macros, and perhaps other things in file system as well.			«http://docserver.userland.com/file/synchTableWithFolder	bundle { //pass 1, add new or changed files		local (adrcache = @system.temp.fileSynchCache);		if not defined (adrcache^) {			new (tabletype, adrcache)};		on dofolder (folder, adrtable) {			local (f, fname, adr);			if not defined (adrtable^) {				new (tabletype, adrtable)};			fileloop (f in folder) {				fname = file.filefrompath (f);				if system.environment.isCarbon { //2/11/02 JES: all files/folders whose names start with "." on MacOS X are invisible					if fname beginswith "." {						continue}};				if file.isfolder (f) {					adr = @adrtable^.[string.mid (fname, 1, sizeof (fname) - 1)];					dofolder (folder + nameof (adr^) + file.getpathchar (), adr)}				else {					local (flread = true, flscalar = false, adrincache);					adr = @adrtable^.[string.popsuffix (fname)];					try {						local (modtime = timemodified (adr));						if typeof (modtime) == booleantype { //scalar							flscalar = true;							adrincache = @adrcache^.[f];							if defined (adrincache^) {								modtime = adrincache^}							else {								modtime = date (0)}};						if file.modified (f) <= modtime {							flread = false}};					if flread {						on loadFatDoc (f, adr) {							local (s = fatPages.readSourceFile (f), atts);							if fatPages.getPageAtts (@s, @atts) {								fatPages.unpackOdbObject (@atts, adr, flRunnable:false, flEdit:false)}};						try {delete (adr)}; //so there won't be problems assigning over a wptext with a string, for example						case string.lower (string.nthfield (fname, ".", string.countfields (fname, "."))) {							"ftop";							"ftwp";							"ftmb";							"fttb";							"ftsc" {								loadFatDoc (f, adr)};							"opml" {								op.xmltooutline (file.readwholefile (f), adr)};							"gif" {								adr^ = binary (file.readwholefile (f));								setbinarytype (adr, 'gif ')};							"jpeg";							"jpg" {								adr^ = binary (file.readwholefile (f));								setbinarytype (adr, 'JPEG')}}						else {							adr^ = string (file.readwholefile (f))};						if adrcallback != nil {							try {adrcallback^ (adr, f)}};						if flscalar {							adrincache^ = clock.now ()}}}}};		if not file.exists (folder) {			scriptError ("Can't synch the folder with the table because the folder \"" + folder + "\" does not exist.")};		dofolder (folder, adrtable)};	bundle { //pass 2, delete files/folders that no longer exist		on dotable (adrtable, folder) {			local (i, adr);			for i = sizeof (adrtable^) downto 1 {				adr = @adrtable^ [i];				if typeof (adr^) == tabletype {					local (subfolder = folder + nameof (adr^) + file.getpathchar ());					if file.exists (subfolder) {						dotable (adr, subfolder)}					else {						delete (adr)}}				else {					local (f = folder + nameof (adr^));					local (fldelete = false);					case typeof (adr^) {						scriptType {							if not file.exists (f + ".ftsc") {								fldelete = true}};						outlineType {							if (not file.exists (f + ".ftop")) and (not file.exists (f + ".opml")) {								fldelete = true}};						wptextType {							if not file.exists (f + ".ftwp") {								fldelete = true}};						menubarType {							if not file.exists (f + ".ftmb") {								fldelete = true}};						binaryType {							case getBinaryType (adr^) {								'JPEG' {									if (not file.exists (f + ".jpg")) and (not file.exists (f + ".jpeg")) {										fldelete = true}};								'gif ' {									if not file.exists (f + ".gif") {										fldelete = true}}}							else {								fldelete = true}}}					else {						if not file.exists (f + ".txt") {							fldelete = true}};					if fldelete {						delete (adr)}}}};		dotable (adrtable, folder)};	return (true)};«bundle //new test code	«file.synchTableWithFolder (frontier.pathstring + "Macros" + file.getPathChar (), @radio.data.website.["#tools"], nil)«bundle //old test code	«local (folder = frontier.pathstring + "testSynchWithFolder" + file.getpathchar ())	«local (adrtable = @scratchpad.testSynchWithFolder)	«bundle //set up the folder		«local (i)		«for i = 1 to 10			«local (f = folder + states.nthstate (i) + ".txt")			«file.surefilepath (f)			«file.writewholefile (f, i)		«adrtable = 	«local (startticks = clock.ticks ())	«synchTableWithFolder (folder, adrtable)	«dialog.alert (clock.ticks () - startticks)
+on synchTableWithFolder (folder, adrtable, adrcallback=nil) {
+	Â«Changes
+		Â«2/11/02; 2:17:35 AM by JES
+			Â«Fix for MacOS X users: Skip all files and folders whose names begin with a "." character, before doing any mod-date checking. This test was being done before, but too late for it to have worked properly.
+		Â«2/4/02; 9:55:40 AM by DW
+			Â«Fix for Mac OS X users. Ignore all files whose names begin with a dot.
+		Â«1/30/02; 7:54:08 PM by DW
+			Â«Earlier versions couldn't work with scalars because timeModified verb doesn't work with scalars. The problem was that the type "code" is a scalar type, and that's what we were working with. So the contents of the Macros folder was loaded every ten seconds whether or not there were any changes. 
+			Â«We now keep a cache at system.temp.fileSynchCache, with an entry for each scalar we're managing, indexed by its file path, with a value of the last time it was loaded. This way if the file changes, we reload it, but otherwise we have a reliable mod date for the scalar.
+		Â«1/5/02; 1:00:36 PM by DW
+			Â«Added callback, called when a new object is loaded, the callback can do type coercion if it wants something other than the default, or it can delete the object.
+		Â«1/1/02; 7:44:23 AM by DW
+			Â«Created. I don't know why we didn't do this verb sooner, but it's killer, and very fast, something you can call from a background thread script to keep an object database table synchronized with a folder. We need this in work we're doing with Radio, where there's a new CMS where the content lives in the file system, now we can have renderers, macros, and perhaps other things in file system as well.
+			Â«http://docserver.userland.com/file/synchTableWithFolder
+	bundle { //pass 1, add new or changed files
+		local (adrcache = @system.temp.fileSynchCache);
+		if not defined (adrcache^) {
+			new (tabletype, adrcache)};
+		on dofolder (folder, adrtable) {
+			local (f, fname, adr);
+			if not defined (adrtable^) {
+				new (tabletype, adrtable)};
+			fileloop (f in folder) {
+				fname = file.filefrompath (f);
+				if system.environment.isCarbon { //2/11/02 JES: all files/folders whose names start with "." on MacOS X are invisible
+					if fname beginswith "." {
+						continue}};
+				if file.isfolder (f) {
+					adr = @adrtable^.[string.mid (fname, 1, sizeof (fname) - 1)];
+					dofolder (folder + nameof (adr^) + file.getpathchar (), adr)}
+				else {
+					local (flread = true, flscalar = false, adrincache);
+					adr = @adrtable^.[string.popsuffix (fname)];
+					try {
+						local (modtime = timemodified (adr));
+						if typeof (modtime) == booleantype { //scalar
+							flscalar = true;
+							adrincache = @adrcache^.[f];
+							if defined (adrincache^) {
+								modtime = adrincache^}
+							else {
+								modtime = date (0)}};
+						if file.modified (f) <= modtime {
+							flread = false}};
+					if flread {
+						on loadFatDoc (f, adr) {
+							local (s = fatPages.readSourceFile (f), atts);
+							if fatPages.getPageAtts (@s, @atts) {
+								fatPages.unpackOdbObject (@atts, adr, flRunnable:false, flEdit:false)}};
+						try {delete (adr)}; //so there won't be problems assigning over a wptext with a string, for example
+						case string.lower (string.nthfield (fname, ".", string.countfields (fname, "."))) {
+							"ftop";
+							"ftwp";
+							"ftmb";
+							"fttb";
+							"ftsc" {
+								loadFatDoc (f, adr)};
+							"opml" {
+								op.xmltooutline (file.readwholefile (f), adr)};
+							"gif" {
+								adr^ = binary (file.readwholefile (f));
+								setbinarytype (adr, 'gif ')};
+							"jpeg";
+							"jpg" {
+								adr^ = binary (file.readwholefile (f));
+								setbinarytype (adr, 'JPEG')}}
+						else {
+							adr^ = string (file.readwholefile (f))};
+						if adrcallback != nil {
+							try {adrcallback^ (adr, f)}};
+						if flscalar {
+							adrincache^ = clock.now ()}}}}};
+		if not file.exists (folder) {
+			scriptError ("Can't synch the folder with the table because the folder \"" + folder + "\" does not exist.")};
+		dofolder (folder, adrtable)};
+	bundle { //pass 2, delete files/folders that no longer exist
+		on dotable (adrtable, folder) {
+			local (i, adr);
+			for i = sizeof (adrtable^) downto 1 {
+				adr = @adrtable^ [i];
+				if typeof (adr^) == tabletype {
+					local (subfolder = folder + nameof (adr^) + file.getpathchar ());
+					if file.exists (subfolder) {
+						dotable (adr, subfolder)}
+					else {
+						delete (adr)}}
+				else {
+					local (f = folder + nameof (adr^));
+					local (fldelete = false);
+					case typeof (adr^) {
+						scriptType {
+							if not file.exists (f + ".ftsc") {
+								fldelete = true}};
+						outlineType {
+							if (not file.exists (f + ".ftop")) and (not file.exists (f + ".opml")) {
+								fldelete = true}};
+						wptextType {
+							if not file.exists (f + ".ftwp") {
+								fldelete = true}};
+						menubarType {
+							if not file.exists (f + ".ftmb") {
+								fldelete = true}};
+						binaryType {
+							case getBinaryType (adr^) {
+								'JPEG' {
+									if (not file.exists (f + ".jpg")) and (not file.exists (f + ".jpeg")) {
+										fldelete = true}};
+								'gif ' {
+									if not file.exists (f + ".gif") {
+										fldelete = true}}}
+							else {
+								fldelete = true}}}
+					else {
+						if not file.exists (f + ".txt") {
+							fldelete = true}};
+					if fldelete {
+						delete (adr)}}}};
+		dotable (adrtable, folder)};
+	return (true)};
+Â«bundle //new test code
+	Â«file.synchTableWithFolder (frontier.pathstring + "Macros" + file.getPathChar (), @radio.data.website.["#tools"], nil)
+Â«bundle //old test code
+	Â«local (folder = frontier.pathstring + "testSynchWithFolder" + file.getpathchar ())
+	Â«local (adrtable = @scratchpad.testSynchWithFolder)
+	Â«bundle //set up the folder
+		Â«local (i)
+		Â«for i = 1 to 10
+			Â«local (f = folder + states.nthstate (i) + ".txt")
+			Â«file.surefilepath (f)
+			Â«file.writewholefile (f, i)
+		Â«adrtable = 
+	Â«local (startticks = clock.ticks ())
+	Â«synchTableWithFolder (folder, adrtable)
+	Â«dialog.alert (clock.ticks () - startticks)

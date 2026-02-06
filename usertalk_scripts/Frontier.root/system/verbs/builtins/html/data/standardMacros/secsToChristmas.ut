@@ -1,1 +1,9 @@
-on secsToChristmas () {	local (day, month, year, hour, minute, second, xmas);	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);	xmas = number (date.set (25, 12, year, 0, 0, 0));	«dialog.alert (date (xmas))	now = number (clock.now ());	return (string.addCommas (xmas - now))};bundle { «test code	dialog.alert (secsToChristmas ())}
+on secsToChristmas () {
+	local (day, month, year, hour, minute, second, xmas);
+	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+	xmas = number (date.set (25, 12, year, 0, 0, 0));
+	Â«dialog.alert (date (xmas))
+	now = number (clock.now ());
+	return (string.addCommas (xmas - now))};
+bundle { Â«test code
+	dialog.alert (secsToChristmas ())}

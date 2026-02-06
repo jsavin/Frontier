@@ -1,1 +1,53 @@
-on metaTags (pageTable = nil) {	«Add meta tags to the page header.		«Tuesday, January 27, 1998 at 12:53:14 AM by PBS		«6/23/05; 9:46:18 PM by MB			«Use Frontier.getProgramName instead of "Radio UserLand " + Frontier.version () in generator meta tag		local (htmlText = "", i);		on add (s) {		htmlText = htmlText + s};		if pageTable == nil {		pageTable = html.getPageTableAddress ()};		if defined (pageTable^.meta) {		add ("\r" + pageTable^.meta)};		«General meta tags framework.		«From Jim Correia and Jeb Bateman.	for i = 1 to sizeof (pageTable^) {		local (adrSubItem = @pageTable^ [i]);		local (itemName = string.lower (nameOf (adrSubItem^)));		if not (itemName beginsWith "meta") {			continue};		if itemName == "meta" {			continue};		bundle { //add the meta directive			local (type = "name", s);			local (metaName = string.mid (itemName, 5, infinity));			if (metaName beginsWith "equiv") {				metaName = string.mid (metaName, 6, infinity);				type = "http-equiv"};			if typeOf (adrSubItem^) == scriptType {				s = adrSubItem^ ()}			else {				s = string (adrSubItem^)};			if typeOf (adrSubItem^) == outlineType {				s = string.delete (s, sizeOf (s), 1)}; //pop off one trailing return character: PBS 6/3/99			if s == "" {				continue};			add ("\r<meta "+ type +"=\""+ metaName +"\" content=\""+ s +"\">")}};		«add our own meta tags -- Sat, Nov 30, 1996 at 6:26:59 AM by DW		«updated Sun, Sep 28, 1997 at 4:06:28 PM by DW -- correct version number and platform	if html.getPref ("includeMetaGenerator", pageTable) { //5.0		local (gen = Frontier.getProgramName () + " " + sys.os ());		add ("\r<meta name=\"generator\" content=\"" + gen + "\">")};	if html.getPref ("includeMetaCharset", pageTable) {		local (charset = html.getPref ("charset", pageTable));		add ("\r<meta http-equiv=\"content-type\" content=\"text/html; charset=" + charset + "\">")};		htmlText = string.popLeading (htmlText, cr);	return (htmlText)}
+on metaTags (pageTable = nil) {
+	Â«Add meta tags to the page header.
+		Â«Tuesday, January 27, 1998 at 12:53:14 AM by PBS
+		Â«6/23/05; 9:46:18 PM by MB
+			Â«Use Frontier.getProgramName instead of "Radio UserLand " + Frontier.version () in generator meta tag
+	
+	local (htmlText = "", i);
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	if pageTable == nil {
+		pageTable = html.getPageTableAddress ()};
+	
+	if defined (pageTable^.meta) {
+		add ("\r" + pageTable^.meta)};
+	
+	Â«General meta tags framework.
+		Â«From Jim Correia and Jeb Bateman.
+	for i = 1 to sizeof (pageTable^) {
+		local (adrSubItem = @pageTable^ [i]);
+		local (itemName = string.lower (nameOf (adrSubItem^)));
+		if not (itemName beginsWith "meta") {
+			continue};
+		if itemName == "meta" {
+			continue};
+		bundle { //add the meta directive
+			local (type = "name", s);
+			local (metaName = string.mid (itemName, 5, infinity));
+			if (metaName beginsWith "equiv") {
+				metaName = string.mid (metaName, 6, infinity);
+				type = "http-equiv"};
+			if typeOf (adrSubItem^) == scriptType {
+				s = adrSubItem^ ()}
+			else {
+				s = string (adrSubItem^)};
+			if typeOf (adrSubItem^) == outlineType {
+				s = string.delete (s, sizeOf (s), 1)}; //pop off one trailing return character: PBS 6/3/99
+			if s == "" {
+				continue};
+			add ("\r<meta "+ type +"=\""+ metaName +"\" content=\""+ s +"\">")}};
+	
+	Â«add our own meta tags -- Sat, Nov 30, 1996 at 6:26:59 AM by DW
+		Â«updated Sun, Sep 28, 1997 at 4:06:28 PM by DW -- correct version number and platform
+	if html.getPref ("includeMetaGenerator", pageTable) { //5.0
+		local (gen = Frontier.getProgramName () + " " + sys.os ());
+		add ("\r<meta name=\"generator\" content=\"" + gen + "\">")};
+	if html.getPref ("includeMetaCharset", pageTable) {
+		local (charset = html.getPref ("charset", pageTable));
+		add ("\r<meta http-equiv=\"content-type\" content=\"text/html; charset=" + charset + "\">")};
+	
+	htmlText = string.popLeading (htmlText, cr);
+	return (htmlText)}

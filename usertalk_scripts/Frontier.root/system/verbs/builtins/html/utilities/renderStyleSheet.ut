@@ -1,1 +1,58 @@
-on renderStyleSheet (adrOutline, adrPageTable=nil) {	«Given the address of an outline, render it as a CSS style sheet.		«PBS 5/14/98.		«Added op.setDisplay (false) and (true)			«at the suggestion of Seth Dillingham, 5/15/98.	local (oldtarget, htmlText = "");	local (level = 0, lastLevel = 0);		if adrPageTable == nil {		adrPageTable = html.getPageTableAddress ()};		on add (s) {		htmlText = htmlText + s};		oldtarget = target.set (adrOutline);	op.setDisplay (false);	op.firstSummit ();	op.fullexpand ();		on visit () {		loop {			local (hasSubs = op.countSubs (1) > 0);			local (s = op.getLineText ());			case level {				0 { //a style element like h2 or td or pre					if lastLevel == 2 { //strip trailing ; and add }\r						htmlText = string.mid (htmlText, 1, sizeOf (htmlText) - 1);						add ("}\r")};					add (s + " {")};				1 { //the attribute to set					add ("\r\t" + s + ": ")};				2 { //the value for the attribute					if lastLevel == 2 { //strip off trailing ;						htmlText = string.delete (htmlText, sizeOf (htmlText), 1);						add (", ")};					add (s + ";")}};			lastLevel = level;			if hasSubs {				op.go (right, 1);				level++;				visit ();				level--;				op.go (left, 1)};			if not op.go (down, 1) {				break}}};	visit (); //render the outline		op.setDisplay (true);	try {target.set (oldtarget)}; //restore the target		bundle { //strip off trailing ; and add }		htmlText = string.mid (htmlText, 1, sizeOf (htmlText) - 1);		add ("}")};		if html.getPref ("addLineFeeds", adrPageTable) { //add line feeds if pref is set		htmlText = string.replaceAll (htmlText, "\r", "\r\n")};		return (htmlText)}
+on renderStyleSheet (adrOutline, adrPageTable=nil) {
+	Â«Given the address of an outline, render it as a CSS style sheet.
+		Â«PBS 5/14/98.
+		Â«Added op.setDisplay (false) and (true)
+			Â«at the suggestion of Seth Dillingham, 5/15/98.
+	local (oldtarget, htmlText = "");
+	local (level = 0, lastLevel = 0);
+	
+	if adrPageTable == nil {
+		adrPageTable = html.getPageTableAddress ()};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	oldtarget = target.set (adrOutline);
+	op.setDisplay (false);
+	op.firstSummit ();
+	op.fullexpand ();
+	
+	on visit () {
+		loop {
+			local (hasSubs = op.countSubs (1) > 0);
+			local (s = op.getLineText ());
+			case level {
+				0 { //a style element like h2 or td or pre
+					if lastLevel == 2 { //strip trailing ; and add }\r
+						htmlText = string.mid (htmlText, 1, sizeOf (htmlText) - 1);
+						add ("}\r")};
+					add (s + " {")};
+				1 { //the attribute to set
+					add ("\r\t" + s + ": ")};
+				2 { //the value for the attribute
+					if lastLevel == 2 { //strip off trailing ;
+						htmlText = string.delete (htmlText, sizeOf (htmlText), 1);
+						add (", ")};
+					add (s + ";")}};
+			lastLevel = level;
+			if hasSubs {
+				op.go (right, 1);
+				level++;
+				visit ();
+				level--;
+				op.go (left, 1)};
+			if not op.go (down, 1) {
+				break}}};
+	visit (); //render the outline
+	
+	op.setDisplay (true);
+	try {target.set (oldtarget)}; //restore the target
+	
+	bundle { //strip off trailing ; and add }
+		htmlText = string.mid (htmlText, 1, sizeOf (htmlText) - 1);
+		add ("}")};
+	
+	if html.getPref ("addLineFeeds", adrPageTable) { //add line feeds if pref is set
+		htmlText = string.replaceAll (htmlText, "\r", "\r\n")};
+	
+	return (htmlText)}

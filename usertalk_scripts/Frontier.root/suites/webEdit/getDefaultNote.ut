@@ -1,1 +1,67 @@
-on getDefaultNote (adr, adrAdrCache=nil, flAnyComment=false) {	«Changes		«9/28/05; 3:15:25 PM by JES			«New optional parameter, flAnyComment. If true, ignore presence or absence of user's initials in comments.		«9/19/05; 3:27:21 PM by JES			«When setting adrInCache for the note, use the short address, not the full address including the file path. Very long names caused target.set to crash in op.newOutlineObject.		«8/31/05; 2:12:22 AM by JES			«Bug fix: flUseCache not defined.		«8/31/05; 2:04:59 AM by JES			«Fixes to note caching code -- we only use a cached note if we couldn't generate one from the object itself.		«8/31/05; 12:36:37 AM by JES			«Created. Get the string for the default note for a Check In or Send To Server.	local (s = "", adrInCache, flUseCache = false);	if adrAdrCache != nil {		flUseCache = true};	if flUseCache { //set adrInCache		local (adrcache = "system.temp.webEdit.notesCache");		table.surePath (adrcache + ".x");		adrcache = address (adrcache);		adrInCache = @adrcache^.[string.popFileFromAddress (adr)]};	if typeOf (adr^) == scriptType {		local (lo = adr^);		local (oldTarget = target.set (@lo));		op.firstSummit ();		op.fullExpand ();		local (commentLevel = infinity);		loop {			local (level = op.level (), flComment = false);			if script.isComment () {				commentLevel = level}			else { //clear commentLevel?				if level < commentLevel {					commentLevel = infinity}};			if level < commentLevel {				flComment = false}			else { //it's a comment				flComment = true};			local (l = op.getLineText ());			if flComment { //get the sub-outline, pull off the first heading, and un-indent the rest by one				local (flFound = false);				if flAnyComment {					flFound =  (l contains "/")} //probable date				else { //check user initials					flFound = (l contains user.prefs.initials)};				if flFound {					s = op.getSubOutline ();					s = string.trimWhiteSpace (string.delete (s, 1, string.patternMatch ("\t", s)));					s = string.replaceAll (s, "\r\t", "\r");					break}};			if not op.go (flatdown, 1) {				break}};		try {target.set (oldTarget)}};	if s == "" and flUseCache { //couldn't get a comment -- default to last used note		if defined (adrInCache^) {			adrAdrCache^ = @adrInCache^.note;			return (string (adrInCache^.note))}};	if flUseCache { //cache the note for possible use next time, and our outline-based notes editor		if not defined (adrInCache^) {			new (tableType, adrInCache)};		op.newOutlineObject (string.trimWhiteSpace (s), @adrInCache^.note);		window.attributes.setOne ("type", "webEditNote", @adrInCache^.note);		adrAdrCache^ = @adrInCache^.note};	return (s)};«bundle //test code	«local (adrCache)	«getDefaultNote (this, @adrCache)	«msg (adrCache)
+on getDefaultNote (adr, adrAdrCache=nil, flAnyComment=false) {
+	Â«Changes
+		Â«9/28/05; 3:15:25 PM by JES
+			Â«New optional parameter, flAnyComment. If true, ignore presence or absence of user's initials in comments.
+		Â«9/19/05; 3:27:21 PM by JES
+			Â«When setting adrInCache for the note, use the short address, not the full address including the file path. Very long names caused target.set to crash in op.newOutlineObject.
+		Â«8/31/05; 2:12:22 AM by JES
+			Â«Bug fix: flUseCache not defined.
+		Â«8/31/05; 2:04:59 AM by JES
+			Â«Fixes to note caching code -- we only use a cached note if we couldn't generate one from the object itself.
+		Â«8/31/05; 12:36:37 AM by JES
+			Â«Created. Get the string for the default note for a Check In or Send To Server.
+	local (s = "", adrInCache, flUseCache = false);
+	if adrAdrCache != nil {
+		flUseCache = true};
+	if flUseCache { //set adrInCache
+		local (adrcache = "system.temp.webEdit.notesCache");
+		table.surePath (adrcache + ".x");
+		adrcache = address (adrcache);
+		adrInCache = @adrcache^.[string.popFileFromAddress (adr)]};
+	if typeOf (adr^) == scriptType {
+		local (lo = adr^);
+		local (oldTarget = target.set (@lo));
+		op.firstSummit ();
+		op.fullExpand ();
+		local (commentLevel = infinity);
+		loop {
+			local (level = op.level (), flComment = false);
+			if script.isComment () {
+				commentLevel = level}
+			else { //clear commentLevel?
+				if level < commentLevel {
+					commentLevel = infinity}};
+			if level < commentLevel {
+				flComment = false}
+			else { //it's a comment
+				flComment = true};
+			local (l = op.getLineText ());
+			if flComment { //get the sub-outline, pull off the first heading, and un-indent the rest by one
+				local (flFound = false);
+				if flAnyComment {
+					flFound =  (l contains "/")} //probable date
+				else { //check user initials
+					flFound = (l contains user.prefs.initials)};
+				if flFound {
+					s = op.getSubOutline ();
+					s = string.trimWhiteSpace (string.delete (s, 1, string.patternMatch ("\t", s)));
+					s = string.replaceAll (s, "\r\t", "\r");
+					break}};
+			if not op.go (flatdown, 1) {
+				break}};
+		try {target.set (oldTarget)}};
+	if s == "" and flUseCache { //couldn't get a comment -- default to last used note
+		if defined (adrInCache^) {
+			adrAdrCache^ = @adrInCache^.note;
+			return (string (adrInCache^.note))}};
+	if flUseCache { //cache the note for possible use next time, and our outline-based notes editor
+		if not defined (adrInCache^) {
+			new (tableType, adrInCache)};
+		op.newOutlineObject (string.trimWhiteSpace (s), @adrInCache^.note);
+		window.attributes.setOne ("type", "webEditNote", @adrInCache^.note);
+		adrAdrCache^ = @adrInCache^.note};
+	return (s)};
+Â«bundle //test code
+	Â«local (adrCache)
+	Â«getDefaultNote (this, @adrCache)
+	Â«msg (adrCache)

@@ -1,1 +1,90 @@
-on save (adr, flClosing=false) {	«Save a Manila site outline.		«10/12/00; 5:01:23 PM by PBS	«Changes:		«12/31/00; 5:16:27 PM by JES			«On Macs, convert opml text to Latin text before sending to the server.		local (atts);	if not window.attributes.getAll (@atts) { //return false if no atts		return (false)};	if atts.flReadOnly { //can't be saved -- return true		return (true)};	try { //if tcp.isOffline, show a dialog, and then return false		if tcp.isOffline () {			dialog.alert ("Can't save " + atts.title + " because you are working offline.");			return (false)}};		«Send the Manila site outline to the Manila server.	local (adrinfo = atts.adrSiteInfo);	local (username, password);	if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {		manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}	else { //the user cancelled the password dialog -- return false		return (false)};		local (siteInfoTable = adrinfo^);	siteInfoTable.username = username;	siteInfoTable.password = password;		local (opmlText = op.outlineToXml (adr, ownerEmail:username));	if system.environment.isMac {		opmlText = string.macToLatin (opmlText)};	loop { //loop until the user enters a valid username and password		try {			manila.editorialOutline.set (@siteInfoTable, opmlText);			break} //it's saved -- break out of the loop		else {			local (errorString = tryError);			if errorString contains "returned error code 4:" {				local (ix = string.patternMatch (": ", errorString) + 2);				errorString = string.mid (errorString, ix, infinity)};			window.attributes.setOne ("savingError", tryError, adr);			if not dialog.yesNo (errorString + " Try again?") {				msg (""); //clear the About window				return (false)};			local (lowerError = string.lower (tryError));			if (lowerError contains "password") or (lowerError contains "not a member") { //clear the password				if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password, true) {					manila.windowTypes.setUsernameAndPassword (adrinfo, username, password);					siteInfoTable.username = username;					siteInfoTable.password = password}				else { //the user cancelled the password dialog					return (false)}}}};		window.attributes.setOne ("lastSaved", timeModified (adr), adr);		«if flClosing //also check it in if the app is shutting down		«//this is done by the close script, so we don't need to do it here.		«manila.editorialOutline.checkIn (@siteInfoTable)		return (true);		«bundle //original code		«local (adrTable = parentOf (adrItem^))		«if adrTable^.flReadOnly //can't be saved			«return (true)		«		«Send the Manila site outline to the Manila server.		«local (username, password)		«local (siteUrl = adrTable^.siteUrl)		«if not (playlist.manila.getUsernameAndPassword (siteUrl, @username, @password))			«return (true)		«local (opmlText = op.outlineToXml (adrItem, ownerEmail:username))		«playlist.manila.convertToLatin (@opmlText) //12/31/00 JES		«try			«playlist.manila.rpc.saveManilaSiteOutline (siteUrl, username, password, opmlText)		«else			«playlist.notifyDialog (tryError)			«scriptError (tryError)		«		«adrTable^.flSaved = true		«adrTable^.lastSave = clock.now ()		«		«if flClosing //also check it in if the app is shutting down			«playlist.manila.rpc.checkInManilaSiteOutline (siteUrl, username, password)		«		«return (true)};bundle { //debugging	save (window.frontmost ())}
+on save (adr, flClosing=false) {
+	Â«Save a Manila site outline.
+		Â«10/12/00; 5:01:23 PM by PBS
+	Â«Changes:
+		Â«12/31/00; 5:16:27 PM by JES
+			Â«On Macs, convert opml text to Latin text before sending to the server.
+	
+	local (atts);
+	if not window.attributes.getAll (@atts) { //return false if no atts
+		return (false)};
+	if atts.flReadOnly { //can't be saved -- return true
+		return (true)};
+	try { //if tcp.isOffline, show a dialog, and then return false
+		if tcp.isOffline () {
+			dialog.alert ("Can't save " + atts.title + " because you are working offline.");
+			return (false)}};
+	
+	Â«Send the Manila site outline to the Manila server.
+	local (adrinfo = atts.adrSiteInfo);
+	local (username, password);
+	if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {
+		manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}
+	else { //the user cancelled the password dialog -- return false
+		return (false)};
+	
+	local (siteInfoTable = adrinfo^);
+	siteInfoTable.username = username;
+	siteInfoTable.password = password;
+	
+	local (opmlText = op.outlineToXml (adr, ownerEmail:username));
+	if system.environment.isMac {
+		opmlText = string.macToLatin (opmlText)};
+	loop { //loop until the user enters a valid username and password
+		try {
+			manila.editorialOutline.set (@siteInfoTable, opmlText);
+			break} //it's saved -- break out of the loop
+		else {
+			local (errorString = tryError);
+			if errorString contains "returned error code 4:" {
+				local (ix = string.patternMatch (": ", errorString) + 2);
+				errorString = string.mid (errorString, ix, infinity)};
+			window.attributes.setOne ("savingError", tryError, adr);
+			if not dialog.yesNo (errorString + " Try again?") {
+				msg (""); //clear the About window
+				return (false)};
+			local (lowerError = string.lower (tryError));
+			if (lowerError contains "password") or (lowerError contains "not a member") { //clear the password
+				if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password, true) {
+					manila.windowTypes.setUsernameAndPassword (adrinfo, username, password);
+					siteInfoTable.username = username;
+					siteInfoTable.password = password}
+				else { //the user cancelled the password dialog
+					return (false)}}}};
+	
+	window.attributes.setOne ("lastSaved", timeModified (adr), adr);
+	
+	Â«if flClosing //also check it in if the app is shutting down
+		Â«//this is done by the close script, so we don't need to do it here.
+		Â«manila.editorialOutline.checkIn (@siteInfoTable)
+	
+	return (true);
+	
+	Â«bundle //original code
+		Â«local (adrTable = parentOf (adrItem^))
+		Â«if adrTable^.flReadOnly //can't be saved
+			Â«return (true)
+		Â«
+		Â«Send the Manila site outline to the Manila server.
+		Â«local (username, password)
+		Â«local (siteUrl = adrTable^.siteUrl)
+		Â«if not (playlist.manila.getUsernameAndPassword (siteUrl, @username, @password))
+			Â«return (true)
+		Â«local (opmlText = op.outlineToXml (adrItem, ownerEmail:username))
+		Â«playlist.manila.convertToLatin (@opmlText) //12/31/00 JES
+		Â«try
+			Â«playlist.manila.rpc.saveManilaSiteOutline (siteUrl, username, password, opmlText)
+		Â«else
+			Â«playlist.notifyDialog (tryError)
+			Â«scriptError (tryError)
+		Â«
+		Â«adrTable^.flSaved = true
+		Â«adrTable^.lastSave = clock.now ()
+		Â«
+		Â«if flClosing //also check it in if the app is shutting down
+			Â«playlist.manila.rpc.checkInManilaSiteOutline (siteUrl, username, password)
+		Â«
+		Â«return (true)};
+
+bundle { //debugging
+	save (window.frontmost ())}

@@ -1,1 +1,2 @@
-on dataSize (obj, as = nil) { «Return the size in bytes of an object	return (core.dataSize (Fetch.id, obj, as))}
+on dataSize (obj, as = nil) { Â«Return the size in bytes of an object
+	return (core.dataSize (Fetch.id, obj, as))}

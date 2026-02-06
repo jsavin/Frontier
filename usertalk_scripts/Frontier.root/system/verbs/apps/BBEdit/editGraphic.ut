@@ -1,1 +1,2 @@
-on editGraphic (area) { «Edit the specified drawing area	return (misc.editGraphic (BBEdit.id, area))}
+on editGraphic (area) { Â«Edit the specified drawing area
+	return (misc.editGraphic (BBEdit.id, area))}

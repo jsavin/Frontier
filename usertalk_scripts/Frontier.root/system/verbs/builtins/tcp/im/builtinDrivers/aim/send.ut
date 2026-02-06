@@ -1,1 +1,16 @@
-on send (username, messagetext) {	«Changes		«5/21/02; 11:05:47 PM by JB			«Corrected the encoding so the tcp.rpi works correctly, along with everything else. What you send as messagetext is what the user will see.		«5/6/02; 8:11:24 PM by DW			«Created.	local (s);	bundle {		s = string.replaceall (string (messagetext), "&", "&amp;");		s = string.replaceall (s, "<", "&lt;");		s = string.replaceall (s, ">", "&gt;");		s = string.replaceall (s, "\"", "&quot;");		};«messagetext = string.replaceall (s, "'", "&apos;") //JES 7/30/02: commented out -- AOL IM doesn't decode this.	return (tcp.im.builtinDrivers.aim.code.outgoing.sendIm (@temp.im.aim, username, s))};bundle { //test code	send ("esoroos2", "Hey there!")}
+on send (username, messagetext) {
+	Â«Changes
+		Â«5/21/02; 11:05:47 PM by JB
+			Â«Corrected the encoding so the tcp.rpi works correctly, along with everything else. What you send as messagetext is what the user will see.
+		Â«5/6/02; 8:11:24 PM by DW
+			Â«Created.
+	local (s);
+	bundle {
+		s = string.replaceall (string (messagetext), "&", "&amp;");
+		s = string.replaceall (s, "<", "&lt;");
+		s = string.replaceall (s, ">", "&gt;");
+		s = string.replaceall (s, "\"", "&quot;");
+		};Â«messagetext = string.replaceall (s, "'", "&apos;") //JES 7/30/02: commented out -- AOL IM doesn't decode this.
+	return (tcp.im.builtinDrivers.aim.code.outgoing.sendIm (@temp.im.aim, username, s))};
+bundle { //test code
+	send ("esoroos2", "Hey there!")}

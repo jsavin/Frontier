@@ -1,1 +1,18 @@
-on iso8859encode (s, adrtable=nil) {	«Changes		«10/19/04; 3:15:38 PM by JES			«The adrtable parameter is now optional. If not specified, we use the table for the platform we're running on as the default.	if adrtable == nil { //get default for this platform		try {			if system.environment.isMac {				adrtable = @html.data.iso8859.mac};			if system.environment.isWindows {				adrtable = @html.data.iso8859.win}}};	if adrtable == nil { //error: no table specified, and not able to determine platform		scriptError ("Can't do ISO-8859 encoding because no table was specified, and the current platform could not be determined.")};	on kernelCall (s, adrtable) {		kernel (string.iso8859encode)};	kernelCall (s, adrtable)};«bundle //test code	«dialog.alert (iso8859encode ("© Copyright 1996-" + date.year () + " UserLand Software", @html.data.iso8859.mac))	«dialog.alert (iso8859encode ("© Copyright 1996-" + date.year () + " UserLand Software"))
+on iso8859encode (s, adrtable=nil) {
+	Â«Changes
+		Â«10/19/04; 3:15:38 PM by JES
+			Â«The adrtable parameter is now optional. If not specified, we use the table for the platform we're running on as the default.
+	if adrtable == nil { //get default for this platform
+		try {
+			if system.environment.isMac {
+				adrtable = @html.data.iso8859.mac};
+			if system.environment.isWindows {
+				adrtable = @html.data.iso8859.win}}};
+	if adrtable == nil { //error: no table specified, and not able to determine platform
+		scriptError ("Can't do ISO-8859 encoding because no table was specified, and the current platform could not be determined.")};
+	on kernelCall (s, adrtable) {
+		kernel (string.iso8859encode)};
+	kernelCall (s, adrtable)};
+Â«bundle //test code
+	Â«dialog.alert (iso8859encode ("Â© Copyright 1996-" + date.year () + " UserLand Software", @html.data.iso8859.mac))
+	Â«dialog.alert (iso8859encode ("Â© Copyright 1996-" + date.year () + " UserLand Software"))

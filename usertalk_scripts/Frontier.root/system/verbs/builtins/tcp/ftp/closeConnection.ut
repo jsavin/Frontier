@@ -1,1 +1,4 @@
-on closeConnection (adrconnectiontable) {	tcp.ftp.sendCommand (adrconnectiontable, "QUIT");	tcp.closeStream (adrconnectiontable^.commandStream);	delete (adrconnectiontable)}
+on closeConnection (adrconnectiontable) {
+	tcp.ftp.sendCommand (adrconnectiontable, "QUIT");
+	tcp.closeStream (adrconnectiontable^.commandStream);
+	delete (adrconnectiontable)}

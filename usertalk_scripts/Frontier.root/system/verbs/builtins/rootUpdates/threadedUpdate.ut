@@ -1,1 +1,6 @@
-on threadedUpdate (adrInRoot) {	«Set up this script in the temp table and spawn a thread --		«this way we can update the rootUpdates verbs themselves.	system.temp.update = rootUpdates.update;	thread.easyCall ("system.temp.update", {string.replaceAll (adrInRoot, "\\", "\\\\")});	return (true)}
+on threadedUpdate (adrInRoot) {
+	Â«Set up this script in the temp table and spawn a thread --
+		Â«this way we can update the rootUpdates verbs themselves.
+	system.temp.update = rootUpdates.update;
+	thread.easyCall ("system.temp.update", {string.replaceAll (adrInRoot, "\\", "\\\\")});
+	return (true)}

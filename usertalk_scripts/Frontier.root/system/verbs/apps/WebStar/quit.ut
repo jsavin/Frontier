@@ -1,1 +1,2 @@
-on quit (appID = WebStar.id) {	return (required.quitApplication (appID))}
+on quit (appID = WebStar.id) {
+	return (required.quitApplication (appID))}

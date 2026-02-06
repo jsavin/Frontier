@@ -1,1 +1,2 @@
-on installMenu () {	return (menu.install (@odbc.menu))}
+on installMenu () {
+	return (menu.install (@odbc.menu))}

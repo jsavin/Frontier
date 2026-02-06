@@ -1,1 +1,10 @@
-target.set (@websites.dw.crossPlatformWork.iso8859work.test);op.firstsummit ();op.go (down, 4);op.go (right, 1);loop {	s = string.nthfield (op.getlinetext (), ' ', 1);	op.setlinetext (string.insert ("#", s, 2) + " #" + (s - ";" - "&"));	if not op.go (down, 1) {		break}};target.clear ()
+target.set (@websites.dw.crossPlatformWork.iso8859work.test);
+op.firstsummit ();
+op.go (down, 4);
+op.go (right, 1);
+loop {
+	s = string.nthfield (op.getlinetext (), ' ', 1);
+	op.setlinetext (string.insert ("#", s, 2) + " #" + (s - ";" - "&"));
+	if not op.go (down, 1) {
+		break}};
+target.clear ()

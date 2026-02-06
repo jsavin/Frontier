@@ -1,1 +1,7 @@
-on getCardSize (adrWidth, adrHeight) {	local (atts);	if not cardEditor.getCardAttributes (@atts) {		return (false)};	adrWidth^ = atts.rbor;	adrHeight^ = atts.bbor;	return (true)}
+on getCardSize (adrWidth, adrHeight) {
+	local (atts);
+	if not cardEditor.getCardAttributes (@atts) {
+		return (false)};
+	adrWidth^ = atts.rbor;
+	adrHeight^ = atts.bbor;
+	return (true)}

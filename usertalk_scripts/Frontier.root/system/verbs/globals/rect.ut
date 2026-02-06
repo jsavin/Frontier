@@ -1,1 +1,2 @@
-on rect (val) {	kernel (lang.rect)}
+on rect (val) {
+	kernel (lang.rect)}

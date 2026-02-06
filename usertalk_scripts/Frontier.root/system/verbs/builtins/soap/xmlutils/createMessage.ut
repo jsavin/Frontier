@@ -1,1 +1,25 @@
-on createMessage (adrmsg, s = nil) {	new (tableType, adrmsg);	new (tableType, @adrmsg^.elementIDs);	new (tableType, @adrmsg^.scopestack);	local (adrdocument = @adrmsg^.doctree);	if (s != nil) {		xml.compile (s, adrdocument);		bundle { //collect element IDs			on collectIDs (adrtable, adrelement) {				if defined (adrelement^.["/atts"].id) {					adrtable^.[adrelement^.["/atts"].id] = adrelement};				local (adrtemp = soap.xmlutils.getFirstChildElement (adrelement));				while (adrtemp) {					collectIDs (adrtable, adrtemp);					adrtemp = soap.xmlutils.getNextSiblingElement (adrtemp)};				return};			collectIDs (@adrmsg^.elementIDs, adrdocument)}}	else {		new (tableType, adrdocument)};	«bundle //initialize pointers into doctree		«adrmsg^.envelope = false		«adrmsg^.header = false		«adrmsg^.body = false		«adrmsg^.fault = false	return (adrdocument)}
+on createMessage (adrmsg, s = nil) {
+	new (tableType, adrmsg);
+	new (tableType, @adrmsg^.elementIDs);
+	new (tableType, @adrmsg^.scopestack);
+	local (adrdocument = @adrmsg^.doctree);
+	if (s != nil) {
+		xml.compile (s, adrdocument);
+		bundle { //collect element IDs
+			on collectIDs (adrtable, adrelement) {
+				if defined (adrelement^.["/atts"].id) {
+					adrtable^.[adrelement^.["/atts"].id] = adrelement};
+				local (adrtemp = soap.xmlutils.getFirstChildElement (adrelement));
+				while (adrtemp) {
+					collectIDs (adrtable, adrtemp);
+					adrtemp = soap.xmlutils.getNextSiblingElement (adrtemp)};
+				return};
+			collectIDs (@adrmsg^.elementIDs, adrdocument)}}
+	else {
+		new (tableType, adrdocument)};
+	Â«bundle //initialize pointers into doctree
+		Â«adrmsg^.envelope = false
+		Â«adrmsg^.header = false
+		Â«adrmsg^.body = false
+		Â«adrmsg^.fault = false
+	return (adrdocument)}

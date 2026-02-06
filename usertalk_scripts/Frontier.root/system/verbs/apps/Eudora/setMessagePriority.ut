@@ -1,1 +1,3 @@
-on setMessagePriority (msgObj, msgPriority=0) {	with objectModel, Eudora, eventInfo {		return (core.set (id, msgObj.priority, msgPriority))}}
+on setMessagePriority (msgObj, msgPriority=0) {
+	with objectModel, Eudora, eventInfo {
+		return (core.set (id, msgObj.priority, msgPriority))}}

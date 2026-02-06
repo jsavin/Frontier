@@ -1,1 +1,47 @@
-on getLocalizedObject (objectId, adrLanguageTable, adrAdrObject, defaultLanguage=nil) {	«Changes		«6/24/02; 2:14:47 PM by JES			«Created. Factored from Frontier.getString.		on dive (id, adr, adradrobject) {		if not defined (adr^) {			return (false)};		loop {			while typeOf (adr^) == addressType {				if defined (adr^) {					adr = adr^}				else { //can't dereference address -- return false					return (false)}};			if sizeOf (id) == 0 {				adradrobject^ = adr;				return (true)};			local (pathpart = string.nthField (id, ".", 1));			adr = @adr^.[pathpart];			if not defined (adr^) {				return (false)};			id = string.delete (id, 1, sizeOf (pathpart) + 1)}};		bundle { //try the passed-in language table		if dive (objectId, adrLanguageTable, adrAdrObject) {			return (true)}};		local (adrlanguages = parentOf (adrLanguageTable^));	bundle { //try the default language		if defaultLanguage != nil {			local (nomad = @adrlanguages^.[defaultLanguage]);			if not (nomad == adrLanguageTable) { //don't check twice				if dive (objectId, nomad, adrAdrObject) {					return (true)}}}};	bundle { //try to find the English string, if we haven't already		local (nomad = @adrlanguages^.english);		if not (nomad == adrLanguageTable) { //don't check twice			if dive (objectId, nomad, adrAdrObject) {				return (true)}}};		return (false)}; //didn't find it«bundle //test code	«local (adr)	«local (t = clock.ticks ())	«for i = 1 to 1000		«getLocalizedObject ("strings.weblogPostForm.postButton", @radio.data.localization.languages.english, @adr)	«dialog.notify (clock.ticks () - t)
+on getLocalizedObject (objectId, adrLanguageTable, adrAdrObject, defaultLanguage=nil) {
+	Â«Changes
+		Â«6/24/02; 2:14:47 PM by JES
+			Â«Created. Factored from Frontier.getString.
+	
+	on dive (id, adr, adradrobject) {
+		if not defined (adr^) {
+			return (false)};
+		loop {
+			while typeOf (adr^) == addressType {
+				if defined (adr^) {
+					adr = adr^}
+				else { //can't dereference address -- return false
+					return (false)}};
+			if sizeOf (id) == 0 {
+				adradrobject^ = adr;
+				return (true)};
+			local (pathpart = string.nthField (id, ".", 1));
+			adr = @adr^.[pathpart];
+			if not defined (adr^) {
+				return (false)};
+			id = string.delete (id, 1, sizeOf (pathpart) + 1)}};
+	
+	bundle { //try the passed-in language table
+		if dive (objectId, adrLanguageTable, adrAdrObject) {
+			return (true)}};
+	
+	local (adrlanguages = parentOf (adrLanguageTable^));
+	bundle { //try the default language
+		if defaultLanguage != nil {
+			local (nomad = @adrlanguages^.[defaultLanguage]);
+			if not (nomad == adrLanguageTable) { //don't check twice
+				if dive (objectId, nomad, adrAdrObject) {
+					return (true)}}}};
+	bundle { //try to find the English string, if we haven't already
+		local (nomad = @adrlanguages^.english);
+		if not (nomad == adrLanguageTable) { //don't check twice
+			if dive (objectId, nomad, adrAdrObject) {
+				return (true)}}};
+	
+	return (false)}; //didn't find it
+Â«bundle //test code
+	Â«local (adr)
+	Â«local (t = clock.ticks ())
+	Â«for i = 1 to 1000
+		Â«getLocalizedObject ("strings.weblogPostForm.postButton", @radio.data.localization.languages.english, @adr)
+	Â«dialog.notify (clock.ticks () - t)

@@ -1,1 +1,24 @@
-on getFileURL (f) { «returns a URL for the indicated file	«Changes:		«06/07/01; 3:29:45 PM by PBS			«In OS X, the URL must be constructed slightly differently.		«6/8/01; 9:46:40 AM by PBS			«The last change broke Windows machines: the condition for replacing %3A with a colon should run if it's a Windows machine, not if it's a Macintosh. It was backwards.	local (s = string (f), encodedPathChar);	s = string.urlEncode (s);	encodedPathChar = string.urlEncode (file.getPathChar ());	s = string.replaceall (s, encodedPathChar, "/");	if not system.environment.isMac {		s = string.replaceall (s, "%3A", ":")};	if defined (system.environment.isCarbon) { //PBS 06/07/01: file URLs are slightly different		if system.environment.isCarbon {			local (volume = file.volumeFromPath (f));			local (encodedVolume = volume);			encodedVolume = string.popTrailing (encodedVolume, ':');			encodedVolume = string.urlEncode (encodedVolume);			if volume == file.getSystemDisk () {				s = string.replace (s, encodedVolume, "")}			else { //it's another volume				s = string.replace (s, encodedVolume, "Volumes/" + encodedVolume)};			s = string.popLeading (s, '/')}};	return ("file:///" + s)}
+on getFileURL (f) { Â«returns a URL for the indicated file
+	Â«Changes:
+		Â«06/07/01; 3:29:45 PM by PBS
+			Â«In OS X, the URL must be constructed slightly differently.
+		Â«6/8/01; 9:46:40 AM by PBS
+			Â«The last change broke Windows machines: the condition for replacing %3A with a colon should run if it's a Windows machine, not if it's a Macintosh. It was backwards.
+	local (s = string (f), encodedPathChar);
+	s = string.urlEncode (s);
+	encodedPathChar = string.urlEncode (file.getPathChar ());
+	s = string.replaceall (s, encodedPathChar, "/");
+	if not system.environment.isMac {
+		s = string.replaceall (s, "%3A", ":")};
+	if defined (system.environment.isCarbon) { //PBS 06/07/01: file URLs are slightly different
+		if system.environment.isCarbon {
+			local (volume = file.volumeFromPath (f));
+			local (encodedVolume = volume);
+			encodedVolume = string.popTrailing (encodedVolume, ':');
+			encodedVolume = string.urlEncode (encodedVolume);
+			if volume == file.getSystemDisk () {
+				s = string.replace (s, encodedVolume, "")}
+			else { //it's another volume
+				s = string.replace (s, encodedVolume, "Volumes/" + encodedVolume)};
+			s = string.popLeading (s, '/')}};
+	return ("file:///" + s)}

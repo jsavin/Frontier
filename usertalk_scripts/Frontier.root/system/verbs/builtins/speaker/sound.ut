@@ -1,1 +1,2 @@
-on sound (duration, amplitude, frequency) {	kernel (speaker.sound)}
+on sound (duration, amplitude, frequency) {
+	kernel (speaker.sound)}

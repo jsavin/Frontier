@@ -1,1 +1,2 @@
-on getCursor () {	kernel (op.getcursor)}
+on getCursor () {
+	kernel (op.getcursor)}

@@ -1,1 +1,18 @@
-on deleteMultipleFiles (email, password, relativepathlist, adrresponse, adrdata = @xmlStorageSystem.data, flShowMessages = true) {	«Changes		«12/11/01; 3:25:34 PM by DW			«Created.	local (params = {"email":email, "password":string.hashmd5 (password), "relativePathList":relativepathlist});	local (rpcPath);	if defined (adrdata^.xmlRpcPath) {		rpcPath = adrdata^.xmlRpcPath};	if defined (adrdata^.rpcPath) {		rpcPath = adrdata^.rpcPath};	with adrdata^ {		adrresponse^ = xml.rpc (server, port, "xmlStorageSystem.deleteMultipleFiles", @params, rpcPath:rpcPath, fldebug:fldebug, flShowMessages:flShowMessages, protocol:protocol, soapAction:soapAction);		return (not adrresponse^.flerror)}};«bundle //test code	«local (relativepathlist = {"/userland/testRadio71/New Mexico/03.txt", "/userland/testRadio71/New Hampshire/"})	«with user.xmlStorageSystem		«deleteMultipleFiles (user.radio.prefs.usernum, user.radio.prefs.passwords.default, relativepathlist, @scratchpad.response)	«edit (@scratchpad.response)
+on deleteMultipleFiles (email, password, relativepathlist, adrresponse, adrdata = @xmlStorageSystem.data, flShowMessages = true) {
+	Â«Changes
+		Â«12/11/01; 3:25:34 PM by DW
+			Â«Created.
+	local (params = {"email":email, "password":string.hashmd5 (password), "relativePathList":relativepathlist});
+	local (rpcPath);
+	if defined (adrdata^.xmlRpcPath) {
+		rpcPath = adrdata^.xmlRpcPath};
+	if defined (adrdata^.rpcPath) {
+		rpcPath = adrdata^.rpcPath};
+	with adrdata^ {
+		adrresponse^ = xml.rpc (server, port, "xmlStorageSystem.deleteMultipleFiles", @params, rpcPath:rpcPath, fldebug:fldebug, flShowMessages:flShowMessages, protocol:protocol, soapAction:soapAction);
+		return (not adrresponse^.flerror)}};
+Â«bundle //test code
+	Â«local (relativepathlist = {"/userland/testRadio71/New Mexico/03.txt", "/userland/testRadio71/New Hampshire/"})
+	Â«with user.xmlStorageSystem
+		Â«deleteMultipleFiles (user.radio.prefs.usernum, user.radio.prefs.passwords.default, relativepathlist, @scratchpad.response)
+	Â«edit (@scratchpad.response)

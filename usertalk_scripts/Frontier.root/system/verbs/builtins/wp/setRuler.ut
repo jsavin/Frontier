@@ -1,1 +1,2 @@
-on setRuler (fl) {	kernel (wp.setruler)}
+on setRuler (fl) {
+	kernel (wp.setruler)}

@@ -1,1 +1,100 @@
-on xmlToOutline (xmltext, adroutline, flnewoutline = true, adrCloud = nil) { //7/19/00; 6:51:02 PM by DW	«Changes:		«01/28/03; 4:26:44 PM by JES			«If the window is open, decode entities in the window title after calling the kernel.		«07/25/00; 8:52:21 PM by PBS			«Set refcon only if there's data to set.		«07/27/00; 3:27:12 PM by PBS			«Decode &quot;, &lt;, &gt; and &amp; in text attributes so round-trip of HTML-in-XML works.		«Tuesday, August 08, 2000 at 6:01:44 PM by DW			«Allow any attributes to be linked to a headline through the refcon. We have to make assumptions about the XML structure that xml.compile generates, there's no way to do this  through the procedural interface.		«Tuesday, August 08, 2000 at 6:24:31 PM by DW			«Commented debugging code that had accidentally been left uncommented.		«Tuesday, August 15, 2000 at 1:29:57 PM by JES			«Bug fix -- no longer fails when converting deeply nested outlines.		«09/16/00; 4:07:52 PM by PBS			«Understands <opml> as well as <outlineDocument>.		«09/16/00; 9:11:14 PM by PBS			«Kernelized.		«12/19/01; 9:32:08 AM by dmb			«Added adrCloud parameter.	if flNewOutline {		new (outlineType, adrOutline)};	if date.versionLessThan (Frontier.version (), "7.0b21") {		if flnewoutline {			new (outlinetype, adroutline)};		local (xstruct);		local (oldtarget = target.set (adroutline));		xml.compile (xmltext, @xstruct);		«scratchpad.xstruct = xstruct; wp.newtextobject (xmltext, @scratchpad.xtext)		on dolevel (adrxoutline) {			local (insertdir = right, flatleastoneinserted = false);			local (item, text, attstable);			for item in adrxoutline {				if nameOf (item^) endsWith "\toutline" {					bundle { //fill the atts table with atts we understand						new (tabletype, @attstable);						local (adratts = @item^.["/atts"], adratt);						for adratt in adratts {							attstable.[nameof (adratt^)] = adratt^};						try {text = attstable.text; delete (@attstable.text)} else {text = ""}};					bundle { //PBS 07/27/00: decode &quot;, &gt;, &lt; &amp;						text = string.replaceall (text, "&quot;", "\"");						text = string.replaceall (text, "&lt;", "<");						text = string.replaceall (text, "&gt;", ">");						text = string.replaceall (text, "&amp;", "&")};					op.insert (text, insertdir); insertdir = down;					if sizeOf (attstable) > 0 { //PBS 07/25/00: set refcon only if there's data to set						local (data);						pack (attstable, @data);						op.setrefcon (data)};					flatleastoneinserted = true;					if dolevel (item) { //at least one item added						op.go (left, 1)}}};			return (flatleastoneinserted)};		local (adroutlinedocument);		try { //look for opml item first			adroutlinedocument = xml.getaddress (@xstruct, "opml")}		else { //look for outlineDocument item -- grandfathered in			adroutlinedocument = xml.getaddress (@xstruct, "outlineDocument")};		local (adrbody = xml.getaddress (adroutlinedocument, "body"));		dolevel (adrbody);		bundle { //process <head>, if new outline			if flnewoutline {				bundle { //perform outline surgery					op.firstsummit ();					op.promote ();					op.deleteline ()};				local (adrhead = xml.getaddress (adroutlinedocument, "head"));				try { //set the window position/size					local (windowTop = number (xml.getaddress (adrhead, "windowTop")^));					local (windowLeft = number (xml.getaddress (adrhead, "windowLeft")^));					local (windowBottom = number (xml.getaddress (adrhead, "windowBottom")^));					local (windowRight = number (xml.getaddress (adrhead, "windowRight")^));					window.setposition (adroutline, windowLeft, windowTop);					window.setsize (adroutline, windowRight - windowLeft, windowBottom - windowTop)};				try { //set the expansion state					local (expansionString = xml.getaddress (adrhead, "expansionState")^);					local (expansionList = {}, i);					for i = 1 to string.countfields (expansionString, ',') {						expansionList = expansionList + string.nthfield (expansionString, ',', i)};					op.setexpansionstate (expansionList)};				try { //set the vertical scroll state					op.setscrollstate (xml.getaddress (adrhead, "vertScrollState")^)};				try { //set the window title					parentOf (adroutline^)^.title = xml.entityDecode (xml.getaddress (adrhead, "title")^, true, true)}}};		target.set (oldtarget);		return (true)}	else { //PBS 09/16/00: kernelized		if date.versionLessThan (Frontier.version (), "7.1b43") {			on kernelCall (xmlText, adrOutline, flNewOutline) {				kernel (op.xmlToOutline)};			return (kernelCall (xmlText, adrOutline, flNewOutline))}		else { //dmb 12/19/01: added adrCloud parameter			on kernelCall (xmlText, adrOutline, flNewOutline, adrCloud) {				kernel (op.xmlToOutline)};			return (kernelCall (xmlText, adrOutline, flNewOutline, adrCloud))};		if window.isOpen (adrOutline) {			local (oldtarget = target.set (adrOutline));			window.setTitle (xml.entityDecode (window.getTitle (), true, true));			try {target.set (oldtarget)}}}}
+on xmlToOutline (xmltext, adroutline, flnewoutline = true, adrCloud = nil) { //7/19/00; 6:51:02 PM by DW
+	Â«Changes:
+		Â«01/28/03; 4:26:44 PM by JES
+			Â«If the window is open, decode entities in the window title after calling the kernel.
+		Â«07/25/00; 8:52:21 PM by PBS
+			Â«Set refcon only if there's data to set.
+		Â«07/27/00; 3:27:12 PM by PBS
+			Â«Decode &quot;, &lt;, &gt; and &amp; in text attributes so round-trip of HTML-in-XML works.
+		Â«Tuesday, August 08, 2000 at 6:01:44 PM by DW
+			Â«Allow any attributes to be linked to a headline through the refcon. We have to make assumptions about the XML structure that xml.compile generates, there's no way to do this  through the procedural interface.
+		Â«Tuesday, August 08, 2000 at 6:24:31 PM by DW
+			Â«Commented debugging code that had accidentally been left uncommented.
+		Â«Tuesday, August 15, 2000 at 1:29:57 PM by JES
+			Â«Bug fix -- no longer fails when converting deeply nested outlines.
+		Â«09/16/00; 4:07:52 PM by PBS
+			Â«Understands <opml> as well as <outlineDocument>.
+		Â«09/16/00; 9:11:14 PM by PBS
+			Â«Kernelized.
+		Â«12/19/01; 9:32:08 AM by dmb
+			Â«Added adrCloud parameter.
+	if flNewOutline {
+		new (outlineType, adrOutline)};
+	if date.versionLessThan (Frontier.version (), "7.0b21") {
+		if flnewoutline {
+			new (outlinetype, adroutline)};
+		local (xstruct);
+		local (oldtarget = target.set (adroutline));
+		xml.compile (xmltext, @xstruct);
+		Â«scratchpad.xstruct = xstruct; wp.newtextobject (xmltext, @scratchpad.xtext)
+		on dolevel (adrxoutline) {
+			local (insertdir = right, flatleastoneinserted = false);
+			local (item, text, attstable);
+			for item in adrxoutline {
+				if nameOf (item^) endsWith "\toutline" {
+					bundle { //fill the atts table with atts we understand
+						new (tabletype, @attstable);
+						local (adratts = @item^.["/atts"], adratt);
+						for adratt in adratts {
+							attstable.[nameof (adratt^)] = adratt^};
+						try {text = attstable.text; delete (@attstable.text)} else {text = ""}};
+					bundle { //PBS 07/27/00: decode &quot;, &gt;, &lt; &amp;
+						text = string.replaceall (text, "&quot;", "\"");
+						text = string.replaceall (text, "&lt;", "<");
+						text = string.replaceall (text, "&gt;", ">");
+						text = string.replaceall (text, "&amp;", "&")};
+					op.insert (text, insertdir); insertdir = down;
+					if sizeOf (attstable) > 0 { //PBS 07/25/00: set refcon only if there's data to set
+						local (data);
+						pack (attstable, @data);
+						op.setrefcon (data)};
+					flatleastoneinserted = true;
+					if dolevel (item) { //at least one item added
+						op.go (left, 1)}}};
+			return (flatleastoneinserted)};
+		local (adroutlinedocument);
+		try { //look for opml item first
+			adroutlinedocument = xml.getaddress (@xstruct, "opml")}
+		else { //look for outlineDocument item -- grandfathered in
+			adroutlinedocument = xml.getaddress (@xstruct, "outlineDocument")};
+		local (adrbody = xml.getaddress (adroutlinedocument, "body"));
+		dolevel (adrbody);
+		bundle { //process <head>, if new outline
+			if flnewoutline {
+				bundle { //perform outline surgery
+					op.firstsummit ();
+					op.promote ();
+					op.deleteline ()};
+				local (adrhead = xml.getaddress (adroutlinedocument, "head"));
+				try { //set the window position/size
+					local (windowTop = number (xml.getaddress (adrhead, "windowTop")^));
+					local (windowLeft = number (xml.getaddress (adrhead, "windowLeft")^));
+					local (windowBottom = number (xml.getaddress (adrhead, "windowBottom")^));
+					local (windowRight = number (xml.getaddress (adrhead, "windowRight")^));
+					window.setposition (adroutline, windowLeft, windowTop);
+					window.setsize (adroutline, windowRight - windowLeft, windowBottom - windowTop)};
+				try { //set the expansion state
+					local (expansionString = xml.getaddress (adrhead, "expansionState")^);
+					local (expansionList = {}, i);
+					for i = 1 to string.countfields (expansionString, ',') {
+						expansionList = expansionList + string.nthfield (expansionString, ',', i)};
+					op.setexpansionstate (expansionList)};
+				try { //set the vertical scroll state
+					op.setscrollstate (xml.getaddress (adrhead, "vertScrollState")^)};
+				try { //set the window title
+					parentOf (adroutline^)^.title = xml.entityDecode (xml.getaddress (adrhead, "title")^, true, true)}}};
+		target.set (oldtarget);
+		return (true)}
+	else { //PBS 09/16/00: kernelized
+		if date.versionLessThan (Frontier.version (), "7.1b43") {
+			on kernelCall (xmlText, adrOutline, flNewOutline) {
+				kernel (op.xmlToOutline)};
+			return (kernelCall (xmlText, adrOutline, flNewOutline))}
+		else { //dmb 12/19/01: added adrCloud parameter
+			on kernelCall (xmlText, adrOutline, flNewOutline, adrCloud) {
+				kernel (op.xmlToOutline)};
+			return (kernelCall (xmlText, adrOutline, flNewOutline, adrCloud))};
+		if window.isOpen (adrOutline) {
+			local (oldtarget = target.set (adrOutline));
+			window.setTitle (xml.entityDecode (window.getTitle (), true, true));
+			try {target.set (oldtarget)}}}}

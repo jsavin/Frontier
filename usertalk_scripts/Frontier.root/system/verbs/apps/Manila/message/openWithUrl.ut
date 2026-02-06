@@ -1,1 +1,13 @@
-on openWithUrl (username, password, url, rpcPath = "/RPC2") {	«11/14/00; 10:38:54 PM by JES	«Changes		«9/6/01; 8:24:10 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	local (urlParts = string.urlSplit (url));	local (host = urlParts[2]);	local (port = 80);	if host contains ":" {		port = string.nthField (host, ":", 2);		host = string.nthField (host, ":", 1)};	local (params = {"username":username, "password":string (password), "url":url});	return (manila.callHandler (host, port, "manila.message.openWithUrl", @params, rpcPath:rpcPath))}
+on openWithUrl (username, password, url, rpcPath = "/RPC2") {
+	Â«11/14/00; 10:38:54 PM by JES
+	Â«Changes
+		Â«9/6/01; 8:24:10 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	local (urlParts = string.urlSplit (url));
+	local (host = urlParts[2]);
+	local (port = 80);
+	if host contains ":" {
+		port = string.nthField (host, ":", 2);
+		host = string.nthField (host, ":", 1)};
+	local (params = {"username":username, "password":string (password), "url":url});
+	return (manila.callHandler (host, port, "manila.message.openWithUrl", @params, rpcPath:rpcPath))}

@@ -1,1 +1,4 @@
-on addbuddy(adrSelf, buddies) {	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 2,"toc_add_buddy "+ tcp.im.builtinDrivers.aim.code.util.normbuds(buddies));		return(true)}
+on addbuddy(adrSelf, buddies) {
+	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 2,"toc_add_buddy "+ tcp.im.builtinDrivers.aim.code.util.normbuds(buddies));
+	
+	return(true)}

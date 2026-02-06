@@ -1,1 +1,16 @@
-on parseJabberId (jabberId) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	local ( l = {} );	if not jabberId contains "@" {		scriptError ("Can't parse Jabber ID because Jabber ID \"" + jabberID + "\" is invalid; it does not have an \"@\".")};	l = l + string.mid(jabberId, 1, string.patternMatch("@", jabberId) - 1 );	if jabberId contains "/" {		l = l + string.mid(jabberId, string.patternMatch("@", jabberId) + 1, string.patternMatch("/", jabberId) - string.patternMatch("@", jabberId ) - 1 );		l = l + string.mid(jabberId, string.patternMatch("/", jabberId) + 1, infinity );		return l}	else {		l = l + string.mid(jabberId, string.patternMatch("@", jabberId) + 1, infinity );		l = l + {""};		return l}}
+on parseJabberId (jabberId) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	local ( l = {} );
+	if not jabberId contains "@" {
+		scriptError ("Can't parse Jabber ID because Jabber ID \"" + jabberID + "\" is invalid; it does not have an \"@\".")};
+	l = l + string.mid(jabberId, 1, string.patternMatch("@", jabberId) - 1 );
+	if jabberId contains "/" {
+		l = l + string.mid(jabberId, string.patternMatch("@", jabberId) + 1, string.patternMatch("/", jabberId) - string.patternMatch("@", jabberId ) - 1 );
+		l = l + string.mid(jabberId, string.patternMatch("/", jabberId) + 1, infinity );
+		return l}
+	else {
+		l = l + string.mid(jabberId, string.patternMatch("@", jabberId) + 1, infinity );
+		l = l + {""};
+		return l}}

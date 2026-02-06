@@ -1,1 +1,158 @@
-if defined (system.compiler.["kernel"].re) {	bundle { //re.match		local (patternRef, matchInfo, s1 = "a123four", s2 = "bop bebe bop");		patternRef = re.compile ("[a-zA-Z]+[0-9]+");		if not re.match (patternRef, s1, adrMatchInfoTable:@matchInfo) {			scripterror ("re.match is broken.")};		if matchInfo.matchString != "a123" {			scripterror ("re.match is broken.")};		patternRef = re.compile ("(be){1,2}");		if not re.match (patternRef, s2, adrMatchInfoTable:@matchInfo) {			scripterror ("re.search is broken.")};		if matchInfo.matchString != "bebe" {			scripterror ("re.search is broken.")}};	bundle { //re.extract		local {			patternRef;			complexLinkPat = "<a[ \t\r\n]*[^>]*href[ \t\r\n]*=[ \t\r\n]*\"?([-_~%@:/\\.A-Za-z0-9]+)\"?[^>]*>([^<]*)";			simpleLinkPat = "<a[ \t\r\n]+[^>]*href[ \t\r\n]*=[ \t\r\n]*\"([^\"]*)\"[^>]*>([^<]*)";			s = string (regex.examples.data.html);			theList};				patternRef = re.compile (simpleLinkPat);		theList = re.extract (patternRef, s, {2,1});		if sizeOf (theList) != 59 {			scripterror ("re.extract is broken.")};		if theList[57][1] != "Roget's Thesaurus:" {			scripterror ("re.extract is broken.")};		if theList[57][2] != "http://www2.thesaurus.com/thesaurus/" {			scripterror ("re.extract is broken.")};				patternRef = re.compile (simpleLinkPat);		theList = re.extract (patternRef, s, {2,1});		if sizeOf (theList) != 59 {			scripterror ("re.extract is broken.")};		if theList[25][1] != "FileMaker" {			scripterror ("re.extract is broken.")};		if theList[25][2] != "http://www.scripting.com/apps/filemaker.html" {			scripterror ("re.extract is broken.")}};	bundle { //re.grep		local (patternRef);		local (theList = {"aa", "aab", "a", "ab", ""});		local (s = "aa\raab\ra\rab\r\r");		patternRef = re.compile ("^aa");		if re.grep (patternRef, theList) != {"aa", "aab"} {			scripterror ("re.grep is broken.")};		if re.grep (patternRef, s) != {"aa", "aab"} {			scripterror ("re.grep is broken.")};		if re.grep (patternRef, theList, flIncludeMatches:false) != {"a", "ab", ""} {			scripterror ("re.grep is broken.")};		if re.grep (patternRef, s, flIncludeMatches:false) != {"a", "ab", ""} {			scripterror ("re.grep is broken.")}};	bundle { //re.join		local (listA = {"a", "b", "c"}, listB = {"abcd", "", "efgh", ""});		if re.join ("|", listA) != "a|b|c" {			scripterror ("re.join is broken.")};		if re.join ("", listA) != "abc" {			scripterror ("re.join is broken.")};		if re.join ("+/+", listB) != "abcd+/++/+efgh+/+" {			scripterror ("re.join is broken.")}};	bundle { //re.split		local (patternRef);		local (s = "<title>test</title>\r<body>\rtest body\r</body>");				patternRef = re.compile ("<[^>]*>");		if re.split (patternRef, s) != {"", "test", "\r", "\rtest body\r", ""} {			scripterror ("re.split is broken.")};		if re.split (patternRef, s, maxSplits:4) != {"", "test", "\r", "\rtest body\r</body>"} {			scripterror ("re.split is broken.")};				patternRef = re.compile ("(<[^>]*>)");		if re.split (patternRef, s) != {"", "<title>", "test", "</title>", "\r", "<body>",  "\rtest body\r", "</body>", ""} {			scripterror ("re.split is broken.")};		if re.split (patternRef, s, maxSplits:3) != {"", "<title>", "test", "</title>", "\r<body>\rtest body\r</body>"} {			scripterror ("re.split is broken.")};				local (s2 = "aBcDeFg");		patternRef = re.compile ("[a-z]+", flCaseSensitive:true);		if re.split (patternRef, s2) != {"", "B", "D", "F", ""} {			scripterror ("re.split is broken.")};		patternRef = re.compile ("[^a-z]+", flCaseSensitive:true);		if re.split (patternRef, s2) != {"a", "c", "e", "g"} {			scripterror ("re.split is broken.")};				patternRef = re.compile ("[A-Z]+", flCaseSensitive:true);		if re.split (patternRef, s2) != {"a", "c", "e", "g"} {			scripterror ("re.split is broken.")};		patternRef = re.compile ("[^A-Z]+", flCaseSensitive:true);		if re.split (patternRef, s2) != {"", "B", "D", "F", ""} {			scripterror ("re.split is broken.")}};	bundle { //re.replace		local (patternRef, ct);		local (s = "To be or not to be", s2);				patternRef = re.compile ("(be)");		s = re.replace (patternRef, "\\1BOP", s);		if s != "To beBOP or not to beBOP" {			scripterror ("re.replace is broken")};				patternRef = re.compile ("(be)(bop)", flCaseSensitive:false);		s = re.replace (patternRef, "\\2\\1", s);		if s != "To BOPbe or not to BOPbe" {			scripterror ("re.replace is broken")};				patternRef = re.compile ("(BOP)(be)");		s = re.replace (patternRef, "\\2\\1", s, maxReplacements:1);		if s != "To beBOP or not to BOPbe" {			scripterror ("re.replace is broken")};				patternRef = re.compile ("(BOP)(be)");		s = re.replace (patternRef, "\\2\\1", s, adrReplacementCount:@ct);		if s != "To beBOP or not to beBOP" {			scripterror ("re.replace is broken")};		if ct != 1 {			scripterror ("re.replace is broken")};				local (test = "Check http://www.muppets.com/~gonzo/ for more info, send your q's to mailto:gonzo@muppets.com.");		local (result = "Check <A HREF=\"http://www.muppets.com/~gonzo/\">http://www.muppets.com/~gonzo/</A> for more info, send your q's to <A HREF=\"mailto:gonzo@muppets.com\">mailto:gonzo@muppets.com</A>.");		patternRef = re.compile ("(http|mailto)(:[/]*[A-Za-z0-9]+[-_~%@:/\\.A-Za-z0-9]+[A-Za-z/0-9])");		test = re.replace (patternRef, "<A HREF=\"\\1\\2\">\\0</A>", test);		if test != result {			scripterror ("re.replace is broken.")}};	bundle { //re.visit		local (hits = 0);		local (test = " <A  href  ='index.html' > <A href=      'index2.html'     >    ");		on testCallback (adrTable) {			case ++hits {				1 {					if adrTable^.matchOffset != 2 {						scripterror ("re.visit is broken.")};					if adrTable^.matchLength != 25 {						scripterror ("re.visit is broken.")};					if adrTable^.matchString != "<A  href  ='index.html' >" {						scripterror ("re.visit is broken.")}};				2 {					if adrTable^.matchOffset != 28 {						scripterror ("re.visit is broken.")};					if adrTable^.matchLength != 33 {						scripterror ("re.visit is broken.")};					if adrTable^.matchString != "<A href=      'index2.html'     >" {						scripterror ("re.visit is broken.")}}}			else {				scripterror ("re.visit is broken.")};			return (true)};		local (patternRef = re.compile ("<([^>]+)>"));		re.visit (patternRef, test, @testCallback);		if hits != 2 {			scripterror ("re.visit is broken.")}};	bundle { //re.expand		local (pat, mi);		pat = re.compile ("(?P<date>(?P<year>(\\d\\d)?\\d\\d)-(?P<month>\\d\\d)-(?P<day>\\d\\d))", flAutoCapture:false);		if re.match (pat, "2003-05-30", adrMatchInfoTable:@mi, flMakeGroups:true, flMakeNamedGroups:true) {			if re.expand ("\\g<day>.\\g<month>.\\g<year>", @mi) != "30.05.2003" {				scripterror ("re.expand is broken")};			if re.expand ("\\g<4>.\\g<3>.\\g<2>", @mi) != "30.05.2003" {				scripterror ("re.expand is broken")};			if re.expand ("\\4.\\3.\\2", @mi) != "30.05.2003" {				scripterror ("re.expand is broken")}}}};dialog.notify ("No problems found.")
+if defined (system.compiler.["kernel"].re) {
+	bundle { //re.match
+		local (patternRef, matchInfo, s1 = "a123four", s2 = "bop bebe bop");
+		patternRef = re.compile ("[a-zA-Z]+[0-9]+");
+		if not re.match (patternRef, s1, adrMatchInfoTable:@matchInfo) {
+			scripterror ("re.match is broken.")};
+		if matchInfo.matchString != "a123" {
+			scripterror ("re.match is broken.")};
+		patternRef = re.compile ("(be){1,2}");
+		if not re.match (patternRef, s2, adrMatchInfoTable:@matchInfo) {
+			scripterror ("re.search is broken.")};
+		if matchInfo.matchString != "bebe" {
+			scripterror ("re.search is broken.")}};
+	bundle { //re.extract
+		local {
+			patternRef;
+			complexLinkPat = "<a[ \t\r\n]*[^>]*href[ \t\r\n]*=[ \t\r\n]*\"?([-_~%@:/\\.A-Za-z0-9]+)\"?[^>]*>([^<]*)";
+			simpleLinkPat = "<a[ \t\r\n]+[^>]*href[ \t\r\n]*=[ \t\r\n]*\"([^\"]*)\"[^>]*>([^<]*)";
+			s = string (regex.examples.data.html);
+			theList};
+		
+		patternRef = re.compile (simpleLinkPat);
+		theList = re.extract (patternRef, s, {2,1});
+		if sizeOf (theList) != 59 {
+			scripterror ("re.extract is broken.")};
+		if theList[57][1] != "Roget's Thesaurus:" {
+			scripterror ("re.extract is broken.")};
+		if theList[57][2] != "http://www2.thesaurus.com/thesaurus/" {
+			scripterror ("re.extract is broken.")};
+		
+		patternRef = re.compile (simpleLinkPat);
+		theList = re.extract (patternRef, s, {2,1});
+		if sizeOf (theList) != 59 {
+			scripterror ("re.extract is broken.")};
+		if theList[25][1] != "FileMaker" {
+			scripterror ("re.extract is broken.")};
+		if theList[25][2] != "http://www.scripting.com/apps/filemaker.html" {
+			scripterror ("re.extract is broken.")}};
+	bundle { //re.grep
+		local (patternRef);
+		local (theList = {"aa", "aab", "a", "ab", ""});
+		local (s = "aa\raab\ra\rab\r\r");
+		patternRef = re.compile ("^aa");
+		if re.grep (patternRef, theList) != {"aa", "aab"} {
+			scripterror ("re.grep is broken.")};
+		if re.grep (patternRef, s) != {"aa", "aab"} {
+			scripterror ("re.grep is broken.")};
+		if re.grep (patternRef, theList, flIncludeMatches:false) != {"a", "ab", ""} {
+			scripterror ("re.grep is broken.")};
+		if re.grep (patternRef, s, flIncludeMatches:false) != {"a", "ab", ""} {
+			scripterror ("re.grep is broken.")}};
+	bundle { //re.join
+		local (listA = {"a", "b", "c"}, listB = {"abcd", "", "efgh", ""});
+		if re.join ("|", listA) != "a|b|c" {
+			scripterror ("re.join is broken.")};
+		if re.join ("", listA) != "abc" {
+			scripterror ("re.join is broken.")};
+		if re.join ("+/+", listB) != "abcd+/++/+efgh+/+" {
+			scripterror ("re.join is broken.")}};
+	bundle { //re.split
+		local (patternRef);
+		local (s = "<title>test</title>\r<body>\rtest body\r</body>");
+		
+		patternRef = re.compile ("<[^>]*>");
+		if re.split (patternRef, s) != {"", "test", "\r", "\rtest body\r", ""} {
+			scripterror ("re.split is broken.")};
+		if re.split (patternRef, s, maxSplits:4) != {"", "test", "\r", "\rtest body\r</body>"} {
+			scripterror ("re.split is broken.")};
+		
+		patternRef = re.compile ("(<[^>]*>)");
+		if re.split (patternRef, s) != {"", "<title>", "test", "</title>", "\r", "<body>",  "\rtest body\r", "</body>", ""} {
+			scripterror ("re.split is broken.")};
+		if re.split (patternRef, s, maxSplits:3) != {"", "<title>", "test", "</title>", "\r<body>\rtest body\r</body>"} {
+			scripterror ("re.split is broken.")};
+		
+		local (s2 = "aBcDeFg");
+		patternRef = re.compile ("[a-z]+", flCaseSensitive:true);
+		if re.split (patternRef, s2) != {"", "B", "D", "F", ""} {
+			scripterror ("re.split is broken.")};
+		patternRef = re.compile ("[^a-z]+", flCaseSensitive:true);
+		if re.split (patternRef, s2) != {"a", "c", "e", "g"} {
+			scripterror ("re.split is broken.")};
+		
+		patternRef = re.compile ("[A-Z]+", flCaseSensitive:true);
+		if re.split (patternRef, s2) != {"a", "c", "e", "g"} {
+			scripterror ("re.split is broken.")};
+		patternRef = re.compile ("[^A-Z]+", flCaseSensitive:true);
+		if re.split (patternRef, s2) != {"", "B", "D", "F", ""} {
+			scripterror ("re.split is broken.")}};
+	bundle { //re.replace
+		local (patternRef, ct);
+		local (s = "To be or not to be", s2);
+		
+		patternRef = re.compile ("(be)");
+		s = re.replace (patternRef, "\\1BOP", s);
+		if s != "To beBOP or not to beBOP" {
+			scripterror ("re.replace is broken")};
+		
+		patternRef = re.compile ("(be)(bop)", flCaseSensitive:false);
+		s = re.replace (patternRef, "\\2\\1", s);
+		if s != "To BOPbe or not to BOPbe" {
+			scripterror ("re.replace is broken")};
+		
+		patternRef = re.compile ("(BOP)(be)");
+		s = re.replace (patternRef, "\\2\\1", s, maxReplacements:1);
+		if s != "To beBOP or not to BOPbe" {
+			scripterror ("re.replace is broken")};
+		
+		patternRef = re.compile ("(BOP)(be)");
+		s = re.replace (patternRef, "\\2\\1", s, adrReplacementCount:@ct);
+		if s != "To beBOP or not to beBOP" {
+			scripterror ("re.replace is broken")};
+		if ct != 1 {
+			scripterror ("re.replace is broken")};
+		
+		local (test = "Check http://www.muppets.com/~gonzo/ for more info, send your q's to mailto:gonzo@muppets.com.");
+		local (result = "Check <A HREF=\"http://www.muppets.com/~gonzo/\">http://www.muppets.com/~gonzo/</A> for more info, send your q's to <A HREF=\"mailto:gonzo@muppets.com\">mailto:gonzo@muppets.com</A>.");
+		patternRef = re.compile ("(http|mailto)(:[/]*[A-Za-z0-9]+[-_~%@:/\\.A-Za-z0-9]+[A-Za-z/0-9])");
+		test = re.replace (patternRef, "<A HREF=\"\\1\\2\">\\0</A>", test);
+		if test != result {
+			scripterror ("re.replace is broken.")}};
+	bundle { //re.visit
+		local (hits = 0);
+		local (test = " <A  href  ='index.html' > <A href=      'index2.html'     >    ");
+		on testCallback (adrTable) {
+			case ++hits {
+				1 {
+					if adrTable^.matchOffset != 2 {
+						scripterror ("re.visit is broken.")};
+					if adrTable^.matchLength != 25 {
+						scripterror ("re.visit is broken.")};
+					if adrTable^.matchString != "<A  href  ='index.html' >" {
+						scripterror ("re.visit is broken.")}};
+				2 {
+					if adrTable^.matchOffset != 28 {
+						scripterror ("re.visit is broken.")};
+					if adrTable^.matchLength != 33 {
+						scripterror ("re.visit is broken.")};
+					if adrTable^.matchString != "<A href=      'index2.html'     >" {
+						scripterror ("re.visit is broken.")}}}
+			else {
+				scripterror ("re.visit is broken.")};
+			return (true)};
+		local (patternRef = re.compile ("<([^>]+)>"));
+		re.visit (patternRef, test, @testCallback);
+		if hits != 2 {
+			scripterror ("re.visit is broken.")}};
+	bundle { //re.expand
+		local (pat, mi);
+		pat = re.compile ("(?P<date>(?P<year>(\\d\\d)?\\d\\d)-(?P<month>\\d\\d)-(?P<day>\\d\\d))", flAutoCapture:false);
+		if re.match (pat, "2003-05-30", adrMatchInfoTable:@mi, flMakeGroups:true, flMakeNamedGroups:true) {
+			if re.expand ("\\g<day>.\\g<month>.\\g<year>", @mi) != "30.05.2003" {
+				scripterror ("re.expand is broken")};
+			if re.expand ("\\g<4>.\\g<3>.\\g<2>", @mi) != "30.05.2003" {
+				scripterror ("re.expand is broken")};
+			if re.expand ("\\4.\\3.\\2", @mi) != "30.05.2003" {
+				scripterror ("re.expand is broken")}}}};
+dialog.notify ("No problems found.")

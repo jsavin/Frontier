@@ -1,1 +1,9 @@
-on dayOfYear (d) {	«Changes		«9/4/02; 1:37:22 AM by JES			«Created. Returns the day of the year, with the first day being 1.	local (day, month, year, hour, minute, second);	date.get (d, @day, @month, @year, @hour, @minute, @second);	local (firstOfYear = date.set (1, 1, year, 0, 0, 0));	local (dayOfYear = number ((d - firstOfYear) / 86400) + 1);	return (dayOfYear)}
+on dayOfYear (d) {
+	Â«Changes
+		Â«9/4/02; 1:37:22 AM by JES
+			Â«Created. Returns the day of the year, with the first day being 1.
+	local (day, month, year, hour, minute, second);
+	date.get (d, @day, @month, @year, @hour, @minute, @second);
+	local (firstOfYear = date.set (1, 1, year, 0, 0, 0));
+	local (dayOfYear = number ((d - firstOfYear) / 86400) + 1);
+	return (dayOfYear)}

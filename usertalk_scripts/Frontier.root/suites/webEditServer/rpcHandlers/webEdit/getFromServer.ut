@@ -1,1 +1,23 @@
-on getFromServer (userName, password, adrObject) {	«Get an object from the server.	«Changes		«7/6/05; 7:43:34 PM by JES			«Remove file-part from address in error messages.		local (adrPreCallback = @user.webEditServer.callbacks.preGetFromServer);	local (adrCallback = @user.webEditServer.callbacks.getFromServer);	local (now = clock.now ());		if not (people.authenticateUser (userName, password, "WebEdit")) {		scriptError ("Can't get " + string.popFileFromAddress (adrObject) + " because an invalid username or password was supplied.")};		local (s);	adrobject = webeditserver.fixGuestDbAdr (adrObject);		webEditServer.callbackLoop (adrPreCallback, adrObject, username, now, "");		s = fatPages.encodePageData (address (adrObject));		webEditServer.callbackLoop (adrCallback, adrObject, username, now, "");		return ({string (typeOf (adrObject^)), base64.encode (s, 0)})}
+on getFromServer (userName, password, adrObject) {
+	Â«Get an object from the server.
+	Â«Changes
+		Â«7/6/05; 7:43:34 PM by JES
+			Â«Remove file-part from address in error messages.
+	
+	local (adrPreCallback = @user.webEditServer.callbacks.preGetFromServer);
+	local (adrCallback = @user.webEditServer.callbacks.getFromServer);
+	local (now = clock.now ());
+	
+	if not (people.authenticateUser (userName, password, "WebEdit")) {
+		scriptError ("Can't get " + string.popFileFromAddress (adrObject) + " because an invalid username or password was supplied.")};
+	
+	local (s);
+	adrobject = webeditserver.fixGuestDbAdr (adrObject);
+	
+	webEditServer.callbackLoop (adrPreCallback, adrObject, username, now, "");
+	
+	s = fatPages.encodePageData (address (adrObject));
+	
+	webEditServer.callbackLoop (adrCallback, adrObject, username, now, "");
+	
+	return ({string (typeOf (adrObject^)), base64.encode (s, 0)})}

@@ -1,1 +1,2 @@
-on getCurrentTime () {	return (clock.now ())}
+on getCurrentTime () {
+	return (clock.now ())}

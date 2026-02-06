@@ -1,1 +1,2 @@
-on getStats (adrTable) {	kernel (thread.getStats)}
+on getStats (adrTable) {
+	kernel (thread.getStats)}

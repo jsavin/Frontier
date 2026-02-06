@@ -1,1 +1,2 @@
-on scriptError (s) {	kernel (lang.scripterror)}
+on scriptError (s) {
+	kernel (lang.scripterror)}

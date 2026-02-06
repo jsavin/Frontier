@@ -1,1 +1,2 @@
-on close (adr) {	kernel (lang.close)}
+on close (adr) {
+	kernel (lang.close)}

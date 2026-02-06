@@ -1,1 +1,8 @@
-on setMinAppSize (path, n) {	local (x, id = 0);	if not rez.getResource (path, 'SIZE', 0, @x) { «try user-defined size 1st		if not rez.getResource (path, 'SIZE', -1, @x) {			return (false)};		id = -1};	x = string.mid (x, 1, 6) + string (binary (long (n))) + string.mid (x, 11, infinity);	return (rez.putResource (path, 'SIZE', id, @x))}
+on setMinAppSize (path, n) {
+	local (x, id = 0);
+	if not rez.getResource (path, 'SIZE', 0, @x) { Â«try user-defined size 1st
+		if not rez.getResource (path, 'SIZE', -1, @x) {
+			return (false)};
+		id = -1};
+	x = string.mid (x, 1, 6) + string (binary (long (n))) + string.mid (x, 11, infinity);
+	return (rez.putResource (path, 'SIZE', id, @x))}

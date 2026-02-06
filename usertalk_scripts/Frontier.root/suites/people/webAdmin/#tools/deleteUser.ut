@@ -1,1 +1,19 @@
-on deleteUser () {	local (userName = html.getPageTableAddress ()^.tools^.getArgs ());	local (htmlText);		bundle { //get the username		userName = string.urlDecode (userName);		if userName == "" {			return ("Can't delete a user because no userName was specified.")}};		people.deleteUser (userName);		on add (s) {		htmlText = htmlText + s};		«add ("User \"" + userName + "\" has been deleted.<p>")		html.getPageTableAddress ()^.newUrl = html.getPageTableAddress ()^.requestHeaders.referer;		return (htmlText)}
+on deleteUser () {
+	local (userName = html.getPageTableAddress ()^.tools^.getArgs ());
+	local (htmlText);
+	
+	bundle { //get the username
+		userName = string.urlDecode (userName);
+		if userName == "" {
+			return ("Can't delete a user because no userName was specified.")}};
+	
+	people.deleteUser (userName);
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	Â«add ("User \"" + userName + "\" has been deleted.<p>")
+	
+	html.getPageTableAddress ()^.newUrl = html.getPageTableAddress ()^.requestHeaders.referer;
+	
+	return (htmlText)}

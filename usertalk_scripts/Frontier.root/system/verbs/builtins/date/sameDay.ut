@@ -1,1 +1,16 @@
-on sameDay (d1, d2) {	«Changes		«1/14/02; 8:01:44 PM by DW			«Created. Return true if the two date-times are on the same day.			«http://docserver.userland.com/date/sameDay		local (day1, month1, year1, hour1, minute1, second1);	date.get (d1, @day1, @month1, @year1, @hour1, @minute1, @second1);		local (day2, month2, year2, hour2, minute2, second2);	date.get (d2, @day2, @month2, @year2, @hour2, @minute2, @second2);		return ((year1 == year2) and (month1 == month2) and (day1 == day2))};«bundle //test code	«dialog.alert (date.sameDay (clock.now (), date ("12/25/99")))	«dialog.alert (date.sameDay (clock.now (), date ("1/14/02")))
+on sameDay (d1, d2) {
+	Â«Changes
+		Â«1/14/02; 8:01:44 PM by DW
+			Â«Created. Return true if the two date-times are on the same day.
+			Â«http://docserver.userland.com/date/sameDay
+	
+	local (day1, month1, year1, hour1, minute1, second1);
+	date.get (d1, @day1, @month1, @year1, @hour1, @minute1, @second1);
+	
+	local (day2, month2, year2, hour2, minute2, second2);
+	date.get (d2, @day2, @month2, @year2, @hour2, @minute2, @second2);
+	
+	return ((year1 == year2) and (month1 == month2) and (day1 == day2))};
+Â«bundle //test code
+	Â«dialog.alert (date.sameDay (clock.now (), date ("12/25/99")))
+	Â«dialog.alert (date.sameDay (clock.now (), date ("1/14/02")))

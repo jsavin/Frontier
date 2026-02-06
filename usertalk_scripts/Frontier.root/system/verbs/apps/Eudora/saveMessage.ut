@@ -1,1 +1,3 @@
-on saveMessage (msgObj) { «Save a message	with objectModel, Eudora, eventInfo {		return (core.save (id, msgObj))}}
+on saveMessage (msgObj) { Â«Save a message
+	with objectModel, Eudora, eventInfo {
+		return (core.save (id, msgObj))}}

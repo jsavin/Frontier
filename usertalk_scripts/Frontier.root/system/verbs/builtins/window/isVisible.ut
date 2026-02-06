@@ -1,1 +1,2 @@
-on isVisible (adr) {	kernel (window.isvisible)}
+on isVisible (adr) {
+	kernel (window.isvisible)}

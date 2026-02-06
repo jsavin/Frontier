@@ -1,1 +1,2 @@
-on type (path) {	kernel (file.type)}
+on type (path) {
+	kernel (file.type)}

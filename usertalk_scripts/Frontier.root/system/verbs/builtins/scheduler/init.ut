@@ -1,1 +1,65 @@
-«Changes:	«06/24/00; 1:23:36 AM by PBS		«Logging is off by default.if not defined (user.scheduler) {	new (tabletype, @user.scheduler)};if not defined (user.scheduler.prefs) {	new (tabletype, @user.scheduler.prefs)};if not defined (user.scheduler.prefs.confirmStartupTasks) {	user.scheduler.prefs.confirmStartupTasks = true;	};«Thu, Feb 18, 1999 at 1:45:33 PM by PBSif not defined (user.scheduler.prefs.keepLog) {	user.scheduler.prefs.keepLog = false};if not defined (user.scheduler.prefs.logInGuestDatabase) {	«user.scheduler.prefs.logInGuestDatabase = true //PBS 11/23/99: now true	user.scheduler.prefs.logInGuestDatabase = false}; //PBS 06/24/00: now false by defaultif not defined (user.scheduler.overnight) {	new (tabletype, @user.scheduler.overnight)};if not defined (user.scheduler.everyMinute) {	new (tabletype, @user.scheduler.everyMinute)};if not defined (user.scheduler.hourly) {	new (tabletype, @user.scheduler.hourly)};if not defined (user.scheduler.prefs.startingUp) {	user.scheduler.prefs.startingUp = false};if not defined (user.scheduler.prefs.reschedule) {	user.scheduler.prefs.reschedule = true};bundle { //initialize user.scheduler.tasks	if not defined (user.scheduler.tasks) {		new (tabletype, @user.scheduler.tasks)};	local (day, month, year, hour, minute, second);	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);	if not defined (user.scheduler.tasks.everyMinute) {		local (adrtable = @user.scheduler.tasks.everyMinute);		new (tabletype, adrtable);		adrtable^.error = "";		adrtable^.minutesBetweenRuns = 1;		adrtable^.script = @scheduler.doEveryMinute;		adrtable^.taskTime = date.set (day, month, year, hour, minute + 1, 0)};	if not defined (user.scheduler.tasks.overnight) {		local (adrtable = @user.scheduler.tasks.overnight);		new (tabletype, adrtable);		adrtable^.error = "";		adrtable^.minutesBetweenRuns = 1440;		adrtable^.script = @scheduler.doOvernightTasks;		adrtable^.taskTime = date.set (day + 1, month, year, 0, 0, 0)};	if not defined (user.scheduler.tasks.hourly) {		local (adrtable = @user.scheduler.tasks.hourly);		new (tabletype, adrtable);		adrtable^.error = "";		adrtable^.minutesBetweenRuns = 60;		adrtable^.script = @scheduler.doHourlyTasks;		adrtable^.taskTime = date.set (day, month, year, hour + 1, 0, 0)}};bundle { //upgrade user.scheduler.tasks	local (i);	for i = 1 to sizeof (user.scheduler.tasks) {		adrtask = @user.scheduler.tasks [i];		if not defined (adrtask^.ctruns) {			adrtask^.ctRuns = 0}}};bundle { //6.1 threads-related initialization	if not defined (user.scheduler.threads) {		new (tabletype, @user.scheduler.threads)};	if not defined (user.scheduler.prefs.runThreads) {		user.scheduler.prefs.runThreads = true}}
+Â«Changes:
+	Â«06/24/00; 1:23:36 AM by PBS
+		Â«Logging is off by default.
+
+if not defined (user.scheduler) {
+	new (tabletype, @user.scheduler)};
+if not defined (user.scheduler.prefs) {
+	new (tabletype, @user.scheduler.prefs)};
+if not defined (user.scheduler.prefs.confirmStartupTasks) {
+	user.scheduler.prefs.confirmStartupTasks = true;
+	};Â«Thu, Feb 18, 1999 at 1:45:33 PM by PBS
+if not defined (user.scheduler.prefs.keepLog) {
+	user.scheduler.prefs.keepLog = false};
+if not defined (user.scheduler.prefs.logInGuestDatabase) {
+	Â«user.scheduler.prefs.logInGuestDatabase = true //PBS 11/23/99: now true
+	user.scheduler.prefs.logInGuestDatabase = false}; //PBS 06/24/00: now false by default
+if not defined (user.scheduler.overnight) {
+	new (tabletype, @user.scheduler.overnight)};
+if not defined (user.scheduler.everyMinute) {
+	new (tabletype, @user.scheduler.everyMinute)};
+if not defined (user.scheduler.hourly) {
+	new (tabletype, @user.scheduler.hourly)};
+
+if not defined (user.scheduler.prefs.startingUp) {
+	user.scheduler.prefs.startingUp = false};
+if not defined (user.scheduler.prefs.reschedule) {
+	user.scheduler.prefs.reschedule = true};
+
+bundle { //initialize user.scheduler.tasks
+	if not defined (user.scheduler.tasks) {
+		new (tabletype, @user.scheduler.tasks)};
+	local (day, month, year, hour, minute, second);
+	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+	if not defined (user.scheduler.tasks.everyMinute) {
+		local (adrtable = @user.scheduler.tasks.everyMinute);
+		new (tabletype, adrtable);
+		adrtable^.error = "";
+		adrtable^.minutesBetweenRuns = 1;
+		adrtable^.script = @scheduler.doEveryMinute;
+		adrtable^.taskTime = date.set (day, month, year, hour, minute + 1, 0)};
+	if not defined (user.scheduler.tasks.overnight) {
+		local (adrtable = @user.scheduler.tasks.overnight);
+		new (tabletype, adrtable);
+		adrtable^.error = "";
+		adrtable^.minutesBetweenRuns = 1440;
+		adrtable^.script = @scheduler.doOvernightTasks;
+		adrtable^.taskTime = date.set (day + 1, month, year, 0, 0, 0)};
+	if not defined (user.scheduler.tasks.hourly) {
+		local (adrtable = @user.scheduler.tasks.hourly);
+		new (tabletype, adrtable);
+		adrtable^.error = "";
+		adrtable^.minutesBetweenRuns = 60;
+		adrtable^.script = @scheduler.doHourlyTasks;
+		adrtable^.taskTime = date.set (day, month, year, hour + 1, 0, 0)}};
+bundle { //upgrade user.scheduler.tasks
+	local (i);
+	for i = 1 to sizeof (user.scheduler.tasks) {
+		adrtask = @user.scheduler.tasks [i];
+		if not defined (adrtask^.ctruns) {
+			adrtask^.ctRuns = 0}}};
+bundle { //6.1 threads-related initialization
+	if not defined (user.scheduler.threads) {
+		new (tabletype, @user.scheduler.threads)};
+	if not defined (user.scheduler.prefs.runThreads) {
+		user.scheduler.prefs.runThreads = true}}

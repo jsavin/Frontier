@@ -1,1 +1,3 @@
-on getMessageTo (msgObj) {	with objectModel, Eudora, eventInfo {		return (core.get (id, msgObj.field ["To"]) - "To: ")}}
+on getMessageTo (msgObj) {
+	with objectModel, Eudora, eventInfo {
+		return (core.get (id, msgObj.field ["To"]) - "To: ")}}

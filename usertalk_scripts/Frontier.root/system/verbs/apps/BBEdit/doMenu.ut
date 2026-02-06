@@ -1,1 +1,2 @@
-on doMenu (obj) { «Do the action associated with a menu item	return (misc.doMenu (BBEdit.id, obj))}
+on doMenu (obj) { Â«Do the action associated with a menu item
+	return (misc.doMenu (BBEdit.id, obj))}

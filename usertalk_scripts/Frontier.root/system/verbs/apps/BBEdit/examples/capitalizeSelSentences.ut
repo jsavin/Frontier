@@ -1,1 +1,7 @@
-on capitalizeSelSentences() {	«Revisions:		«08/19/95 ECT: ported from AppleScript to UserTalk	with objectModel, BBEdit, eventInfo {		changeCase(lowerCase, selectionOnly:true);		changeCase(capitalizeSentences, selectionOnly:true)}};capitalizeSelSentences()
+on capitalizeSelSentences() {
+	Â«Revisions:
+		Â«08/19/95 ECT: ported from AppleScript to UserTalk
+	with objectModel, BBEdit, eventInfo {
+		changeCase(lowerCase, selectionOnly:true);
+		changeCase(capitalizeSentences, selectionOnly:true)}};
+capitalizeSelSentences()

@@ -1,1 +1,2 @@
-on load (dllPath) {	kernel (dll.load)}
+on load (dllPath) {
+	kernel (dll.load)}

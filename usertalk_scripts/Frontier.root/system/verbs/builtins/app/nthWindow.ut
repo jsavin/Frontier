@@ -1,1 +1,2 @@
-on nthWindow (n) {	return (appleEvent (app.id, 'app1', 'nthw', '----', short (n)))}
+on nthWindow (n) {
+	return (appleEvent (app.id, 'app1', 'nthw', '----', short (n)))}

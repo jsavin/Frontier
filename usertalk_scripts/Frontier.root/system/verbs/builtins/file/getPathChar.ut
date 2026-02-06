@@ -1,1 +1,10 @@
-on getPathChar () {	«Old code:		«case sys.os ()			«osMacOS				«return (":")			«osWin95			«osWinNT				«return ("\\")		«return (false)	kernel (file.getPathChar)}
+on getPathChar () {
+	Â«Old code:
+		Â«case sys.os ()
+			Â«osMacOS
+				Â«return (":")
+			Â«osWin95
+			Â«osWinNT
+				Â«return ("\\")
+		Â«return (false)
+	kernel (file.getPathChar)}

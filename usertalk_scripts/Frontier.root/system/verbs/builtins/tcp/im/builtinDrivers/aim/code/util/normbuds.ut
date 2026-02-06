@@ -1,1 +1,7 @@
-on normbuds (buddies) {	local {		buddy;		retStr=""};	for buddy in buddies {		retStr = retStr + " " + tcp.im.builtinDrivers.aim.code.util.normalize(buddy)};	return(string.popLeading(retStr, ' '))}
+on normbuds (buddies) {
+	local {
+		buddy;
+		retStr=""};
+	for buddy in buddies {
+		retStr = retStr + " " + tcp.im.builtinDrivers.aim.code.util.normalize(buddy)};
+	return(string.popLeading(retStr, ' '))}

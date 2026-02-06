@@ -1,1 +1,7 @@
-on visitServiceUsers (serviceName, adrCallback) {	on callback (userName) {		if people.serviceIsAttachedToUser (serviceName, userName) {			try {				adrCallback^ (userName)}}};	people.visitAllUsers (@callback);	return (true)}
+on visitServiceUsers (serviceName, adrCallback) {
+	on callback (userName) {
+		if people.serviceIsAttachedToUser (serviceName, userName) {
+			try {
+				adrCallback^ (userName)}}};
+	people.visitAllUsers (@callback);
+	return (true)}

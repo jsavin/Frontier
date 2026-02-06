@@ -1,1 +1,105 @@
-on runSelection () {	«Fri, Aug 16, 1996 at 6:02:42 AM by DW		«runs cards	«modified for Frontier 3.0 -- 11/12/93 DW		«handles compiled code		«doesn't display result if it hasn't been set		«uses window.msg too, in case the main window is hidden	on kernelcall () {		kernel (window.runselection)};	on runoutlineselection () {		«deposit the value as a comment underneath the headline			«operate on the original front window, allow for side-effects				origwindow = window.frontmost (); «remember original frontmost window		origcursor = op.getcursor (); «remember original bar cursor				wp.setTextMode (false);				s = displaystring (evaluate (op.getlinetext ())); «evaluate the expression				if origwindow equals "" { «avoid errors in menu-script windows			if window.frontmost () notequals "" {				«special case for windows linked into menu bars				«if the script caused a window change, don't try to deposit value comment				return (true)}}		else {			try {				target.set (origwindow)}			else { «it must have been deleted by the script				return (true)}};				bundle { «deposit comment in window with script			op.setcursor (origcursor); «restore the cursor, avoid side-effect errors			local (displayon = op.getdisplay ());			op.setdisplay (false); «turn the display off			op.expand (1);			if op.go (right, 1) { «the line has at least one subhead				if script.iscomment () { «smash pre-existing value, stored in a comment line					op.setlinetext (s);					op.go (left, 1);					op.setdisplay (displayon); «restore the outline display					return (true)};				op.go (left, 1)}; «put cursor back on line with program text			op.insert (s, right);			script.makecomment ();			op.setdisplay (displayon); «restore the outline display			op.go (left, 1);			target.clear ()};				return (true)};	on runtableselection () {		wp.setTextMode (false);		local (adr = table.getCursor ());		local (result);		case typeOf (adr^) {			codeType; «11/12/93 DW			scriptType {				result = adr^ ()};			stringType {				result = evaluate (adr^)};			binaryType { «Fri, Aug 16, 1996 at 6:04:10 AM by DW				if getBinaryType (adr^) == 'CARD' {					card.run (adr)}				else {					speaker.beep ()}}}		else {			speaker.beep ()};		if result != nil { «11/12/93 DW			local (s = displaystring (result));			msg (s);			window.msg (s)};		return (true)};	on runwpselection () {		local (s = wp.getSelText ());		msg (displaystring (evaluate (s)));		return (true)};	on runmenuselection () {		local (s);		menu.getScript (@s);		s ();		return (true)};	local (frontwindow = window.frontmost ());	if frontwindow == "" { «no window open, or it's not an object db window		speaker.beep ();		return (false)};	if window.ismenuscript (frontwindow) { «it's a script linked into a menubar		«window.frontmost can't return an address for these windows				runoutlineselection ();		return (true)};	if defined (frontwindow^) { «see if it's a script or an outline		case typeOf (frontwindow^) { «override for script-implemented running			outlinetype;			scripttype {				return (runoutlineselection ())};			tabletype {				return (runtableselection ())};			wptexttype {				return (runwpselection ())};			menubartype {				return (runmenuselection ())}}};	if not kernelcall () { «default action: use kernel		speaker.beep ();		return (false)};	return (true)}
+on runSelection () {
+	Â«Fri, Aug 16, 1996 at 6:02:42 AM by DW
+		Â«runs cards
+	Â«modified for Frontier 3.0 -- 11/12/93 DW
+		Â«handles compiled code
+		Â«doesn't display result if it hasn't been set
+		Â«uses window.msg too, in case the main window is hidden
+	on kernelcall () {
+		kernel (window.runselection)};
+	on runoutlineselection () {
+		Â«deposit the value as a comment underneath the headline
+			Â«operate on the original front window, allow for side-effects
+		
+		origwindow = window.frontmost (); Â«remember original frontmost window
+		origcursor = op.getcursor (); Â«remember original bar cursor
+		
+		wp.setTextMode (false);
+		
+		s = displaystring (evaluate (op.getlinetext ())); Â«evaluate the expression
+		
+		if origwindow equals "" { Â«avoid errors in menu-script windows
+			if window.frontmost () notequals "" {
+				Â«special case for windows linked into menu bars
+				Â«if the script caused a window change, don't try to deposit value comment
+				return (true)}}
+		else {
+			try {
+				target.set (origwindow)}
+			else { Â«it must have been deleted by the script
+				return (true)}};
+		
+		bundle { Â«deposit comment in window with script
+			op.setcursor (origcursor); Â«restore the cursor, avoid side-effect errors
+			local (displayon = op.getdisplay ());
+			op.setdisplay (false); Â«turn the display off
+			op.expand (1);
+			if op.go (right, 1) { Â«the line has at least one subhead
+				if script.iscomment () { Â«smash pre-existing value, stored in a comment line
+					op.setlinetext (s);
+					op.go (left, 1);
+					op.setdisplay (displayon); Â«restore the outline display
+					return (true)};
+				op.go (left, 1)}; Â«put cursor back on line with program text
+			op.insert (s, right);
+			script.makecomment ();
+			op.setdisplay (displayon); Â«restore the outline display
+			op.go (left, 1);
+			target.clear ()};
+		
+		return (true)};
+	on runtableselection () {
+		wp.setTextMode (false);
+		local (adr = table.getCursor ());
+		local (result);
+		case typeOf (adr^) {
+			codeType; Â«11/12/93 DW
+			scriptType {
+				result = adr^ ()};
+			stringType {
+				result = evaluate (adr^)};
+			binaryType { Â«Fri, Aug 16, 1996 at 6:04:10 AM by DW
+				if getBinaryType (adr^) == 'CARD' {
+					card.run (adr)}
+				else {
+					speaker.beep ()}}}
+		else {
+			speaker.beep ()};
+		if result != nil { Â«11/12/93 DW
+			local (s = displaystring (result));
+			msg (s);
+			window.msg (s)};
+		return (true)};
+	on runwpselection () {
+		local (s = wp.getSelText ());
+		msg (displaystring (evaluate (s)));
+		return (true)};
+	on runmenuselection () {
+		local (s);
+		menu.getScript (@s);
+		s ();
+		return (true)};
+	local (frontwindow = window.frontmost ());
+	if frontwindow == "" { Â«no window open, or it's not an object db window
+		speaker.beep ();
+		return (false)};
+	if window.ismenuscript (frontwindow) { Â«it's a script linked into a menubar
+		Â«window.frontmost can't return an address for these windows
+		
+		runoutlineselection ();
+		return (true)};
+	if defined (frontwindow^) { Â«see if it's a script or an outline
+		case typeOf (frontwindow^) { Â«override for script-implemented running
+			outlinetype;
+			scripttype {
+				return (runoutlineselection ())};
+			tabletype {
+				return (runtableselection ())};
+			wptexttype {
+				return (runwpselection ())};
+			menubartype {
+				return (runmenuselection ())}}};
+	if not kernelcall () { Â«default action: use kernel
+		speaker.beep ();
+		return (false)};
+	return (true)}

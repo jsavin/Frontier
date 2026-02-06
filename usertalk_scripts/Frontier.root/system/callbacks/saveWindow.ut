@@ -1,1 +1,27 @@
-on saveWindow (w, runnable = false) { «new in Frontier 4.0b7	«Thursday, July 17, 1997		«New parameter: runnable, defaults to false.		«If true, this is a deskscript.	«Call user's saveWindow scripts.		«For notification only. This script		«will save the window no matter what the		«user's scripts return.	«Changes:		«Thursday, September 28, 2000 at 6:24:24 PM by JES			«Allow the callback to be an address or the address of an address...	local (i);	if string.lower (window.getFile (w)) endsWith ".ftds" {		runnable = true};	if file.exists (window.getFile (w)) and file.type (w) == 'FTds' {		runnable = true};	if not defined (user.callbacks.saveWindow) {		new (tabletype, @user.callbacks.saveWindow)};	for i = 1 to sizeof (user.callbacks.saveWindow) {		try {			local (adrScript = @user.callbacks.saveWindow [i]);			while typeOf (adrScript^) == addressType {				adrScript = adrScript^};			adrScript^ (w, runnable)}};		local (x = fatPages.buildFileAtts (w, runnable));	return (x)}
+on saveWindow (w, runnable = false) { Â«new in Frontier 4.0b7
+	Â«Thursday, July 17, 1997
+		Â«New parameter: runnable, defaults to false.
+		Â«If true, this is a deskscript.
+	Â«Call user's saveWindow scripts.
+		Â«For notification only. This script
+		Â«will save the window no matter what the
+		Â«user's scripts return.
+	Â«Changes:
+		Â«Thursday, September 28, 2000 at 6:24:24 PM by JES
+			Â«Allow the callback to be an address or the address of an address...
+	local (i);
+	if string.lower (window.getFile (w)) endsWith ".ftds" {
+		runnable = true};
+	if file.exists (window.getFile (w)) and file.type (w) == 'FTds' {
+		runnable = true};
+	if not defined (user.callbacks.saveWindow) {
+		new (tabletype, @user.callbacks.saveWindow)};
+	for i = 1 to sizeof (user.callbacks.saveWindow) {
+		try {
+			local (adrScript = @user.callbacks.saveWindow [i]);
+			while typeOf (adrScript^) == addressType {
+				adrScript = adrScript^};
+			adrScript^ (w, runnable)}};
+	
+	local (x = fatPages.buildFileAtts (w, runnable));
+	return (x)}

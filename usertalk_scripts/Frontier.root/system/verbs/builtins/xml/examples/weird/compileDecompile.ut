@@ -1,1 +1,3 @@
-with xml.examples.weird {	xml.compile (string (taggedtext), @tableStructure);	wp.newtextobject (xml.decompile (@tableStructure), @scratchpad.weirdText)}
+with xml.examples.weird {
+	xml.compile (string (taggedtext), @tableStructure);
+	wp.newtextobject (xml.decompile (@tableStructure), @scratchpad.weirdText)}

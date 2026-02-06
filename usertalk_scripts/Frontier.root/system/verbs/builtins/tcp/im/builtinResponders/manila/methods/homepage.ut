@@ -1,1 +1,15 @@
-on homepage (driverName, screenname, message) {	«Changes		«8/12/02; 3:53:58 AM by JES			«Rewrite for simplified architecture.		local (siteurl = user.im.responders.manila.prefs.currentSite);	if siteurl == "" {		return ("Can't get the home page text because you are not logged in.")};	local (adrinfo);	if manila.windowTypes.findSiteInfo (siteurl, @adrinfo) {		local (msgnum = system.verbs.apps.manila.homepage.getMsgNum (adrinfo));		local (msg = manila.message.get (adrinfo, msgnum));		return (msg.body)}	else {		return ("Can't get the home page text because you are not logged in.")}}
+on homepage (driverName, screenname, message) {
+	Â«Changes
+		Â«8/12/02; 3:53:58 AM by JES
+			Â«Rewrite for simplified architecture.
+	
+	local (siteurl = user.im.responders.manila.prefs.currentSite);
+	if siteurl == "" {
+		return ("Can't get the home page text because you are not logged in.")};
+	local (adrinfo);
+	if manila.windowTypes.findSiteInfo (siteurl, @adrinfo) {
+		local (msgnum = system.verbs.apps.manila.homepage.getMsgNum (adrinfo));
+		local (msg = manila.message.get (adrinfo, msgnum));
+		return (msg.body)}
+	else {
+		return ("Can't get the home page text because you are not logged in.")}}

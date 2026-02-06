@@ -1,1 +1,2 @@
-on enableDialogs (flag) {	return (appleEvent (app.id, 'app1', 'enbd', '----', boolean (flag)))}
+on enableDialogs (flag) {
+	return (appleEvent (app.id, 'app1', 'enbd', '----', boolean (flag)))}

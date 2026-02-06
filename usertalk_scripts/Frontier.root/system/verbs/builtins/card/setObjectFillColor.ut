@@ -1,1 +1,4 @@
-on setObjectFillColor (name, color) {	new (tableType, @atts);	atts.filc = rgb (color);	return (card.setObjectAttributes (name, @atts))}
+on setObjectFillColor (name, color) {
+	new (tableType, @atts);
+	atts.filc = rgb (color);
+	return (card.setObjectAttributes (name, @atts))}

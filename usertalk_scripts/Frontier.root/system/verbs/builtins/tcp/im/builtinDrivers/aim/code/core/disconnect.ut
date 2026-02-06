@@ -1,1 +1,9 @@
-on disconnect(adrSelf) {	if defined(adrSelf^._threadId) {		try {			thread.kill(adrSelf^._threadId);			delete(@adrSelf^._threadId)}};	try {		tcp.closeStream(adrSelf^._socket);		delete(@adrSelf^._socket)};	}
+on disconnect(adrSelf) {
+	if defined(adrSelf^._threadId) {
+		try {
+			thread.kill(adrSelf^._threadId);
+			delete(@adrSelf^._threadId)}};
+	try {
+		tcp.closeStream(adrSelf^._socket);
+		delete(@adrSelf^._socket)};
+	}

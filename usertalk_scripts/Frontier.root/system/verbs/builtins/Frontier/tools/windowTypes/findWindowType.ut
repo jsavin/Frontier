@@ -1,1 +1,23 @@
-on findWindowType (type = "", adradrtable=nil, adrwindow=nil) {	if adrwindow == nil {		adrwindow = window.frontMost ()};	if type == "" {		if not window.attributes.getOne ("type", @type, adrwindow) {			return (false)}};	local (adrtable = @user.tools.windowTypes.[type]);	if defined (adrtable^) {		while typeof (adrtable^) == addresstype {			adrtable = adrtable^};		adradrtable^ = adrtable;		return (true)};	adrtable = @Frontier.tools.data.windowTypes.[type];	if defined (adrtable^) {		while typeOf (adrtable^) == addresstype {			adrtable = adrtable^};		if adradrtable != nil {			adradrtable^ = adrtable};		return (true)};	return (false)};«bundle //test code	«dialog.alert (findwindowtype ("", @adrtable))	«dialog.alert (adrtable)
+on findWindowType (type = "", adradrtable=nil, adrwindow=nil) {
+	if adrwindow == nil {
+		adrwindow = window.frontMost ()};
+	if type == "" {
+		if not window.attributes.getOne ("type", @type, adrwindow) {
+			return (false)}};
+	local (adrtable = @user.tools.windowTypes.[type]);
+	if defined (adrtable^) {
+		while typeof (adrtable^) == addresstype {
+			adrtable = adrtable^};
+		adradrtable^ = adrtable;
+		return (true)};
+	adrtable = @Frontier.tools.data.windowTypes.[type];
+	if defined (adrtable^) {
+		while typeOf (adrtable^) == addresstype {
+			adrtable = adrtable^};
+		if adradrtable != nil {
+			adradrtable^ = adrtable};
+		return (true)};
+	return (false)};
+Â«bundle //test code
+	Â«dialog.alert (findwindowtype ("", @adrtable))
+	Â«dialog.alert (adrtable)

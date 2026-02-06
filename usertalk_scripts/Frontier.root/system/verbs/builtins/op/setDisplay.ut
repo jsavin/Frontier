@@ -1,1 +1,2 @@
-on setDisplay (x) {	kernel (op.setdisplay)}
+on setDisplay (x) {
+	kernel (op.setdisplay)}

@@ -1,1 +1,13 @@
-local (adrObject);bundle { //get the current selected object	adrObject = webEdit.getSelectedObject ();	if adrObject == false {		return (false)}};s = webEdit.renderOnServer (adrObject);webBrowser.openUrl (s);webBrowser.bringToFront ();return (true)
+local (adrObject);
+
+bundle { //get the current selected object
+	adrObject = webEdit.getSelectedObject ();
+	if adrObject == false {
+		return (false)}};
+
+s = webEdit.renderOnServer (adrObject);
+
+webBrowser.openUrl (s);
+webBrowser.bringToFront ();
+
+return (true)

@@ -1,1 +1,18 @@
-on platformLink (includeVersion=false) {	«Generates a link to the operating system that a web page was built on.		«New: 10/29/97 at 2:57:06 PM by DW.	local (url);	case sys.os () {		"Win95" {			url = "http://www.microsoft.com/windows95/"};		"WinNT" {			url = "http://www.microsoft.com/ntworkstation/"};		"MacOS" {			url = "http://macos.apple.com/"}};		local (s = "<a href=\"" + url + "\">" + sys.osName ()+ "</a>");	if includeVersion {		s = s + " v" + sys.osVersion ()};	return (s)};bundle { //test code	dialog.alert (platformLink ())}
+on platformLink (includeVersion=false) {
+	Â«Generates a link to the operating system that a web page was built on.
+		Â«New: 10/29/97 at 2:57:06 PM by DW.
+	local (url);
+	case sys.os () {
+		"Win95" {
+			url = "http://www.microsoft.com/windows95/"};
+		"WinNT" {
+			url = "http://www.microsoft.com/ntworkstation/"};
+		"MacOS" {
+			url = "http://macos.apple.com/"}};
+	
+	local (s = "<a href=\"" + url + "\">" + sys.osName ()+ "</a>");
+	if includeVersion {
+		s = s + " v" + sys.osVersion ()};
+	return (s)};
+bundle { //test code
+	dialog.alert (platformLink ())}

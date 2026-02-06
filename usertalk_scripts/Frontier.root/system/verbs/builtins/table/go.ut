@@ -1,1 +1,2 @@
-on go (dir, ct) {	kernel (table.go)}
+on go (dir, ct) {
+	kernel (table.go)}

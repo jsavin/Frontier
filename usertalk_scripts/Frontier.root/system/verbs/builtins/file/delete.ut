@@ -1,1 +1,2 @@
-on delete (path) {	kernel (file.delete)}
+on delete (path) {
+	kernel (file.delete)}

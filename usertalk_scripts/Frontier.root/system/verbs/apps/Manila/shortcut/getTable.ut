@@ -1,1 +1,8 @@
-on getTable (adrSitePrefs) {	«11/15/00; 11:55:31 PM by JES	«Changes		«9/6/01; 8:29:46 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename});		return (manila.callHandler (host, port, "manila.shortcut.getTable", @params, rpcPath:rpcPath))}}
+on getTable (adrSitePrefs) {
+	Â«11/15/00; 11:55:31 PM by JES
+	Â«Changes
+		Â«9/6/01; 8:29:46 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename});
+		return (manila.callHandler (host, port, "manila.shortcut.getTable", @params, rpcPath:rpcPath))}}

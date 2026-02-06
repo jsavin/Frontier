@@ -1,1 +1,4 @@
-on printDocument (f) {	case sys.os () {		"MacOS" {			return (required.printDocument (user.webBrowser.currentid, f))}}}
+on printDocument (f) {
+	case sys.os () {
+		"MacOS" {
+			return (required.printDocument (user.webBrowser.currentid, f))}}}

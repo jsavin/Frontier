@@ -1,1 +1,22 @@
-on getUsersBlogs (adrtable, username=nil, password=nil, adrdata=@blogger.data) {	blogger.init ();	bundle { //set defaults		if username == nil {			username = user.blogger.username};		if password == nil {			password = string (user.blogger.password)}};	local (bloglist);	with adrdata^ {		local (params = {appkey, string (username), string (password)});		bloglist = xml.rpc (server, port, "blogger.getUsersBlogs", @params, rpcPath:rpcPath, protocol:protocol)};	bundle { //convert list into table		local (item, adrsubtable);		new (tabletype, adrtable);		for item in bloglist {			adrsubtable = @adrtable^.[item.blogid];			new (tabletype, adrsubtable);			adrsubtable^.blogName = item.blogName;			adrsubtable^.url = item.url}};	return (true)};bundle { //test code	getUsersBlogs (@scratchpad.blogs)}
+on getUsersBlogs (adrtable, username=nil, password=nil, adrdata=@blogger.data) {
+	blogger.init ();
+	bundle { //set defaults
+		if username == nil {
+			username = user.blogger.username};
+		if password == nil {
+			password = string (user.blogger.password)}};
+	local (bloglist);
+	with adrdata^ {
+		local (params = {appkey, string (username), string (password)});
+		bloglist = xml.rpc (server, port, "blogger.getUsersBlogs", @params, rpcPath:rpcPath, protocol:protocol)};
+	bundle { //convert list into table
+		local (item, adrsubtable);
+		new (tabletype, adrtable);
+		for item in bloglist {
+			adrsubtable = @adrtable^.[item.blogid];
+			new (tabletype, adrsubtable);
+			adrsubtable^.blogName = item.blogName;
+			adrsubtable^.url = item.url}};
+	return (true)};
+bundle { //test code
+	getUsersBlogs (@scratchpad.blogs)}

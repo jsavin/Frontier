@@ -1,1 +1,5 @@
-on pictureToPICT (adrPicture, adrBinary) {	target.set (adrPicture);	pict.getPicture (adrBinary);	target.clear ();	return (true)}
+on pictureToPICT (adrPicture, adrBinary) {
+	target.set (adrPicture);
+	pict.getPicture (adrBinary);
+	target.clear ();
+	return (true)}

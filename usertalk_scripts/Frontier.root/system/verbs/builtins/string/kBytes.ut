@@ -1,1 +1,5 @@
-on kBytes (num) {	local (x = number (num) / 1024);	if num > (x * 1024) {		x++};	return (string (x) + "K")}
+on kBytes (num) {
+	local (x = number (num) / 1024);
+	if num > (x * 1024) {
+		x++};
+	return (string (x) + "K")}

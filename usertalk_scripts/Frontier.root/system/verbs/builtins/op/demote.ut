@@ -1,1 +1,2 @@
-on demote () {	kernel (op.demote)}
+on demote () {
+	kernel (op.demote)}

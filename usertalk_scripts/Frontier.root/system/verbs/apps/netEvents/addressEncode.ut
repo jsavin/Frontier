@@ -1,1 +1,8 @@
-on addressEncode (ipAddress) { «Turn a dotted IP address into a 4-byte number	local (i, encoded);	for i = 1 to 4 {		encoded = (encoded * 256) + number (string.nthField (ipAddress, '.', i))};	return (encoded)};«bundle «test code	«netEvents.addressEncode ("206.204.24.4")		«-825485308
+on addressEncode (ipAddress) { Â«Turn a dotted IP address into a 4-byte number
+	local (i, encoded);
+	for i = 1 to 4 {
+		encoded = (encoded * 256) + number (string.nthField (ipAddress, '.', i))};
+	return (encoded)};
+Â«bundle Â«test code
+	Â«netEvents.addressEncode ("206.204.24.4")
+		Â«-825485308

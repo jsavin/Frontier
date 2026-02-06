@@ -1,1 +1,2 @@
-on set (obj, setTo) { «Set an object's data	return (core.set (Fetch.id, obj, setTo))}
+on set (obj, setTo) { Â«Set an object's data
+	return (core.set (Fetch.id, obj, setTo))}

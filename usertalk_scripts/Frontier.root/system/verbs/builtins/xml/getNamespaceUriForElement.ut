@@ -1,1 +1,53 @@
-on getNamespaceUriForElement (adrelement, adrdoc, default="") {	«Changes		«10/3/02; 10:31:14 PM by JES			«Fixed a bug which could cause an erroneous scriptError for elements whose namespace declaration appears on the top-level XML element.		«9/29/02; 6:39:05 PM by JES			«Created.			«Given the address of a compiled XML element, and the address of a compiled XML document, get the namespace URI for the element.			«http://docserver.userland.com/xml/getNamespaceUriForElement	local (nsprefix = "", nsattname = "");	if typeOf (adrelement^) == tableType { //look for an nsUri on this element, or set the ns prefix		local (adratts = @adrelement^.["/atts"]);		if defined (adratts^) {			if defined (adratts^.namespace) { //get the namespace prefix if there is one				nsprefix = string.popTrailing (adratts^.namespace, ':');				nsattname = "xmlns:" + nsprefix}}};	loop { //pop out 'till we find the namespace declaration, or get to the top of the document		if typeOf (adrelement^) == tableType {			local (adratts = @adrelement^.["/atts"]);			if defined (adratts^) {				if nsprefix == "" { //look for a default namespace URI at this level					if defined (adratts^.xmlns) {						return (adratts^.xmlns)}};				if defined (adratts^.[nsattname]) { //namespace locally declared?					return (adratts^.[nsattname])}}};		adrelement = parentOf (adrelement^);		if adrelement == parentOf (adrdoc^) {			if nsprefix != "" { //this is an error -- the namespace hasn't been declared				scriptError ("Can't get the namespace URI for the specified element because there is no namespace declaration for the prefix, \"" + nsprefix + "\".")};			break}};	return (default)}; //default namespace«bundle //test code	«local (adrxstruct = @workspace.snRssXstruct)	«local (adrrss = xml.getAddress (adrxstruct, "rss"))	«local (adrchannel = xml.getAddress (adrrss, "channel"))	«local (adrelement = xml.getAddress (adrchannel, "blogRoll"))	«dialog.notify (getNamespaceUriForElement (adrelement, adrxstruct))«bundle //test code 2	«local (adrxstruct = @workspace.simonTestXstruct)	«local (adrrss = xml.getAddress (adrxstruct, "rss"))	«local (adrchannel = xml.getAddress (adrrss, "channel"))	«local (adritem = xml.getAddress (adrchannel, "item"))	«local (adrelement = xml.getAddress (adritem, "description"))	«dialog.notify (getNamespaceUriForElement (adrelement, adrxstruct))«bundle //test code 3	«local (adrxstruct = @workspace.nsTestXml.xstruct1)	«local (adrxstruct = @workspace.nsTestXml.xstruct2)	«local (adrxstruct = @workspace.nsTestXml.xstruct3)	«local (adrxstruct = @workspace.nsTestXml.xstruct4)	«local (adra = xml.getAddress (adrxstruct, "a"))	«local (adrb = xml.getAddress (adra, "b"))	«local (adrc = xml.getAddress (adrb, "c"))	«local (adrelement = xml.getAddress (adrc, "d"))	«dialog.notify (getNamespaceUriForElement (adra, adrxstruct))
+on getNamespaceUriForElement (adrelement, adrdoc, default="") {
+	Â«Changes
+		Â«10/3/02; 10:31:14 PM by JES
+			Â«Fixed a bug which could cause an erroneous scriptError for elements whose namespace declaration appears on the top-level XML element.
+		Â«9/29/02; 6:39:05 PM by JES
+			Â«Created.
+			Â«Given the address of a compiled XML element, and the address of a compiled XML document, get the namespace URI for the element.
+			Â«http://docserver.userland.com/xml/getNamespaceUriForElement
+	local (nsprefix = "", nsattname = "");
+	if typeOf (adrelement^) == tableType { //look for an nsUri on this element, or set the ns prefix
+		local (adratts = @adrelement^.["/atts"]);
+		if defined (adratts^) {
+			if defined (adratts^.namespace) { //get the namespace prefix if there is one
+				nsprefix = string.popTrailing (adratts^.namespace, ':');
+				nsattname = "xmlns:" + nsprefix}}};
+	loop { //pop out 'till we find the namespace declaration, or get to the top of the document
+		if typeOf (adrelement^) == tableType {
+			local (adratts = @adrelement^.["/atts"]);
+			if defined (adratts^) {
+				if nsprefix == "" { //look for a default namespace URI at this level
+					if defined (adratts^.xmlns) {
+						return (adratts^.xmlns)}};
+				if defined (adratts^.[nsattname]) { //namespace locally declared?
+					return (adratts^.[nsattname])}}};
+		adrelement = parentOf (adrelement^);
+		if adrelement == parentOf (adrdoc^) {
+			if nsprefix != "" { //this is an error -- the namespace hasn't been declared
+				scriptError ("Can't get the namespace URI for the specified element because there is no namespace declaration for the prefix, \"" + nsprefix + "\".")};
+			break}};
+	return (default)}; //default namespace
+Â«bundle //test code
+	Â«local (adrxstruct = @workspace.snRssXstruct)
+	Â«local (adrrss = xml.getAddress (adrxstruct, "rss"))
+	Â«local (adrchannel = xml.getAddress (adrrss, "channel"))
+	Â«local (adrelement = xml.getAddress (adrchannel, "blogRoll"))
+	Â«dialog.notify (getNamespaceUriForElement (adrelement, adrxstruct))
+Â«bundle //test code 2
+	Â«local (adrxstruct = @workspace.simonTestXstruct)
+	Â«local (adrrss = xml.getAddress (adrxstruct, "rss"))
+	Â«local (adrchannel = xml.getAddress (adrrss, "channel"))
+	Â«local (adritem = xml.getAddress (adrchannel, "item"))
+	Â«local (adrelement = xml.getAddress (adritem, "description"))
+	Â«dialog.notify (getNamespaceUriForElement (adrelement, adrxstruct))
+Â«bundle //test code 3
+	Â«local (adrxstruct = @workspace.nsTestXml.xstruct1)
+	Â«local (adrxstruct = @workspace.nsTestXml.xstruct2)
+	Â«local (adrxstruct = @workspace.nsTestXml.xstruct3)
+	Â«local (adrxstruct = @workspace.nsTestXml.xstruct4)
+	Â«local (adra = xml.getAddress (adrxstruct, "a"))
+	Â«local (adrb = xml.getAddress (adra, "b"))
+	Â«local (adrc = xml.getAddress (adrb, "c"))
+	Â«local (adrelement = xml.getAddress (adrc, "d"))
+	Â«dialog.notify (getNamespaceUriForElement (adra, adrxstruct))

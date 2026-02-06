@@ -1,1 +1,9 @@
-on recalc (name) {	if not navigator.setTarget (name) {		return ("")};	local (s = op.getlinetext (), adr, helptext);	adr = string.nthfield (s, ';', 2);	helptext = string.nthfield (s, ';', 3);	card.setobjecttext ("helptext", helptext);	card.setobjecttext ("adr", adr);	return (true)}
+on recalc (name) {
+	if not navigator.setTarget (name) {
+		return ("")};
+	local (s = op.getlinetext (), adr, helptext);
+	adr = string.nthfield (s, ';', 2);
+	helptext = string.nthfield (s, ';', 3);
+	card.setobjecttext ("helptext", helptext);
+	card.setobjecttext ("adr", adr);
+	return (true)}

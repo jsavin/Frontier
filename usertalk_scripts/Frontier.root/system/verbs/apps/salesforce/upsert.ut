@@ -1,1 +1,27 @@
-on upsert (adrSession, objectType, keyField, adrDataTable) {	«Changes		«4/20/06; 3:02:54 AM by JES			«Created. Update an object of the given objectType, with field values as specified by name/value pairs in the table referenced by adrDataTable.	scriptError ("Can't call upsert because the API version must be at least 7.0, and the Frontier SOAP implementation doesn't use the format required by API version 7.0.");	local (t); new (tableType, @t);	local (adr);	for adr in adrDataTable {		t.["o:" + nameOf (adr^)] = adr^};	t.["o:type"] = objectType;	on massager (adrdoc) {		local (adrenv = xml.getAddress (adrdoc, "Envelope"));		adrenv^.["/atts"].["xmlns:m"] = adrSession^.namespaceUri;		adrenv^.["/atts"].["xmlns:o"] = adrSession^.objectNamespaceUri};	local (retval = salesforce.callApi (adrSession, nameOf (this^), {"m:externalIDFieldName":keyField, "m:sObjects":t}, adrBeforeDecompileCallback:@massager));	if retval.success {		return (retval.id)}	else { //throw the error		scriptError ("Can't update the object because the server returned an error: " + retval.errors.message)}};«bundle //testing	«local (t); new (tableType, @t)	«t.Name = "Futty Nuzzbutter"	«t.SLASerialNumber__c = "123"	«local (sesnum = sizeOf (system.temp.salesforce.sessions))	«local (adrSession = @system.temp.salesforce.sessions[sesnum])	«table.assign (@workspace.retval, this^ (adrSession, "Account", "SLASerialNumber__c", @t) )	«edit (@workspace.retval)
+on upsert (adrSession, objectType, keyField, adrDataTable) {
+	Â«Changes
+		Â«4/20/06; 3:02:54 AM by JES
+			Â«Created. Update an object of the given objectType, with field values as specified by name/value pairs in the table referenced by adrDataTable.
+	scriptError ("Can't call upsert because the API version must be at least 7.0, and the Frontier SOAP implementation doesn't use the format required by API version 7.0.");
+	local (t); new (tableType, @t);
+	local (adr);
+	for adr in adrDataTable {
+		t.["o:" + nameOf (adr^)] = adr^};
+	t.["o:type"] = objectType;
+	on massager (adrdoc) {
+		local (adrenv = xml.getAddress (adrdoc, "Envelope"));
+		adrenv^.["/atts"].["xmlns:m"] = adrSession^.namespaceUri;
+		adrenv^.["/atts"].["xmlns:o"] = adrSession^.objectNamespaceUri};
+	local (retval = salesforce.callApi (adrSession, nameOf (this^), {"m:externalIDFieldName":keyField, "m:sObjects":t}, adrBeforeDecompileCallback:@massager));
+	if retval.success {
+		return (retval.id)}
+	else { //throw the error
+		scriptError ("Can't update the object because the server returned an error: " + retval.errors.message)}};
+Â«bundle //testing
+	Â«local (t); new (tableType, @t)
+	Â«t.Name = "Futty Nuzzbutter"
+	Â«t.SLASerialNumber__c = "123"
+	Â«local (sesnum = sizeOf (system.temp.salesforce.sessions))
+	Â«local (adrSession = @system.temp.salesforce.sessions[sesnum])
+	Â«table.assign (@workspace.retval, this^ (adrSession, "Account", "SLASerialNumber__c", @t) )
+	Â«edit (@workspace.retval)

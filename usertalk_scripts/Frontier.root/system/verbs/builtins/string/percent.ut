@@ -1,1 +1,18 @@
-on percent (numerator, denominator, rodPlaces=3) {	«New verb: 4/8/00; 3:13:19 PM by DW		«As usual, this code was cropping up all over the place. Better to get it into the standard distribution.	local (pct = "");	if numerator > 0 {		local (ratio = 100.0 * (double (numerator) / denominator));		local (s = string (ratio));		local (lod = string.nthfield (s, ".", 1));		local (rod = string.nthfield (s, ".", 2));		if sizeof (rod) > rodPlaces {			rod = string.mid (rod, 1, rodPlaces)}		else {			if sizeof (rod) < rodPlaces {				rod = rod + string.filledString (0, rodPlaces - sizeof (rod))}};		pct = lod + "." + rod};	return (pct)};«bundle //test code	«dialog.alert (percent (121, 10000, 5))
+on percent (numerator, denominator, rodPlaces=3) {
+	Â«New verb: 4/8/00; 3:13:19 PM by DW
+		Â«As usual, this code was cropping up all over the place. Better to get it into the standard distribution.
+	local (pct = "");
+	if numerator > 0 {
+		local (ratio = 100.0 * (double (numerator) / denominator));
+		local (s = string (ratio));
+		local (lod = string.nthfield (s, ".", 1));
+		local (rod = string.nthfield (s, ".", 2));
+		if sizeof (rod) > rodPlaces {
+			rod = string.mid (rod, 1, rodPlaces)}
+		else {
+			if sizeof (rod) < rodPlaces {
+				rod = rod + string.filledString (0, rodPlaces - sizeof (rod))}};
+		pct = lod + "." + rod};
+	return (pct)};
+Â«bundle //test code
+	Â«dialog.alert (percent (121, 10000, 5))

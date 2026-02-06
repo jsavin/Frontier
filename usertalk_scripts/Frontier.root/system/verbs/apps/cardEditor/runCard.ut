@@ -1,1 +1,6 @@
-on runCard (packedcard) {	if typeof (packedcard) != binarytype {		scriptError ("Can't run a card because it's not a binaryType")};	if getBinaryType (packedcard) != 'CARD' {		scriptError ("Can't run a card because it's not a 'CARD'")};	return (appleEvent (cardEditor.id, 'app1', 'runc', '----', packedcard))}
+on runCard (packedcard) {
+	if typeof (packedcard) != binarytype {
+		scriptError ("Can't run a card because it's not a binaryType")};
+	if getBinaryType (packedcard) != 'CARD' {
+		scriptError ("Can't run a card because it's not a 'CARD'")};
+	return (appleEvent (cardEditor.id, 'app1', 'runc', '----', packedcard))}

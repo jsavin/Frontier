@@ -1,1 +1,10 @@
-on visitMessages (mailboxObj, callback) {	with objectmodel, Eudora, eventInfo {		local (msgCount, x);		msgCount = countMessages(mailboxObj);		loop(x=1;x<=msgCount;x=x+1) {			local(msgObj);			msgObj = mailboxObj.message[x];			if not callback^ (msgObj) {				return (false)}}};	return (true)}
+on visitMessages (mailboxObj, callback) {
+	with objectmodel, Eudora, eventInfo {
+		local (msgCount, x);
+		msgCount = countMessages(mailboxObj);
+		loop(x=1;x<=msgCount;x=x+1) {
+			local(msgObj);
+			msgObj = mailboxObj.message[x];
+			if not callback^ (msgObj) {
+				return (false)}}};
+	return (true)}

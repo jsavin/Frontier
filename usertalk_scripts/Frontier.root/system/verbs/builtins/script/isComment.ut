@@ -1,1 +1,2 @@
-on isComment () {	kernel (script.iscomment)}
+on isComment () {
+	kernel (script.iscomment)}

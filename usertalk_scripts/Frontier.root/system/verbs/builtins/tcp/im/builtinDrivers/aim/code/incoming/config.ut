@@ -1,1 +1,2 @@
-on CONFIG (adrSelf, data) {	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "CONFIG", {adrSelf, data}, adrSelf^._adrSubCallbacks ))}
+on CONFIG (adrSelf, data) {
+	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "CONFIG", {adrSelf, data}, adrSelf^._adrSubCallbacks ))}

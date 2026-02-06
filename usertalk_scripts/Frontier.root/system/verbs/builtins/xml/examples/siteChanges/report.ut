@@ -1,1 +1,19 @@
-local (reportText = "", indentlevel = 0);on add (s) {	reportText = reportText + string.filledstring ("\t", indentlevel) + s + "\r\n\r\n"};local (adrtable = parentof (this^));add ("Pages in the Fat Pages site that changed"); indentlevel++;local (adrsite = xml.getAddress (@adrtable^.tableStructure, "site"));local (updatelist = xml.getAddressList (adrsite, "update"));local (updateitem, filelist, fileitem, url);for updateitem in updatelist {	filelist = xml.getAddressList (updateitem, "file");	for fileitem in filelist {		url = xml.getValue (fileitem, "url");		if url beginsWith "fatpages/" {			add ("http://www.scripting.com/" + url); indentlevel++;			add (xml.getValue (fileitem, "modDate")); indentlevel--}}};wp.newtextobject (reportText, @adrtable^.reportText)
+local (reportText = "", indentlevel = 0);
+on add (s) {
+	reportText = reportText + string.filledstring ("\t", indentlevel) + s + "\r\n\r\n"};
+
+local (adrtable = parentof (this^));
+add ("Pages in the Fat Pages site that changed"); indentlevel++;
+
+local (adrsite = xml.getAddress (@adrtable^.tableStructure, "site"));
+local (updatelist = xml.getAddressList (adrsite, "update"));
+local (updateitem, filelist, fileitem, url);
+for updateitem in updatelist {
+	filelist = xml.getAddressList (updateitem, "file");
+	for fileitem in filelist {
+		url = xml.getValue (fileitem, "url");
+		if url beginsWith "fatpages/" {
+			add ("http://www.scripting.com/" + url); indentlevel++;
+			add (xml.getValue (fileitem, "modDate")); indentlevel--}}};
+
+wp.newtextobject (reportText, @adrtable^.reportText)

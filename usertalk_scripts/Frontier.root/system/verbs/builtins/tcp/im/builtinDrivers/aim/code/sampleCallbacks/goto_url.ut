@@ -1,1 +1,2 @@
-on GOTO_URL(adrSelf, windowName, strUrl) {	return("GOTO_URL")}
+on GOTO_URL(adrSelf, windowName, strUrl) {
+	return("GOTO_URL")}

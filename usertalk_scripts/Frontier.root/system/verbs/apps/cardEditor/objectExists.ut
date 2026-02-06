@@ -1,1 +1,3 @@
-on objectExists (name) {	local (atts);	return (cardEditor.getObjectAttributes (name, @atts))}
+on objectExists (name) {
+	local (atts);
+	return (cardEditor.getObjectAttributes (name, @atts))}

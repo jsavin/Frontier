@@ -1,1 +1,123 @@
-«Change Notes:	«9/19/02; 2:28:50 AM by JES		«Initialize the port 5336 listener.	«8/21/02; 9:33:34 PM by JES		«Initialize the commonLog prefs sub-table.	«11/5/99; 7:15:29 PM by AR		«Set up user.webserver.postFilters.domainStats.		«Set up user.webserver.prefs.flDomainStats.	«10/1/98; 6:34:12 PM by DW		«no longer expects certain responders to be installed		«no longer creates the log file for the commonLog postfilter		«no longer creates user.webserver.utilities if it doesn't exist	«12/16/98; 5:36:45 PM by DW		«roll-in of features from mainResponder project		«user.webserver.stats and user.webserver.prefs.flStats	«3/19/99; 2:11:09 PM by PBS		«New pref: user.webserver.prefs.flWaitDuringStartup.			«Default is true. If true, Frontier waits to handle incoming http requests while starting up.			«It waits by looping in webserver.server until Frontier has started up.			«People running Frontier behind IIS should set this to false, or else Frontier may hang during startup.			«Everybody else should set it to true.bundle { //make sure inetd is set up	inetd.init (); //this must be done before webserver will work.	if not defined (user.inetd.config.http) {		user.inetd.config.http = webserver.data.inetd.config.http};	if not defined (user.inetd.config.http2) {		user.inetd.config.http2 = webserver.data.inetd.config.http2}};bundle { //create top-level tables of user.webserver	if not defined (user.webserver) {		new (tableType, @user.webserver)};	if not defined (user.webserver.prefs) {		new (tableType, @user.webserver.prefs)};	if not defined (user.webserver.callbacks) {		new (tableType, @user.webserver.callbacks)};	if not defined (user.webserver.callbacks.filterRequest) {		new (tableType, @user.webserver.callbacks.filterRequest)};	if not defined (user.webserver.callbacks.handleRequest) {		new (tableType, @user.webserver.callbacks.handleRequest)};	if not defined (user.webserver.callbacks.filterPage) {		new (tableType, @user.webserver.callbacks.filterPage)};	if not defined (user.webserver.cgis) {		new (tableType, @user.webserver.cgis)};	«if not defined (user.webserver.utilities)		«new (tableType, @user.webserver.utilities)	if not defined (user.webserver.actions) {		user.webserver.actions= webserver.data.actions};	«if not defined (user.webserver.cgis.samples)		«user.webserver.cgis.samples = webserver.data.cgis.samples	if not defined (user.webserver.responders) {		user.webserver.responders = webserver.data.responders};	if not defined (user.webserver.preFilters) {		user.webserver.preFilters = webserver.data.preFilters};	if not defined (user.webserver.postFilters) {		user.webserver.postFilters = webserver.data.postFilters}};bundle { //copy prefs from webserver table	if not defined (user.webserver.prefs.fileNotFoundPage) {		user.webserver.prefs.fileNotFoundPage = webserver.data.prefs.fileNotFoundPage};	if not defined (user.webserver.prefs.errorPage) {		user.webserver.prefs.errorPage = webserver.data.prefs.errorPage};	if not defined (user.webserver.prefs.mimeTypes) {		user.webserver.prefs.mimeTypes = webserver.data.prefs.mimeTypes};	if not defined (user.webserver.prefs.ext2MIME) {		user.webserver.prefs.ext2MIME = webserver.data.prefs.ext2MIME};	if not defined (user.webserver.prefs.type2MIME) {		user.webserver.prefs.type2MIME = webserver.data.prefs.type2MIME};	if not defined (user.webserver.prefs.MIME2icon) {		user.webserver.prefs.MIME2icon = webserver.data.prefs.MIME2icon};	if not defined (user.webserver.prefs.MIME2name) {		user.webserver.prefs.MIME2name = webserver.data.prefs.MIME2name}};bundle { //set the prefs values	if not defined (user.webserver.prefs.chunkSize) {		user.webserver.prefs.chunkSize = 24};	if not defined (user.webserver.prefs.fldebug) {		user.webserver.prefs.fldebug = false};	if not defined (user.webserver.prefs.hostName) {		user.webserver.prefs.hostName = ""};	if not defined (user.webserver.prefs.serverAppID) {		user.webserver.prefs.serverAppID = ""};	if not defined (user.webserver.prefs.websiteFolderPath) {		user.webserver.prefs.websiteFolderPath = ""};	if not defined (user.webserver.prefs.fluseDNS) {		user.webserver.prefs.fluseDNS = false};	if not defined (user.webserver.prefs.flWaitDuringStartup) { //PBS 3/19/99		user.webserver.prefs.flWaitDuringStartup = true};	if not defined (user.webserver.prefs.defaultResponder) {		user.webserver.prefs.defaultResponder = "default"};	if not defined (user.webserver.prefs.flStats) { //6.0		user.webserver.prefs.flStats = true};	if not defined (user.webserver.prefs.flDomainStats) { //AR 11/05/1999		user.webserver.prefs.flDomainStats = true}; //PBS 11/23/99: now true	if not defined (user.webserver.prefs.commonLog) {		new (tableType, @user.webserver.prefs.commonLog)};	if not defined (user.webserver.prefs.commonLog.flIncludeReferers) {		user.webserver.prefs.commonLog.flIncludeReferers = false};	if not defined (user.webserver.prefs.commonLog.flIncludeUserAgents) {		user.webserver.prefs.commonLog.flIncludeUserAgents = false};	if not defined (user.webserver.prefs.commonLog.flIncludeVirtualHosts) {		user.webserver.prefs.commonLog.flIncludeVirtualHosts = false};	if not defined (user.webserver.prefs.commonLog.flUseCommonLogDateFormat) {		user.webserver.prefs.commonLog.flUseCommonLogDateFormat = false}};bundle { //6.0, initialize stats	if not defined (user.webserver.stats) {		new (tabletype, @user.webserver.stats)};	user.webserver.stats.maxConnections = 0;	user.webserver.stats.maxMemAvail = 0;	user.webserver.stats.minMemAvail = infinity;	user.webserver.stats.hits = 0;	user.webserver.stats.upSince = clock.now ()};«bundle // set up log for commonLog postFilter 	«if (not defined (user.webserver.prefs.logFile)) or (not file.exists (user.webserver.prefs.logFile))		«user.webserver.prefs.logFile = frontier.pathstring + "Logs" + file.getPathChar () + "Web Server Log.txt"	«file.sureFilePath (user.webserver.prefs.logFile)	«if not file.exists (user.webserver.prefs.logFile)		«file.new (user.webserver.prefs.logFile)		«if (sys.os () == osMacOS)			«file.setType (user.webserver.prefs.logFile, 'TEXT')			«file.setCreator (user.webserver.prefs.logFile, 'R*ch')bundle { //AR 11/5/99: set up domainStats postFilter	if not defined (user.webserver.postfilters.domainStats) {		script.newScriptObject ("on domainStats (pta)" + cr + tab + "return (webserver.postFilters.domainStats (pta))", @user.webserver.postFilters.domainStats)}};return (true)
+Â«Change Notes:
+	Â«9/19/02; 2:28:50 AM by JES
+		Â«Initialize the port 5336 listener.
+	Â«8/21/02; 9:33:34 PM by JES
+		Â«Initialize the commonLog prefs sub-table.
+	Â«11/5/99; 7:15:29 PM by AR
+		Â«Set up user.webserver.postFilters.domainStats.
+		Â«Set up user.webserver.prefs.flDomainStats.
+	Â«10/1/98; 6:34:12 PM by DW
+		Â«no longer expects certain responders to be installed
+		Â«no longer creates the log file for the commonLog postfilter
+		Â«no longer creates user.webserver.utilities if it doesn't exist
+	Â«12/16/98; 5:36:45 PM by DW
+		Â«roll-in of features from mainResponder project
+		Â«user.webserver.stats and user.webserver.prefs.flStats
+	Â«3/19/99; 2:11:09 PM by PBS
+		Â«New pref: user.webserver.prefs.flWaitDuringStartup.
+			Â«Default is true. If true, Frontier waits to handle incoming http requests while starting up.
+			Â«It waits by looping in webserver.server until Frontier has started up.
+			Â«People running Frontier behind IIS should set this to false, or else Frontier may hang during startup.
+			Â«Everybody else should set it to true.
+
+bundle { //make sure inetd is set up
+	inetd.init (); //this must be done before webserver will work.
+	if not defined (user.inetd.config.http) {
+		user.inetd.config.http = webserver.data.inetd.config.http};
+	if not defined (user.inetd.config.http2) {
+		user.inetd.config.http2 = webserver.data.inetd.config.http2}};
+bundle { //create top-level tables of user.webserver
+	if not defined (user.webserver) {
+		new (tableType, @user.webserver)};
+	if not defined (user.webserver.prefs) {
+		new (tableType, @user.webserver.prefs)};
+	if not defined (user.webserver.callbacks) {
+		new (tableType, @user.webserver.callbacks)};
+	if not defined (user.webserver.callbacks.filterRequest) {
+		new (tableType, @user.webserver.callbacks.filterRequest)};
+	if not defined (user.webserver.callbacks.handleRequest) {
+		new (tableType, @user.webserver.callbacks.handleRequest)};
+	if not defined (user.webserver.callbacks.filterPage) {
+		new (tableType, @user.webserver.callbacks.filterPage)};
+	if not defined (user.webserver.cgis) {
+		new (tableType, @user.webserver.cgis)};
+	Â«if not defined (user.webserver.utilities)
+		Â«new (tableType, @user.webserver.utilities)
+	if not defined (user.webserver.actions) {
+		user.webserver.actions= webserver.data.actions};
+	Â«if not defined (user.webserver.cgis.samples)
+		Â«user.webserver.cgis.samples = webserver.data.cgis.samples
+	if not defined (user.webserver.responders) {
+		user.webserver.responders = webserver.data.responders};
+	if not defined (user.webserver.preFilters) {
+		user.webserver.preFilters = webserver.data.preFilters};
+	if not defined (user.webserver.postFilters) {
+		user.webserver.postFilters = webserver.data.postFilters}};
+bundle { //copy prefs from webserver table
+	if not defined (user.webserver.prefs.fileNotFoundPage) {
+		user.webserver.prefs.fileNotFoundPage = webserver.data.prefs.fileNotFoundPage};
+	if not defined (user.webserver.prefs.errorPage) {
+		user.webserver.prefs.errorPage = webserver.data.prefs.errorPage};
+	if not defined (user.webserver.prefs.mimeTypes) {
+		user.webserver.prefs.mimeTypes = webserver.data.prefs.mimeTypes};
+	if not defined (user.webserver.prefs.ext2MIME) {
+		user.webserver.prefs.ext2MIME = webserver.data.prefs.ext2MIME};
+	if not defined (user.webserver.prefs.type2MIME) {
+		user.webserver.prefs.type2MIME = webserver.data.prefs.type2MIME};
+	if not defined (user.webserver.prefs.MIME2icon) {
+		user.webserver.prefs.MIME2icon = webserver.data.prefs.MIME2icon};
+	if not defined (user.webserver.prefs.MIME2name) {
+		user.webserver.prefs.MIME2name = webserver.data.prefs.MIME2name}};
+bundle { //set the prefs values
+	if not defined (user.webserver.prefs.chunkSize) {
+		user.webserver.prefs.chunkSize = 24};
+	if not defined (user.webserver.prefs.fldebug) {
+		user.webserver.prefs.fldebug = false};
+	if not defined (user.webserver.prefs.hostName) {
+		user.webserver.prefs.hostName = ""};
+	if not defined (user.webserver.prefs.serverAppID) {
+		user.webserver.prefs.serverAppID = ""};
+	if not defined (user.webserver.prefs.websiteFolderPath) {
+		user.webserver.prefs.websiteFolderPath = ""};
+	if not defined (user.webserver.prefs.fluseDNS) {
+		user.webserver.prefs.fluseDNS = false};
+	if not defined (user.webserver.prefs.flWaitDuringStartup) { //PBS 3/19/99
+		user.webserver.prefs.flWaitDuringStartup = true};
+	if not defined (user.webserver.prefs.defaultResponder) {
+		user.webserver.prefs.defaultResponder = "default"};
+	if not defined (user.webserver.prefs.flStats) { //6.0
+		user.webserver.prefs.flStats = true};
+	if not defined (user.webserver.prefs.flDomainStats) { //AR 11/05/1999
+		user.webserver.prefs.flDomainStats = true}; //PBS 11/23/99: now true
+	if not defined (user.webserver.prefs.commonLog) {
+		new (tableType, @user.webserver.prefs.commonLog)};
+	if not defined (user.webserver.prefs.commonLog.flIncludeReferers) {
+		user.webserver.prefs.commonLog.flIncludeReferers = false};
+	if not defined (user.webserver.prefs.commonLog.flIncludeUserAgents) {
+		user.webserver.prefs.commonLog.flIncludeUserAgents = false};
+	if not defined (user.webserver.prefs.commonLog.flIncludeVirtualHosts) {
+		user.webserver.prefs.commonLog.flIncludeVirtualHosts = false};
+	if not defined (user.webserver.prefs.commonLog.flUseCommonLogDateFormat) {
+		user.webserver.prefs.commonLog.flUseCommonLogDateFormat = false}};
+bundle { //6.0, initialize stats
+	if not defined (user.webserver.stats) {
+		new (tabletype, @user.webserver.stats)};
+	user.webserver.stats.maxConnections = 0;
+	user.webserver.stats.maxMemAvail = 0;
+	user.webserver.stats.minMemAvail = infinity;
+	user.webserver.stats.hits = 0;
+	user.webserver.stats.upSince = clock.now ()};
+Â«bundle // set up log for commonLog postFilter 
+	Â«if (not defined (user.webserver.prefs.logFile)) or (not file.exists (user.webserver.prefs.logFile))
+		Â«user.webserver.prefs.logFile = frontier.pathstring + "Logs" + file.getPathChar () + "Web Server Log.txt"
+	Â«file.sureFilePath (user.webserver.prefs.logFile)
+	Â«if not file.exists (user.webserver.prefs.logFile)
+		Â«file.new (user.webserver.prefs.logFile)
+		Â«if (sys.os () == osMacOS)
+			Â«file.setType (user.webserver.prefs.logFile, 'TEXT')
+			Â«file.setCreator (user.webserver.prefs.logFile, 'R*ch')
+bundle { //AR 11/5/99: set up domainStats postFilter
+	if not defined (user.webserver.postfilters.domainStats) {
+		script.newScriptObject ("on domainStats (pta)" + cr + tab + "return (webserver.postFilters.domainStats (pta))", @user.webserver.postFilters.domainStats)}};
+
+return (true)

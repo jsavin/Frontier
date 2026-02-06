@@ -1,1 +1,5 @@
-on canEdit (adrobject) {	if typeOf (adrobject^) == scripttype {		if script.getLanguage (adrobject) == "AppleScript" {			return true}};	return false}
+on canEdit (adrobject) {
+	if typeOf (adrobject^) == scripttype {
+		if script.getLanguage (adrobject) == "AppleScript" {
+			return true}};
+	return false}

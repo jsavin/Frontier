@@ -1,1 +1,2 @@
-on move (path, folder) {	kernel (file.move)}
+on move (path, folder) {
+	kernel (file.move)}

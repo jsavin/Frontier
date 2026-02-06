@@ -1,1 +1,41 @@
-on buildFromOutline (adroutline) { «4.2	«the outline contains a list of addresses of pages to be built		«for each page, if we can build it, we delete the line from the outline		«so, if you use this to build a list every night for example, make a copy of the outline first		«if there's an error, we don't delete the line; you can try again later		«Fri, Dec 20, 1996 at 7:57:51 AM by DW	local (errorstring, ctbuilds = 0);	on process (adr) { «return true if the page has been built successfully		errorstring = "";		if adr == "" {			return (false)};		try {			if not defined (adr^) {				errorstring = "Can't build the page because \"" + adr + "\" does not exist.";				return (false)};			window.msg (adr);			if typeOf (adr^) == tableType { //build a table				html.ftpTable (adr, false)};			html.buildOnePage (adr);			ctbuilds++;			return (true)}		else {			errorstring = tryError;			return (false)}};	local (oldtarget = target.get ());	target.set (adroutline);	op.firstSummit ();	loop {		if process (op.getLineText ()) {			op.deleteLine ()}		else {			if errorstring != "" {				op.insert (clock.now () + ": " + errorstring, right);				script.makecomment ();				op.go (left, 1)};			if not op.go (down, 1) {				break}}};	try {target.set (oldtarget)};	return (ctbuilds)};«bundle «test code	«buildFromOutline (@user.html.changedPages)
+on buildFromOutline (adroutline) { Â«4.2
+	Â«the outline contains a list of addresses of pages to be built
+		Â«for each page, if we can build it, we delete the line from the outline
+		Â«so, if you use this to build a list every night for example, make a copy of the outline first
+		Â«if there's an error, we don't delete the line; you can try again later
+		Â«Fri, Dec 20, 1996 at 7:57:51 AM by DW
+	local (errorstring, ctbuilds = 0);
+	on process (adr) { Â«return true if the page has been built successfully
+		errorstring = "";
+		if adr == "" {
+			return (false)};
+		try {
+			if not defined (adr^) {
+				errorstring = "Can't build the page because \"" + adr + "\" does not exist.";
+				return (false)};
+			window.msg (adr);
+			if typeOf (adr^) == tableType { //build a table
+				html.ftpTable (adr, false)};
+			html.buildOnePage (adr);
+			ctbuilds++;
+			return (true)}
+		else {
+			errorstring = tryError;
+			return (false)}};
+	local (oldtarget = target.get ());
+	target.set (adroutline);
+	op.firstSummit ();
+	loop {
+		if process (op.getLineText ()) {
+			op.deleteLine ()}
+		else {
+			if errorstring != "" {
+				op.insert (clock.now () + ": " + errorstring, right);
+				script.makecomment ();
+				op.go (left, 1)};
+			if not op.go (down, 1) {
+				break}}};
+	try {target.set (oldtarget)};
+	return (ctbuilds)};
+Â«bundle Â«test code
+	Â«buildFromOutline (@user.html.changedPages)

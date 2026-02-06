@@ -1,1 +1,2 @@
-on runSelection () {	kernel (window.runSelection)}
+on runSelection () {
+	kernel (window.runSelection)}

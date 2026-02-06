@@ -1,1 +1,2 @@
-on view (obj) { «open a remote text file for viewing	return (appleEvent (Fetch.id, 'FTCh', 'VwFi', '----', objspec (obj)))}
+on view (obj) { Â«open a remote text file for viewing
+	return (appleEvent (Fetch.id, 'FTCh', 'VwFi', '----', objspec (obj)))}

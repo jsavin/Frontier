@@ -1,1 +1,41 @@
-on pubsubSubscribe (dest = "", subscribeTo = nil, nsList = {}, id = nil, connection = @system.temp.jabber.connection) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«Sends a pub-sub subscription request. 	on addAtt ( XMLadr, name, value ) {		if not defined ( XMLadr^.["/atts"] ) {			new ( tableType, @XMLadr^.["/atts"] )};		XMLadr^.["/atts"].[name] = value};	if not defined ( connection^ ) { // should I lock a semaphore after this?		scriptError ( "Can't send message over Jabber connection because the connection is not established." )};		if id == nil {		id = tcp.im.builtinDrivers.jabber.code.idTables.create()};	if typeOf ( nsList ) != listType {		nsList = {nsList}};		local ( result, iq, query, subscribe);	new (tableType, @result);		iq = xml.addTable ( @result, "iq" );	bundle { // <iq type='set' to="dest" id="id"' from="user">		addAtt(iq, "type", "set");		addAtt(iq, "to", dest);		addAtt(iq, "id", nameOf ( id^ ) );		addAtt(iq, "from", connection^.username + "@" + connection^.host + "/" + connection^.resource)};	bundle { // <query xmlns='radio:iq:pubsub'>		query = xml.addTable(iq, "query");		addAtt(query, "xmlns", "radio:iq:pubsub")};	bundle { // <subscribe to="whatever">		// avoid empty-table XML bug		if subscribeTo == nil and nsList == {} {			xml.addValue(query, "subscribe", "")}		else {			subscribe = xml.addTable ( query, "subscribe" );			if subscribeTo != nil {				addAtt(subscribe, "to", subscribeTo)};			for namespace in nsList {				xml.addValue(subscribe, "ns", namespace)}}};	tcp.im.builtinDrivers.jabber.code.writeXML (iq, connection: connection )};pubsubSubscribe( "bridge.radio.gnu.mine.nu", "xml-rpc@radio.xmlstoragesystem.com:80/RPC2/xmlStorageSystem.rssPleaseNotify", "http://radio.weblogs.com/0100812/rss.xml")
+on pubsubSubscribe (dest = "", subscribeTo = nil, nsList = {}, id = nil, connection = @system.temp.jabber.connection) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«Sends a pub-sub subscription request. 
+	on addAtt ( XMLadr, name, value ) {
+		if not defined ( XMLadr^.["/atts"] ) {
+			new ( tableType, @XMLadr^.["/atts"] )};
+		XMLadr^.["/atts"].[name] = value};
+	if not defined ( connection^ ) { // should I lock a semaphore after this?
+		scriptError ( "Can't send message over Jabber connection because the connection is not established." )};
+	
+	if id == nil {
+		id = tcp.im.builtinDrivers.jabber.code.idTables.create()};
+	if typeOf ( nsList ) != listType {
+		nsList = {nsList}};
+	
+	local ( result, iq, query, subscribe);
+	new (tableType, @result);
+	
+	iq = xml.addTable ( @result, "iq" );
+	bundle { // <iq type='set' to="dest" id="id"' from="user">
+		addAtt(iq, "type", "set");
+		addAtt(iq, "to", dest);
+		addAtt(iq, "id", nameOf ( id^ ) );
+		addAtt(iq, "from", connection^.username + "@" + connection^.host + "/" + connection^.resource)};
+	bundle { // <query xmlns='radio:iq:pubsub'>
+		query = xml.addTable(iq, "query");
+		addAtt(query, "xmlns", "radio:iq:pubsub")};
+	bundle { // <subscribe to="whatever">
+		// avoid empty-table XML bug
+		if subscribeTo == nil and nsList == {} {
+			xml.addValue(query, "subscribe", "")}
+		else {
+			subscribe = xml.addTable ( query, "subscribe" );
+			if subscribeTo != nil {
+				addAtt(subscribe, "to", subscribeTo)};
+			for namespace in nsList {
+				xml.addValue(subscribe, "ns", namespace)}}};
+	tcp.im.builtinDrivers.jabber.code.writeXML (iq, connection: connection )};
+pubsubSubscribe( "bridge.radio.gnu.mine.nu", "xml-rpc@radio.xmlstoragesystem.com:80/RPC2/xmlStorageSystem.rssPleaseNotify", "http://radio.weblogs.com/0100812/rss.xml")

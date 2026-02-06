@@ -1,1 +1,19 @@
-on innerCaseName (name) {	«Thursday, November 11, 1999 at 2:55:38 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on innerCaseName (name)				«local (len, i, ch)				«name = string.lower (name)				«name = string.popTrailing (name, ' ')				«name = string.popLeading (name, ' ')				«len = sizeOf (name)				«for i = len downto 1					«ch = name [i]					«if ch == ' '						«name = string.delete (name, i, 1)						«ch = string.upper (name [i])						«name = string.delete (name, i, 1)						«name = string.insert (ch, name, i)				«return (name)	kernel (string.innerCaseName)}
+on innerCaseName (name) {
+	Â«Thursday, November 11, 1999 at 2:55:38 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on innerCaseName (name)
+				Â«local (len, i, ch)
+				Â«name = string.lower (name)
+				Â«name = string.popTrailing (name, ' ')
+				Â«name = string.popLeading (name, ' ')
+				Â«len = sizeOf (name)
+				Â«for i = len downto 1
+					Â«ch = name [i]
+					Â«if ch == ' '
+						Â«name = string.delete (name, i, 1)
+						Â«ch = string.upper (name [i])
+						Â«name = string.delete (name, i, 1)
+						Â«name = string.insert (ch, name, i)
+				Â«return (name)
+	kernel (string.innerCaseName)}

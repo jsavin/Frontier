@@ -1,1 +1,16 @@
-on cSourceFile (f) { «an html macro includes a C source file with clean formatting	local (s = string (file.readwholefile (f)));	s = string.popleading (s, cr);	s = string.replaceall (s, "<", "&lt;");	s = string.replaceall (s, tab + cr, cr);	s = string.replaceall (s, "\r\r\r\r", "\r \r \r \r");	s = string.replaceall (s, "\r\r\r", "\r \r \r");	s = string.replaceall (s, "\r\r", "\r \r");		local (header = "<table>\r");	header = header + "<tr><td><b><code>File:</b></td><td><code>" + file.filefrompath (f) + "</td>\r";	header = header + "<tr><td><b><code>Created:</b></td><td><code>" + file.created (f) + "</td>\r";	header = header + "<tr><td><b><code>Modified: </b></td><td><code>" + file.modified (f) + "</td>\r";	header = header + "</table>\r";		return (header + "<pre>\r" + s + "</pre>\r")}
+on cSourceFile (f) { Â«an html macro includes a C source file with clean formatting
+	local (s = string (file.readwholefile (f)));
+	s = string.popleading (s, cr);
+	s = string.replaceall (s, "<", "&lt;");
+	s = string.replaceall (s, tab + cr, cr);
+	s = string.replaceall (s, "\r\r\r\r", "\r \r \r \r");
+	s = string.replaceall (s, "\r\r\r", "\r \r \r");
+	s = string.replaceall (s, "\r\r", "\r \r");
+	
+	local (header = "<table>\r");
+	header = header + "<tr><td><b><code>File:</b></td><td><code>" + file.filefrompath (f) + "</td>\r";
+	header = header + "<tr><td><b><code>Created:</b></td><td><code>" + file.created (f) + "</td>\r";
+	header = header + "<tr><td><b><code>Modified: </b></td><td><code>" + file.modified (f) + "</td>\r";
+	header = header + "</table>\r";
+	
+	return (header + "<pre>\r" + s + "</pre>\r")}

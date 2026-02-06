@@ -1,1 +1,51 @@
-«a script to try out all the features of uBASE as they go inlocal (ubasefolder, fnum);bundle { «start up uBASE, create a new file, add its fields	«ubase.launch ()	ubasefolder = file.folderFromPath (ubase.appinfo.path);	fnum = ubase.newFile (ubasefolder + "Stress Database");	ubase.bringToFront (); «so we can watch the records being added	ubase.addField (fnum, 'bool', booleanType);	ubase.addField (fnum, 'long', longType);	ubase.addField (fnum, 'date', dateType);	ubase.addField (fnum, 'stri', stringType);	ubase.addField (fnum, 'doub', doubleType);	ubase.addField (fnum, 'bina', binaryType)};on addRandomRecord () {	local (holder, result, key);	new (tableType, @holder);	holder.bool = boolean (random (0, 1));	holder.long = random (0, infinity);	holder.date = date (random (0, infinity));	holder.stri = states.nthState (random (1, 50));	holder.doub = double (random (0, infinity));	pack (suites.commercial.installApp, @holder.bina);	key = states.nthState (random (1, 50));	ubase.addRecord (fnum, key, @holder);	ubase.lookupRecord (fnum, key, @result);	bundle { «check the fields, see that everything worked		if holder.bool != result.bool || holder.bool != uBASE.getField (fnum, key, 'bool') {			scriptError (holder.bool + " should equal " + result.bool + " for " + key + ".")};		if holder.long != result.long || holder.long != uBASE.getField (fnum, key, 'long') {			scriptError (holder.long + " should equal " + result.long + " for " + key + ".")};		if holder.date != result.date || holder.date != uBASE.getField (fnum, key, 'date') {			scriptError (holder.date + " should equal " + (result.date) + " for " + key + ".")};		if holder.stri != result.stri || holder.stri != uBASE.getField (fnum, key, 'stri') {			scriptError (holder.stri + " should equal " + result.stri + " for " + key + ".")};		if abs (holder.doub - result.doub) > 0.0000001 { «account for imprecision in floating compares			scriptError (holder.doub + " should equal " + result.doub + " for " + key + ".")};		if abs (holder.doub - uBASE.getField (fnum, key, 'doub')) > 0.0000001 {			scriptError (holder.doub + " should equal " + result.doub + " for " + key + ".")};		if holder.bina != result.bina || holder.bina != uBASE.getField (fnum, key, 'bina') {			scriptError ("the binary object does not compare equal for " + key + ".")}};	msg ("Added " + key + ".");	rollBeachball ()};local (i);for i = 1 to 100 {	addRandomRecord ()};ubase.closeFile (fnum)
+Â«a script to try out all the features of uBASE as they go in
+
+local (ubasefolder, fnum);
+
+bundle { Â«start up uBASE, create a new file, add its fields
+	Â«ubase.launch ()
+	ubasefolder = file.folderFromPath (ubase.appinfo.path);
+	fnum = ubase.newFile (ubasefolder + "Stress Database");
+	ubase.bringToFront (); Â«so we can watch the records being added
+	ubase.addField (fnum, 'bool', booleanType);
+	ubase.addField (fnum, 'long', longType);
+	ubase.addField (fnum, 'date', dateType);
+	ubase.addField (fnum, 'stri', stringType);
+	ubase.addField (fnum, 'doub', doubleType);
+	ubase.addField (fnum, 'bina', binaryType)};
+
+on addRandomRecord () {
+	local (holder, result, key);
+	new (tableType, @holder);
+	holder.bool = boolean (random (0, 1));
+	holder.long = random (0, infinity);
+	holder.date = date (random (0, infinity));
+	holder.stri = states.nthState (random (1, 50));
+	holder.doub = double (random (0, infinity));
+	pack (suites.commercial.installApp, @holder.bina);
+	key = states.nthState (random (1, 50));
+	ubase.addRecord (fnum, key, @holder);
+	ubase.lookupRecord (fnum, key, @result);
+	bundle { Â«check the fields, see that everything worked
+		if holder.bool != result.bool || holder.bool != uBASE.getField (fnum, key, 'bool') {
+			scriptError (holder.bool + " should equal " + result.bool + " for " + key + ".")};
+		if holder.long != result.long || holder.long != uBASE.getField (fnum, key, 'long') {
+			scriptError (holder.long + " should equal " + result.long + " for " + key + ".")};
+		if holder.date != result.date || holder.date != uBASE.getField (fnum, key, 'date') {
+			scriptError (holder.date + " should equal " + (result.date) + " for " + key + ".")};
+		if holder.stri != result.stri || holder.stri != uBASE.getField (fnum, key, 'stri') {
+			scriptError (holder.stri + " should equal " + result.stri + " for " + key + ".")};
+		if abs (holder.doub - result.doub) > 0.0000001 { Â«account for imprecision in floating compares
+			scriptError (holder.doub + " should equal " + result.doub + " for " + key + ".")};
+		if abs (holder.doub - uBASE.getField (fnum, key, 'doub')) > 0.0000001 {
+			scriptError (holder.doub + " should equal " + result.doub + " for " + key + ".")};
+		if holder.bina != result.bina || holder.bina != uBASE.getField (fnum, key, 'bina') {
+			scriptError ("the binary object does not compare equal for " + key + ".")}};
+	msg ("Added " + key + ".");
+	rollBeachball ()};
+
+local (i);
+for i = 1 to 100 {
+	addRandomRecord ()};
+
+ubase.closeFile (fnum)

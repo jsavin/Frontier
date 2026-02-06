@@ -1,1 +1,2 @@
-on confirmDialog (s) {	return (appleEvent (app.id, 'app1', 'cnfm', '----', string (s)))}
+on confirmDialog (s) {
+	return (appleEvent (app.id, 'app1', 'cnfm', '----', string (s)))}

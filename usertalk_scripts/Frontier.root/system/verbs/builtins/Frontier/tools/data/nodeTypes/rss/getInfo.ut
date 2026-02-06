@@ -1,1 +1,11 @@
-local (infotext =  "");on add (s) {	infotext = infotext + s + "\r"};local (atts);if op.attributes.getall (@atts) {	try {add ("Title: " + atts.title)};	try {add ("Description: " + atts.description)};	try {add ("Language: " + atts.language)};	try {add ("URL: " + atts.xmlUrl)};	try {add ("RSS version: " + atts.version)};	dialog.notify (infotext)}
+local (infotext =  "");
+on add (s) {
+	infotext = infotext + s + "\r"};
+local (atts);
+if op.attributes.getall (@atts) {
+	try {add ("Title: " + atts.title)};
+	try {add ("Description: " + atts.description)};
+	try {add ("Language: " + atts.language)};
+	try {add ("URL: " + atts.xmlUrl)};
+	try {add ("RSS version: " + atts.version)};
+	dialog.notify (infotext)}

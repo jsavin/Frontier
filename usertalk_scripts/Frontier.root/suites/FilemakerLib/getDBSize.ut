@@ -1,1 +1,11 @@
-on getDBSize (db, reportError = false) {	on doIt () {		with objectModel, filemaker {			return (dataSize (database [db].record [all]))}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on getDBSize (db, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			return (dataSize (database [db].record [all]))}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

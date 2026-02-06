@@ -1,1 +1,16 @@
-on sureDatabaseOpen (adr) {	«Make sure the database containing this address is open.		«It could be an address in the Frontier.root or in a guest database.	if defined (adr^) {		return (true)}; //the address is already defined		local (x = string.parseAddress (string (adr)));	local (f = x [1]);		if defined ([f]) {		return (true)}; //the guest database or containing table is defined		if file.exists (f) {		return (fileMenu.open (f))}; //the guest database exists, open it		scriptError ("Can't open \"" + f + "\" because the database doesn't exist.")}
+on sureDatabaseOpen (adr) {
+	Â«Make sure the database containing this address is open.
+		Â«It could be an address in the Frontier.root or in a guest database.
+	if defined (adr^) {
+		return (true)}; //the address is already defined
+	
+	local (x = string.parseAddress (string (adr)));
+	local (f = x [1]);
+	
+	if defined ([f]) {
+		return (true)}; //the guest database or containing table is defined
+	
+	if file.exists (f) {
+		return (fileMenu.open (f))}; //the guest database exists, open it
+	
+	scriptError ("Can't open \"" + f + "\" because the database doesn't exist.")}

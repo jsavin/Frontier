@@ -1,1 +1,4 @@
-local (patternRef);patternRef = re.compile ("(?P<date>(?P<year>(\\d\\d)?\\d\\d)-(?P<month>\\d\\d)-(?P<day>\\d\\d))", flAutoCapture:false);re.getPatternInfo (patternRef, @temp.patternInfo);edit (@temp.patternInfo)
+local (patternRef);
+patternRef = re.compile ("(?P<date>(?P<year>(\\d\\d)?\\d\\d)-(?P<month>\\d\\d)-(?P<day>\\d\\d))", flAutoCapture:false);
+re.getPatternInfo (patternRef, @temp.patternInfo);
+edit (@temp.patternInfo)

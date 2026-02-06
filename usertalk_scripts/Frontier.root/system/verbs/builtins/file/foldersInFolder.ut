@@ -1,1 +1,8 @@
-on foldersInFolder (path, level) {	on visit (path) {		if file.isFolder (path) {			count++};		return (true)}; «keep traversing	local (count = 0);	file.visitFolder (path, level, @visit);	return (count)}
+on foldersInFolder (path, level) {
+	on visit (path) {
+		if file.isFolder (path) {
+			count++};
+		return (true)}; Â«keep traversing
+	local (count = 0);
+	file.visitFolder (path, level, @visit);
+	return (count)}

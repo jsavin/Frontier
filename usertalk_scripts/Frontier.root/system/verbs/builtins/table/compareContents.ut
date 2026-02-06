@@ -1,1 +1,114 @@
-on compareContents (adr1, adr2, flDateSensitive=false, flCompareOutlinesAsOpml=false, flCompareMenubarScripts=false) {	«Changes		«7/6/05; 2:47:10 AM by JES			«Fix typo: return, not reutrn.		«12/2/02; 3:50:07 PM by JES			«Add menubar and menubar script comparison.		«11/29/02; 3:11:42 PM by JES			«Created. Compare the contents of two tables. Return true if the contents are identical or false if not.				«If flDateSensitive is true, then the creation and modification dates of non-scalars will be compared, including the create/modification date of the tables themselves.				«If flCompareOutlinesAsOpml is true, then outline objects will be converted to OPML for comparison so that node attributes will be compared as well as heading text.	on visit (adr1, adr2) {		if flDateSensitive {			if timeModified (adr1) != timeModified (adr2) {				return (false)};			if timeCreated (adr1) != timeCreated (adr2) {				return (false)}};		if sizeOf (adr1^) != sizeOf (adr2^) {			return (false)};		local (adr);		for adr in adr1 {			local (name = nameOf (adr^));			local (adrdest = @adr2^.[name]);			if not defined (adrdest^) {				return (false)};			if typeOf (adr^) != typeOf (adrdest^) {				return (false)};			if flDateSensitive {				case typeOf (adr^) { //check create/mod dates on window objects					wptexttype;					outlinetype;					scripttype {						if timeModified (adr1) != timeModified (adr2) {							return (false)};						if timeCreated (adr1) != timeCreated (adr2) {							return (false)}}}};			case typeOf (adr^) {				tableType { //recurse					if not visit (adr, adrdest) {						return (false)}};				addresstype; //convert to strings to aviod errors for undefined addresses				wptexttype {					if string (adr^) != string (adrdest^) {						return (false)}};				scripttype;				outlinetype {					local (o1, o2);					if flCompareOutlinesAsOpml {						o1 = op.outlineToXml (adr);						o2 = op.outlineToXml (adrdest);						o1 = string.delete (o1, 1, string.patternMatch ("<body>", o1) - 1);						o2 = string.delete (o2, 1, string.patternMatch ("<body>", o2) - 1)}					else { //compare as strings						o1 = string (adr^);						o2 = string (adrdest^)};					if o1 != o2 {						return (false)}};				binarytype {					if string (adr^) != string (adrdest^) {						return (false)};					if getBinaryType (adr) != getBinaryType (adrdest) {						return (false)}};				menubartype {					if string (adr^) != string (adrdest^) {						return (false)};					if flCompareMenubarScripts {						local (m1 = adr^, m2 = adrdest^);						local (oldtarget = target.set (@m1));						bundle { //expand the menus							op.firstSummit ();							op.fullExpand ();							target.set (@m2);							op.firstSummit ();							op.fullExpand ()};						on visit () {							loop {								target.set (@m1);								if op.countSubs (1) { //sub-menu									op.go (right, 1);									target.set (@m2);									op.go (right, 1);									if not visit () {										return (false)};									op.go (left, 1)}								else { //menu command									local (s1, s2, k1, k2);									menu.getScript (@s1);									k1 = menu.getCommandKey ();									target.set (@m2);									menu.getScript (@s2);									k2 = menu.getCommandKey ();									if string (s1) != string (s2) {										return (false)};									if k1 != k2 {										return (false)}};								if not op.go (down, 1) {									return (true)};								target.set (@m1);								op.go (down, 1)}};						if not visit () {							try {target.set (oldtarget)};							return (false)};						try {target.set (oldtarget)}}}}			else { //all other scalars and lists				if adr^ != adrdest^ {					return (false)}}};		return (true)};	return (visit (adr1, adr2))};«bundle //test code	«table.compareContents (@scratchpad, @scratchpad)		«true	«table.compareContents (@scratchpad, @workspace)		«false	«table.compareContents (@user.bookmarksMenu, @user.bookmarksMenu, flCompareMenubarScripts:true)		«true
+on compareContents (adr1, adr2, flDateSensitive=false, flCompareOutlinesAsOpml=false, flCompareMenubarScripts=false) {
+	Â«Changes
+		Â«7/6/05; 2:47:10 AM by JES
+			Â«Fix typo: return, not reutrn.
+		Â«12/2/02; 3:50:07 PM by JES
+			Â«Add menubar and menubar script comparison.
+		Â«11/29/02; 3:11:42 PM by JES
+			Â«Created. Compare the contents of two tables. Return true if the contents are identical or false if not.
+				Â«If flDateSensitive is true, then the creation and modification dates of non-scalars will be compared, including the create/modification date of the tables themselves.
+				Â«If flCompareOutlinesAsOpml is true, then outline objects will be converted to OPML for comparison so that node attributes will be compared as well as heading text.
+	on visit (adr1, adr2) {
+		if flDateSensitive {
+			if timeModified (adr1) != timeModified (adr2) {
+				return (false)};
+			if timeCreated (adr1) != timeCreated (adr2) {
+				return (false)}};
+		if sizeOf (adr1^) != sizeOf (adr2^) {
+			return (false)};
+		local (adr);
+		for adr in adr1 {
+			local (name = nameOf (adr^));
+			local (adrdest = @adr2^.[name]);
+			if not defined (adrdest^) {
+				return (false)};
+			if typeOf (adr^) != typeOf (adrdest^) {
+				return (false)};
+			if flDateSensitive {
+				case typeOf (adr^) { //check create/mod dates on window objects
+					wptexttype;
+					outlinetype;
+					scripttype {
+						if timeModified (adr1) != timeModified (adr2) {
+							return (false)};
+						if timeCreated (adr1) != timeCreated (adr2) {
+							return (false)}}}};
+			case typeOf (adr^) {
+				tableType { //recurse
+					if not visit (adr, adrdest) {
+						return (false)}};
+				addresstype; //convert to strings to aviod errors for undefined addresses
+				wptexttype {
+					if string (adr^) != string (adrdest^) {
+						return (false)}};
+				scripttype;
+				outlinetype {
+					local (o1, o2);
+					if flCompareOutlinesAsOpml {
+						o1 = op.outlineToXml (adr);
+						o2 = op.outlineToXml (adrdest);
+						o1 = string.delete (o1, 1, string.patternMatch ("<body>", o1) - 1);
+						o2 = string.delete (o2, 1, string.patternMatch ("<body>", o2) - 1)}
+					else { //compare as strings
+						o1 = string (adr^);
+						o2 = string (adrdest^)};
+					if o1 != o2 {
+						return (false)}};
+				binarytype {
+					if string (adr^) != string (adrdest^) {
+						return (false)};
+					if getBinaryType (adr) != getBinaryType (adrdest) {
+						return (false)}};
+				menubartype {
+					if string (adr^) != string (adrdest^) {
+						return (false)};
+					if flCompareMenubarScripts {
+						local (m1 = adr^, m2 = adrdest^);
+						local (oldtarget = target.set (@m1));
+						bundle { //expand the menus
+							op.firstSummit ();
+							op.fullExpand ();
+							target.set (@m2);
+							op.firstSummit ();
+							op.fullExpand ()};
+						on visit () {
+							loop {
+								target.set (@m1);
+								if op.countSubs (1) { //sub-menu
+									op.go (right, 1);
+									target.set (@m2);
+									op.go (right, 1);
+									if not visit () {
+										return (false)};
+									op.go (left, 1)}
+								else { //menu command
+									local (s1, s2, k1, k2);
+									menu.getScript (@s1);
+									k1 = menu.getCommandKey ();
+									target.set (@m2);
+									menu.getScript (@s2);
+									k2 = menu.getCommandKey ();
+									if string (s1) != string (s2) {
+										return (false)};
+									if k1 != k2 {
+										return (false)}};
+								if not op.go (down, 1) {
+									return (true)};
+								target.set (@m1);
+								op.go (down, 1)}};
+						if not visit () {
+							try {target.set (oldtarget)};
+							return (false)};
+						try {target.set (oldtarget)}}}}
+			else { //all other scalars and lists
+				if adr^ != adrdest^ {
+					return (false)}}};
+		return (true)};
+	return (visit (adr1, adr2))};
+Â«bundle //test code
+	Â«table.compareContents (@scratchpad, @scratchpad)
+		Â«true
+	Â«table.compareContents (@scratchpad, @workspace)
+		Â«false
+	Â«table.compareContents (@user.bookmarksMenu, @user.bookmarksMenu, flCompareMenubarScripts:true)
+		Â«true

@@ -1,1 +1,14 @@
-«Script: system.verbs.builtins.inetd.isDaemonRunning; Version 1; Date: Thu, 14 May 1998 03:31:57 GMT; ID: RABon isDaemonRunning (adrDaemonTable) {	local (port = adrDaemonTable^.port);	local (listenerTableAdr = @user.inetd.listens.[port]);	local (status, bytesPending);	if defined (listenerTableAdr^) {		status = tcp.statusStream (listenerTableAdr^.ref, @bytesPending);		if status == "INACTIVE" {			delete (listenerTableAdr);			return (false)};		return (true)};	return (false)};«bundle //test code	«isDaemonRunning (@user.inetd.config.http)
+Â«Script: system.verbs.builtins.inetd.isDaemonRunning; Version 1; Date: Thu, 14 May 1998 03:31:57 GMT; ID: RAB
+on isDaemonRunning (adrDaemonTable) {
+	local (port = adrDaemonTable^.port);
+	local (listenerTableAdr = @user.inetd.listens.[port]);
+	local (status, bytesPending);
+	if defined (listenerTableAdr^) {
+		status = tcp.statusStream (listenerTableAdr^.ref, @bytesPending);
+		if status == "INACTIVE" {
+			delete (listenerTableAdr);
+			return (false)};
+		return (true)};
+	return (false)};
+Â«bundle //test code
+	Â«isDaemonRunning (@user.inetd.config.http)

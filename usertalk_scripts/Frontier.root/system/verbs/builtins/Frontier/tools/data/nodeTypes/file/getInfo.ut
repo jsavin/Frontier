@@ -1,1 +1,8 @@
-local (infotext =  "");on add (s) {	infotext = infotext + s + "\r"};local (atts);if op.attributes.getall (@atts) {	try {add ("Url: " + atts.url)};	try {add ("Updated: " + date (atts.whenLastUploaded))};	dialog.notify (infotext)}
+local (infotext =  "");
+on add (s) {
+	infotext = infotext + s + "\r"};
+local (atts);
+if op.attributes.getall (@atts) {
+	try {add ("Url: " + atts.url)};
+	try {add ("Updated: " + date (atts.whenLastUploaded))};
+	dialog.notify (infotext)}

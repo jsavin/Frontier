@@ -1,1 +1,16 @@
-case string.upper (method) {	"POST" { //using simple POST: Look for SOAPAction header		if defined (requestHeaders.SOAPAction) {			return (true)}};	"M-POST" { //using HTTP Extension Framework: Look for name-space qualified SOAPAction header		if defined (requestHeaders.Man) {			local (namespaceID = "\"" + soap.constants.nsEnvelopeURI + "\"");			if typeOf (requestHeaders.Man) == listType {				local (headerElement);				for headerElement in requestHeaders.Man {					if headerElement beginsWith namespaceID {						return (true)}}}			else {				if requestHeaders.Man beginsWith namespaceID {					return (true)}}}}};return (false)
+case string.upper (method) {
+	"POST" { //using simple POST: Look for SOAPAction header
+		if defined (requestHeaders.SOAPAction) {
+			return (true)}};
+	"M-POST" { //using HTTP Extension Framework: Look for name-space qualified SOAPAction header
+		if defined (requestHeaders.Man) {
+			local (namespaceID = "\"" + soap.constants.nsEnvelopeURI + "\"");
+			if typeOf (requestHeaders.Man) == listType {
+				local (headerElement);
+				for headerElement in requestHeaders.Man {
+					if headerElement beginsWith namespaceID {
+						return (true)}}}
+			else {
+				if requestHeaders.Man beginsWith namespaceID {
+					return (true)}}}}};
+return (false)

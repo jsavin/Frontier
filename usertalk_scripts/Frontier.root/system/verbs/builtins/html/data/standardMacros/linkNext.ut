@@ -1,1 +1,17 @@
-on linkNext (linetext) { «4.2 -- Mon, Dec 16, 1996 at 7:19:51 AM by DW	«generate a link to the "next" page from this page using the nextPrev outline	local (adrPageTable = html.getPageTableAddress ());	local (adroutline = adrPageTable^.nextPrevs);	local (oldtarget);	local (adrnext);	oldtarget = target.set (adroutline);	op.fullExpand ();	op.firstSummit ();	if op.findNext (adrPageTable^.adrObject, true) {		if not op.go (flatdown, 1) {			op.firstSummit ()};		adrnext = op.getLineText ()}	else {		return (linetext)};	target.set (oldtarget);	return (html.getLink (linetext, html.getPath (adrPageTable^.adrObject, adrnext, adrPageTable)))}
+on linkNext (linetext) { Â«4.2 -- Mon, Dec 16, 1996 at 7:19:51 AM by DW
+	Â«generate a link to the "next" page from this page using the nextPrev outline
+	local (adrPageTable = html.getPageTableAddress ());
+	local (adroutline = adrPageTable^.nextPrevs);
+	local (oldtarget);
+	local (adrnext);
+	oldtarget = target.set (adroutline);
+	op.fullExpand ();
+	op.firstSummit ();
+	if op.findNext (adrPageTable^.adrObject, true) {
+		if not op.go (flatdown, 1) {
+			op.firstSummit ()};
+		adrnext = op.getLineText ()}
+	else {
+		return (linetext)};
+	target.set (oldtarget);
+	return (html.getLink (linetext, html.getPath (adrPageTable^.adrObject, adrnext, adrPageTable)))}

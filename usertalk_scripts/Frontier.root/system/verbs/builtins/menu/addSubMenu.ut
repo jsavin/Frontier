@@ -1,1 +1,2 @@
-on addSubMenu (adrMenubar, inMenu, adrSubMenu) {	kernel (menu.addSubMenu)}
+on addSubMenu (adrMenubar, inMenu, adrSubMenu) {
+	kernel (menu.addSubMenu)}

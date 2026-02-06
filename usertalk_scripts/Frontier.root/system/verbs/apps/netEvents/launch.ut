@@ -1,1 +1,3 @@
-on launch () { «Set up netEvents data in Frontier and launch the applet.	netEvents.init ();	return (app.startWithDocument ("NetEvents", ""))}
+on launch () { Â«Set up netEvents data in Frontier and launch the applet.
+	netEvents.init ();
+	return (app.startWithDocument ("NetEvents", ""))}

@@ -1,1 +1,5 @@
-on endprogress (n) { «Nortifies the application that the progress indicator associated with TransactionID is no longer needed.	case sys.os () {		"MacCn";		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'PREN', '----', long (n)))}}}
+on endprogress (n) { Â«Nortifies the application that the progress indicator associated with TransactionID is no longer needed.
+	case sys.os () {
+		"MacCn";
+		"MacOS" {
+			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'PREN', '----', long (n)))}}}

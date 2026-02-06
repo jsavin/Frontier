@@ -1,1 +1,2 @@
-on unlockObjectsTable () {	return (semaphore.unlock ("user.custody.objects"))}
+on unlockObjectsTable () {
+	return (semaphore.unlock ("user.custody.objects"))}

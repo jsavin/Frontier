@@ -1,1 +1,45 @@
-on displayGroups (serviceName=nil) {	local (i, groupsList = {});	local (htmlText);	local (rowBgColor = html.getPref ("rowBgColor"));	local (altRowBgColor = html.getPref ("altRowBgColor"));	on add (s) {		htmlText = htmlText + s};	on tr () {		add ("\r\t<tr>")};	on td () {		local (bgcolor = "FFFFFF");		if mod (i, 2) != 0 {			bgcolor = rowBgColor}		else {			if i != 0 {				bgcolor = altRowBgColor}};		return (add ("\r\t\t<td align=left valign=top bgcolor=\"#" + bgcolor + "\">"))};	on closetr () {		add ("\r\t</tr>")};	on closetd () {		add ("\r\t\t</td>")};	if serviceName == nil {		groupsList = people.getGroupsList ();		if groupsList == {} or groupsList == false {			return ("This system has no groups.")}}	else {		on addToList (groupName) {			groupsList = groupsList + groupName};		people.visitServiceGroups (serviceName, @addToList);		if groupsList == {} or groupsList == false {			return ("The \"" + serviceName + "\" service has no registered groups.")}};	add ("<table border=0 cellpadding=8 cellspacing=0>");	for i = 1 to sizeOf (groupsList) {		local (groupName = groupsList [i]);		local (encodedGroupName = string.urlEncode (groupName));		tr ();		td ();		add ("<a href=\"viewGroup.wsf?" + encodedGroupName + "\">" + groupName + "</a>");		closetd ();		td ();		add ("<a href=\"deleteGroup.wsf?" + encodedGroupName + "\">Delete</a>");		closetd ();		closetr ()};	add ("</table>");	return (htmlText)}
+on displayGroups (serviceName=nil) {
+	local (i, groupsList = {});
+	local (htmlText);
+	local (rowBgColor = html.getPref ("rowBgColor"));
+	local (altRowBgColor = html.getPref ("altRowBgColor"));
+	on add (s) {
+		htmlText = htmlText + s};
+	on tr () {
+		add ("\r\t<tr>")};
+	on td () {
+		local (bgcolor = "FFFFFF");
+		if mod (i, 2) != 0 {
+			bgcolor = rowBgColor}
+		else {
+			if i != 0 {
+				bgcolor = altRowBgColor}};
+		return (add ("\r\t\t<td align=left valign=top bgcolor=\"#" + bgcolor + "\">"))};
+	on closetr () {
+		add ("\r\t</tr>")};
+	on closetd () {
+		add ("\r\t\t</td>")};
+	if serviceName == nil {
+		groupsList = people.getGroupsList ();
+		if groupsList == {} or groupsList == false {
+			return ("This system has no groups.")}}
+	else {
+		on addToList (groupName) {
+			groupsList = groupsList + groupName};
+		people.visitServiceGroups (serviceName, @addToList);
+		if groupsList == {} or groupsList == false {
+			return ("The \"" + serviceName + "\" service has no registered groups.")}};
+	add ("<table border=0 cellpadding=8 cellspacing=0>");
+	for i = 1 to sizeOf (groupsList) {
+		local (groupName = groupsList [i]);
+		local (encodedGroupName = string.urlEncode (groupName));
+		tr ();
+		td ();
+		add ("<a href=\"viewGroup.wsf?" + encodedGroupName + "\">" + groupName + "</a>");
+		closetd ();
+		td ();
+		add ("<a href=\"deleteGroup.wsf?" + encodedGroupName + "\">Delete</a>");
+		closetd ();
+		closetr ()};
+	add ("</table>");
+	return (htmlText)}

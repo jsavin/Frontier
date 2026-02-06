@@ -1,1 +1,4 @@
-local (localtable, adrtable = @localtable);xml.compile (string (xml.examples.bugShow.taggedText), adrtable);local (adrcomputer = xml.getAddress (adrtable, "myComputer"));dialog.alert (xml.getValue (adrcomputer, "ram")) //dies on this statement, if localtable weren't local, it would work
+local (localtable, adrtable = @localtable);
+xml.compile (string (xml.examples.bugShow.taggedText), adrtable);
+local (adrcomputer = xml.getAddress (adrtable, "myComputer"));
+dialog.alert (xml.getValue (adrcomputer, "ram")) //dies on this statement, if localtable weren't local, it would work

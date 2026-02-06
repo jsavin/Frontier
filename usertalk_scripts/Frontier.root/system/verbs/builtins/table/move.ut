@@ -1,1 +1,2 @@
-on move (objadr, tbladr) {	kernel (table.move)}
+on move (objadr, tbladr) {
+	kernel (table.move)}

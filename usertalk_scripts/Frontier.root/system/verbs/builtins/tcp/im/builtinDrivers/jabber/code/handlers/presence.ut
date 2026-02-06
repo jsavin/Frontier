@@ -1,1 +1,50 @@
-on presence ( connection, mesAdr) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	on niceCreateTable ( adr ) {		if not defined(adr^) {			new (tableType, adr)}};	local ( from = "", type = 0, p, show = nil,  priority = nil, status = nil);		p = xml.getAddress ( mesAdr, "presence" );	try { from = xml.getAttributeValue ( p, "from" ) };	try { type = xml.getAttributeValue ( p, "type" ) };	if type == 0 { // defaults to "available"		type = "available"};	try { show = xml.getValue (p, "show") };	try { status = xml.getValue (p, "status") };	try { priority = xml.getValue(p, "priority") };		if type == "subscribe" and from != "" { // the "from" wants to subscribe to us		tcp.im.builtinDrivers.jabber.code.messages.presence ( dest: from, type: "subscribed", connection: connection );		return};	if type == "unsubscribe" and from != "" {		tcp.im.builtinDrivers.jabber.code.messages.presence (dest: from, type: "unsubscribed", connection: connection )};		// otherwise, it's a notification, defaulting to "available"; handle the presence tables	local ( jId = tcp.im.builtinDrivers.jabber.code.parseJabberId ( from ), presenceAdr );	niceCreateTable ( @connection^.presence );	presenceAdr = @connection^.presence[jId[1]+"@"+jId[2]];	niceCreateTable ( presenceAdr);	if defined ( presenceAdr^.unknown) {		delete ( @presenceAdr^.unknown )};	if jId[3] != "" {		presenceAdr = @connection^.presence[jId[1]+"@"+jId[2]][jId[3]]}	else {		presenceAdr = @connection^.presence[jId[1]+"@"+jId[2]]};	niceCreateTable ( presenceAdr );	if type == "unavailable" or type == "error" {		presenceAdr^.JabberFrameworkAvailable = false} // need to avoid naming collision with their choice of resource values	else {		presenceAdr^.JabberFrameworkAvailable = true};	presenceAdr^.JabberFrameworkShow = show;	presenceAdr^.JabberFrameworkStatus = status;		// now propogate the presence message to interested parties	local ( handler = tcp.im.builtinDrivers.jabber.code.getHandler(connection, "presence"));	try {		while typeOf ( handler^ ) == addressType {			handler = handler^;			handler^ ( from, type, body, subject, thread, connection )}};	return}
+on presence ( connection, mesAdr) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	on niceCreateTable ( adr ) {
+		if not defined(adr^) {
+			new (tableType, adr)}};
+	local ( from = "", type = 0, p, show = nil,  priority = nil, status = nil);
+	
+	p = xml.getAddress ( mesAdr, "presence" );
+	try { from = xml.getAttributeValue ( p, "from" ) };
+	try { type = xml.getAttributeValue ( p, "type" ) };
+	if type == 0 { // defaults to "available"
+		type = "available"};
+	try { show = xml.getValue (p, "show") };
+	try { status = xml.getValue (p, "status") };
+	try { priority = xml.getValue(p, "priority") };
+	
+	if type == "subscribe" and from != "" { // the "from" wants to subscribe to us
+		tcp.im.builtinDrivers.jabber.code.messages.presence ( dest: from, type: "subscribed", connection: connection );
+		return};
+	if type == "unsubscribe" and from != "" {
+		tcp.im.builtinDrivers.jabber.code.messages.presence (dest: from, type: "unsubscribed", connection: connection )};
+	
+	// otherwise, it's a notification, defaulting to "available"; handle the presence tables
+	local ( jId = tcp.im.builtinDrivers.jabber.code.parseJabberId ( from ), presenceAdr );
+	niceCreateTable ( @connection^.presence );
+	presenceAdr = @connection^.presence[jId[1]+"@"+jId[2]];
+	niceCreateTable ( presenceAdr);
+	if defined ( presenceAdr^.unknown) {
+		delete ( @presenceAdr^.unknown )};
+	if jId[3] != "" {
+		presenceAdr = @connection^.presence[jId[1]+"@"+jId[2]][jId[3]]}
+	else {
+		presenceAdr = @connection^.presence[jId[1]+"@"+jId[2]]};
+	niceCreateTable ( presenceAdr );
+	if type == "unavailable" or type == "error" {
+		presenceAdr^.JabberFrameworkAvailable = false} // need to avoid naming collision with their choice of resource values
+	else {
+		presenceAdr^.JabberFrameworkAvailable = true};
+	presenceAdr^.JabberFrameworkShow = show;
+	presenceAdr^.JabberFrameworkStatus = status;
+	
+	// now propogate the presence message to interested parties
+	local ( handler = tcp.im.builtinDrivers.jabber.code.getHandler(connection, "presence"));
+	try {
+		while typeOf ( handler^ ) == addressType {
+			handler = handler^;
+			handler^ ( from, type, body, subject, thread, connection )}};
+	return}

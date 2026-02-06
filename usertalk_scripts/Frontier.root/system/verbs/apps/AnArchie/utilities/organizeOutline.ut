@@ -1,1 +1,54 @@
-on organizeOutline (outlineAddr) {	local (summitText);		«move the cursor to the first real processable line	target.set(outlineAddr);	op.firstsummit();	summitText = op.getLineText();	op.go(right,1);	op.sort(); « sort it to make sure things are pre-ordered for scanning		local(curLine, nextLine, dir, matchCount, atEnd = false);	loop {		on processLine(testLine, addHeading) {			nextLine = op.getLineText();			if (testLine == nextLine) { « we found a match				matchCount++;				addIt = false;				if (addHeading) {					op.go(up, 2); « move to last non-match line					if (op.getLineText() == summitText) { « first item was match						dir = right};					op.insert(testLine + " +", dir);					op.go(down, 1);					op.reorg(right, 1);					op.go(flatdown,1)};				op.reorg(right,1);				if (op.go(flatdown, 1)) {					return(true)}				else {					atEnd = true;					return(false)}} « no more entries!			else {				return(false)}};		dir = down;		matchCount = 0;		curLine = op.getLineText();		if (op.go(down, 1)) {			addIt = true;			loop {				if (!processLine(curLine, addIt)) {					if (matchCount > 0) {						matchCount++; « adjust for initial find						if (!atEnd) { «Êwe need to be a bit smarter on the last entry							op.go(flatup, matchCount+1)} « adjust for header						else {							op.go(flatup, matchCount)};						op.setLineText(curLine + " ["+string(matchCount)+"]");						op.collapse()}; « makes things cleaner					break}}}		else {			break}};	target.clear()};«organizeOutline(@system.verbs.apps.anarchie.searchResultsTst)
+on organizeOutline (outlineAddr) {
+	local (summitText);
+	
+	Â«move the cursor to the first real processable line
+	target.set(outlineAddr);
+	op.firstsummit();
+	summitText = op.getLineText();
+	op.go(right,1);
+	op.sort(); Â« sort it to make sure things are pre-ordered for scanning
+	
+	local(curLine, nextLine, dir, matchCount, atEnd = false);
+	loop {
+		on processLine(testLine, addHeading) {
+			nextLine = op.getLineText();
+			if (testLine == nextLine) { Â« we found a match
+				matchCount++;
+				addIt = false;
+				if (addHeading) {
+					op.go(up, 2); Â« move to last non-match line
+					if (op.getLineText() == summitText) { Â« first item was match
+						dir = right};
+					op.insert(testLine + " +", dir);
+					op.go(down, 1);
+					op.reorg(right, 1);
+					op.go(flatdown,1)};
+				op.reorg(right,1);
+				if (op.go(flatdown, 1)) {
+					return(true)}
+				else {
+					atEnd = true;
+					return(false)}} Â« no more entries!
+			else {
+				return(false)}};
+		dir = down;
+		matchCount = 0;
+		curLine = op.getLineText();
+		if (op.go(down, 1)) {
+			addIt = true;
+			loop {
+				if (!processLine(curLine, addIt)) {
+					if (matchCount > 0) {
+						matchCount++; Â« adjust for initial find
+						if (!atEnd) { Â«ÃŠwe need to be a bit smarter on the last entry
+							op.go(flatup, matchCount+1)} Â« adjust for header
+						else {
+							op.go(flatup, matchCount)};
+						op.setLineText(curLine + " ["+string(matchCount)+"]");
+						op.collapse()}; Â« makes things cleaner
+					break}}}
+		else {
+			break}};
+	target.clear()};
+
+Â«organizeOutline(@system.verbs.apps.anarchie.searchResultsTst)

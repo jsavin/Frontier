@@ -1,1 +1,16 @@
-«Changes	«8/31/05; 12:08:51 AM by JES		«Show the server name in the delete confirmation dialog.local (adrObject);bundle { //get the currently selected object	adrObject = webEdit.getSelectedObject ();	if adrObject == false {		return (false)}};if not (dialog.twoWay ("Are you sure you want to delete " + nameOf (adrObject^) + " from " + webEdit.getCurrentServer (adrObject) + "?", "No", "Yes")) {	s = webEdit.deleteObject (adrObject);		webEdit.notify (s);	return (true)}
+Â«Changes
+	Â«8/31/05; 12:08:51 AM by JES
+		Â«Show the server name in the delete confirmation dialog.
+
+local (adrObject);
+
+bundle { //get the currently selected object
+	adrObject = webEdit.getSelectedObject ();
+	if adrObject == false {
+		return (false)}};
+
+if not (dialog.twoWay ("Are you sure you want to delete " + nameOf (adrObject^) + " from " + webEdit.getCurrentServer (adrObject) + "?", "No", "Yes")) {
+	s = webEdit.deleteObject (adrObject);
+	
+	webEdit.notify (s);
+	return (true)}

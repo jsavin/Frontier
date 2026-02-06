@@ -1,1 +1,2 @@
-on hideWindow (flag, appID = WebStar.id) { «Toggle hiding status window in the background	return (appleEvent (appID, 'WWW½', 'fwin', '----', boolean (flag)))}
+on hideWindow (flag, appID = WebStar.id) { Â«Toggle hiding status window in the background
+	return (appleEvent (appID, 'WWWÂ½', 'fwin', '----', boolean (flag)))}

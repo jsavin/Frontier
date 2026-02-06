@@ -1,1 +1,6 @@
-on make (new, at = nil, withProperties = nil, aliasTo = nil) { «Make a new element.  aliasTo only used when making an aliasFile	if typeOf (aliasTo) != '????' {		aliasTo = Finder.finderSpec (aliasTo)};	if typeOf (at) != '????' {		at = Finder.finderSpec (at)};	return (appleEvent (Finder.id, 'core', 'crel', 'kocl', string4 (new), 'insh', at, 'prdt', withProperties, 'to  ', aliasTo))}
+on make (new, at = nil, withProperties = nil, aliasTo = nil) { Â«Make a new element.  aliasTo only used when making an aliasFile
+	if typeOf (aliasTo) != '????' {
+		aliasTo = Finder.finderSpec (aliasTo)};
+	if typeOf (at) != '????' {
+		at = Finder.finderSpec (at)};
+	return (appleEvent (Finder.id, 'core', 'crel', 'kocl', string4 (new), 'insh', at, 'prdt', withProperties, 'to  ', aliasTo))}

@@ -1,1 +1,16 @@
-on isValidSerialNumber (s) {	«Changes		«12/4/01; 5:32:08 PM by DW			«Kernelized.		«12/2/01; 10:28:10 AM by DW			«Created. Returns true if it is a valid serial number, false otherwise. Jake has the code that really does this, I hope.	kernel (frontier.isvalidserialnumber)};«bundle //test code	«op.go (right, 1)	«loop		«if not isValidSerialNumber (op.getlinetext ())			«scripterror ("Not a valid serial number.")		«if not op.go (down, 1)			«op.go (left, 1)			«break	«dialog.alert (isValidSerialNumber ("no way"))
+on isValidSerialNumber (s) {
+	Â«Changes
+		Â«12/4/01; 5:32:08 PM by DW
+			Â«Kernelized.
+		Â«12/2/01; 10:28:10 AM by DW
+			Â«Created. Returns true if it is a valid serial number, false otherwise. Jake has the code that really does this, I hope.
+	kernel (frontier.isvalidserialnumber)};
+Â«bundle //test code
+	Â«op.go (right, 1)
+	Â«loop
+		Â«if not isValidSerialNumber (op.getlinetext ())
+			Â«scripterror ("Not a valid serial number.")
+		Â«if not op.go (down, 1)
+			Â«op.go (left, 1)
+			Â«break
+	Â«dialog.alert (isValidSerialNumber ("no way"))

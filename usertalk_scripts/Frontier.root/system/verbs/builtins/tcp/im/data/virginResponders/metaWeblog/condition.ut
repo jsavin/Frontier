@@ -1,1 +1,2 @@
-on condition (screenname, message) {	return (tcp.im.builtinResponders.metaWeblog.condition (screenname, message))}
+on condition (screenname, message) {
+	return (tcp.im.builtinResponders.metaWeblog.condition (screenname, message))}

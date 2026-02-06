@@ -1,1 +1,9 @@
-local (adrmenu = @user.menus.[user.prefs.initials]);if not defined (adrmenu^) {	new (menubartype, adrmenu);	local (oldtarget = target.set (adrmenu));	op.setlinetext (user.prefs.initials);	target.set (oldtarget)};local (oldtarget = target.set (adrmenu));menu.addMenuCommand (adrmenu, string (user.prefs.initials), "Post to Blogger", "blogger.menuCommands.post ()");target.set (oldtarget)
+local (adrmenu = @user.menus.[user.prefs.initials]);
+if not defined (adrmenu^) {
+	new (menubartype, adrmenu);
+	local (oldtarget = target.set (adrmenu));
+	op.setlinetext (user.prefs.initials);
+	target.set (oldtarget)};
+local (oldtarget = target.set (adrmenu));
+menu.addMenuCommand (adrmenu, string (user.prefs.initials), "Post to Blogger", "blogger.menuCommands.post ()");
+target.set (oldtarget)

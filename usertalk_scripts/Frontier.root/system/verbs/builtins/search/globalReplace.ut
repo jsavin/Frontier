@@ -1,1 +1,16 @@
-on globalReplace (searchstring, replacestring) {	local (numreplaced, savedparams = search.params);		search.params.flatsearch = true;	search.params.frontwindowonly = false;	«search.params.wraparound = true		search.params.searchfor = searchstring;	search.params.replacewith = replacestring;		search.reset ();	numreplaced = search.replaceall ();		search.params = savedparams; «restore originals		return (numreplaced)}
+on globalReplace (searchstring, replacestring) {
+	local (numreplaced, savedparams = search.params);
+	
+	search.params.flatsearch = true;
+	search.params.frontwindowonly = false;
+	Â«search.params.wraparound = true
+	
+	search.params.searchfor = searchstring;
+	search.params.replacewith = replacestring;
+	
+	search.reset ();
+	numreplaced = search.replaceall ();
+	
+	search.params = savedparams; Â«restore originals
+	
+	return (numreplaced)}

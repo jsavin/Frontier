@@ -1,1 +1,2 @@
-on include (f) {	return (string (file.readwholefile (f)))}
+on include (f) {
+	return (string (file.readwholefile (f)))}

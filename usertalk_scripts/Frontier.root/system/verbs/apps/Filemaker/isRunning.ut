@@ -1,1 +1,2 @@
-on isRunning () { «Is Filemaker running?	return (sys.appIsRunning (filemaker.id))}
+on isRunning () { Â«Is Filemaker running?
+	return (sys.appIsRunning (filemaker.id))}

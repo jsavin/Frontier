@@ -1,1 +1,2 @@
-on play () {	kernel (quicktime.play)}
+on play () {
+	kernel (quicktime.play)}

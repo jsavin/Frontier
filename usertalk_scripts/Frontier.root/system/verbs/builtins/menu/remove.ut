@@ -1,1 +1,2 @@
-on remove (adr) {	kernel (menu.remove)}
+on remove (adr) {
+	kernel (menu.remove)}

@@ -1,1 +1,10 @@
-on getMessage (ixmessage) {	«Changes		«3/31/01; 7:42:19 PM by DW			«Created.	with mailToTheFuture.data {		local (params = {"username":user.mailToTheFuture.username, "password":user.mailToTheFuture.password, "msgnum":ixmessage});		return (soap.rpc.client (path, "getMessage", @params, server, port))}};bundle { //test code	scratchpad.mttfMessage = getMessage (3);	edit (@scratchpad.mttfMessage)}
+on getMessage (ixmessage) {
+	Â«Changes
+		Â«3/31/01; 7:42:19 PM by DW
+			Â«Created.
+	with mailToTheFuture.data {
+		local (params = {"username":user.mailToTheFuture.username, "password":user.mailToTheFuture.password, "msgnum":ixmessage});
+		return (soap.rpc.client (path, "getMessage", @params, server, port))}};
+bundle { //test code
+	scratchpad.mttfMessage = getMessage (3);
+	edit (@scratchpad.mttfMessage)}

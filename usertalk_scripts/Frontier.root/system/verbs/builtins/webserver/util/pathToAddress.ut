@@ -1,1 +1,20 @@
-on pathToAddress (path, nomad=@root) {	«March 13, 1998 at 5:38:13 PM by WMF		«This script converts a URL-style path to an address		«I noticed that this code was in almost all of my responders		«This code was written by Dave Winer	path = string.popLeading (path, "/");		bundle { //walk the doc tree		local (remainder = path, firstpart);		loop {			if remainder == "" {				break};			firstpart = string.nthfield (remainder, '/', 1);			remainder = string.delete (remainder, 1, sizeof (firstpart) + 1);			nomad = @nomad^.[firstpart]}};		return (nomad)};«bundle // testing	«webserver.util.pathToAddress ("/workspace/notepad")		«@workspace.notepad
+on pathToAddress (path, nomad=@root) {
+	Â«March 13, 1998 at 5:38:13 PM by WMF
+		Â«This script converts a URL-style path to an address
+		Â«I noticed that this code was in almost all of my responders
+		Â«This code was written by Dave Winer
+	path = string.popLeading (path, "/");
+	
+	bundle { //walk the doc tree
+		local (remainder = path, firstpart);
+		loop {
+			if remainder == "" {
+				break};
+			firstpart = string.nthfield (remainder, '/', 1);
+			remainder = string.delete (remainder, 1, sizeof (firstpart) + 1);
+			nomad = @nomad^.[firstpart]}};
+	
+	return (nomad)};
+Â«bundle // testing
+	Â«webserver.util.pathToAddress ("/workspace/notepad")
+		Â«@workspace.notepad

@@ -1,1 +1,27 @@
-on deleteObject (adrObject) {	local (userName, password);	local (server, port, paramList = {});	local (procedureName = "webEdit.delete");	local (debug = false);		local (addressString = string (adrObject));	addressString = webEdit.fixGuestDbAdr (addressString);		bundle { //get username, password, server, and port		local (infoList = webEdit.getUserInfo (adrObject));		if infoList == false {			return (false)};		userName = infoList [1];		password = infoList [2];		server = infoList [3];		port = infoList [4]};		bundle { //build the parameters list		paramList [1] = username;		paramList [2] = password;		paramList [3] = addressstring};		local (s);	s = webEdit.sendCommand (server, port, procedureName, @paramList, debug);		return (s)}
+on deleteObject (adrObject) {
+	local (userName, password);
+	local (server, port, paramList = {});
+	local (procedureName = "webEdit.delete");
+	local (debug = false);
+	
+	local (addressString = string (adrObject));
+	addressString = webEdit.fixGuestDbAdr (addressString);
+	
+	bundle { //get username, password, server, and port
+		local (infoList = webEdit.getUserInfo (adrObject));
+		if infoList == false {
+			return (false)};
+		userName = infoList [1];
+		password = infoList [2];
+		server = infoList [3];
+		port = infoList [4]};
+	
+	bundle { //build the parameters list
+		paramList [1] = username;
+		paramList [2] = password;
+		paramList [3] = addressstring};
+	
+	local (s);
+	s = webEdit.sendCommand (server, port, procedureName, @paramList, debug);
+	
+	return (s)}

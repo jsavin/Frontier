@@ -1,1 +1,13 @@
-local (folder = "Macintosh HD:New Releases:FinderMenu:");file.surefolder (folder);local (ctbytes = 0);if not defined (scratchpad.backupnumber) {	scratchpad.backupnumber = 1};on send (name) {	local (f = folder + name + "." + scratchpad.backupnumber);	msg ("Exporting \"" + file.filefrompath (f) + "\".");	export.sendobject (address (name), f);	ctbytes = ctbytes + file.size (f)};send ("system.verbs.apps.findermenu");msg (string.addcommas (ctbytes) + " bytes saved in " + folder + ".");scratchpad.backupnumber++
+local (folder = "Macintosh HD:New Releases:FinderMenu:");
+file.surefolder (folder);
+local (ctbytes = 0);
+if not defined (scratchpad.backupnumber) {
+	scratchpad.backupnumber = 1};
+on send (name) {
+	local (f = folder + name + "." + scratchpad.backupnumber);
+	msg ("Exporting \"" + file.filefrompath (f) + "\".");
+	export.sendobject (address (name), f);
+	ctbytes = ctbytes + file.size (f)};
+send ("system.verbs.apps.findermenu");
+msg (string.addcommas (ctbytes) + " bytes saved in " + folder + ".");
+scratchpad.backupnumber++

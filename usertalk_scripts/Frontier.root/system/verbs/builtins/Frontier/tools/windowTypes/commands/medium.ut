@@ -1,1 +1,4 @@
-on medium () {	«Run the "medium" Common Styles command.		«09/29/00; 5:58:41 PM by PBS	menus.scripts.styleCommand ("medium")}
+on medium () {
+	Â«Run the "medium" Common Styles command.
+		Â«09/29/00; 5:58:41 PM by PBS
+	menus.scripts.styleCommand ("medium")}

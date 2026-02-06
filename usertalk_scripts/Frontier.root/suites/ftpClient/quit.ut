@@ -1,1 +1,4 @@
-with ftpClient.data {	if sys.appIsRunning (currentid) {		required.quitApplication (currentid)};	currentid = 'NONE'}
+with ftpClient.data {
+	if sys.appIsRunning (currentid) {
+		required.quitApplication (currentid)};
+	currentid = 'NONE'}

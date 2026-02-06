@@ -1,1 +1,2 @@
-on getAttribute (adrtable, name) { //return the address of the attribute with the indicated name	kernel (xml.getAttribute)}
+on getAttribute (adrtable, name) { //return the address of the attribute with the indicated name
+	kernel (xml.getAttribute)}

@@ -1,1 +1,2 @@
-on addTable (adrparent, name) {	kernel (xml.addTable)}
+on addTable (adrparent, name) {
+	kernel (xml.addTable)}

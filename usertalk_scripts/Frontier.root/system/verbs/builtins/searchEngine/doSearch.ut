@@ -1,1 +1,308 @@
-on doSearch (sites, urlThisPage, adrCaller, args = "", adrPrefs=@user.searchEngine.prefs) {	«Run the search. From a .wsf page, call searchEngine.searchMacro instead of this script.		«If you're running from inside an .fcgi, you can call this script directly.		«Parameters:			«The sites parameter is a list of site names.			«urlThisPage is the URL of the calling page.			«adrCaller is the Frontier address of the calling page or CGI script.			«args is the arg string.			«The optional adrPrefs parameter lets you use multiple prefs tables for different searches.				«You can duplicate and modify the table at user.searchEngine.prefs.				«To create a new prefs table, call searchEngine.init with the address of a new prefs table.		«This script returns HTML text.		local (searchString, searchType);	local (filteredSearchString);	local (numHits = 0, ctKeys);	local (htmlText);	local (searchTable, end);	local (argTable, totalHits);	local (origSearchString);	local (adrStrings = @adrPrefs^.strings);	local (adrDefaults = @adrPrefs^.defaults);	local (adrStopWords = @adrPrefs^.stopWords);	local (previewsList = {});	local (indexesList = {});	local (maxHitsPerPage = adrDefaults^.hitsPerPage, hitsThisPage, start = 1);		urlThisPage = string.nthField (urlThisPage, '/', string.countFields (urlThisPage, '/'));		new (tableType, @argTable);	new (tableType, @searchTable);		loop {		if typeOf (adrStopWords) != addressType {			break};		adrStopWords = adrStopWords^};		if typeOf (sites) != listType {		scriptError ("Can't run a search because the sites parameter is not a list.")};		on add (s) {		htmlText = htmlText + s};		on getPreview (adrItem) {		local (prefix = "\r<p>\r" + (start + numHits) + ") ");		local (i);		for i = 1 to sizeOf (previewsList) {			try {				return (prefix + previewsList [i]^.[adrItem])}};		return (prefix + adrItem)};		on find (keywords) {		local (x, flAND = (searchType == "and"));		local (countKeys = string.countFields (keywords, ' '));		local (ctIgnored = 0);		local (resultsTables = {});		local (oldTarget);		local (adrSearchString);				for x = 1 to countKeys { //loop through keywords, finding matches			local (i);			local (searchString = string.nthField (keywords, ' ', x));			searchString = string.popTrailing (searchString, 's');			searchString = string.dropNonAlphas (searchString);						if not (searchEngine.checkStopWords (searchString, adrStopWords)) {				ctIgnored++;				continue};						for i = 1 to sizeOf (indexesList) { //loop through indexes, looking for matches				local (adrIndex = indexesList [i]);				local (firstLetter = string.mid (searchString, 1, 1));				local (adrLetter = @adrIndex^.[firstLetter]);				if defined (adrLetter^) {					local (adrResults = @adrLetter^.[searchString]);					if defined (adrResults^) {						resultsTables = resultsTables + adrResults}}}};				if resultsTables == {} { //was nothing found?			return (adrStrings^.nothingFound)};				searchEngine.mergeResults (resultsTables, @searchTable); //combine the search results into one table				bundle { //sort results by relevancy			oldTarget = target.set (@searchTable);			target.set (@searchTable);			table.sortBy ("Value")};				local (results);		local (min = ((countKeys - ctIgnored) - 1)  * 4000);				local (adrTable = @searchTable);		totalHits = sizeOf (adrTable^);				if flAnd { //don't count OR matches			for i = totalHits downTo 1 {				local (value = adrTable^ [i], name = nameOf (adrTable^ [i]));				if value < min {					totalHits = (totalHits - i);					break}}};				local (top = (sizeOf (adrTable^) + 1) - start);		local (bottom = (top + 1) - maxHitsPerPage);		end = (start + maxHitsPerPage) - 1;				if end > totalHits {			end = totalHits};		if bottom < 1 {			bottom = 1};				for i = top downTo bottom {			local (value = adrTable^ [i], name = nameOf (adrTable^ [i]));			if flAND {				if value < min {					break}};			if numHits == 0 {				add ("<<replacenumhits>>")};			results = results + getPreview (name);			numHits++};		target.set (oldTarget);		add (results);				bundle { //log search			if adrPrefs^.logSearches {				local (adrSearches = @adrPrefs^.searches);				if not defined (adrSearches^) {					new (tableType, adrSearches)};				local (adrPageSearches = @adrSearches^.[adrCaller]);				if not defined (adrPageSearches^) {					new (tableType, adrPageSearches)};				local (adrDaySearches = @adrPageSearches^.[date.shortString (clock.now ())]);				if not defined (adrDaySearches^) {					new (tableType, adrDaySearches)};				adrSearchString = @adrDaySearches^.[string.urlDecode (origSearchString)];				if not defined (adrSearchString^) {					new (tableType, adrSearchString);					adrSearchString^.ct = 0};				if typeOf (adrSearchString^) != tableType {					local (ct = adrSearchString^);					delete (adrSearchString);					new (tableType, adrSearchString);					adrSearchString^.ct = ct};				adrSearchString^.ct++;				adrSearchString^.[searchType] = totalHits}}};		bundle { //get the search args		if args != "" { //is this a search query?			webserver.parseArgs (args, @argTable);						try { //search string				searchString = string.urlDecode (argTable.q);				origSearchString = argTable.q;				origSearchString = string.replaceAll (origSearchString, " ", "+")}			else {				searchString = ""};						try { //search type				searchType = string.urlDecode (argTable.t);				searchType = string.lower (searchType)}			else {				searchType = string.lower (adrDefaults^.searchType)};			if searchType != "or" and searchType != "and" { //it must be "or" or "and"				searchType = "and"};						try { //max hits per page				maxHitsPerPage = string.urlDecode (argTable.m);				maxHitsPerPage = number (maxHitsPerPage)}			else {				maxHitsPerPage = adrDefaults^.hitsPerPage;				if typeOf (maxHitsPerPage) != numberType { //this must be a number					try {						maxHitsPerPage = number (maxHitsPerPage)}					else {						maxHitsPerPage = 10}}}; //fallback position						try { //start				start = string.urlDecode (argTable.s);				start = number (start)}			else {				start = 1}}};		bundle { //add the form		if searchString == "" or adrPrefs^.formOnResultsPage { //do we place the form on this page?			local (adrForm = @adrPrefs^.form);						if defined (adrForm^) { //over-ride the default form with sysop's form				loop {					if typeOf (adrForm^) == addressType { //the form can be an address						adrForm = adrForm^}					else {						break}};				if typeOf (adrForm^) == scriptType {					add (adrForm^ (argTable, sites, urlThisPage, adrCaller, adrPrefs))}				else {					add (string (adrForm^))}}			else { //build the default form				on addOption (value, visibleValue, matchValue) {					add ("<option value=\"" + value + "\"");					if matchValue == value {						add (" selected")};					add (">" + visibleValue + "\r")};								add ("<form method=\"GET\" action=\"" + urlThisPage + "\">\r");				if adrPrefs^.booleanPopup {					add ("<br>&nbsp;<br>Find&nbsp;&nbsp;");					add ("<select name=\"t\">\r");					addOption ("and", "all the words", searchType);					addOption ("or", "any of the words", searchType);					add ("</select>\r");					add ("&nbsp;&nbsp;in<p>\r")}				else {					add ("<br>&nbsp;<br>Find ");					if string.lower (searchType) == "and" {						add ("all the words in:<p>\r");						add ("<input name=\"t\" type=\"hidden\" value=\"and\">")}					else {						add ("any of the words in:<p>\r");						add ("<input name=\"t\" type=\"hidden\" value=\"or\">")}};				add ("<input name=\"q\" size=30");				if searchString != "" {					add (" value=\"" + string.replaceAll (searchString, "\"", "&quot;") + "\"")};				add ("><p>\r");				if adrPrefs^.matchesPopup { //add the matches per page popup?					add ("Matches per page: ");										add ("<select name=\"m\">\r");					addOption (10, "10", maxHitsPerPage);					addOption (25, "25", maxHitsPerPage);					addOption (50, "50", maxHitsPerPage);					addOption (100, "100", maxHitsPerPage);					add ("</select>\r");					add ("<p>\r")}				else {					add ("<input name=\"m\" type=\"hidden\" value=\"" + maxHitsPerPage + "\">")};								add ("<input name=\"s\" type=\"hidden\" value=\"1\">\r"); //starting hit				add ("<input type=\"submit\" value=\"Search\">\r</form>\r<p>\r");				add (string (adrStrings^.searchTips))};						if searchString == "" { //we're not doing a search, just return the form.				return (htmlText)};						add ("<p><hr noshade size=1><p>")}}; //add a separator between the form and the results		bundle { //build list of indexes and previews addresses		local (i);		for i = 1 to sizeOf (sites) {			indexesList [i] = searchEngine.getIndexAddress (sites [i]);						«Get the address of the previews table.				«For the sake of speed, don't call searchEngine.getPreviewsAddress.			local (adr = indexesList [i]);			adr = parentOf (adr^);			adr = @adr^.previews;						previewsList [i] = adr}};		bundle { //add "Searching for" text		local (searchingFor = adrStrings^.searchingFor);		searchingFor = searchEngine.replaceAll (searchingFor, "<<searchString>>", searchString, true);		add (searchingFor + "<p>\r")};		bundle { //filter the search string: remove markup, punctuation, etc.		filteredSearchString = searchEngine.cleanText (searchString);		local(theOS = sys.os());		if theOS == "MacOS" || theOS == "MacCn" {			filteredSearchString = latinToMac.convert (filteredSearchString)}}; //convert Latin to Mac characters		find (filteredSearchString); //do the find		bundle { //report number of matches; add links to more screens		if totalHits < 1 {			add ("<p>" + adrStrings^.nothingFound)}		else {			if totalHits == 1 {				htmlText = searchEngine.replaceAll (htmlText, "<<replacenumhits>>", adrStrings^.oneMatchFound + "<p>\r", true)}			else {				local (replacer = adrStrings^.matchesFound + "<p>\r");				replacer = searchEngine.replaceAll (replacer, "<<start>>", start, true);				replacer = searchEngine.replaceAll (replacer, "<<end>>", end, true);				replacer = searchEngine.replaceAll (replacer, "<<totalHits>>", totalHits, true);				htmlText = searchEngine.replaceAll (htmlText, "<<replaceNumHits>>", replacer, true);								on doMoreLinks () {					local (totalScreens = ((totalHits - 1) / maxHitsPerPage) + 1);					totalScreens = number (totalScreens);					if totalScreens == 1 {						return (false)};					«if mod (totalHits, maxHitsPerPage) == 0						«totalScreens = totalScreens - 1					local (thisScreen = number (start / maxHitsPerPage));					local (i);					add ("<p>\r" + adrStrings^.moreMatches + "<p>\r");					for i = 0 to totalScreens - 1 {						if i == thisScreen {							add (i + 1)}						else {							local (url = urlThisPage + "?");							url = url + "t=" + argTable.t;							url = url + "&q=" + string.urlEncode (origSearchString);							url = url + "&m=" + argTable.m;							url = url + "&s=" + ((i * maxHitsPerPage) + 1);							add (html.getLink (i + 1, url))};						if i != totalScreens - 1 {							add (" - ")}}};				doMoreLinks ()}}};		return (htmlText)}
+on doSearch (sites, urlThisPage, adrCaller, args = "", adrPrefs=@user.searchEngine.prefs) {
+	Â«Run the search. From a .wsf page, call searchEngine.searchMacro instead of this script.
+		Â«If you're running from inside an .fcgi, you can call this script directly.
+		Â«Parameters:
+			Â«The sites parameter is a list of site names.
+			Â«urlThisPage is the URL of the calling page.
+			Â«adrCaller is the Frontier address of the calling page or CGI script.
+			Â«args is the arg string.
+			Â«The optional adrPrefs parameter lets you use multiple prefs tables for different searches.
+				Â«You can duplicate and modify the table at user.searchEngine.prefs.
+				Â«To create a new prefs table, call searchEngine.init with the address of a new prefs table.
+		Â«This script returns HTML text.
+	
+	local (searchString, searchType);
+	local (filteredSearchString);
+	local (numHits = 0, ctKeys);
+	local (htmlText);
+	local (searchTable, end);
+	local (argTable, totalHits);
+	local (origSearchString);
+	local (adrStrings = @adrPrefs^.strings);
+	local (adrDefaults = @adrPrefs^.defaults);
+	local (adrStopWords = @adrPrefs^.stopWords);
+	local (previewsList = {});
+	local (indexesList = {});
+	local (maxHitsPerPage = adrDefaults^.hitsPerPage, hitsThisPage, start = 1);
+	
+	urlThisPage = string.nthField (urlThisPage, '/', string.countFields (urlThisPage, '/'));
+	
+	new (tableType, @argTable);
+	new (tableType, @searchTable);
+	
+	loop {
+		if typeOf (adrStopWords) != addressType {
+			break};
+		adrStopWords = adrStopWords^};
+	
+	if typeOf (sites) != listType {
+		scriptError ("Can't run a search because the sites parameter is not a list.")};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	on getPreview (adrItem) {
+		local (prefix = "\r<p>\r" + (start + numHits) + ") ");
+		local (i);
+		for i = 1 to sizeOf (previewsList) {
+			try {
+				return (prefix + previewsList [i]^.[adrItem])}};
+		return (prefix + adrItem)};
+	
+	on find (keywords) {
+		local (x, flAND = (searchType == "and"));
+		local (countKeys = string.countFields (keywords, ' '));
+		local (ctIgnored = 0);
+		local (resultsTables = {});
+		local (oldTarget);
+		local (adrSearchString);
+		
+		for x = 1 to countKeys { //loop through keywords, finding matches
+			local (i);
+			local (searchString = string.nthField (keywords, ' ', x));
+			searchString = string.popTrailing (searchString, 's');
+			searchString = string.dropNonAlphas (searchString);
+			
+			if not (searchEngine.checkStopWords (searchString, adrStopWords)) {
+				ctIgnored++;
+				continue};
+			
+			for i = 1 to sizeOf (indexesList) { //loop through indexes, looking for matches
+				local (adrIndex = indexesList [i]);
+				local (firstLetter = string.mid (searchString, 1, 1));
+				local (adrLetter = @adrIndex^.[firstLetter]);
+				if defined (adrLetter^) {
+					local (adrResults = @adrLetter^.[searchString]);
+					if defined (adrResults^) {
+						resultsTables = resultsTables + adrResults}}}};
+		
+		if resultsTables == {} { //was nothing found?
+			return (adrStrings^.nothingFound)};
+		
+		searchEngine.mergeResults (resultsTables, @searchTable); //combine the search results into one table
+		
+		bundle { //sort results by relevancy
+			oldTarget = target.set (@searchTable);
+			target.set (@searchTable);
+			table.sortBy ("Value")};
+		
+		local (results);
+		local (min = ((countKeys - ctIgnored) - 1)  * 4000);
+		
+		local (adrTable = @searchTable);
+		totalHits = sizeOf (adrTable^);
+		
+		if flAnd { //don't count OR matches
+			for i = totalHits downTo 1 {
+				local (value = adrTable^ [i], name = nameOf (adrTable^ [i]));
+				if value < min {
+					totalHits = (totalHits - i);
+					break}}};
+		
+		local (top = (sizeOf (adrTable^) + 1) - start);
+		local (bottom = (top + 1) - maxHitsPerPage);
+		end = (start + maxHitsPerPage) - 1;
+		
+		if end > totalHits {
+			end = totalHits};
+		if bottom < 1 {
+			bottom = 1};
+		
+		for i = top downTo bottom {
+			local (value = adrTable^ [i], name = nameOf (adrTable^ [i]));
+			if flAND {
+				if value < min {
+					break}};
+			if numHits == 0 {
+				add ("<<replacenumhits>>")};
+			results = results + getPreview (name);
+			numHits++};
+		target.set (oldTarget);
+		add (results);
+		
+		bundle { //log search
+			if adrPrefs^.logSearches {
+				local (adrSearches = @adrPrefs^.searches);
+				if not defined (adrSearches^) {
+					new (tableType, adrSearches)};
+				local (adrPageSearches = @adrSearches^.[adrCaller]);
+				if not defined (adrPageSearches^) {
+					new (tableType, adrPageSearches)};
+				local (adrDaySearches = @adrPageSearches^.[date.shortString (clock.now ())]);
+				if not defined (adrDaySearches^) {
+					new (tableType, adrDaySearches)};
+				adrSearchString = @adrDaySearches^.[string.urlDecode (origSearchString)];
+				if not defined (adrSearchString^) {
+					new (tableType, adrSearchString);
+					adrSearchString^.ct = 0};
+				if typeOf (adrSearchString^) != tableType {
+					local (ct = adrSearchString^);
+					delete (adrSearchString);
+					new (tableType, adrSearchString);
+					adrSearchString^.ct = ct};
+				adrSearchString^.ct++;
+				adrSearchString^.[searchType] = totalHits}}};
+	
+	bundle { //get the search args
+		if args != "" { //is this a search query?
+			webserver.parseArgs (args, @argTable);
+			
+			try { //search string
+				searchString = string.urlDecode (argTable.q);
+				origSearchString = argTable.q;
+				origSearchString = string.replaceAll (origSearchString, " ", "+")}
+			else {
+				searchString = ""};
+			
+			try { //search type
+				searchType = string.urlDecode (argTable.t);
+				searchType = string.lower (searchType)}
+			else {
+				searchType = string.lower (adrDefaults^.searchType)};
+			if searchType != "or" and searchType != "and" { //it must be "or" or "and"
+				searchType = "and"};
+			
+			try { //max hits per page
+				maxHitsPerPage = string.urlDecode (argTable.m);
+				maxHitsPerPage = number (maxHitsPerPage)}
+			else {
+				maxHitsPerPage = adrDefaults^.hitsPerPage;
+				if typeOf (maxHitsPerPage) != numberType { //this must be a number
+					try {
+						maxHitsPerPage = number (maxHitsPerPage)}
+					else {
+						maxHitsPerPage = 10}}}; //fallback position
+			
+			try { //start
+				start = string.urlDecode (argTable.s);
+				start = number (start)}
+			else {
+				start = 1}}};
+	
+	bundle { //add the form
+		if searchString == "" or adrPrefs^.formOnResultsPage { //do we place the form on this page?
+			local (adrForm = @adrPrefs^.form);
+			
+			if defined (adrForm^) { //over-ride the default form with sysop's form
+				loop {
+					if typeOf (adrForm^) == addressType { //the form can be an address
+						adrForm = adrForm^}
+					else {
+						break}};
+				if typeOf (adrForm^) == scriptType {
+					add (adrForm^ (argTable, sites, urlThisPage, adrCaller, adrPrefs))}
+				else {
+					add (string (adrForm^))}}
+			else { //build the default form
+				on addOption (value, visibleValue, matchValue) {
+					add ("<option value=\"" + value + "\"");
+					if matchValue == value {
+						add (" selected")};
+					add (">" + visibleValue + "\r")};
+				
+				add ("<form method=\"GET\" action=\"" + urlThisPage + "\">\r");
+				if adrPrefs^.booleanPopup {
+					add ("<br>&nbsp;<br>Find&nbsp;&nbsp;");
+					add ("<select name=\"t\">\r");
+					addOption ("and", "all the words", searchType);
+					addOption ("or", "any of the words", searchType);
+					add ("</select>\r");
+					add ("&nbsp;&nbsp;in<p>\r")}
+				else {
+					add ("<br>&nbsp;<br>Find ");
+					if string.lower (searchType) == "and" {
+						add ("all the words in:<p>\r");
+						add ("<input name=\"t\" type=\"hidden\" value=\"and\">")}
+					else {
+						add ("any of the words in:<p>\r");
+						add ("<input name=\"t\" type=\"hidden\" value=\"or\">")}};
+				add ("<input name=\"q\" size=30");
+				if searchString != "" {
+					add (" value=\"" + string.replaceAll (searchString, "\"", "&quot;") + "\"")};
+				add ("><p>\r");
+				if adrPrefs^.matchesPopup { //add the matches per page popup?
+					add ("Matches per page: ");
+					
+					add ("<select name=\"m\">\r");
+					addOption (10, "10", maxHitsPerPage);
+					addOption (25, "25", maxHitsPerPage);
+					addOption (50, "50", maxHitsPerPage);
+					addOption (100, "100", maxHitsPerPage);
+					add ("</select>\r");
+					add ("<p>\r")}
+				else {
+					add ("<input name=\"m\" type=\"hidden\" value=\"" + maxHitsPerPage + "\">")};
+				
+				add ("<input name=\"s\" type=\"hidden\" value=\"1\">\r"); //starting hit
+				add ("<input type=\"submit\" value=\"Search\">\r</form>\r<p>\r");
+				add (string (adrStrings^.searchTips))};
+			
+			if searchString == "" { //we're not doing a search, just return the form.
+				return (htmlText)};
+			
+			add ("<p><hr noshade size=1><p>")}}; //add a separator between the form and the results
+	
+	bundle { //build list of indexes and previews addresses
+		local (i);
+		for i = 1 to sizeOf (sites) {
+			indexesList [i] = searchEngine.getIndexAddress (sites [i]);
+			
+			Â«Get the address of the previews table.
+				Â«For the sake of speed, don't call searchEngine.getPreviewsAddress.
+			local (adr = indexesList [i]);
+			adr = parentOf (adr^);
+			adr = @adr^.previews;
+			
+			previewsList [i] = adr}};
+	
+	bundle { //add "Searching for" text
+		local (searchingFor = adrStrings^.searchingFor);
+		searchingFor = searchEngine.replaceAll (searchingFor, "<<searchString>>", searchString, true);
+		add (searchingFor + "<p>\r")};
+	
+	bundle { //filter the search string: remove markup, punctuation, etc.
+		filteredSearchString = searchEngine.cleanText (searchString);
+		local(theOS = sys.os());
+		if theOS == "MacOS" || theOS == "MacCn" {
+			filteredSearchString = latinToMac.convert (filteredSearchString)}}; //convert Latin to Mac characters
+	
+	find (filteredSearchString); //do the find
+	
+	bundle { //report number of matches; add links to more screens
+		if totalHits < 1 {
+			add ("<p>" + adrStrings^.nothingFound)}
+		else {
+			if totalHits == 1 {
+				htmlText = searchEngine.replaceAll (htmlText, "<<replacenumhits>>", adrStrings^.oneMatchFound + "<p>\r", true)}
+			else {
+				local (replacer = adrStrings^.matchesFound + "<p>\r");
+				replacer = searchEngine.replaceAll (replacer, "<<start>>", start, true);
+				replacer = searchEngine.replaceAll (replacer, "<<end>>", end, true);
+				replacer = searchEngine.replaceAll (replacer, "<<totalHits>>", totalHits, true);
+				htmlText = searchEngine.replaceAll (htmlText, "<<replaceNumHits>>", replacer, true);
+				
+				on doMoreLinks () {
+					local (totalScreens = ((totalHits - 1) / maxHitsPerPage) + 1);
+					totalScreens = number (totalScreens);
+					if totalScreens == 1 {
+						return (false)};
+					Â«if mod (totalHits, maxHitsPerPage) == 0
+						Â«totalScreens = totalScreens - 1
+					local (thisScreen = number (start / maxHitsPerPage));
+					local (i);
+					add ("<p>\r" + adrStrings^.moreMatches + "<p>\r");
+					for i = 0 to totalScreens - 1 {
+						if i == thisScreen {
+							add (i + 1)}
+						else {
+							local (url = urlThisPage + "?");
+							url = url + "t=" + argTable.t;
+							url = url + "&q=" + string.urlEncode (origSearchString);
+							url = url + "&m=" + argTable.m;
+							url = url + "&s=" + ((i * maxHitsPerPage) + 1);
+							add (html.getLink (i + 1, url))};
+						if i != totalScreens - 1 {
+							add (" - ")}}};
+				doMoreLinks ()}}};
+	
+	return (htmlText)}

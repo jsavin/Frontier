@@ -1,1 +1,3 @@
-local (i);for i = 1 to sizeof (mail.drivers) {	try {mail.drivers [i].setNotification (false)}}
+local (i);
+for i = 1 to sizeof (mail.drivers) {
+	try {mail.drivers [i].setNotification (false)}}

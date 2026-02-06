@@ -1,1 +1,15 @@
-on getUserInfo (adrSession) {	«Changes		«4/20/06; 5:19:00 AM by JES			«Created. Retrieve personal information for the user associated with the current session.	return (salesforce.callApi (adrSession, nameOf (this^), {}))};«bundle //testing	«local (adrses)	«bundle //set adrses		«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)			«local (sesnum = sizeOf (temp.salesforce.sessions))			«adrses = @temp.salesforce.sessions[sesnum]		«else //log in			«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)	«workspace.retval = this^ (adrses)	«edit (@workspace.retval)
+on getUserInfo (adrSession) {
+	Â«Changes
+		Â«4/20/06; 5:19:00 AM by JES
+			Â«Created. Retrieve personal information for the user associated with the current session.
+	return (salesforce.callApi (adrSession, nameOf (this^), {}))};
+Â«bundle //testing
+	Â«local (adrses)
+	Â«bundle //set adrses
+		Â«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
+			Â«local (sesnum = sizeOf (temp.salesforce.sessions))
+			Â«adrses = @temp.salesforce.sessions[sesnum]
+		Â«else //log in
+			Â«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
+	Â«workspace.retval = this^ (adrses)
+	Â«edit (@workspace.retval)

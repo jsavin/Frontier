@@ -1,1 +1,15 @@
-on setNthRecord (db, recordNum, dataList, theLayout = 0, foundSet = true, reportError = false) {	on doIt () {		with objectModel, filemaker {			if foundSet {				set (window [db].layout [theLayout].record [recordNum], dataList)}			else {				set (database [db].layout [theLayout].record [recordNum], dataList)}};		return (true)};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on setNthRecord (db, recordNum, dataList, theLayout = 0, foundSet = true, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			if foundSet {
+				set (window [db].layout [theLayout].record [recordNum], dataList)}
+			else {
+				set (database [db].layout [theLayout].record [recordNum], dataList)}};
+		return (true)};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

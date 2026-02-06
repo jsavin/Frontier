@@ -1,1 +1,24 @@
-on delete (adrSession, objectId) {	«Changes		«4/20/06; 3:51:19 AM by JES			«Created. Delete the object with the specified objectId.	local (retval = salesforce.callApi (adrSession, nameOf (this^), {"ids":objectId}));	if retval.success {		return (retval.id)}	else { //throw the error		scriptError ("Can't delete the object because the server returned an error: " + retval.errors.message)}};bundle { //testing	local (adrses);	bundle { //set adrses		if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions) {			local (sesnum = sizeOf (temp.salesforce.sessions));			adrses = @temp.salesforce.sessions[sesnum]}		else { //log in			salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)}};	local (idToDelete);	bundle { //create a new record to be deleted		local (t); new (tableType, @t);		t.Name = "Bull Mancuso";		idToDelete = salesforce.create (adrses, "Account", @t)};	table.assign (@workspace.retval, delete (adrses, idToDelete));	edit (@workspace.retval)}
+on delete (adrSession, objectId) {
+	Â«Changes
+		Â«4/20/06; 3:51:19 AM by JES
+			Â«Created. Delete the object with the specified objectId.
+	local (retval = salesforce.callApi (adrSession, nameOf (this^), {"ids":objectId}));
+	if retval.success {
+		return (retval.id)}
+	else { //throw the error
+		scriptError ("Can't delete the object because the server returned an error: " + retval.errors.message)}};
+bundle { //testing
+	local (adrses);
+	bundle { //set adrses
+		if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions) {
+			local (sesnum = sizeOf (temp.salesforce.sessions));
+			adrses = @temp.salesforce.sessions[sesnum]}
+		else { //log in
+			salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)}};
+	local (idToDelete);
+	bundle { //create a new record to be deleted
+		local (t); new (tableType, @t);
+		t.Name = "Bull Mancuso";
+		idToDelete = salesforce.create (adrses, "Account", @t)};
+	table.assign (@workspace.retval, delete (adrses, idToDelete));
+	edit (@workspace.retval)}

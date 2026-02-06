@@ -1,1 +1,5 @@
-on getObjectJustification (name) {	local (atts);	if not card.getObjectAttributes (name, @atts) {		return ("")};	return (atts.just)}
+on getObjectJustification (name) {
+	local (atts);
+	if not card.getObjectAttributes (name, @atts) {
+		return ("")};
+	return (atts.just)}

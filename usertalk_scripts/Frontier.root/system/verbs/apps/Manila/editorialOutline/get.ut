@@ -1,1 +1,11 @@
-on get (adrSitePrefs) {	«Get a struct containing the siteOutline and related info.		«11/14/00; 3:01:13 AM by JES	«Changes:		«9/6/01; 7:29:14 PM by JES			«Use a record instead of a list, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"siteName":siteName, "username":username, "password":string (password)});		local (t = manila.callHandler (host, port, "manila.editorialOutline.get", @params, rpcPath:rpcPath));		t.siteOutline = base64.decode (t.siteOutline);		return (t)}}
+on get (adrSitePrefs) {
+	Â«Get a struct containing the siteOutline and related info.
+		Â«11/14/00; 3:01:13 AM by JES
+	Â«Changes:
+		Â«9/6/01; 7:29:14 PM by JES
+			Â«Use a record instead of a list, for SOAP compatibility.
+	with adrSitePrefs^ {
+		local (params = {"siteName":siteName, "username":username, "password":string (password)});
+		local (t = manila.callHandler (host, port, "manila.editorialOutline.get", @params, rpcPath:rpcPath));
+		t.siteOutline = base64.decode (t.siteOutline);
+		return (t)}}

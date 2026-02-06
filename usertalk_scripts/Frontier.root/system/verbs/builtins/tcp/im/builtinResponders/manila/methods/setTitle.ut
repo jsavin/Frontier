@@ -1,1 +1,19 @@
-on settitle (driverName, screenname, message) {	«Changes		«8/16/02; 5:25:28 PM by JES			«Created.	local (title = string.delete (message, 1, 15)); //pop off "manila settitle "	title = string.trimWhiteSpace (title);		local (siteurl = user.im.responders.manila.prefs.currentSite);	if siteurl == "" {		return ("Can't set the home page title because you are not logged in.")};	local (adrinfo);	if manila.windowTypes.findSiteInfo (siteurl, @adrinfo) {		local (msgnum = system.verbs.apps.manila.homepage.getMsgNum (adrinfo));		local (msg = manila.message.get (adrinfo, msgnum));		manila.message.set (adrinfo, msgnum, title, msg.body, "text/html", 0)}	else {		return ("Can't set the home page title because you are not logged in.")};		return ("Your home page title was set successfully.")}
+on settitle (driverName, screenname, message) {
+	Â«Changes
+		Â«8/16/02; 5:25:28 PM by JES
+			Â«Created.
+	local (title = string.delete (message, 1, 15)); //pop off "manila settitle "
+	title = string.trimWhiteSpace (title);
+	
+	local (siteurl = user.im.responders.manila.prefs.currentSite);
+	if siteurl == "" {
+		return ("Can't set the home page title because you are not logged in.")};
+	local (adrinfo);
+	if manila.windowTypes.findSiteInfo (siteurl, @adrinfo) {
+		local (msgnum = system.verbs.apps.manila.homepage.getMsgNum (adrinfo));
+		local (msg = manila.message.get (adrinfo, msgnum));
+		manila.message.set (adrinfo, msgnum, title, msg.body, "text/html", 0)}
+	else {
+		return ("Can't set the home page title because you are not logged in.")};
+	
+	return ("Your home page title was set successfully.")}

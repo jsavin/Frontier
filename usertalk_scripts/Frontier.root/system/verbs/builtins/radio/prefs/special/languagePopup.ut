@@ -1,1 +1,14 @@
-on languagePopup (prompt, adrlanguage) {	«Changes		«1/21/02; 6:54:01 PM by DW			«Created.	local (pta = html.getpagetableaddress ());	if pta^.method == "POST" {		«scratchpad.args = pta^.radioresponder.postargs; edit (@scratchpad.args)		adrlanguage^ = pta^.radioresponder.postargs.language};	local (languagepopup);	bundle { //set languagePopup		local (defaultLanguage = "\"" + adrlanguage^ + "\"");		languagepopup = string (radio.data.localization.languages.english.strings.editCategory.languages);		languagepopup = string.replace (languagepopup, defaultLanguage, defaultLanguage + " selected")};	return ("<tr><td>" + prompt + ":</td><td>" + languagepopup + "</td></tr>")}
+on languagePopup (prompt, adrlanguage) {
+	Â«Changes
+		Â«1/21/02; 6:54:01 PM by DW
+			Â«Created.
+	local (pta = html.getpagetableaddress ());
+	if pta^.method == "POST" {
+		Â«scratchpad.args = pta^.radioresponder.postargs; edit (@scratchpad.args)
+		adrlanguage^ = pta^.radioresponder.postargs.language};
+	local (languagepopup);
+	bundle { //set languagePopup
+		local (defaultLanguage = "\"" + adrlanguage^ + "\"");
+		languagepopup = string (radio.data.localization.languages.english.strings.editCategory.languages);
+		languagepopup = string.replace (languagepopup, defaultLanguage, defaultLanguage + " selected")};
+	return ("<tr><td>" + prompt + ":</td><td>" + languagepopup + "</td></tr>")}

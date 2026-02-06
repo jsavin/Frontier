@@ -1,1 +1,2 @@
-on newFolder (path) {	kernel (file.newfolder)}
+on newFolder (path) {
+	kernel (file.newfolder)}

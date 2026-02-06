@@ -1,1 +1,3 @@
-on EDsv (scriptdata, adrobject) {	osa.getSource (@scriptdata, adrobject);	return (true)}
+on EDsv (scriptdata, adrobject) {
+	osa.getSource (@scriptdata, adrobject);
+	return (true)}

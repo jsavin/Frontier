@@ -1,1 +1,2 @@
-on duplicate (obj, duplicateTo = nil) { «Duplicate an object	return (core.duplicate (Fetch.id, obj, duplicateTo))}
+on duplicate (obj, duplicateTo = nil) { Â«Duplicate an object
+	return (core.duplicate (Fetch.id, obj, duplicateTo))}

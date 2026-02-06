@@ -1,1 +1,2 @@
-on bringToFront () {	return (sys.bringAppToFront (Finder.id))}
+on bringToFront () {
+	return (sys.bringAppToFront (Finder.id))}

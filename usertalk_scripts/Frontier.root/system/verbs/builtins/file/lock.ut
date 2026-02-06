@@ -1,1 +1,2 @@
-on lock (path) {	kernel (file.lock)}
+on lock (path) {
+	kernel (file.lock)}

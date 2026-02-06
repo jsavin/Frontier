@@ -1,1 +1,12 @@
-on openURL (s, openURLIn=nil) {	local (id = webBrowser.launch ());	if id == false or id == 'NONE' {		return (false)};	case sys.os () {		"MacOS" {			return (appleEvent (id, 'GURL', 'GURL', '----', string (s), 'cwin', openUrlIn))};		"Win95";		"WinNT" {			if string.lower (id) contains "netscape" {				return (webBrowser.callBrowser (id, "WWW_OpenURL", s + ",,-1"))};			return (webBrowser.callBrowser (id, "WWW_OpenURL", s))}}}
+on openURL (s, openURLIn=nil) {
+	local (id = webBrowser.launch ());
+	if id == false or id == 'NONE' {
+		return (false)};
+	case sys.os () {
+		"MacOS" {
+			return (appleEvent (id, 'GURL', 'GURL', '----', string (s), 'cwin', openUrlIn))};
+		"Win95";
+		"WinNT" {
+			if string.lower (id) contains "netscape" {
+				return (webBrowser.callBrowser (id, "WWW_OpenURL", s + ",,-1"))};
+			return (webBrowser.callBrowser (id, "WWW_OpenURL", s))}}}

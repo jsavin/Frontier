@@ -1,1 +1,2 @@
-on insertLineBreaks (selectionOnly = nil) { «Inserts a hard line break character at the end of each soft-wrapped line.	return (appleEvent (BBEdit.id, 'R*ch', 'IHLB', 'Osel', boolean (selectionOnly)))}
+on insertLineBreaks (selectionOnly = nil) { Â«Inserts a hard line break character at the end of each soft-wrapped line.
+	return (appleEvent (BBEdit.id, 'R*ch', 'IHLB', 'Osel', boolean (selectionOnly)))}

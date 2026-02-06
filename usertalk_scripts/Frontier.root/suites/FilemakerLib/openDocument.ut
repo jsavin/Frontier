@@ -1,1 +1,10 @@
-on openDocument (dbPath, reportError = false) {	on doIt () {		filemaker.openDocument (dbPath)};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on openDocument (dbPath, reportError = false) {
+	on doIt () {
+		filemaker.openDocument (dbPath)};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

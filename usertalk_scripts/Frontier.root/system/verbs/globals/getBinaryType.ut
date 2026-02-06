@@ -1,1 +1,2 @@
-on getBinaryType (val) {	kernel (lang.getbinarytype)}
+on getBinaryType (val) {
+	kernel (lang.getbinarytype)}

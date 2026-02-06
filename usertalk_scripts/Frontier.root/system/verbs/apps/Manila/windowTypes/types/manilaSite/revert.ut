@@ -1,1 +1,32 @@
-on revert (adr, adradrwindow=nil) {		local (adrinfo);	if window.attributes.getOne ("adrSiteInfo", @adrinfo, adr) {		local (title, flReadOnly, siteurl);		window.attributes.getOne ("flReadOnly", @flReadOnly, adr);		window.attributes.getOne ("title", @title, adr);		siteUrl = nameOf (adrinfo^);		local (x, y, height, width);		window.getPosition (adr, @x, @y);		window.getSize (adr, @width, @height);		delete (parentOf (adr^));				local (adrType = parentOf (this^));		adrType^.openManilaSite (siteurl, true, adradrwindow);				local (t); new (tableType, @t);		t.type = nameOf (adrtype^); t.adrSiteInfo = adrinfo;		if Frontier.tools.windowTypes.findWindowWithMatchingAtts (@t, @adr) {			edit (adr, title, flReadOnly);			window.setSize (adr, width, height);			window.setPosition (adr, x, y);			return (true)};		return (false)};		if adradrwindow != nil {		adradrwindow^ = adr};		return (false)};bundle { //debugging	revert (window.frontmost ())}
+on revert (adr, adradrwindow=nil) {
+	
+	local (adrinfo);
+	if window.attributes.getOne ("adrSiteInfo", @adrinfo, adr) {
+		local (title, flReadOnly, siteurl);
+		window.attributes.getOne ("flReadOnly", @flReadOnly, adr);
+		window.attributes.getOne ("title", @title, adr);
+		siteUrl = nameOf (adrinfo^);
+		local (x, y, height, width);
+		window.getPosition (adr, @x, @y);
+		window.getSize (adr, @width, @height);
+		delete (parentOf (adr^));
+		
+		local (adrType = parentOf (this^));
+		adrType^.openManilaSite (siteurl, true, adradrwindow);
+		
+		local (t); new (tableType, @t);
+		t.type = nameOf (adrtype^); t.adrSiteInfo = adrinfo;
+		if Frontier.tools.windowTypes.findWindowWithMatchingAtts (@t, @adr) {
+			edit (adr, title, flReadOnly);
+			window.setSize (adr, width, height);
+			window.setPosition (adr, x, y);
+			return (true)};
+		return (false)};
+	
+	if adradrwindow != nil {
+		adradrwindow^ = adr};
+	
+	return (false)};
+
+bundle { //debugging
+	revert (window.frontmost ())}

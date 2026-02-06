@@ -1,1 +1,4 @@
-on getInfo (path) { «open the Get Info window for the indicated file	if not Finder.folderVerb ('sinf', path) {		return (false)};	return (Finder.bringToFront ())}
+on getInfo (path) { Â«open the Get Info window for the indicated file
+	if not Finder.folderVerb ('sinf', path) {
+		return (false)};
+	return (Finder.bringToFront ())}

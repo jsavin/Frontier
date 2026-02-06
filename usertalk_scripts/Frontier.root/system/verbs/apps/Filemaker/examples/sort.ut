@@ -1,1 +1,26 @@
-«Examples of syntax for the "sort()" verb	«be sure the State Capitals database is open before running this		«If you do not alread have this database you can create a simple database		«with two fields, the first being "Name" the second "Capitol"	«Step through this script«syntax:	«on sort (obj, by = nil, inOrder = nil) «Sort the records in a layout«Use the Sort event to reorder the currently found records in a FileMaker Pro file.	«	«The Sort event has three components:	«	«¥ The object (layout, window) to be sorted, which is the layout where the sort results are displayed. 		«This is the only required parameter. 	«¥ The field by which the layout is sorted. If no field is provided, FileMaker Pro will unsort the database.	«¥ The direction of the sort Ğ ascending, descending, or custom. If no direction is provided, 		«FileMaker Pro will sort in ascending order. Sorting a field by custom order uses the 		«value list associated with the field on the specified layout (or the current layout if none is specified).	«with objectModel, Filemaker {	sort(window[1]); «the most basic implementation, unsorts the current layout	sort(layout[1],field[1]); «sorts layout one by field 1, defaults to ascending	sort(layout[1],field[1],descending); «same as last step but descending	sort(layout[1],{field[1],field[2]},custom)} «Sorts by two items in a custom order
+Â«Examples of syntax for the "sort()" verb
+	Â«be sure the State Capitals database is open before running this
+		Â«If you do not alread have this database you can create a simple database
+		Â«with two fields, the first being "Name" the second "Capitol"
+	Â«Step through this script
+Â«syntax:
+	Â«on sort (obj, by = nil, inOrder = nil) Â«Sort the records in a layout
+
+
+Â«Use the Sort event to reorder the currently found records in a FileMaker Pro file.
+	Â«
+	Â«The Sort event has three components:
+	Â«
+	Â«Â¥ The object (layout, window) to be sorted, which is the layout where the sort results are displayed. 
+		Â«This is the only required parameter. 
+	Â«Â¥ The field by which the layout is sorted. If no field is provided, FileMaker Pro will unsort the database.
+	Â«Â¥ The direction of the sort Ã ascending, descending, or custom. If no direction is provided, 
+		Â«FileMaker Pro will sort in ascending order. Sorting a field by custom order uses the 
+		Â«value list associated with the field on the specified layout (or the current layout if none is specified).
+	Â«
+
+with objectModel, Filemaker {
+	sort(window[1]); Â«the most basic implementation, unsorts the current layout
+	sort(layout[1],field[1]); Â«sorts layout one by field 1, defaults to ascending
+	sort(layout[1],field[1],descending); Â«same as last step but descending
+	sort(layout[1],{field[1],field[2]},custom)} Â«Sorts by two items in a custom order

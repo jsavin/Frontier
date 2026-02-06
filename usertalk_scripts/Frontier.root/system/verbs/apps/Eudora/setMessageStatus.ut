@@ -1,1 +1,3 @@
-on setMessageStatus (msgObj, msgStatus) {	with objectModel, Eudora, eventInfo {		return (core.set (id, msgObj.status, msgStatus))}}
+on setMessageStatus (msgObj, msgStatus) {
+	with objectModel, Eudora, eventInfo {
+		return (core.set (id, msgObj.status, msgStatus))}}

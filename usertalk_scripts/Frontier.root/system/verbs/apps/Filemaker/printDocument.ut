@@ -1,1 +1,2 @@
-on printDocument (file) {	return (required.printDocument (Filemaker.id, file))}
+on printDocument (file) {
+	return (required.printDocument (Filemaker.id, file))}

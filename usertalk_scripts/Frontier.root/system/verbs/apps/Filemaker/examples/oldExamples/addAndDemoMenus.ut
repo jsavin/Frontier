@@ -1,1 +1,28 @@
-«on addAndDemoMenus ()  « From Frontier Extras 5/93	«with objectModel, FileMaker		«local (anItem, aMenu)		«putAppleListItem ("MenuInfo", name, @anItem)		«create (menuItem, 0, anItem, 0)		«putAppleListItem ("UnknownItem", name, @anItem)		«create (menuItem, 0, anItem, 0)		«putAppleListItem ("Examples", name, @aMenu)		«create (menu, 0, aMenu, 0)		«putAppleListItem ("UnknownSubItem", name, @anItem)		«create (menuItem, 0, anItem, endOf(menu["Examples"]))		«dialog.alert ("When FileMaker is in front, look in the External item in the Scripts menu.  Select MenuInfo.")		«FileMaker.bringToFront()on addAndDemoMenus () {	with objectModel, FileMaker {		local (anItem, aMenu);		anItem = { name: "Menu Info" };		create (menuItem, withProperties: anItem);		anItem = { name: "Menu Select Example" };		create (menuItem, withProperties: anItem);		aMenu = { name: "Examples" };		create (menu, withProperties: aMenu);		anItem = { name: "Unknown Command" };		create (menuItem, withProperties: anItem, at: endOf(menu["Examples"]));		doMenu (menu["Scripts"].menu["External"].menuItem ["Menu Select Example"]);		dialog.alert ("When FileMaker is in front, look in the External item in the Scripts menu.  Select MenuInfo.");		FileMaker.bringToFront()}};addAndDemoMenus()
+Â«on addAndDemoMenus ()  Â« From Frontier Extras 5/93
+	Â«with objectModel, FileMaker
+		Â«local (anItem, aMenu)
+		Â«putAppleListItem ("MenuInfo", name, @anItem)
+		Â«create (menuItem, 0, anItem, 0)
+		Â«putAppleListItem ("UnknownItem", name, @anItem)
+		Â«create (menuItem, 0, anItem, 0)
+		Â«putAppleListItem ("Examples", name, @aMenu)
+		Â«create (menu, 0, aMenu, 0)
+		Â«putAppleListItem ("UnknownSubItem", name, @anItem)
+		Â«create (menuItem, 0, anItem, endOf(menu["Examples"]))
+		Â«dialog.alert ("When FileMaker is in front, look in the External item in the Scripts menu.  Select MenuInfo.")
+		Â«FileMaker.bringToFront()
+on addAndDemoMenus () {
+	with objectModel, FileMaker {
+		local (anItem, aMenu);
+		anItem = { name: "Menu Info" };
+		create (menuItem, withProperties: anItem);
+		anItem = { name: "Menu Select Example" };
+		create (menuItem, withProperties: anItem);
+		aMenu = { name: "Examples" };
+		create (menu, withProperties: aMenu);
+		anItem = { name: "Unknown Command" };
+		create (menuItem, withProperties: anItem, at: endOf(menu["Examples"]));
+		doMenu (menu["Scripts"].menu["External"].menuItem ["Menu Select Example"]);
+		dialog.alert ("When FileMaker is in front, look in the External item in the Scripts menu.  Select MenuInfo.");
+		FileMaker.bringToFront()}};
+addAndDemoMenus()

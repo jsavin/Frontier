@@ -1,1 +1,2 @@
-on folderFromPath (path) {	kernel (file.folderfrompath)}
+on folderFromPath (path) {
+	kernel (file.folderfrompath)}

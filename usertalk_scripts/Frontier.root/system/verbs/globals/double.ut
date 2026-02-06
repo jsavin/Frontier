@@ -1,1 +1,2 @@
-on double (val) {	kernel (lang.double)}
+on double (val) {
+	kernel (lang.double)}

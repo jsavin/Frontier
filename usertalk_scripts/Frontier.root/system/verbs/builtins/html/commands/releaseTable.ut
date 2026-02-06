@@ -1,1 +1,90 @@
-local (adrPageTable = @websites.["#data"]);local (adrSite = parentOf (table.getCursorAddress ()^));local (flDisplayEachRendering = false);if not defined (adrSite^) {	dialog.alert ("Can't publish table because the frontmost window is not contained by a table.");	return (false)};bundle { //prevent #-prefixed tables from being published	«Sun, May 3, 1998 at 6:03:44 PM by PBS	on checkTable (adr) {		«Check if this object is or is enclosed by a table whose name begins with #		local (nomad = adr);		loop {			if nomad == nil or nomad == @root {				break};			if nameOf (nomad^) beginsWith "#" {				return (false)};			nomad = parentOf (nomad^)};		return (true)};	if not checkTable (adrSite) {		dialog.alert ("Can't publish \"" + nameOf (adrSite^) + "\" because it does not contain web pages.");		return (false)}};if not dialog.confirm ("Publish all web objects in \"" + nameof (adrSite^) + "\"?") {	return (false)};«on publishTable (templateName = nil) //PBS 12/6/98: moved code to html.ftpTable	«local (f = "", url = "", siteTableAdr)	«local (flDisplay = true)	«html.callFileWriterStartup (adrSite, adrPageTable)	«on doTable (adrTable)		«local (i, ct = sizeOf (adrTable^), adr)		«for i = 1 to ct			«adr = @adrTable^ [i]			«window.msg (adr)			«if not html.traversalSkip (adr)				«if typeOf (adr^) == tableType					«doTable (adr)				«else					«local (s)					«s = html.buildObject (adr, adrPageTable, templateName)					«If this is the default page for this site, save the path.					«local (default = html.getPref ("defaultFileName", adrPageTable))					«if string.lower (nameOf (adr^)) == string.lower (default)						«if f != "" and url != ""							«if adr == @adrPageTable^.adrSiteRootTable^.[default]								«f = adrPageTable^.f								«url = adrPageTable^.url						«else							«f = adrPageTable^.f							«url = adrPageTable^.url					«html.ftpText (s, adrPageTable)	«doTable (adrSite)	«html.callFileWriterShutdown (adrSite, adrPageTable)	«window.msg ("")	«	«Should this page be displayed in the browser?	«if templateName != nil		«if not flDisplayEachRendering			«flDisplay = false	«	«Display in browser.	«if flDisplay		«siteTableAdr = html.getSiteTable (adrPageTable)		«if f == "" or url == "" //didn't find default, get last page rendered			«f = adrPageTable^.f			«url = adrPageTable^.url		«if string.lower (html.getPref ("fileWriter")) == "file"			«webBrowser.openDocument (f)		«else			«webBrowser.openUrl (url)		«if user.webBrowser.bringToFrontOnPreview			«webBrowser.bringToFront ()bundle { //are there additional templates that should be used?	local (templateList = html.getExtraTemplates (adrSite));	if templateList {		«Get the displayEachRendering pref.		flDisplayEachRendering = html.getPagePref ("displayEachRendering", adrSite, adrPageTable);				«Loop through list of templates.		local (i);		for i = 1 to sizeOf (templateList) {			html.ftpTable (adrSite, false, flDisplayEachRendering, adrPageTable, templateList [i])}}};«Publish with the default template last.html.ftpTable (adrSite, false, true, adrPageTable);return (true)
+local (adrPageTable = @websites.["#data"]);
+local (adrSite = parentOf (table.getCursorAddress ()^));
+local (flDisplayEachRendering = false);
+
+if not defined (adrSite^) {
+	dialog.alert ("Can't publish table because the frontmost window is not contained by a table.");
+	return (false)};
+
+bundle { //prevent #-prefixed tables from being published
+	Â«Sun, May 3, 1998 at 6:03:44 PM by PBS
+	on checkTable (adr) {
+		Â«Check if this object is or is enclosed by a table whose name begins with #
+		local (nomad = adr);
+		loop {
+			if nomad == nil or nomad == @root {
+				break};
+			if nameOf (nomad^) beginsWith "#" {
+				return (false)};
+			nomad = parentOf (nomad^)};
+		return (true)};
+	if not checkTable (adrSite) {
+		dialog.alert ("Can't publish \"" + nameOf (adrSite^) + "\" because it does not contain web pages.");
+		return (false)}};
+
+if not dialog.confirm ("Publish all web objects in \"" + nameof (adrSite^) + "\"?") {
+	return (false)};
+
+Â«on publishTable (templateName = nil) //PBS 12/6/98: moved code to html.ftpTable
+	Â«local (f = "", url = "", siteTableAdr)
+	Â«local (flDisplay = true)
+	Â«html.callFileWriterStartup (adrSite, adrPageTable)
+	Â«on doTable (adrTable)
+		Â«local (i, ct = sizeOf (adrTable^), adr)
+		Â«for i = 1 to ct
+			Â«adr = @adrTable^ [i]
+			Â«window.msg (adr)
+			Â«if not html.traversalSkip (adr)
+				Â«if typeOf (adr^) == tableType
+					Â«doTable (adr)
+				Â«else
+					Â«local (s)
+					Â«s = html.buildObject (adr, adrPageTable, templateName)
+					Â«If this is the default page for this site, save the path.
+					Â«local (default = html.getPref ("defaultFileName", adrPageTable))
+					Â«if string.lower (nameOf (adr^)) == string.lower (default)
+						Â«if f != "" and url != ""
+							Â«if adr == @adrPageTable^.adrSiteRootTable^.[default]
+								Â«f = adrPageTable^.f
+								Â«url = adrPageTable^.url
+						Â«else
+							Â«f = adrPageTable^.f
+							Â«url = adrPageTable^.url
+					Â«html.ftpText (s, adrPageTable)
+	Â«doTable (adrSite)
+	Â«html.callFileWriterShutdown (adrSite, adrPageTable)
+	Â«window.msg ("")
+	Â«
+	Â«Should this page be displayed in the browser?
+	Â«if templateName != nil
+		Â«if not flDisplayEachRendering
+			Â«flDisplay = false
+	Â«
+	Â«Display in browser.
+	Â«if flDisplay
+		Â«siteTableAdr = html.getSiteTable (adrPageTable)
+		Â«if f == "" or url == "" //didn't find default, get last page rendered
+			Â«f = adrPageTable^.f
+			Â«url = adrPageTable^.url
+		Â«if string.lower (html.getPref ("fileWriter")) == "file"
+			Â«webBrowser.openDocument (f)
+		Â«else
+			Â«webBrowser.openUrl (url)
+		Â«if user.webBrowser.bringToFrontOnPreview
+			Â«webBrowser.bringToFront ()
+
+bundle { //are there additional templates that should be used?
+	local (templateList = html.getExtraTemplates (adrSite));
+	if templateList {
+		Â«Get the displayEachRendering pref.
+		flDisplayEachRendering = html.getPagePref ("displayEachRendering", adrSite, adrPageTable);
+		
+		Â«Loop through list of templates.
+		local (i);
+		for i = 1 to sizeOf (templateList) {
+			html.ftpTable (adrSite, false, flDisplayEachRendering, adrPageTable, templateList [i])}}};
+
+Â«Publish with the default template last.
+html.ftpTable (adrSite, false, true, adrPageTable);
+
+return (true)

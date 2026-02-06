@@ -1,1 +1,2 @@
-on deleteSubs () {	kernel (op.deletesubs)}
+on deleteSubs () {
+	kernel (op.deletesubs)}

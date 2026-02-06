@@ -1,1 +1,5 @@
-on GOTO_URL(adrSelf, data) {	local {		windowName = string.nthField(data, ':',1);		strUrl = string.mid(data, sizeOf(windowName)+2, infinity)};	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "GOTO_URL", {adrSelf, windowName, strUrl}, adrSelf^._adrSubCallbacks ))}
+on GOTO_URL(adrSelf, data) {
+	local {
+		windowName = string.nthField(data, ':',1);
+		strUrl = string.mid(data, sizeOf(windowName)+2, infinity)};
+	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "GOTO_URL", {adrSelf, windowName, strUrl}, adrSelf^._adrSubCallbacks ))}

@@ -1,1 +1,11 @@
-on checkIn (adrSitePrefs) {	«Release custody of the custom prefs.		«02/11/00; 11:37:35 AM by PBS	«Changes		«9/6/01; 7:55:45 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		local (methodName = "manila.customPrefs.checkIn");	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":siteName});		return (manila.callHandler (host, port, methodName, @params, rpcPath:rpcPath))}}
+on checkIn (adrSitePrefs) {
+	Â«Release custody of the custom prefs.
+		Â«02/11/00; 11:37:35 AM by PBS
+	Â«Changes
+		Â«9/6/01; 7:55:45 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	local (methodName = "manila.customPrefs.checkIn");
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":siteName});
+		return (manila.callHandler (host, port, methodName, @params, rpcPath:rpcPath))}}

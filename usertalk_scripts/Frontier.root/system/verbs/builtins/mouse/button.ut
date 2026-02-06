@@ -1,1 +1,2 @@
-on button () {	kernel (mouse.button)}
+on button () {
+	kernel (mouse.button)}

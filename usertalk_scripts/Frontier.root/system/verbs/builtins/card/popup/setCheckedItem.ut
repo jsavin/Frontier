@@ -1,1 +1,5 @@
-on setCheckedItem (objectname, itemnumber) {	local (atts);	new (tabletype, @atts);	atts.seln = short (itemnumber);	return (card.setObjectAttributes (objectname, @atts))}
+on setCheckedItem (objectname, itemnumber) {
+	local (atts);
+	new (tabletype, @atts);
+	atts.seln = short (itemnumber);
+	return (card.setObjectAttributes (objectname, @atts))}

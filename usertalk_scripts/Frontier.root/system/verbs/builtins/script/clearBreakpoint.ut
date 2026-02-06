@@ -1,1 +1,2 @@
-on clearBreakpoint () {	kernel (script.clearbreakpoint)}
+on clearBreakpoint () {
+	kernel (script.clearbreakpoint)}

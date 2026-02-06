@@ -1,1 +1,15 @@
-on volumeReport (windowtitle, units, callback) { «creates a volume report window	«creates a new BarChart window with the indicated title		«loops over all the mounted disk volumes, and calls back with a name		«the callback routine returns a value to be displayed in the bar		«units is what's displayed next to each value	if not app.start ("BarChart") {		return (false)};	ctbars = file.countVolumes ();	if app.selectWindow (windowtitle) { «already has a window with this title		BarChart.setBarCount (ctbars)}	else {		BarChart.newWindow (ctbars, windowtitle, units)};	ct = 1; «start by setting the first bar's value and label	fileloop (fname in "") { «go thru all the mounted disks		BarChart.setBar (ct++, fname, callback^ (fname))}}
+on volumeReport (windowtitle, units, callback) { Â«creates a volume report window
+	Â«creates a new BarChart window with the indicated title
+		Â«loops over all the mounted disk volumes, and calls back with a name
+		Â«the callback routine returns a value to be displayed in the bar
+		Â«units is what's displayed next to each value
+	if not app.start ("BarChart") {
+		return (false)};
+	ctbars = file.countVolumes ();
+	if app.selectWindow (windowtitle) { Â«already has a window with this title
+		BarChart.setBarCount (ctbars)}
+	else {
+		BarChart.newWindow (ctbars, windowtitle, units)};
+	ct = 1; Â«start by setting the first bar's value and label
+	fileloop (fname in "") { Â«go thru all the mounted disks
+		BarChart.setBar (ct++, fname, callback^ (fname))}}

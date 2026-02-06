@@ -1,1 +1,2 @@
-on sendTo (obj, ftpCommand) { «send custom FTP protocol commands	return (appleEvent (Fetch.id, 'FTCh', 'SndC', '----', objspec (obj), 'Cmds', string (ftpCommand)))}
+on sendTo (obj, ftpCommand) { Â«send custom FTP protocol commands
+	return (appleEvent (Fetch.id, 'FTCh', 'SndC', '----', objspec (obj), 'Cmds', string (ftpCommand)))}

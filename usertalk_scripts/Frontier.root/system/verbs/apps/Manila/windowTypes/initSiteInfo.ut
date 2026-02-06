@@ -1,1 +1,36 @@
-on initSiteInfo (adrinfo, sitename="", displayname="", username=user.prefs.mailAddress, password="", host="", port=80, rpcPath="/RPC2", protocol="xml-rpc", soapAction="/manila", flAcceptsOpml=true, flSavePassword=true) {	if not defined (adrinfo^) {		new (tableType, adrinfo)};	bundle { //set up site info		if not defined (adrinfo^.siteName) {			adrinfo^.siteName = sitename};		if not defined (adrinfo^.displaySiteName) {			adrinfo^.displaySiteName = displayname}};	bundle { //set up user info		if not defined (adrinfo^.flSavePassword) {			adrinfo^.flSavePassword = flSavePassword};		if username != "" and password != "" {			manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}		else {			if not defined (adrinfo^.username) {				adrinfo^.username = username};			if not defined (adrinfo^.password) {				adrinfo^.password = password}}};	bundle { //set up RPC info		if not defined (adrinfo^.host) {			adrinfo^.host = host};		if not defined (adrinfo^.port) {			adrinfo^.port = port};		if not defined (adrinfo^.rpcPath) {			adrinfo^.rpcPath = rpcPath};		if adrinfo^.host == "" {			manila.windowTypes.getRpcServerAndPort (nameOf (adrinfo^), @adrinfo^.host, @adrinfo^.port)};		if not defined (adrinfo^.protocol) {			adrinfo^.protocol = protocol};		if adrinfo^.protocol == "soap" {			if not defined (adrinfo^.soapAction) {				adrinfo^.soapAction = soapAction}};		if not defined (adrinfo^.flAcceptsOpml) {			adrinfo^.flAcceptsOpml = flAcceptsOpml}};		return (true)}
+on initSiteInfo (adrinfo, sitename="", displayname="", username=user.prefs.mailAddress, password="", host="", port=80, rpcPath="/RPC2", protocol="xml-rpc", soapAction="/manila", flAcceptsOpml=true, flSavePassword=true) {
+	if not defined (adrinfo^) {
+		new (tableType, adrinfo)};
+	bundle { //set up site info
+		if not defined (adrinfo^.siteName) {
+			adrinfo^.siteName = sitename};
+		if not defined (adrinfo^.displaySiteName) {
+			adrinfo^.displaySiteName = displayname}};
+	bundle { //set up user info
+		if not defined (adrinfo^.flSavePassword) {
+			adrinfo^.flSavePassword = flSavePassword};
+		if username != "" and password != "" {
+			manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}
+		else {
+			if not defined (adrinfo^.username) {
+				adrinfo^.username = username};
+			if not defined (adrinfo^.password) {
+				adrinfo^.password = password}}};
+	bundle { //set up RPC info
+		if not defined (adrinfo^.host) {
+			adrinfo^.host = host};
+		if not defined (adrinfo^.port) {
+			adrinfo^.port = port};
+		if not defined (adrinfo^.rpcPath) {
+			adrinfo^.rpcPath = rpcPath};
+		if adrinfo^.host == "" {
+			manila.windowTypes.getRpcServerAndPort (nameOf (adrinfo^), @adrinfo^.host, @adrinfo^.port)};
+		if not defined (adrinfo^.protocol) {
+			adrinfo^.protocol = protocol};
+		if adrinfo^.protocol == "soap" {
+			if not defined (adrinfo^.soapAction) {
+				adrinfo^.soapAction = soapAction}};
+		if not defined (adrinfo^.flAcceptsOpml) {
+			adrinfo^.flAcceptsOpml = flAcceptsOpml}};
+	
+	return (true)}

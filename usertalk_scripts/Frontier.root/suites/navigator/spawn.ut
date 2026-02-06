@@ -1,1 +1,30 @@
-on spawn (adrOutline, title = nil, flmodal = false) {	«on startCardx ()		«the navigator card has cardOutline in its embedded table. we set it.			«each instance knows which outline its supposed to display		«		«cardOutline = adrOutline «copy into embedded table		«		«local (s = "")		«target.set (cardOutline)		«op.firstSummit ()		«loop			«local (linetext = op.getLineText ())			«s = s + string.nthField (linetext, ';', 1) + ";"			«if not op.go (down, 1)				«break		«card.popup.setMenu ("popup", s)		«navigator.recalc (string.nthfield (s, ';', 1))		«if title == nil			«window.setTitle ("Navigate", "Navigator")		«else			«window.setTitle ("Navigate", title)	if (title != nil) and window.isOpen (title) {		window.bringToFront (title)}	else {		navigator.data.adrOutline = adrOutline;		navigator.data.windowTitle = title;		if flmodal {			card.run (@navigator.data.modalCard)}		else {			card.run (@navigator.data.card)}}}
+on spawn (adrOutline, title = nil, flmodal = false) {
+	Â«on startCardx ()
+		Â«the navigator card has cardOutline in its embedded table. we set it.
+			Â«each instance knows which outline its supposed to display
+		Â«
+		Â«cardOutline = adrOutline Â«copy into embedded table
+		Â«
+		Â«local (s = "")
+		Â«target.set (cardOutline)
+		Â«op.firstSummit ()
+		Â«loop
+			Â«local (linetext = op.getLineText ())
+			Â«s = s + string.nthField (linetext, ';', 1) + ";"
+			Â«if not op.go (down, 1)
+				Â«break
+		Â«card.popup.setMenu ("popup", s)
+		Â«navigator.recalc (string.nthfield (s, ';', 1))
+		Â«if title == nil
+			Â«window.setTitle ("Navigate", "Navigator")
+		Â«else
+			Â«window.setTitle ("Navigate", title)
+	if (title != nil) and window.isOpen (title) {
+		window.bringToFront (title)}
+	else {
+		navigator.data.adrOutline = adrOutline;
+		navigator.data.windowTitle = title;
+		if flmodal {
+			card.run (@navigator.data.modalCard)}
+		else {
+			card.run (@navigator.data.card)}}}

@@ -1,1 +1,2 @@
-on get (obj, as = nil) { «Get the data for an object	return (core.get (Fetch.id, obj, as))}
+on get (obj, as = nil) { Â«Get the data for an object
+	return (core.get (Fetch.id, obj, as))}

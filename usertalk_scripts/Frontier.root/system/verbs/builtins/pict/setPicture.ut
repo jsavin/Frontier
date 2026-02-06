@@ -1,1 +1,2 @@
-on setPicture (pictval) {	kernel (pict.setpicture)}
+on setPicture (pictval) {
+	kernel (pict.setpicture)}

@@ -1,1 +1,14 @@
-on fullCollapse () {	local (displayon = op.getDisplay ()); //remember current display status	local (returnedvalue = false); //default, we didn't collapse anything	op.setDisplay (false); //turn display off		op.firstSummit (); //move bar cursor to first summit	loop { //collapse each summit, one at a time		if op.collapse () { //something was actually collapsed			returnedvalue = true};		if not op.go (down, 1) { //just collapsed the last summit, move cursor, restore display, return			op.firstSummit ();			op.setDisplay (displayon);			«window.update (target.get ())			return (returnedvalue)}}}
+on fullCollapse () {
+	local (displayon = op.getDisplay ()); //remember current display status
+	local (returnedvalue = false); //default, we didn't collapse anything
+	op.setDisplay (false); //turn display off
+	
+	op.firstSummit (); //move bar cursor to first summit
+	loop { //collapse each summit, one at a time
+		if op.collapse () { //something was actually collapsed
+			returnedvalue = true};
+		if not op.go (down, 1) { //just collapsed the last summit, move cursor, restore display, return
+			op.firstSummit ();
+			op.setDisplay (displayon);
+			Â«window.update (target.get ())
+			return (returnedvalue)}}}

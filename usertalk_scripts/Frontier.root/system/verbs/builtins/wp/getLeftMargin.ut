@@ -1,1 +1,2 @@
-on getLeftMargin () {	kernel (wp.getleftmargin)}
+on getLeftMargin () {
+	kernel (wp.getleftmargin)}

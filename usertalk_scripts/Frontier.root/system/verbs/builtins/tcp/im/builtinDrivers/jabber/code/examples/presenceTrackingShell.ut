@@ -1,1 +1,12 @@
-on presenceTrackingShell (from, type, status, priority, show) {	«Changes:		«5/13/02; 11:10:53 PM by JB			«Changelog created.	«This is a shell for a sample application for Jabber: A presence watcher. If you change the jabberId checked in the if statement, you can use Jabber to watch for presence status updates. The idea is to put an image in your web directory, for upstreaming.  file.copy also works pretty well where I use file.writeWholeFile. (Of course this won't run directly...	if string.lower(from) == JabberIdToCheckPresenceOf {		local ( f = user.radio.prefs.wwwfolder + "images" + file.getpathchar () + "presence.jpg" );		if type == "available" {			file.writeWholeFile ( f, somePictureForOnline)};		if type == "unavailable" {			file.writeWholeFile ( f, somePictureForOffline )}}};tcp.im.builtinDrivers.jabber.code.registerHandler ( "presence", this )
+on presenceTrackingShell (from, type, status, priority, show) {
+	Â«Changes:
+		Â«5/13/02; 11:10:53 PM by JB
+			Â«Changelog created.
+	Â«This is a shell for a sample application for Jabber: A presence watcher. If you change the jabberId checked in the if statement, you can use Jabber to watch for presence status updates. The idea is to put an image in your web directory, for upstreaming.  file.copy also works pretty well where I use file.writeWholeFile. (Of course this won't run directly...
+	if string.lower(from) == JabberIdToCheckPresenceOf {
+		local ( f = user.radio.prefs.wwwfolder + "images" + file.getpathchar () + "presence.jpg" );
+		if type == "available" {
+			file.writeWholeFile ( f, somePictureForOnline)};
+		if type == "unavailable" {
+			file.writeWholeFile ( f, somePictureForOffline )}}};
+tcp.im.builtinDrivers.jabber.code.registerHandler ( "presence", this )

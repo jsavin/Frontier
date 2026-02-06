@@ -1,1 +1,13 @@
-on parseHeader (s) {	«4/4/01; 4:48:44 AM by JES		«Created.	local (ct = string.countFields (s, ";"));	local (t); new (tableType, @t);	for i = 1 to ct {		local (onePart = string.trimWhiteSpace (string.nthField (s, ";", i)));		local (name = string.trimWhiteSpace (string.nthField (onePart, "=", 1)));		local (value = string.trimWhiteSpace (string.nthField (onePart, "=", 2)));		if (value beginsWith "\"") and (value endsWith "\"") {			value = string.mid (value, 2, sizeOf (value) - 2)};		t.[name] = value};	return (t)}
+on parseHeader (s) {
+	Â«4/4/01; 4:48:44 AM by JES
+		Â«Created.
+	local (ct = string.countFields (s, ";"));
+	local (t); new (tableType, @t);
+	for i = 1 to ct {
+		local (onePart = string.trimWhiteSpace (string.nthField (s, ";", i)));
+		local (name = string.trimWhiteSpace (string.nthField (onePart, "=", 1)));
+		local (value = string.trimWhiteSpace (string.nthField (onePart, "=", 2)));
+		if (value beginsWith "\"") and (value endsWith "\"") {
+			value = string.mid (value, 2, sizeOf (value) - 2)};
+		t.[name] = value};
+	return (t)}

@@ -1,1 +1,11 @@
-on addToLog (adrImportedObject, url = "", notes = "") {	export.init ();	if user.export.importLogEnabled {		local (item = {adrImportedObject});		if url != "" {			item = item + {url}};		if notes != "" {			item = item + {notes}};		try { //work around rootUpdates logging error			log.add (item, "exportAddToLog")}};	return (true)}
+on addToLog (adrImportedObject, url = "", notes = "") {
+	export.init ();
+	if user.export.importLogEnabled {
+		local (item = {adrImportedObject});
+		if url != "" {
+			item = item + {url}};
+		if notes != "" {
+			item = item + {notes}};
+		try { //work around rootUpdates logging error
+			log.add (item, "exportAddToLog")}};
+	return (true)}

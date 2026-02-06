@@ -1,1 +1,9 @@
-«Script: system.verbs.builtins.webserver.responders.server.methods.OPTIONS; Version 1; Date: Wed, 13 May 1998 06:25:07 GMT; ID: RABon options (adrParamTable) {	«This script will only be activated if the client sends an "OPTIONS *" request, which is supposed		«to return general information about the server		«we just send back a 204 (no content) with a few basic headers (date, server)		adrParamTable^.code = 204;		return (true)}
+Â«Script: system.verbs.builtins.webserver.responders.server.methods.OPTIONS; Version 1; Date: Wed, 13 May 1998 06:25:07 GMT; ID: RAB
+on options (adrParamTable) {
+	Â«This script will only be activated if the client sends an "OPTIONS *" request, which is supposed
+		Â«to return general information about the server
+		Â«we just send back a 204 (no content) with a few basic headers (date, server)
+	
+	adrParamTable^.code = 204;
+	
+	return (true)}

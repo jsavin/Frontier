@@ -1,1 +1,2 @@
-on showabout () { «open about menu	return (appleEvent (AnArchie.id, 'core', 'abou'))}
+on showabout () { Â«open about menu
+	return (appleEvent (AnArchie.id, 'core', 'abou'))}

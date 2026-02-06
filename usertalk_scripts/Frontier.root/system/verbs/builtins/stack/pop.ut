@@ -1,1 +1,9 @@
-on pop (adrStack) {	local (top = adrStack^.top);	if top <= 0 {		scriptError ("Can't pop the stack because there are no items in the stack.")};	local (adrElement = @adrstack^.vals.["item" + top]);	val = adrElement^;	delete (adrElement);	adrStack^.top = top - 1;	return (val)}
+on pop (adrStack) {
+	local (top = adrStack^.top);
+	if top <= 0 {
+		scriptError ("Can't pop the stack because there are no items in the stack.")};
+	local (adrElement = @adrstack^.vals.["item" + top]);
+	val = adrElement^;
+	delete (adrElement);
+	adrStack^.top = top - 1;
+	return (val)}

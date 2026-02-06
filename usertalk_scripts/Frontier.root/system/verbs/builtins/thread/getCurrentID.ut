@@ -1,1 +1,2 @@
-on getCurrentID () {	kernel (thread.getcurrentid)}
+on getCurrentID () {
+	kernel (thread.getcurrentid)}

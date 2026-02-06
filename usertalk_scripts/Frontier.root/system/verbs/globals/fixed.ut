@@ -1,1 +1,2 @@
-on fixed (val) {	kernel (lang.fixed)}
+on fixed (val) {
+	kernel (lang.fixed)}

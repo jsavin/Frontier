@@ -1,1 +1,20 @@
-«This script lets us know if anything material changed in the compile/decompile process	«3/27/98; 6:09:38 AM by DWwindow.about ();local (adrdata = @parentof (this^)^.data);local (adrexamples = @xml.examples);local (adritem, nameitem, adrstructure, adrtext, i, ct=1);for i = 1 to sizeof (adrexamples^) {	adritem = @adrexamples^ [i];	nameitem = nameof (adritem^);	if nameitem beginswith "!" {		continue};	if defined (adritem^.taggedtext) {		adrstructure = @scratchpad.structure;		adrtext = @adrdata^.[nameitem + "Text"];		msg (ct++ + ": " + adrtext);		xml.compile (string (adritem^.taggedtext), adrstructure);		s = xml.decompile (adrstructure);		if s != string (adrtext^) {			scriptError ("There might be a problem in " + adritem + ".")}}}
+Â«This script lets us know if anything material changed in the compile/decompile process
+	Â«3/27/98; 6:09:38 AM by DW
+
+window.about ();
+local (adrdata = @parentof (this^)^.data);
+local (adrexamples = @xml.examples);
+local (adritem, nameitem, adrstructure, adrtext, i, ct=1);
+for i = 1 to sizeof (adrexamples^) {
+	adritem = @adrexamples^ [i];
+	nameitem = nameof (adritem^);
+	if nameitem beginswith "!" {
+		continue};
+	if defined (adritem^.taggedtext) {
+		adrstructure = @scratchpad.structure;
+		adrtext = @adrdata^.[nameitem + "Text"];
+		msg (ct++ + ": " + adrtext);
+		xml.compile (string (adritem^.taggedtext), adrstructure);
+		s = xml.decompile (adrstructure);
+		if s != string (adrtext^) {
+			scriptError ("There might be a problem in " + adritem + ".")}}}

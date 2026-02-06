@@ -1,1 +1,9 @@
-on deleteMessage (ixmessage) {	«Changes		«3/31/01; 7:15:19 PM by DW			«Created. ixmessage indexes into the message queue, and deletes that message.	with mailToTheFuture.data {		local (params = {"username":user.mailToTheFuture.username, "password":user.mailToTheFuture.password, "msgnum":ixmessage});		return (soap.rpc.client (path, "deleteMessage", @params, server, port))}};bundle { //test code	deleteMessage (5)} //delete the 5th message in my queue
+on deleteMessage (ixmessage) {
+	Â«Changes
+		Â«3/31/01; 7:15:19 PM by DW
+			Â«Created. ixmessage indexes into the message queue, and deletes that message.
+	with mailToTheFuture.data {
+		local (params = {"username":user.mailToTheFuture.username, "password":user.mailToTheFuture.password, "msgnum":ixmessage});
+		return (soap.rpc.client (path, "deleteMessage", @params, server, port))}};
+bundle { //test code
+	deleteMessage (5)} //delete the 5th message in my queue

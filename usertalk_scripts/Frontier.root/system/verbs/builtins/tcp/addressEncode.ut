@@ -1,1 +1,2 @@
-on addressEncode (ipAddress) { «Turn a dotted IP address into a 4-byte number	kernel (tcp.addressEncode)}
+on addressEncode (ipAddress) { Â«Turn a dotted IP address into a 4-byte number
+	kernel (tcp.addressEncode)}

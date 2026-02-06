@@ -1,1 +1,10 @@
-if defined (user.webserver.prefs.webserverInit) { //get out quick	if user.webserver.prefs.webserverInit == false {		return (true)}}; //already done!!scratchpad.webserver = user.webserver;scratchpad.inetd = user.inetd;delete (@user.webserver);if defined (user.inetd.config.http) {	delete (@user.inetd.config.http)};webserver.init();return (true)
+if defined (user.webserver.prefs.webserverInit) { //get out quick
+	if user.webserver.prefs.webserverInit == false {
+		return (true)}}; //already done!!
+scratchpad.webserver = user.webserver;
+scratchpad.inetd = user.inetd;
+delete (@user.webserver);
+if defined (user.inetd.config.http) {
+	delete (@user.inetd.config.http)};
+webserver.init();
+return (true)

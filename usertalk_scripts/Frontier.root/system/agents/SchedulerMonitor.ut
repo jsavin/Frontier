@@ -1,1 +1,13 @@
-«Changes:	«10/4/04; 6:50:20 PM by JES		«Call scheduler.monitor in a try block, and if an error occurs, put it in the status message in the about window. Change suggested by DAB.thread.setTimeSlice (1);«try {scheduler.monitor ()}try {	scheduler.monitor ();	msg (string.timestring() + ":" + "OK" )}else {	msg (string.timestring() + ":" + "Error: " + tryError)};local (day, month, year, hour, minute, second);date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);clock.sleepFor (60 - second) //sleep until next minute tick
+Â«Changes:
+	Â«10/4/04; 6:50:20 PM by JES
+		Â«Call scheduler.monitor in a try block, and if an error occurs, put it in the status message in the about window. Change suggested by DAB.
+thread.setTimeSlice (1);
+Â«try {scheduler.monitor ()}
+try {
+	scheduler.monitor ();
+	msg (string.timestring() + ":" + "OK" )}
+else {
+	msg (string.timestring() + ":" + "Error: " + tryError)};
+local (day, month, year, hour, minute, second);
+date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+clock.sleepFor (60 - second) //sleep until next minute tick

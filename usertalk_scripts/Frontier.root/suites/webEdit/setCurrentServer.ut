@@ -1,1 +1,16 @@
-on setCurrentServer (serverName) {	«Set the Current WebEdit server.		«The server may be overridden by any #webEditServer directives.		«Changes:			«Fri, Mar 5, 1999 at 12:08:09 AM by PBS				«Don't display a confirmation dialog.				«Generate a scriptError if the server doesn't exist.	local (adrPrefs = webEdit.getServerPrefs (serverName));	if adrPrefs == false {		webEdit.buildServerSubMenu (); //it's possible this server was in the menu, but was deleted, so rebuild the menu		scriptError ("Can't set \"" + serverName + "\" as server because there are no settings for this server.");		return (false)};	serverName = nameOf (adrPrefs^);	user.webEdit.prefs.currentServer = serverName;	«dialog.notify ("The current server is now " + serverName + ".")	return (true)}
+on setCurrentServer (serverName) {
+	Â«Set the Current WebEdit server.
+		Â«The server may be overridden by any #webEditServer directives.
+		Â«Changes:
+			Â«Fri, Mar 5, 1999 at 12:08:09 AM by PBS
+				Â«Don't display a confirmation dialog.
+				Â«Generate a scriptError if the server doesn't exist.
+	local (adrPrefs = webEdit.getServerPrefs (serverName));
+	if adrPrefs == false {
+		webEdit.buildServerSubMenu (); //it's possible this server was in the menu, but was deleted, so rebuild the menu
+		scriptError ("Can't set \"" + serverName + "\" as server because there are no settings for this server.");
+		return (false)};
+	serverName = nameOf (adrPrefs^);
+	user.webEdit.prefs.currentServer = serverName;
+	Â«dialog.notify ("The current server is now " + serverName + ".")
+	return (true)}

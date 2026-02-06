@@ -1,1 +1,2 @@
-on quit () {	card.details.notsupported ("quit")}
+on quit () {
+	card.details.notsupported ("quit")}

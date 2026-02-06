@@ -1,1 +1,37 @@
-local (siteUrl, manilaType);op.attributes.getOne ("siteUrl", @siteUrl);op.attributes.getOne ("manilaType", @manilaType);«bundle //bring the window to the front if it's already opened	«local (adrsiteinfo)	«if manila.windowTypes.findSiteInfo (siteUrl, @adrsiteinfo) //no create info callback		«local (adr, adrobject)		«for adr in @temp.windowTypes.windows			«adrobject = @adr^.window			«local (type)			«if window.attributes.getOne ("type", @type, adrobject)				«if type == "manilaMessage"					«local (url)					«if window.attributes.getOne ("url", @url, adrobject)						«local (parts = string.urlSplit (url))						«if not (parts[2] contains ":")							«url = parts[1] + parts[2] + ":80/" + parts[3]						«if string.lower (url) == string.lower (siteUrl)							«local (title, flReadOnly = false)							«if not window.attributes.getOne ("title", @title, adrobject)								«title = adrinfo^.displaySiteName								«if title == ""									«title = adrinfo^.siteName							«window.attributes.getOne ("flReadOnly", @flReadOnly, adrobject)							«edit (adrobject, title, flReadOnly)							«return (true)local (adrtype);Frontier.tools.windowTypes.findWindowType ("manilaTemplate", @adrtype);«adrtype^.openTemplate (siteurl, msgnum) //this didn't workthread.callscript (@adrtype^.openTemplate, {siteUrl, manilaType});return (true);«bundle //old code	«return (playlist.manila.commands.expandManilaTemplate ())
+local (siteUrl, manilaType);
+op.attributes.getOne ("siteUrl", @siteUrl);
+op.attributes.getOne ("manilaType", @manilaType);
+
+Â«bundle //bring the window to the front if it's already opened
+	Â«local (adrsiteinfo)
+	Â«if manila.windowTypes.findSiteInfo (siteUrl, @adrsiteinfo) //no create info callback
+		Â«local (adr, adrobject)
+		Â«for adr in @temp.windowTypes.windows
+			Â«adrobject = @adr^.window
+			Â«local (type)
+			Â«if window.attributes.getOne ("type", @type, adrobject)
+				Â«if type == "manilaMessage"
+					Â«local (url)
+					Â«if window.attributes.getOne ("url", @url, adrobject)
+						Â«local (parts = string.urlSplit (url))
+						Â«if not (parts[2] contains ":")
+							Â«url = parts[1] + parts[2] + ":80/" + parts[3]
+						Â«if string.lower (url) == string.lower (siteUrl)
+							Â«local (title, flReadOnly = false)
+							Â«if not window.attributes.getOne ("title", @title, adrobject)
+								Â«title = adrinfo^.displaySiteName
+								Â«if title == ""
+									Â«title = adrinfo^.siteName
+							Â«window.attributes.getOne ("flReadOnly", @flReadOnly, adrobject)
+							Â«edit (adrobject, title, flReadOnly)
+							Â«return (true)
+
+local (adrtype);
+Frontier.tools.windowTypes.findWindowType ("manilaTemplate", @adrtype);
+Â«adrtype^.openTemplate (siteurl, msgnum) //this didn't work
+thread.callscript (@adrtype^.openTemplate, {siteUrl, manilaType});
+
+return (true);
+
+Â«bundle //old code
+	Â«return (playlist.manila.commands.expandManilaTemplate ())

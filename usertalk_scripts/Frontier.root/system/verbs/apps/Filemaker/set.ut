@@ -1,1 +1,2 @@
-on set (obj, setDataTo) { «Set an object's data	return (appleEvent (Filemaker.id, 'core', 'setd', '----', objspec (obj), 'data', setDataTo))}
+on set (obj, setDataTo) { Â«Set an object's data
+	return (appleEvent (Filemaker.id, 'core', 'setd', '----', objspec (obj), 'data', setDataTo))}

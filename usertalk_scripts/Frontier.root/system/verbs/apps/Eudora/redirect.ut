@@ -1,1 +1,2 @@
-on redirect (obj) { «Redirect a message	return (appleEvent (Eudora.id, 'CSOm', 'eRdr', '----', objspec (obj)))}
+on redirect (obj) { Â«Redirect a message
+	return (appleEvent (Eudora.id, 'CSOm', 'eRdr', '----', objspec (obj)))}

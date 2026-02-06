@@ -1,1 +1,2 @@
-on setTab (pos, type, fill) {	kernel (wp.settab)}
+on setTab (pos, type, fill) {
+	kernel (wp.settab)}

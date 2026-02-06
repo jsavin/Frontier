@@ -1,1 +1,3 @@
-ct = 0;loop {	log.add (ct++, "test log 1")}
+ct = 0;
+loop {
+	log.add (ct++, "test log 1")}

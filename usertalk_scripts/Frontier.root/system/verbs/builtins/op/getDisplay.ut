@@ -1,1 +1,2 @@
-on getDisplay () {	kernel (op.getdisplay)}
+on getDisplay () {
+	kernel (op.getdisplay)}

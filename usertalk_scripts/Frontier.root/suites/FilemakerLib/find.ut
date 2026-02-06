@@ -1,1 +1,19 @@
-on find (db, searchStringList, cellList, theLayout = 0, reportError = false) {	local (i, requestObj);	searchStringList = list (searchStringList);	cellList = list (cellList);	on doIt () {		with objectModel, filemaker {			delete (database [db].request [all]);			requestObj = create (request, 0, 0, endOf (database [db].layout [theLayout]));			for i = 1 to sizeOf (searchStringList) {				set (requestObj.cell [cellList[i]], searchStringList [i])};			find (database [db]);			return (count (window [db], record))}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on find (db, searchStringList, cellList, theLayout = 0, reportError = false) {
+	local (i, requestObj);
+	searchStringList = list (searchStringList);
+	cellList = list (cellList);
+	on doIt () {
+		with objectModel, filemaker {
+			delete (database [db].request [all]);
+			requestObj = create (request, 0, 0, endOf (database [db].layout [theLayout]));
+			for i = 1 to sizeOf (searchStringList) {
+				set (requestObj.cell [cellList[i]], searchStringList [i])};
+			find (database [db]);
+			return (count (window [db], record))}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

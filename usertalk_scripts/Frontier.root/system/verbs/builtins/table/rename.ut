@@ -1,1 +1,2 @@
-on rename (adr, name) {	kernel (table.rename)}
+on rename (adr, name) {
+	kernel (table.rename)}

@@ -1,1 +1,8 @@
-local (infoText =  "");on add (s) {	infoText = infoText + s + "\r"};local (atts);if op.attributes.getAll (@atts) {	add ("Name: " + atts.name);	try {add ("Description: " + atts.description)};	dialog.notify (infoText)}
+local (infoText =  "");
+on add (s) {
+	infoText = infoText + s + "\r"};
+local (atts);
+if op.attributes.getAll (@atts) {
+	add ("Name: " + atts.name);
+	try {add ("Description: " + atts.description)};
+	dialog.notify (infoText)}

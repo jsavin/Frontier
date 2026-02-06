@@ -1,1 +1,2 @@
-on setUnderline (flunderline) {	kernel (editmenu.setunderline)}
+on setUnderline (flunderline) {
+	kernel (editmenu.setunderline)}

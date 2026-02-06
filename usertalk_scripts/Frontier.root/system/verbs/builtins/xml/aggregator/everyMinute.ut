@@ -1,1 +1,65 @@
-«Changes	«10/20/02; 9:45:48 AM by DW		«If urlChanged is the empty string, delete the service, per the spec:			«http://backend.userland.com/redirectRss		«We're also releasing xml.rss.formatDrivers.redirect today.	«10/15/02; 11:05:44 AM by DW		«Every five minutes look for urlChanged in each service table, and if present, change the name of the table and delete urlChanged. This feature will be used by the XML-level redirector, once we decide what the feshtunken element will be named, what namespace it's in, and whether it makes the RDF people happy or not. As Ralph Cramden used to say "One of these days Alice.."	«12/4/01; 12:42:47 PM by DW		«If enabled, do an aggregator run at startup.	«12/2/01; 1:46:56 AM by JES		«Respect offline status.	«11/30/01; 2:13:29 PM by DW		«Don't run the aggregator scan if one is already running.	«10/30/01; 7:01:37 AM by DW		«If running in Radio, send radio.log.add to xml.aggregator.readAllServices as its log callback.	«10/19/01; 7:58:47 PM by DW10/19/01; 7:58:48 PM by DW		«Updated to call the archiver.local (flstartup = false);bundle { //set flstartup	if not defined (system.temp.xmlAggregator) {		new (tabletype, @system.temp.xmlAggregator)};	if not defined (system.temp.xmlAggregator.flStarted) {		flstartup = true;		system.temp.xmlAggregator.flStarted = true}};local (day, month, year, hour, minute, second);date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);if not tcp.isOffline () {	local (adrdata = xml.aggregator.init ());	if adrdata^.prefs.enabled {		local (flscan = false);		bundle { //set flscan			if flstartup and adrdata^.prefs.flScanOnStartup {				flscan = true}			else {				if minute == adrdata^.prefs.minuteToRead {					flscan = true}}};		if flscan {			local (adrcallback = nil);			if system.environment.isRadio {				adrcallback = @radio.log.add};			xml.aggregator.readAllServices (adrlogcallback:adrcallback);			xml.aggregator.updateSubscriptions (); //request notification for channels that support clouds			adrdata^.settings.dateLastRead = clock.now ();			filemenu.savemyroot (adrdata)};		if minute == adrdata^.prefs.minuteToArchive {			if adrdata^.prefs.flArchive { //archiving is enabled				xml.aggregator.updateArchives ()}}}};bundle { //watch for urlChanged	local (adrdata = xml.aggregator.init ());	if not adrdata^.stats.lastRun.flScanRunningNow {		if (minute % 5) == 0 {			local (adrservice, i);			for i = sizeof (adrdata^.services) downto 1 {				adrservice = @adrdata^.services [i];				if defined (adrservice^.urlChanged) {					local (url = adrservice^.urlChanged);					if url == "" { //10/20/02 by DW						delete (adrservice)}					else {						local (adrservicenew = @adrdata^.services.[url]);						if defined (adrservicenew^) { //the user is already subscribed to this service							delete (adrservice)}						else {							table.rename (adrservice, url);							delete (@adrservicenew^.urlChanged)}}}}}}}
+Â«Changes
+	Â«10/20/02; 9:45:48 AM by DW
+		Â«If urlChanged is the empty string, delete the service, per the spec:
+			Â«http://backend.userland.com/redirectRss
+		Â«We're also releasing xml.rss.formatDrivers.redirect today.
+	Â«10/15/02; 11:05:44 AM by DW
+		Â«Every five minutes look for urlChanged in each service table, and if present, change the name of the table and delete urlChanged. This feature will be used by the XML-level redirector, once we decide what the feshtunken element will be named, what namespace it's in, and whether it makes the RDF people happy or not. As Ralph Cramden used to say "One of these days Alice.."
+	Â«12/4/01; 12:42:47 PM by DW
+		Â«If enabled, do an aggregator run at startup.
+	Â«12/2/01; 1:46:56 AM by JES
+		Â«Respect offline status.
+	Â«11/30/01; 2:13:29 PM by DW
+		Â«Don't run the aggregator scan if one is already running.
+	Â«10/30/01; 7:01:37 AM by DW
+		Â«If running in Radio, send radio.log.add to xml.aggregator.readAllServices as its log callback.
+	Â«10/19/01; 7:58:47 PM by DW10/19/01; 7:58:48 PM by DW
+		Â«Updated to call the archiver.
+local (flstartup = false);
+bundle { //set flstartup
+	if not defined (system.temp.xmlAggregator) {
+		new (tabletype, @system.temp.xmlAggregator)};
+	if not defined (system.temp.xmlAggregator.flStarted) {
+		flstartup = true;
+		system.temp.xmlAggregator.flStarted = true}};
+local (day, month, year, hour, minute, second);
+date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+if not tcp.isOffline () {
+	local (adrdata = xml.aggregator.init ());
+	if adrdata^.prefs.enabled {
+		local (flscan = false);
+		bundle { //set flscan
+			if flstartup and adrdata^.prefs.flScanOnStartup {
+				flscan = true}
+			else {
+				if minute == adrdata^.prefs.minuteToRead {
+					flscan = true}}};
+		if flscan {
+			local (adrcallback = nil);
+			if system.environment.isRadio {
+				adrcallback = @radio.log.add};
+			xml.aggregator.readAllServices (adrlogcallback:adrcallback);
+			xml.aggregator.updateSubscriptions (); //request notification for channels that support clouds
+			adrdata^.settings.dateLastRead = clock.now ();
+			filemenu.savemyroot (adrdata)};
+		if minute == adrdata^.prefs.minuteToArchive {
+			if adrdata^.prefs.flArchive { //archiving is enabled
+				xml.aggregator.updateArchives ()}}}};
+bundle { //watch for urlChanged
+	local (adrdata = xml.aggregator.init ());
+	if not adrdata^.stats.lastRun.flScanRunningNow {
+		if (minute % 5) == 0 {
+			local (adrservice, i);
+			for i = sizeof (adrdata^.services) downto 1 {
+				adrservice = @adrdata^.services [i];
+				if defined (adrservice^.urlChanged) {
+					local (url = adrservice^.urlChanged);
+					if url == "" { //10/20/02 by DW
+						delete (adrservice)}
+					else {
+						local (adrservicenew = @adrdata^.services.[url]);
+						if defined (adrservicenew^) { //the user is already subscribed to this service
+							delete (adrservice)}
+						else {
+							table.rename (adrservice, url);
+							delete (@adrservicenew^.urlChanged)}}}}}}}

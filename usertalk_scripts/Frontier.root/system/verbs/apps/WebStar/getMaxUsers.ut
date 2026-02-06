@@ -1,1 +1,3 @@
-on getMaxUsers (appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.get (appID, maxUsers))}}
+on getMaxUsers (appID = WebStar.id) {
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, maxUsers))}}

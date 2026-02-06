@@ -1,1 +1,8 @@
-on setUserEmailAddress (userName, emailAddress, adrUser=nil) {	«Set a user's email address. Return false if the user doesn't exist.	if adrUser == nil {		adrUser = people.getUserTable (userName)};	if not (people.userExists (userName, adrUser)) {		return (false)};	adrUser^.emailAddress = emailAddress;	return (true)}
+on setUserEmailAddress (userName, emailAddress, adrUser=nil) {
+	Â«Set a user's email address. Return false if the user doesn't exist.
+	if adrUser == nil {
+		adrUser = people.getUserTable (userName)};
+	if not (people.userExists (userName, adrUser)) {
+		return (false)};
+	adrUser^.emailAddress = emailAddress;
+	return (true)}

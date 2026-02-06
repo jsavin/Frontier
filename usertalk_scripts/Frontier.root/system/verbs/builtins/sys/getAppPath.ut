@@ -1,1 +1,2 @@
-on getAppPath (appname) {	kernel (sys.getAppPath)}
+on getAppPath (appname) {
+	kernel (sys.getAppPath)}

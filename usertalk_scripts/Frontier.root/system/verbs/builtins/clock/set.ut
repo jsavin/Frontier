@@ -1,1 +1,2 @@
-on set (time) {	kernel (clock.set)}
+on set (time) {
+	kernel (clock.set)}

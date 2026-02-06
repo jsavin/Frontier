@@ -1,1 +1,2 @@
-on CHAT_LEFT(adrSelf, roomId) {	return("CHAT_LEFT")}
+on CHAT_LEFT(adrSelf, roomId) {
+	return("CHAT_LEFT")}

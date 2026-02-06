@@ -1,1 +1,15 @@
-on getSiteTable (adrDataTable = @websites.["#data"]) {	«makes it possible for the #ftpsite directive to be a table		«Did a search-replace, changing "ftpsite" to html.getSiteTable ()		«Sat, Jul 27, 1996 at 9:58:11 AM by DW	«Mon, Jan 20, 1997 at 3:03:50 PM by PH		«Added optional param for data location, 		«allows buildPageTable to work with locals	case typeOf (adrDataTable^.ftpsite) {		addresstype {			return (adrDataTable^.ftpsite)};		stringtype {			return (@user.html.sites.[adrDataTable^.ftpsite])}};	scriptError ("Invalid site spec.")};bundle { «test code	dialog.alert (getSiteTable ())}
+on getSiteTable (adrDataTable = @websites.["#data"]) {
+	Â«makes it possible for the #ftpsite directive to be a table
+		Â«Did a search-replace, changing "ftpsite" to html.getSiteTable ()
+		Â«Sat, Jul 27, 1996 at 9:58:11 AM by DW
+	Â«Mon, Jan 20, 1997 at 3:03:50 PM by PH
+		Â«Added optional param for data location, 
+		Â«allows buildPageTable to work with locals
+	case typeOf (adrDataTable^.ftpsite) {
+		addresstype {
+			return (adrDataTable^.ftpsite)};
+		stringtype {
+			return (@user.html.sites.[adrDataTable^.ftpsite])}};
+	scriptError ("Invalid site spec.")};
+bundle { Â«test code
+	dialog.alert (getSiteTable ())}

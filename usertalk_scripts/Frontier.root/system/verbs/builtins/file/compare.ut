@@ -1,1 +1,2 @@
-on compare (path1, path2) {	kernel (file.compare)}
+on compare (path1, path2) {
+	kernel (file.compare)}

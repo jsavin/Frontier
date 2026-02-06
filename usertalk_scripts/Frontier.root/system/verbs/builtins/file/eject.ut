@@ -1,1 +1,2 @@
-on eject (path) {	kernel (file.eject)}
+on eject (path) {
+	kernel (file.eject)}

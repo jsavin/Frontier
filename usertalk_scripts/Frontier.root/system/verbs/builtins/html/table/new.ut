@@ -1,1 +1,17 @@
-on new (border=0, cellspacing=0, cellpadding=0, cols=1, method="html") {	«Create a new Frontier table that will later be rendered.	local (adrStorage = @system.temp.html);	if not defined (adrStorage^) {		new (tableType, adrStorage)};	local (adrTables = @adrStorage^.tables);	if not defined (adrTables^) {		new (tableType, adrTables)};	local (adrTable = @adrTables^.[string (thread.getCurrentID ())]);	new (tableType, adrTable);	adrTable^.border = border;	adrTable^.cellspacing = cellspacing;	adrTable^.cellpadding = cellpadding;	adrTable^.method = method;	new (tableType, @adrTable^.rows);	new (tableType, @adrTable^.columns);	return (adrTable)}
+on new (border=0, cellspacing=0, cellpadding=0, cols=1, method="html") {
+	Â«Create a new Frontier table that will later be rendered.
+	local (adrStorage = @system.temp.html);
+	if not defined (adrStorage^) {
+		new (tableType, adrStorage)};
+	local (adrTables = @adrStorage^.tables);
+	if not defined (adrTables^) {
+		new (tableType, adrTables)};
+	local (adrTable = @adrTables^.[string (thread.getCurrentID ())]);
+	new (tableType, adrTable);
+	adrTable^.border = border;
+	adrTable^.cellspacing = cellspacing;
+	adrTable^.cellpadding = cellpadding;
+	adrTable^.method = method;
+	new (tableType, @adrTable^.rows);
+	new (tableType, @adrTable^.columns);
+	return (adrTable)}

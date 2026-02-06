@@ -1,1 +1,2 @@
-on isFront (adr) {	kernel (window.isfront)}
+on isFront (adr) {
+	kernel (window.isfront)}

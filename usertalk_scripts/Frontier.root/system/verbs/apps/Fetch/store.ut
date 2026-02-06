@@ -1,1 +1,9 @@
-on store (file, host = nil, path = nil, user = nil, password = nil, url = nil) { «store a file to an ftp site	«tweaked by DW 12/7/95		«Instead of returning an error code, we just return true or false and store the error code in		«Fetch.data.errorcode. If you really need to look at it, check that value out after we 		«return false. Most scripts only need to know if the file actually got transferred.	local (errcode);	errcode = appleEvent (Fetch.id, 'Arch', 'Stor', '----', alias (file), 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url));	Fetch.data.errorcode = errcode;	return (errcode == 0)}
+on store (file, host = nil, path = nil, user = nil, password = nil, url = nil) { Â«store a file to an ftp site
+	Â«tweaked by DW 12/7/95
+		Â«Instead of returning an error code, we just return true or false and store the error code in
+		Â«Fetch.data.errorcode. If you really need to look at it, check that value out after we 
+		Â«return false. Most scripts only need to know if the file actually got transferred.
+	local (errcode);
+	errcode = appleEvent (Fetch.id, 'Arch', 'Stor', '----', alias (file), 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url));
+	Fetch.data.errorcode = errcode;
+	return (errcode == 0)}

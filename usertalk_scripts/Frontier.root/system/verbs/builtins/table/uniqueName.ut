@@ -1,1 +1,14 @@
-on uniqueName (prefix, tableAdr, places=nil) { «returns the address of a unique object in the database	«11/1/97 at 6:22:14 PM by DW, added optional third param to mimic behavior of toys.uniqueTableName	local (name, ct = 1, adr);	loop {		if places == nil {			adr = @tableAdr^.[prefix + ct]}		else {			adr = @tableAdr^.[prefix + string.padWithZeros (ct, places)]};		if not defined (adr^) {			return (adr)};		ct++}};«bundle 	«dialog.alert (uniqueName ("object", @scratchpad, 3))	«dialog.alert (uniqueName ("object", @scratchpad, 3))
+on uniqueName (prefix, tableAdr, places=nil) { Â«returns the address of a unique object in the database
+	Â«11/1/97 at 6:22:14 PM by DW, added optional third param to mimic behavior of toys.uniqueTableName
+	local (name, ct = 1, adr);
+	loop {
+		if places == nil {
+			adr = @tableAdr^.[prefix + ct]}
+		else {
+			adr = @tableAdr^.[prefix + string.padWithZeros (ct, places)]};
+		if not defined (adr^) {
+			return (adr)};
+		ct++}};
+Â«bundle 
+	Â«dialog.alert (uniqueName ("object", @scratchpad, 3))
+	Â«dialog.alert (uniqueName ("object", @scratchpad, 3))

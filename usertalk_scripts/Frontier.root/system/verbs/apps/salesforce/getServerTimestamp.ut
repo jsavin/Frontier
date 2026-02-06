@@ -1,1 +1,16 @@
-on getServerTimestamp (adrSession) {	«Changes		«4/20/06; 5:19:00 AM by JES			«Created. Retrieves the current system timestamp (GMT) from the Web service.	local (retval = salesforce.callApi (adrSession, nameOf (this^), {}));	return (date.iso8601StringToDate (retval.timestamp))};«bundle //testing	«local (adrses)	«bundle //set adrses		«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)			«local (sesnum = sizeOf (temp.salesforce.sessions))			«adrses = @temp.salesforce.sessions[sesnum]		«else //log in			«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)	«table.assign (@workspace.retval, this^ (adrses))	«edit (@workspace.retval)
+on getServerTimestamp (adrSession) {
+	Â«Changes
+		Â«4/20/06; 5:19:00 AM by JES
+			Â«Created. Retrieves the current system timestamp (GMT) from the Web service.
+	local (retval = salesforce.callApi (adrSession, nameOf (this^), {}));
+	return (date.iso8601StringToDate (retval.timestamp))};
+Â«bundle //testing
+	Â«local (adrses)
+	Â«bundle //set adrses
+		Â«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
+			Â«local (sesnum = sizeOf (temp.salesforce.sessions))
+			Â«adrses = @temp.salesforce.sessions[sesnum]
+		Â«else //log in
+			Â«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
+	Â«table.assign (@workspace.retval, this^ (adrses))
+	Â«edit (@workspace.retval)

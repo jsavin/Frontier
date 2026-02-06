@@ -1,1 +1,15 @@
-«Script: user.webserver.postFilters.debug; Version 1; Date: Thu, 14 May 1998 16:46:25 GMT; ID: RABon debug (adrParamTable) {	«March 03, 1998 at 9:53:50 PM by WMF		«This is a sample pre-filter that captures debugging information		if webserver.getPref ("fldebug") {		local (debugTableAdr);		semaphores.lock ("system.temp.webserver", 600);		if not defined (system.temp.webserver) {			new (tableType, @system.temp.webserver)};		debugTableAdr = table.uniqueName ("debugPostFilter", @system.temp.webserver);		debugTableAdr^ = adrParamTable^; // copy the param table 		semaphores.unlock ("system.temp.webserver");		edit (debugTableAdr)}; // open the window	return (true)}
+Â«Script: user.webserver.postFilters.debug; Version 1; Date: Thu, 14 May 1998 16:46:25 GMT; ID: RAB
+on debug (adrParamTable) {
+	Â«March 03, 1998 at 9:53:50 PM by WMF
+		Â«This is a sample pre-filter that captures debugging information
+	
+	if webserver.getPref ("fldebug") {
+		local (debugTableAdr);
+		semaphores.lock ("system.temp.webserver", 600);
+		if not defined (system.temp.webserver) {
+			new (tableType, @system.temp.webserver)};
+		debugTableAdr = table.uniqueName ("debugPostFilter", @system.temp.webserver);
+		debugTableAdr^ = adrParamTable^; // copy the param table 
+		semaphores.unlock ("system.temp.webserver");
+		edit (debugTableAdr)}; // open the window
+	return (true)}

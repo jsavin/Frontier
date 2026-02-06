@@ -1,1 +1,2 @@
-on waitSixtieths (count) {	kernel (clock.waitsixtieths)}
+on waitSixtieths (count) {
+	kernel (clock.waitsixtieths)}

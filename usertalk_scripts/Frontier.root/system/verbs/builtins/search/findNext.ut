@@ -1,1 +1,2 @@
-on findNext () {	kernel (search.findnext)}
+on findNext () {
+	kernel (search.findnext)}

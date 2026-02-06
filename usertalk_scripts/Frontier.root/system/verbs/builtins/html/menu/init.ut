@@ -1,1 +1,10 @@
-if not defined (user.html.menu) {	new (tabletype, @user.html.menu)};if not defined (user.html.menu.enabled) {	user.html.menu.enabled = true};if not defined (user.html.menu.formatText) {	user.html.menu.formatText = false};if not defined (user.html.menu.lowerCaseTags) {	user.html.menu.lowerCaseTags = true};if not defined (user.html.menu.lastURL) {	user.html.menu.lastURL = ""}
+if not defined (user.html.menu) {
+	new (tabletype, @user.html.menu)};
+if not defined (user.html.menu.enabled) {
+	user.html.menu.enabled = true};
+if not defined (user.html.menu.formatText) {
+	user.html.menu.formatText = false};
+if not defined (user.html.menu.lowerCaseTags) {
+	user.html.menu.lowerCaseTags = true};
+if not defined (user.html.menu.lastURL) {
+	user.html.menu.lastURL = ""}

@@ -1,1 +1,10 @@
-on saveAs (msgList,f) {	with objectModel, Eudora, eventInfo {		file.new (f);		file.setType (f,'TEXT');		file.setCreator(f,get(setting[10]));		if typeOf(msgList) == listType {			for msgObj in msglist {				file.write (f,get (msgObj))}}		else {			file.write (f,get (msgList))}}}
+on saveAs (msgList,f) {
+	with objectModel, Eudora, eventInfo {
+		file.new (f);
+		file.setType (f,'TEXT');
+		file.setCreator(f,get(setting[10]));
+		if typeOf(msgList) == listType {
+			for msgObj in msglist {
+				file.write (f,get (msgObj))}}
+		else {
+			file.write (f,get (msgList))}}}

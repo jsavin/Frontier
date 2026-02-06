@@ -1,1 +1,23 @@
-on close (adr) {	local (atts);	if not window.attributes.getAll (@atts, adr) {		return (false)};		local (adrinfo = atts.adrSiteInfo);	local (username, password);	if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {		manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}	else { //the user cancelled the password dialog -- return false		return (false)};		local (siteInfoTable = adrinfo^);	siteInfoTable.username = username;	siteInfoTable.password = password;		manila.advancedPref.checkIn (@siteInfoTable, atts.manilaType);		close (adr);	return (true)};«bundle //debugging	«close (window.frontmost ())
+on close (adr) {
+	local (atts);
+	if not window.attributes.getAll (@atts, adr) {
+		return (false)};
+	
+	local (adrinfo = atts.adrSiteInfo);
+	local (username, password);
+	if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {
+		manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}
+	else { //the user cancelled the password dialog -- return false
+		return (false)};
+	
+	local (siteInfoTable = adrinfo^);
+	siteInfoTable.username = username;
+	siteInfoTable.password = password;
+	
+	manila.advancedPref.checkIn (@siteInfoTable, atts.manilaType);
+	
+	close (adr);
+	return (true)};
+
+Â«bundle //debugging
+	Â«close (window.frontmost ())

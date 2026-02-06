@@ -1,1 +1,2 @@
-on alert (s) {	kernel (dialog.alert)}
+on alert (s) {
+	kernel (dialog.alert)}

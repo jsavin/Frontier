@@ -1,1 +1,49 @@
-on readHeadFile (f, adroutline) {	«New in 5.0 -- reads files created by Ready! and ThinkTank		«A way of closing a loop. I wrote both those products in the mid-80s.		«Now we're coming back to the PC, makes sense to offer a path forward.		«http://www.scripting.com/fatpages/97/07/dotHeadFormat.html	local (firstline = true, level, lastlevel);	new (outlineType, adroutline);	target.set (adroutline);	«edit (adroutline)	file.open (f);	msg (f);	while not file.endOfFile (f) {		s = file.readLine (f) - char (10);		if s beginsWith char (26) { «end of file			break};		if string.lower (s) beginswith ".head" {			s = string.delete (s, 1, 6); «pop off the .HEAD			level = "";			while string.isNumeric (s [1]) {				level = level + string (s [1]);				s = string.delete (s, 1, 1)};			level = number (level);			s = string.delete (s, 1, 3)}		else {			level = lastlevel};		«msg (level + ":" + s)		if firstline {			op.setLineText (s);			lastlevel = 0;			firstline = false}		else {			if level > lastlevel {				op.insert (s, right)}			else {				op.go (left, lastlevel - level);				op.insert (s, down)}};		lastlevel = level};	file.close (f);	op.firstSummit ();	window.zoom (adroutline);	window.close (adroutline)};«bundle «test code	«local (folder = "C:\\Frontier 5\\ThinkTank Templates\\", f)	«local (adrtable = @scratchpad.tankTemplates)	«new (tabletype, adrtable)	«fileloop (f in folder)		«readHeadFile (f, @adrtable^.[file.fileFromPath (f) - ".TXT"])		«window.zoom (adrtable)	«edit (adrtable)
+on readHeadFile (f, adroutline) {
+	Â«New in 5.0 -- reads files created by Ready! and ThinkTank
+		Â«A way of closing a loop. I wrote both those products in the mid-80s.
+		Â«Now we're coming back to the PC, makes sense to offer a path forward.
+		Â«http://www.scripting.com/fatpages/97/07/dotHeadFormat.html
+	local (firstline = true, level, lastlevel);
+	new (outlineType, adroutline);
+	target.set (adroutline);
+	Â«edit (adroutline)
+	file.open (f);
+	msg (f);
+	while not file.endOfFile (f) {
+		s = file.readLine (f) - char (10);
+		if s beginsWith char (26) { Â«end of file
+			break};
+		if string.lower (s) beginswith ".head" {
+			s = string.delete (s, 1, 6); Â«pop off the .HEAD
+			level = "";
+			while string.isNumeric (s [1]) {
+				level = level + string (s [1]);
+				s = string.delete (s, 1, 1)};
+			level = number (level);
+			s = string.delete (s, 1, 3)}
+		else {
+			level = lastlevel};
+		Â«msg (level + ":" + s)
+		if firstline {
+			op.setLineText (s);
+			lastlevel = 0;
+			firstline = false}
+		else {
+			if level > lastlevel {
+				op.insert (s, right)}
+			else {
+				op.go (left, lastlevel - level);
+				op.insert (s, down)}};
+		lastlevel = level};
+	file.close (f);
+	op.firstSummit ();
+	window.zoom (adroutline);
+	window.close (adroutline)};
+Â«bundle Â«test code
+	Â«local (folder = "C:\\Frontier 5\\ThinkTank Templates\\", f)
+	Â«local (adrtable = @scratchpad.tankTemplates)
+	Â«new (tabletype, adrtable)
+	Â«fileloop (f in folder)
+		Â«readHeadFile (f, @adrtable^.[file.fileFromPath (f) - ".TXT"])
+		Â«window.zoom (adrtable)
+	Â«edit (adrtable)

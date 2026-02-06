@@ -1,1 +1,117 @@
-«Changes:	«10/1/05; 3:11:08 AM by JES		«If a task in user.scheduler.tasks has a boolean, flConfirmAtStartup, use its value to override the pref at user.scheduler.prefs.confirmStartupTasks.		«Remove with adrtask statement to better ensure no naming conflicts.	«Before 2000		«9/9/99; 6:35:08 PM by DW			«added support for user.scheduler.threads		«3/7/99; 11:25:31 GMT by AR			«Convert pre-6.0 tasks which are string objects to script objects.		«12/18/98; 12:05:59 PM by DW			«Major rewrite, added logging, scripts can be addresses		«12/14/98; 11:11:46 PM by DW			«Logging goes thru log.add		«8/3/98; 5:12:36 PM by PBS			«Restore oldTarget from within a try (in case it's disappeared).		«7/24/98; 1:06:04 PM by PBS			«Removed call to scheduler.init.				«It's called from system.startup.startupScript.			«Don't call target.clear -- instead restore the old target.		«?/?/98; 5:58:01 PM by DW			«Called from the agent, once a minute.				«We check the task list to see if any are ready to run.				«If so, we run it and then check the next task.				«About scheduler.currentTask:					«Before your script runs this global is set.					«You can use this table to store information between runs,					«scheduler.currentTask^.xxx = 12local (adrtasks = @user.scheduler.tasks, cttasks = sizeOf (adrtasks^), now = clock.now ());on reschedule (adrtask) { //reschedule the task for another run	local (minutesbetweenruns = adrtask^.minutesbetweenruns);	if minutesbetweenruns > 0 { «don't try to reschedule one-time tasks		while now >= adrtask^.tasktime {			local (day, month, year, hour, minute, second);			date.get (adrtask^.tasktime, @day, @month, @year, @hour, @minute, @second);			adrtask^.tasktime = date.set (day, month, year, hour, minute + minutesBetweenRuns, 0)}}	else {		if minutesbetweenruns == 0 {			adrtask^.completed = true}}};if user.scheduler.prefs.startingup { //confirm that user wants to run awaiting longterm tasks	user.scheduler.prefs.startingup = false;	local (i);	for i = 1 to cttasks {		local (adrtask = @adrtasks^ [i]);		if now >= adrtask^.taskTime { «it's ready to run			local (flreschedule = true);			if adrtask^.minutesBetweenRuns > 60 {				if user.scheduler.prefs.reschedule {					local (flConfirm = user.scheduler.prefs.confirmStartupTasks);					if defined (adrtask^.flConfirmAtStartup) {						flConfirm = adrtask^.flConfirmAtStartup};					if flConfirm {						if dialog.confirm ("Scheduler startup: \"" + nameOf (adrtask^) + "\" is ready to run.") {							flreschedule = false}}					else {						flreschedule = false}}}; //PBS 2/18/99: automatically run the pending tasks if confirmStartupTasks is false (this change is for Frontier servers)			if flreschedule {				reschedule (adrtask)}}}};local (logtable); new (tabletype, @logtable); //globals for all the tasks to share, used in logginglocal (i, ctran = 0, cterrors = 0, adrtask);for i = 1 to cttasks { //run tasks that are ready	adrtask = @adrtasks^ [i];	if now >= adrtask^.taskTime { //it's ready to run		adrtask^.ctruns++;		scheduler.currentTask = adrtask; //global, available to task		try {			on callWithLogging (adrscript) {				new (tabletype, @logtable.taskInfo);				try {					callScript (string (adrscript), {}, @logtable)}				else {					logtable.taskinfo.scriptError = tryError};				table.rename (@logtable.taskInfo, string (adrscript))};			case typeof (adrtask^.script) {				scripttype {					callWithLogging (@adrtask^.script)};				addresstype {					local (nomad = adrtask^.script);					while typeof (nomad^) != scripttype {						nomad = nomad^};					callWithLogging (nomad)}}			else { //convert a pre-6.0 scheduled task from string type to script type and run it				local (adrscript = @adrtask^.script);				script.newScriptObject (string (adrscript^), adrscript);				script.compile (adrscript); //make sure it is valid UserTalk				callWithLogging (adrscript)};			adrtask^.error = "";			reschedule (adrtask)}		else {			adrtask^.error = tryError;			cterrors++};		ctran++}};if defined (scheduler.currentTask) {	delete (@scheduler.currentTask)};bundle { //delete one-time tasks that have been run	local (i);	for i = cttasks downto 1 { //delete one-time tasks that have been run		local (adrtask = @adrtasks^ [i]);		if defined (adrtask^.completed) { //a one-time task that's done			delete (adrtask)}}};bundle { //do logging	if ctran > 0 {		if user.scheduler.prefs.keepLog {			local (item = { "Ran " + ctran + " tasks"});			if cterrors > 0 {				local (i);				item [1] = item [1] + ". " + cterrors + " errors.";				for i = cttasks downto 1 {					local (errorstring = adrtasks^ [i].error);					if errorstring != "" {						local (s = nameOf (adrtasks^ [i]) + ": " + errorstring);						item = item + {s}}}};			log.add (item, "schedulerMonitor")};		if user.scheduler.prefs.logInGuestDatabase {			log.addToGuestDatabase ("schedulerMonitor", flHourlyRoll:true)^ = logtable}}};bundle { //start threads that need starting, keep threads running	scheduler.monitorThreads ()}
+Â«Changes:
+	Â«10/1/05; 3:11:08 AM by JES
+		Â«If a task in user.scheduler.tasks has a boolean, flConfirmAtStartup, use its value to override the pref at user.scheduler.prefs.confirmStartupTasks.
+		Â«Remove with adrtask statement to better ensure no naming conflicts.
+	Â«Before 2000
+		Â«9/9/99; 6:35:08 PM by DW
+			Â«added support for user.scheduler.threads
+		Â«3/7/99; 11:25:31 GMT by AR
+			Â«Convert pre-6.0 tasks which are string objects to script objects.
+		Â«12/18/98; 12:05:59 PM by DW
+			Â«Major rewrite, added logging, scripts can be addresses
+		Â«12/14/98; 11:11:46 PM by DW
+			Â«Logging goes thru log.add
+		Â«8/3/98; 5:12:36 PM by PBS
+			Â«Restore oldTarget from within a try (in case it's disappeared).
+		Â«7/24/98; 1:06:04 PM by PBS
+			Â«Removed call to scheduler.init.
+				Â«It's called from system.startup.startupScript.
+			Â«Don't call target.clear -- instead restore the old target.
+		Â«?/?/98; 5:58:01 PM by DW
+			Â«Called from the agent, once a minute.
+				Â«We check the task list to see if any are ready to run.
+				Â«If so, we run it and then check the next task.
+				Â«About scheduler.currentTask:
+					Â«Before your script runs this global is set.
+					Â«You can use this table to store information between runs,
+					Â«scheduler.currentTask^.xxx = 12
+
+local (adrtasks = @user.scheduler.tasks, cttasks = sizeOf (adrtasks^), now = clock.now ());
+on reschedule (adrtask) { //reschedule the task for another run
+	local (minutesbetweenruns = adrtask^.minutesbetweenruns);
+	if minutesbetweenruns > 0 { Â«don't try to reschedule one-time tasks
+		while now >= adrtask^.tasktime {
+			local (day, month, year, hour, minute, second);
+			date.get (adrtask^.tasktime, @day, @month, @year, @hour, @minute, @second);
+			adrtask^.tasktime = date.set (day, month, year, hour, minute + minutesBetweenRuns, 0)}}
+	else {
+		if minutesbetweenruns == 0 {
+			adrtask^.completed = true}}};
+if user.scheduler.prefs.startingup { //confirm that user wants to run awaiting longterm tasks
+	user.scheduler.prefs.startingup = false;
+	local (i);
+	for i = 1 to cttasks {
+		local (adrtask = @adrtasks^ [i]);
+		if now >= adrtask^.taskTime { Â«it's ready to run
+			local (flreschedule = true);
+			if adrtask^.minutesBetweenRuns > 60 {
+				if user.scheduler.prefs.reschedule {
+					local (flConfirm = user.scheduler.prefs.confirmStartupTasks);
+					if defined (adrtask^.flConfirmAtStartup) {
+						flConfirm = adrtask^.flConfirmAtStartup};
+					if flConfirm {
+						if dialog.confirm ("Scheduler startup: \"" + nameOf (adrtask^) + "\" is ready to run.") {
+							flreschedule = false}}
+					else {
+						flreschedule = false}}}; //PBS 2/18/99: automatically run the pending tasks if confirmStartupTasks is false (this change is for Frontier servers)
+			if flreschedule {
+				reschedule (adrtask)}}}};
+local (logtable); new (tabletype, @logtable); //globals for all the tasks to share, used in logging
+local (i, ctran = 0, cterrors = 0, adrtask);
+for i = 1 to cttasks { //run tasks that are ready
+	adrtask = @adrtasks^ [i];
+	if now >= adrtask^.taskTime { //it's ready to run
+		adrtask^.ctruns++;
+		scheduler.currentTask = adrtask; //global, available to task
+		try {
+			on callWithLogging (adrscript) {
+				new (tabletype, @logtable.taskInfo);
+				try {
+					callScript (string (adrscript), {}, @logtable)}
+				else {
+					logtable.taskinfo.scriptError = tryError};
+				table.rename (@logtable.taskInfo, string (adrscript))};
+			case typeof (adrtask^.script) {
+				scripttype {
+					callWithLogging (@adrtask^.script)};
+				addresstype {
+					local (nomad = adrtask^.script);
+					while typeof (nomad^) != scripttype {
+						nomad = nomad^};
+					callWithLogging (nomad)}}
+			else { //convert a pre-6.0 scheduled task from string type to script type and run it
+				local (adrscript = @adrtask^.script);
+				script.newScriptObject (string (adrscript^), adrscript);
+				script.compile (adrscript); //make sure it is valid UserTalk
+				callWithLogging (adrscript)};
+			adrtask^.error = "";
+			reschedule (adrtask)}
+		else {
+			adrtask^.error = tryError;
+			cterrors++};
+		ctran++}};
+if defined (scheduler.currentTask) {
+	delete (@scheduler.currentTask)};
+bundle { //delete one-time tasks that have been run
+	local (i);
+	for i = cttasks downto 1 { //delete one-time tasks that have been run
+		local (adrtask = @adrtasks^ [i]);
+		if defined (adrtask^.completed) { //a one-time task that's done
+			delete (adrtask)}}};
+bundle { //do logging
+	if ctran > 0 {
+		if user.scheduler.prefs.keepLog {
+			local (item = { "Ran " + ctran + " tasks"});
+			if cterrors > 0 {
+				local (i);
+				item [1] = item [1] + ". " + cterrors + " errors.";
+				for i = cttasks downto 1 {
+					local (errorstring = adrtasks^ [i].error);
+					if errorstring != "" {
+						local (s = nameOf (adrtasks^ [i]) + ": " + errorstring);
+						item = item + {s}}}};
+			log.add (item, "schedulerMonitor")};
+		if user.scheduler.prefs.logInGuestDatabase {
+			log.addToGuestDatabase ("schedulerMonitor", flHourlyRoll:true)^ = logtable}}};
+bundle { //start threads that need starting, keep threads running
+	scheduler.monitorThreads ()}

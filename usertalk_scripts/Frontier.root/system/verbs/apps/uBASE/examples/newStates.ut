@@ -1,1 +1,74 @@
-«add 50 states and their capitals to the (new) States databaselocal (ubasefolder, fnum);bundle { «start up uBASE, create the new file, add its fields	ubase.launch ();	ubasefolder = file.folderFromPath (ubase.appinfo.path);	fnum = ubase.newFile (ubasefolder + "States Database");	ubase.bringToFront (); «so we can watch the records being added	ubase.addField (fnum, 'capi', stringType);	ubase.addField (fnum, 'abbr', stringType)};on addState (name, capital, abbrev) {	local (holder);	new (tableType, @holder);	holder.capi = capital;	holder.abbr = abbrev;	ubase.addRecord (fnum, name, @holder);	msg ("Added " + capital + ", " + name + ".");	rollBeachball ()};bundle { «add 50 states, their capitals and abbreviations	addState ("Alabama", "Montgomery", "AL");	addState ("Alaska", "Juneau", "AK");	addState ("Arizona", "Phoenix", "AZ");	addState ("Arkansas", "Little Rock", "AR");	addState ("California", "Sacramento", "CA");	addState ("Colorado", "Denver", "CO");	addState ("Connecticut", "Hartford", "CT");	addState ("Delaware", "Dover", "DE");	addState ("Florida", "Tallahassee", "FL");	addState ("Georgia", "Atlanta", "GA");	addState ("Hawaii", "Honolulu", "HI");	addState ("Idaho", "Boise", "ID");	addState ("Illinois", "Springfield", "IL");	addState ("Indiana", "Indianapolis", "IN");	addState ("Iowa", "Des Moines", "IA");	addState ("Kansas", "Topeka", "KA");	addState ("Kentucky", "Frankfort", "KY");	addState ("Louisiana", "Baton Rouge", "LA");	addState ("Maine", "Augusta", "ME");	addState ("Maryland", "Annapolis", "MD");	addState ("Massachusetts", "Boston", "MA");	addState ("Michigan", "Lansing", "MI");	addState ("Minnesota", "St. Paul", "MN");	addState ("Mississippi", "Jackson", "MS");	addState ("Missouri", "Jefferson City", "MO");	addState ("Montana", "Helena", "MT");	addState ("Nebraska", "Lincoln", "NE");	addState ("Nevada", "Carson City", "NV");	addState ("New Hampshire", "Concord", "NH");	addState ("New Jersey", "Trenton", "NJ");	addState ("New Mexico", "Santa Fe", "NM");	addState ("New York", "Albany", "NY");	addState ("North Carolina", "Raleigh", "NC");	addState ("North Dakota", "Bismarck", "ND");	addState ("Ohio", "Columbus", "OH");	addState ("Oklahoma", "Oklahoma City", "OK");	addState ("Oregon", "Salem", "OR");	addState ("Pennsylvania", "Harrisburg", "PA");	addState ("Rhode Island", "Providence", "RI");	addState ("South Carolina", "Columbia", "SC");	addState ("South Dakota", "Pierre", "SD");	addState ("Tennessee", "Nashville", "TN");	addState ("Texas", "Austin", "TX");	addState ("Utah", "Salt Lake City", "UT");	addState ("Vermont", "Montpelier", "VT");	addState ("Virginia", "Richmond", "VA");	addState ("Washington", "Olympia", "WA");	addState ("West Virginia", "Charleston", "WV");	addState ("Wisconsin", "Madison", "WI");	addState ("Wyoming", "Cheyenne", "WY");		ubase.closeFile (fnum)}
+Â«add 50 states and their capitals to the (new) States database
+
+local (ubasefolder, fnum);
+
+bundle { Â«start up uBASE, create the new file, add its fields
+	ubase.launch ();
+	ubasefolder = file.folderFromPath (ubase.appinfo.path);
+	fnum = ubase.newFile (ubasefolder + "States Database");
+	ubase.bringToFront (); Â«so we can watch the records being added
+	ubase.addField (fnum, 'capi', stringType);
+	ubase.addField (fnum, 'abbr', stringType)};
+
+on addState (name, capital, abbrev) {
+	local (holder);
+	new (tableType, @holder);
+	holder.capi = capital;
+	holder.abbr = abbrev;
+	ubase.addRecord (fnum, name, @holder);
+	msg ("Added " + capital + ", " + name + ".");
+	rollBeachball ()};
+
+bundle { Â«add 50 states, their capitals and abbreviations
+	addState ("Alabama", "Montgomery", "AL");
+	addState ("Alaska", "Juneau", "AK");
+	addState ("Arizona", "Phoenix", "AZ");
+	addState ("Arkansas", "Little Rock", "AR");
+	addState ("California", "Sacramento", "CA");
+	addState ("Colorado", "Denver", "CO");
+	addState ("Connecticut", "Hartford", "CT");
+	addState ("Delaware", "Dover", "DE");
+	addState ("Florida", "Tallahassee", "FL");
+	addState ("Georgia", "Atlanta", "GA");
+	addState ("Hawaii", "Honolulu", "HI");
+	addState ("Idaho", "Boise", "ID");
+	addState ("Illinois", "Springfield", "IL");
+	addState ("Indiana", "Indianapolis", "IN");
+	addState ("Iowa", "Des Moines", "IA");
+	addState ("Kansas", "Topeka", "KA");
+	addState ("Kentucky", "Frankfort", "KY");
+	addState ("Louisiana", "Baton Rouge", "LA");
+	addState ("Maine", "Augusta", "ME");
+	addState ("Maryland", "Annapolis", "MD");
+	addState ("Massachusetts", "Boston", "MA");
+	addState ("Michigan", "Lansing", "MI");
+	addState ("Minnesota", "St. Paul", "MN");
+	addState ("Mississippi", "Jackson", "MS");
+	addState ("Missouri", "Jefferson City", "MO");
+	addState ("Montana", "Helena", "MT");
+	addState ("Nebraska", "Lincoln", "NE");
+	addState ("Nevada", "Carson City", "NV");
+	addState ("New Hampshire", "Concord", "NH");
+	addState ("New Jersey", "Trenton", "NJ");
+	addState ("New Mexico", "Santa Fe", "NM");
+	addState ("New York", "Albany", "NY");
+	addState ("North Carolina", "Raleigh", "NC");
+	addState ("North Dakota", "Bismarck", "ND");
+	addState ("Ohio", "Columbus", "OH");
+	addState ("Oklahoma", "Oklahoma City", "OK");
+	addState ("Oregon", "Salem", "OR");
+	addState ("Pennsylvania", "Harrisburg", "PA");
+	addState ("Rhode Island", "Providence", "RI");
+	addState ("South Carolina", "Columbia", "SC");
+	addState ("South Dakota", "Pierre", "SD");
+	addState ("Tennessee", "Nashville", "TN");
+	addState ("Texas", "Austin", "TX");
+	addState ("Utah", "Salt Lake City", "UT");
+	addState ("Vermont", "Montpelier", "VT");
+	addState ("Virginia", "Richmond", "VA");
+	addState ("Washington", "Olympia", "WA");
+	addState ("West Virginia", "Charleston", "WV");
+	addState ("Wisconsin", "Madison", "WI");
+	addState ("Wyoming", "Cheyenne", "WY");
+	
+	ubase.closeFile (fnum)}

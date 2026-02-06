@@ -1,1 +1,4 @@
-local (folder = "Macintosh HD:New Releases:Frontier:");local (s = html.processMacros (string (userland.pages.inthefolder)));local (f = folder + "Home");file.writewholefile (f, s, 'TEXT', netscape.id, clock.now ())
+local (folder = "Macintosh HD:New Releases:Frontier:");
+local (s = html.processMacros (string (userland.pages.inthefolder)));
+local (f = folder + "Home");
+file.writewholefile (f, s, 'TEXT', netscape.id, clock.now ())

@@ -1,1 +1,2 @@
-on yesterday (param1) {	kernel (date.yesterday)}
+on yesterday (param1) {
+	kernel (date.yesterday)}

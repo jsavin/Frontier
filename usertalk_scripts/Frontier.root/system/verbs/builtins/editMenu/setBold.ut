@@ -1,1 +1,2 @@
-on setBold (flbold) {	kernel (editmenu.setbold)}
+on setBold (flbold) {
+	kernel (editmenu.setbold)}

@@ -1,1 +1,15 @@
-on flip (driverName, screenname, message) {	«Changes		«8/12/02; 3:47:44 AM by JES			«Rewritten for simplified architecture.		local (siteurl = user.im.responders.manila.prefs.currentSite);	if siteurl == "" {		return ("Can't flip the home page because you are not logged in.")};	local (adrinfo);	if manila.windowTypes.findSiteInfo (siteurl, @adrinfo) {		manila.homepage.flip (adrinfo)}	else {		return ("Can't flip the home page because you are not logged in.")};		return ("Your home page was flipped successfully.")}
+on flip (driverName, screenname, message) {
+	Â«Changes
+		Â«8/12/02; 3:47:44 AM by JES
+			Â«Rewritten for simplified architecture.
+	
+	local (siteurl = user.im.responders.manila.prefs.currentSite);
+	if siteurl == "" {
+		return ("Can't flip the home page because you are not logged in.")};
+	local (adrinfo);
+	if manila.windowTypes.findSiteInfo (siteurl, @adrinfo) {
+		manila.homepage.flip (adrinfo)}
+	else {
+		return ("Can't flip the home page because you are not logged in.")};
+	
+	return ("Your home page was flipped successfully.")}

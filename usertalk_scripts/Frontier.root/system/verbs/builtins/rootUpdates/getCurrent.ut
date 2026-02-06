@@ -1,1 +1,8 @@
-on getCurrent (serverName) {	«This script is now obsolete: use rootUpdates.threadedUpdate instead.		«Mon, Feb 22, 1999 at 5:44:04 PM by PBS	«Set up this script in the temp table and spawn a thread --		«this way we can update the rootUpdates verbs themselves.	system.temp.getUpdate = rootUpdates.getUpdate;	thread.evaluate ("system.temp.getUpdate (\"" + serverName + "\");delete (@system.temp.getUpdate)");	return (true)}
+on getCurrent (serverName) {
+	Â«This script is now obsolete: use rootUpdates.threadedUpdate instead.
+		Â«Mon, Feb 22, 1999 at 5:44:04 PM by PBS
+	Â«Set up this script in the temp table and spawn a thread --
+		Â«this way we can update the rootUpdates verbs themselves.
+	system.temp.getUpdate = rootUpdates.getUpdate;
+	thread.evaluate ("system.temp.getUpdate (\"" + serverName + "\");delete (@system.temp.getUpdate)");
+	return (true)}

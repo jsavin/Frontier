@@ -1,1 +1,4 @@
-on setObjectLanguage (name, idLanguage) {	new (tableType, @atts);	atts.lang = number (idLanguage);	return (card.setObjectAttributes (name, @atts))}
+on setObjectLanguage (name, idLanguage) {
+	new (tableType, @atts);
+	atts.lang = number (idLanguage);
+	return (card.setObjectAttributes (name, @atts))}

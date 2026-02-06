@@ -1,1 +1,56 @@
-«Changes	«12/1/01; 5:36:12 PM by JES		«Expand the node in a try, so errors can be presented to the user. If the file has no URL attribute, display an error.	«12/1/01; 5:10:00 PM by JES		«Set display to false, to make the outline update look smoother.	«8/10/01; 7:10:51 PM by JES		«Call Frontier.tools.windowTypes.commands.openUrl, which is the bottleneck for the File->Open URL command. If the file can be inserted as a sub-outline, it will be, otherwise it's opened in the web browser.	«12/31/00; 5:34:31 PM by JES		«On Macs, convert opml to Mac text before converting to an outline.	«Archive		«Sat, Dec 2, 2000 at 5:53:29 PM by JES			«Properly handle URLs that don't end in .html, and URLs that start with file:///.		«Thursday, September 28, 2000 at 2:09:40 AM by JES			«Bring the web browser to the front when opening html files.		«Wednesday, September 20, 2000 at 2:15:14 PM by PBS			«Call playlist.httpClient so the script can accept OPML documents.		«Friday, August 25, 2000 at 12:10:27 PM by DW			«Open HTML files in the Web browser.		«Friday, August 18, 2000 at 5:40:48 PM by DW			«Undo workaround for op.insertoutline.		«Saturday, August 12, 2000 at 9:36:47 PM by DW			«Called when the user 2clicks on a user node. We fill in the contents of their directory outline, in the indicated folder.local (oldTarget = target.set (window.frontmost ()));local (oldDisplay = op.getDisplay ());op.setDisplay (false);local (url, xmlText);url = string.replaceall (url, " ", "%20");if op.attributes.getOne ("url", @url) {	try {		Frontier.tools.windowTypes.commands.openUrl (url, true)} //true means open as a sub-outline	else {		dialog.alert (tryError)}}else {	dialog.alert ("Can't expand the file because its URL is unknown.")};op.setDisplay (oldDisplay);try {target.set (oldTarget)};«bundle //old code	«case true		«string.lower (url) endswith ".opml"			«local (urllist = string.urlsplit (url))			«if string.lower (urllist[1]) beginsWith "file:" //12/02/00 JES: the URL may be to a local opml file.				«xmlText = file.readWholeFile (file.urlToFile (url))			«else				«xmltext = string.httpResultSplit (tcp.httpClient (server:urllist [2], path:urllist [3], flAcceptOpml:true))			«local (localoutline)			«wp.newtextobject (xmltext, @scratchpad.xxx)			«if system.environment.isMac				«xmlText = string.latinToMac (xmlText)			«op.xmltooutline (xmltext, @localoutline)			«op.deletesubs ()			«op.insertoutline (@localoutline, right)			«if date.versionLessThan (Frontier.version (), "7.0b13")				«op.go (left, 1)	«else		«webbrowser.openUrl (url)		«webbrowser.bringToFront ()
+Â«Changes
+	Â«12/1/01; 5:36:12 PM by JES
+		Â«Expand the node in a try, so errors can be presented to the user. If the file has no URL attribute, display an error.
+	Â«12/1/01; 5:10:00 PM by JES
+		Â«Set display to false, to make the outline update look smoother.
+	Â«8/10/01; 7:10:51 PM by JES
+		Â«Call Frontier.tools.windowTypes.commands.openUrl, which is the bottleneck for the File->Open URL command. If the file can be inserted as a sub-outline, it will be, otherwise it's opened in the web browser.
+	Â«12/31/00; 5:34:31 PM by JES
+		Â«On Macs, convert opml to Mac text before converting to an outline.
+	Â«Archive
+		Â«Sat, Dec 2, 2000 at 5:53:29 PM by JES
+			Â«Properly handle URLs that don't end in .html, and URLs that start with file:///.
+		Â«Thursday, September 28, 2000 at 2:09:40 AM by JES
+			Â«Bring the web browser to the front when opening html files.
+		Â«Wednesday, September 20, 2000 at 2:15:14 PM by PBS
+			Â«Call playlist.httpClient so the script can accept OPML documents.
+		Â«Friday, August 25, 2000 at 12:10:27 PM by DW
+			Â«Open HTML files in the Web browser.
+		Â«Friday, August 18, 2000 at 5:40:48 PM by DW
+			Â«Undo workaround for op.insertoutline.
+		Â«Saturday, August 12, 2000 at 9:36:47 PM by DW
+			Â«Called when the user 2clicks on a user node. We fill in the contents of their directory outline, in the indicated folder.
+local (oldTarget = target.set (window.frontmost ()));
+local (oldDisplay = op.getDisplay ());
+op.setDisplay (false);
+local (url, xmlText);
+url = string.replaceall (url, " ", "%20");
+if op.attributes.getOne ("url", @url) {
+	try {
+		Frontier.tools.windowTypes.commands.openUrl (url, true)} //true means open as a sub-outline
+	else {
+		dialog.alert (tryError)}}
+else {
+	dialog.alert ("Can't expand the file because its URL is unknown.")};
+op.setDisplay (oldDisplay);
+try {target.set (oldTarget)};
+Â«bundle //old code
+	Â«case true
+		Â«string.lower (url) endswith ".opml"
+			Â«local (urllist = string.urlsplit (url))
+			Â«if string.lower (urllist[1]) beginsWith "file:" //12/02/00 JES: the URL may be to a local opml file.
+				Â«xmlText = file.readWholeFile (file.urlToFile (url))
+			Â«else
+				Â«xmltext = string.httpResultSplit (tcp.httpClient (server:urllist [2], path:urllist [3], flAcceptOpml:true))
+			Â«local (localoutline)
+			Â«wp.newtextobject (xmltext, @scratchpad.xxx)
+			Â«if system.environment.isMac
+				Â«xmlText = string.latinToMac (xmlText)
+			Â«op.xmltooutline (xmltext, @localoutline)
+			Â«op.deletesubs ()
+			Â«op.insertoutline (@localoutline, right)
+			Â«if date.versionLessThan (Frontier.version (), "7.0b13")
+				Â«op.go (left, 1)
+	Â«else
+		Â«webbrowser.openUrl (url)
+		Â«webbrowser.bringToFront ()

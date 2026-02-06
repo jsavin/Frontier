@@ -1,1 +1,184 @@
-on buildManilaSiteOutline (adr, adrinfo, flManagingEditor=true) {	«Add all the standard Manila site editing nodes to an outline.		local (oldTarget = target.set (adr));	local (origCursor = op.getCursor ());		local (siteUrl = nameOf (adrinfo^));	local (flGoneRight = false);	on addNode (lineText, adrAtts) {		local (dir = down);		if not (flGoneRight) {			dir = right;			flGoneRight = true};		op.insert (lineText, dir);		manila.nodeTypes.addSitePrefsToAtts (adrinfo, @atts);		op.attributes.addGroup (adrAtts);		return (true)};		bundle { //create home page node		if flManagingEditor {			local (atts);			new (tableType, @atts);			atts.type = "manilaHomePage";			atts.siteUrl = siteUrl;			addNode ("Home Page", @atts)}};	bundle { //create Stories node		local (atts);		new (tableType, @atts);		atts.type = "manilaStoriesContainer";		atts.siteUrl = siteUrl;		atts.url = siteUrl + "stories/";		atts.baseDiscussUrl = siteUrl + "discuss/";		addNode ("Stories", @atts)};	bundle { //create DG node		local (atts);		new (tableType, @atts);		atts.type = "manilaDiscussContainer";		atts.siteUrl = siteUrl;		atts.url = siteUrl + "discuss/";		atts.baseDiscussUrl = atts.url;		atts.discussContainerType = "topLevel";		addNode ("Discussion Group", @atts)};	bundle { //create nodes for various templates		if flManagingEditor {			local (atts);			new (tableType, @atts);			atts.type = "manilaTemplatesContainer";			atts.siteUrl = siteUrl;			addNode ("Templates", @atts);			flGoneRight = false; //indent under the Templates node						new (tableType, @atts);			atts.type = "manilaTemplate";			atts.siteUrl = siteUrl;			local (templatesList = {"Navigation", "Template", "Home Page Template", "News Day Template", "News Item Template", "CSS", "JavaScript", "Site Structure", "Custom Prefs", "Join Now Members Box", "Sign Out Members Box"});			local (oneItem);			for oneItem in templatesList {				atts.manilaType = string.innerCaseName (oneItem);				addNode (oneItem, @atts)};			op.go (left, 1); //go back to Templates container			op.collapse ()}};	«bundle //create siteStructure node		«local (atts)		«new (tableType, @atts)		«atts.type = "manilaSiteStructure"		«atts.siteUrl = siteUrl		«addNode ("Site Structure", @atts)	«bundle //create Editors Only links subheads		«local (editorsOnlyLinks = {"Stories", "Pictures", "Gems", "Shortcuts", "Discuss", "Prefs", "Admin", "Bulletins"})		«local (atts)		«new (tableType, @atts)		«atts.type = "link"		«		«local (oneItem)		«for oneItem in editorsOnlyLinks			«local (lowerItem = string.lower (oneItem))			«atts.url = siteUrl + string.lower (lowerItem) + "/"			«if lowerItem == "prefs" //special case for this URL				«atts.url = siteUrl + "admin/sitePrefs/"			«if lowerItem == "shortcuts" //special case for this URL				«atts.url = siteUrl + "admin/viewShortcuts"			«addNode (oneItem, @atts)		op.setCursor (origCursor);	try {target.set (oldTarget)};		return (true);		«bundle //old code		«on createDefaultNodes (siteUrl, flManagingEditor=true)			«Create the default nodes in a Manila site: home page, various templates, links to prefs/admin pages. Assume the target is set, and the cursor is on the parent, the Manila site node.				«08/20/00; 3:47:14 PM by PBS				«Changes:					«09/21/00; 12:05:00 PM by PBS						«Add a level of structure -- put Templates in a Templates container.						«New optional parameter: flManagingEditor. If false, create only the dg node under the Manila site node.					«10/11/00; 11:24:14 PM by PBS						«Create the Stories node after the home page node, before the DG node.			«			«local (flGoneRight = false)			«local (origCursor = op.getCursor ())			«on addNode (lineText, adrAtts)				«local (dir = down)				«if not (flGoneRight)					«dir = right					«flGoneRight = true				«op.insert (lineText, dir)				«playlist.manila.addSitePrefsToAtts (siteUrl, @atts)				«op.attributes.addGroup (adrAtts)				«return (true)			«			«bundle //create home page node				«if flManagingEditor					«local (atts)					«new (tableType, @atts)					«atts.type = "manilaHomePage"					«atts.siteUrl = siteUrl					«addNode ("Home Page", @atts)			«			«bundle //create Stories node				«local (atts)				«new (tableType, @atts)				«atts.type = "manilaStoriesContainer"				«atts.siteUrl = siteUrl				«atts.url = siteUrl + "stories/"				«atts.baseDiscussUrl = siteUrl + "discuss/"				«addNode ("Stories", @atts)			«			«bundle //create DG node				«local (atts)				«new (tableType, @atts)				«atts.type = "manilaDiscussContainer"				«atts.siteUrl = siteUrl				«atts.url = siteUrl + "discuss/"				«atts.baseDiscussUrl = atts.url				«atts.discussContainerType = "topLevel"				«addNode ("Discussion Group", @atts)			«			«bundle //create nodes for various templates				«if flManagingEditor					«local (atts)					«new (tableType, @atts)					«atts.type = "manilaTemplatesContainer"					«atts.siteUrl = siteUrl					«addNode ("Templates", @atts)					«flGoneRight = false //indent under the Templates node					«					«new (tableType, @atts)					«atts.type = "manilaTemplate"					«atts.siteUrl = siteUrl					«local (templatesList = {"Navigation", "Template", "News Day Template", "News Item Template", "CSS", "JavaScript", "Site Structure", "Custom Prefs", "Join Now Members Box", "Sign Out Members Box"})					«local (oneItem)					«for oneItem in templatesList						«atts.manilaType = string.innerCaseName (oneItem)						«addNode (oneItem, @atts)					«op.go (left, 1) //go back to Templates container					«op.collapse ()			«			«bundle //create siteStructure node				«local (atts)				«new (tableType, @atts)				«atts.type = "manilaSiteStructure"				«atts.siteUrl = siteUrl				«addNode ("Site Structure", @atts)			«			«bundle //create Editors Only links subheads				«local (editorsOnlyLinks = {"Stories", "Pictures", "Gems", "Shortcuts", "Discuss", "Prefs", "Admin", "Bulletins"})				«local (atts)				«new (tableType, @atts)				«atts.type = "link"				«				«local (oneItem)				«for oneItem in editorsOnlyLinks					«local (lowerItem = string.lower (oneItem))					«atts.url = siteUrl + string.lower (lowerItem) + "/"					«if lowerItem == "prefs" //special case for this URL						«atts.url = siteUrl + "admin/sitePrefs/"					«if lowerItem == "shortcuts" //special case for this URL						«atts.url = siteUrl + "admin/viewShortcuts"					«addNode (oneItem, @atts)			«			«op.setCursor (origCursor)			«			«return (true)}
+on buildManilaSiteOutline (adr, adrinfo, flManagingEditor=true) {
+	Â«Add all the standard Manila site editing nodes to an outline.
+	
+	local (oldTarget = target.set (adr));
+	local (origCursor = op.getCursor ());
+	
+	local (siteUrl = nameOf (adrinfo^));
+	local (flGoneRight = false);
+	on addNode (lineText, adrAtts) {
+		local (dir = down);
+		if not (flGoneRight) {
+			dir = right;
+			flGoneRight = true};
+		op.insert (lineText, dir);
+		manila.nodeTypes.addSitePrefsToAtts (adrinfo, @atts);
+		op.attributes.addGroup (adrAtts);
+		return (true)};
+	
+	bundle { //create home page node
+		if flManagingEditor {
+			local (atts);
+			new (tableType, @atts);
+			atts.type = "manilaHomePage";
+			atts.siteUrl = siteUrl;
+			addNode ("Home Page", @atts)}};
+	bundle { //create Stories node
+		local (atts);
+		new (tableType, @atts);
+		atts.type = "manilaStoriesContainer";
+		atts.siteUrl = siteUrl;
+		atts.url = siteUrl + "stories/";
+		atts.baseDiscussUrl = siteUrl + "discuss/";
+		addNode ("Stories", @atts)};
+	bundle { //create DG node
+		local (atts);
+		new (tableType, @atts);
+		atts.type = "manilaDiscussContainer";
+		atts.siteUrl = siteUrl;
+		atts.url = siteUrl + "discuss/";
+		atts.baseDiscussUrl = atts.url;
+		atts.discussContainerType = "topLevel";
+		addNode ("Discussion Group", @atts)};
+	bundle { //create nodes for various templates
+		if flManagingEditor {
+			local (atts);
+			new (tableType, @atts);
+			atts.type = "manilaTemplatesContainer";
+			atts.siteUrl = siteUrl;
+			addNode ("Templates", @atts);
+			flGoneRight = false; //indent under the Templates node
+			
+			new (tableType, @atts);
+			atts.type = "manilaTemplate";
+			atts.siteUrl = siteUrl;
+			local (templatesList = {"Navigation", "Template", "Home Page Template", "News Day Template", "News Item Template", "CSS", "JavaScript", "Site Structure", "Custom Prefs", "Join Now Members Box", "Sign Out Members Box"});
+			local (oneItem);
+			for oneItem in templatesList {
+				atts.manilaType = string.innerCaseName (oneItem);
+				addNode (oneItem, @atts)};
+			op.go (left, 1); //go back to Templates container
+			op.collapse ()}};
+	Â«bundle //create siteStructure node
+		Â«local (atts)
+		Â«new (tableType, @atts)
+		Â«atts.type = "manilaSiteStructure"
+		Â«atts.siteUrl = siteUrl
+		Â«addNode ("Site Structure", @atts)
+	Â«bundle //create Editors Only links subheads
+		Â«local (editorsOnlyLinks = {"Stories", "Pictures", "Gems", "Shortcuts", "Discuss", "Prefs", "Admin", "Bulletins"})
+		Â«local (atts)
+		Â«new (tableType, @atts)
+		Â«atts.type = "link"
+		Â«
+		Â«local (oneItem)
+		Â«for oneItem in editorsOnlyLinks
+			Â«local (lowerItem = string.lower (oneItem))
+			Â«atts.url = siteUrl + string.lower (lowerItem) + "/"
+			Â«if lowerItem == "prefs" //special case for this URL
+				Â«atts.url = siteUrl + "admin/sitePrefs/"
+			Â«if lowerItem == "shortcuts" //special case for this URL
+				Â«atts.url = siteUrl + "admin/viewShortcuts"
+			Â«addNode (oneItem, @atts)
+	
+	op.setCursor (origCursor);
+	try {target.set (oldTarget)};
+	
+	return (true);
+	
+	Â«bundle //old code
+		Â«on createDefaultNodes (siteUrl, flManagingEditor=true)
+			Â«Create the default nodes in a Manila site: home page, various templates, links to prefs/admin pages. Assume the target is set, and the cursor is on the parent, the Manila site node.
+				Â«08/20/00; 3:47:14 PM by PBS
+				Â«Changes:
+					Â«09/21/00; 12:05:00 PM by PBS
+						Â«Add a level of structure -- put Templates in a Templates container.
+						Â«New optional parameter: flManagingEditor. If false, create only the dg node under the Manila site node.
+					Â«10/11/00; 11:24:14 PM by PBS
+						Â«Create the Stories node after the home page node, before the DG node.
+			Â«
+			Â«local (flGoneRight = false)
+			Â«local (origCursor = op.getCursor ())
+			Â«on addNode (lineText, adrAtts)
+				Â«local (dir = down)
+				Â«if not (flGoneRight)
+					Â«dir = right
+					Â«flGoneRight = true
+				Â«op.insert (lineText, dir)
+				Â«playlist.manila.addSitePrefsToAtts (siteUrl, @atts)
+				Â«op.attributes.addGroup (adrAtts)
+				Â«return (true)
+			Â«
+			Â«bundle //create home page node
+				Â«if flManagingEditor
+					Â«local (atts)
+					Â«new (tableType, @atts)
+					Â«atts.type = "manilaHomePage"
+					Â«atts.siteUrl = siteUrl
+					Â«addNode ("Home Page", @atts)
+			Â«
+			Â«bundle //create Stories node
+				Â«local (atts)
+				Â«new (tableType, @atts)
+				Â«atts.type = "manilaStoriesContainer"
+				Â«atts.siteUrl = siteUrl
+				Â«atts.url = siteUrl + "stories/"
+				Â«atts.baseDiscussUrl = siteUrl + "discuss/"
+				Â«addNode ("Stories", @atts)
+			Â«
+			Â«bundle //create DG node
+				Â«local (atts)
+				Â«new (tableType, @atts)
+				Â«atts.type = "manilaDiscussContainer"
+				Â«atts.siteUrl = siteUrl
+				Â«atts.url = siteUrl + "discuss/"
+				Â«atts.baseDiscussUrl = atts.url
+				Â«atts.discussContainerType = "topLevel"
+				Â«addNode ("Discussion Group", @atts)
+			Â«
+			Â«bundle //create nodes for various templates
+				Â«if flManagingEditor
+					Â«local (atts)
+					Â«new (tableType, @atts)
+					Â«atts.type = "manilaTemplatesContainer"
+					Â«atts.siteUrl = siteUrl
+					Â«addNode ("Templates", @atts)
+					Â«flGoneRight = false //indent under the Templates node
+					Â«
+					Â«new (tableType, @atts)
+					Â«atts.type = "manilaTemplate"
+					Â«atts.siteUrl = siteUrl
+					Â«local (templatesList = {"Navigation", "Template", "News Day Template", "News Item Template", "CSS", "JavaScript", "Site Structure", "Custom Prefs", "Join Now Members Box", "Sign Out Members Box"})
+					Â«local (oneItem)
+					Â«for oneItem in templatesList
+						Â«atts.manilaType = string.innerCaseName (oneItem)
+						Â«addNode (oneItem, @atts)
+					Â«op.go (left, 1) //go back to Templates container
+					Â«op.collapse ()
+			Â«
+			Â«bundle //create siteStructure node
+				Â«local (atts)
+				Â«new (tableType, @atts)
+				Â«atts.type = "manilaSiteStructure"
+				Â«atts.siteUrl = siteUrl
+				Â«addNode ("Site Structure", @atts)
+			Â«
+			Â«bundle //create Editors Only links subheads
+				Â«local (editorsOnlyLinks = {"Stories", "Pictures", "Gems", "Shortcuts", "Discuss", "Prefs", "Admin", "Bulletins"})
+				Â«local (atts)
+				Â«new (tableType, @atts)
+				Â«atts.type = "link"
+				Â«
+				Â«local (oneItem)
+				Â«for oneItem in editorsOnlyLinks
+					Â«local (lowerItem = string.lower (oneItem))
+					Â«atts.url = siteUrl + string.lower (lowerItem) + "/"
+					Â«if lowerItem == "prefs" //special case for this URL
+						Â«atts.url = siteUrl + "admin/sitePrefs/"
+					Â«if lowerItem == "shortcuts" //special case for this URL
+						Â«atts.url = siteUrl + "admin/viewShortcuts"
+					Â«addNode (oneItem, @atts)
+			Â«
+			Â«op.setCursor (origCursor)
+			Â«
+			Â«return (true)}

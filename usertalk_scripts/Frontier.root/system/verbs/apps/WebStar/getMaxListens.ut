@@ -1,1 +1,3 @@
-on getMaxListens (appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.get (appID, maxListens))}}
+on getMaxListens (appID = WebStar.id) {
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, maxListens))}}

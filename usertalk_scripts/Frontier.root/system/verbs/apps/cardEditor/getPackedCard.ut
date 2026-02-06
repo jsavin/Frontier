@@ -1,1 +1,2 @@
-on getPackedCard () {	return (appleEvent (cardEditor.id, 'IOWA', 'gpcd'))}
+on getPackedCard () {
+	return (appleEvent (cardEditor.id, 'IOWA', 'gpcd'))}

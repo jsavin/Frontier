@@ -1,1 +1,304 @@
-on getMail (host, username, password, adrMsgTable, deleteMessages="", timeOutTicks="", flMessages="", adrDeleteCallback=nil) {	«Changes:		«9/24/03; 2:50:06 AM by JES			«Added changes from JY Stervinou to handle attachments from a wider vareity of email clients.		«5/8/03; 5:56:41 PM by JES			«New optional parameter, adrDeleteCallback. If deleteMessages is false, then this callback is called with the address of each message table. If the callback returns true, then the message is deleted from the server -- if false, then the message is not deleted.		«2/28/01; 5:20:26 PM by PBS			«Bottleneck closing and aborting the stream so the connection counter doesn't try to go negative.			«Also: fixed a scriptError message that began "Can't send mail" -- now it begins "Can't get mail."	local {		stream;		msgCount = 0;		theMessage;		i;		response = "";		buffer = "";		flStreamOpen = true};		bundle { //set defaults		if deleteMessages == "" {			if defined (user.prefs.getMail.deleteMessages) {				deleteMessages = user.prefs.getMail.deleteMessages}			else {				deleteMessages = false}};		if timeOutTicks == "" {			if defined (user.prefs.getMail.timeOutTicks) {				timeOutTicks = user.prefs.getMail.timeOutTicks}			else {				timeOutTicks = 600}};		if flMessages == "" {			if defined (user.prefs.getMail.flMessages) {				flMessages = user.prefs.getMail.flMessages}			else {				flMessages = false}}};		on closeStream () { //PBS 02/28/01: bottleneck		if flStreamOpen {			try {tcp.closeStream (stream)}};		flStreamOpen = false};	on abortStream () { //PBS 02/28/01: bottleneck		if flStreamOpen {			try {tcp.abortStream (stream)}};		flStreamOpen = false};	on parseMsg2 (s="",adrMsgTable=nil, adrMsg=false, parseSMTP=true, poundNameCompatibility=true) {		«This script courtesy of Eric Soroos with modifications by Alan German, April 2000			«It carries Eric's original name			«AG added the bundle at the bottom of script that does some rough bursting of multi-part messages			«It's called with poundNameCompatibility:false so that it does not put the '#' character in front of the header names.		«This script parses the message into the table specified by adrTable.			«s is the message to be parsed. This is a compatibility option, and will 				«probably not be supported past this release				«It is fundamentally incompatible with adrMsg				«I know it's the first option, but.					«That means it can be dropped in for parseMsg.			«AdrMsg, if defined, will be copied into the table at adrMsgTable.			«parseSMTP will take out the period encoding			«pound name compatibility will make the name of the header items 				«#to				«#subject				«etc...			«otherwise it will be 				«to				«subject				«etc...			«Fri, Mar 12, 1999 at 4:10:28 PM by ES				«Replaces earlier work by Gavin Eadie and Tom Clifton				«Well, Not really. This is a lot more sparse, and uses userland's code instead.				«This is essentially a wrapper around userland's webserver.parsehttpresponse.				local {			headerLocation = 0;			msgTable};				if (adrMsgTable == nil) {			new(tableType,@msgTable);			adrMsgTable= @msgTable};				if sizeOF(s) >0 {			adrMsgTable^.msg = s};				if not(adrMsg == false) {			«if they passed in an address for the message, then move the				«message to the appropriate spot			adrMsgTable^.msg = adrMsg};		adrMsg = @adrMsgTable^.msg; // set adrMsg appropriately				bundle { //split out the header			headerLocation = string.patternMatch("\r\n\r\n",adrMsg^);			adrMsgTable^.text = string.delete(adrMsg^,1,headerLocation+3);			adrMsgTable^.fullHeader = string.delete(adrMsg^,headerLocation,infinity);			«text may be pretty big, as could be msg. We are keeping msg for 				«pop purposes. We're keeping text for further mime processing.				«Fullheader is around for showing what the headers were.				«I like them, but some people don't.};				if (parseSMTP) {			adrMsgTable^.text = string.replaceAll(adrMsgTable^.text,CR+LF+".",CR+LF)};				bundle { // unroll the header.			«lines in the header conatin the following possibilities.				«cr lf whitespace    -> continuation of previous header.				«cr lf character -> new header			«we'll do the best we can with the string verbs... cause I can't get the regex to work			adrMsgTable^.fullHeader =string.replaceAll(adrMsgTable^.fullHeader,"\t"," ");			adrMsgTable^.fullHeader = string.replaceAll(adrMsgTable^.fullHeader,"\r\n "," ")};				if sizeOf(adrMsgTable^.fullHeader)  > 0 {			bundle { // split out the headers				local {					headers;					i};				«webserver.util.parseHeaders(adrMsgTable^.fullHeader+cr+lf+cr+lf, @headers)				string.httpResultSplit(adrMsgTable^.fullHeader+cr+lf+cr+lf, @headers);				for i = 1 to sizeOf(headers) {					if (poundNameCompatibility) {						adrMsgTable^.["#"+nameof(headers[i])]=headers[i]}					else {						adrMsgTable^.[nameOf(headers[i])] = headers[i]}}}};				bundle { // added 4.13.00 by asg - bust out mime parts; no decoding done here			// find out if multi-part or not			local (contenttype="Content-Type");			if poundNameCompatibility {				contenttype = "#"+contenttype};			if not defined (adrMsgTable^.[contenttype]) {				return}; // there is no content-type header?			local (tempcontenttype = string.lower (adrMsgTable^.[contenttype]));			if not (tempcontenttype contains "multipart/" and tempcontenttype contains "boundary") {				return}; // no multipart boundary, no need to burst						local (boundary = adrMsgTable^.[contenttype]); // start with what Eric parsed as Content-Type			local (partslist, aPart);						bundle { // determine boundary and split into parts				bundle { //new code by JY Stervinou handles a wider vareity of email clients					local (matchtable);					if not regex.easySearch ("boundary *= *\"?[^\"]*\"?", boundary, @matchtable) {						return}; // can't find boundary definition					if not regex.easySearch ("= *\"?([^\"]*)", matchtable.matchstring, @matchtable) {						return}; // can't determine boundary definition					matchtable.matchstring = string.popLeading (matchtable.matchstring, '='); // pop leading =					matchtable.matchstring = string.popLeading (matchtable.matchstring, ' '); // pop leading spaces					matchtable.matchstring = string.popLeading (matchtable.matchstring, '"'); // pop leading quote					boundary = "\r\n--" + matchtable.matchstring; // leading crlf is part of boundary										boundary = string.replaceAll (boundary, "(", "\\(");					boundary = string.replaceAll (boundary, ")", "\\)");					boundary = string.replaceAll (boundary, "?", "\\?");					boundary = string.replaceAll (boundary, "+", "\\+");					boundary = string.replaceAll (boundary, ".", "\\.");										partslist = regex.split (boundary, @adrMsgTable^.text)};				«bundle //original code					«local (matchtable)					«if not regex.easySearch ("boundary *= *\"[^\"]*\"", boundary, @matchtable)						«return // can't find boundary definition					«if not regex.easySearch ("\"([^\"]*)", matchtable.matchstring, @matchtable)						«return  // can't determine boundary definition					«matchtable.matchstring = string.popLeading (matchtable.matchstring, '"') // pop leading quote					«boundary = "\r\n--" + matchtable.matchstring  // leading crlf is part of boundary					«					«boundary = string.replaceAll (boundary, "(", "\\(")					«boundary = string.replaceAll (boundary, ")", "\\)")					«boundary = string.replaceAll (boundary, "?", "\\?")					«boundary = string.replaceAll (boundary, "+", "\\+")					«boundary = string.replaceAll (boundary, ".", "\\.")					«					«partslist = regex.split (boundary, @adrMsgTable^.text)};			«adrMsgTable^.text = "" // replaces Eric's text			for aPart in partslist {				if sizeOf (aPart) == 0 { // regex puts an empty one on the front					continue};				if aPart beginsWith "--\r\n" { // this marks where the last part ends and we're done					break};				local (partinfo, infoend);				if aPart beginsWith "\r\n\r\n" { // the part begins with a blank line-- assume text/plain					aPart = string.delete (aPart, 1, 4); // strip cr+lf+cr+lf					adrMsgTable^.text = aPart; // replaces Eric's text					continue};				if not (aPart beginsWith "\r\n") { // This is the preamble area of a multipart message. Mail readers that understand multipart format should ignore this preamble.					continue};				aPart = string.delete (aPart, 1, 2); // strip cr+lf				infoend = string.patternMatch ("\r\n\r\n", aPart); // blank line separates part headers and part				partinfo = string.mid (aPart, 1, infoend+3); // usually at least content type				aPart = aPart - partinfo;				partinfo = partinfo - "\r\n\r\n";				if string.lower (partinfo) contains "text/plain" { // this is the msgText					adrMsgTable^.text = aPart} // replaces Eric's text				else {					if not defined (adrMsgTable^.parts) { // create part table						new (tableType, @adrMsgTable^.parts)};					local (partstorage = table.uniqueName ("", @adrMsgTable^.parts, 4));					new (tableType, partstorage);					partstorage^.["Content-Type"] = partinfo;					partstorage^.data = aPart;					if flMessages {						msg ("")}}}}; // it's an part?				return(adrMsgTable)};	on displayMsg (s) {		msg ("tcp.getMail: " + s)};	on sendCommandToServer (stream, command) { //AR 10/27/1999		if not (command endsWith cr+lf) {			command = command + cr + lf};		try {			tcp.writeStringToStream (stream, command, 4096, timeOutTicks / 60)}		else {			if flMessages { //clean up the message area				msg ("")};			«try {tcp.abortStream (stream)}			abortStream ();			scriptError ("Can't get mail because a connection error occured: " + tryerror)};		return (true)};	on receiveServerResponse (stream) { //asg 04/11/00		local (response = "");		try {			tcp.readStreamUntil (stream, "\r\n", timeOutTicks / 60, @response);			return (response - "\r\n")}		else {			«try {tcp.abortStream (stream)}			abortStream ();			if flMessages { //clean up the message area				msg ("")};			scriptError ("Can't get mail because a connection error occured: " + tryerror)}};	on executeCommand (command, expectResponse = nil) { //send a command to the server and handle the response		local (statusline="");		sendCommandToServer (stream, command + "\r\n");		statusline = receiveServerResponse (stream);		if flMessages {			displayMsg (statusline)};		if (expectResponse != nil) and not (statusline beginsWith expectResponse) {			closeConnection ("Can't get mail because of an unexpected server response. I said \"" + command + "\" and the server replied \"" + statusline + "\".")};		return (true)};	on closeConnection (errorstring = "") { //also called in case of unexpected server responses		try {executeCommand ("QUIT")};		«try {tcp.closeStream (stream)}		closeStream ();		if flMessages { //clean up the message area			msg ("")};		if errorstring != "" { //possibly (re)throw scripterrors			scriptError (errorstring)}};		new (tableType, adrMsgTable);		try { // try to connect to server		stream = tcp.openStream (host, 110);		flStreamOpen = true}	else { // fatal error		scriptError ("Can't get mail because the connection to " + host + " could not be opened: " + tryError)};		bundle { //wait for server's initial connection greeting		local (statusline="");		statusline = receiveServerResponse (stream);		if flMessages {			displayMsg (statusline)};		if not (statusline beginsWith "+OK") {			closeConnection ("Can't get mail because the server, " + host + ", did not send a valid connection greeting. It said, \"" + statusline + "\".")}};		try { // trap any errors from here on and bail out if we get any		bundle { // log on to server			«// branch here if apop (not yet implemented)				«if apop // user wants to use apop					«local (temp, timestring)					«timestring = response					«try						«temp = libMD5.digestAsHex (timestring + password)					«else						«tcpcmd.interfaces.closeStream (aSession)						«scriptError ("tcpcmd's APOP support requires the libMD5 DLL")				«else  // put the lines for 'normal' logon below under this else			executeCommand ("USER " + username, "+OK");			executeCommand ("PASS " + password, "+OK")};		bundle { // get count of messages			local (statusline="");			sendCommandToServer (stream, "STAT");			statusline = receiveServerResponse (stream);			if not (statusline beginsWith "+OK") {				closeConnection ("Can't get mail because the server, " + host + ", did not send a valid STAT response. It said, \"" + statusline + "\".")};			msgCount = number (string.nthField (statusline, ' ', 2))};		bundle { // loop and get each message			for i = 1 to msgCount {				if flMessages {					displayMsg ("Retrieving message " + i)};				local (ourTableName);				sendCommandToServer (stream, "RETR " + i);				tcp.readStreamUntil (stream, "\r\n.\r\n", timeOutTicks / 60, @buffer);				ourTableName = string.padWithZeros (i, 4);				new (tableType, @adrMsgTable^.[ourTableName]);				parseMsg2 (buffer, @adrMsgTable^.[ourTableName], poundNameCompatibility:false);				if deleteMessages { // we can delete the message right here!					executeCommand ("DELE " + i, "+OK")}				else { //see if the callback tells us to delete the message					if adrDeleteCallback != nil {						if adrDeleteCallback^ (@adrMsgTable^.[ourTableName]) {							executeCommand ("DELE " + i, "+OK")}}};				buffer = ""}};		bundle { // log off and disconnect			try {executeCommand ("QUIT")};			«try {tcp.closeStream (stream)}			closeStream ()}}	else {		closeConnection ("Can't get mail because there was an error: \"" + tryError + "\".")};	if flMessages { //clean up the message area		msg ("")}}
+on getMail (host, username, password, adrMsgTable, deleteMessages="", timeOutTicks="", flMessages="", adrDeleteCallback=nil) {
+	Â«Changes:
+		Â«9/24/03; 2:50:06 AM by JES
+			Â«Added changes from JY Stervinou to handle attachments from a wider vareity of email clients.
+		Â«5/8/03; 5:56:41 PM by JES
+			Â«New optional parameter, adrDeleteCallback. If deleteMessages is false, then this callback is called with the address of each message table. If the callback returns true, then the message is deleted from the server -- if false, then the message is not deleted.
+		Â«2/28/01; 5:20:26 PM by PBS
+			Â«Bottleneck closing and aborting the stream so the connection counter doesn't try to go negative.
+			Â«Also: fixed a scriptError message that began "Can't send mail" -- now it begins "Can't get mail."
+	local {
+		stream;
+		msgCount = 0;
+		theMessage;
+		i;
+		response = "";
+		buffer = "";
+		flStreamOpen = true};
+	
+	bundle { //set defaults
+		if deleteMessages == "" {
+			if defined (user.prefs.getMail.deleteMessages) {
+				deleteMessages = user.prefs.getMail.deleteMessages}
+			else {
+				deleteMessages = false}};
+		if timeOutTicks == "" {
+			if defined (user.prefs.getMail.timeOutTicks) {
+				timeOutTicks = user.prefs.getMail.timeOutTicks}
+			else {
+				timeOutTicks = 600}};
+		if flMessages == "" {
+			if defined (user.prefs.getMail.flMessages) {
+				flMessages = user.prefs.getMail.flMessages}
+			else {
+				flMessages = false}}};
+	
+	on closeStream () { //PBS 02/28/01: bottleneck
+		if flStreamOpen {
+			try {tcp.closeStream (stream)}};
+		flStreamOpen = false};
+	on abortStream () { //PBS 02/28/01: bottleneck
+		if flStreamOpen {
+			try {tcp.abortStream (stream)}};
+		flStreamOpen = false};
+	on parseMsg2 (s="",adrMsgTable=nil, adrMsg=false, parseSMTP=true, poundNameCompatibility=true) {
+		Â«This script courtesy of Eric Soroos with modifications by Alan German, April 2000
+			Â«It carries Eric's original name
+			Â«AG added the bundle at the bottom of script that does some rough bursting of multi-part messages
+			Â«It's called with poundNameCompatibility:false so that it does not put the '#' character in front of the header names.
+		Â«This script parses the message into the table specified by adrTable.
+			Â«s is the message to be parsed. This is a compatibility option, and will 
+				Â«probably not be supported past this release
+				Â«It is fundamentally incompatible with adrMsg
+				Â«I know it's the first option, but.
+					Â«That means it can be dropped in for parseMsg.
+			Â«AdrMsg, if defined, will be copied into the table at adrMsgTable.
+			Â«parseSMTP will take out the period encoding
+			Â«pound name compatibility will make the name of the header items 
+				Â«#to
+				Â«#subject
+				Â«etc...
+			Â«otherwise it will be 
+				Â«to
+				Â«subject
+				Â«etc...
+			Â«Fri, Mar 12, 1999 at 4:10:28 PM by ES
+				Â«Replaces earlier work by Gavin Eadie and Tom Clifton
+				Â«Well, Not really. This is a lot more sparse, and uses userland's code instead.
+				Â«This is essentially a wrapper around userland's webserver.parsehttpresponse.
+		
+		local {
+			headerLocation = 0;
+			msgTable};
+		
+		if (adrMsgTable == nil) {
+			new(tableType,@msgTable);
+			adrMsgTable= @msgTable};
+		
+		if sizeOF(s) >0 {
+			adrMsgTable^.msg = s};
+		
+		if not(adrMsg == false) {
+			Â«if they passed in an address for the message, then move the
+				Â«message to the appropriate spot
+			adrMsgTable^.msg = adrMsg};
+		adrMsg = @adrMsgTable^.msg; // set adrMsg appropriately
+		
+		bundle { //split out the header
+			headerLocation = string.patternMatch("\r\n\r\n",adrMsg^);
+			adrMsgTable^.text = string.delete(adrMsg^,1,headerLocation+3);
+			adrMsgTable^.fullHeader = string.delete(adrMsg^,headerLocation,infinity);
+			Â«text may be pretty big, as could be msg. We are keeping msg for 
+				Â«pop purposes. We're keeping text for further mime processing.
+				Â«Fullheader is around for showing what the headers were.
+				Â«I like them, but some people don't.};
+		
+		if (parseSMTP) {
+			adrMsgTable^.text = string.replaceAll(adrMsgTable^.text,CR+LF+".",CR+LF)};
+		
+		bundle { // unroll the header.
+			Â«lines in the header conatin the following possibilities.
+				Â«cr lf whitespace    -> continuation of previous header.
+				Â«cr lf character -> new header
+			Â«we'll do the best we can with the string verbs... cause I can't get the regex to work
+			adrMsgTable^.fullHeader =string.replaceAll(adrMsgTable^.fullHeader,"\t"," ");
+			adrMsgTable^.fullHeader = string.replaceAll(adrMsgTable^.fullHeader,"\r\n "," ")};
+		
+		if sizeOf(adrMsgTable^.fullHeader)  > 0 {
+			bundle { // split out the headers
+				local {
+					headers;
+					i};
+				Â«webserver.util.parseHeaders(adrMsgTable^.fullHeader+cr+lf+cr+lf, @headers)
+				string.httpResultSplit(adrMsgTable^.fullHeader+cr+lf+cr+lf, @headers);
+				for i = 1 to sizeOf(headers) {
+					if (poundNameCompatibility) {
+						adrMsgTable^.["#"+nameof(headers[i])]=headers[i]}
+					else {
+						adrMsgTable^.[nameOf(headers[i])] = headers[i]}}}};
+		
+		bundle { // added 4.13.00 by asg - bust out mime parts; no decoding done here
+			// find out if multi-part or not
+			local (contenttype="Content-Type");
+			if poundNameCompatibility {
+				contenttype = "#"+contenttype};
+			if not defined (adrMsgTable^.[contenttype]) {
+				return}; // there is no content-type header?
+			local (tempcontenttype = string.lower (adrMsgTable^.[contenttype]));
+			if not (tempcontenttype contains "multipart/" and tempcontenttype contains "boundary") {
+				return}; // no multipart boundary, no need to burst
+			
+			local (boundary = adrMsgTable^.[contenttype]); // start with what Eric parsed as Content-Type
+			local (partslist, aPart);
+			
+			bundle { // determine boundary and split into parts
+				bundle { //new code by JY Stervinou handles a wider vareity of email clients
+					local (matchtable);
+					if not regex.easySearch ("boundary *= *\"?[^\"]*\"?", boundary, @matchtable) {
+						return}; // can't find boundary definition
+					if not regex.easySearch ("= *\"?([^\"]*)", matchtable.matchstring, @matchtable) {
+						return}; // can't determine boundary definition
+					matchtable.matchstring = string.popLeading (matchtable.matchstring, '='); // pop leading =
+					matchtable.matchstring = string.popLeading (matchtable.matchstring, ' '); // pop leading spaces
+					matchtable.matchstring = string.popLeading (matchtable.matchstring, '"'); // pop leading quote
+					boundary = "\r\n--" + matchtable.matchstring; // leading crlf is part of boundary
+					
+					boundary = string.replaceAll (boundary, "(", "\\(");
+					boundary = string.replaceAll (boundary, ")", "\\)");
+					boundary = string.replaceAll (boundary, "?", "\\?");
+					boundary = string.replaceAll (boundary, "+", "\\+");
+					boundary = string.replaceAll (boundary, ".", "\\.");
+					
+					partslist = regex.split (boundary, @adrMsgTable^.text)};
+				Â«bundle //original code
+					Â«local (matchtable)
+					Â«if not regex.easySearch ("boundary *= *\"[^\"]*\"", boundary, @matchtable)
+						Â«return // can't find boundary definition
+					Â«if not regex.easySearch ("\"([^\"]*)", matchtable.matchstring, @matchtable)
+						Â«return  // can't determine boundary definition
+					Â«matchtable.matchstring = string.popLeading (matchtable.matchstring, '"') // pop leading quote
+					Â«boundary = "\r\n--" + matchtable.matchstring  // leading crlf is part of boundary
+					Â«
+					Â«boundary = string.replaceAll (boundary, "(", "\\(")
+					Â«boundary = string.replaceAll (boundary, ")", "\\)")
+					Â«boundary = string.replaceAll (boundary, "?", "\\?")
+					Â«boundary = string.replaceAll (boundary, "+", "\\+")
+					Â«boundary = string.replaceAll (boundary, ".", "\\.")
+					Â«
+					Â«partslist = regex.split (boundary, @adrMsgTable^.text)};
+			Â«adrMsgTable^.text = "" // replaces Eric's text
+			for aPart in partslist {
+				if sizeOf (aPart) == 0 { // regex puts an empty one on the front
+					continue};
+				if aPart beginsWith "--\r\n" { // this marks where the last part ends and we're done
+					break};
+				local (partinfo, infoend);
+				if aPart beginsWith "\r\n\r\n" { // the part begins with a blank line-- assume text/plain
+					aPart = string.delete (aPart, 1, 4); // strip cr+lf+cr+lf
+					adrMsgTable^.text = aPart; // replaces Eric's text
+					continue};
+				if not (aPart beginsWith "\r\n") { // This is the preamble area of a multipart message. Mail readers that understand multipart format should ignore this preamble.
+					continue};
+				aPart = string.delete (aPart, 1, 2); // strip cr+lf
+				infoend = string.patternMatch ("\r\n\r\n", aPart); // blank line separates part headers and part
+				partinfo = string.mid (aPart, 1, infoend+3); // usually at least content type
+				aPart = aPart - partinfo;
+				partinfo = partinfo - "\r\n\r\n";
+				if string.lower (partinfo) contains "text/plain" { // this is the msgText
+					adrMsgTable^.text = aPart} // replaces Eric's text
+				else {
+					if not defined (adrMsgTable^.parts) { // create part table
+						new (tableType, @adrMsgTable^.parts)};
+					local (partstorage = table.uniqueName ("", @adrMsgTable^.parts, 4));
+					new (tableType, partstorage);
+					partstorage^.["Content-Type"] = partinfo;
+					partstorage^.data = aPart;
+					if flMessages {
+						msg ("")}}}}; // it's an part?
+		
+		return(adrMsgTable)};
+	on displayMsg (s) {
+		msg ("tcp.getMail: " + s)};
+	on sendCommandToServer (stream, command) { //AR 10/27/1999
+		if not (command endsWith cr+lf) {
+			command = command + cr + lf};
+		try {
+			tcp.writeStringToStream (stream, command, 4096, timeOutTicks / 60)}
+		else {
+			if flMessages { //clean up the message area
+				msg ("")};
+			Â«try {tcp.abortStream (stream)}
+			abortStream ();
+			scriptError ("Can't get mail because a connection error occured: " + tryerror)};
+		return (true)};
+	on receiveServerResponse (stream) { //asg 04/11/00
+		local (response = "");
+		try {
+			tcp.readStreamUntil (stream, "\r\n", timeOutTicks / 60, @response);
+			return (response - "\r\n")}
+		else {
+			Â«try {tcp.abortStream (stream)}
+			abortStream ();
+			if flMessages { //clean up the message area
+				msg ("")};
+			scriptError ("Can't get mail because a connection error occured: " + tryerror)}};
+	on executeCommand (command, expectResponse = nil) { //send a command to the server and handle the response
+		local (statusline="");
+		sendCommandToServer (stream, command + "\r\n");
+		statusline = receiveServerResponse (stream);
+		if flMessages {
+			displayMsg (statusline)};
+		if (expectResponse != nil) and not (statusline beginsWith expectResponse) {
+			closeConnection ("Can't get mail because of an unexpected server response. I said \"" + command + "\" and the server replied \"" + statusline + "\".")};
+		return (true)};
+	on closeConnection (errorstring = "") { //also called in case of unexpected server responses
+		try {executeCommand ("QUIT")};
+		Â«try {tcp.closeStream (stream)}
+		closeStream ();
+		if flMessages { //clean up the message area
+			msg ("")};
+		if errorstring != "" { //possibly (re)throw scripterrors
+			scriptError (errorstring)}};
+	
+	new (tableType, adrMsgTable);
+	
+	try { // try to connect to server
+		stream = tcp.openStream (host, 110);
+		flStreamOpen = true}
+	else { // fatal error
+		scriptError ("Can't get mail because the connection to " + host + " could not be opened: " + tryError)};
+	
+	bundle { //wait for server's initial connection greeting
+		local (statusline="");
+		statusline = receiveServerResponse (stream);
+		if flMessages {
+			displayMsg (statusline)};
+		if not (statusline beginsWith "+OK") {
+			closeConnection ("Can't get mail because the server, " + host + ", did not send a valid connection greeting. It said, \"" + statusline + "\".")}};
+	
+	try { // trap any errors from here on and bail out if we get any
+		bundle { // log on to server
+			Â«// branch here if apop (not yet implemented)
+				Â«if apop // user wants to use apop
+					Â«local (temp, timestring)
+					Â«timestring = response
+					Â«try
+						Â«temp = libMD5.digestAsHex (timestring + password)
+					Â«else
+						Â«tcpcmd.interfaces.closeStream (aSession)
+						Â«scriptError ("tcpcmd's APOP support requires the libMD5 DLL")
+				Â«else  // put the lines for 'normal' logon below under this else
+			executeCommand ("USER " + username, "+OK");
+			executeCommand ("PASS " + password, "+OK")};
+		bundle { // get count of messages
+			local (statusline="");
+			sendCommandToServer (stream, "STAT");
+			statusline = receiveServerResponse (stream);
+			if not (statusline beginsWith "+OK") {
+				closeConnection ("Can't get mail because the server, " + host + ", did not send a valid STAT response. It said, \"" + statusline + "\".")};
+			msgCount = number (string.nthField (statusline, ' ', 2))};
+		bundle { // loop and get each message
+			for i = 1 to msgCount {
+				if flMessages {
+					displayMsg ("Retrieving message " + i)};
+				local (ourTableName);
+				sendCommandToServer (stream, "RETR " + i);
+				tcp.readStreamUntil (stream, "\r\n.\r\n", timeOutTicks / 60, @buffer);
+				ourTableName = string.padWithZeros (i, 4);
+				new (tableType, @adrMsgTable^.[ourTableName]);
+				parseMsg2 (buffer, @adrMsgTable^.[ourTableName], poundNameCompatibility:false);
+				if deleteMessages { // we can delete the message right here!
+					executeCommand ("DELE " + i, "+OK")}
+				else { //see if the callback tells us to delete the message
+					if adrDeleteCallback != nil {
+						if adrDeleteCallback^ (@adrMsgTable^.[ourTableName]) {
+							executeCommand ("DELE " + i, "+OK")}}};
+				buffer = ""}};
+		bundle { // log off and disconnect
+			try {executeCommand ("QUIT")};
+			Â«try {tcp.closeStream (stream)}
+			closeStream ()}}
+	else {
+		closeConnection ("Can't get mail because there was an error: \"" + tryError + "\".")};
+	if flMessages { //clean up the message area
+		msg ("")}}

@@ -1,1 +1,2 @@
-on setTitle (adr, title) {	kernel (window.setTitle)}
+on setTitle (adr, title) {
+	kernel (window.setTitle)}

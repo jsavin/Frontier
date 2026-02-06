@@ -1,1 +1,22 @@
-on listenStream (port, depth, callback, refcon = 0, ip=0) {	«Change Notes		«1/16/00; 12:17:04 PM by RAB			«Support for IP address control on Windows.		«Tue, Apr 25, 2000 at 11:27:05 PM by AR			«Support for IP address control on Mac OS PPC.	on kernelCall (port, depth, callback, refcon, addr) {		kernel (tcp.listenStream)};	on oldKernelCall (port, depth, callback, refcon) {		kernel (tcp.listenStream)};	if date.versionLessThan (Frontier.version (), "6.2a3") {		return (oldKernelCall (port, depth, callback, refcon))}	else {		local (addr);		if (ip != 0) {			if system.environment.isMac and (date.versionLessThan (Frontier.version (), "6.2b8") or (not Frontier.isPowerPC ())) {				addr = 0}			else {				addr = tcp.addressEncode (ip)}}		else {			addr = 0};		return (kernelCall (port, depth, callback, refcon, addr))}}
+on listenStream (port, depth, callback, refcon = 0, ip=0) {
+	Â«Change Notes
+		Â«1/16/00; 12:17:04 PM by RAB
+			Â«Support for IP address control on Windows.
+		Â«Tue, Apr 25, 2000 at 11:27:05 PM by AR
+			Â«Support for IP address control on Mac OS PPC.
+	on kernelCall (port, depth, callback, refcon, addr) {
+		kernel (tcp.listenStream)};
+	on oldKernelCall (port, depth, callback, refcon) {
+		kernel (tcp.listenStream)};
+	if date.versionLessThan (Frontier.version (), "6.2a3") {
+		return (oldKernelCall (port, depth, callback, refcon))}
+	else {
+		local (addr);
+		if (ip != 0) {
+			if system.environment.isMac and (date.versionLessThan (Frontier.version (), "6.2b8") or (not Frontier.isPowerPC ())) {
+				addr = 0}
+			else {
+				addr = tcp.addressEncode (ip)}}
+		else {
+			addr = 0};
+		return (kernelCall (port, depth, callback, refcon, addr))}}

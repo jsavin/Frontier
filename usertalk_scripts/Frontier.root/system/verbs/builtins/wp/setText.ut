@@ -1,1 +1,2 @@
-on setText (string) {	kernel (wp.settext)}
+on setText (string) {
+	kernel (wp.settext)}

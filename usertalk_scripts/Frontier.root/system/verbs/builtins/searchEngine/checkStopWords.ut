@@ -1,1 +1,7 @@
-on checkStopWords (s, adrStopWords=@searchEngine.data.stopWords) {	«Return false if this word should not be indexed.		«The words will have punctuation (apostrophes, dashes) already removed.		«A stop words list is a table, for fastest-possible lookup.	if defined (adrStopWords^.[s]) {		return (false)}; //don't index this word	return (true)} //index this word
+on checkStopWords (s, adrStopWords=@searchEngine.data.stopWords) {
+	Â«Return false if this word should not be indexed.
+		Â«The words will have punctuation (apostrophes, dashes) already removed.
+		Â«A stop words list is a table, for fastest-possible lookup.
+	if defined (adrStopWords^.[s]) {
+		return (false)}; //don't index this word
+	return (true)} //index this word

@@ -1,1 +1,42 @@
-on getDefaultBrowser () {	«Changes:		«6/25/05; 12:39:55 AM by JES			«Slight change to shell command used on OS X to return the ID for apps that handle https urls, instead of html files.		«6/24/05; 3:22:13 PM by JES			«Handle the case where we're running OS X less than 10.2 -- in this case, MSIE is the default browser if LaunchServices lookup fails.		«6/24/05; 2:48:54 PM by JES			«On OS X, try to get the default browser id from LaunchServices via the command shell. If this fails, default to Safari's ID: 'sfri'.		«1/9/02; 12:01:23 PM by PBS			«On OS X MSIE is the default browser.		«1/16/98; 10:40:40 PM by PBS			«Created. Gets the default browser. On Mac returns the app id. On Windows returns the full path.	case sys.os () {		"MacOS" { // get it from Internet Config			local (id = Netscape.id); «in case no pref in Internet Config			if system.environment.isCarbon { //PBS 1/9/02: MSIE is default on OS X				local (flGotFromLaunchServices = false);				try {					local (s = sys.unixShellCommand ("defaults read com.apple.LaunchServices | grep -C5 U:https | grep -w LSBundleSignature | awk '{print $3}'"));					id = string4 (string.popSuffix (s, ";"));					if id != '    ' {						flGotFromLaunchServices = true}};				if not flGotFromLaunchServices {					if date.versionLessThan (sys.osVersion (), "16.2") { //Safari doesn't run in OS X versions less than 10.2						id = 'MSIE'}					else {						id = 'sfri'}}}; //PBS 1/9/02: must use code because msExplorer.id may be '    '			try {				local (rec = ic.geticpreference (ic.eventinfo.webHelper));				id = rec ['pCre']};			return (id)};		"Win95";		"WinNT" { // get it from the user			local (adr = @user.webBrowser.winDefaultBrowserApp);			if not defined (adr^) {				adr^ = ""};			if not file.exists (adr^) {				adr^ = file.findApplication ("htm")};			if not file.exists (adr^) {				if not file.getFileDialog ("Where is your default web browser?", adr, "exe") {					return (false)}};			return (adr^)}}}
+on getDefaultBrowser () {
+	Â«Changes:
+		Â«6/25/05; 12:39:55 AM by JES
+			Â«Slight change to shell command used on OS X to return the ID for apps that handle https urls, instead of html files.
+		Â«6/24/05; 3:22:13 PM by JES
+			Â«Handle the case where we're running OS X less than 10.2 -- in this case, MSIE is the default browser if LaunchServices lookup fails.
+		Â«6/24/05; 2:48:54 PM by JES
+			Â«On OS X, try to get the default browser id from LaunchServices via the command shell. If this fails, default to Safari's ID: 'sfri'.
+		Â«1/9/02; 12:01:23 PM by PBS
+			Â«On OS X MSIE is the default browser.
+		Â«1/16/98; 10:40:40 PM by PBS
+			Â«Created. Gets the default browser. On Mac returns the app id. On Windows returns the full path.
+	case sys.os () {
+		"MacOS" { // get it from Internet Config
+			local (id = Netscape.id); Â«in case no pref in Internet Config
+			if system.environment.isCarbon { //PBS 1/9/02: MSIE is default on OS X
+				local (flGotFromLaunchServices = false);
+				try {
+					local (s = sys.unixShellCommand ("defaults read com.apple.LaunchServices | grep -C5 U:https | grep -w LSBundleSignature | awk '{print $3}'"));
+					id = string4 (string.popSuffix (s, ";"));
+					if id != '    ' {
+						flGotFromLaunchServices = true}};
+				if not flGotFromLaunchServices {
+					if date.versionLessThan (sys.osVersion (), "16.2") { //Safari doesn't run in OS X versions less than 10.2
+						id = 'MSIE'}
+					else {
+						id = 'sfri'}}}; //PBS 1/9/02: must use code because msExplorer.id may be '    '
+			try {
+				local (rec = ic.geticpreference (ic.eventinfo.webHelper));
+				id = rec ['pCre']};
+			return (id)};
+		"Win95";
+		"WinNT" { // get it from the user
+			local (adr = @user.webBrowser.winDefaultBrowserApp);
+			if not defined (adr^) {
+				adr^ = ""};
+			if not file.exists (adr^) {
+				adr^ = file.findApplication ("htm")};
+			if not file.exists (adr^) {
+				if not file.getFileDialog ("Where is your default web browser?", adr, "exe") {
+					return (false)}};
+			return (adr^)}}}

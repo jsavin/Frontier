@@ -1,1 +1,36 @@
-on closeConnection ( connection = nil, calledByThread = false ) {	«Changes:		«5/13/02; 11:03:29 PM by JB			«Changelog started.			«closeConnection ends the Jabber session				«Undocumented parameter "calledByThread" controls whether or not the act of closing the stream also turns off the everyMinute script, which maintains the stream for the default connection. If the connection is not the default connection (@system.temp.jabber.connection), it does nothing, otherwise, if it is false, it removes everyMinute from the scheduler. If it did not do this, everyMinute would re-establish the stream when it runs, which is exactly the behavior we want when the thread runs this command.				«Upon further thought, this is a buglet; everyMinute needs to be broken into two pieces, one maintaining a connection and one doing the id table cleanup. Thought is required on how to do that in the simplest way possible. In the meantime, tcp.im doesn't notice the difference.	if connection == nil {		connection = @system.temp.jabber.connection};	if not defined ( connection^ ) {		return};			bundle {		if defined (connection^.tcpStream) { //JES 7/29/02: only close the tcp stream if one exists			local ( tcpStream = connection^.tcpStream, uniqueId = string(connection)  );			try { // confirm that the stream is still available, and tell the server we're closing				local ( bytes );				streamStatus = tcp.statusStream(tcpStream, @bytes);				if streamStatus == "OPEN" or streamStatus == "DATA" {					tcp.writeStream(tcpStream, "<presence type=\"unavailable\" />" );					tcp.writeStream(tcpStream, "</stream:stream>")}};						try { // don't care if this fails				tcp.closeStream ( tcpStream )}};				if defined ( connection^.loginSemName ) { // in case we're still trying to log in			semaphore.unlock(connection^.loginSemName )};				try {delete (@system.temp.jabber.connections.[connection]) };		try {delete (connection) }; // and invalidate the connection				if not calledByThread and connection == @system.temp.jabber.connection {			try { delete(@user.scheduler.everyMinute.jabber); }}}};bundle { //test code	closeConnection()}
+on closeConnection ( connection = nil, calledByThread = false ) {
+	Â«Changes:
+		Â«5/13/02; 11:03:29 PM by JB
+			Â«Changelog started.
+			Â«closeConnection ends the Jabber session
+				Â«Undocumented parameter "calledByThread" controls whether or not the act of closing the stream also turns off the everyMinute script, which maintains the stream for the default connection. If the connection is not the default connection (@system.temp.jabber.connection), it does nothing, otherwise, if it is false, it removes everyMinute from the scheduler. If it did not do this, everyMinute would re-establish the stream when it runs, which is exactly the behavior we want when the thread runs this command.
+				Â«Upon further thought, this is a buglet; everyMinute needs to be broken into two pieces, one maintaining a connection and one doing the id table cleanup. Thought is required on how to do that in the simplest way possible. In the meantime, tcp.im doesn't notice the difference.
+	if connection == nil {
+		connection = @system.temp.jabber.connection};
+	if not defined ( connection^ ) {
+		return};
+	
+	
+	bundle {
+		if defined (connection^.tcpStream) { //JES 7/29/02: only close the tcp stream if one exists
+			local ( tcpStream = connection^.tcpStream, uniqueId = string(connection)  );
+			try { // confirm that the stream is still available, and tell the server we're closing
+				local ( bytes );
+				streamStatus = tcp.statusStream(tcpStream, @bytes);
+				if streamStatus == "OPEN" or streamStatus == "DATA" {
+					tcp.writeStream(tcpStream, "<presence type=\"unavailable\" />" );
+					tcp.writeStream(tcpStream, "</stream:stream>")}};
+			
+			try { // don't care if this fails
+				tcp.closeStream ( tcpStream )}};
+		
+		if defined ( connection^.loginSemName ) { // in case we're still trying to log in
+			semaphore.unlock(connection^.loginSemName )};
+		
+		try {delete (@system.temp.jabber.connections.[connection]) };
+		try {delete (connection) }; // and invalidate the connection
+		
+		if not calledByThread and connection == @system.temp.jabber.connection {
+			try { delete(@user.scheduler.everyMinute.jabber); }}}};
+bundle { //test code
+	closeConnection()}

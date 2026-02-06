@@ -1,1 +1,40 @@
-«10/8/99; 11:03:32 AM by DW	«Add support for adrErrorCallback script. When we send an XML-RPC message and there's an error, we call the script with a single parameter, the address of the table for the message. 	«Also track the number of times the message has errored in ctErrors. 	«The error callback can change the value of readyToRunAt. By default we reschedule another try for five minutes. For some applications it may make sense to try more or less frequently.	«The caller can signal that we should give up on the message by storing flDelete = true in the table. When it returns we will delete the table. So you can decide at a very high level how much retrying you want to do.	«New local, flSave, we only save Frontier.root if there's been a change to the queue.«10/12/99; 10:18:53 AM by DW	«Rewrite of the scheduling strategy. Each time we're called, we send all the messages that are ready to run. Looping over the table isn't that expensive. And this gives the performance we're looking for, quick transmission of pending messages for servers that are responsive.«11/3/99; 7:45:53 AM by DW	«The error callback and logging code was broken, referring to "adritem", which was undefined. This version should work better! ;->«11/11/99; 4:45:11 AM by DW	«Add msg calls so we can see what's going on. We have some clients with flaky connections or that take a long time to respond to messages. This is a good real-world test. We don't control these servers, somehow we have to accomodate their flaky-ness without bringing other systems down. Changes follow.	«Implement server-blocking. There's a new list, user.betty.queueOutgoing.prefs.blockedServers. If it exists, and a message is being sent to one of the servers in the list, don't send it. Leave it in the queue. At least at an operator level we can exclude servers that go flaky.	«Send each message in a separate thread. This change has been a long time coming, and it's the rational way to do asynchronous RPC. Slow servers get out of the way of fast ones. Five servers can be updated at the same time. try { //the agent keeps running no matter what happens	local (adrtable = @user.betty.queueOutgoing.table);	if not defined (adrtable^) { //nothing pending		new (tabletype, @user.betty.queueOutgoing.table)};	local (ct = sizeof (adrtable^), i, adrmsg, flRunThisMessage);	for i = 1 to ct {		adrmsg = @adrtable^ [i];		bundle { //set flRunThisMessage			flRunThisMessage = false;			if adrmsg^.readyToRunAt <= clock.now () {				flRunThisMessage = true};			if defined (adrmsg^.fldelete) { //don't run deleted messages				if adrmsg^.fldelete {					flRunThisMessage = false}};			if flRunThisMessage {				if defined (user.betty.queueOutgoing.prefs.blockedServers) {					if user.betty.queueOutgoing.prefs.blockedServers contains adrmsg^.rpcServer {						flRunThisMessage = false}};				if flRunThisMessage {					if defined (adrmsg^.flThreadLaunched) { //there's might be a thread trying to send the message						flRunThisMessage = not adrmsg^.flThreadLaunched}}}};		if flRunThisMessage {			adrmsg^.flThreadLaunched = true;			thread.easyCall ("betty.rpc.SendOneMessage", {string (adrmsg)})}};	msg ("betty.rpc.agent: Going to sleep for 5 seconds at " + string.timeString ());	clock.sleepfor (5)}
+Â«10/8/99; 11:03:32 AM by DW
+	Â«Add support for adrErrorCallback script. When we send an XML-RPC message and there's an error, we call the script with a single parameter, the address of the table for the message. 
+	Â«Also track the number of times the message has errored in ctErrors. 
+	Â«The error callback can change the value of readyToRunAt. By default we reschedule another try for five minutes. For some applications it may make sense to try more or less frequently.
+	Â«The caller can signal that we should give up on the message by storing flDelete = true in the table. When it returns we will delete the table. So you can decide at a very high level how much retrying you want to do.
+	Â«New local, flSave, we only save Frontier.root if there's been a change to the queue.
+Â«10/12/99; 10:18:53 AM by DW
+	Â«Rewrite of the scheduling strategy. Each time we're called, we send all the messages that are ready to run. Looping over the table isn't that expensive. And this gives the performance we're looking for, quick transmission of pending messages for servers that are responsive.
+Â«11/3/99; 7:45:53 AM by DW
+	Â«The error callback and logging code was broken, referring to "adritem", which was undefined. This version should work better! ;->
+Â«11/11/99; 4:45:11 AM by DW
+	Â«Add msg calls so we can see what's going on. We have some clients with flaky connections or that take a long time to respond to messages. This is a good real-world test. We don't control these servers, somehow we have to accomodate their flaky-ness without bringing other systems down. Changes follow.
+	Â«Implement server-blocking. There's a new list, user.betty.queueOutgoing.prefs.blockedServers. If it exists, and a message is being sent to one of the servers in the list, don't send it. Leave it in the queue. At least at an operator level we can exclude servers that go flaky.
+	Â«Send each message in a separate thread. This change has been a long time coming, and it's the rational way to do asynchronous RPC. Slow servers get out of the way of fast ones. Five servers can be updated at the same time. 
+try { //the agent keeps running no matter what happens
+	local (adrtable = @user.betty.queueOutgoing.table);
+	if not defined (adrtable^) { //nothing pending
+		new (tabletype, @user.betty.queueOutgoing.table)};
+	local (ct = sizeof (adrtable^), i, adrmsg, flRunThisMessage);
+	for i = 1 to ct {
+		adrmsg = @adrtable^ [i];
+		bundle { //set flRunThisMessage
+			flRunThisMessage = false;
+			if adrmsg^.readyToRunAt <= clock.now () {
+				flRunThisMessage = true};
+			if defined (adrmsg^.fldelete) { //don't run deleted messages
+				if adrmsg^.fldelete {
+					flRunThisMessage = false}};
+			if flRunThisMessage {
+				if defined (user.betty.queueOutgoing.prefs.blockedServers) {
+					if user.betty.queueOutgoing.prefs.blockedServers contains adrmsg^.rpcServer {
+						flRunThisMessage = false}};
+				if flRunThisMessage {
+					if defined (adrmsg^.flThreadLaunched) { //there's might be a thread trying to send the message
+						flRunThisMessage = not adrmsg^.flThreadLaunched}}}};
+		if flRunThisMessage {
+			adrmsg^.flThreadLaunched = true;
+			thread.easyCall ("betty.rpc.SendOneMessage", {string (adrmsg)})}};
+	msg ("betty.rpc.agent: Going to sleep for 5 seconds at " + string.timeString ());
+	clock.sleepfor (5)}

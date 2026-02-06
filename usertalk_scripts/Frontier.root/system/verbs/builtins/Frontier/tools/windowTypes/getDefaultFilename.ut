@@ -1,1 +1,33 @@
-on getDefaultFilename (adr, extension) {	local (f, haveFilename = false, flPopSuffix = true, maxCharsMac = 30 - sizeOf (extension));	if extension beginsWith "." {		extension = string.mid (extension, 2, infinity)};	bundle { //base the filename on the window's f (filepath) attribute		if window.attributes.getOne ("f", @f, adr) {			f = file.fileFromPath (f);			haveFilename = true}};	if not haveFilename { //base the filename on the window's title attribute		if window.attributes.getOne ("title", @f, adr) {			haveFilename = true}};	if not haveFilename { //base the title on the title of the window		f = window.getTitle (adr);		if string.lower (f) == string.lower (string.popFileFromAddress (adr)) {			local (parts = string.parseAddress (string.popFileFromAddress (adr)));			local (ct = sizeOf (parts));			f = parts [ct];			if ct > 1 {				f = parts [ct - 1] + "." + f};			if system.environment.isMac {				if sizeOf (f) > maxCharsMac {					if ct > 1 {						f = parts [ct]}}};			flPopSuffix = false};		haveFilename = true};	if f contains "." { //pop the extension off the name, if it already has one		if flPopSuffix {			f =  string.popSuffix (f)}};	if system.environment.isMac {		if sizeOf (f) > maxCharsMac {			f = string.mid (f, 1, maxCharsMac)}};	f = f + "." + extension;	return (f)}
+on getDefaultFilename (adr, extension) {
+	local (f, haveFilename = false, flPopSuffix = true, maxCharsMac = 30 - sizeOf (extension));
+	if extension beginsWith "." {
+		extension = string.mid (extension, 2, infinity)};
+	bundle { //base the filename on the window's f (filepath) attribute
+		if window.attributes.getOne ("f", @f, adr) {
+			f = file.fileFromPath (f);
+			haveFilename = true}};
+	if not haveFilename { //base the filename on the window's title attribute
+		if window.attributes.getOne ("title", @f, adr) {
+			haveFilename = true}};
+	if not haveFilename { //base the title on the title of the window
+		f = window.getTitle (adr);
+		if string.lower (f) == string.lower (string.popFileFromAddress (adr)) {
+			local (parts = string.parseAddress (string.popFileFromAddress (adr)));
+			local (ct = sizeOf (parts));
+			f = parts [ct];
+			if ct > 1 {
+				f = parts [ct - 1] + "." + f};
+			if system.environment.isMac {
+				if sizeOf (f) > maxCharsMac {
+					if ct > 1 {
+						f = parts [ct]}}};
+			flPopSuffix = false};
+		haveFilename = true};
+	if f contains "." { //pop the extension off the name, if it already has one
+		if flPopSuffix {
+			f =  string.popSuffix (f)}};
+	if system.environment.isMac {
+		if sizeOf (f) > maxCharsMac {
+			f = string.mid (f, 1, maxCharsMac)}};
+	f = f + "." + extension;
+	return (f)}

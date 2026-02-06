@@ -1,1 +1,25 @@
-on getDomainName (dottedid) { //turn a dotted id into a domain name	«9/24/98; 1:18:46 PM by DW		«we cache the domain names in system.temp		«sub-items of system.temp don't survive a restart	«9/30/98; 4:45:40 PM by DW		«If the lookup fails, we return the dotted id.	local (adrcache = @system.temp.ipCache);	if not defined (adrcache^) {		new (tabletype, adrcache)};	local (adritem = @adrcache^.[dottedid]);	if defined (adritem^) {		return (adritem^)}	else {		local (s);		try {			s = tcp.addressToName (tcp.addressEncode (dottedid))}		else {			s = dottedid};		adritem^ = s;		return (s)}};«bundle //test code	«dialog.alert (getDomainName ("208.204.52.230")) //doesn't have a DNS record	«for i = 1 to 100		«s = getDomainName ("www.news.com")	«dialog.alert (s)
+on getDomainName (dottedid) { //turn a dotted id into a domain name
+	Â«9/24/98; 1:18:46 PM by DW
+		Â«we cache the domain names in system.temp
+		Â«sub-items of system.temp don't survive a restart
+	Â«9/30/98; 4:45:40 PM by DW
+		Â«If the lookup fails, we return the dotted id.
+	local (adrcache = @system.temp.ipCache);
+	if not defined (adrcache^) {
+		new (tabletype, adrcache)};
+	local (adritem = @adrcache^.[dottedid]);
+	if defined (adritem^) {
+		return (adritem^)}
+	else {
+		local (s);
+		try {
+			s = tcp.addressToName (tcp.addressEncode (dottedid))}
+		else {
+			s = dottedid};
+		adritem^ = s;
+		return (s)}};
+Â«bundle //test code
+	Â«dialog.alert (getDomainName ("208.204.52.230")) //doesn't have a DNS record
+	Â«for i = 1 to 100
+		Â«s = getDomainName ("www.news.com")
+	Â«dialog.alert (s)

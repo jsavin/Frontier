@@ -1,1 +1,16 @@
-on edit (adrobject) {	local (ideditorapp); «creator id of the script editor	ideditorapp = file.creator (user.odbEditors.CardEditor);	bundle { «set up the Apple Event handlers in system.verbs.traps		local (adrtraptable = @system.verbs.traps.[ideditorapp]);		if not defined (adrtraptable^) {			new (tabletype, adrtraptable)};		table.copy (@odbEditor.editors.Card.traps.swin, adrtraptable);		table.copy (@odbEditor.editors.Card.traps.cwin, adrtraptable)};		local (wtitle = nameOf (adrobject^));	local (id = adrobject);	bundle { «send the apple event, it's a long line		appleEvent (ideditorapp, 'app1', 'ewin', '----', adrobject^, 'refc', id, 'titl', wtitle)}};«bundle «test code	«edit (@suites.samples.cards.card1)
+on edit (adrobject) {
+	local (ideditorapp); Â«creator id of the script editor
+	ideditorapp = file.creator (user.odbEditors.CardEditor);
+	bundle { Â«set up the Apple Event handlers in system.verbs.traps
+		local (adrtraptable = @system.verbs.traps.[ideditorapp]);
+		if not defined (adrtraptable^) {
+			new (tabletype, adrtraptable)};
+		table.copy (@odbEditor.editors.Card.traps.swin, adrtraptable);
+		table.copy (@odbEditor.editors.Card.traps.cwin, adrtraptable)};
+	
+	local (wtitle = nameOf (adrobject^));
+	local (id = adrobject);
+	bundle { Â«send the apple event, it's a long line
+		appleEvent (ideditorapp, 'app1', 'ewin', '----', adrobject^, 'refc', id, 'titl', wtitle)}};
+Â«bundle Â«test code
+	Â«edit (@suites.samples.cards.card1)

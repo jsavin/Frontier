@@ -1,1 +1,2 @@
-on expandURLs (s) {	kernel (html.expandURLs)}
+on expandURLs (s) {
+	kernel (html.expandURLs)}

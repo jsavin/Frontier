@@ -1,1 +1,146 @@
-on rssToOutline (xmltext, adroutline, url="") {	«Changes:		«11/23/01; 3:22:28 PM by JES			«Re-checked in to fix a problem (also now fixed) caused by userland.cleanPikeRoot.		«10/11/01; 2:40:28 PM by PBS			«If no url item is present, try to get it from the description.		«8/10/01; 7:21:39 PM by JES			«Support RSS 0.92.		«9/27/00 at 6:23:24 PM by JES			«Commented debugging code.		«9/27/00 at 6:03:59 PM by JES			«Decode XML entities in URLs when setting the link node's URL attribute.		«8/16/00 at 2:24:14 PM by DW			«Parse the xmltext as a RSS 0.91 channel, into the outline. If url is nonempty, add it as an attribute to the main headline. 	local (xtable);	new (outlinetype, adroutline);	xml.compile (xmltext, @xtable);		on decode (s) {		s = string.replaceall (s, "&apos;", "'");		s = string.replaceall (s, "&quot;", "\"");		s = string.replaceAll (s, "\r\n", "\r");		s = string.replaceAll (s, "\n", "\r");		s = string.replaceAll (s, "\t", "");		return (xml.entityDecode (s))};	local (version);	try {		version = xml.getAttribute (adrRss, "version")^};	local (adrrss);	try {		adrrss = xml.getAddress (@xtable, "rss")}	else { //it may be RDF		adrrss = xml.getAddress (@xtable, "RDF");		version = "RSS1"};	local (adrchannel = xml.getAddress (adrRss, "channel"));	local (title = decode (xml.getValue (adrchannel, "title")));	local (channeldescription = decode (xml.getValue (adrchannel, "description")));	local (channellanguage, channellink);	try {channellink = decode (xml.getValue (adrchannel, "link"))};	try {channellanguage = decode (xml.getValue (adrchannel, "language"))};		local (oldtarget = target.set (adroutline));	op.setlinetext (title);	local (atts);	new (tabletype, @atts);	atts.type = "rss";	atts.version = version;	atts.title = title;	if channellink != nil {		atts.htmlUrl = channellink};	if url != "" {		atts.xmlUrl = url};	atts.description = channeldescription;	atts.language = channellanguage;	op.attributes.addgroup (@atts);	bundle { //get the items		local (itemlist, item, ct = 1, insertdir = right);		if version == "RSS1" {			itemlist = xml.getAddressList (adrrss, "item")}		else {			itemlist = xml.getAddressList (adrchannel, "item")};		for item in itemlist {			local (url, title, description);			try { //url is optional in RSS 0.92				url = decode (xml.getValue (item, "link"))};			try { //title is optional in RSS 0.92				title = decode (xml.getValue (item, "title"))};			try { //description is optional in RSS 0.92				description = decode (xml.getValue (item, "description"))};						if description == nil {				if title == nil { //no title or description -- insert the link if there is one					if url == nil {						continue};					op.insert (url, insertdir)}				else {					op.insert (title, insertdir)}}			else {				bundle { //make the description look nice in an outline					«bundle //this code is too slow -- don't bother to strip markup						«on replaceTag (tagName, replaceStartTagWith, replaceEndDagWith = "")							«local (searchString = "<" + string.lower (tagName))							«local (ct = sizeOf (searchString))							«local (descriptionSize = sizeOf (description))							«local (ix = descriptionSize - ct)							«while ix > 0								«if string.lower (string.mid (description, ix, ct)) == searchString //this is a hit									«local (ixend = ix + ct)									«while ixend <= descriptionSize										«if description[ixend] == '>' //delete up to here											«description = string.delete (description, ix, ixend - ix + 1)											«descriptionSize = sizeOf (description)											«break										«ixend++								«ix--						«replaceTag ("br", "\r")						«replaceTag ("p", "\r")						«replaceTag ("li", "\t\r")						«replaceTag ("blockquote", "")						«replaceTag ("ol", "")						«replaceTag ("ul", "")					description = string.replaceAll (description, "<br>", "\r", false);					description = string.replaceAll (description, "<p>", "\r", false);					description = string.replaceAll (description, "</p>", "", false);					while description contains "\r\r" {						description = string.replaceAll (description, "\r\r", "\r")};					description = string.trimWhitespace (description)};				if title == nil {					op.insert (description, insertdir)}				else {					op.insert (title + " -- " + description, insertdir)}};						if url == nil { //PBS 10/11/01: try to get it from the description				if description != nil {					local (ix = string.patternMatch ("<a ", string.lower (description))); //find first link					if ix > 0 {						local (s = string.mid (description, ix, infinity));						ix = string.patternMatch (">", string.lower (s)); //find end of first link						if ix > 0 {							s = string.mid (s, 1, ix - 1); //drop trailing >							s = s + "/>"; //make it XML legal, as in <a href="foo"/>							local (t); //table will contain tag as compiled XML							new (tableType, @t);							try { //compile it as XML, then pull out the href attribute								xml.compile (s, @t);								url = t [1].["/atts"].href}}}}}; //get href attribute						if url != nil {				local (atts);				new (tabletype, @atts);				atts.type = "link";				atts.url = url;				op.attributes.addgroup (@atts)};						insertdir = down}};		op.firstsummit ();	window.setposition (adroutline, 75, 125);	window.setsize (adroutline, 400, 450);	target.set (oldtarget)};«bundle //test code	«local (url = "http://www.palmstation.com/palmstation.rdf")	«local (s = tcp.httpReadUrl (url))	«wp.newtextobject (s, @scratchpad.rsstext)	«rssToOutline (string (scratchpad.rsstext), @scratchpad.rssOutline, url)	«edit (@scratchpad.rssOutline)
+on rssToOutline (xmltext, adroutline, url="") {
+	Â«Changes:
+		Â«11/23/01; 3:22:28 PM by JES
+			Â«Re-checked in to fix a problem (also now fixed) caused by userland.cleanPikeRoot.
+		Â«10/11/01; 2:40:28 PM by PBS
+			Â«If no url item is present, try to get it from the description.
+		Â«8/10/01; 7:21:39 PM by JES
+			Â«Support RSS 0.92.
+		Â«9/27/00 at 6:23:24 PM by JES
+			Â«Commented debugging code.
+		Â«9/27/00 at 6:03:59 PM by JES
+			Â«Decode XML entities in URLs when setting the link node's URL attribute.
+		Â«8/16/00 at 2:24:14 PM by DW
+			Â«Parse the xmltext as a RSS 0.91 channel, into the outline. If url is nonempty, add it as an attribute to the main headline. 
+	local (xtable);
+	new (outlinetype, adroutline);
+	xml.compile (xmltext, @xtable);
+	
+	on decode (s) {
+		s = string.replaceall (s, "&apos;", "'");
+		s = string.replaceall (s, "&quot;", "\"");
+		s = string.replaceAll (s, "\r\n", "\r");
+		s = string.replaceAll (s, "\n", "\r");
+		s = string.replaceAll (s, "\t", "");
+		return (xml.entityDecode (s))};
+	local (version);
+	try {
+		version = xml.getAttribute (adrRss, "version")^};
+	local (adrrss);
+	try {
+		adrrss = xml.getAddress (@xtable, "rss")}
+	else { //it may be RDF
+		adrrss = xml.getAddress (@xtable, "RDF");
+		version = "RSS1"};
+	local (adrchannel = xml.getAddress (adrRss, "channel"));
+	local (title = decode (xml.getValue (adrchannel, "title")));
+	local (channeldescription = decode (xml.getValue (adrchannel, "description")));
+	local (channellanguage, channellink);
+	try {channellink = decode (xml.getValue (adrchannel, "link"))};
+	try {channellanguage = decode (xml.getValue (adrchannel, "language"))};
+	
+	local (oldtarget = target.set (adroutline));
+	op.setlinetext (title);
+	local (atts);
+	new (tabletype, @atts);
+	atts.type = "rss";
+	atts.version = version;
+	atts.title = title;
+	if channellink != nil {
+		atts.htmlUrl = channellink};
+	if url != "" {
+		atts.xmlUrl = url};
+	atts.description = channeldescription;
+	atts.language = channellanguage;
+	op.attributes.addgroup (@atts);
+	bundle { //get the items
+		local (itemlist, item, ct = 1, insertdir = right);
+		if version == "RSS1" {
+			itemlist = xml.getAddressList (adrrss, "item")}
+		else {
+			itemlist = xml.getAddressList (adrchannel, "item")};
+		for item in itemlist {
+			local (url, title, description);
+			try { //url is optional in RSS 0.92
+				url = decode (xml.getValue (item, "link"))};
+			try { //title is optional in RSS 0.92
+				title = decode (xml.getValue (item, "title"))};
+			try { //description is optional in RSS 0.92
+				description = decode (xml.getValue (item, "description"))};
+			
+			if description == nil {
+				if title == nil { //no title or description -- insert the link if there is one
+					if url == nil {
+						continue};
+					op.insert (url, insertdir)}
+				else {
+					op.insert (title, insertdir)}}
+			else {
+				bundle { //make the description look nice in an outline
+					Â«bundle //this code is too slow -- don't bother to strip markup
+						Â«on replaceTag (tagName, replaceStartTagWith, replaceEndDagWith = "")
+							Â«local (searchString = "<" + string.lower (tagName))
+							Â«local (ct = sizeOf (searchString))
+							Â«local (descriptionSize = sizeOf (description))
+							Â«local (ix = descriptionSize - ct)
+							Â«while ix > 0
+								Â«if string.lower (string.mid (description, ix, ct)) == searchString //this is a hit
+									Â«local (ixend = ix + ct)
+									Â«while ixend <= descriptionSize
+										Â«if description[ixend] == '>' //delete up to here
+											Â«description = string.delete (description, ix, ixend - ix + 1)
+											Â«descriptionSize = sizeOf (description)
+											Â«break
+										Â«ixend++
+								Â«ix--
+						Â«replaceTag ("br", "\r")
+						Â«replaceTag ("p", "\r")
+						Â«replaceTag ("li", "\t\r")
+						Â«replaceTag ("blockquote", "")
+						Â«replaceTag ("ol", "")
+						Â«replaceTag ("ul", "")
+					description = string.replaceAll (description, "<br>", "\r", false);
+					description = string.replaceAll (description, "<p>", "\r", false);
+					description = string.replaceAll (description, "</p>", "", false);
+					while description contains "\r\r" {
+						description = string.replaceAll (description, "\r\r", "\r")};
+					description = string.trimWhitespace (description)};
+				if title == nil {
+					op.insert (description, insertdir)}
+				else {
+					op.insert (title + " -- " + description, insertdir)}};
+			
+			if url == nil { //PBS 10/11/01: try to get it from the description
+				if description != nil {
+					local (ix = string.patternMatch ("<a ", string.lower (description))); //find first link
+					if ix > 0 {
+						local (s = string.mid (description, ix, infinity));
+						ix = string.patternMatch (">", string.lower (s)); //find end of first link
+						if ix > 0 {
+							s = string.mid (s, 1, ix - 1); //drop trailing >
+							s = s + "/>"; //make it XML legal, as in <a href="foo"/>
+							local (t); //table will contain tag as compiled XML
+							new (tableType, @t);
+							try { //compile it as XML, then pull out the href attribute
+								xml.compile (s, @t);
+								url = t [1].["/atts"].href}}}}}; //get href attribute
+			
+			if url != nil {
+				local (atts);
+				new (tabletype, @atts);
+				atts.type = "link";
+				atts.url = url;
+				op.attributes.addgroup (@atts)};
+			
+			insertdir = down}};
+	
+	op.firstsummit ();
+	window.setposition (adroutline, 75, 125);
+	window.setsize (adroutline, 400, 450);
+	target.set (oldtarget)};
+Â«bundle //test code
+	Â«local (url = "http://www.palmstation.com/palmstation.rdf")
+	Â«local (s = tcp.httpReadUrl (url))
+	Â«wp.newtextobject (s, @scratchpad.rsstext)
+	Â«rssToOutline (string (scratchpad.rsstext), @scratchpad.rssOutline, url)
+	Â«edit (@scratchpad.rssOutline)

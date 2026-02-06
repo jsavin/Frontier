@@ -1,1 +1,5 @@
-on setFrontApp(appName) {	if !sys.bringAppToFront(appName) {		return(false)};	while sys.frontMostApp() != appName {		;}}
+on setFrontApp(appName) {
+	if !sys.bringAppToFront(appName) {
+		return(false)};
+	while sys.frontMostApp() != appName {
+		;}}

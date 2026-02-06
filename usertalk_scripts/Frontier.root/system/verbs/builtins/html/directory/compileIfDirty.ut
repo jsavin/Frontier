@@ -1,1 +1,22 @@
-on compileIfDirty (adroutline, identifier, adrdirectoryinfo, ownername=user.prefs.name, owneremail=user.prefs.mailAddress) {	«Changes		«5/10/02; 1:56:16 PM by JES			«Created. Cribbed from manilaSuite.directory.initMessageTable.	on clearcache () {		new (tabletype, @adrdirectoryinfo^.cache);		html.directory.initDirectoryTable (identifier, parentOf (parentOf (adrdirectoryinfo^)^))};	bundle { //rebuild the xml structure if it needs it		local (flrebuild = false);		if defined (adrdirectoryinfo^.xmlstruct) {			if timemodified (adroutline) > timemodified (@adrdirectoryinfo^.xmlstruct) {				flrebuild = true}}		else {			flrebuild = true};		if flrebuild {			xml.compile (op.outlinetoxml (adroutline, ownername, owneremail), @adrdirectoryinfo^.xmlstruct);			clearcache ()}};	bundle { //clear the cache if one of the templates has changed		try {			local (pta = html.getpagetableaddress ());			if timeCreated (@adrdirectoryinfo^.cache) < pta^.newsSite^.directory.templateModified {				clearcache ()}}}}
+on compileIfDirty (adroutline, identifier, adrdirectoryinfo, ownername=user.prefs.name, owneremail=user.prefs.mailAddress) {
+	Â«Changes
+		Â«5/10/02; 1:56:16 PM by JES
+			Â«Created. Cribbed from manilaSuite.directory.initMessageTable.
+	on clearcache () {
+		new (tabletype, @adrdirectoryinfo^.cache);
+		html.directory.initDirectoryTable (identifier, parentOf (parentOf (adrdirectoryinfo^)^))};
+	bundle { //rebuild the xml structure if it needs it
+		local (flrebuild = false);
+		if defined (adrdirectoryinfo^.xmlstruct) {
+			if timemodified (adroutline) > timemodified (@adrdirectoryinfo^.xmlstruct) {
+				flrebuild = true}}
+		else {
+			flrebuild = true};
+		if flrebuild {
+			xml.compile (op.outlinetoxml (adroutline, ownername, owneremail), @adrdirectoryinfo^.xmlstruct);
+			clearcache ()}};
+	bundle { //clear the cache if one of the templates has changed
+		try {
+			local (pta = html.getpagetableaddress ());
+			if timeCreated (@adrdirectoryinfo^.cache) < pta^.newsSite^.directory.templateModified {
+				clearcache ()}}}}

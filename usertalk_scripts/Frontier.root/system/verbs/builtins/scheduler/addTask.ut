@@ -1,1 +1,21 @@
-on addTask (taskTime, scriptString, minutesBetweenRuns) {	«Add a task to the tasks table.		«taskTime is the next time the task will be run.		«scriptString is the text of a short script that we run.		«minutesBetweenRuns is self-documenting...			«if it's 0, the task is deleted after it is run		«Changes			«Create the script as a script object, not as a string.				«3/9/99 AR	«10/13/99; 8:46:25 AM by DW		«Initialize ctRuns to zero.		«http://frontier.userland.com/discuss/msgReader$1868	local (adr);	adr = table.uniqueName ("task", @user.scheduler.tasks);	new (tableType, adr);	adr^.taskTime = taskTime;	script.newScriptObject (scriptString, @adr^.script);	adr^.minutesBetweenRuns = minutesBetweenRuns;	adr^.ctRuns = 0; //10/13/99 DW	adr^.error = "";	return (adr)}
+on addTask (taskTime, scriptString, minutesBetweenRuns) {
+	Â«Add a task to the tasks table.
+		Â«taskTime is the next time the task will be run.
+		Â«scriptString is the text of a short script that we run.
+		Â«minutesBetweenRuns is self-documenting...
+			Â«if it's 0, the task is deleted after it is run
+		Â«Changes
+			Â«Create the script as a script object, not as a string.
+				Â«3/9/99 AR
+	Â«10/13/99; 8:46:25 AM by DW
+		Â«Initialize ctRuns to zero.
+		Â«http://frontier.userland.com/discuss/msgReader$1868
+	local (adr);
+	adr = table.uniqueName ("task", @user.scheduler.tasks);
+	new (tableType, adr);
+	adr^.taskTime = taskTime;
+	script.newScriptObject (scriptString, @adr^.script);
+	adr^.minutesBetweenRuns = minutesBetweenRuns;
+	adr^.ctRuns = 0; //10/13/99 DW
+	adr^.error = "";
+	return (adr)}

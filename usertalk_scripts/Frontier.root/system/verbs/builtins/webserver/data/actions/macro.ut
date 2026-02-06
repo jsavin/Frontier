@@ -1,1 +1,47 @@
-on macro (paramAdr) {	«This script currently supports only a single WebStar web server per machine.		«Support for other web servers and multiple servers per machine will be added later.		«by Mason Hale 9/20/95		«10/29/95 Added support for default documents.	local (webroot =  file.folderFromPath (sys.getAppPath (Webstar.id)), pathtemp, htmlText);	with paramAdr^ {		if !defined (user.webServer.utilities.macroData) {			new (tableType, @user.webServer.utilities.macroData)};		bundle { «build path to file from URL			if scriptName endsWith "/" {				«default document was requested				pathtemp = string.popLeading (scriptName, "/");				pathtemp = string.replaceAll (pathTemp, "/", ":");				if !defined (user.webServer.utilities.macroData.defaultPage) {					user.webServer.utilities.macroData.defaultPage = WebStar.getIndexFile ()};				pathtemp = webroot + pathtemp + user.webServer.utilities.macroData.defaultPage}			else {				pathtemp = string.popLeading (scriptName, "/");				pathtemp =  string.replaceAll (pathTemp, "/", ":");				pathtemp = webroot + pathtemp}};		if defined (user.webServer.utilities.macroData.[scriptName]) {			htmltext = user.webServer.utilities.macroData.[scriptName]}		else {			if !file.exists (pathtemp) {				scriptError ("The file \"" + pathtemp + "\" was not found")}			else {				if !file.type (pathtemp) == "TEXT" {					htmlText = webserver.errorMessage ("File is not expected type 'TEXT'.")}				else { «file exists and is TEXT, read it and process macros					semaphores.lock (string (pathtemp), 3600);					try {						file.open (pathtemp);						htmlText = string (file.read (pathtemp, infinity));						file.close (pathtemp);						semaphores.unlock (string (pathtemp));						webServer.utilities.macroData.[scriptName] = htmlText}					else {						semaphores.unlock (string (pathtemp));						scriptError ("Error opening file.")}}}};		htmltext  = webserver.httpHeader () + webserver.utilities.processMacros (htmltext, paramAdr)};	if !defined (cacheDate) {		webServer.utilities.macroData.cacheDate = clock.now ()};	if long (clock.now () - webServer.utilities.macroData.cacheDate) > 86400 { « 1 day		table.emptyTable (@webServer.utilities.macroData)};	return (htmltext);	}
+on macro (paramAdr) {
+	Â«This script currently supports only a single WebStar web server per machine.
+		Â«Support for other web servers and multiple servers per machine will be added later.
+		Â«by Mason Hale 9/20/95
+		Â«10/29/95 Added support for default documents.
+	local (webroot =  file.folderFromPath (sys.getAppPath (Webstar.id)), pathtemp, htmlText);
+	with paramAdr^ {
+		if !defined (user.webServer.utilities.macroData) {
+			new (tableType, @user.webServer.utilities.macroData)};
+		bundle { Â«build path to file from URL
+			if scriptName endsWith "/" {
+				Â«default document was requested
+				pathtemp = string.popLeading (scriptName, "/");
+				pathtemp = string.replaceAll (pathTemp, "/", ":");
+				if !defined (user.webServer.utilities.macroData.defaultPage) {
+					user.webServer.utilities.macroData.defaultPage = WebStar.getIndexFile ()};
+				pathtemp = webroot + pathtemp + user.webServer.utilities.macroData.defaultPage}
+			else {
+				pathtemp = string.popLeading (scriptName, "/");
+				pathtemp =  string.replaceAll (pathTemp, "/", ":");
+				pathtemp = webroot + pathtemp}};
+		if defined (user.webServer.utilities.macroData.[scriptName]) {
+			htmltext = user.webServer.utilities.macroData.[scriptName]}
+		else {
+			if !file.exists (pathtemp) {
+				scriptError ("The file \"" + pathtemp + "\" was not found")}
+			else {
+				if !file.type (pathtemp) == "TEXT" {
+					htmlText = webserver.errorMessage ("File is not expected type 'TEXT'.")}
+				else { Â«file exists and is TEXT, read it and process macros
+					semaphores.lock (string (pathtemp), 3600);
+					try {
+						file.open (pathtemp);
+						htmlText = string (file.read (pathtemp, infinity));
+						file.close (pathtemp);
+						semaphores.unlock (string (pathtemp));
+						webServer.utilities.macroData.[scriptName] = htmlText}
+					else {
+						semaphores.unlock (string (pathtemp));
+						scriptError ("Error opening file.")}}}};
+		htmltext  = webserver.httpHeader () + webserver.utilities.processMacros (htmltext, paramAdr)};
+	if !defined (cacheDate) {
+		webServer.utilities.macroData.cacheDate = clock.now ()};
+	if long (clock.now () - webServer.utilities.macroData.cacheDate) > 86400 { Â« 1 day
+		table.emptyTable (@webServer.utilities.macroData)};
+	return (htmltext);
+	}

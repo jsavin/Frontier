@@ -1,1 +1,2 @@
-on neuterMacros (s, adrTable) { //6.1	kernel (html.neutermacros)}
+on neuterMacros (s, adrTable) { //6.1
+	kernel (html.neutermacros)}

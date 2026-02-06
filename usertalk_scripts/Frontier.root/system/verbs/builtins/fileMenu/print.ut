@@ -1,1 +1,2 @@
-on print () {	kernel (filemenu.print)}
+on print () {
+	kernel (filemenu.print)}

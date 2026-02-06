@@ -1,1 +1,42 @@
-«A demonstration of how to create your own look to forwarded mail.	«A good example of the non object model approach to Eudoraon forwardMessage (email) { «forward the current message	local (x = Eudora.getCurrentMessageObject ());	local (sender = Eudora.getMessageSender (x));	local (recipient = Eudora.getMessageTo (x));	local (subject = Eudora.getMessageSubject (x));	local (sent = Eudora.getMessageDate (x));	local (text = Eudora.getMessageText (x));		local (newtext);	bundle { «create the text that we're going to send		local (overalltitle, dashes, header, footer, preamble);		overalltitle = "FORWARDED MESSAGE";		dashes = string.filledstring ('-', sizeof (overalltitle));		header = dashes + cr + overalltitle + cr;		header = header + dashes + cr + cr;				local (s);		s = "Forwarded by " + user.prefs.name + " of " + user.prefs.organization;		s = s + " on " + clock.now () + ".";		footer = cr + cr + string.filledstring ('-', sizeof (s)) + cr + s + cr;				text = Eudora.ucmds.wrapText (text);				preamble = "---" + cr + "From: " + string.lower (sender) + cr;		preamble = preamble + "To: " + string.lower (recipient) + cr;		if sent != "" {			preamble = preamble + "Date: " + sent + cr};		preamble = preamble + "---" + cr + cr;				newtext = header + Eudora.ucmds.massageText (2, 60, preamble + text) + footer};	bundle { «create the new mail message in Eudora		local (x);		x = Eudora.createMessage ();		Eudora.setMessageTo (x, email);		Eudora.setMessageSubject (x, subject);		Eudora.setMessageSender (x, user.prefs.MailAddress);		Eudora.setMessageText (x, newtext);		Eudora.queue (x);		return (true)}};forwardMessage ("bozo@bozo.com")
+Â«A demonstration of how to create your own look to forwarded mail.
+	Â«A good example of the non object model approach to Eudora
+on forwardMessage (email) { Â«forward the current message
+	local (x = Eudora.getCurrentMessageObject ());
+	local (sender = Eudora.getMessageSender (x));
+	local (recipient = Eudora.getMessageTo (x));
+	local (subject = Eudora.getMessageSubject (x));
+	local (sent = Eudora.getMessageDate (x));
+	local (text = Eudora.getMessageText (x));
+	
+	local (newtext);
+	bundle { Â«create the text that we're going to send
+		local (overalltitle, dashes, header, footer, preamble);
+		overalltitle = "FORWARDED MESSAGE";
+		dashes = string.filledstring ('-', sizeof (overalltitle));
+		header = dashes + cr + overalltitle + cr;
+		header = header + dashes + cr + cr;
+		
+		local (s);
+		s = "Forwarded by " + user.prefs.name + " of " + user.prefs.organization;
+		s = s + " on " + clock.now () + ".";
+		footer = cr + cr + string.filledstring ('-', sizeof (s)) + cr + s + cr;
+		
+		text = Eudora.ucmds.wrapText (text);
+		
+		preamble = "---" + cr + "From: " + string.lower (sender) + cr;
+		preamble = preamble + "To: " + string.lower (recipient) + cr;
+		if sent != "" {
+			preamble = preamble + "Date: " + sent + cr};
+		preamble = preamble + "---" + cr + cr;
+		
+		newtext = header + Eudora.ucmds.massageText (2, 60, preamble + text) + footer};
+	bundle { Â«create the new mail message in Eudora
+		local (x);
+		x = Eudora.createMessage ();
+		Eudora.setMessageTo (x, email);
+		Eudora.setMessageSubject (x, subject);
+		Eudora.setMessageSender (x, user.prefs.MailAddress);
+		Eudora.setMessageText (x, newtext);
+		Eudora.queue (x);
+		return (true)}};
+forwardMessage ("bozo@bozo.com")

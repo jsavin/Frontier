@@ -1,1 +1,5 @@
-on clearNetworkApp () { «de-install the current network app	local (adr = @app.idnetworkapp);	if defined (adr^) {		delete (adr)};	return (true)}
+on clearNetworkApp () { Â«de-install the current network app
+	local (adr = @app.idnetworkapp);
+	if defined (adr^) {
+		delete (adr)};
+	return (true)}

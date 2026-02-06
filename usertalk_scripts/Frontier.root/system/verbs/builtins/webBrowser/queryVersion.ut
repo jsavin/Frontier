@@ -1,1 +1,4 @@
-on queryversion (majorVersion, minorVersion) { «Tells the Web browser that an application which wishes to communicate with it supports a specific version (major.minor) of this SDI specification	case sys.os () {		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'QVER', 'MAJV', long (majorVersion), 'MINV', long (minorVersion)))}}}
+on queryversion (majorVersion, minorVersion) { Â«Tells the Web browser that an application which wishes to communicate with it supports a specific version (major.minor) of this SDI specification
+	case sys.os () {
+		"MacOS" {
+			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'QVER', 'MAJV', long (majorVersion), 'MINV', long (minorVersion)))}}}

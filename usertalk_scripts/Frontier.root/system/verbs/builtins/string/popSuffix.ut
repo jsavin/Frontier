@@ -1,1 +1,16 @@
-on popSuffix (s, chseparator='.') {	«Thursday, November 11, 1999 at 2:56:36 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on popSuffix (s, chseparator='.')				«10/31/97 at 12:37:03 PM by DW -- moved to string.popSuffix				«turn xxx.html into xxx					«Tue, Dec 10, 1996 at 6:07:57 AM by DW				«local (i)				«for i = sizeof (s) downto 1					«if s [i] == chseparator						«return (string.mid (s, 1, i -1))				«return (s)	kernel (string.popsuffix)};«bundle «test code	«dialog.alert (popSuffix ("xyz.html"))
+on popSuffix (s, chseparator='.') {
+	Â«Thursday, November 11, 1999 at 2:56:36 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on popSuffix (s, chseparator='.')
+				Â«10/31/97 at 12:37:03 PM by DW -- moved to string.popSuffix
+				Â«turn xxx.html into xxx
+					Â«Tue, Dec 10, 1996 at 6:07:57 AM by DW
+				Â«local (i)
+				Â«for i = sizeof (s) downto 1
+					Â«if s [i] == chseparator
+						Â«return (string.mid (s, 1, i -1))
+				Â«return (s)
+	kernel (string.popsuffix)};
+Â«bundle Â«test code
+	Â«dialog.alert (popSuffix ("xyz.html"))

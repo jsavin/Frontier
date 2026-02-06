@@ -1,1 +1,2 @@
-on get (obj, as = nil) { «	return (appleEvent (BBEdit.id, 'core', 'getd', '----', objspec (obj), 'rtyp', string4 (as)))}
+on get (obj, as = nil) { Â«
+	return (appleEvent (BBEdit.id, 'core', 'getd', '----', objspec (obj), 'rtyp', string4 (as)))}

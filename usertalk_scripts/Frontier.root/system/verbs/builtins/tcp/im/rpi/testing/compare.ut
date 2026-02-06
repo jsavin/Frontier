@@ -1,1 +1,14 @@
-on compare (s, counter) {	if counter == 1 {		new ( tableType, @scratchpad.rpcTest )};		if tcp.im.rpi.testing.tests[counter] != s {		new ( tableType, @scratchpad.rpiTest[string(counter)] );		scratchpad.rpiTest[string(counter)].received = s;		scratchpad.rpiTest[string(counter)].desired = tcp.im.rpi.testing.tests[counter]};		if counter == sizeOf ( tcp.im.rpi.testing.tests ) {		if sizeOf ( scratchpad.rpiTest ) == 0 {			dialog.alert("Test series completed. No anomalies.")}		else {			dialog.alert("Test series completed. " + string(sizeOf(scratchpad.rpiTest)) + " anomalies." )}}}
+on compare (s, counter) {
+	if counter == 1 {
+		new ( tableType, @scratchpad.rpcTest )};
+	
+	if tcp.im.rpi.testing.tests[counter] != s {
+		new ( tableType, @scratchpad.rpiTest[string(counter)] );
+		scratchpad.rpiTest[string(counter)].received = s;
+		scratchpad.rpiTest[string(counter)].desired = tcp.im.rpi.testing.tests[counter]};
+	
+	if counter == sizeOf ( tcp.im.rpi.testing.tests ) {
+		if sizeOf ( scratchpad.rpiTest ) == 0 {
+			dialog.alert("Test series completed. No anomalies.")}
+		else {
+			dialog.alert("Test series completed. " + string(sizeOf(scratchpad.rpiTest)) + " anomalies." )}}}

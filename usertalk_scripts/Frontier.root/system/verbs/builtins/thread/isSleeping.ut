@@ -1,1 +1,2 @@
-on isSleeping (id) {	kernel (thread.isSleeping)}
+on isSleeping (id) {
+	kernel (thread.isSleeping)}

@@ -1,1 +1,3 @@
-on stripMarkup (s) {	«Remove HTML tags and macros and compact white space.	kernel (searchEngine.stripMarkup)}
+on stripMarkup (s) {
+	Â«Remove HTML tags and macros and compact white space.
+	kernel (searchEngine.stripMarkup)}

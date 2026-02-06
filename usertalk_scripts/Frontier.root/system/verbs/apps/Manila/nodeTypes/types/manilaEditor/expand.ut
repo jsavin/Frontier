@@ -1,1 +1,3 @@
-dialog.alert ("Jake, you need to implement this.");return (true);«return (playlist.manila.commands.expandManilaEditor ())
+dialog.alert ("Jake, you need to implement this.");
+return (true);
+Â«return (playlist.manila.commands.expandManilaEditor ())

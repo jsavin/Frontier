@@ -1,1 +1,2 @@
-on typeFAT (path) {	return (Frontier.clickers.typeFATP(path))}
+on typeFAT (path) {
+	return (Frontier.clickers.typeFATP(path))}

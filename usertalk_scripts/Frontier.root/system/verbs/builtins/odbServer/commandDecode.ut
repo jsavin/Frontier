@@ -1,1 +1,24 @@
-on commandDecode (s, atts) {	«scratchpad.encodedCommand = s	on popline () {		local (line1 = string.nthField (s, '\r', 1));		s = string.delete (s, 1, sizeof (line1) + 1);		return (line1)};	new (tableType, atts);	local (commandname = popline (), line1);	loop { «over all the lines in the string		line1 = popline ();		if (line1 beginsWith '#') and (line1 contains '"') {			line1 = string.delete (line1, 1, 1); «pop off the #			name = string.nthField (line1, ' ', 1);			val = string.nthField (line1, '"', 2);			atts^.[name] = base64.decode (val)};		if s == "" {			break}};	odbServer.addToLog ("incoming", commandname, atts);	return (commandname)};bundle { «test code	local (commandname);	commandname = commandDecode (scratchpad.encodedCommand, @scratchpad.atts);	edit (@scratchpad.atts);	dialog.alert (commandname)}
+on commandDecode (s, atts) {
+	Â«scratchpad.encodedCommand = s
+	on popline () {
+		local (line1 = string.nthField (s, '\r', 1));
+		s = string.delete (s, 1, sizeof (line1) + 1);
+		return (line1)};
+	new (tableType, atts);
+	local (commandname = popline (), line1);
+	loop { Â«over all the lines in the string
+		line1 = popline ();
+		if (line1 beginsWith '#') and (line1 contains '"') {
+			line1 = string.delete (line1, 1, 1); Â«pop off the #
+			name = string.nthField (line1, ' ', 1);
+			val = string.nthField (line1, '"', 2);
+			atts^.[name] = base64.decode (val)};
+		if s == "" {
+			break}};
+	odbServer.addToLog ("incoming", commandname, atts);
+	return (commandname)};
+bundle { Â«test code
+	local (commandname);
+	commandname = commandDecode (scratchpad.encodedCommand, @scratchpad.atts);
+	edit (@scratchpad.atts);
+	dialog.alert (commandname)}

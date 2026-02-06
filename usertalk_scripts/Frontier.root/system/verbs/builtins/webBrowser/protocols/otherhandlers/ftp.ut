@@ -1,1 +1,6 @@
-on ftp (url) {	if Fetch.launch () {		Fetch.bringToFront ();		Fetch.getURL (url)}	else {		return (false)}}
+on ftp (url) {
+	if Fetch.launch () {
+		Fetch.bringToFront ();
+		Fetch.getURL (url)}
+	else {
+		return (false)}}

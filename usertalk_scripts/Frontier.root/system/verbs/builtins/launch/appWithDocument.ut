@@ -1,1 +1,2 @@
-on appWithDocument (appPath, docPath) {	kernel (launch.appWithDocument)}
+on appWithDocument (appPath, docPath) {
+	kernel (launch.appWithDocument)}

@@ -1,1 +1,2 @@
-on evaluate (s) {	kernel (thread.evaluate)}
+on evaluate (s) {
+	kernel (thread.evaluate)}

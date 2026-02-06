@@ -1,1 +1,2 @@
-on bringToFront () {	return (sys.bringAppToFront (cardEditor.id))}
+on bringToFront () {
+	return (sys.bringAppToFront (cardEditor.id))}

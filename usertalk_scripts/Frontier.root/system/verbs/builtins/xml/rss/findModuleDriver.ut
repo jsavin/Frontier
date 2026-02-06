@@ -1,1 +1,23 @@
-on findModuleDriver (nsUri, adradrdriver) {	«Changes		«9/29/02; 7:10:26 PM by JES			«Created.			«Given the namespace URI of an element, find the module driver table associated with the URI. User drivers are stored in user.xml.rss.moduleDrivers, and built-in drivers are in xml.rss.moduleDrivers. User drivers take precidence over built-in drivers.	on findInTable (adrtable) {		local (nomad = @adrtable^.[nsUri]);		if defined (nomad^) {			try {				while typeOf (nomad^) == addressType {					nomad = nomad^}};			adradrdriver^ = nomad;			return (true)};		return (false)};	if findInTable (@user.xml.rss.moduleDrivers) {		return (true)};	if findInTable (@xml.rss.moduleDrivers) {		return (true)};	return (false)};«bundle //test code	«local (adrdriver)	«findModuleDriver ("http://backend.userland.com/blogChannelModule", @adrdriver)	«dialog.notify (adrdriver)
+on findModuleDriver (nsUri, adradrdriver) {
+	Â«Changes
+		Â«9/29/02; 7:10:26 PM by JES
+			Â«Created.
+			Â«Given the namespace URI of an element, find the module driver table associated with the URI. User drivers are stored in user.xml.rss.moduleDrivers, and built-in drivers are in xml.rss.moduleDrivers. User drivers take precidence over built-in drivers.
+	on findInTable (adrtable) {
+		local (nomad = @adrtable^.[nsUri]);
+		if defined (nomad^) {
+			try {
+				while typeOf (nomad^) == addressType {
+					nomad = nomad^}};
+			adradrdriver^ = nomad;
+			return (true)};
+		return (false)};
+	if findInTable (@user.xml.rss.moduleDrivers) {
+		return (true)};
+	if findInTable (@xml.rss.moduleDrivers) {
+		return (true)};
+	return (false)};
+Â«bundle //test code
+	Â«local (adrdriver)
+	Â«findModuleDriver ("http://backend.userland.com/blogChannelModule", @adrdriver)
+	Â«dialog.notify (adrdriver)

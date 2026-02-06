@@ -1,1 +1,15 @@
-on threeWay (prompt, button1, button2, button3) {	local (userhitbutton = 2); «the default Cancel item	on itemhit (item) {		case item {			-1 {				dialog.setvalue (1, button1);				dialog.setvalue (2, button2);				dialog.setvalue (3, button3);				dialog.setvalue (4, prompt);				return (true)}}		else { «only enabled items are the buttons			userhitbutton = item;			return (false)}}; «we're done	dialog.run (264, 1, @itemhit);	return (userhitbutton)}
+on threeWay (prompt, button1, button2, button3) {
+	local (userhitbutton = 2); Â«the default Cancel item
+	on itemhit (item) {
+		case item {
+			-1 {
+				dialog.setvalue (1, button1);
+				dialog.setvalue (2, button2);
+				dialog.setvalue (3, button3);
+				dialog.setvalue (4, prompt);
+				return (true)}}
+		else { Â«only enabled items are the buttons
+			userhitbutton = item;
+			return (false)}}; Â«we're done
+	dialog.run (264, 1, @itemhit);
+	return (userhitbutton)}

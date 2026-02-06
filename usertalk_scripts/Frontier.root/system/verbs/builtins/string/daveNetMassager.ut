@@ -1,1 +1,2 @@
-on daveNetMassager (indent, macWidth, text) {	kernel (string.daveNetMassager)}
+on daveNetMassager (indent, macWidth, text) {
+	kernel (string.daveNetMassager)}

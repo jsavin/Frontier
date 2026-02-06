@@ -1,1 +1,2 @@
-on undo () {	kernel (editmenu.undo)}
+on undo () {
+	kernel (editmenu.undo)}

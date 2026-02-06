@@ -1,1 +1,2 @@
-on getPicture () {	return (appleEvent (app.id, 'app1', 'gpic'))}
+on getPicture () {
+	return (appleEvent (app.id, 'app1', 'gpic'))}

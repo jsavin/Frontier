@@ -1,1 +1,5 @@
-on inResponder (adrPageTable) {	«Are we running from within the website framework responder?	if string.lower (html.getPref ("responder", adrPageTable)) == "websiteframework" {		return (true)};	return (false)}
+on inResponder (adrPageTable) {
+	Â«Are we running from within the website framework responder?
+	if string.lower (html.getPref ("responder", adrPageTable)) == "websiteframework" {
+		return (true)};
+	return (false)}

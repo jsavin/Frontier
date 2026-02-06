@@ -1,1 +1,6 @@
-on closeAllWindows () {	local (ct = app.countWindows ());	local (n);	for n = 1 to ct {		app.setTargetWindow (app.nthWindow (1));		app.closeWindow ()}}
+on closeAllWindows () {
+	local (ct = app.countWindows ());
+	local (n);
+	for n = 1 to ct {
+		app.setTargetWindow (app.nthWindow (1));
+		app.closeWindow ()}}

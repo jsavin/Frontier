@@ -1,1 +1,2 @@
-on delete (obj) { «Delete an element from an object	return (appleEvent (Filemaker.id, 'core', 'delo', '----', objspec (obj)))}
+on delete (obj) { Â«Delete an element from an object
+	return (appleEvent (Filemaker.id, 'core', 'delo', '----', objspec (obj)))}

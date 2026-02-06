@@ -1,1 +1,22 @@
-on getFileSuffix (type) { //5.0	«Given an object type, return the proper suffix for that type of file		«On Mac it returns the empty string.		«PBS 1/10/98: Returns "fatp" for scalars.	local (s = "");	case sys.os () {		"Win95";		"WinNT" {			case type {				wptextType {					s = "ftwp"};				menubarType {					s = "ftmb"};				outlineType {					s = "ftop"};				scriptType {					s = "ftsc"};				tableType {					s = "fttb"}}			else {				return ("fatp")}}};	return (s)}
+on getFileSuffix (type) { //5.0
+	Â«Given an object type, return the proper suffix for that type of file
+		Â«On Mac it returns the empty string.
+		Â«PBS 1/10/98: Returns "fatp" for scalars.
+	local (s = "");
+	case sys.os () {
+		"Win95";
+		"WinNT" {
+			case type {
+				wptextType {
+					s = "ftwp"};
+				menubarType {
+					s = "ftmb"};
+				outlineType {
+					s = "ftop"};
+				scriptType {
+					s = "ftsc"};
+				tableType {
+					s = "fttb"}}
+			else {
+				return ("fatp")}}};
+	return (s)}

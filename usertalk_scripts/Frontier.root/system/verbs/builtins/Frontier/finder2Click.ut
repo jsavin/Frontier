@@ -1,1 +1,19 @@
-on finder2Click (path) {	local (filetype);	filetype = file.type (path);	«msg (filetype)	local (adrScript = @Frontier.clickers.["type" + filetype]);	if not defined (adrScript^) {		adrScript = @Frontier.clickers.["type????"]};		if not defined (system.deskscripts) { «make sure the table is there		new (tableType, @system.deskscripts)};		local (returnedVal);	returnedVal = adrScript^ (path);		if Frontier.findertofront {		Finder.bringToFront ()};		Frontier.findertofront = false;	return (returnedVal)}
+on finder2Click (path) {
+	local (filetype);
+	filetype = file.type (path);
+	Â«msg (filetype)
+	local (adrScript = @Frontier.clickers.["type" + filetype]);
+	if not defined (adrScript^) {
+		adrScript = @Frontier.clickers.["type????"]};
+	
+	if not defined (system.deskscripts) { Â«make sure the table is there
+		new (tableType, @system.deskscripts)};
+	
+	local (returnedVal);
+	returnedVal = adrScript^ (path);
+	
+	if Frontier.findertofront {
+		Finder.bringToFront ()};
+	
+	Frontier.findertofront = false;
+	return (returnedVal)}

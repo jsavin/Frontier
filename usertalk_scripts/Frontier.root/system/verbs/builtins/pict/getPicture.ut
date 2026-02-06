@@ -1,1 +1,2 @@
-on getPicture (adrpict) {	kernel (pict.getpicture)}
+on getPicture (adrpict) {
+	kernel (pict.getpicture)}

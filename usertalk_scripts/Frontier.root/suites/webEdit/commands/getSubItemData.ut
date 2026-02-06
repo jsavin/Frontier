@@ -1,1 +1,38 @@
-«Changes	«8/30/05; 6:34:52 PM by JES		«Get data about the sub-items of the selected table from the server, and insert place holders if necessary.		«If the cursor is on the table in question, we expand the sub-table in place to reveal the sub-item place-holders. If not, then we just open the table.local (adrObject);bundle { //get the current selected object	adrObject = webEdit.getSelectedObject ();	if adrObject == false {		return (false)};	local (flRemoteTable = false);	if typeOf (adrObject^) == stringType {		local (s = adrObject^);		if s beginsWith "[WebEdit] " { //remote object notation is in string, [WebEdit] type [size]			if string.nthField (s, " ", 2) == "table" { //remote table				flRemoteTable = true}			else {				dialog.alert ("Can't get sub-items of \"" + nameOf (adrObject^) + "\" because it isn't a table.");				return  (false)}}};	if typeOf (adrObject^) != tableType { //if not remote table, use parent table		if not flRemoteTable {			if typeOf (window.frontmost ()^) == tableType {				adrObject = parentOf (adrObject^)} //use parent table			else { //error				dialog.alert ("Can't get sub-items of \"" + nameOf (adrObject^) + "\" because it isn't a table.");				return (false)}}}};if webEdit.getSubItemData (adrObject) > 0 {	try {		if table.getCursor () == adrObject {			op.expand (1)}}	else {		edit (adrObject)}}else {	dialog.notify ("No sub-items of \"" + nameOf (adrObject^) + "\" exist on the server which aren't defined in the local database.")};return (true)
+Â«Changes
+	Â«8/30/05; 6:34:52 PM by JES
+		Â«Get data about the sub-items of the selected table from the server, and insert place holders if necessary.
+		Â«If the cursor is on the table in question, we expand the sub-table in place to reveal the sub-item place-holders. If not, then we just open the table.
+
+local (adrObject);
+
+bundle { //get the current selected object
+	adrObject = webEdit.getSelectedObject ();
+	if adrObject == false {
+		return (false)};
+	local (flRemoteTable = false);
+	if typeOf (adrObject^) == stringType {
+		local (s = adrObject^);
+		if s beginsWith "[WebEdit] " { //remote object notation is in string, [WebEdit] type [size]
+			if string.nthField (s, " ", 2) == "table" { //remote table
+				flRemoteTable = true}
+			else {
+				dialog.alert ("Can't get sub-items of \"" + nameOf (adrObject^) + "\" because it isn't a table.");
+				return  (false)}}};
+	if typeOf (adrObject^) != tableType { //if not remote table, use parent table
+		if not flRemoteTable {
+			if typeOf (window.frontmost ()^) == tableType {
+				adrObject = parentOf (adrObject^)} //use parent table
+			else { //error
+				dialog.alert ("Can't get sub-items of \"" + nameOf (adrObject^) + "\" because it isn't a table.");
+				return (false)}}}};
+
+if webEdit.getSubItemData (adrObject) > 0 {
+	try {
+		if table.getCursor () == adrObject {
+			op.expand (1)}}
+	else {
+		edit (adrObject)}}
+else {
+	dialog.notify ("No sub-items of \"" + nameOf (adrObject^) + "\" exist on the server which aren't defined in the local database.")};
+
+return (true)

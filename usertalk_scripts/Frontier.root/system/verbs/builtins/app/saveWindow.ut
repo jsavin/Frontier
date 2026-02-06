@@ -1,1 +1,2 @@
-on saveWindow (path) {	return (appleEvent (app.id, 'app1', 'swin', '----', string (path)))}
+on saveWindow (path) {
+	return (appleEvent (app.id, 'app1', 'swin', '----', string (path)))}

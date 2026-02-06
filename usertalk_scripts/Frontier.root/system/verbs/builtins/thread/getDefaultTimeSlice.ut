@@ -1,1 +1,2 @@
-on getDefaultTimeSlice () {	kernel (thread.getDefaultTimeSlice)}
+on getDefaultTimeSlice () {
+	kernel (thread.getDefaultTimeSlice)}

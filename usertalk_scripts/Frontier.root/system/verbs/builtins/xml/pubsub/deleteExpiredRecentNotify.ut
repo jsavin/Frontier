@@ -1,1 +1,10 @@
-on deleteExpiredRecentNotify (adrTable) {	«Delete old entries in the mostRecentNotify table.		«1/15/02; 6:18:56 PM by PBS	xml.pubsub.initTable (adrTable);	local (now = clock.now ());	local (i, adr, marktime = now - (60 * 60));	for i = sizeof (adrTable^.mostRecentNotify) downto 1 {		adr = @adrTable^.mostRecentNotify [i];		if adr^ < marktime {			delete (adr)}}}
+on deleteExpiredRecentNotify (adrTable) {
+	Â«Delete old entries in the mostRecentNotify table.
+		Â«1/15/02; 6:18:56 PM by PBS
+	xml.pubsub.initTable (adrTable);
+	local (now = clock.now ());
+	local (i, adr, marktime = now - (60 * 60));
+	for i = sizeof (adrTable^.mostRecentNotify) downto 1 {
+		adr = @adrTable^.mostRecentNotify [i];
+		if adr^ < marktime {
+			delete (adr)}}}

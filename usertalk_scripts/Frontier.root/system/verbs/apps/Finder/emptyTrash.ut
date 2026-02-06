@@ -1,1 +1,3 @@
-on emptyTrash () { «empties the Finder's trashcan, no confirmation	«Only for compatibility with old Finder verbs	return (finderEvent (Finder.id, Finder.class, 'empt'))}
+on emptyTrash () { Â«empties the Finder's trashcan, no confirmation
+	Â«Only for compatibility with old Finder verbs
+	return (finderEvent (Finder.id, Finder.class, 'empt'))}

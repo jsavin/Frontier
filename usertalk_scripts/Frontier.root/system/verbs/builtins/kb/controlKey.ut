@@ -1,1 +1,2 @@
-on controlKey () {	kernel (kb.controlkey)}
+on controlKey () {
+	kernel (kb.controlkey)}

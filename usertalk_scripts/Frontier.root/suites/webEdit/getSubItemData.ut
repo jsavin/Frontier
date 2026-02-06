@@ -1,1 +1,59 @@
-on getSubItemData (adrTable) {	«Changes		«8/30/05; 6:08:52 PM by JES			«Created. Get information about sub-items of a table from the WebEdit server and populate the table with place-holders if necessary.		local (username, password, server, port, paramList = {});	local (debug = false);		local (procedureName = "webEdit.getSubItemData");		bundle { //get username, password, server, and port		local (infoList = webEdit.getUserInfo (adrTable));		if infoList == false {			return (false)};		userName = infoList [1];		password = infoList [2];		server = infoList [3];		port = infoList [4]};		bundle { //build parameters list		paramList [1] = username;		paramList [2] = password;		paramList [3] = webEdit.fixGuestDbAdr (string (adrTable))};		local (t);	t = webEdit.sendCommand (server, port, procedureName, @paramList, debug);		if typeOf (adrTable^) != tableType { //info about a remote table -- make it a real table		on typeError () {			scriptError ("Can't get information about \"" + nameOf (adrTable^) + "\" because it isn't a local or remote table.")};		if typeOf (adrTable^) != stringType {			typeError ()};		if not (adrTable^ beginsWith "[WebEdit] ") {			typeError ()};		new (tableType, adrTable)};		local (i, ct = sizeOf (t), adr, ctAdded = 0);	for i = 1 to ct {		adr = @t[i];		if not defined (adrTable^.[adr^.name]) {			local (typeString = string.typeToString (adr^.type));			typeString = string.mid (typeString, 1, sizeOf (typeString) - 4);			local (sizeString = "");			case adr^.type {				tableType;				outlineType;				wpTextType;				stringType;				binaryType;				menubarType;				listType;				recordType {					sizeString = " [" + adr^.size + "]"}};			adrTable^.[adr^.name] = "[WebEdit] " + typeString + sizeString;			ctAdded++}};		return (ctAdded)};bundle { //test code	getSubItemData (webEdit.getSelectedObject ())}
+on getSubItemData (adrTable) {
+	Â«Changes
+		Â«8/30/05; 6:08:52 PM by JES
+			Â«Created. Get information about sub-items of a table from the WebEdit server and populate the table with place-holders if necessary.
+	
+	local (username, password, server, port, paramList = {});
+	local (debug = false);
+	
+	local (procedureName = "webEdit.getSubItemData");
+	
+	bundle { //get username, password, server, and port
+		local (infoList = webEdit.getUserInfo (adrTable));
+		if infoList == false {
+			return (false)};
+		userName = infoList [1];
+		password = infoList [2];
+		server = infoList [3];
+		port = infoList [4]};
+	
+	bundle { //build parameters list
+		paramList [1] = username;
+		paramList [2] = password;
+		paramList [3] = webEdit.fixGuestDbAdr (string (adrTable))};
+	
+	local (t);
+	t = webEdit.sendCommand (server, port, procedureName, @paramList, debug);
+	
+	if typeOf (adrTable^) != tableType { //info about a remote table -- make it a real table
+		on typeError () {
+			scriptError ("Can't get information about \"" + nameOf (adrTable^) + "\" because it isn't a local or remote table.")};
+		if typeOf (adrTable^) != stringType {
+			typeError ()};
+		if not (adrTable^ beginsWith "[WebEdit] ") {
+			typeError ()};
+		new (tableType, adrTable)};
+	
+	local (i, ct = sizeOf (t), adr, ctAdded = 0);
+	for i = 1 to ct {
+		adr = @t[i];
+		if not defined (adrTable^.[adr^.name]) {
+			local (typeString = string.typeToString (adr^.type));
+			typeString = string.mid (typeString, 1, sizeOf (typeString) - 4);
+			local (sizeString = "");
+			case adr^.type {
+				tableType;
+				outlineType;
+				wpTextType;
+				stringType;
+				binaryType;
+				menubarType;
+				listType;
+				recordType {
+					sizeString = " [" + adr^.size + "]"}};
+			adrTable^.[adr^.name] = "[WebEdit] " + typeString + sizeString;
+			ctAdded++}};
+	
+	return (ctAdded)};
+bundle { //test code
+	getSubItemData (webEdit.getSelectedObject ())}

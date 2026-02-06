@@ -1,1 +1,13 @@
-on gotoAddress (adr) {	local (tableadr, name);	name = nameOf (adr^);	tableadr = parentOf (adr^);	local (oldtarget = target.set (tableadr));	try {		window.open (tableadr); //open its table		op.go (left, infinity);		table.gotoName (name); //move the cursor to the cell		target.set (oldtarget);		return (true)}	else {		return (false)}}
+on gotoAddress (adr) {
+	local (tableadr, name);
+	name = nameOf (adr^);
+	tableadr = parentOf (adr^);
+	local (oldtarget = target.set (tableadr));
+	try {
+		window.open (tableadr); //open its table
+		op.go (left, infinity);
+		table.gotoName (name); //move the cursor to the cell
+		target.set (oldtarget);
+		return (true)}
+	else {
+		return (false)}}

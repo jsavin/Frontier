@@ -1,1 +1,71 @@
-«Changes	«2/4/02; 4:02:23 AM by JES		«When archiving stories, make sure that adr^.time is defined. If not, then the archiving loop will fail, and stories will accumulate, bloating the database. If not defined, set adr^.time to timeCreated (adr) -- the time the story table was created.		«Note: This situation can occur if the app crashes or is Quit during a scan.	«12/27/01; 5:53:54 PM by PBS		«Call radio.log.add in a try because this may be running in Frontier where radio.log.add is not defined.	«10/30/01; 7:11:00 AM by DW		«Clarified log message to use the term "aggregator news items."	«10/21/01; 11:28:21 AM by DW		«Tightened-up log message, only log the archive if you're actually creating an archive file.	«10/20/01; 8:37:23 AM by DW		«Rewrite for Radio 7.1.	«4/15/01; 5:30:33 PM by JES		«Fixed the calculation of the cutoff age for archiving stories, per http://groups.yahoo.com/group/radio-userland/message/8874.	«1/23/01; 6:45:27 PM by DW		«Ooops, if we archive undownloaded enclosures the Last Yard won't work. Don't do it.	«1/23/01; 12:23:02 PM by DW		«Assume we're archiving every myUserLandData.prefs.hoursBetweenArchives hours, not every 24.		«We archive all stories that are older than myUserLandData.prefs.hoursBetweenArchives hours.		«We used to *not* archive stories with categories or enclosures, but now that they're part of the blog and not the stories table, we can safely archive them. Goodbye old friends.	«1/14/01; 9:24:02 AM by DW		«Don't archive the story if it has an enclosure.	«1/14/01; 8:11:08 AM by DW		«Moved the archiving code from the thread to this script.	«1/13/01; 11:21:12 AM by DW		«Created. Copy all stories that are older than midnight today to the archives.		«Return the number of stories that were archived.local (adrdata = xml.aggregator.init ());local (startticks = clock.ticks (), now = clock.now (), ct = 0);local (day, month, year, hour, minute, second);date.get (now, @day, @month, @year, @hour, @minute, @second);local (cutoff = now - (adrdata^.prefs.hoursBeforeArchive * 3600)); //keep stories newer than this datelocal (archivedRadioStories); //this name appears in the XML filebundle { //delete too-old stories, fill archivedRadioStories if XML archiving is on	local (i, adr);	new (tabletype, @archivedRadioStories);	for i = sizeof (adrdata^.stories) downto 1 {		adr = @adrdata^.stories [i];		if not defined (adr^.time) {			adr^.time = timeCreated (adr)};		if adr^.time < cutoff {			local (flarchive = true);			if defined (adr^.enclosure) {				if not defined (adr^.enclosure.f) {					flarchive = false}};			if flarchive {				if adrdata^.prefs.flSaveArchiveXmlFiles {					archivedRadioStories.[nameof (adr^)] = adr^};				delete (adr);				ct++}}}};local (f);if adrdata^.prefs.flSaveArchiveXmlFiles {	local (pc = file.getpathchar ());	local (basefolder = frontier.pathstring + "backups" + pc + "aggregatorArchive" + pc);	local (xmltext = table.tableToXml (@archivedRadioStories));	month = string.padwithzeros (month, 2);	day = string.padwithzeros (day, 2);	hour = string.padwithzeros (hour, 2);	f = basefolder + year + pc + month + pc + day + pc + hour + ".xml";	file.surefilepath (f);	file.writewholefile (f, xmltext);	if adrdata^.prefs.flLogArchiveStories {		try {radio.log.add ("Archive", ct + " aggregator news items archived in <a href=\"" + html.getfileurl (f) + "\">" + file.filefrompath (f) + "</a>.", startticks)}}}; //PBS 12/27/01: use a try because this might be running in Frontier where radio.log.add is not definedxml.aggregator.clearCache ();return (ct)
+Â«Changes
+	Â«2/4/02; 4:02:23 AM by JES
+		Â«When archiving stories, make sure that adr^.time is defined. If not, then the archiving loop will fail, and stories will accumulate, bloating the database. If not defined, set adr^.time to timeCreated (adr) -- the time the story table was created.
+		Â«Note: This situation can occur if the app crashes or is Quit during a scan.
+	Â«12/27/01; 5:53:54 PM by PBS
+		Â«Call radio.log.add in a try because this may be running in Frontier where radio.log.add is not defined.
+	Â«10/30/01; 7:11:00 AM by DW
+		Â«Clarified log message to use the term "aggregator news items."
+	Â«10/21/01; 11:28:21 AM by DW
+		Â«Tightened-up log message, only log the archive if you're actually creating an archive file.
+	Â«10/20/01; 8:37:23 AM by DW
+		Â«Rewrite for Radio 7.1.
+	Â«4/15/01; 5:30:33 PM by JES
+		Â«Fixed the calculation of the cutoff age for archiving stories, per http://groups.yahoo.com/group/radio-userland/message/8874.
+	Â«1/23/01; 6:45:27 PM by DW
+		Â«Ooops, if we archive undownloaded enclosures the Last Yard won't work. Don't do it.
+	Â«1/23/01; 12:23:02 PM by DW
+		Â«Assume we're archiving every myUserLandData.prefs.hoursBetweenArchives hours, not every 24.
+		Â«We archive all stories that are older than myUserLandData.prefs.hoursBetweenArchives hours.
+		Â«We used to *not* archive stories with categories or enclosures, but now that they're part of the blog and not the stories table, we can safely archive them. Goodbye old friends.
+	Â«1/14/01; 9:24:02 AM by DW
+		Â«Don't archive the story if it has an enclosure.
+	Â«1/14/01; 8:11:08 AM by DW
+		Â«Moved the archiving code from the thread to this script.
+	Â«1/13/01; 11:21:12 AM by DW
+		Â«Created. Copy all stories that are older than midnight today to the archives.
+		Â«Return the number of stories that were archived.
+
+local (adrdata = xml.aggregator.init ());
+local (startticks = clock.ticks (), now = clock.now (), ct = 0);
+
+local (day, month, year, hour, minute, second);
+date.get (now, @day, @month, @year, @hour, @minute, @second);
+
+local (cutoff = now - (adrdata^.prefs.hoursBeforeArchive * 3600)); //keep stories newer than this date
+
+local (archivedRadioStories); //this name appears in the XML file
+bundle { //delete too-old stories, fill archivedRadioStories if XML archiving is on
+	local (i, adr);
+	new (tabletype, @archivedRadioStories);
+	for i = sizeof (adrdata^.stories) downto 1 {
+		adr = @adrdata^.stories [i];
+		if not defined (adr^.time) {
+			adr^.time = timeCreated (adr)};
+		if adr^.time < cutoff {
+			local (flarchive = true);
+			if defined (adr^.enclosure) {
+				if not defined (adr^.enclosure.f) {
+					flarchive = false}};
+			if flarchive {
+				if adrdata^.prefs.flSaveArchiveXmlFiles {
+					archivedRadioStories.[nameof (adr^)] = adr^};
+				delete (adr);
+				ct++}}}};
+
+local (f);
+if adrdata^.prefs.flSaveArchiveXmlFiles {
+	local (pc = file.getpathchar ());
+	local (basefolder = frontier.pathstring + "backups" + pc + "aggregatorArchive" + pc);
+	local (xmltext = table.tableToXml (@archivedRadioStories));
+	month = string.padwithzeros (month, 2);
+	day = string.padwithzeros (day, 2);
+	hour = string.padwithzeros (hour, 2);
+	f = basefolder + year + pc + month + pc + day + pc + hour + ".xml";
+	file.surefilepath (f);
+	file.writewholefile (f, xmltext);
+	if adrdata^.prefs.flLogArchiveStories {
+		try {radio.log.add ("Archive", ct + " aggregator news items archived in <a href=\"" + html.getfileurl (f) + "\">" + file.filefrompath (f) + "</a>.", startticks)}}}; //PBS 12/27/01: use a try because this might be running in Frontier where radio.log.add is not defined
+
+xml.aggregator.clearCache ();
+return (ct)

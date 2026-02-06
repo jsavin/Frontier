@@ -1,1 +1,2 @@
-on count (obj, class) { «Return the number of elements of a particular class within an object	return (core.count (Fetch.id, obj, class))}
+on count (obj, class) { Â«Return the number of elements of a particular class within an object
+	return (core.count (Fetch.id, obj, class))}

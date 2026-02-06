@@ -1,1 +1,7 @@
-on printWindow (windowpath) { « For compatibility	if gestalt ('pmgr') != -1 {		if dialog.twoWay ("WARNING:  With Scriptable Finder, this verb crashed my Power Mac.  Suggest you cancel.", "Cancel", "Continue") {			return (false)}};	if not Finder.windowVerb ('pwin', windowpath) {		return (false)};	return (Finder.bringToFront ())}
+on printWindow (windowpath) { Â« For compatibility
+	if gestalt ('pmgr') != -1 {
+		if dialog.twoWay ("WARNING:  With Scriptable Finder, this verb crashed my Power Mac.  Suggest you cancel.", "Cancel", "Continue") {
+			return (false)}};
+	if not Finder.windowVerb ('pwin', windowpath) {
+		return (false)};
+	return (Finder.bringToFront ())}

@@ -1,1 +1,3 @@
-on putStringResource (fname, id, s) {	s = string (char (sizeof (s))) + s;	return (rez.putresource (fname, 'STR ', id, @s))}
+on putStringResource (fname, id, s) {
+	s = string (char (sizeof (s))) + s;
+	return (rez.putresource (fname, 'STR ', id, @s))}

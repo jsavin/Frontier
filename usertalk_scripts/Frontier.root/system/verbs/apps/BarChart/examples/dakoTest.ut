@@ -1,1 +1,9 @@
-«highlights a design flaw in BarChart	«BarChart computes the height of the bars using integer arithmetic, 	«and when you resize the window, the arithmetic can overflow, 	«yielding negative numbers that should be positive. BarChart is a 	«demo program. I hear that DeltaGraph is scriptable! DWBarChart.newWindow (2, "Test for Peter Dako", " ergs");BarChart.setBar (1, "Rome", 18944);BarChart.setBar (2, "Paris", 8580962)
+Â«highlights a design flaw in BarChart
+	Â«BarChart computes the height of the bars using integer arithmetic, 
+	Â«and when you resize the window, the arithmetic can overflow, 
+	Â«yielding negative numbers that should be positive. BarChart is a 
+	Â«demo program. I hear that DeltaGraph is scriptable! DW
+
+BarChart.newWindow (2, "Test for Peter Dako", " ergs");
+BarChart.setBar (1, "Rome", 18944);
+BarChart.setBar (2, "Paris", 8580962)

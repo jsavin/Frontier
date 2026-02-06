@@ -1,1 +1,32 @@
-turns a Frontier 3.0.3 database into an Aretha database;on do (adr) {	if defined (adr^) {		msg (nameof (adr^));		delete (adr)}};bundle { «do the top level	do (@root. examples);	do (@root. helptext);	do (@root. people);	do (@root. readme)};bundle { «do the suites table	do (@suites. backups);	do (@suites. buglist);	do (@suites. docs);	do (@suites. readme);	do (@suites. samples);	do (@suites. tablemap)};bundle { «do the system.extensions table	do (@system.extensions.locker)};bundle { «do the system startup table	do (@system.startup.installcomplete);	do (@system.startup.firsttime)};bundle { «do the user table	do (@user.infodialog);	do (@user.login);	do (@user.pathpatcher);	do (@user.preferences);	do (@user.switchuser)};edit (@system.misc.menubar);edit (@system.startup.startupscript)
+turns a Frontier 3.0.3 database into an Aretha database;
+
+on do (adr) {
+	if defined (adr^) {
+		msg (nameof (adr^));
+		delete (adr)}};
+bundle { Â«do the top level
+	do (@root. examples);
+	do (@root. helptext);
+	do (@root. people);
+	do (@root. readme)};
+bundle { Â«do the suites table
+	do (@suites. backups);
+	do (@suites. buglist);
+	do (@suites. docs);
+	do (@suites. readme);
+	do (@suites. samples);
+	do (@suites. tablemap)};
+bundle { Â«do the system.extensions table
+	do (@system.extensions.locker)};
+bundle { Â«do the system startup table
+	do (@system.startup.installcomplete);
+	do (@system.startup.firsttime)};
+bundle { Â«do the user table
+	do (@user.infodialog);
+	do (@user.login);
+	do (@user.pathpatcher);
+	do (@user.preferences);
+	do (@user.switchuser)};
+
+edit (@system.misc.menubar);
+edit (@system.startup.startupscript)

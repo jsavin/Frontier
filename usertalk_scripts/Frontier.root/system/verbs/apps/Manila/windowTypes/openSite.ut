@@ -1,1 +1,292 @@
-on openSite (adrinfo, username, password, flHidden=false, adradrwindow=nil) {	«Open a site in a window. Assume the prefs have already been set up.		«We get from the Manila site a structure that contains: editorialRole, siteOutline, flCheckedOut.		«10/11/00; 10:58:19 PM by PBS	«Changes:		«10/28/00; 1:14:00 PM by PBS			«Make sure there's a Manila Editors node.		«11/03/00; 1:11:46 AM by JES			«Add flAcceptsOpml to the site-prefs table if the server specifies it.		«11/20/00; 1:40:27 AM by JES			«Don't base64 decode the site outline when getting the opml through the Manila glue, since the glue script does this for us.		«12/04/00; 4:57:06 PM by JES			«If the entered or cached username doesn not specify a member of the site, present a username/password dialog.		«12/08/00; 11:51:29 AM by JES			«If username doesn't correspond to a member of the site, display an error message before presenting the email/password dialog again.		«12/31/00; 5:07:27 PM by JES			«On Macs, call op.xmlToOutline on opml that's converted to Mac text.		«02/16/01; 1:38:32 PM by JES			«Set the window's lastSave to now, to prevent extraneous save-confirmation dialogs after getting the outline from the server. If the user is not a managing editor, set flReadOnly to true -- if the user can't save the outline, why should they be able to edit it?		«04/30/01; 2:20:30 AM by JES			«Fixed a bug where the editorial outline was read-only for a managing editor, when it should be read/write.		«09/06/01; 8:48:15 PM by JES			«Set adradrwindow immediately after creating the window, since it's needed by manila.windowTypes.manilaSite.openManilaSite, even if opening the site fails.		bundle { //if the window is already open, bring it to the front		local (t); new (tableType, @t);		local (adrtype = parentOf (this^));		t.type = "manilaSite";		t.adrSiteInfo = adrinfo;		local (adrwindow);		if Frontier.tools.windowTypes.findWindowWithMatchingAtts (@t, @adrwindow) {			local (title, flReadOnly = false);			window.attributes.getOne ("title", @title, adrwindow);			window.attributes.getOne ("flReadOnly", @flReadOnly, adrwindow);			if not flHidden {				edit (adrwindow, title, flReadOnly);				return (true)}}};		bundle { //get siteName		if adrinfo^.siteName == "" {			adrinfo^.siteName = manila.getSiteName (nameOf (adrinfo^))};		if adrinfo^.displaySiteName == "" {			adrinfo^.displaySiteName = adrinfo^.siteName}};		local (adrwindow);	bundle { //create the window		adrwindow = Frontier.tools.windowTypes.newWindow ("manilaSite", true);		window.attributes.setOne ("adrSiteInfo", adrinfo, adrwindow);		if adradrwindow != nil {			adradrwindow^ = adrwindow}};	local (flReadOnly = false);	local (flManagingEditor = false);	local (flEditor = false);	local (siteStruct);	local (flGotFromServer = false);		bundle { //make sure we have a username and password		if not manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {			return (false)};		bundle { //12/04/00 JES: make sure username specifies a member of the site			local (memberRole = manila.member.getRole (adrinfo, username));			while memberRole == 4 { // loop until the user enters a username that's a member of the site				dialog.alert ("Can't open " + nameOf (adrinfo^) + " because " + username + " is not a member."); //12/08/00 JES: Tell the user why the password dialog is about to appear again.				manila.windowTypes.setUsernameAndPassword (adrinfo, username, ""); //clear the password				if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {					manila.windowTypes.setUsernameAndPassword (adrinfo, username, password);					username = string (username);					password = string (password);					memberRole = manila.member.getRole (adrinfo, username)}				else { //clean up data, delete the unfinished window's windowType table					if defined (adrinfo^) {						adrinfo^.username = "";						adrinfo^.password = "";						if defined (system.temp.manila.data.sites) {							if defined (system.temp.manila.data.sites.[nameOf (adrinfo^)]) {								delete (@system.temp.manila.data.sites.[nameOf (adrinfo^)])}}};					delete (parentOf (adrwindow^));					return (false)}};			case memberRole {				1 {					flEditor = true;					flManagingEditor = true};				2 {					flEditor = true}}}};		try { //get the outline in a try because it might not exist yet		local (rpcCallInfo = adrinfo^);		rpcCallInfo.password = password;		rpcCallInfo.username = username;		siteStruct = manila.editorialOutline.get (@rpcCallInfo);		if siteStruct.editorialRole == "Managing Editor" {			flManagingEditor = true;			flEditor = true};		if siteStruct.editorialRole == "Contributing Editor" {			flEditor = true;			flReadOnly = true};		if siteStruct.flCheckedOut {			flReadOnly = true};		if defined (siteStruct.displaySiteName) {			adrinfo^.displaySiteName = siteStruct.displaySiteName};		if defined (siteStruct.flAcceptsOpml) and siteStruct.flAcceptsOpml { //11/02/00 JES			adrinfo^.flAcceptsOpml = true}		else {			adrinfo^.flAcceptsOpml = false};		flGotFromServer = true};		if flGotFromServer and flEditor {		local (opmlText = siteStruct.siteOutline); //11/20/00 JES: support for calling RPC handlers through the Manila glue.		if system.environment.isMac { //12/31/00 JES: convert to Mac text			op.xmlToOutline (latinToMac.convert (opmlText), adrwindow)}		else {			op.xmlToOutline (opmlText, adrwindow)};		if adrinfo^.displaySiteName == "" {			adrinfo^.displaySiteName = window.getTitle (adrwindow)}}	else { //do default nodes		local (oldTarget = target.set (adrwindow));		manila.windowTypes.buildManilaSiteOutline (adrwindow, adrinfo);		op.firstSummit ();		op.promote ();		op.deleteLine ();		op.firstSummit ();		try {target.set (oldTarget)};		flReadOnly = false};		bundle { //make sure there's an Editors node		local (oldTarget = target.set (adrwindow));		local (origCursor = op.getCursor ());		local (flFound = false);		op.firstSummit ();		loop {			local (atts);			if op.attributes.getAll (@atts) {				if defined (atts.type) {					if atts.type == "manilaEditorsContainer" {						if atts.containerType == "toplevel" {							flFound = true;							break}}}};			if not (op.go (down, 1)) {				break}};		if not flFound { //set up an Editors node			op.insert ("Editors", down);			local (atts);			new (tableType, @atts);			atts.type = "manilaEditorsContainer";			atts.containerType = "toplevel";			atts.siteUrl = nameOf (adrinfo^);			op.attributes.addGroup (@atts)};		op.setCursor (origCursor);		try {target.set (oldTarget)}};		local (t); new (tableType, @t);	bundle { //set attributes		if not flGotFromServer {			setTimeModified (adrwindow, date (0))};		if not flManagingEditor {			flReadOnly = true};		if adrinfo^.displaySiteName == "" {			t.title = adrinfo^.siteName}		else {			t.title = adrinfo^.displaySiteName};		t.flReadOnly = flReadOnly;		t.lastSaved = timeModified (adrwindow); //this happens in Frontier.tools.windowTypes.newWindow		window.attributes.addGroup (@t, adrwindow)};		if not flHidden {		edit (adrwindow, t.title, flReadOnly)};		return (true);		«bundle //old code		«if not defined (temp.pike)			«new (tableType, @temp.pike)		«if not defined (temp.pike.outlines)			«new (tableType, @temp.pike.outlines)		«local (adrOutlinesTable = @temp.pike.outlines)		«local (adrTable = @adrOutlinesTable^.[displaySiteName])		«if not defined (adrTable)			«new (tableType, adrTable)		«		«local (flOpenAlready = false)		«if defined (adrTable^.outline) and window.isOpen (@adrTable^.outline)			«flOpenAlready = true		«if flOpenAlready			«window.bringToFront (@adrTable^.outline)		«else //create outline			«new (tableType, adrTable)			«new (outlineType, @adrTable^.outline)			«local (flReadOnly = false)			«local (flManagingEditor = false)			«local (flEditor = false)			«local (siteStruct)			«local (flGotFromServer = false)			«local (flAcceptsOpml = false) //11/02/00 JES			«bundle //12/04/00 JES: make sure username specifies a member of the site				«local (siteInfo = playlist.manila.buildSiteInfo (siteUrl))				«if siteInfo.username == "" and siteInfo.password == ""// the user cancelled the username/password dialog					«return (false)				«local (memberRole = manila.member.getRole (@siteInfo, username))				«while memberRole == 4 // loop until the user enters a username that's a member of the site					«dialog.alert ("Can't open " + siteUrl + " because " + username + " is not a member.") //12/08/00 JES: Tell the user why the password dialog is about to appear again.					«if playlist.manila.getPasswordDialog (siteUrl, @username, @password)						«playlist.manila.setUsernameAndPassword (siteUrl, username, password)						«username = string (username)						«password = string (password)						«memberRole = manila.member.getRole (@siteInfo, username)					«else						«return (false)				«case memberRole					«1						«flEditor = true						«flManagingEditor = true					«2						«flEditor = true			«try				«siteStruct = playlist.manila.rpc.getManilaSiteOutline (siteUrl, username, password)				«if siteStruct.flCheckedOut					«flReadOnly = true				«if siteStruct.editorialRole == "Managing Editor"					«flManagingEditor = true					«flEditor = true				«if siteStruct.editorialRole == "Contributing Editor"					«flEditor = true					«flReadOnly = true				«if siteStruct.flCheckedOut					«flReadOnly = true				«if defined (siteStruct.flAcceptsOpml) and siteStruct.flAcceptsOpml //11/02/00 JES					«flAcceptsOpml = true					«user.playlist.manila.sites.[siteUrl].flAcceptsOpml = true				«flGotFromServer = true			«if flGotFromServer and flEditor				«local (opmlText = base64.decode (siteStruct.siteOutline))				«local (opmlText = siteStruct.siteOutline) //11/20/00 JES: support for calling RPC handlers through the Manila glue.				«if system.environment.isMac //12/31/00 JES: convert to Mac text					«op.xmlToOutline (latinToMac.convert (opmlText), @adrTable^.outline)				«else					«op.xmlToOutline (opmlText, @adrTable^.outline)			«else //do default nodes				«local (oldTarget = target.set (@adrTable^.outline))				«playlist.manila.commands.addManilaSiteNode (siteUrl, username:username, password:password)				«op.firstSummit ()				«op.promote ()				«op.deleteLine ()				«op.firstSummit ()				«try {target.set (oldTarget)}				«flReadOnly = false			«			«if flGotFromServer //02/16/00 JES: set lastSave so that non-dirty outlines don't act dirty				«adrTable^.flSaved = true				«adrTable^.lastSave = clock.now ()			«else				«adrTable^.flSaved = false			«if not flManagingEditor //02/16/00 JES: if the user is not a managing editor, prevent a save/don't save/cancel dialog when closing the outline				«flReadOnly = true			«adrTable^.timeCreated = clock.now ()			«adrTable^.title = displaySiteName			«adrTable^.flLocal = false			«adrTable^.flManilaSiteOutline = true			«adrTable^.flReadOnly = flReadOnly			«adrTable^.siteUrl = siteUrl			«adrTable^.flAcceptsOpml = flAcceptsOpml //11/02/00 JES			«			«bundle //make sure there's an Editors node				«local (adrOutline = @adrTable^.outline)				«local (oldTarget = target.set (adrOutline))				«local (origCursor = op.getCursor ())				«local (flFound = false)				«op.firstSummit ()				«loop					«local (atts)					«if op.attributes.getAll (@atts)						«if defined (atts.type)							«if atts.type == "manilaEditorsContainer"								«if atts.containerType == "toplevel"									«flFound = true									«break					«if not (op.go (down, 1))						«break				«if not flFound //set up an Editors node					«op.insert ("Editors", down)					«local (atts)					«new (tableType, @atts)					«atts.type = "manilaEditorsContainer"					«atts.containerType = "toplevel"					«atts.siteUrl = siteUrl					«op.attributes.addGroup (@atts)				«op.setCursor (origCursor)				«try {target.set (oldTarget)}			«edit (@adrTable^.outline, displaySiteName, flReadOnly)		«		«return (true)};«bundle //testing	«openSite (@user.manila.data.sites.["http://private.braincase.net:80/"], "jake@userland.com", "forget!it")
+on openSite (adrinfo, username, password, flHidden=false, adradrwindow=nil) {
+	Â«Open a site in a window. Assume the prefs have already been set up.
+		Â«We get from the Manila site a structure that contains: editorialRole, siteOutline, flCheckedOut.
+		Â«10/11/00; 10:58:19 PM by PBS
+	Â«Changes:
+		Â«10/28/00; 1:14:00 PM by PBS
+			Â«Make sure there's a Manila Editors node.
+		Â«11/03/00; 1:11:46 AM by JES
+			Â«Add flAcceptsOpml to the site-prefs table if the server specifies it.
+		Â«11/20/00; 1:40:27 AM by JES
+			Â«Don't base64 decode the site outline when getting the opml through the Manila glue, since the glue script does this for us.
+		Â«12/04/00; 4:57:06 PM by JES
+			Â«If the entered or cached username doesn not specify a member of the site, present a username/password dialog.
+		Â«12/08/00; 11:51:29 AM by JES
+			Â«If username doesn't correspond to a member of the site, display an error message before presenting the email/password dialog again.
+		Â«12/31/00; 5:07:27 PM by JES
+			Â«On Macs, call op.xmlToOutline on opml that's converted to Mac text.
+		Â«02/16/01; 1:38:32 PM by JES
+			Â«Set the window's lastSave to now, to prevent extraneous save-confirmation dialogs after getting the outline from the server. If the user is not a managing editor, set flReadOnly to true -- if the user can't save the outline, why should they be able to edit it?
+		Â«04/30/01; 2:20:30 AM by JES
+			Â«Fixed a bug where the editorial outline was read-only for a managing editor, when it should be read/write.
+		Â«09/06/01; 8:48:15 PM by JES
+			Â«Set adradrwindow immediately after creating the window, since it's needed by manila.windowTypes.manilaSite.openManilaSite, even if opening the site fails.
+	
+	bundle { //if the window is already open, bring it to the front
+		local (t); new (tableType, @t);
+		local (adrtype = parentOf (this^));
+		t.type = "manilaSite";
+		t.adrSiteInfo = adrinfo;
+		local (adrwindow);
+		if Frontier.tools.windowTypes.findWindowWithMatchingAtts (@t, @adrwindow) {
+			local (title, flReadOnly = false);
+			window.attributes.getOne ("title", @title, adrwindow);
+			window.attributes.getOne ("flReadOnly", @flReadOnly, adrwindow);
+			if not flHidden {
+				edit (adrwindow, title, flReadOnly);
+				return (true)}}};
+	
+	bundle { //get siteName
+		if adrinfo^.siteName == "" {
+			adrinfo^.siteName = manila.getSiteName (nameOf (adrinfo^))};
+		if adrinfo^.displaySiteName == "" {
+			adrinfo^.displaySiteName = adrinfo^.siteName}};
+	
+	local (adrwindow);
+	bundle { //create the window
+		adrwindow = Frontier.tools.windowTypes.newWindow ("manilaSite", true);
+		window.attributes.setOne ("adrSiteInfo", adrinfo, adrwindow);
+		if adradrwindow != nil {
+			adradrwindow^ = adrwindow}};
+	local (flReadOnly = false);
+	local (flManagingEditor = false);
+	local (flEditor = false);
+	local (siteStruct);
+	local (flGotFromServer = false);
+	
+	bundle { //make sure we have a username and password
+		if not manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {
+			return (false)};
+		bundle { //12/04/00 JES: make sure username specifies a member of the site
+			local (memberRole = manila.member.getRole (adrinfo, username));
+			while memberRole == 4 { // loop until the user enters a username that's a member of the site
+				dialog.alert ("Can't open " + nameOf (adrinfo^) + " because " + username + " is not a member."); //12/08/00 JES: Tell the user why the password dialog is about to appear again.
+				manila.windowTypes.setUsernameAndPassword (adrinfo, username, ""); //clear the password
+				if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {
+					manila.windowTypes.setUsernameAndPassword (adrinfo, username, password);
+					username = string (username);
+					password = string (password);
+					memberRole = manila.member.getRole (adrinfo, username)}
+				else { //clean up data, delete the unfinished window's windowType table
+					if defined (adrinfo^) {
+						adrinfo^.username = "";
+						adrinfo^.password = "";
+						if defined (system.temp.manila.data.sites) {
+							if defined (system.temp.manila.data.sites.[nameOf (adrinfo^)]) {
+								delete (@system.temp.manila.data.sites.[nameOf (adrinfo^)])}}};
+					delete (parentOf (adrwindow^));
+					return (false)}};
+			case memberRole {
+				1 {
+					flEditor = true;
+					flManagingEditor = true};
+				2 {
+					flEditor = true}}}};
+	
+	try { //get the outline in a try because it might not exist yet
+		local (rpcCallInfo = adrinfo^);
+		rpcCallInfo.password = password;
+		rpcCallInfo.username = username;
+		siteStruct = manila.editorialOutline.get (@rpcCallInfo);
+		if siteStruct.editorialRole == "Managing Editor" {
+			flManagingEditor = true;
+			flEditor = true};
+		if siteStruct.editorialRole == "Contributing Editor" {
+			flEditor = true;
+			flReadOnly = true};
+		if siteStruct.flCheckedOut {
+			flReadOnly = true};
+		if defined (siteStruct.displaySiteName) {
+			adrinfo^.displaySiteName = siteStruct.displaySiteName};
+		if defined (siteStruct.flAcceptsOpml) and siteStruct.flAcceptsOpml { //11/02/00 JES
+			adrinfo^.flAcceptsOpml = true}
+		else {
+			adrinfo^.flAcceptsOpml = false};
+		flGotFromServer = true};
+	
+	if flGotFromServer and flEditor {
+		local (opmlText = siteStruct.siteOutline); //11/20/00 JES: support for calling RPC handlers through the Manila glue.
+		if system.environment.isMac { //12/31/00 JES: convert to Mac text
+			op.xmlToOutline (latinToMac.convert (opmlText), adrwindow)}
+		else {
+			op.xmlToOutline (opmlText, adrwindow)};
+		if adrinfo^.displaySiteName == "" {
+			adrinfo^.displaySiteName = window.getTitle (adrwindow)}}
+	else { //do default nodes
+		local (oldTarget = target.set (adrwindow));
+		manila.windowTypes.buildManilaSiteOutline (adrwindow, adrinfo);
+		op.firstSummit ();
+		op.promote ();
+		op.deleteLine ();
+		op.firstSummit ();
+		try {target.set (oldTarget)};
+		flReadOnly = false};
+	
+	bundle { //make sure there's an Editors node
+		local (oldTarget = target.set (adrwindow));
+		local (origCursor = op.getCursor ());
+		local (flFound = false);
+		op.firstSummit ();
+		loop {
+			local (atts);
+			if op.attributes.getAll (@atts) {
+				if defined (atts.type) {
+					if atts.type == "manilaEditorsContainer" {
+						if atts.containerType == "toplevel" {
+							flFound = true;
+							break}}}};
+			if not (op.go (down, 1)) {
+				break}};
+		if not flFound { //set up an Editors node
+			op.insert ("Editors", down);
+			local (atts);
+			new (tableType, @atts);
+			atts.type = "manilaEditorsContainer";
+			atts.containerType = "toplevel";
+			atts.siteUrl = nameOf (adrinfo^);
+			op.attributes.addGroup (@atts)};
+		op.setCursor (origCursor);
+		try {target.set (oldTarget)}};
+	
+	local (t); new (tableType, @t);
+	bundle { //set attributes
+		if not flGotFromServer {
+			setTimeModified (adrwindow, date (0))};
+		if not flManagingEditor {
+			flReadOnly = true};
+		if adrinfo^.displaySiteName == "" {
+			t.title = adrinfo^.siteName}
+		else {
+			t.title = adrinfo^.displaySiteName};
+		t.flReadOnly = flReadOnly;
+		t.lastSaved = timeModified (adrwindow); //this happens in Frontier.tools.windowTypes.newWindow
+		window.attributes.addGroup (@t, adrwindow)};
+	
+	if not flHidden {
+		edit (adrwindow, t.title, flReadOnly)};
+	
+	return (true);
+	
+	Â«bundle //old code
+		Â«if not defined (temp.pike)
+			Â«new (tableType, @temp.pike)
+		Â«if not defined (temp.pike.outlines)
+			Â«new (tableType, @temp.pike.outlines)
+		Â«local (adrOutlinesTable = @temp.pike.outlines)
+		Â«local (adrTable = @adrOutlinesTable^.[displaySiteName])
+		Â«if not defined (adrTable)
+			Â«new (tableType, adrTable)
+		Â«
+		Â«local (flOpenAlready = false)
+		Â«if defined (adrTable^.outline) and window.isOpen (@adrTable^.outline)
+			Â«flOpenAlready = true
+		Â«if flOpenAlready
+			Â«window.bringToFront (@adrTable^.outline)
+		Â«else //create outline
+			Â«new (tableType, adrTable)
+			Â«new (outlineType, @adrTable^.outline)
+			Â«local (flReadOnly = false)
+			Â«local (flManagingEditor = false)
+			Â«local (flEditor = false)
+			Â«local (siteStruct)
+			Â«local (flGotFromServer = false)
+			Â«local (flAcceptsOpml = false) //11/02/00 JES
+			Â«bundle //12/04/00 JES: make sure username specifies a member of the site
+				Â«local (siteInfo = playlist.manila.buildSiteInfo (siteUrl))
+				Â«if siteInfo.username == "" and siteInfo.password == ""// the user cancelled the username/password dialog
+					Â«return (false)
+				Â«local (memberRole = manila.member.getRole (@siteInfo, username))
+				Â«while memberRole == 4 // loop until the user enters a username that's a member of the site
+					Â«dialog.alert ("Can't open " + siteUrl + " because " + username + " is not a member.") //12/08/00 JES: Tell the user why the password dialog is about to appear again.
+					Â«if playlist.manila.getPasswordDialog (siteUrl, @username, @password)
+						Â«playlist.manila.setUsernameAndPassword (siteUrl, username, password)
+						Â«username = string (username)
+						Â«password = string (password)
+						Â«memberRole = manila.member.getRole (@siteInfo, username)
+					Â«else
+						Â«return (false)
+				Â«case memberRole
+					Â«1
+						Â«flEditor = true
+						Â«flManagingEditor = true
+					Â«2
+						Â«flEditor = true
+			Â«try
+				Â«siteStruct = playlist.manila.rpc.getManilaSiteOutline (siteUrl, username, password)
+				Â«if siteStruct.flCheckedOut
+					Â«flReadOnly = true
+				Â«if siteStruct.editorialRole == "Managing Editor"
+					Â«flManagingEditor = true
+					Â«flEditor = true
+				Â«if siteStruct.editorialRole == "Contributing Editor"
+					Â«flEditor = true
+					Â«flReadOnly = true
+				Â«if siteStruct.flCheckedOut
+					Â«flReadOnly = true
+				Â«if defined (siteStruct.flAcceptsOpml) and siteStruct.flAcceptsOpml //11/02/00 JES
+					Â«flAcceptsOpml = true
+					Â«user.playlist.manila.sites.[siteUrl].flAcceptsOpml = true
+				Â«flGotFromServer = true
+			Â«if flGotFromServer and flEditor
+				Â«local (opmlText = base64.decode (siteStruct.siteOutline))
+				Â«local (opmlText = siteStruct.siteOutline) //11/20/00 JES: support for calling RPC handlers through the Manila glue.
+				Â«if system.environment.isMac //12/31/00 JES: convert to Mac text
+					Â«op.xmlToOutline (latinToMac.convert (opmlText), @adrTable^.outline)
+				Â«else
+					Â«op.xmlToOutline (opmlText, @adrTable^.outline)
+			Â«else //do default nodes
+				Â«local (oldTarget = target.set (@adrTable^.outline))
+				Â«playlist.manila.commands.addManilaSiteNode (siteUrl, username:username, password:password)
+				Â«op.firstSummit ()
+				Â«op.promote ()
+				Â«op.deleteLine ()
+				Â«op.firstSummit ()
+				Â«try {target.set (oldTarget)}
+				Â«flReadOnly = false
+			Â«
+			Â«if flGotFromServer //02/16/00 JES: set lastSave so that non-dirty outlines don't act dirty
+				Â«adrTable^.flSaved = true
+				Â«adrTable^.lastSave = clock.now ()
+			Â«else
+				Â«adrTable^.flSaved = false
+			Â«if not flManagingEditor //02/16/00 JES: if the user is not a managing editor, prevent a save/don't save/cancel dialog when closing the outline
+				Â«flReadOnly = true
+			Â«adrTable^.timeCreated = clock.now ()
+			Â«adrTable^.title = displaySiteName
+			Â«adrTable^.flLocal = false
+			Â«adrTable^.flManilaSiteOutline = true
+			Â«adrTable^.flReadOnly = flReadOnly
+			Â«adrTable^.siteUrl = siteUrl
+			Â«adrTable^.flAcceptsOpml = flAcceptsOpml //11/02/00 JES
+			Â«
+			Â«bundle //make sure there's an Editors node
+				Â«local (adrOutline = @adrTable^.outline)
+				Â«local (oldTarget = target.set (adrOutline))
+				Â«local (origCursor = op.getCursor ())
+				Â«local (flFound = false)
+				Â«op.firstSummit ()
+				Â«loop
+					Â«local (atts)
+					Â«if op.attributes.getAll (@atts)
+						Â«if defined (atts.type)
+							Â«if atts.type == "manilaEditorsContainer"
+								Â«if atts.containerType == "toplevel"
+									Â«flFound = true
+									Â«break
+					Â«if not (op.go (down, 1))
+						Â«break
+				Â«if not flFound //set up an Editors node
+					Â«op.insert ("Editors", down)
+					Â«local (atts)
+					Â«new (tableType, @atts)
+					Â«atts.type = "manilaEditorsContainer"
+					Â«atts.containerType = "toplevel"
+					Â«atts.siteUrl = siteUrl
+					Â«op.attributes.addGroup (@atts)
+				Â«op.setCursor (origCursor)
+				Â«try {target.set (oldTarget)}
+			Â«edit (@adrTable^.outline, displaySiteName, flReadOnly)
+		Â«
+		Â«return (true)};
+Â«bundle //testing
+	Â«openSite (@user.manila.data.sites.["http://private.braincase.net:80/"], "jake@userland.com", "forget!it")

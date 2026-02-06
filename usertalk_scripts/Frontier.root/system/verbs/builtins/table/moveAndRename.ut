@@ -1,1 +1,2 @@
-on moveAndRename (oldadr, newadr) {	kernel (table.moveAndRename)}
+on moveAndRename (oldadr, newadr) {
+	kernel (table.moveAndRename)}

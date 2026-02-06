@@ -1,1 +1,2 @@
-on isRunning () {	return (FileMaker.isRunning ())}
+on isRunning () {
+	return (FileMaker.isRunning ())}

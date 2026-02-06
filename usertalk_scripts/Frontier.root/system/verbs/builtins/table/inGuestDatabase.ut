@@ -1,1 +1,19 @@
-on inGuestDatabase (adr) {	«Does the address point to an object inside an existing guest database?		«Tue, Sep 29, 1998 at 4:52:15 PM by PBS	«Changes		«12/3/01; 5:50:30 PM by JES			«If running on Carbon, don't require the guest database to have Mac type/creator codes. (This is the same behavior as on Windows.)		local (addressList = string.parseAddress (adr));	local (f = addressList [1]);		if file.exists (f) {		if system.environment.isMac {			if file.type (f) == 'TABL' and file.creator (f) == 'LAND' {				return (true)}};		if system.environment.isWindows or system.environment.isCarbon {			if string.lower (f) endsWith ".root" {				return (true)}}};		return (false)}
+on inGuestDatabase (adr) {
+	Â«Does the address point to an object inside an existing guest database?
+		Â«Tue, Sep 29, 1998 at 4:52:15 PM by PBS
+	Â«Changes
+		Â«12/3/01; 5:50:30 PM by JES
+			Â«If running on Carbon, don't require the guest database to have Mac type/creator codes. (This is the same behavior as on Windows.)
+	
+	local (addressList = string.parseAddress (adr));
+	local (f = addressList [1]);
+	
+	if file.exists (f) {
+		if system.environment.isMac {
+			if file.type (f) == 'TABL' and file.creator (f) == 'LAND' {
+				return (true)}};
+		if system.environment.isWindows or system.environment.isCarbon {
+			if string.lower (f) endsWith ".root" {
+				return (true)}}};
+	
+	return (false)}

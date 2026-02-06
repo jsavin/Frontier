@@ -1,1 +1,55 @@
-on getServicesXml (adrdata=xml.aggregator.init (), adrIncludeCallback=nil) {	«Changes		«4/2/03; 11:31:56 PM by JES			«Created. Factored from xml.aggregator.saveServicesXml, this script generates the xml text for the services XML file.			«adrCallback is the optional address of a callback script. If supplied, the callback is called with the URL of each service. If the callback returns true, the service is included. If it returns false, it's not included.		local (mySubscriptions);	new (outlinetype, @mySubscriptions);	local (oldtarget = target.set (@mySubscriptions));		local (adrservice, atts);	for adrservice in @adrdata^.services {		if defined (adrservice^.compilation) {			local (url = nameof (adrservice^), flcontainspassword = false);			local (flInclude = true);			if adrIncludeCallback != nil {				try {					while typeOf (adrIncludeCallback^) == addressType {						adrIncludeCallback = adrIncludeCallback^};					flInclude = adrIncludeCallback^ (adrservice)}};			if flInclude {				bundle { //set flcontainspassword					try {						local (urllist = string.urlsplit (url));						flcontainspassword = urllist [2] contains "@"}};				if not flcontainspassword {					try {						op.insert (adrservice^.compilation.channeltitle, down);						new (tabletype, @atts);						atts.type = "rss";						atts.xmlUrl = url;						atts.htmlUrl = adrservice^.compilation.channellink;						atts.title = adrservice^.compilation.channeltitle;						atts.version = adrservice^.compilation.format;						atts.description = adrservice^.compilation.channeldescription;						try {							atts.language = adrservice^.compilation.language}						else {							atts.language = "unknown"}};					op.attributes.addgroup (@atts)}}}};	op.firstsummit ();	op.deleteline ();	try {target.set (oldtarget)};		settimecreated (@mySubscriptions, timecreated (@adrdata^.services));	local (xmltext = op.outlineToXml (@mySubscriptions));	if system.environment.isMac { //02/22/2001 JES: convert to Latin text		xmltext = latinToMac.macToLatin (xmltext)};		return (xmltext)};«bundle //test code	«on includeCallback (adr)		«return (nameOf (adr^) contains "userland")	«wp.newTextObject (getServicesXml (adrIncludeCallback:@includeCallback), @scratchpad.servicesXml)	«edit (@scratchpad.servicesXml)
+on getServicesXml (adrdata=xml.aggregator.init (), adrIncludeCallback=nil) {
+	Â«Changes
+		Â«4/2/03; 11:31:56 PM by JES
+			Â«Created. Factored from xml.aggregator.saveServicesXml, this script generates the xml text for the services XML file.
+			Â«adrCallback is the optional address of a callback script. If supplied, the callback is called with the URL of each service. If the callback returns true, the service is included. If it returns false, it's not included.
+	
+	local (mySubscriptions);
+	new (outlinetype, @mySubscriptions);
+	local (oldtarget = target.set (@mySubscriptions));
+	
+	local (adrservice, atts);
+	for adrservice in @adrdata^.services {
+		if defined (adrservice^.compilation) {
+			local (url = nameof (adrservice^), flcontainspassword = false);
+			local (flInclude = true);
+			if adrIncludeCallback != nil {
+				try {
+					while typeOf (adrIncludeCallback^) == addressType {
+						adrIncludeCallback = adrIncludeCallback^};
+					flInclude = adrIncludeCallback^ (adrservice)}};
+			if flInclude {
+				bundle { //set flcontainspassword
+					try {
+						local (urllist = string.urlsplit (url));
+						flcontainspassword = urllist [2] contains "@"}};
+				if not flcontainspassword {
+					try {
+						op.insert (adrservice^.compilation.channeltitle, down);
+						new (tabletype, @atts);
+						atts.type = "rss";
+						atts.xmlUrl = url;
+						atts.htmlUrl = adrservice^.compilation.channellink;
+						atts.title = adrservice^.compilation.channeltitle;
+						atts.version = adrservice^.compilation.format;
+						atts.description = adrservice^.compilation.channeldescription;
+						try {
+							atts.language = adrservice^.compilation.language}
+						else {
+							atts.language = "unknown"}};
+					op.attributes.addgroup (@atts)}}}};
+	op.firstsummit ();
+	op.deleteline ();
+	try {target.set (oldtarget)};
+	
+	settimecreated (@mySubscriptions, timecreated (@adrdata^.services));
+	local (xmltext = op.outlineToXml (@mySubscriptions));
+	if system.environment.isMac { //02/22/2001 JES: convert to Latin text
+		xmltext = latinToMac.macToLatin (xmltext)};
+	
+	return (xmltext)};
+Â«bundle //test code
+	Â«on includeCallback (adr)
+		Â«return (nameOf (adr^) contains "userland")
+	Â«wp.newTextObject (getServicesXml (adrIncludeCallback:@includeCallback), @scratchpad.servicesXml)
+	Â«edit (@scratchpad.servicesXml)

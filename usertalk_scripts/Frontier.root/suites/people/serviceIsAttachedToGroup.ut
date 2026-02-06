@@ -1,1 +1,11 @@
-on serviceIsAttachedToGroup (serviceName, groupName) {	«Does a group have access to a service?	local (adrGroup = people.getGroupTable (groupName));	if not (people.groupExists (groupName)) {		return (false)};	if not (people.serviceExists (serviceName)) {		return (false)};	if defined (adrGroup^.services.[serviceName]) {		if adrGroup^.services.[serviceName].enabled {			return (true)}};	return (false)}
+on serviceIsAttachedToGroup (serviceName, groupName) {
+	Â«Does a group have access to a service?
+	local (adrGroup = people.getGroupTable (groupName));
+	if not (people.groupExists (groupName)) {
+		return (false)};
+	if not (people.serviceExists (serviceName)) {
+		return (false)};
+	if defined (adrGroup^.services.[serviceName]) {
+		if adrGroup^.services.[serviceName].enabled {
+			return (true)}};
+	return (false)}

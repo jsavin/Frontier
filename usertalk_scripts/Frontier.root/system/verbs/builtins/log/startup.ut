@@ -1,1 +1,32 @@
-if not defined (user.log) {	new (tabletype, @user.log)};if not defined (user.log.outlines) {	new (tableType, @user.log.outlines)};if not defined (user.log.prefs) {	new (tabletype, @user.log.prefs)};if not defined (user.log.prefs.folder) {	try {		user.log.prefs.folder = Frontier.getSubFolder ("ops/logs/")}	else {		user.log.prefs.folder = Frontier.pathString + "Logs" + file.getPathChar ()}};bundle { //set up system.temp.log	new (tabletype, @system.temp.log);	system.temp.log.addsSinceSave = 0;	system.temp.log.dayLastLogAdd = 0; //force a file open or create	system.temp.log.lastLogFile = nil}; //won't try to open itbundle { //transition from the old way of configuring log.add	if not defined (user.log.prefs.flLogToTextFile) {		user.log.prefs.flLogToTextFile = false;		if defined (user.prefs.frontierIsServer) {			user.log.prefs.flLogToTextFile = user.prefs.frontierIsServer}};	if not defined (user.log.prefs.flLogToOutline) {		user.log.prefs.flLogToOutline = false;		if defined (user.prefs.frontierIsServer) { //transition from the old way of configuring log.add			user.log.prefs.flLogToOutline = not user.prefs.frontierIsServer}}};if not defined (user.log.prefs.flLogToGuestDatabase) {	user.log.prefs.flLogToGuestDatabase = true};if not defined (user.log.prefs.flViewLog) {	user.log.prefs.flViewLog = false};if not defined (user.log.prefs.addsBetweenSaves) {	user.log.prefs.addsBetweenSaves = 100};return (true)
+if not defined (user.log) {
+	new (tabletype, @user.log)};
+if not defined (user.log.outlines) {
+	new (tableType, @user.log.outlines)};
+if not defined (user.log.prefs) {
+	new (tabletype, @user.log.prefs)};
+if not defined (user.log.prefs.folder) {
+	try {
+		user.log.prefs.folder = Frontier.getSubFolder ("ops/logs/")}
+	else {
+		user.log.prefs.folder = Frontier.pathString + "Logs" + file.getPathChar ()}};
+bundle { //set up system.temp.log
+	new (tabletype, @system.temp.log);
+	system.temp.log.addsSinceSave = 0;
+	system.temp.log.dayLastLogAdd = 0; //force a file open or create
+	system.temp.log.lastLogFile = nil}; //won't try to open it
+bundle { //transition from the old way of configuring log.add
+	if not defined (user.log.prefs.flLogToTextFile) {
+		user.log.prefs.flLogToTextFile = false;
+		if defined (user.prefs.frontierIsServer) {
+			user.log.prefs.flLogToTextFile = user.prefs.frontierIsServer}};
+	if not defined (user.log.prefs.flLogToOutline) {
+		user.log.prefs.flLogToOutline = false;
+		if defined (user.prefs.frontierIsServer) { //transition from the old way of configuring log.add
+			user.log.prefs.flLogToOutline = not user.prefs.frontierIsServer}}};
+if not defined (user.log.prefs.flLogToGuestDatabase) {
+	user.log.prefs.flLogToGuestDatabase = true};
+if not defined (user.log.prefs.flViewLog) {
+	user.log.prefs.flViewLog = false};
+if not defined (user.log.prefs.addsBetweenSaves) {
+	user.log.prefs.addsBetweenSaves = 100};
+return (true)

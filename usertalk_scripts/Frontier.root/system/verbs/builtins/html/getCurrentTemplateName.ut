@@ -1,1 +1,9 @@
-on getCurrentTemplateName (adrPageTable) {	«Return the name of the current template.		«If it's the default template -- the template defined in a #template object --		«return "Default" as the name.		«Monday, June 01, 1998 at 10:24:51 PM by PBS	try {		if adrPageTable^.indirectTemplate {			return (adrPageTable^.template)}};	return ("Default")}
+on getCurrentTemplateName (adrPageTable) {
+	Â«Return the name of the current template.
+		Â«If it's the default template -- the template defined in a #template object --
+		Â«return "Default" as the name.
+		Â«Monday, June 01, 1998 at 10:24:51 PM by PBS
+	try {
+		if adrPageTable^.indirectTemplate {
+			return (adrPageTable^.template)}};
+	return ("Default")}

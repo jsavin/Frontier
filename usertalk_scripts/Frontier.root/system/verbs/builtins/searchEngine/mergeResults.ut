@@ -1,1 +1,16 @@
-on mergeResults (tableList, adrTable) {	«Add elements of tables together.		«Add 4000 to the value of an item for each table > 1 it appears in.		«Old code:			«local (i, j)			«for i = 1 to sizeOf (tableList)				«for j = 1 to sizeOf (tableList [i]^)					«local (adrItem = @tableList [i]^ [j])					«local (itemName = nameOf (adrItem^))					«local (itemValue = adrItem^)					«if not defined (adrTable^.[itemName])						«adrTable^.[itemName] = itemValue					«else						«adrTable^.[itemName] = adrTable^.[itemName] + itemValue + 4000			«return (true)	kernel (searchEngine.mergeResults)}
+on mergeResults (tableList, adrTable) {
+	Â«Add elements of tables together.
+		Â«Add 4000 to the value of an item for each table > 1 it appears in.
+		Â«Old code:
+			Â«local (i, j)
+			Â«for i = 1 to sizeOf (tableList)
+				Â«for j = 1 to sizeOf (tableList [i]^)
+					Â«local (adrItem = @tableList [i]^ [j])
+					Â«local (itemName = nameOf (adrItem^))
+					Â«local (itemValue = adrItem^)
+					Â«if not defined (adrTable^.[itemName])
+						Â«adrTable^.[itemName] = itemValue
+					Â«else
+						Â«adrTable^.[itemName] = adrTable^.[itemName] + itemValue + 4000
+			Â«return (true)
+	kernel (searchEngine.mergeResults)}

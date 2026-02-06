@@ -1,1 +1,7 @@
-on shutdown (adrStorage) {	local (adrDatabase = adrStorage^.adrDatabase);	if file.exists (adrDatabase) { //is this a guest database?		fileMenu.save (adrDatabase)}	else {		fileMenu.save ()}; //save the root	return (true)}
+on shutdown (adrStorage) {
+	local (adrDatabase = adrStorage^.adrDatabase);
+	if file.exists (adrDatabase) { //is this a guest database?
+		fileMenu.save (adrDatabase)}
+	else {
+		fileMenu.save ()}; //save the root
+	return (true)}

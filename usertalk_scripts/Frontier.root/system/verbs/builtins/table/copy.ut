@@ -1,1 +1,2 @@
-on copy (sourceadr, destadr) {	kernel (table.copy)}
+on copy (sourceadr, destadr) {
+	kernel (table.copy)}

@@ -1,1 +1,27 @@
-on fetch (f, domain, path, account, password) { ´ Fetch a file via FTP.	local (fname = ftpClient.fileFromPath(path));	if ftpClient.isFolder (domain, path, account, password) {		local (i);		if path == "/" {			fname = "/"};		if file.exists (f + fname) {			if not file.isFolder (f + fname) {				scriptError ("You cannot replace the document ì" + f + "î because a file cannot be replaced by a folder.")}}		else {			file.newFolder (f + fname)};		for i in ftpClient.list (domain, path, account, password) {			ftpClient.fetch ( f + fname + ":", domain, path + "/" + i,  account, password)}}	else {		case ftpClient.data.currentid {			Anarchie.id {				local (result);				result = Anarchie.fetch (f, domain, path, nil, account, password);				if result == 0 {					return (true)}				else {					Anarchie.close ();					scriptError ("FTP Error: " + result + ".")}};			Fetch.id {				Fetch.fetch (f, domain, path, account, password)}}		else {			scriptError ("The app whose ID is '" + ftpclient.data.currentid + "' is not a supported FTP client.")}}}
+on fetch (f, domain, path, account, password) { ¬´ Fetch a file via FTP.
+	local (fname = ftpClient.fileFromPath(path));
+	if ftpClient.isFolder (domain, path, account, password) {
+		local (i);
+		if path == "/" {
+			fname = "/"};
+		if file.exists (f + fname) {
+			if not file.isFolder (f + fname) {
+				scriptError ("You cannot replace the document ‚Äú" + f + "‚Äù because a file cannot be replaced by a folder.")}}
+		else {
+			file.newFolder (f + fname)};
+		for i in ftpClient.list (domain, path, account, password) {
+			ftpClient.fetch ( f + fname + ":", domain, path + "/" + i,  account, password)}}
+	else {
+		case ftpClient.data.currentid {
+			Anarchie.id {
+				local (result);
+				result = Anarchie.fetch (f, domain, path, nil, account, password);
+				if result == 0 {
+					return (true)}
+				else {
+					Anarchie.close ();
+					scriptError ("FTP Error: " + result + ".")}};
+			Fetch.id {
+				Fetch.fetch (f, domain, path, account, password)}}
+		else {
+			scriptError ("The app whose ID is '" + ftpclient.data.currentid + "' is not a supported FTP client.")}}}

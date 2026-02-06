@@ -1,1 +1,2 @@
-on insert (string) {	kernel (wp.insert)}
+on insert (string) {
+	kernel (wp.insert)}

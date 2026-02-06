@@ -1,1 +1,22 @@
-on seeAlso (pagetitle, linetext=pagetitle) {	«Changes		«3/22/06; 5:21:47 AM by JES			«In Frontier, use string.popFileFromAddress when finding links in the prefs cache table. Fixes error rendering links.		«2/7/02; 1:35:07 AM by PBS			«Fixed transposition in previous changes.		«2/5/02; 11:36:58 AM by PBS			«Conditionalized to work in Frontier.		«11/23/01; 9:18:44 PM by DW			«No longer use hard-coded cache location.		«11/20/01; 2:21:26 PM by DW			«Created. Note that it's hard-coded to assume there's only one prefs outline. It can easily be made more general by linking something into the pagetable that lets us know which outline we're working with, if we ever need more than one.	local (pta = html.getpagetableaddress ());	local (dottedid);	if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier		dottedid = system.temp.radio.prefsCache.[string (pta^.radioResponder.adrPrefsOutline)].pagetitles.[pagetitle]}	else {		dottedid = system.temp.radio.prefsCache.[string.popFileFromAddress (pta^.adrPrefsOutline)].pagetitles.[pagetitle]};	local (url = "?page=" + dottedid);	return ("<a href=\"" + url + "\">" + linetext + "</a>")};«bundle //test code	«seealso ("Your community server")
+on seeAlso (pagetitle, linetext=pagetitle) {
+	Â«Changes
+		Â«3/22/06; 5:21:47 AM by JES
+			Â«In Frontier, use string.popFileFromAddress when finding links in the prefs cache table. Fixes error rendering links.
+		Â«2/7/02; 1:35:07 AM by PBS
+			Â«Fixed transposition in previous changes.
+		Â«2/5/02; 11:36:58 AM by PBS
+			Â«Conditionalized to work in Frontier.
+		Â«11/23/01; 9:18:44 PM by DW
+			Â«No longer use hard-coded cache location.
+		Â«11/20/01; 2:21:26 PM by DW
+			Â«Created. Note that it's hard-coded to assume there's only one prefs outline. It can easily be made more general by linking something into the pagetable that lets us know which outline we're working with, if we ever need more than one.
+	local (pta = html.getpagetableaddress ());
+	local (dottedid);
+	if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier
+		dottedid = system.temp.radio.prefsCache.[string (pta^.radioResponder.adrPrefsOutline)].pagetitles.[pagetitle]}
+	else {
+		dottedid = system.temp.radio.prefsCache.[string.popFileFromAddress (pta^.adrPrefsOutline)].pagetitles.[pagetitle]};
+	local (url = "?page=" + dottedid);
+	return ("<a href=\"" + url + "\">" + linetext + "</a>")};
+Â«bundle //test code
+	Â«seealso ("Your community server")

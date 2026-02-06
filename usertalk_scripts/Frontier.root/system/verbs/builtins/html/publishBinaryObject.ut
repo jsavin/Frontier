@@ -1,1 +1,74 @@
-on publishBinaryObject (adrObject, adrPageTable, templateName=nil) {	«This script publishes a binary object.		«It's called from html.buildObject.		«The binary can be anything -- an image, a java class, a shockwave file.		«The file suffix of the object is gotten in one of two ways:			«1) Looking at the name of the object.				«If the name contains a . character, then the name includes the file suffix.			«2) Looking at the binary type of the object.				«The binary type becomes the file suffix, after pre-pending a . char.				«Images binary types of 'GIFf' and 'JPEG' are translated to .gif and .jpg.		«Tue, Aug 11, 1998 at 8:02:40 PM by PBS		local (binType = getBinaryType (adrObject^));	local (objectName = nameOf (adrObject^));	local (suffix = binType);	local (macType = binType, macCreator);	local (flNameContainsSuffix = false);		bundle { //get the file suffix		if objectName contains "." { //is the suffix part of the name of the object?			suffix = string.nthField (objectName, '.', string.countFields (objectName, '.'));			flNameContainsSuffix = true};				suffix = string.nthField (suffix, ' ', 1); //remove trailing spaces		suffix = "." + suffix; //pre-pend a period				«Handle 'GIFf' and 'JPEG' binary types		if string.lower (suffix) == ".giff" {			suffix = ".gif"};		if string.lower (suffix) == ".jpeg" {			suffix = ".jpg"}};		bundle { //get the Macintosh creator code		local(theOS = sys.os());		if theOS == "MacOS" || theOS == "MacCn" {			macCreator = frontier.id;			case suffix {				".gif" {					macType = 'GIFf';					macCreator = html.getPref ("imgFileCreator")};				".jpg" {					macType = 'JPEG';					macCreator = html.getPref ("imgFileCreator")}}}};		bundle { //fix f, fname, and URL to have the right file suffix and folder name		on fixPath (adrString) {			adrString^ = string.popSuffix (adrString^, '.'); //remove current suffix						if flNameContainsSuffix { //pop off the suffix from the path -- it's been normalized into the path				adrString^ = string.mid (adrString^, 1, sizeOf (adrString^) - (sizeOf (suffix) -1));				adrString^ = string.popTrailing (adrString^, '.')}; //remove possible stray . char						adrString^ = adrString^ + suffix; //add correct suffix						if adrString^ contains "#" { //the object may live in an #images (or similar) table -- remove the # char				local (folderName = nameOf (parentOf (adrObject^)^));				if folderName beginsWith "#" {					local (pathDelim = file.getPathChar ());					if string.lower (nameOf (adrString^)) == "url" { //For URLs, the path delimiter is the forward slash						pathDelim = "/"};										«Find occurence of /#images/ or \#images\ or :#images: in the path					local (ix = string.patternMatch (pathDelim + folderName + pathDelim, string.lower (adrString^)));					if ix > 0 {						adrString^ = string.delete (adrString^, ix + 1, 1)}}}}; //delete the # character				fixPath (@adrPageTable^.fname); //Fix the file file name		fixPath (@adrPageTable^.f); //Fix the file path		fixPath (@adrPageTable^.url)}; //Fix the URL		«Write the file.	html.writeFile (adrPageTable^.f, adrObject, macType, macCreator, clock.now (), adrPageTable);		return (adrObject^)} //return the contents of the binary object to html.buildObject
+on publishBinaryObject (adrObject, adrPageTable, templateName=nil) {
+	Â«This script publishes a binary object.
+		Â«It's called from html.buildObject.
+		Â«The binary can be anything -- an image, a java class, a shockwave file.
+		Â«The file suffix of the object is gotten in one of two ways:
+			Â«1) Looking at the name of the object.
+				Â«If the name contains a . character, then the name includes the file suffix.
+			Â«2) Looking at the binary type of the object.
+				Â«The binary type becomes the file suffix, after pre-pending a . char.
+				Â«Images binary types of 'GIFf' and 'JPEG' are translated to .gif and .jpg.
+		Â«Tue, Aug 11, 1998 at 8:02:40 PM by PBS
+	
+	local (binType = getBinaryType (adrObject^));
+	local (objectName = nameOf (adrObject^));
+	local (suffix = binType);
+	local (macType = binType, macCreator);
+	local (flNameContainsSuffix = false);
+	
+	bundle { //get the file suffix
+		if objectName contains "." { //is the suffix part of the name of the object?
+			suffix = string.nthField (objectName, '.', string.countFields (objectName, '.'));
+			flNameContainsSuffix = true};
+		
+		suffix = string.nthField (suffix, ' ', 1); //remove trailing spaces
+		suffix = "." + suffix; //pre-pend a period
+		
+		Â«Handle 'GIFf' and 'JPEG' binary types
+		if string.lower (suffix) == ".giff" {
+			suffix = ".gif"};
+		if string.lower (suffix) == ".jpeg" {
+			suffix = ".jpg"}};
+	
+	bundle { //get the Macintosh creator code
+		local(theOS = sys.os());
+		if theOS == "MacOS" || theOS == "MacCn" {
+			macCreator = frontier.id;
+			case suffix {
+				".gif" {
+					macType = 'GIFf';
+					macCreator = html.getPref ("imgFileCreator")};
+				".jpg" {
+					macType = 'JPEG';
+					macCreator = html.getPref ("imgFileCreator")}}}};
+	
+	bundle { //fix f, fname, and URL to have the right file suffix and folder name
+		on fixPath (adrString) {
+			adrString^ = string.popSuffix (adrString^, '.'); //remove current suffix
+			
+			if flNameContainsSuffix { //pop off the suffix from the path -- it's been normalized into the path
+				adrString^ = string.mid (adrString^, 1, sizeOf (adrString^) - (sizeOf (suffix) -1));
+				adrString^ = string.popTrailing (adrString^, '.')}; //remove possible stray . char
+			
+			adrString^ = adrString^ + suffix; //add correct suffix
+			
+			if adrString^ contains "#" { //the object may live in an #images (or similar) table -- remove the # char
+				local (folderName = nameOf (parentOf (adrObject^)^));
+				if folderName beginsWith "#" {
+					local (pathDelim = file.getPathChar ());
+					if string.lower (nameOf (adrString^)) == "url" { //For URLs, the path delimiter is the forward slash
+						pathDelim = "/"};
+					
+					Â«Find occurence of /#images/ or \#images\ or :#images: in the path
+					local (ix = string.patternMatch (pathDelim + folderName + pathDelim, string.lower (adrString^)));
+					if ix > 0 {
+						adrString^ = string.delete (adrString^, ix + 1, 1)}}}}; //delete the # character
+		
+		fixPath (@adrPageTable^.fname); //Fix the file file name
+		fixPath (@adrPageTable^.f); //Fix the file path
+		fixPath (@adrPageTable^.url)}; //Fix the URL
+	
+	Â«Write the file.
+	html.writeFile (adrPageTable^.f, adrObject, macType, macCreator, clock.now (), adrPageTable);
+	
+	return (adrObject^)} //return the contents of the binary object to html.buildObject

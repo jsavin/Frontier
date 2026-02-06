@@ -1,1 +1,161 @@
-on xmlToTable (xmltext, adrtable=nil) {	«Changes:		«1/31/03; 3:40:12 PM by JES			«Decode "alpha" entities in attribute values in the correct order.		«6/29/01; 3:13:54 PM by JES			«Fixed various problems with entity-decoding.		«6/28/01; 10:28:58 PM by JES			«Convert the XML representation of a table, into a Frontier table as specified here:			«http://smurfturf.manilasites.com/stories/storyReader$214			«s is the XML text			«adrtable is the address of the location to create the table.				«If nil, the table will be created at the address specified by the address attribute of the top-level <table> element.		local (xstruct);	xml.compile (xmltext, @xstruct);	local (adrtablestruct = xml.getAddress (@xstruct, "table"));		on getAttributeValue (adrelement, attname) {		local (adratts = @adrelement^.["/atts"]);		local (adratt = @adratts^.[attname]);		local (value = xml.entityDecode (adratt^, false, true));		value = string.replaceall (value, "&lt;", "<");		value = string.replaceall (value, "&gt;", ">");		value = string.replaceall (value, "&quot;", "\"");		value = string.replaceAll (value, "&apos;", "\'");		value = string.replaceall (value, "&amp;", "&");		return (value)};		if adrtable == nil { //get the address from the top-level <table> element		try {			adrtable = address (getAttributeValue (adrtablestruct, "address"))}		else {			scriptError ("Can't convert to a table because no destination address was specified.")}};		on doListOrRecord (adrlist, adrdest, flrecord=false) {		adrdest^ = {};		local (adritem);		for adritem in adrlist {			if nameOf (adritem^) beginsWith "/" {				continue};			local (item); new (tableType, @item);			if flrecord {				local (name = getAttributeValue (adritem, "name"));				main (adritem, @item, name);				adrdest^ = adrdest^ + {name:item[1]}}			else { //list				main (adritem, @item, "item");				adrdest^ = adrdest^ + item.item}};		return (true)};	on doOutline (adroutline, adrdest, flscript=false) {		local (adropml);		for adropml in adroutline {			if xml.convertToDisplayName (nameOf (adropml^)) == "opml" {				break}};		local (xtext = xml.decompile (adropml));		if flscript {			local (s);			op.xmlToOutline (xtext, @s);			new (scriptType, adrdest);			local (oldtarget = target.set (adrdest));			op.insertOutline (@s, down);			op.firstSummit ();			op.deleteLine ();			target.set (oldtarget)}		else { //outline			op.xmlToOutline (xtext, adrdest)};		return (true)};	on doMenubar (adrmenu, adrdest) {		new (menubarType, adrdest);		on addHeading (s, flfirstheading) {			if flfirstheading {				op.setLineText (s)}			else {				op.insert (s, down)};			return (true)};		on doLevel (adr) {			local (adritem, flfirstheading = true);			for adritem in adr {				if nameOf (adritem^) beginsWith "/" {					continue};				local (itemtype = xml.convertToDisplayName (nameOf (adritem^)));				case itemtype {					"script" {						local (name = getAttributeValue (adritem, "name"));						addHeading (name, flfirstheading);						local (commandKey);						if defined (adritem^.["/atts"].commandKey) {							commandKey = char (number (adritem^.["/atts"].commandKey))};						if commandKey != nil {							menu.setCommandKey (commandKey)};						local (s);						doOutline (adritem, @s, true);						menu.setScript (@s)};					"menubar" {						local (name = getAttributeValue (adritem, "name"));						addHeading (name, flfirstheading);						op.insert ("", right);						doLevel (adritem);						op.go (left, 1)};					"separator" {						addHeading ("-", flfirstheading)}};				flfirstheading = false}};		local (oldtarget = target.set (adrdest));		doLevel (adrmenu);		target.set (oldtarget);		return (true)};	on doTable (adrtable, adrdest) {		local (adritem);		new (tableType, adrdest);		for adritem in adrtable {			if nameOf (adritem^) == "/atts" {				continue};			if nameOf (adritem^) == "/pcdata" {				continue};			local (name = getAttributeValue (adritem, "name"));			main (adritem, adrdest, name)};		return (true)};	on main (adritem, adrdest, name) {		local (typestring = xml.convertToDisplayName (nameOf (adritem^)));		local (adritemdest = @adrdest^.[name]);		case typestring {			"table" {				doTable (adritem, adritemdest)};			"outline" {				doOutline (adritem, adritemdest)};			"script" {				doOutline (adritem, adritemdest, true)};			"wptext" {				local (ix = 1; adrbody);				loop { //find <body>					if string.nthField (nameOf (adritem^[ix]), '\t', 2) == "body" {						adrbody = @adritem^[ix];						break};					ix++};				local (value);				if typeOf (adrbody^) == tableType {					value = xml.entityDecode (adrbody^.["/pcdata"], true)}				else {					value = xml.entityDecode (adrbody^, true)};				wp.newTextObject (value, adritemdest)};			"list" {				doListOrRecord (adritem, adritemdest)};			"record" {				doListOrRecord (adritem, adritemdest, true)};			"binary" {				local (value = base64.decode (adritem^.["/pcdata"]));				adritemdest^ = binary (value);				setBinaryType (adritemdest, getAttributeValue (adritem, "type"))};			"menubar" {				doMenubar (adritem, adritemdest)}}		else { //scalar			local (value = getAttributeValue (adritem, "value"));			adritemdest^ = [typestring] (value)};		return (true)};		doTable (adrtablestruct, adrtable);		return (true)};«bundle //testing	«table.xmlToTable ("<table name=\"myTable\" address=\"workspace.myTable\"><string name=\"myString\" value=\"This is a string.\"/></table>")	«table.xmlToTable (string (workspace.foo), @workspace.deserializedTable)
+on xmlToTable (xmltext, adrtable=nil) {
+	Â«Changes:
+		Â«1/31/03; 3:40:12 PM by JES
+			Â«Decode "alpha" entities in attribute values in the correct order.
+		Â«6/29/01; 3:13:54 PM by JES
+			Â«Fixed various problems with entity-decoding.
+		Â«6/28/01; 10:28:58 PM by JES
+			Â«Convert the XML representation of a table, into a Frontier table as specified here:
+			Â«http://smurfturf.manilasites.com/stories/storyReader$214
+			Â«s is the XML text
+			Â«adrtable is the address of the location to create the table.
+				Â«If nil, the table will be created at the address specified by the address attribute of the top-level <table> element.
+	
+	local (xstruct);
+	xml.compile (xmltext, @xstruct);
+	local (adrtablestruct = xml.getAddress (@xstruct, "table"));
+	
+	on getAttributeValue (adrelement, attname) {
+		local (adratts = @adrelement^.["/atts"]);
+		local (adratt = @adratts^.[attname]);
+		local (value = xml.entityDecode (adratt^, false, true));
+		value = string.replaceall (value, "&lt;", "<");
+		value = string.replaceall (value, "&gt;", ">");
+		value = string.replaceall (value, "&quot;", "\"");
+		value = string.replaceAll (value, "&apos;", "\'");
+		value = string.replaceall (value, "&amp;", "&");
+		return (value)};
+	
+	if adrtable == nil { //get the address from the top-level <table> element
+		try {
+			adrtable = address (getAttributeValue (adrtablestruct, "address"))}
+		else {
+			scriptError ("Can't convert to a table because no destination address was specified.")}};
+	
+	on doListOrRecord (adrlist, adrdest, flrecord=false) {
+		adrdest^ = {};
+		local (adritem);
+		for adritem in adrlist {
+			if nameOf (adritem^) beginsWith "/" {
+				continue};
+			local (item); new (tableType, @item);
+			if flrecord {
+				local (name = getAttributeValue (adritem, "name"));
+				main (adritem, @item, name);
+				adrdest^ = adrdest^ + {name:item[1]}}
+			else { //list
+				main (adritem, @item, "item");
+				adrdest^ = adrdest^ + item.item}};
+		return (true)};
+	on doOutline (adroutline, adrdest, flscript=false) {
+		local (adropml);
+		for adropml in adroutline {
+			if xml.convertToDisplayName (nameOf (adropml^)) == "opml" {
+				break}};
+		local (xtext = xml.decompile (adropml));
+		if flscript {
+			local (s);
+			op.xmlToOutline (xtext, @s);
+			new (scriptType, adrdest);
+			local (oldtarget = target.set (adrdest));
+			op.insertOutline (@s, down);
+			op.firstSummit ();
+			op.deleteLine ();
+			target.set (oldtarget)}
+		else { //outline
+			op.xmlToOutline (xtext, adrdest)};
+		return (true)};
+	on doMenubar (adrmenu, adrdest) {
+		new (menubarType, adrdest);
+		on addHeading (s, flfirstheading) {
+			if flfirstheading {
+				op.setLineText (s)}
+			else {
+				op.insert (s, down)};
+			return (true)};
+		on doLevel (adr) {
+			local (adritem, flfirstheading = true);
+			for adritem in adr {
+				if nameOf (adritem^) beginsWith "/" {
+					continue};
+				local (itemtype = xml.convertToDisplayName (nameOf (adritem^)));
+				case itemtype {
+					"script" {
+						local (name = getAttributeValue (adritem, "name"));
+						addHeading (name, flfirstheading);
+						local (commandKey);
+						if defined (adritem^.["/atts"].commandKey) {
+							commandKey = char (number (adritem^.["/atts"].commandKey))};
+						if commandKey != nil {
+							menu.setCommandKey (commandKey)};
+						local (s);
+						doOutline (adritem, @s, true);
+						menu.setScript (@s)};
+					"menubar" {
+						local (name = getAttributeValue (adritem, "name"));
+						addHeading (name, flfirstheading);
+						op.insert ("", right);
+						doLevel (adritem);
+						op.go (left, 1)};
+					"separator" {
+						addHeading ("-", flfirstheading)}};
+				flfirstheading = false}};
+		local (oldtarget = target.set (adrdest));
+		doLevel (adrmenu);
+		target.set (oldtarget);
+		return (true)};
+	on doTable (adrtable, adrdest) {
+		local (adritem);
+		new (tableType, adrdest);
+		for adritem in adrtable {
+			if nameOf (adritem^) == "/atts" {
+				continue};
+			if nameOf (adritem^) == "/pcdata" {
+				continue};
+			local (name = getAttributeValue (adritem, "name"));
+			main (adritem, adrdest, name)};
+		return (true)};
+	on main (adritem, adrdest, name) {
+		local (typestring = xml.convertToDisplayName (nameOf (adritem^)));
+		local (adritemdest = @adrdest^.[name]);
+		case typestring {
+			"table" {
+				doTable (adritem, adritemdest)};
+			"outline" {
+				doOutline (adritem, adritemdest)};
+			"script" {
+				doOutline (adritem, adritemdest, true)};
+			"wptext" {
+				local (ix = 1; adrbody);
+				loop { //find <body>
+					if string.nthField (nameOf (adritem^[ix]), '\t', 2) == "body" {
+						adrbody = @adritem^[ix];
+						break};
+					ix++};
+				local (value);
+				if typeOf (adrbody^) == tableType {
+					value = xml.entityDecode (adrbody^.["/pcdata"], true)}
+				else {
+					value = xml.entityDecode (adrbody^, true)};
+				wp.newTextObject (value, adritemdest)};
+			"list" {
+				doListOrRecord (adritem, adritemdest)};
+			"record" {
+				doListOrRecord (adritem, adritemdest, true)};
+			"binary" {
+				local (value = base64.decode (adritem^.["/pcdata"]));
+				adritemdest^ = binary (value);
+				setBinaryType (adritemdest, getAttributeValue (adritem, "type"))};
+			"menubar" {
+				doMenubar (adritem, adritemdest)}}
+		else { //scalar
+			local (value = getAttributeValue (adritem, "value"));
+			adritemdest^ = [typestring] (value)};
+		return (true)};
+	
+	doTable (adrtablestruct, adrtable);
+	
+	return (true)};
+Â«bundle //testing
+	Â«table.xmlToTable ("<table name=\"myTable\" address=\"workspace.myTable\"><string name=\"myString\" value=\"This is a string.\"/></table>")
+	Â«table.xmlToTable (string (workspace.foo), @workspace.deserializedTable)

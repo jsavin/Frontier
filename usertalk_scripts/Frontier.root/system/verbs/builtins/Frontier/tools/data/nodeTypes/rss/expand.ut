@@ -1,1 +1,56 @@
-«Changes	«12/5/01; 2:34:00 PM by JES		«Only move the cursor after getting the expanded sub-heads, if the cursor is sitting on a node whose type is not rss.	«12/3/01; 5:59:20 PM by JES		«If the rss contains no items, do nothing. If there's an error, show it to the user in a dialog.	«12/1/01; 5:29:37 PM by JES		«If an RSS node contains no items, or can't be parsed, insert a heading saying so.	«12/1/01; 3:48:30 PM by JES		«When expanding RSS nodes, put the cursor back on the RSS node's heading, instead of leaving it on the first sub-heading.local (url);if op.attributes.getOne ("xmlurl", @url) {	local (oldDisplay = op.getDisplay ());	op.setDisplay (false);	try {		Frontier.tools.windowTypes.commands.openUrl (url, true);		op.go (right, 1);		op.promote ();		op.deleteLine ();		local (nodetype);		op.attributes.getOne ("type", @nodetype);		if nodetype != "rss" {			op.go (left, 1)}}	else {		dialog.alert ("Error parsing RSS: " + tryError)};	op.setDisplay (oldDisplay)};«bundle //old code	«local (adrwindow = window.frontmost ())	«	«local (oldTarget = target.set (adrwindow))	«local (oldDisplay = op.getDisplay ())	«op.setDisplay (false)	«	«local (url)	«op.attributes.getOne ("xmlurl", @url)	«local (xmltext = tcp.httpReadUrl (url))	«local (localoutline)	«op.rssToOutline (xmltext, @localoutline)	«	«target.set (@localOutline)	«local (atts)	«op.attributes.getAll (@atts)	«atts.xmlUrl = url	«op.go (right, 1)	«editMenu.selectAll ()	«op.reorg (left, 1)	«op.go (up, 1)	«op.deleteline ()	«	«target.set (adrwindow)	«op.attributes.addGroup (@atts)	«op.insertoutline (@localoutline, right)	«if date.versionLessThan (Frontier.version (), "7.0b13")		«op.go (left, 1)	«	«op.setDisplay (oldDisplay)	«try {target.set (oldTarget)}
+Â«Changes
+	Â«12/5/01; 2:34:00 PM by JES
+		Â«Only move the cursor after getting the expanded sub-heads, if the cursor is sitting on a node whose type is not rss.
+	Â«12/3/01; 5:59:20 PM by JES
+		Â«If the rss contains no items, do nothing. If there's an error, show it to the user in a dialog.
+	Â«12/1/01; 5:29:37 PM by JES
+		Â«If an RSS node contains no items, or can't be parsed, insert a heading saying so.
+	Â«12/1/01; 3:48:30 PM by JES
+		Â«When expanding RSS nodes, put the cursor back on the RSS node's heading, instead of leaving it on the first sub-heading.
+local (url);
+if op.attributes.getOne ("xmlurl", @url) {
+	local (oldDisplay = op.getDisplay ());
+	op.setDisplay (false);
+	try {
+		Frontier.tools.windowTypes.commands.openUrl (url, true);
+		op.go (right, 1);
+		op.promote ();
+		op.deleteLine ();
+		local (nodetype);
+		op.attributes.getOne ("type", @nodetype);
+		if nodetype != "rss" {
+			op.go (left, 1)}}
+	else {
+		dialog.alert ("Error parsing RSS: " + tryError)};
+	op.setDisplay (oldDisplay)};
+Â«bundle //old code
+	Â«local (adrwindow = window.frontmost ())
+	Â«
+	Â«local (oldTarget = target.set (adrwindow))
+	Â«local (oldDisplay = op.getDisplay ())
+	Â«op.setDisplay (false)
+	Â«
+	Â«local (url)
+	Â«op.attributes.getOne ("xmlurl", @url)
+	Â«local (xmltext = tcp.httpReadUrl (url))
+	Â«local (localoutline)
+	Â«op.rssToOutline (xmltext, @localoutline)
+	Â«
+	Â«target.set (@localOutline)
+	Â«local (atts)
+	Â«op.attributes.getAll (@atts)
+	Â«atts.xmlUrl = url
+	Â«op.go (right, 1)
+	Â«editMenu.selectAll ()
+	Â«op.reorg (left, 1)
+	Â«op.go (up, 1)
+	Â«op.deleteline ()
+	Â«
+	Â«target.set (adrwindow)
+	Â«op.attributes.addGroup (@atts)
+	Â«op.insertoutline (@localoutline, right)
+	Â«if date.versionLessThan (Frontier.version (), "7.0b13")
+		Â«op.go (left, 1)
+	Â«
+	Â«op.setDisplay (oldDisplay)
+	Â«try {target.set (oldTarget)}

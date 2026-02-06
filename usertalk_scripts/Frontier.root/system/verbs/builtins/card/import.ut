@@ -1,1 +1,6 @@
-on import (adr, path) {	file.open (path);	adr^ = file.read (path, infinity);	file.close (path);	setbinarytype (adr, 'CARD');	return (true)}
+on import (adr, path) {
+	file.open (path);
+	adr^ = file.read (path, infinity);
+	file.close (path);
+	setbinarytype (adr, 'CARD');
+	return (true)}

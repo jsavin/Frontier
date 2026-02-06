@@ -1,1 +1,121 @@
-«Script: system.verbs.builtins.webserver.responders.default.methods.PUT; Version 1; Date: Tue, 12 May 1998 22:20:12 GMT; ID: RABon PUT (adrParamTable) {	local (adrRequestHeaders, adrResponseHeaders);	local (dataTableAdr, responderTableAdr,  docTreeTableAdr, prefsTableAdr, realmTableAdr);	local (objType, mimeType); //For type info	local (objName);		adrRequestHeaders = @adrParamTable^.requestHeaders;	adrResponseHeaders = @adrParamTable^.responseHeaders;	responderTableAdr = adrParamTable^.responderTableAdr; // the responder table	dataTableAdr = @responderTableAdr^.["data"]; //This table contains the user options for this responder	docTreeTableAdr = @dataTableAdr^.["docTree"]; //This table is the base "server" root	prefsTableAdr = @dataTableAdr^.["prefs"]; //This table is preferences table	realmTableAdr = @dataTableAdr^.["realms"]; //This table contains the realms table for this responder		on getODBTypeInfo(name) {		if (typeOf (name^) == binaryType) {			objType = getBinaryType (name^)}		else {			objType = typeOf (name^)};				if defined (user.webserver.prefs.type2MIME.[objType]) {			mimeType = user.webserver.prefs.type2MIME.[objType]}		else {			mimeType = "text/html"}};		«check security	local (i, authorized=false);	if webserver.util.parseAuth (adrParamTable) {		if people.authenticateUser (adrParamTable^.username, adrParamTable^.password, "defaultResponder") {			«the user has an account on this server			authorized = true;			for i=1 to sizeOf(realmTableAdr^) { // check each realm				if adrParamTable^.path contains realmTableAdr^[i] {					«a realm matched					if not people.userIsGroupMember (adrParamTable^.username, nameOf (realmTableAdr^[i])) {						«the user is not in a group with the same name as the realm						authorized = false}}}}};	if not authorized {		adrParamTable^.responseBody = webserver.util.buildErrorPage ("401 Unauthorized", "Please present a username and password to upload to " + adrParamTable^.path + ".");		return (webserver.util.requestAuth(adrParamTable))};		bundle { //parse the URl into an ODB/file path		objName = string.urlDecode(adrParamTable^.path);		if objName beginswith "/odb" {			objName = string.replace (objName, "/odb", "")};		if objName beginswith "/file" {			objName = string.replace (objName, "/file", "")};		«The following is the main security and path processing script.  The result from this script is an error or the final		«file or odb specification for the responder to serve.		if ! webserver.util.pathToAddressExt (objName, docTreeTableAdr, adrParamTable, true) {			return (true)}; //The error is already set.		objName = adrParamTable^.resultPath}; //as returned from pathToAddressExt		if adrParamTable^.resultType == addressType { // we are serving out of the ODB		if !defined (objName^) {			«the object didn't exist			adrParamTable^.code = 201}		else { // the object is replacing something already there...  This could be a no-no			getODBTypeInfo (objName);			if (objType == filespecType) or (objType == tableType) {				«the user is trying something sneaky				adrParamTable^.code = 409;				adrParamTable^.responseBody = webserver.util.buildErrorPage ("409 Conflict", "The object " + adrParamTable^.path + " is attempting to overwrite a protected object.");				return (true)};			adrParamTable^.code = 200};				local (objType, mimeType);		if defined (adrParamTable^.requestHeaders.["Content-Type"]) {			«figure out the type of the object			mimeType = adrParamTable^.requestHeaders.["Content-Type"];			if defined (user.webserver.prefs.MIME2type.[mimeType]) {				objType = user.webserver.prefs.MIME2type.[mimeType]}			else {				objType = wptextType}}		else {			objType = wptextType};				«now store the object		case objType {			stringType {				objName^ = string(adrParamTable^.requestBody)};			wptextType {				wp.newTextObject (string(adrParamTable^.requestBody), objName)}}		else {			objName^ = binary(adrParamTable^.requestBody);			setBinaryType (objName, objType)}}	else { //handle storing a file		if !file.exists (objName) {			«the file doesn't exist			adrParamTable^.code = 201}		else {			adrParamTable^.code = 200};				if file.isFolder (objName) {			«the user is trying something sneaky			adrParamTable^.code = 409;			adrParamTable^.responseBody = webserver.util.buildErrorPage ("409 Conflict", "The object " + adrParamTable^.path + " is a directory, which cannot be replaced with a file.");			return (true)};				«now we know that the request is correct, so serve it				local(theOS = sys.os());		if theOS == osMacOS || theOS == osMacCn {			if defined (adrParamTable^.requestHeaders.["Content-Type"]) {				«figure out the type of the object				mimeType = adrParamTable^.requestHeaders.["Content-Type"];				if defined (user.webserver.prefs.MIME2type.[mimeType]) {					objType = user.webserver.prefs.MIME2type.[mimeType]}				else {					objType = 'HTML'}}			else {				objType = 'HTML'}};				file.writeWholeFile (objName, adrParamTable^.requestBody, objType, 'R*ch');				«keep your gzipped files up-to-date if you're using them		«if file.exists (objName + ".gz") && defined (gzip)			«gzip.writeWholeFile (objName +".gz", adrParamTable^.requestBody, objType, 'R*ch')		};	return (true)}
+Â«Script: system.verbs.builtins.webserver.responders.default.methods.PUT; Version 1; Date: Tue, 12 May 1998 22:20:12 GMT; ID: RAB
+on PUT (adrParamTable) {
+	local (adrRequestHeaders, adrResponseHeaders);
+	local (dataTableAdr, responderTableAdr,  docTreeTableAdr, prefsTableAdr, realmTableAdr);
+	local (objType, mimeType); //For type info
+	local (objName);
+	
+	adrRequestHeaders = @adrParamTable^.requestHeaders;
+	adrResponseHeaders = @adrParamTable^.responseHeaders;
+	responderTableAdr = adrParamTable^.responderTableAdr; // the responder table
+	dataTableAdr = @responderTableAdr^.["data"]; //This table contains the user options for this responder
+	docTreeTableAdr = @dataTableAdr^.["docTree"]; //This table is the base "server" root
+	prefsTableAdr = @dataTableAdr^.["prefs"]; //This table is preferences table
+	realmTableAdr = @dataTableAdr^.["realms"]; //This table contains the realms table for this responder
+	
+	on getODBTypeInfo(name) {
+		if (typeOf (name^) == binaryType) {
+			objType = getBinaryType (name^)}
+		else {
+			objType = typeOf (name^)};
+		
+		if defined (user.webserver.prefs.type2MIME.[objType]) {
+			mimeType = user.webserver.prefs.type2MIME.[objType]}
+		else {
+			mimeType = "text/html"}};
+	
+	Â«check security
+	local (i, authorized=false);
+	if webserver.util.parseAuth (adrParamTable) {
+		if people.authenticateUser (adrParamTable^.username, adrParamTable^.password, "defaultResponder") {
+			Â«the user has an account on this server
+			authorized = true;
+			for i=1 to sizeOf(realmTableAdr^) { // check each realm
+				if adrParamTable^.path contains realmTableAdr^[i] {
+					Â«a realm matched
+					if not people.userIsGroupMember (adrParamTable^.username, nameOf (realmTableAdr^[i])) {
+						Â«the user is not in a group with the same name as the realm
+						authorized = false}}}}};
+	if not authorized {
+		adrParamTable^.responseBody = webserver.util.buildErrorPage ("401 Unauthorized", "Please present a username and password to upload to " + adrParamTable^.path + ".");
+		return (webserver.util.requestAuth(adrParamTable))};
+	
+	bundle { //parse the URl into an ODB/file path
+		objName = string.urlDecode(adrParamTable^.path);
+		if objName beginswith "/odb" {
+			objName = string.replace (objName, "/odb", "")};
+		if objName beginswith "/file" {
+			objName = string.replace (objName, "/file", "")};
+		Â«The following is the main security and path processing script.  The result from this script is an error or the final
+		Â«file or odb specification for the responder to serve.
+		if ! webserver.util.pathToAddressExt (objName, docTreeTableAdr, adrParamTable, true) {
+			return (true)}; //The error is already set.
+		objName = adrParamTable^.resultPath}; //as returned from pathToAddressExt
+	
+	if adrParamTable^.resultType == addressType { // we are serving out of the ODB
+		if !defined (objName^) {
+			Â«the object didn't exist
+			adrParamTable^.code = 201}
+		else { // the object is replacing something already there...  This could be a no-no
+			getODBTypeInfo (objName);
+			if (objType == filespecType) or (objType == tableType) {
+				Â«the user is trying something sneaky
+				adrParamTable^.code = 409;
+				adrParamTable^.responseBody = webserver.util.buildErrorPage ("409 Conflict", "The object " + adrParamTable^.path + " is attempting to overwrite a protected object.");
+				return (true)};
+			adrParamTable^.code = 200};
+		
+		local (objType, mimeType);
+		if defined (adrParamTable^.requestHeaders.["Content-Type"]) {
+			Â«figure out the type of the object
+			mimeType = adrParamTable^.requestHeaders.["Content-Type"];
+			if defined (user.webserver.prefs.MIME2type.[mimeType]) {
+				objType = user.webserver.prefs.MIME2type.[mimeType]}
+			else {
+				objType = wptextType}}
+		else {
+			objType = wptextType};
+		
+		Â«now store the object
+		case objType {
+			stringType {
+				objName^ = string(adrParamTable^.requestBody)};
+			wptextType {
+				wp.newTextObject (string(adrParamTable^.requestBody), objName)}}
+		else {
+			objName^ = binary(adrParamTable^.requestBody);
+			setBinaryType (objName, objType)}}
+	else { //handle storing a file
+		if !file.exists (objName) {
+			Â«the file doesn't exist
+			adrParamTable^.code = 201}
+		else {
+			adrParamTable^.code = 200};
+		
+		if file.isFolder (objName) {
+			Â«the user is trying something sneaky
+			adrParamTable^.code = 409;
+			adrParamTable^.responseBody = webserver.util.buildErrorPage ("409 Conflict", "The object " + adrParamTable^.path + " is a directory, which cannot be replaced with a file.");
+			return (true)};
+		
+		Â«now we know that the request is correct, so serve it
+		
+		local(theOS = sys.os());
+		if theOS == osMacOS || theOS == osMacCn {
+			if defined (adrParamTable^.requestHeaders.["Content-Type"]) {
+				Â«figure out the type of the object
+				mimeType = adrParamTable^.requestHeaders.["Content-Type"];
+				if defined (user.webserver.prefs.MIME2type.[mimeType]) {
+					objType = user.webserver.prefs.MIME2type.[mimeType]}
+				else {
+					objType = 'HTML'}}
+			else {
+				objType = 'HTML'}};
+		
+		file.writeWholeFile (objName, adrParamTable^.requestBody, objType, 'R*ch');
+		
+		Â«keep your gzipped files up-to-date if you're using them
+		Â«if file.exists (objName + ".gz") && defined (gzip)
+			Â«gzip.writeWholeFile (objName +".gz", adrParamTable^.requestBody, objType, 'R*ch')
+		};
+	return (true)}

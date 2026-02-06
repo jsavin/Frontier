@@ -1,1 +1,8 @@
-on getStoriesHeaders (adrSitePrefs) {	«11/14/00; 10:34:51 PM by JES	«Changes		«9/6/01; 8:23:01 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"siteName":sitename, "username":username, "password":string (password)});		return (manila.callHandler (host, port, "manila.message.getStoriesHeaders", @params, rpcPath:rpcPath))}}
+on getStoriesHeaders (adrSitePrefs) {
+	Â«11/14/00; 10:34:51 PM by JES
+	Â«Changes
+		Â«9/6/01; 8:23:01 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	with adrSitePrefs^ {
+		local (params = {"siteName":sitename, "username":username, "password":string (password)});
+		return (manila.callHandler (host, port, "manila.message.getStoriesHeaders", @params, rpcPath:rpcPath))}}

@@ -1,1 +1,2 @@
-on setModalTimeout (timeout) {	kernel (dialog.setModalCardTimeout)}
+on setModalTimeout (timeout) {
+	kernel (dialog.setModalCardTimeout)}

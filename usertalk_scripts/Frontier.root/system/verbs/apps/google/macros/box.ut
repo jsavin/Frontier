@@ -1,1 +1,56 @@
-on box (searchterm, ctResults=10, tableWidth=191, frameColor="#000000", boxColor="#FFFFFF", helpLink="http://radio.userland.com/googleBox", textClass="", align="") {	«Changes		«4/11/02; 6:19:45 PM by DW			«Add an align parameter.		«4/11/02; 2:08:24 PM by DW			«During the private test period we could request as many as 100 results, so no matter what we always asked for 100, and cached the response, so if you decided you wanted 25 instead of 10, we wouldn't have to hit Google's server again. They apparently changed the limit on the server, so no one's google-boxes are working. This fix should make it work again.		«4/9/02; 12:25:34 PM by DW			«Created.	local (htmltext = "", indentlevel = 0);	on add (s) {		htmltext = htmltext + (string.filledstring ("\t", indentlevel) + s + "\r");};		local (textpre, textpost);	if textClass == "" {		textpre = "<font size=\"-1\">";		textpost = "</font>"}	else {		textpre = "<div class=\"" + textClass + "\">";		textpost = "</div>"};		local (adrresults, whenLastRead);	bundle { //set adrresults, whenLastRead		google.init ();		if not defined (system.temp.google.box) {			new (tabletype, @system.temp.google.box)};		local (adrquerycache = @system.temp.google.box.[searchterm], flread = true);		if defined (adrquerycache^) {			if (adrquerycache^.whenLastRead + (60 * 60)) > clock.now () {				if defined (adrquerycache^.results) {					flread = false}}}		else {			new (tabletype, adrquerycache)};		if flread {			adrquerycache^.whenLastRead = clock.now ();			adrquerycache^.results = google.search (searchterm, ctResults:10)};		adrresults = @adrquerycache^.results;		whenLastRead = adrquerycache^.whenLastRead;		};	bundle { //build htmltext		if align != "" {			align = " align=\"" + align + "\""};		add ("<table width=\"" + tableWidth + "\" cellspacing=\"0\" cellpadding=\"1\" bgcolor=\"" + frameColor + "\"" + align + "><tr><td><table bgcolor=\"" + boxColor + "\" cellpadding=\"2\"><tr><td>"); indentlevel++;		add ("<center>" + textpre + "Top " + ctResults + " hits for <i>" + searchterm + "</i> on.." + textpost + "</center>");		add ("<center><a href=\"http://www.google.com/search?hl=en&q=" + string.urlencode (searchterm) + "\"><img src=\"http://radio.weblogs.com/0001015/images/2002/04/09/googleLogo.gif\" width=\"128\" height=\"53\" border=\"0\" alt=\"Google\"></a></center>");		local (adr, ct = 0);		add ("<table cellpadding=\"0\" cellspacing=\"5\" border=\"0\">"); indentlevel++;		for adr in @adrresults^.resultElements {			add ("<tr><td valign=\"top\" align=\"right\">" + textpre + ++ct + "." + textpost + "</td><td>" + textpre + "<a href=\"" + adr^.url + "\">" + searchengine.stripmarkup (adr^.title) + "</a><br>" + textpost + "</td></tr>");			if ct >= ctResults {				break}};		add ("</table>"); indentlevel--;		add ("<br><table><tr><td valign=\"top\"><a href=\"" + helpLink + "\"><img src=\"http://static.userland.com/shortcuts/images/qbullets/help.gif\" width=\"12\" height=\"11\" border=\"0\" alt=\"Help link\"></a></td><td valign=\"top\">" + textpre + "&nbsp;<i>" + whenLastRead + ".</i>" + textpost + "</td></tr></table>");		add ("</td></tr></table></td></tr></table>"); indentlevel--};	return (htmltext)};«bundle //test code	«webbrowser.displaytext (box ("dhrb", 25, boxcolor:"whitesmoke", align:"right") + string.filledstring ("oh the buzzing of the bees ", 500))
+on box (searchterm, ctResults=10, tableWidth=191, frameColor="#000000", boxColor="#FFFFFF", helpLink="http://radio.userland.com/googleBox", textClass="", align="") {
+	Â«Changes
+		Â«4/11/02; 6:19:45 PM by DW
+			Â«Add an align parameter.
+		Â«4/11/02; 2:08:24 PM by DW
+			Â«During the private test period we could request as many as 100 results, so no matter what we always asked for 100, and cached the response, so if you decided you wanted 25 instead of 10, we wouldn't have to hit Google's server again. They apparently changed the limit on the server, so no one's google-boxes are working. This fix should make it work again.
+		Â«4/9/02; 12:25:34 PM by DW
+			Â«Created.
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledstring ("\t", indentlevel) + s + "\r");};
+	
+	local (textpre, textpost);
+	if textClass == "" {
+		textpre = "<font size=\"-1\">";
+		textpost = "</font>"}
+	else {
+		textpre = "<div class=\"" + textClass + "\">";
+		textpost = "</div>"};
+	
+	local (adrresults, whenLastRead);
+	bundle { //set adrresults, whenLastRead
+		google.init ();
+		if not defined (system.temp.google.box) {
+			new (tabletype, @system.temp.google.box)};
+		local (adrquerycache = @system.temp.google.box.[searchterm], flread = true);
+		if defined (adrquerycache^) {
+			if (adrquerycache^.whenLastRead + (60 * 60)) > clock.now () {
+				if defined (adrquerycache^.results) {
+					flread = false}}}
+		else {
+			new (tabletype, adrquerycache)};
+		if flread {
+			adrquerycache^.whenLastRead = clock.now ();
+			adrquerycache^.results = google.search (searchterm, ctResults:10)};
+		adrresults = @adrquerycache^.results;
+		whenLastRead = adrquerycache^.whenLastRead;
+		};
+	bundle { //build htmltext
+		if align != "" {
+			align = " align=\"" + align + "\""};
+		add ("<table width=\"" + tableWidth + "\" cellspacing=\"0\" cellpadding=\"1\" bgcolor=\"" + frameColor + "\"" + align + "><tr><td><table bgcolor=\"" + boxColor + "\" cellpadding=\"2\"><tr><td>"); indentlevel++;
+		add ("<center>" + textpre + "Top " + ctResults + " hits for <i>" + searchterm + "</i> on.." + textpost + "</center>");
+		add ("<center><a href=\"http://www.google.com/search?hl=en&q=" + string.urlencode (searchterm) + "\"><img src=\"http://radio.weblogs.com/0001015/images/2002/04/09/googleLogo.gif\" width=\"128\" height=\"53\" border=\"0\" alt=\"Google\"></a></center>");
+		local (adr, ct = 0);
+		add ("<table cellpadding=\"0\" cellspacing=\"5\" border=\"0\">"); indentlevel++;
+		for adr in @adrresults^.resultElements {
+			add ("<tr><td valign=\"top\" align=\"right\">" + textpre + ++ct + "." + textpost + "</td><td>" + textpre + "<a href=\"" + adr^.url + "\">" + searchengine.stripmarkup (adr^.title) + "</a><br>" + textpost + "</td></tr>");
+			if ct >= ctResults {
+				break}};
+		add ("</table>"); indentlevel--;
+		add ("<br><table><tr><td valign=\"top\"><a href=\"" + helpLink + "\"><img src=\"http://static.userland.com/shortcuts/images/qbullets/help.gif\" width=\"12\" height=\"11\" border=\"0\" alt=\"Help link\"></a></td><td valign=\"top\">" + textpre + "&nbsp;<i>" + whenLastRead + ".</i>" + textpost + "</td></tr></table>");
+		add ("</td></tr></table></td></tr></table>"); indentlevel--};
+	return (htmltext)};
+Â«bundle //test code
+	Â«webbrowser.displaytext (box ("dhrb", 25, boxcolor:"whitesmoke", align:"right") + string.filledstring ("oh the buzzing of the bees ", 500))

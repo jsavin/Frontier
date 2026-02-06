@@ -1,1 +1,26 @@
-on loadfolder (folder) {	local (adroutline = @scratchpad.newFrontierObjects);	new (outlinetype, adroutline);	target.set (adroutline);	op.setlinetext ("Objects imported by userland.loadFolder on " + clock.now ());	editmenu.setfont ("geneva"); editmenu.setfontsize (12);	edit (adroutline);	local (f, dir = right);	fileloop (f in folder) {		local (objectadr);		rez.getnthresource (f, 'data', 1, @objectadr, @resdata);		msg (objectadr);		if sizeof (objectadr) > 31 {			dialog.alert (objectadr)};		op.insert (objectadr, dir);		dir = down;		«file.rename (f, objectadr)		bundle { «double-unpack the data into the object database			msg (objectadr);			unpack (@resdata, @resdata);			unpack (@resdata, @resdata);			table.moveAndRename (@resdata, objectadr)}};	op.firstsummit ();	window.zoom (adroutline);	filemenu.save ()};loadfolder ("Macintosh HD:New Releases:Frontier Workshop:DW Objects:")
+on loadfolder (folder) {
+	local (adroutline = @scratchpad.newFrontierObjects);
+	new (outlinetype, adroutline);
+	target.set (adroutline);
+	op.setlinetext ("Objects imported by userland.loadFolder on " + clock.now ());
+	editmenu.setfont ("geneva"); editmenu.setfontsize (12);
+	edit (adroutline);
+	local (f, dir = right);
+	fileloop (f in folder) {
+		local (objectadr);
+		rez.getnthresource (f, 'data', 1, @objectadr, @resdata);
+		msg (objectadr);
+		if sizeof (objectadr) > 31 {
+			dialog.alert (objectadr)};
+		op.insert (objectadr, dir);
+		dir = down;
+		Â«file.rename (f, objectadr)
+		bundle { Â«double-unpack the data into the object database
+			msg (objectadr);
+			unpack (@resdata, @resdata);
+			unpack (@resdata, @resdata);
+			table.moveAndRename (@resdata, objectadr)}};
+	op.firstsummit ();
+	window.zoom (adroutline);
+	filemenu.save ()};
+loadfolder ("Macintosh HD:New Releases:Frontier Workshop:DW Objects:")

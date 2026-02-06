@@ -1,1 +1,2 @@
-on inTextMode () {	kernel (wp.intextmode)}
+on inTextMode () {
+	kernel (wp.intextmode)}

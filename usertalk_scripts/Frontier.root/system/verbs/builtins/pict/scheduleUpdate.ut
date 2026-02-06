@@ -1,1 +1,2 @@
-on scheduleUpdate (ctseconds) {	kernel (pict.scheduleupdate)}
+on scheduleUpdate (ctseconds) {
+	kernel (pict.scheduleupdate)}

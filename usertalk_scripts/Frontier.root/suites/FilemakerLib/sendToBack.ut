@@ -1,1 +1,7 @@
-on sendToBack () {	local {		processName = file.fileFromPath (filemaker.appInfo.path)};	if !(filemakerLib.isRunning ()) {		return (false)};	with objectModel, finder {		return (set (process [processName].visible, false))}}
+on sendToBack () {
+	local {
+		processName = file.fileFromPath (filemaker.appInfo.path)};
+	if !(filemakerLib.isRunning ()) {
+		return (false)};
+	with objectModel, finder {
+		return (set (process [processName].visible, false))}}

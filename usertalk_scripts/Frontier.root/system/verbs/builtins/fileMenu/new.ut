@@ -1,1 +1,2 @@
-on new (path, hidden = false) {	kernel (filemenu.new)}
+on new (path, hidden = false) {
+	kernel (filemenu.new)}

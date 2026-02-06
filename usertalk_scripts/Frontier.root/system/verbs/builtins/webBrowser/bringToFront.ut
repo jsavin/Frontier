@@ -1,1 +1,3 @@
-on bringToFront () {	if webBrowser.isRunning () {		return (sys.bringAppToFront (user.webBrowser.currentid))}}
+on bringToFront () {
+	if webBrowser.isRunning () {
+		return (sys.bringAppToFront (user.webBrowser.currentid))}}

@@ -1,1 +1,13 @@
-on createUrlShortcut (path, url) {	«Create an Internet Shortcut.		«It's the responsibility of the caller to add a .url suffix to the end of path.		«Saturday, December 19, 1998 at 11:44:44 AM by PBS		local (s = string (winShell.data.scripts.createUrlShortcut));		com.callScript (s, "VBScript", "Main", {path, url});		return (true)};«bundle //test code	«winShell.createUrlShortcut ("c:\\Scripting News.url", "http://www.scriptingnews.com/")		«true
+on createUrlShortcut (path, url) {
+	Â«Create an Internet Shortcut.
+		Â«It's the responsibility of the caller to add a .url suffix to the end of path.
+		Â«Saturday, December 19, 1998 at 11:44:44 AM by PBS
+	
+	local (s = string (winShell.data.scripts.createUrlShortcut));
+	
+	com.callScript (s, "VBScript", "Main", {path, url});
+	
+	return (true)};
+Â«bundle //test code
+	Â«winShell.createUrlShortcut ("c:\\Scripting News.url", "http://www.scriptingnews.com/")
+		Â«true

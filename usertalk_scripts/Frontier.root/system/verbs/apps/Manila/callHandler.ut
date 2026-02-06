@@ -1,1 +1,29 @@
-on callHandler (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedureName="", adrparamlist=nil, fldebug=false, ticksToTimeOut=nil, flShowMessages=true, rpcPath=nil, flAsynch=false, adrCallback=nil, extraInfo=nil, adrErrorCallback=nil, username="", password="") {		«11/19/00; 11:15:19 PM by JES		«Call either an XML-RPC handler or a SOAP handler, depending on the pref at user.manila.prefs.flUseSoap	«Changes:		«02/04/01; 4:56:48 PM by JES			«Call soap.rpc.client with the correct actionUri and methodName. Prevents generation of XML with elements containing slash characters.		bundle { // make sure the pref exists		if not defined (user.manila) {			new (tableType, @user.manila)};		if not defined (user.manila.prefs) {			new (tableType, @user.manila.prefs)};		if not defined (user.manila.prefs.flUseSoap) {			if defined (manila.flUseSoap) {				user.manila.prefs.flUseSoap = manila.flUseSoap;				delete (@manila.flUseSoap)}			else {				user.manila.prefs.flUseSoap = false}}};		if user.manila.prefs.flUseSoap {		«Transform the request parameters so they can be used to call a SOAP handler.		local (action, ppath);		action = string.nthField (procedureName, ".", string.countFields (procedureName, "."));		ppath = "/" + string.mid (procedureName, 1, sizeof (procedureName) - (sizeof (action) + 1) );		ppath = string.replaceAll (ppath, ".", "/");		return (soap.rpc.client (ppath, action, adrparamlist, rpcServer, rpcPort, username, password, fldebug, ticksToTimeOut, flShowMessages))}	else { // use XML-RPC		return (betty.rpc.client (rpcServer, rpcPort, procedureName, adrparamlist, fldebug, ticksToTimeOut, flShowMessages, rpcPath, flAsynch, adrCallback, extraInfo, adrErrorCallback, username, password))}}
+on callHandler (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedureName="", adrparamlist=nil, fldebug=false, ticksToTimeOut=nil, flShowMessages=true, rpcPath=nil, flAsynch=false, adrCallback=nil, extraInfo=nil, adrErrorCallback=nil, username="", password="") {
+	
+	Â«11/19/00; 11:15:19 PM by JES
+		Â«Call either an XML-RPC handler or a SOAP handler, depending on the pref at user.manila.prefs.flUseSoap
+	Â«Changes:
+		Â«02/04/01; 4:56:48 PM by JES
+			Â«Call soap.rpc.client with the correct actionUri and methodName. Prevents generation of XML with elements containing slash characters.
+	
+	bundle { // make sure the pref exists
+		if not defined (user.manila) {
+			new (tableType, @user.manila)};
+		if not defined (user.manila.prefs) {
+			new (tableType, @user.manila.prefs)};
+		if not defined (user.manila.prefs.flUseSoap) {
+			if defined (manila.flUseSoap) {
+				user.manila.prefs.flUseSoap = manila.flUseSoap;
+				delete (@manila.flUseSoap)}
+			else {
+				user.manila.prefs.flUseSoap = false}}};
+	
+	if user.manila.prefs.flUseSoap {
+		Â«Transform the request parameters so they can be used to call a SOAP handler.
+		local (action, ppath);
+		action = string.nthField (procedureName, ".", string.countFields (procedureName, "."));
+		ppath = "/" + string.mid (procedureName, 1, sizeof (procedureName) - (sizeof (action) + 1) );
+		ppath = string.replaceAll (ppath, ".", "/");
+		return (soap.rpc.client (ppath, action, adrparamlist, rpcServer, rpcPort, username, password, fldebug, ticksToTimeOut, flShowMessages))}
+	else { // use XML-RPC
+		return (betty.rpc.client (rpcServer, rpcPort, procedureName, adrparamlist, fldebug, ticksToTimeOut, flShowMessages, rpcPath, flAsynch, adrCallback, extraInfo, adrErrorCallback, username, password))}}

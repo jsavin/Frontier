@@ -1,1 +1,2 @@
-on isRunning () {	return (sys.appIsRunning (netevents.id))}
+on isRunning () {
+	return (sys.appIsRunning (netevents.id))}

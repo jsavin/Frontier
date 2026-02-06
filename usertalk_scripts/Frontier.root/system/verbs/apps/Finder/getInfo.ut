@@ -1,1 +1,6 @@
-on getInfo (path) { «open the Get Info window for the indicated file	«For compatibility.  Given the scriptable Finder, suggest		«Finder.open (disk["foo"]....file["bar"].informationWindow)	if not Finder.folderVerb ('sinf', path) {		return (false)};	return (Finder.bringToFront ())}
+on getInfo (path) { Â«open the Get Info window for the indicated file
+	Â«For compatibility.  Given the scriptable Finder, suggest
+		Â«Finder.open (disk["foo"]....file["bar"].informationWindow)
+	if not Finder.folderVerb ('sinf', path) {
+		return (false)};
+	return (Finder.bringToFront ())}

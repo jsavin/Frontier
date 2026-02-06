@@ -1,1 +1,32 @@
-on getNextMonth (adrmonth, adryear) {	«10/31/97 at 8:26:50 AM by DW -- moved from toys.getNextMonth	case adrmonth^ {		"January" {			adrmonth^ = "February"};		"February" {			adrmonth^ = "March"};		"March" {			adrmonth^ = "April"};		"April" {			adrmonth^ = "May"};		"May" {			adrmonth^ = "June"};		"June" {			adrmonth^ = "July"};		"July" {			adrmonth^ = "August"};		"August" {			adrmonth^ = "September"};		"September" {			adrmonth^ = "October"};		"October" {			adrmonth^ = "November"};		"November" {			adrmonth^ = "December"};		"December" {			adrmonth^ = "January";			adryear^ = adryear^ + 1}}};«bundle	«local (month = "December", year = 1997)	«getNextMonth (@month, @year)	«dialog.alert (month + " " + year)
+on getNextMonth (adrmonth, adryear) {
+	Â«10/31/97 at 8:26:50 AM by DW -- moved from toys.getNextMonth
+	case adrmonth^ {
+		"January" {
+			adrmonth^ = "February"};
+		"February" {
+			adrmonth^ = "March"};
+		"March" {
+			adrmonth^ = "April"};
+		"April" {
+			adrmonth^ = "May"};
+		"May" {
+			adrmonth^ = "June"};
+		"June" {
+			adrmonth^ = "July"};
+		"July" {
+			adrmonth^ = "August"};
+		"August" {
+			adrmonth^ = "September"};
+		"September" {
+			adrmonth^ = "October"};
+		"October" {
+			adrmonth^ = "November"};
+		"November" {
+			adrmonth^ = "December"};
+		"December" {
+			adrmonth^ = "January";
+			adryear^ = adryear^ + 1}}};
+Â«bundle
+	Â«local (month = "December", year = 1997)
+	Â«getNextMonth (@month, @year)
+	Â«dialog.alert (month + " " + year)

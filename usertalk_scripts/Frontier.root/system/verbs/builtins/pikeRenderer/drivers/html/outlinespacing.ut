@@ -1,1 +1,8 @@
-on outlinespacing (spacingstyle, adrprestring, adrpoststring) {	case spacingstyle {		"1" {			adrpoststring^ = adrpoststring^ + "<br>"};		"1.5" {			adrpoststring^ = adrpoststring^ + "<br><br>"};		"2" {			adrpoststring^ = adrpoststring^ + "<br><br><br>"}}}
+on outlinespacing (spacingstyle, adrprestring, adrpoststring) {
+	case spacingstyle {
+		"1" {
+			adrpoststring^ = adrpoststring^ + "<br>"};
+		"1.5" {
+			adrpoststring^ = adrpoststring^ + "<br><br>"};
+		"2" {
+			adrpoststring^ = adrpoststring^ + "<br><br><br>"}}}

@@ -1,1 +1,24 @@
-on writeMultipleFiles (email, password, relativepathlist, filetextlist, adrresponse, adrdata = @xmlStorageSystem.data, flShowMessages = true) {	«Changes		«11/27/01; 9:44:55 PM by JES			«New optional parameter: flShowMessages. This flag is passed to xml.rpc, which in turn is passed to tcp.httpClient. Default is true, which preserves existing behavior.		«7/23/01; 9:45:30 PM by JES			«The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.		«5/13/01; 7:05:49 PM by DW			«Radio UserLand is being converted to do its upstreaming through xmlStorageSystem. This is a key routine for Radio, it uploads a list of files. 			«When we complete this transition, Radio will be able to communicate with a cloud that's running SOAP 1.1 or XML-RPC.	local (params = {"email":email, "password":string.hashmd5 (password), "relativePathList":relativepathlist, "fileTextList":filetextlist});	local (rpcPath);	if defined (adrdata^.xmlRpcPath) {		rpcPath = adrdata^.xmlRpcPath};	if defined (adrdata^.rpcPath) {		rpcPath = adrdata^.rpcPath};	with adrdata^ {		adrresponse^ = xml.rpc (server, port, "xmlStorageSystem.saveMultipleFiles", @params, rpcPath:rpcPath, fldebug:fldebug, flShowMessages:flShowMessages, protocol:protocol, soapAction:soapAction);		return (not adrresponse^.flerror)}};«bundle //test code	«local (relativepathlist = {"/test/xxx.html", "/test/yyy.html", "/test/zzz.html"})	«local (filetextlist = {"xxx", "yyy", "zzz"})	«with user.xmlStorageSystem		«writeMultipleFiles (email, password, relativepathlist, filetextlist, @scratchpad.response)	«edit (@scratchpad.response)
+on writeMultipleFiles (email, password, relativepathlist, filetextlist, adrresponse, adrdata = @xmlStorageSystem.data, flShowMessages = true) {
+	Â«Changes
+		Â«11/27/01; 9:44:55 PM by JES
+			Â«New optional parameter: flShowMessages. This flag is passed to xml.rpc, which in turn is passed to tcp.httpClient. Default is true, which preserves existing behavior.
+		Â«7/23/01; 9:45:30 PM by JES
+			Â«The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.
+		Â«5/13/01; 7:05:49 PM by DW
+			Â«Radio UserLand is being converted to do its upstreaming through xmlStorageSystem. This is a key routine for Radio, it uploads a list of files. 
+			Â«When we complete this transition, Radio will be able to communicate with a cloud that's running SOAP 1.1 or XML-RPC.
+	local (params = {"email":email, "password":string.hashmd5 (password), "relativePathList":relativepathlist, "fileTextList":filetextlist});
+	local (rpcPath);
+	if defined (adrdata^.xmlRpcPath) {
+		rpcPath = adrdata^.xmlRpcPath};
+	if defined (adrdata^.rpcPath) {
+		rpcPath = adrdata^.rpcPath};
+	with adrdata^ {
+		adrresponse^ = xml.rpc (server, port, "xmlStorageSystem.saveMultipleFiles", @params, rpcPath:rpcPath, fldebug:fldebug, flShowMessages:flShowMessages, protocol:protocol, soapAction:soapAction);
+		return (not adrresponse^.flerror)}};
+Â«bundle //test code
+	Â«local (relativepathlist = {"/test/xxx.html", "/test/yyy.html", "/test/zzz.html"})
+	Â«local (filetextlist = {"xxx", "yyy", "zzz"})
+	Â«with user.xmlStorageSystem
+		Â«writeMultipleFiles (email, password, relativepathlist, filetextlist, @scratchpad.response)
+	Â«edit (@scratchpad.response)

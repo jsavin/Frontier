@@ -1,1 +1,29 @@
-on getDeleted (adrSession, objectType, startDate, endDate) {	«Changes		«4/19/06; 7:47:53 PM by JES			«Created. Returns a table of objects of the given type which have been deleted between startDate and endDate.				«Each sub-table of the returned table contains a string named id, which is the id of the deleted object, and a date named deletedDate, which is the date/time the object was deleted (in the local timezone).	local (retval = salesforce.callApi (adrSession, nameOf (this^), {"sObjectType":objectType, "startDate":startDate, "endDate":endDate}));	if sizeOf (retval) == 0 {		return (retval)};	if typeOf (retval[1][1]) != tableType {		table.rename (@retval[1], nameOf (retval[1]) + "_0000001");		retval[1].deletedDate = date.iso8601StringToDate (retval[1].deletedDate);		return (retval)};	local (adr);	for adr in @retval[1] {		adr^.deletedDate = date.iso8601StringToDate (adr^.deletedDate)};	return (retval[1])};«bundle //test code	«local (adrses)	«bundle //set adrses		«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)			«local (sesnum = sizeOf (temp.salesforce.sessions))			«adrses = @temp.salesforce.sessions[sesnum]		«else //log in			«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)	«local (endDate = clock.now ())	«local (startDate = endDate - (60*60*24)) //24 hours ago	«local (startDate = endDate - (60*9)) //minutes ago	«table.assign (@workspace.retval, this^ (adrses, "Account", startDate, endDate))	«edit (@workspace.retval)
+on getDeleted (adrSession, objectType, startDate, endDate) {
+	Â«Changes
+		Â«4/19/06; 7:47:53 PM by JES
+			Â«Created. Returns a table of objects of the given type which have been deleted between startDate and endDate.
+				Â«Each sub-table of the returned table contains a string named id, which is the id of the deleted object, and a date named deletedDate, which is the date/time the object was deleted (in the local timezone).
+	local (retval = salesforce.callApi (adrSession, nameOf (this^), {"sObjectType":objectType, "startDate":startDate, "endDate":endDate}));
+	if sizeOf (retval) == 0 {
+		return (retval)};
+	if typeOf (retval[1][1]) != tableType {
+		table.rename (@retval[1], nameOf (retval[1]) + "_0000001");
+		retval[1].deletedDate = date.iso8601StringToDate (retval[1].deletedDate);
+		return (retval)};
+	local (adr);
+	for adr in @retval[1] {
+		adr^.deletedDate = date.iso8601StringToDate (adr^.deletedDate)};
+	return (retval[1])};
+Â«bundle //test code
+	Â«local (adrses)
+	Â«bundle //set adrses
+		Â«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
+			Â«local (sesnum = sizeOf (temp.salesforce.sessions))
+			Â«adrses = @temp.salesforce.sessions[sesnum]
+		Â«else //log in
+			Â«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
+	Â«local (endDate = clock.now ())
+	Â«local (startDate = endDate - (60*60*24)) //24 hours ago
+	Â«local (startDate = endDate - (60*9)) //minutes ago
+	Â«table.assign (@workspace.retval, this^ (adrses, "Account", startDate, endDate))
+	Â«edit (@workspace.retval)

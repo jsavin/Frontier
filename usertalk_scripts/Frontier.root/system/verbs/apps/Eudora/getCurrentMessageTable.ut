@@ -1,1 +1,22 @@
-on getCurrentMessageTable (adrtable) {	local (x = eudora.getCurrentMessageObject ());	new (tabletype, adrtable);	adrtable^.bcc = "";	adrtable^.cc = "";	adrtable^.date = "";	adrtable^.priority = "";	adrtable^.recipients = "";	adrtable^.sender = "";	adrtable^.subject = "";	adrtable^.text = "";		try {adrtable^.bcc = eudora.getMessageBCC (x)};	try {adrtable^.cc = eudora.getMessageCC (x)};	try {adrtable^.date = eudora.getMessageDate (x)};	try {adrtable^.priority = eudora.getMessagePriority (x)};	try {adrtable^.recipients = eudora.getMessageTo (x)};	try {adrtable^.sender = eudora.getMessageSender (x)};	try {adrtable^.subject = eudora.getMessageSubject (x)};	try {adrtable^.text = eudora.getMessageText (x)};		return (true)}
+on getCurrentMessageTable (adrtable) {
+	local (x = eudora.getCurrentMessageObject ());
+	new (tabletype, adrtable);
+	adrtable^.bcc = "";
+	adrtable^.cc = "";
+	adrtable^.date = "";
+	adrtable^.priority = "";
+	adrtable^.recipients = "";
+	adrtable^.sender = "";
+	adrtable^.subject = "";
+	adrtable^.text = "";
+	
+	try {adrtable^.bcc = eudora.getMessageBCC (x)};
+	try {adrtable^.cc = eudora.getMessageCC (x)};
+	try {adrtable^.date = eudora.getMessageDate (x)};
+	try {adrtable^.priority = eudora.getMessagePriority (x)};
+	try {adrtable^.recipients = eudora.getMessageTo (x)};
+	try {adrtable^.sender = eudora.getMessageSender (x)};
+	try {adrtable^.subject = eudora.getMessageSubject (x)};
+	try {adrtable^.text = eudora.getMessageText (x)};
+	
+	return (true)}

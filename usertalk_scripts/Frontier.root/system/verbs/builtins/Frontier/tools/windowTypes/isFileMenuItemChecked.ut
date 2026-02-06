@@ -1,1 +1,13 @@
-on isFileMenuItemChecked (cmd) {	«Return true if a File menu item should be checked.		«This script is called for File menu items that can be checked only -- if an item should never be checked, this script doesn't get called for that item. At this writing, only the Work Offline menu item can be checked.		«09/23/00; 3:22:25 PM by PBS		case cmd {		"workoffline" {			if defined (tcp.isOffline) {				return (tcp.isOffline ())}			else {				return (false)}}};		return (false)}
+on isFileMenuItemChecked (cmd) {
+	Â«Return true if a File menu item should be checked.
+		Â«This script is called for File menu items that can be checked only -- if an item should never be checked, this script doesn't get called for that item. At this writing, only the Work Offline menu item can be checked.
+		Â«09/23/00; 3:22:25 PM by PBS
+	
+	case cmd {
+		"workoffline" {
+			if defined (tcp.isOffline) {
+				return (tcp.isOffline ())}
+			else {
+				return (false)}}};
+	
+	return (false)}

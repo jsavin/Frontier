@@ -1,1 +1,2 @@
-on nameToAddress (domainName) { «Turn a domain name into a 4-byte number	kernel (tcp.nameToAddress)}
+on nameToAddress (domainName) { Â«Turn a domain name into a 4-byte number
+	kernel (tcp.nameToAddress)}

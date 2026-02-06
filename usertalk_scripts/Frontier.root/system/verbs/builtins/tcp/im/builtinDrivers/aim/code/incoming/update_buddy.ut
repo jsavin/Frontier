@@ -1,1 +1,15 @@
-on UPDATE_BUDDY (adrSelf, data) {	local {		screenName = string.nthField(data, ':',1);		flOnline = (string.nthField(data, ':',2) equals 'T');		pctWarn = string.nthField(data, ':',3);		timeSignon = tcp.im.builtinDrivers.aim.code.util.posix2Date(string.nthField(data, ':',4));		minIdle = string.nthField(data,':',5);		strUserClass = string.nthField(data,':',6);		flAolUser=(strUserClass[1] equals 'A');		oscarAdmin=strUserClass[2];		flUnavailable = false};	if sizeOf(strUserClass)>2 {		flUnavailable = (strUserClass[3] equals 'U')};		return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "UPDATE_BUDDY", {adrSelf, screenName, flOnline, pctWarn, timeSignon, minIdle, flAolUser, oscarAdmin, flUnavailable }, adrSelf^._adrSubCallbacks ))}
+on UPDATE_BUDDY (adrSelf, data) {
+	local {
+		screenName = string.nthField(data, ':',1);
+		flOnline = (string.nthField(data, ':',2) equals 'T');
+		pctWarn = string.nthField(data, ':',3);
+		timeSignon = tcp.im.builtinDrivers.aim.code.util.posix2Date(string.nthField(data, ':',4));
+		minIdle = string.nthField(data,':',5);
+		strUserClass = string.nthField(data,':',6);
+		flAolUser=(strUserClass[1] equals 'A');
+		oscarAdmin=strUserClass[2];
+		flUnavailable = false};
+	if sizeOf(strUserClass)>2 {
+		flUnavailable = (strUserClass[3] equals 'U')};
+	
+	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "UPDATE_BUDDY", {adrSelf, screenName, flOnline, pctWarn, timeSignon, minIdle, flAolUser, oscarAdmin, flUnavailable }, adrSelf^._adrSubCallbacks ))}

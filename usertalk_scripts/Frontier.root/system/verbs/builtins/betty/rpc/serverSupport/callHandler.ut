@@ -1,1 +1,52 @@
-on callHandler (procedureName, adrparams, adrerrorflag) {	«Changes		«4/9/01; 12:38:32 PM by DW			«Created. Code cribbed from betty.server. Call the indicated handler with the params.		local (response);	on rpcFault (errorstring, errornum) {		new (tabletype, @response);		response.faultString = errorstring;		response.faultCode = errornum;		adrerrorflag^ = true};	local (nomad, adrscript, securitylist = {});	try { //locate the script		local (s = procedureName, name);		nomad = @user.betty.rpcHandlers;		loop {			if typeOf (nomad^) == tabletype {				local (adr = @nomad^.["#security"]);				if defined (adr^) {					securitylist = securitylist + {adr}}};			if sizeof (s) == 0 {				break};			name = string.nthField (s, '.', 1);			nomad = @nomad^.[name];			if typeof (nomad^) == addresstype {				nomad = nomad^};			s = string.delete (s, 1, sizeof (name) + 1)};		adrscript = nomad}	else {		rpcFault (tryError, betty.rpc.errorcodes.scriptAddressError);		return (response)};		try { //check in with the #security scripts		local (adr);		for adr in securitylist {			callScript (string (adr), {})}}	else {		rpcFault (tryError, betty.rpc.errorcodes.securityFault);		return (response)};		try { //call the script		response = callScript (string (adrscript), adrparams^)}	else {		rpcFault (tryError, betty.rpc.errorcodes.scriptError);		return (response)};	adrerrorflag^ = false; //default, no error	return (response)};bundle { //test code	local (params = {12});	try {delete (@scratchpad.scriptresult)};	scratchpad.scriptresult = callHandler ("examples.getStateName", @params);	edit (@scratchpad.scriptresult)}
+on callHandler (procedureName, adrparams, adrerrorflag) {
+	Â«Changes
+		Â«4/9/01; 12:38:32 PM by DW
+			Â«Created. Code cribbed from betty.server. Call the indicated handler with the params.
+	
+	local (response);
+	on rpcFault (errorstring, errornum) {
+		new (tabletype, @response);
+		response.faultString = errorstring;
+		response.faultCode = errornum;
+		adrerrorflag^ = true};
+	local (nomad, adrscript, securitylist = {});
+	try { //locate the script
+		local (s = procedureName, name);
+		nomad = @user.betty.rpcHandlers;
+		loop {
+			if typeOf (nomad^) == tabletype {
+				local (adr = @nomad^.["#security"]);
+				if defined (adr^) {
+					securitylist = securitylist + {adr}}};
+			if sizeof (s) == 0 {
+				break};
+			name = string.nthField (s, '.', 1);
+			nomad = @nomad^.[name];
+			if typeof (nomad^) == addresstype {
+				nomad = nomad^};
+			s = string.delete (s, 1, sizeof (name) + 1)};
+		adrscript = nomad}
+	else {
+		rpcFault (tryError, betty.rpc.errorcodes.scriptAddressError);
+		return (response)};
+	
+	try { //check in with the #security scripts
+		local (adr);
+		for adr in securitylist {
+			callScript (string (adr), {})}}
+	else {
+		rpcFault (tryError, betty.rpc.errorcodes.securityFault);
+		return (response)};
+	
+	try { //call the script
+		response = callScript (string (adrscript), adrparams^)}
+	else {
+		rpcFault (tryError, betty.rpc.errorcodes.scriptError);
+		return (response)};
+	adrerrorflag^ = false; //default, no error
+	return (response)};
+bundle { //test code
+	local (params = {12});
+	try {delete (@scratchpad.scriptresult)};
+	scratchpad.scriptresult = callHandler ("examples.getStateName", @params);
+	edit (@scratchpad.scriptresult)}

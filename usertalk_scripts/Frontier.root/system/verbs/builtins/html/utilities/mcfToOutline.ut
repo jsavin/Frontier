@@ -1,1 +1,14 @@
-local (f = "Internal:Apps:WebStar:frontier:siteMap.mcf");local (adroutline = @scratchpad.mcfOutline);new (outlinetype, adroutline);target.set (adroutline);file.open (f);local (s, lowers, fieldname, val);while not file.endoffile (f) {	s = file.readline (f);	lowers = string.lower (s);	fieldname = string.nthField (lowers, ':', 1);	val = string.nthField (s, ':', 2);	val = string.popleading (val, ' ');	msg (s)};file.close (f)
+local (f = "Internal:Apps:WebStar:frontier:siteMap.mcf");
+local (adroutline = @scratchpad.mcfOutline);
+new (outlinetype, adroutline);
+target.set (adroutline);
+file.open (f);
+local (s, lowers, fieldname, val);
+while not file.endoffile (f) {
+	s = file.readline (f);
+	lowers = string.lower (s);
+	fieldname = string.nthField (lowers, ':', 1);
+	val = string.nthField (s, ':', 2);
+	val = string.popleading (val, ' ');
+	msg (s)};
+file.close (f)

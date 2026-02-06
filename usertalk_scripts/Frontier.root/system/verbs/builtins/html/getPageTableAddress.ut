@@ -1,1 +1,8 @@
-on getPageTableAddress () {	«Thursday, November 11, 1999 at 2:35:43 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on getPageTableAddress ()  //old code				«Return the address of the current page table.				«return (system.temp.pageTableAddresses.[thread.getCurrentID ()])	kernel (html.getpagetableaddress)}
+on getPageTableAddress () {
+	Â«Thursday, November 11, 1999 at 2:35:43 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on getPageTableAddress ()  //old code
+				Â«Return the address of the current page table.
+				Â«return (system.temp.pageTableAddresses.[thread.getCurrentID ()])
+	kernel (html.getpagetableaddress)}

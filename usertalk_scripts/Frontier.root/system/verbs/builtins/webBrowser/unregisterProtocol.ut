@@ -1,1 +1,6 @@
-on unregisterProtocol (x, forProtocol = nil) { ´reverses the effects of ìregister protocolî	case sys.os () {		"MacOS" {			pack (x, @x);			setbinarytype (@x, 'sign');			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'UNRP', '----', x, 'PROT', string (forProtocol)))}}}
+on unregisterProtocol (x, forProtocol = nil) { ¬´reverses the effects of ‚Äúregister protocol‚Äù
+	case sys.os () {
+		"MacOS" {
+			pack (x, @x);
+			setbinarytype (@x, 'sign');
+			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'UNRP', '----', x, 'PROT', string (forProtocol)))}}}

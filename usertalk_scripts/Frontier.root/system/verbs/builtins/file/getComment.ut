@@ -1,1 +1,2 @@
-on getComment (path) {	kernel (file.getComment)}
+on getComment (path) {
+	kernel (file.getComment)}

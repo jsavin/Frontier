@@ -1,1 +1,3 @@
-on getSuffixMappings (appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.get (appID, suffixMappings))}}
+on getSuffixMappings (appID = WebStar.id) {
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, suffixMappings))}}

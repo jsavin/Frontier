@@ -1,1 +1,12 @@
-on xmlAlphaDecode (s) {	«Changes		«5/16/02; 1:30:39 AM by JB			«Created. Execute this: (CTRL-/)			«xml.entityDecode("&amp;quot;", true)			«It *should* produce "&quot:", but due to a bug, it does not. It produces "\"". This kills the RPC encoding, which needs to have that work.	s = string.replaceall (s, "&lt;", "<");	s = string.replaceall (s, "&gt;", ">");	s = string.replaceall (s, "&quot;", "\"");	s = string.replaceall (s, "&apos;", "'" );	s = string.replaceall (s, "&amp;", "&");	return s}
+on xmlAlphaDecode (s) {
+	Â«Changes
+		Â«5/16/02; 1:30:39 AM by JB
+			Â«Created. Execute this: (CTRL-/)
+			Â«xml.entityDecode("&amp;quot;", true)
+			Â«It *should* produce "&quot:", but due to a bug, it does not. It produces "\"". This kills the RPC encoding, which needs to have that work.
+	s = string.replaceall (s, "&lt;", "<");
+	s = string.replaceall (s, "&gt;", ">");
+	s = string.replaceall (s, "&quot;", "\"");
+	s = string.replaceall (s, "&apos;", "'" );
+	s = string.replaceall (s, "&amp;", "&");
+	return s}

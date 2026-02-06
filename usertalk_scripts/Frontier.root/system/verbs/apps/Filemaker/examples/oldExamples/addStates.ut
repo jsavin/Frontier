@@ -1,1 +1,71 @@
-«add 50 states and their capitals to the Test Database	«be sure the State Capitals database is open before running this	«If a record for a state exists and has the wrong capital, it will still have	«the wrong capital after running this script.  Repairing that is left as	«an exercise.on addState (stateName, stateCapital) {	with objectModel, FileMaker {		if not exists (record[cell["Name"] == stateName]) {			«create (record, stateName + tab + stateCapital, 0, 0) « Frontier 2.0 form			create (record, {stateName, stateCapital});			msg (stateName)} «show name in Frontier main window		else {			msg (stateName + " already exists!")}};	«clock.waitSixtieths (15) « For the Frontier 2.0 form under Frontier 3.0,		«it appears necessary (on my Macintosh IIci) to slow the script down		«about this much, to avoid spurious error reports from FileMaker.		«Changing to the list form of the data input, rather than tab-delimited		«seems to remove the need for the delay	rollBeachball ()};addState ("Alabama", "Montgomery");addState ("Alaska", "Juneau");addState ("Arizona", "Phoenix");addState ("Arkansas", "Little Rock");addState ("California", "Sacramento");addState ("Colorado", "Denver");addState ("Connecticut", "Hartford");addState ("Delaware", "Dover");addState ("Florida", "Tallahassee");addState ("Georgia", "Atlanta");addState ("Hawaii", "Honolulu");addState ("Idaho", "Boise");addState ("Illinois", "Springfield");addState ("Indiana", "Indianapolis");addState ("Iowa", "Des Moines");addState ("Kansas", "Topeka");addState ("Kentucky", "Frankfort");addState ("Louisiana", "Baton Rouge");addState ("Maine", "Augusta");addState ("Maryland", "Annapolis");addState ("Massachusetts", "Boston");addState ("Michigan", "Lansing");addState ("Minnesota", "St. Paul");addState ("Mississippi", "Jackson");addState ("Missouri", "Jefferson City");addState ("Montana", "Helena");addState ("Nebraska", "Lincoln");addState ("Nevada", "Carson City");addState ("New Hampshire", "Concord");addState ("New Jersey", "Trenton");addState ("New Mexico", "Santa Fe");addState ("New York", "Albany");addState ("North Carolina", "Raleigh");addState ("North Dakota", "Bismarck");addState ("Ohio", "Columbus");addState ("Oklahoma", "Oklahoma City");addState ("Oregon", "Salem");addState ("Pennsylvania", "Harrisburg");addState ("Rhode Island", "Providence");addState ("South Carolina", "Columbia");addState ("South Dakota", "Pierre");addState ("Tennessee", "Nashville");addState ("Texas", "Austin");addState ("Utah", "Salt Lake City");addState ("Vermont", "Montpelier");addState ("Virginia", "Richmond");addState ("Washington", "Olympia");addState ("West Virginia", "Charleston");addState ("Wisconsin", "Madison");addState ("Wyoming", "Cheyenne")
+Â«add 50 states and their capitals to the Test Database
+	Â«be sure the State Capitals database is open before running this
+	Â«If a record for a state exists and has the wrong capital, it will still have
+	Â«the wrong capital after running this script.  Repairing that is left as
+	Â«an exercise.
+
+on addState (stateName, stateCapital) {
+	with objectModel, FileMaker {
+		if not exists (record[cell["Name"] == stateName]) {
+			Â«create (record, stateName + tab + stateCapital, 0, 0) Â« Frontier 2.0 form
+			create (record, {stateName, stateCapital});
+			msg (stateName)} Â«show name in Frontier main window
+		else {
+			msg (stateName + " already exists!")}};
+	Â«clock.waitSixtieths (15) Â« For the Frontier 2.0 form under Frontier 3.0,
+		Â«it appears necessary (on my Macintosh IIci) to slow the script down
+		Â«about this much, to avoid spurious error reports from FileMaker.
+		Â«Changing to the list form of the data input, rather than tab-delimited
+		Â«seems to remove the need for the delay
+	rollBeachball ()};
+
+addState ("Alabama", "Montgomery");
+addState ("Alaska", "Juneau");
+addState ("Arizona", "Phoenix");
+addState ("Arkansas", "Little Rock");
+addState ("California", "Sacramento");
+addState ("Colorado", "Denver");
+addState ("Connecticut", "Hartford");
+addState ("Delaware", "Dover");
+addState ("Florida", "Tallahassee");
+addState ("Georgia", "Atlanta");
+addState ("Hawaii", "Honolulu");
+addState ("Idaho", "Boise");
+addState ("Illinois", "Springfield");
+addState ("Indiana", "Indianapolis");
+addState ("Iowa", "Des Moines");
+addState ("Kansas", "Topeka");
+addState ("Kentucky", "Frankfort");
+addState ("Louisiana", "Baton Rouge");
+addState ("Maine", "Augusta");
+addState ("Maryland", "Annapolis");
+addState ("Massachusetts", "Boston");
+addState ("Michigan", "Lansing");
+addState ("Minnesota", "St. Paul");
+addState ("Mississippi", "Jackson");
+addState ("Missouri", "Jefferson City");
+addState ("Montana", "Helena");
+addState ("Nebraska", "Lincoln");
+addState ("Nevada", "Carson City");
+addState ("New Hampshire", "Concord");
+addState ("New Jersey", "Trenton");
+addState ("New Mexico", "Santa Fe");
+addState ("New York", "Albany");
+addState ("North Carolina", "Raleigh");
+addState ("North Dakota", "Bismarck");
+addState ("Ohio", "Columbus");
+addState ("Oklahoma", "Oklahoma City");
+addState ("Oregon", "Salem");
+addState ("Pennsylvania", "Harrisburg");
+addState ("Rhode Island", "Providence");
+addState ("South Carolina", "Columbia");
+addState ("South Dakota", "Pierre");
+addState ("Tennessee", "Nashville");
+addState ("Texas", "Austin");
+addState ("Utah", "Salt Lake City");
+addState ("Vermont", "Montpelier");
+addState ("Virginia", "Richmond");
+addState ("Washington", "Olympia");
+addState ("West Virginia", "Charleston");
+addState ("Wisconsin", "Madison");
+addState ("Wyoming", "Cheyenne")

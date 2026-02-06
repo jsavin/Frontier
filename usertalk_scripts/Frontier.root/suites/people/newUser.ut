@@ -1,1 +1,11 @@
-on newUser (userName, password, emailAddress) {	«Create a new user. Return false if the user already exists.	local (adrUser = people.getUserTable (userName));	if people.userExists (userName, adrUser) {		return (false)};	new (tableType, adrUser);	new (tableType, @adrUser^.services);	adrUser^.enabled = true;	people.setUserEmailAddress (userName, emailAddress, adrUser);	people.setUserPassword (userName, password, adrUser);	return (true)}
+on newUser (userName, password, emailAddress) {
+	Â«Create a new user. Return false if the user already exists.
+	local (adrUser = people.getUserTable (userName));
+	if people.userExists (userName, adrUser) {
+		return (false)};
+	new (tableType, adrUser);
+	new (tableType, @adrUser^.services);
+	adrUser^.enabled = true;
+	people.setUserEmailAddress (userName, emailAddress, adrUser);
+	people.setUserPassword (userName, password, adrUser);
+	return (true)}

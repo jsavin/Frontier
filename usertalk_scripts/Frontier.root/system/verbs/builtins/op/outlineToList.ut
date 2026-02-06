@@ -1,1 +1,31 @@
-on outlineToList (adroutline, flWholeOutline=false, flPreserveBlanks=false) { «4.2	«10/31/97 at 12:16:09 PM by DW -- moved from toys.outlineToList	local (oldtarget = target.get (), theList, linetext);	on getList () {		local (myList = {});		loop {			linetext = op.getLineText ();			if linetext == "" and flPreserveBlanks {				«PBS: flPreserveBlanks is an optional parameter, default is false.				linetext = "\r"};			if op.countSubs (1) > 0 { «has subheads				op.expand (1);				op.go (right, 1);				myList [sizeOf (myList) + 1] = lineText;				myList [sizeOf (myList) + 1] = getList ();				op.go (left, 1)}			else {				myList [sizeOf (myList) + 1] = lineText};			if not op.go (down, 1) {				break}};		return (myList)};	target.set (adroutline);	op.setDisplay (false); //3/31/97 -- small performance enhancement	local (oldcursor = op.getCursor ());	if flWholeOutline { //5.0 optional param allows a whole outline to turn into a list 11/29/97 DW		op.firstSummit ()};	theList = getList ();	op.setCursor (oldcursor);	op.setDisplay (true);	target.set (oldtarget);	return (theList)}
+on outlineToList (adroutline, flWholeOutline=false, flPreserveBlanks=false) { Â«4.2
+	Â«10/31/97 at 12:16:09 PM by DW -- moved from toys.outlineToList
+	local (oldtarget = target.get (), theList, linetext);
+	on getList () {
+		local (myList = {});
+		loop {
+			linetext = op.getLineText ();
+			if linetext == "" and flPreserveBlanks {
+				Â«PBS: flPreserveBlanks is an optional parameter, default is false.
+				linetext = "\r"};
+			if op.countSubs (1) > 0 { Â«has subheads
+				op.expand (1);
+				op.go (right, 1);
+				myList [sizeOf (myList) + 1] = lineText;
+				myList [sizeOf (myList) + 1] = getList ();
+				op.go (left, 1)}
+			else {
+				myList [sizeOf (myList) + 1] = lineText};
+			if not op.go (down, 1) {
+				break}};
+		return (myList)};
+	target.set (adroutline);
+	op.setDisplay (false); //3/31/97 -- small performance enhancement
+	local (oldcursor = op.getCursor ());
+	if flWholeOutline { //5.0 optional param allows a whole outline to turn into a list 11/29/97 DW
+		op.firstSummit ()};
+	theList = getList ();
+	op.setCursor (oldcursor);
+	op.setDisplay (true);
+	target.set (oldtarget);
+	return (theList)}

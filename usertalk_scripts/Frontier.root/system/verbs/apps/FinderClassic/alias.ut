@@ -1,1 +1,2 @@
-on alias (path) { «execute the Make Alias command on the indicated file/folder	return (Finder.folderVerb ('sali', path))}
+on alias (path) { Â«execute the Make Alias command on the indicated file/folder
+	return (Finder.folderVerb ('sali', path))}

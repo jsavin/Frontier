@@ -1,1 +1,54 @@
-on box (searchterm, productline="books", page=1, tableWidth=191, frameColor="#000000", boxColor="#FFFFFF", helpLink="http://radio.userland.com/amazonBox", textClass="", align="") {	«Changes		«9/10/02; 12:42:48 AM by JES			«Created. Based on google.macros.box.	local (htmltext = "", indentlevel = 0);	on add (s) {		htmltext = htmltext + (string.filledstring ("\t", indentlevel) + s + "\r");};		local (textpre, textpost);	if textClass == "" {		textpre = "<font size=\"-1\">";		textpost = "</font>"}	else {		textpre = "<div class=\"" + textClass + "\">";		textpost = "</div>"};		local (adrresults, whenLastRead);	bundle { //set adrresults, whenLastRead		amazon.init ();		if not defined (system.temp.amazon.box) {			new (tabletype, @system.temp.amazon.box)};		local (adrquerycache = @system.temp.amazon.box.[searchterm], flread = true);		if defined (adrquerycache^) {			if (adrquerycache^.whenLastRead + (60 * 60)) > clock.now () {				if defined (adrquerycache^.results) {					flread = false}}}		else {			new (tabletype, adrquerycache)};		if flread {			adrquerycache^.whenLastRead = clock.now ();			try {				adrquerycache^.results = amazon.keywordSearch (searchterm)}			else {				new (tableType, @adrquqrycache^.results);				new (tableType, @adrquqrycache^.results.Details)}}; //empty table -- no results		adrresults = @adrquerycache^.results;		whenLastRead = adrquerycache^.whenLastRead;		};	bundle { //build htmltext		if align != "" {			align = " align=\"" + align + "\""};		add ("<table width=\"" + tableWidth + "\" cellspacing=\"0\" cellpadding=\"1\" bgcolor=\"" + frameColor + "\"" + align + "><tr><td><table bgcolor=\"" + boxColor + "\" cellpadding=\"2\"><tr><td>"); indentlevel++;		add ("<center>" + textpre + "Top hits for <i>" + searchterm + "</i> on.." + textpost + "</center>");		add ("<center><a href=\"http://www.amazon.com/search?hl=en&q=" + string.urlencode (searchterm) + "\"><img src=\"http://g-images.amazon.com/images/G/01/associates/navbar2000/logo-no-border(1).gif\" width=\"148\" height=\"43\" border=\"0\" alt=\"amazon\"></a></center>");		local (adr, ct = 0);		add ("<table cellpadding=\"0\" cellspacing=\"5\" border=\"0\">"); indentlevel++;		for adr in @adrresults^.Details {			add ("<tr><td valign=\"top\" align=\"right\">" + textpre + ++ct + "." + textpost + "</td><td>" + textpre + "<a href=\"" + adr^.url + "\">" + searchengine.stripmarkup (adr^.productName) + "</a><br>" + textpost + "</td></tr>")};		add ("</table>"); indentlevel--;		add ("<br><table><tr><td valign=\"top\"><a href=\"" + helpLink + "\"><img src=\"http://static.userland.com/shortcuts/images/qbullets/help.gif\" width=\"12\" height=\"11\" border=\"0\" alt=\"Help link\"></a></td><td valign=\"top\">" + textpre + "&nbsp;<i>" + whenLastRead + ".</i>" + textpost + "</td></tr></table>");		add ("</td></tr></table></td></tr></table>"); indentlevel--};	return (htmltext)};«bundle //test code	«webbrowser.displaytext (box ("dhrb", 25, boxcolor:"whitesmoke", align:"right") + string.filledstring ("oh the buzzing of the bees ", 500))
+on box (searchterm, productline="books", page=1, tableWidth=191, frameColor="#000000", boxColor="#FFFFFF", helpLink="http://radio.userland.com/amazonBox", textClass="", align="") {
+	Â«Changes
+		Â«9/10/02; 12:42:48 AM by JES
+			Â«Created. Based on google.macros.box.
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledstring ("\t", indentlevel) + s + "\r");};
+	
+	local (textpre, textpost);
+	if textClass == "" {
+		textpre = "<font size=\"-1\">";
+		textpost = "</font>"}
+	else {
+		textpre = "<div class=\"" + textClass + "\">";
+		textpost = "</div>"};
+	
+	local (adrresults, whenLastRead);
+	bundle { //set adrresults, whenLastRead
+		amazon.init ();
+		if not defined (system.temp.amazon.box) {
+			new (tabletype, @system.temp.amazon.box)};
+		local (adrquerycache = @system.temp.amazon.box.[searchterm], flread = true);
+		if defined (adrquerycache^) {
+			if (adrquerycache^.whenLastRead + (60 * 60)) > clock.now () {
+				if defined (adrquerycache^.results) {
+					flread = false}}}
+		else {
+			new (tabletype, adrquerycache)};
+		if flread {
+			adrquerycache^.whenLastRead = clock.now ();
+			try {
+				adrquerycache^.results = amazon.keywordSearch (searchterm)}
+			else {
+				new (tableType, @adrquqrycache^.results);
+				new (tableType, @adrquqrycache^.results.Details)}}; //empty table -- no results
+		adrresults = @adrquerycache^.results;
+		whenLastRead = adrquerycache^.whenLastRead;
+		};
+	bundle { //build htmltext
+		if align != "" {
+			align = " align=\"" + align + "\""};
+		add ("<table width=\"" + tableWidth + "\" cellspacing=\"0\" cellpadding=\"1\" bgcolor=\"" + frameColor + "\"" + align + "><tr><td><table bgcolor=\"" + boxColor + "\" cellpadding=\"2\"><tr><td>"); indentlevel++;
+		add ("<center>" + textpre + "Top hits for <i>" + searchterm + "</i> on.." + textpost + "</center>");
+		add ("<center><a href=\"http://www.amazon.com/search?hl=en&q=" + string.urlencode (searchterm) + "\"><img src=\"http://g-images.amazon.com/images/G/01/associates/navbar2000/logo-no-border(1).gif\" width=\"148\" height=\"43\" border=\"0\" alt=\"amazon\"></a></center>");
+		local (adr, ct = 0);
+		add ("<table cellpadding=\"0\" cellspacing=\"5\" border=\"0\">"); indentlevel++;
+		for adr in @adrresults^.Details {
+			add ("<tr><td valign=\"top\" align=\"right\">" + textpre + ++ct + "." + textpost + "</td><td>" + textpre + "<a href=\"" + adr^.url + "\">" + searchengine.stripmarkup (adr^.productName) + "</a><br>" + textpost + "</td></tr>")};
+		add ("</table>"); indentlevel--;
+		add ("<br><table><tr><td valign=\"top\"><a href=\"" + helpLink + "\"><img src=\"http://static.userland.com/shortcuts/images/qbullets/help.gif\" width=\"12\" height=\"11\" border=\"0\" alt=\"Help link\"></a></td><td valign=\"top\">" + textpre + "&nbsp;<i>" + whenLastRead + ".</i>" + textpost + "</td></tr></table>");
+		add ("</td></tr></table></td></tr></table>"); indentlevel--};
+	return (htmltext)};
+Â«bundle //test code
+	Â«webbrowser.displaytext (box ("dhrb", 25, boxcolor:"whitesmoke", align:"right") + string.filledstring ("oh the buzzing of the bees ", 500))

@@ -1,1 +1,8 @@
-on setPosition (folderpath, h, v) { « set the position of the indicated folder's window	«For compatibility.  With the Scriptable Finder, suggest		«set (window["foo"].position, {h, v}) or suitable variation	local (fwindow);	if not Finder.makeWindow (folderpath, 0, @fwindow) {		return (false)};	newpos = long (point.set (h, v));	return (finderEvent (Finder.id, Finder.class, 'posn', '----', fwindow, 'fmsc', newpos))}
+on setPosition (folderpath, h, v) { Â« set the position of the indicated folder's window
+	Â«For compatibility.  With the Scriptable Finder, suggest
+		Â«set (window["foo"].position, {h, v}) or suitable variation
+	local (fwindow);
+	if not Finder.makeWindow (folderpath, 0, @fwindow) {
+		return (false)};
+	newpos = long (point.set (h, v));
+	return (finderEvent (Finder.id, Finder.class, 'posn', '----', fwindow, 'fmsc', newpos))}

@@ -1,1 +1,31 @@
-on login (driverName, screenname, message) {	«Changes		«8/12/02; 2:39:19 AM by JES			«Rewrite for simplified architecture.	local (ct = string.countFields (message, " "));	if ct < 5 {		return ("Can't login because you have not supplied both a username and password. Send the login request in the format \"blogger login blogId username password\".")};		local (blogId = string.nthField (message, " ", 3));	if blogId beginsWith "http://" { //99% likely that we're talking to a UserLand XML-RPC server		local (s = drivername + " " + screenname + " " + blogId);		if not (s endswith "/") {			s = s + "/"};		parentOf (this^)^.setServer (driverName, screenname, s + "RPC2")};	local (username = string.nthField (message, " ", 4));	local (password = string.nthField (message, " ", 5));		try {		local (t);		blogger.getRecentPosts (@t, 1, blogId, username, password, @user.im.responders.blogger.prefs.siteInfo);				user.im.responders.blogger.prefs.username = username;		user.im.responders.blogger.prefs.password = binary (password);		user.im.responders.blogger.prefs.blogId = blogId}	else {		return ("Can't login to \"" + blogId + "\" because the server returned an error: \"" + tryerror + "\".")};		return ("Login successful.")};«bundle //test code	«login ("", "", "blogger login 767753 jake@jspace.org guessme")
+on login (driverName, screenname, message) {
+	Â«Changes
+		Â«8/12/02; 2:39:19 AM by JES
+			Â«Rewrite for simplified architecture.
+	local (ct = string.countFields (message, " "));
+	if ct < 5 {
+		return ("Can't login because you have not supplied both a username and password. Send the login request in the format \"blogger login blogId username password\".")};
+	
+	local (blogId = string.nthField (message, " ", 3));
+	if blogId beginsWith "http://" { //99% likely that we're talking to a UserLand XML-RPC server
+		local (s = drivername + " " + screenname + " " + blogId);
+		if not (s endswith "/") {
+			s = s + "/"};
+		parentOf (this^)^.setServer (driverName, screenname, s + "RPC2")};
+	local (username = string.nthField (message, " ", 4));
+	local (password = string.nthField (message, " ", 5));
+	
+	try {
+		local (t);
+		blogger.getRecentPosts (@t, 1, blogId, username, password, @user.im.responders.blogger.prefs.siteInfo);
+		
+		user.im.responders.blogger.prefs.username = username;
+		user.im.responders.blogger.prefs.password = binary (password);
+		user.im.responders.blogger.prefs.blogId = blogId}
+	else {
+		return ("Can't login to \"" + blogId + "\" because the server returned an error: \"" + tryerror + "\".")};
+	
+	return ("Login successful.")};
+
+Â«bundle //test code
+	Â«login ("", "", "blogger login 767753 jake@jspace.org guessme")

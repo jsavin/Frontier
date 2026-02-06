@@ -1,1 +1,2 @@
-on gotoName (name) {	kernel (table.gotoname)}
+on gotoName (name) {
+	kernel (table.gotoname)}

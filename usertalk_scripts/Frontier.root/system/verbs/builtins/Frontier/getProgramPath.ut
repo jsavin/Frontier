@@ -1,1 +1,2 @@
-on getProgramPath () {	kernel (Frontier.getprogrampath)}
+on getProgramPath () {
+	kernel (Frontier.getprogrampath)}

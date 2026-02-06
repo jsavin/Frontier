@@ -1,1 +1,25 @@
-on getBookmarkLogic (adr, adrLogic, adrTitle) {	«This script handles bookmarking file-based outlineWindows.	local (atts);	if window.attributes.getAll (@atts, adr) {		local (title);		if defined (atts.title) {			title = atts.title}		else { //use the window title instead of the title attribute			title = window.getTitle (adr)};				local (f);		if defined (atts.f) {			f = atts.f}		else { //can't create a bookmark for unsaved files			dialog.alert ("Can't create a bookmark for this file because it has never been saved.");			return (false)};				adrTitle^ = title;		if system.environment.isWindows { //escape backslashes on Windows			f = string.replaceAll (f, "\\", "\\\\")};		adrLogic^ = "fileMenu.open (\"" + string.replaceAll (f, "\"", "\\\"") + "\")";				return (true)};		return (false)}
+on getBookmarkLogic (adr, adrLogic, adrTitle) {
+	Â«This script handles bookmarking file-based outlineWindows.
+	local (atts);
+	if window.attributes.getAll (@atts, adr) {
+		local (title);
+		if defined (atts.title) {
+			title = atts.title}
+		else { //use the window title instead of the title attribute
+			title = window.getTitle (adr)};
+		
+		local (f);
+		if defined (atts.f) {
+			f = atts.f}
+		else { //can't create a bookmark for unsaved files
+			dialog.alert ("Can't create a bookmark for this file because it has never been saved.");
+			return (false)};
+		
+		adrTitle^ = title;
+		if system.environment.isWindows { //escape backslashes on Windows
+			f = string.replaceAll (f, "\\", "\\\\")};
+		adrLogic^ = "fileMenu.open (\"" + string.replaceAll (f, "\"", "\\\"") + "\")";
+		
+		return (true)};
+	
+	return (false)}

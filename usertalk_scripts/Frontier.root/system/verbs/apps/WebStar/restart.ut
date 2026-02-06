@@ -1,1 +1,5 @@
-on restart (appID = WebStar.id) {	if WebStar.isRunning () {		WebStar.quit ()};	while WebStar.isRunning () {};	WebStar.launch ()}
+on restart (appID = WebStar.id) {
+	if WebStar.isRunning () {
+		WebStar.quit ()};
+	while WebStar.isRunning () {};
+	WebStar.launch ()}

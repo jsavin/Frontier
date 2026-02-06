@@ -1,1 +1,20 @@
-on deleteExpiredSubscriptions (adrTable, adrStats=nil) {	«Delete expired subscriptions.		«1/15/02; 6:16:11 PM by PBS	xml.pubsub.initTable (adrTable);	local (i, adrurl, ctdeleted = 0, cttotal = 0);	for i = sizeof (adrTable^.notify) downto 1 {		adrurl = @adrTable^.notify [i];		local (j, adrsub, now = clock.now ());		for j = sizeof (adrurl^) downto 1 {			adrsub = @adrurl^ [j];			if now > adrsub^.timeExpires {				delete (adrsub);				ctdeleted++};			cttotal++};		if sizeof (adrurl^) == 0 { //everything deleted			delete (adrurl)}};	if ctdeleted > 0 {		if adrStats != nil {			adrStats^.ctDeletedSubscriptions = ctdeleted;			adrStats^.ctTotalSubscriptions = cttotal}}}
+on deleteExpiredSubscriptions (adrTable, adrStats=nil) {
+	Â«Delete expired subscriptions.
+		Â«1/15/02; 6:16:11 PM by PBS
+	xml.pubsub.initTable (adrTable);
+	local (i, adrurl, ctdeleted = 0, cttotal = 0);
+	for i = sizeof (adrTable^.notify) downto 1 {
+		adrurl = @adrTable^.notify [i];
+		local (j, adrsub, now = clock.now ());
+		for j = sizeof (adrurl^) downto 1 {
+			adrsub = @adrurl^ [j];
+			if now > adrsub^.timeExpires {
+				delete (adrsub);
+				ctdeleted++};
+			cttotal++};
+		if sizeof (adrurl^) == 0 { //everything deleted
+			delete (adrurl)}};
+	if ctdeleted > 0 {
+		if adrStats != nil {
+			adrStats^.ctDeletedSubscriptions = ctdeleted;
+			adrStats^.ctTotalSubscriptions = cttotal}}}

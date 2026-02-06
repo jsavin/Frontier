@@ -1,1 +1,2 @@
-on endOfFile (path) {	kernel (file.endoffile)}
+on endOfFile (path) {
+	kernel (file.endoffile)}

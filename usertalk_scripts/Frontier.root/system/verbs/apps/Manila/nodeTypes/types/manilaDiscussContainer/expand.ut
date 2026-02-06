@@ -1,1 +1,227 @@
-«Changes	«Mon, Aug 21, 2000 at 5:34:19 PM by PBS		«Created. Expand a node that contains messages and/or other discuss containers.	«Saturday, September 30, 2000 at 10:57:10 AM by DW		«When expanding a "toplevel" subtype, add another node, "threads".		«Then add a "threads" branch to the case statement.	«9/17/01; 12:33:33 PM by JES		«Fixed a bug where discussion group nodes wouldn't be expanded, if the site contains only one year.local (oldTarget = target.set (window.frontmost ()));local (oldDisplay = op.getDisplay ());op.setDisplay (false);local (flGoneRight = false);local (atts);op.attributes.getAll (@atts);local (baseDiscussUrl = atts.baseDiscussUrl);local (siteUrl = atts.siteUrl);local (adrinfo);local (username, password);on createInfoCallback (adrinfo) {	if not (manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password)) {		bundle { //don't leave stale data lying around			local (adrtempinfo = @system.temp.manila.data.sites.[nameOf (adrinfo^)]);			if defined (adrtempinfo^) {delete (adrtempinfo)};			delete (adrinfo)};		return (false)}};if not manila.windowTypes.findSiteInfo (siteUrl, @adrinfo, @createInfoCallback) {	return (true)};if adrinfo^.siteName == "" {	adrinfo^.siteName = manila.getSiteName (nameOf (adrinfo^))};local (siteprefs = manila.nodeTypes.attsToSitePrefsTable (@atts)); //a table for RPC callsif not manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {	return (true)}; //user cancelled the dialogsiteprefs.username = username;siteprefs.password = password;local (type = string.lower (atts.discussContainerType));on addContainer (linetext, containerType, url, year=nil, month=nil, day=nil) {	local (dir = down);	if not flGoneRight {		dir = right;		flGoneRight = true};	op.insert (linetext, dir);	local (atts);	new (tableType, @atts);	atts.type = "manilaDiscussContainer";	atts.discussContainerType =  containerType;	atts.url = url;	atts.baseDiscussUrl = baseDiscussUrl;	atts.siteUrl = siteUrl;	if year != nil {		atts.year = year};	if month != nil {		atts.month = month};	if day != nil {		atts.day = day};	manila.nodeTypes.addSitePrefsToAtts (adrinfo, @atts);	op.attributes.addGroup (@atts)};on addMessage (adrTable, flLastMessage=false) {	«scratchpad.msgtable = adrtable^	local (linetext = adrTable^.subject);	local (author = adrTable^.memberName);	if author != adrTable^.member {		author = author + " (" + adrTable^.member + ")"};	linetext = linetext + " -- " + author;	if system.environment.isMac {		linetext = string.latinToMac (linetext)};	local (dir = down);	if not flGoneRight {		dir = right;		flGoneRight = true};	op.insert (linetext, dir);		adrTable^.siteUrl = siteUrl;	adrTable^.baseDiscussUrl = baseDiscussUrl;	adrTable^.type = "manilaMessageReadOnly";	adrTable^.flLastMessage = flLastMessage;	manila.nodeTypes.addSitePrefsToAtts (adrinfo, adrTable);	op.attributes.addGroup (adrTable)};on passwordLoop (adrCallback) { //PBS 09/11/00: handle password errors	loop {		try {			adrCallback^ (); //RPC method call			return (true)}		else {			local (lowerError = string.lower (tryError));			if (lowerError contains "password") or (lowerError contains "not a member") {				if not (manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password, true)) {					return (false)};				manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}			else {				scriptError (tryError)}}}};op.deleteSubs ();local (cursor = op.getCursor ());on resetOpState () {	op.setCursor (cursor);	op.setDisplay (oldDisplay);	try {target.set (oldTarget)}};case type {	"toplevel" { //it contains Current and year nodes		«Insert Current container.		local (url = baseDiscussUrl);				«Insert years.		local (years);		on getYears () {			«Copied from suites.playlist.manila.rpc.getDiscussCalendarYears			firstDate = manila.message.calendar.getFirstDate (@sitePrefs);			lastDate = manila.message.calendar.getLastDate (@sitePrefs);						local (firstYear = date.year (firstDate));			local (lastYear = date.year (lastDate));			if firstYear == lastYear {				years = {firstYear};				return (true)};			years = {firstYear};			for i = (firstYear + 1) to lastYear - 1 {				years = years + i};			years = years + lastYear;						return (true)};				if not (passwordLoop (@getYears)) {			resetOpState ();			return (false)}; //user cancelled				if years == nil {			resetOpState ();			return (false)};		addContainer ("Current", "current", url);		addContainer ("Threads", "threads", url);				local (oneYear, i);		for i = sizeOf (years) downTo 1 {			oneYear = years [i];			addContainer (oneYear, "year", url, year:oneYear)}}; //years don't really have URLs	"current" { //get the message headers for the current day		local (messageHeaders);		on getMessageHeaders () {			«playlist.manila.rpc.getDiscussCurrentMessageHeaders (siteUrl, @messageHeaders)			«local (sitePrefs = suites.playlist.manila.getRpcInfoTableFromPrefs (siteUrl))			messageHeaders = manila.message.getCurrentHeaders (@siteprefs);			return (true)};		if not (passwordLoop (@getMessageHeaders)) {			resetOpState ();			return (false)}; //user cancelled		local (i);		for i = 1 to sizeOf (messageHeaders) {			local (flLastMessage = false);			if i == 1 {				flLastMessage = true};			addMessage (@messageHeaders [i], flLastMessage)}};	"threads" { //get the most recent top-level messages in the DG		local (messageHeaders);		on getMessageHeaders () {			«playlist.manila.rpc.getDiscussCurrentThreadsHeaders (siteUrl, @messageHeaders)			«scratchpad.messageHeaders = messageHeaders			messageHeaders = manila.message.getCurrentThreads (@siteprefs)};		if not (passwordLoop (@getMessageHeaders)) {			resetOpState ();			return (false)}; //user cancelled		local (i);		for i = 1 to sizeOf (messageHeaders) {			local (flLastMessage = false);			if i == 1 {				flLastMessage = true};			addMessage (@messageHeaders [i], flLastMessage)}};	"year" { //get the months in this year		local (url = baseDiscussUrl);		local (year);		op.attributes.getOne ("year", @year);		local (months);		on getMonths () {			«months = suites.playlist.manila.rpc.getDiscussCalendarMonths (siteUrl, year)			months = manila.message.calendar.getMonthsInYear (@siteprefs, year)};		if not (passwordLoop (@getMonths)) {			resetOpState ();			return (false)}; //user cancelled		local (oneMonth, i);		for i = sizeOf (months) downTo 1 {			oneMonth = months [i];			addContainer (oneMonth, "month", url, year:year, month:oneMonth)}}; //months don't really have URLs	"month" { //get the days in this month		local (month);		local (atts);		op.attributes.getAll (@atts);		year = atts.year;		month = atts.month;		local (days);		on getDays () {			«days = playlist.manila.rpc.getDiscussCalendarDays (siteUrl, year, month)			days = manila.message.calendar.getDaysInMonth (@siteprefs, year, month)};		if not (passwordLoop (@getDays)) {			resetOpState ();			return (false)}; //user cancelled		local (oneDay, i);		for i = sizeOf (days) downTo 1 {			oneDay = days [i];			local (url = baseDiscussUrl + "$" + year + "/" + string.padWithZeros (month, 2) + "/" + string.padWithZeros (oneDay, 2));			addContainer (oneDay, "day", url, year:year, month:month, day:oneDay)}}; //days have URLs	"day" { //get the messages for one day		local (atts);		op.attributes.getAll (@atts);		local (year = atts.year);		local (month = atts.month);		local (day = atts.day);		local (messageHeaders);		local (d = date.set (day, month, year, 0, 0, 0));		on getDayHeaders () {			«playlist.manila.rpc.getDiscussMessageHeaders (siteUrl, @messageHeaders, d)			messageHeaders = manila.message.getHeaders (@siteprefs, d)};		if not (passwordLoop (@getDayHeaders)) {			resetOpState ();			return (false)}; //user cancelled		local (i);		for i = 1 to sizeOf (messageHeaders) {			addMessage (@messageHeaders [i])}}};resetOpState ();return (true)
+Â«Changes
+	Â«Mon, Aug 21, 2000 at 5:34:19 PM by PBS
+		Â«Created. Expand a node that contains messages and/or other discuss containers.
+	Â«Saturday, September 30, 2000 at 10:57:10 AM by DW
+		Â«When expanding a "toplevel" subtype, add another node, "threads".
+		Â«Then add a "threads" branch to the case statement.
+	Â«9/17/01; 12:33:33 PM by JES
+		Â«Fixed a bug where discussion group nodes wouldn't be expanded, if the site contains only one year.
+
+local (oldTarget = target.set (window.frontmost ()));
+local (oldDisplay = op.getDisplay ());
+op.setDisplay (false);
+
+local (flGoneRight = false);
+local (atts);
+op.attributes.getAll (@atts);
+local (baseDiscussUrl = atts.baseDiscussUrl);
+local (siteUrl = atts.siteUrl);
+
+local (adrinfo);
+local (username, password);
+on createInfoCallback (adrinfo) {
+	if not (manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password)) {
+		bundle { //don't leave stale data lying around
+			local (adrtempinfo = @system.temp.manila.data.sites.[nameOf (adrinfo^)]);
+			if defined (adrtempinfo^) {delete (adrtempinfo)};
+			delete (adrinfo)};
+		return (false)}};
+if not manila.windowTypes.findSiteInfo (siteUrl, @adrinfo, @createInfoCallback) {
+	return (true)};
+if adrinfo^.siteName == "" {
+	adrinfo^.siteName = manila.getSiteName (nameOf (adrinfo^))};
+local (siteprefs = manila.nodeTypes.attsToSitePrefsTable (@atts)); //a table for RPC calls
+if not manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {
+	return (true)}; //user cancelled the dialog
+siteprefs.username = username;
+siteprefs.password = password;
+
+local (type = string.lower (atts.discussContainerType));
+
+on addContainer (linetext, containerType, url, year=nil, month=nil, day=nil) {
+	local (dir = down);
+	if not flGoneRight {
+		dir = right;
+		flGoneRight = true};
+	op.insert (linetext, dir);
+	local (atts);
+	new (tableType, @atts);
+	atts.type = "manilaDiscussContainer";
+	atts.discussContainerType =  containerType;
+	atts.url = url;
+	atts.baseDiscussUrl = baseDiscussUrl;
+	atts.siteUrl = siteUrl;
+	if year != nil {
+		atts.year = year};
+	if month != nil {
+		atts.month = month};
+	if day != nil {
+		atts.day = day};
+	manila.nodeTypes.addSitePrefsToAtts (adrinfo, @atts);
+	op.attributes.addGroup (@atts)};
+on addMessage (adrTable, flLastMessage=false) {
+	Â«scratchpad.msgtable = adrtable^
+	local (linetext = adrTable^.subject);
+	local (author = adrTable^.memberName);
+	if author != adrTable^.member {
+		author = author + " (" + adrTable^.member + ")"};
+	linetext = linetext + " -- " + author;
+	if system.environment.isMac {
+		linetext = string.latinToMac (linetext)};
+	local (dir = down);
+	if not flGoneRight {
+		dir = right;
+		flGoneRight = true};
+	op.insert (linetext, dir);
+	
+	adrTable^.siteUrl = siteUrl;
+	adrTable^.baseDiscussUrl = baseDiscussUrl;
+	adrTable^.type = "manilaMessageReadOnly";
+	adrTable^.flLastMessage = flLastMessage;
+	manila.nodeTypes.addSitePrefsToAtts (adrinfo, adrTable);
+	op.attributes.addGroup (adrTable)};
+
+on passwordLoop (adrCallback) { //PBS 09/11/00: handle password errors
+	loop {
+		try {
+			adrCallback^ (); //RPC method call
+			return (true)}
+		else {
+			local (lowerError = string.lower (tryError));
+			if (lowerError contains "password") or (lowerError contains "not a member") {
+				if not (manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password, true)) {
+					return (false)};
+				manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}
+			else {
+				scriptError (tryError)}}}};
+
+op.deleteSubs ();
+local (cursor = op.getCursor ());
+
+on resetOpState () {
+	op.setCursor (cursor);
+	op.setDisplay (oldDisplay);
+	try {target.set (oldTarget)}};
+
+case type {
+	"toplevel" { //it contains Current and year nodes
+		Â«Insert Current container.
+		local (url = baseDiscussUrl);
+		
+		Â«Insert years.
+		local (years);
+		on getYears () {
+			Â«Copied from suites.playlist.manila.rpc.getDiscussCalendarYears
+			firstDate = manila.message.calendar.getFirstDate (@sitePrefs);
+			lastDate = manila.message.calendar.getLastDate (@sitePrefs);
+			
+			local (firstYear = date.year (firstDate));
+			local (lastYear = date.year (lastDate));
+			if firstYear == lastYear {
+				years = {firstYear};
+				return (true)};
+			years = {firstYear};
+			for i = (firstYear + 1) to lastYear - 1 {
+				years = years + i};
+			years = years + lastYear;
+			
+			return (true)};
+		
+		if not (passwordLoop (@getYears)) {
+			resetOpState ();
+			return (false)}; //user cancelled
+		
+		if years == nil {
+			resetOpState ();
+			return (false)};
+		addContainer ("Current", "current", url);
+		addContainer ("Threads", "threads", url);
+		
+		local (oneYear, i);
+		for i = sizeOf (years) downTo 1 {
+			oneYear = years [i];
+			addContainer (oneYear, "year", url, year:oneYear)}}; //years don't really have URLs
+	"current" { //get the message headers for the current day
+		local (messageHeaders);
+		on getMessageHeaders () {
+			Â«playlist.manila.rpc.getDiscussCurrentMessageHeaders (siteUrl, @messageHeaders)
+			Â«local (sitePrefs = suites.playlist.manila.getRpcInfoTableFromPrefs (siteUrl))
+			messageHeaders = manila.message.getCurrentHeaders (@siteprefs);
+			return (true)};
+		if not (passwordLoop (@getMessageHeaders)) {
+			resetOpState ();
+			return (false)}; //user cancelled
+		local (i);
+		for i = 1 to sizeOf (messageHeaders) {
+			local (flLastMessage = false);
+			if i == 1 {
+				flLastMessage = true};
+			addMessage (@messageHeaders [i], flLastMessage)}};
+	"threads" { //get the most recent top-level messages in the DG
+		local (messageHeaders);
+		on getMessageHeaders () {
+			Â«playlist.manila.rpc.getDiscussCurrentThreadsHeaders (siteUrl, @messageHeaders)
+			Â«scratchpad.messageHeaders = messageHeaders
+			messageHeaders = manila.message.getCurrentThreads (@siteprefs)};
+		if not (passwordLoop (@getMessageHeaders)) {
+			resetOpState ();
+			return (false)}; //user cancelled
+		local (i);
+		for i = 1 to sizeOf (messageHeaders) {
+			local (flLastMessage = false);
+			if i == 1 {
+				flLastMessage = true};
+			addMessage (@messageHeaders [i], flLastMessage)}};
+	"year" { //get the months in this year
+		local (url = baseDiscussUrl);
+		local (year);
+		op.attributes.getOne ("year", @year);
+		local (months);
+		on getMonths () {
+			Â«months = suites.playlist.manila.rpc.getDiscussCalendarMonths (siteUrl, year)
+			months = manila.message.calendar.getMonthsInYear (@siteprefs, year)};
+		if not (passwordLoop (@getMonths)) {
+			resetOpState ();
+			return (false)}; //user cancelled
+		local (oneMonth, i);
+		for i = sizeOf (months) downTo 1 {
+			oneMonth = months [i];
+			addContainer (oneMonth, "month", url, year:year, month:oneMonth)}}; //months don't really have URLs
+	"month" { //get the days in this month
+		local (month);
+		local (atts);
+		op.attributes.getAll (@atts);
+		year = atts.year;
+		month = atts.month;
+		local (days);
+		on getDays () {
+			Â«days = playlist.manila.rpc.getDiscussCalendarDays (siteUrl, year, month)
+			days = manila.message.calendar.getDaysInMonth (@siteprefs, year, month)};
+		if not (passwordLoop (@getDays)) {
+			resetOpState ();
+			return (false)}; //user cancelled
+		local (oneDay, i);
+		for i = sizeOf (days) downTo 1 {
+			oneDay = days [i];
+			local (url = baseDiscussUrl + "$" + year + "/" + string.padWithZeros (month, 2) + "/" + string.padWithZeros (oneDay, 2));
+			addContainer (oneDay, "day", url, year:year, month:month, day:oneDay)}}; //days have URLs
+	"day" { //get the messages for one day
+		local (atts);
+		op.attributes.getAll (@atts);
+		local (year = atts.year);
+		local (month = atts.month);
+		local (day = atts.day);
+		local (messageHeaders);
+		local (d = date.set (day, month, year, 0, 0, 0));
+		on getDayHeaders () {
+			Â«playlist.manila.rpc.getDiscussMessageHeaders (siteUrl, @messageHeaders, d)
+			messageHeaders = manila.message.getHeaders (@siteprefs, d)};
+		if not (passwordLoop (@getDayHeaders)) {
+			resetOpState ();
+			return (false)}; //user cancelled
+		local (i);
+		for i = 1 to sizeOf (messageHeaders) {
+			addMessage (@messageHeaders [i])}}};
+
+resetOpState ();
+return (true)

@@ -1,1 +1,15 @@
-on start () {	«Changes		«7/30/02; 2:10:27 PM by JES			«Set user.im.jabber.flActive to true. If we fail to start, then re-set it to false. This boolean is checked by the everyMinute script.		«5/15/02; 12:26:12 PM by JB			«Created.	user.im.jabber.flActive = true;	try {		if not defined ( system.temp.jabber.connection ) {			tcp.im.builtinDrivers.jabber.code.openConnection ()};		tcp.im.builtinDrivers.jabber.code.registerHandler ("message", @tcp.im.builtinDrivers.jabber.code.examples.tcpImServer)}	else {		user.im.jabber.flActive = false;		scriptError (tryError)}};start()
+on start () {
+	Â«Changes
+		Â«7/30/02; 2:10:27 PM by JES
+			Â«Set user.im.jabber.flActive to true. If we fail to start, then re-set it to false. This boolean is checked by the everyMinute script.
+		Â«5/15/02; 12:26:12 PM by JB
+			Â«Created.
+	user.im.jabber.flActive = true;
+	try {
+		if not defined ( system.temp.jabber.connection ) {
+			tcp.im.builtinDrivers.jabber.code.openConnection ()};
+		tcp.im.builtinDrivers.jabber.code.registerHandler ("message", @tcp.im.builtinDrivers.jabber.code.examples.tcpImServer)}
+	else {
+		user.im.jabber.flActive = false;
+		scriptError (tryError)}};
+start()

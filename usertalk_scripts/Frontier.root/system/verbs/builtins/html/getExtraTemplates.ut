@@ -1,1 +1,18 @@
-on getExtraTemplates (adrObject) {	«Return a list of named templates to flow a page through.		«Saturday, May 30, 1998 at 4:17:51 PM by PBS	local (nomad = adrObject);	local (directiveName = "extraTemplates");	if typeOf (nomad^) != tableType {		nomad = parentOf (nomad^)};	loop {		if nomad == @root or nomad == nil {			break};		if defined (nomad^.["#" + directiveName]) {			return (list (nomad^.["#" + directiveName]))};		if defined (nomad^.["#prefs"].[directiveName]) {			return (list (nomad^.["#prefs"].[directiveName]))};		if defined (nomad^.["#prefs"].["#" + directiveName]) {			return (list (nomad^.["#prefs"].["#" + directiveName]))};		nomad = parentOf (nomad^)};	return (false)}
+on getExtraTemplates (adrObject) {
+	Â«Return a list of named templates to flow a page through.
+		Â«Saturday, May 30, 1998 at 4:17:51 PM by PBS
+	local (nomad = adrObject);
+	local (directiveName = "extraTemplates");
+	if typeOf (nomad^) != tableType {
+		nomad = parentOf (nomad^)};
+	loop {
+		if nomad == @root or nomad == nil {
+			break};
+		if defined (nomad^.["#" + directiveName]) {
+			return (list (nomad^.["#" + directiveName]))};
+		if defined (nomad^.["#prefs"].[directiveName]) {
+			return (list (nomad^.["#prefs"].[directiveName]))};
+		if defined (nomad^.["#prefs"].["#" + directiveName]) {
+			return (list (nomad^.["#prefs"].["#" + directiveName]))};
+		nomad = parentOf (nomad^)};
+	return (false)}

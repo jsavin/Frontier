@@ -1,1 +1,10 @@
-on enableFiltering (fl) { «if true, enable filtering; if false disable	if user.mail.prefs.enabled == fl { «nothing to do		return};	user.mail.prefs.enabled = fl;	if fl { «enabling		mail.traps.startup ()}	else { «disabling		mail.traps.shutdown ()}};«bundle «test code	«enableFiltering (true)
+on enableFiltering (fl) { Â«if true, enable filtering; if false disable
+	if user.mail.prefs.enabled == fl { Â«nothing to do
+		return};
+	user.mail.prefs.enabled = fl;
+	if fl { Â«enabling
+		mail.traps.startup ()}
+	else { Â«disabling
+		mail.traps.shutdown ()}};
+Â«bundle Â«test code
+	Â«enableFiltering (true)

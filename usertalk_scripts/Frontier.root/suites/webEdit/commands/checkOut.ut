@@ -1,1 +1,15 @@
-local (adrObject);local (s);bundle { //get the currently selected object	adrObject = webEdit.getSelectedObject ();	if adrObject == false {		return (false)}};s = webEdit.checkOutObject (adrObject);if typeOf (s) != stringType { //the old server returned a string	edit (adrObject)}; //the new server returns the objectwebEdit.notify (adrObject + " has been checked out.");return (true)
+local (adrObject);
+local (s);
+
+bundle { //get the currently selected object
+	adrObject = webEdit.getSelectedObject ();
+	if adrObject == false {
+		return (false)}};
+
+s = webEdit.checkOutObject (adrObject);
+
+if typeOf (s) != stringType { //the old server returned a string
+	edit (adrObject)}; //the new server returns the object
+
+webEdit.notify (adrObject + " has been checked out.");
+return (true)

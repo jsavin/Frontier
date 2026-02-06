@@ -1,1 +1,4 @@
-on swin (carddata, adrobject) {	adrobject^ = carddata;	fileMenu.save ();	return (true)}
+on swin (carddata, adrobject) {
+	adrobject^ = carddata;
+	fileMenu.save ();
+	return (true)}

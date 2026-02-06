@@ -1,1 +1,18 @@
-on newService () {	local (serviceName, htmlText, flNew);		serviceName = html.getPageTableAddress ()^.tools^.getArgs ();	serviceName = string.nthField (serviceName, '=', 2);	serviceName = string.urlDecode (serviceName);		flNew = people.newService (serviceName);		on add (s) {		htmlText = htmlText + s};		if flNew {		add ("Service \"" + serviceName + "\" created.")}	else {		add ("Service \"" + serviceName + "\" already exists.")};		return (htmlText)}
+on newService () {
+	local (serviceName, htmlText, flNew);
+	
+	serviceName = html.getPageTableAddress ()^.tools^.getArgs ();
+	serviceName = string.nthField (serviceName, '=', 2);
+	serviceName = string.urlDecode (serviceName);
+	
+	flNew = people.newService (serviceName);
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	if flNew {
+		add ("Service \"" + serviceName + "\" created.")}
+	else {
+		add ("Service \"" + serviceName + "\" already exists.")};
+	
+	return (htmlText)}

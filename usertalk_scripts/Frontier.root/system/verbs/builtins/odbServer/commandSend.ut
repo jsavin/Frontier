@@ -1,1 +1,31 @@
-on commandSend (command, server=user.odbServer.prefs.serverAddress) {	local (port = odbServer.daemon.port);	local (stream = netEvents.openStream (server, port));	local (endcommand = "endodbservercommand");	if stream == 0 {		return ("")};	loop {		local (chunksize = 5 * 1024);		if sizeof (command) <= chunksize {			netEvents.writeStream (stream, command);			break};		netEvents.writeStream (stream, string.mid (command, 1, chunksize));		command = string.delete (command, 1, chunksize)};	netEvents.writeStream (stream, endcommand);	«netEvents.writeStream (stream, command)	local (s = "");	local (timeout = clock.ticks () + (60 * user.odbServer.prefs.timeoutSecs));	loop {		local (bytespending);		case netEvents.statusStream (stream, @bytespending) {			"CLOSING";			"CLOSED";			"INACTIVE" {				break};			"DATA" {				s = s + netEvents.readStream (stream, bytespending)}};		if clock.ticks () > timeout {			s = "";			break}};	netEvents.closeStream (stream);	return (s)}
+on commandSend (command, server=user.odbServer.prefs.serverAddress) {
+	local (port = odbServer.daemon.port);
+	local (stream = netEvents.openStream (server, port));
+	local (endcommand = "endodbservercommand");
+	if stream == 0 {
+		return ("")};
+	loop {
+		local (chunksize = 5 * 1024);
+		if sizeof (command) <= chunksize {
+			netEvents.writeStream (stream, command);
+			break};
+		netEvents.writeStream (stream, string.mid (command, 1, chunksize));
+		command = string.delete (command, 1, chunksize)};
+	netEvents.writeStream (stream, endcommand);
+	Â«netEvents.writeStream (stream, command)
+	local (s = "");
+	local (timeout = clock.ticks () + (60 * user.odbServer.prefs.timeoutSecs));
+	loop {
+		local (bytespending);
+		case netEvents.statusStream (stream, @bytespending) {
+			"CLOSING";
+			"CLOSED";
+			"INACTIVE" {
+				break};
+			"DATA" {
+				s = s + netEvents.readStream (stream, bytespending)}};
+		if clock.ticks () > timeout {
+			s = "";
+			break}};
+	netEvents.closeStream (stream);
+	return (s)}

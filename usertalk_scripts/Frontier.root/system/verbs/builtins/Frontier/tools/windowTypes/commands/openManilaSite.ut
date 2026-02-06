@@ -1,1 +1,60 @@
-on openManilaSite (siteurl=nil, adradrwindow=nil) {		«If there were any callbacks for this command, they'd be called here.		«Since there were never any user.pike.commandCallbacks scripts, we'd only need to call callbacks at user.tools.commandCallbacks.openManilaSite.		«But there aren't any, so we just look for a windowType which defines a script to handle this command.		local (flConfirmUrl=false);	if siteurl == nil { //default to the site to which the front window belongs		local (type, adrinfo);		if window.attributes.getOne ("type", @type) {			if type != "manilaSite" {				if window.attributes.getOne ("adrSiteInfo", @adrinfo) {					siteurl = nameOf (adrinfo^);					local (parts = string.urlSplit (siteurl));					if parts[2] contains ":" {						if string.nthField (parts[2], ':', 2) == "80" {							siteurl = parts[1] + string.nthField (parts[2], ':', 1) + "/" + parts[3]}};					flConfirmUrl = true}}}};	if siteurl == nil { //didn't get it from the front window -- default to the last opened site		if defined (user.manila.prefs.lastSiteUrl) {			siteurl = user.manila.prefs.lastSiteUrl}		else {			siteurl = "http://"};		flConfirmUrl = true};	if flConfirmUrl { //ask the user what site to open		if not (dialog.ask ("Manila Site URL:", @siteurl)) {			return (false)}};	bundle { //make sure the url starts with http:// and ends with /		if not (siteurl beginsWith "http://") {			siteurl = "http://" + siteurl};		if not (siteurl endsWith "/") {			siteurl = siteurl + "/"}};		bundle { //look for a windowType that handles this command		on runTypes (adrTypes) {			local (adrType, flConsumed=false);			for adrType in adrTypes {				try {					while typeOf (adrType^) == addressType {						adrType = adrType^};					if defined (adrType^.openManilaSite) {						try {							flConsumed = adrType^.openManilaSite (siteurl, adradrwindow:adradrwindow)};						if flConsumed {							return (true)}}}};			return (false)};		if runTypes (@user.tools.windowTypes) {			user.manila.prefs.lastSiteUrl = siteurl;			return (true)};		if runTypes (@Frontier.tools.data.windowTypes) {			user.manila.prefs.lastSiteUrl = siteurl;			return (true)}};		return (false); //command not handled		«bundle //old code		«return (playlist.manila.commands.openManilaSite ())};«bundle //testing	«openManilaSite ()
+on openManilaSite (siteurl=nil, adradrwindow=nil) {
+	
+	Â«If there were any callbacks for this command, they'd be called here.
+		Â«Since there were never any user.pike.commandCallbacks scripts, we'd only need to call callbacks at user.tools.commandCallbacks.openManilaSite.
+		Â«But there aren't any, so we just look for a windowType which defines a script to handle this command.
+	
+	local (flConfirmUrl=false);
+	if siteurl == nil { //default to the site to which the front window belongs
+		local (type, adrinfo);
+		if window.attributes.getOne ("type", @type) {
+			if type != "manilaSite" {
+				if window.attributes.getOne ("adrSiteInfo", @adrinfo) {
+					siteurl = nameOf (adrinfo^);
+					local (parts = string.urlSplit (siteurl));
+					if parts[2] contains ":" {
+						if string.nthField (parts[2], ':', 2) == "80" {
+							siteurl = parts[1] + string.nthField (parts[2], ':', 1) + "/" + parts[3]}};
+					flConfirmUrl = true}}}};
+	if siteurl == nil { //didn't get it from the front window -- default to the last opened site
+		if defined (user.manila.prefs.lastSiteUrl) {
+			siteurl = user.manila.prefs.lastSiteUrl}
+		else {
+			siteurl = "http://"};
+		flConfirmUrl = true};
+	if flConfirmUrl { //ask the user what site to open
+		if not (dialog.ask ("Manila Site URL:", @siteurl)) {
+			return (false)}};
+	bundle { //make sure the url starts with http:// and ends with /
+		if not (siteurl beginsWith "http://") {
+			siteurl = "http://" + siteurl};
+		if not (siteurl endsWith "/") {
+			siteurl = siteurl + "/"}};
+	
+	bundle { //look for a windowType that handles this command
+		on runTypes (adrTypes) {
+			local (adrType, flConsumed=false);
+			for adrType in adrTypes {
+				try {
+					while typeOf (adrType^) == addressType {
+						adrType = adrType^};
+					if defined (adrType^.openManilaSite) {
+						try {
+							flConsumed = adrType^.openManilaSite (siteurl, adradrwindow:adradrwindow)};
+						if flConsumed {
+							return (true)}}}};
+			return (false)};
+		if runTypes (@user.tools.windowTypes) {
+			user.manila.prefs.lastSiteUrl = siteurl;
+			return (true)};
+		if runTypes (@Frontier.tools.data.windowTypes) {
+			user.manila.prefs.lastSiteUrl = siteurl;
+			return (true)}};
+	
+	return (false); //command not handled
+	
+	Â«bundle //old code
+		Â«return (playlist.manila.commands.openManilaSite ())};
+
+Â«bundle //testing
+	Â«openManilaSite ()

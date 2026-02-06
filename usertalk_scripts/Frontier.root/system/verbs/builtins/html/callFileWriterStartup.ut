@@ -1,1 +1,48 @@
-on callFileWriterStartup (adrObject, adrPageTable, templateName=nil) {	«Tuesday, April 14, 1998 at 4:10:23 PM by PBS	local (adrStorage);	adrStorage = html.getFileWriterStorage ();	try {delete (adrStorage)};	new (tableType, adrStorage);		«Call file writer startup script.	on getFtpSite () {		local (nomad = adrObject);		if typeOf (nomad^) != tableType {			nomad = parentOf (nomad^)};		loop {			if defined (nomad^.["#ftpSite"]) {				return (@nomad^.["#ftpSite"])};			if defined (nomad^.["#prefs"].ftpSite) {				return (@nomad^.["#prefs"].ftpSite)};			if defined (nomad^.["#prefs"].["#ftpSite"]) {				return (@nomad^.["#prefs"].["#ftpSite"])};			nomad = parentOf (nomad^);			if nomad == nil or nomad == @root {				break}}};	local (adrFtpSite = getFtpSite ());	local (method, adrScript);	if typeOf (adrFtpSite^) == stringType { //handle indirect ftpSites		try {adrFtpSite = @user.html.sites.default};		try {adrFtpSite = @user.html.sites.[adrFtpSite]}};	try {method = adrFtpSite^.method};	try {method = adrFtpSite^.[templateName].method};	if method == nil { //backwards compatibility		method = "file";		try {			if not adrFtpSite^.isLocal {				method = "ftp"}}};	if defined (user.html.fileWriters.[method]) {		adrScript = @user.html.fileWriters.[method].startup}	else {		if defined (html.fileWriters.[method]) {			adrScript = @html.fileWriters.[method].startup}		else {			scriptError ("Can't render this page because \"" + method + "\" is not an installed file writer.")}};	«Store the address of the ftp site and the method in the storage table.	adrStorage^.adrFtpSite = adrFtpSite;	adrStorage^.method = method;	if templateName != nil {		adrStorage^.templateName = templateName};	adrScript^ (adrObject, adrStorage);	return (true)}
+on callFileWriterStartup (adrObject, adrPageTable, templateName=nil) {
+	Â«Tuesday, April 14, 1998 at 4:10:23 PM by PBS
+	local (adrStorage);
+	adrStorage = html.getFileWriterStorage ();
+	try {delete (adrStorage)};
+	new (tableType, adrStorage);
+	
+	Â«Call file writer startup script.
+	on getFtpSite () {
+		local (nomad = adrObject);
+		if typeOf (nomad^) != tableType {
+			nomad = parentOf (nomad^)};
+		loop {
+			if defined (nomad^.["#ftpSite"]) {
+				return (@nomad^.["#ftpSite"])};
+			if defined (nomad^.["#prefs"].ftpSite) {
+				return (@nomad^.["#prefs"].ftpSite)};
+			if defined (nomad^.["#prefs"].["#ftpSite"]) {
+				return (@nomad^.["#prefs"].["#ftpSite"])};
+			nomad = parentOf (nomad^);
+			if nomad == nil or nomad == @root {
+				break}}};
+	local (adrFtpSite = getFtpSite ());
+	local (method, adrScript);
+	if typeOf (adrFtpSite^) == stringType { //handle indirect ftpSites
+		try {adrFtpSite = @user.html.sites.default};
+		try {adrFtpSite = @user.html.sites.[adrFtpSite]}};
+	try {method = adrFtpSite^.method};
+	try {method = adrFtpSite^.[templateName].method};
+	if method == nil { //backwards compatibility
+		method = "file";
+		try {
+			if not adrFtpSite^.isLocal {
+				method = "ftp"}}};
+	if defined (user.html.fileWriters.[method]) {
+		adrScript = @user.html.fileWriters.[method].startup}
+	else {
+		if defined (html.fileWriters.[method]) {
+			adrScript = @html.fileWriters.[method].startup}
+		else {
+			scriptError ("Can't render this page because \"" + method + "\" is not an installed file writer.")}};
+	Â«Store the address of the ftp site and the method in the storage table.
+	adrStorage^.adrFtpSite = adrFtpSite;
+	adrStorage^.method = method;
+	if templateName != nil {
+		adrStorage^.templateName = templateName};
+	adrScript^ (adrObject, adrStorage);
+	return (true)}

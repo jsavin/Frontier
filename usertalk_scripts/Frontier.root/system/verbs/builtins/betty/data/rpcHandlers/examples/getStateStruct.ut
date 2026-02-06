@@ -1,1 +1,5 @@
-on getStateStruct (statestruct) {	local (i, s = "");	for i = 1 to sizeof (statestruct) {		s = s + states.nthState (statestruct [i]) + ","};	return (string.poptrailing (s, ","))}
+on getStateStruct (statestruct) {
+	local (i, s = "");
+	for i = 1 to sizeof (statestruct) {
+		s = s + states.nthState (statestruct [i]) + ","};
+	return (string.poptrailing (s, ","))}

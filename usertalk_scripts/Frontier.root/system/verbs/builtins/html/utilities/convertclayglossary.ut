@@ -1,1 +1,17 @@
-local (adrtable = @clay.data.glossary);local (ct = sizeof (adrtable^), i, s);for i = 1 to ct {	local (adrsubtable = @adrtable^ [i]);	local (name = nameof (adrsubtable^));	msg (name);	with adrsubtable^ {		case t {			0 {				s = v};			1 {				s = "<a href=\""+ v + "\">" + name + "</a>"};			2 {				s = "<a href=\"mailto:"+ v + "\">" + name + "</a>"}}		else {			scriptError ("Unsupported glossary type, number = " + t)}};	user.html.glossary.[name] = s}
+local (adrtable = @clay.data.glossary);
+local (ct = sizeof (adrtable^), i, s);
+for i = 1 to ct {
+	local (adrsubtable = @adrtable^ [i]);
+	local (name = nameof (adrsubtable^));
+	msg (name);
+	with adrsubtable^ {
+		case t {
+			0 {
+				s = v};
+			1 {
+				s = "<a href=\""+ v + "\">" + name + "</a>"};
+			2 {
+				s = "<a href=\"mailto:"+ v + "\">" + name + "</a>"}}
+		else {
+			scriptError ("Unsupported glossary type, number = " + t)}};
+	user.html.glossary.[name] = s}

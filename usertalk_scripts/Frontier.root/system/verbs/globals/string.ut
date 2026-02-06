@@ -1,1 +1,2 @@
-on string (val) {	kernel (lang.string)}
+on string (val) {
+	kernel (lang.string)}

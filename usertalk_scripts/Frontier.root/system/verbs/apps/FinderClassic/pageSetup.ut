@@ -1,1 +1,4 @@
-on pageSetup (windowpath) {	if not Finder.windowVerb ('pgsu', windowpath) {		return (false)};	return (Finder.bringToFront ())}
+on pageSetup (windowpath) {
+	if not Finder.windowVerb ('pgsu', windowpath) {
+		return (false)};
+	return (Finder.bringToFront ())}

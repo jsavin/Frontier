@@ -1,1 +1,10 @@
-on getAllMessages () {	«Changes		«3/31/01; 7:18:43 PM by DW			«Return a Frontier table that contains all the messages in the user's queue.	with mailToTheFuture.data {		local (params = {"username":user.mailToTheFuture.username, "password":user.mailToTheFuture.password});		return (soap.rpc.client (path, "getAllMessages", @params, server, port))}};bundle { //test code	scratchpad.mttfMessages = getAllMessages ();	edit (@scratchpad.mttfMessages)}
+on getAllMessages () {
+	Â«Changes
+		Â«3/31/01; 7:18:43 PM by DW
+			Â«Return a Frontier table that contains all the messages in the user's queue.
+	with mailToTheFuture.data {
+		local (params = {"username":user.mailToTheFuture.username, "password":user.mailToTheFuture.password});
+		return (soap.rpc.client (path, "getAllMessages", @params, server, port))}};
+bundle { //test code
+	scratchpad.mttfMessages = getAllMessages ();
+	edit (@scratchpad.mttfMessages)}

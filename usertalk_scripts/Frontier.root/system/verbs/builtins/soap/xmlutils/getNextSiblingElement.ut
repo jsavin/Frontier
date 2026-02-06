@@ -1,1 +1,12 @@
-on getNextSiblingElement (adrelement) {	local (ix, start = 1 + indexOf (adrelement^));	local (adrsibling, adrparent = parentOf (adrelement^));	for ix = start to sizeOf (adrparent^) {		adrsibling = @adrparent^[ix];		local (siblingname = xml.convertToDisplayName (nameOf (adrsibling^)));		if siblingname beginsWith "/" {			continue};		if siblingname beginsWith "?" {			continue};		return (adrsibling)};	return (false)}
+on getNextSiblingElement (adrelement) {
+	local (ix, start = 1 + indexOf (adrelement^));
+	local (adrsibling, adrparent = parentOf (adrelement^));
+	for ix = start to sizeOf (adrparent^) {
+		adrsibling = @adrparent^[ix];
+		local (siblingname = xml.convertToDisplayName (nameOf (adrsibling^)));
+		if siblingname beginsWith "/" {
+			continue};
+		if siblingname beginsWith "?" {
+			continue};
+		return (adrsibling)};
+	return (false)}

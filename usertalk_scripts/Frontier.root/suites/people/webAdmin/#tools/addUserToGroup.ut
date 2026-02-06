@@ -1,1 +1,20 @@
-on addUserToGroup () {	local (userName, groupName);	local (htmlText);		bundle { //get the username and group name		local (argTable);		new (tableType, @argTable);		if not (html.getPageTableAddress ()^.tools^.getArgTable (@argTable)) {			return ("Can't add user to a group because no user or group name was specified.")};		userName = string.urlDecode (argTable.userName);		groupName = string.urlDecode (argTable.groupName)};		on add (s) {		htmlText = htmlText + s};		people.addUserToGroup (userName, groupName);		add ("User \"" + userName + "\" has been added to group \"" + groupName + "\".<p>");		return (htmlText)}
+on addUserToGroup () {
+	local (userName, groupName);
+	local (htmlText);
+	
+	bundle { //get the username and group name
+		local (argTable);
+		new (tableType, @argTable);
+		if not (html.getPageTableAddress ()^.tools^.getArgTable (@argTable)) {
+			return ("Can't add user to a group because no user or group name was specified.")};
+		userName = string.urlDecode (argTable.userName);
+		groupName = string.urlDecode (argTable.groupName)};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	people.addUserToGroup (userName, groupName);
+	
+	add ("User \"" + userName + "\" has been added to group \"" + groupName + "\".<p>");
+	
+	return (htmlText)}

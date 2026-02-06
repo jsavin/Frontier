@@ -1,1 +1,130 @@
-on convertclaysite (f, adrtable) {	«f is the path to a clay basket outline file, adrtable is the table it is loaded into	local (mediafolder = file.folderfrompath (f) + "Media Objects:" );	local (inputfolder = file.folderfrompath (f) + "Input Folder:");	local (gifurl = "http://www.scripting.com/gifs/");	local (giffolder = "8100:Server:WebStar:gifs:");	local (fname = file.fileFromPath (f));	new (tabletype, adrtable);	target.set (adrtable);	editmenu.setfont ("geneva");	editmenu.setfontsize (12);	local (adroutline = @adrtable^.default);	bundle { «create the outline		new (outlinetype, adroutline);		target.set (adroutline);		edit (adroutline);		op.setlinetext ("#title \"" + fname + "\"");		op.insert ("#renderOutlineWith \"siteOutliner\"", down)};		clay.launch ();	clay.opendocument (f);	clay.outliner.firstsummit ();	clay.outliner.expand (infinity);		on dolevel (dir) {		loop {			local (linetext = clay.outliner.getlinetext ());			target.set (adroutline);			op.insert (linetext, dir);			dir = down;			bundle { «if it has a linked text file, do the text file thing				local (url = clay.web.geturl ());				if sizeof (url) > 0 {					op.setlinetext ('"' + linetext + '"');					local (info);					new (tabletype, @info);					clay.website.getpageinfo (@info);										local (cellname = "");					bundle { «figure out what the cellname is						local (maxlen = user.html.prefs.maxFileNameLength - sizeof (user.html.prefs.fileExtension)); «new in 4.0.1						local (i, ch);						for i = 1 to sizeof (linetext) {							if sizeof (cellname) >= maxlen { «new in 4.0.1								break};							ch = linetext [i];							if string.isAlpha (ch) or string.isNumeric (ch) {								cellname = cellname + string.lower (ch)}}};										local (adrtext = @adrtable^.[cellname]);					bundle { «get the file text						local (filetext = "");						local (url = clay.web.geturl (), textfile);						if url beginswith "sitefile:///" {							textfile = inputfolder + string.delete (url, 1, 12)};						if url beginswith "file:///" {							textfile = string.delete (url, 1, 8)};						filetext = wp.readFileIntoTextObject (textfile, adrtext);						edit (adrtext);						window.zoom (adrtext);						wp.go (up, infinity);						wp.go (left, infinity);						window.close (adrtext)};					bundle { «scan the text for mediaobject macros						local (s = string (adrtext^), lowers = string.lower (s), ix);						loop {							ix = string.patternmatch ("{mediaobject", lowers);							if ix == 0 {								break};							local (gifname = "", ixsecondquote = 0);							for i = ix + 1 to sizeof (s) {								if s [i] == "\"" {									local (j);									for j = i + 1 to sizeof (s) {										if s [j] == "\"" {											ixsecondquote = j;											break};										gifname = gifname + s [j]};									break}};							if ixsecondquote > 0 {								local (j, len = 0);								for j = ixsecondquote to sizeof (s) {									msg (s [j]);									if s [j] == "}" {										len = j - ix + 1;										break}};								if len > 0 {									if not (gifname endswith ".gif") {										gifname = gifname + ".gif"};									msg ("Copying " + gifname);									file.copy (mediafolder + gifname, giffolder + gifname);									local (htmltext = "<center><img src=\"" + gifurl + gifname + "\"></center><p>");									s = string.delete (s, ix, len);									s = string.insert (htmltext, s, ix);									lowers = string.lower (s);									target.set (adrtext);									wp.settext (s);									target.clear ()}}}};					bundle { «add #directives						local (s = "");						s = s + "#title \"" + linetext + "\"" + cr;						s = s + "#author \"" + info. author + "\"" + cr;						s = s + "#bgcolor \"" + info. backcolor + "\"" + cr;						s = s + "#link \"" + info. linkcolor + "\"" + cr;						s = s + "#posttime \"" + info.posttime + "\"" + cr;						«s = s + "#template \"" + info. templatename + "\"" + cr						s = s + "#text \"" + info. textcolor + "\"" + cr;						s = s + "#vlink \"" + info. visitedlinkcolor + "\"" + cr;						s = s + string (adrtext^);						target.set (adrtext);						wp.settext (s);						target.clear ()}}};			if clay.outliner.countsubs (1) > 0 {				clay.outliner.go (right, 1);				dolevel (right);				clay.outliner.go (left, 1);				op.go (left, 1)};			if not clay.outliner.go (down, 1) {				break}}};	dolevel (down);		clay.quit ();	op.firstsummit ();	op.expand (1);	window.zoom (adroutline)};bundle { «test code	local (f = "Macintosh HD:Websites:MacBird:macbird outline");	local (adrtable = @user.websites.macbird);	convertclaysite (f, adrtable)}
+on convertclaysite (f, adrtable) {
+	Â«f is the path to a clay basket outline file, adrtable is the table it is loaded into
+	local (mediafolder = file.folderfrompath (f) + "Media Objects:" );
+	local (inputfolder = file.folderfrompath (f) + "Input Folder:");
+	local (gifurl = "http://www.scripting.com/gifs/");
+	local (giffolder = "8100:Server:WebStar:gifs:");
+	local (fname = file.fileFromPath (f));
+	new (tabletype, adrtable);
+	target.set (adrtable);
+	editmenu.setfont ("geneva");
+	editmenu.setfontsize (12);
+	local (adroutline = @adrtable^.default);
+	bundle { Â«create the outline
+		new (outlinetype, adroutline);
+		target.set (adroutline);
+		edit (adroutline);
+		op.setlinetext ("#title \"" + fname + "\"");
+		op.insert ("#renderOutlineWith \"siteOutliner\"", down)};
+	
+	clay.launch ();
+	clay.opendocument (f);
+	clay.outliner.firstsummit ();
+	clay.outliner.expand (infinity);
+	
+	on dolevel (dir) {
+		loop {
+			local (linetext = clay.outliner.getlinetext ());
+			target.set (adroutline);
+			op.insert (linetext, dir);
+			dir = down;
+			bundle { Â«if it has a linked text file, do the text file thing
+				local (url = clay.web.geturl ());
+				if sizeof (url) > 0 {
+					op.setlinetext ('"' + linetext + '"');
+					local (info);
+					new (tabletype, @info);
+					clay.website.getpageinfo (@info);
+					
+					local (cellname = "");
+					bundle { Â«figure out what the cellname is
+						local (maxlen = user.html.prefs.maxFileNameLength - sizeof (user.html.prefs.fileExtension)); Â«new in 4.0.1
+						local (i, ch);
+						for i = 1 to sizeof (linetext) {
+							if sizeof (cellname) >= maxlen { Â«new in 4.0.1
+								break};
+							ch = linetext [i];
+							if string.isAlpha (ch) or string.isNumeric (ch) {
+								cellname = cellname + string.lower (ch)}}};
+					
+					local (adrtext = @adrtable^.[cellname]);
+					bundle { Â«get the file text
+						local (filetext = "");
+						local (url = clay.web.geturl (), textfile);
+						if url beginswith "sitefile:///" {
+							textfile = inputfolder + string.delete (url, 1, 12)};
+						if url beginswith "file:///" {
+							textfile = string.delete (url, 1, 8)};
+						filetext = wp.readFileIntoTextObject (textfile, adrtext);
+						edit (adrtext);
+						window.zoom (adrtext);
+						wp.go (up, infinity);
+						wp.go (left, infinity);
+						window.close (adrtext)};
+					bundle { Â«scan the text for mediaobject macros
+						local (s = string (adrtext^), lowers = string.lower (s), ix);
+						loop {
+							ix = string.patternmatch ("{mediaobject", lowers);
+							if ix == 0 {
+								break};
+							local (gifname = "", ixsecondquote = 0);
+							for i = ix + 1 to sizeof (s) {
+								if s [i] == "\"" {
+									local (j);
+									for j = i + 1 to sizeof (s) {
+										if s [j] == "\"" {
+											ixsecondquote = j;
+											break};
+										gifname = gifname + s [j]};
+									break}};
+							if ixsecondquote > 0 {
+								local (j, len = 0);
+								for j = ixsecondquote to sizeof (s) {
+									msg (s [j]);
+									if s [j] == "}" {
+										len = j - ix + 1;
+										break}};
+								if len > 0 {
+									if not (gifname endswith ".gif") {
+										gifname = gifname + ".gif"};
+									msg ("Copying " + gifname);
+									file.copy (mediafolder + gifname, giffolder + gifname);
+									local (htmltext = "<center><img src=\"" + gifurl + gifname + "\"></center><p>");
+									s = string.delete (s, ix, len);
+									s = string.insert (htmltext, s, ix);
+									lowers = string.lower (s);
+									target.set (adrtext);
+									wp.settext (s);
+									target.clear ()}}}};
+					bundle { Â«add #directives
+						local (s = "");
+						s = s + "#title \"" + linetext + "\"" + cr;
+						s = s + "#author \"" + info. author + "\"" + cr;
+						s = s + "#bgcolor \"" + info. backcolor + "\"" + cr;
+						s = s + "#link \"" + info. linkcolor + "\"" + cr;
+						s = s + "#posttime \"" + info.posttime + "\"" + cr;
+						Â«s = s + "#template \"" + info. templatename + "\"" + cr
+						s = s + "#text \"" + info. textcolor + "\"" + cr;
+						s = s + "#vlink \"" + info. visitedlinkcolor + "\"" + cr;
+						s = s + string (adrtext^);
+						target.set (adrtext);
+						wp.settext (s);
+						target.clear ()}}};
+			if clay.outliner.countsubs (1) > 0 {
+				clay.outliner.go (right, 1);
+				dolevel (right);
+				clay.outliner.go (left, 1);
+				op.go (left, 1)};
+			if not clay.outliner.go (down, 1) {
+				break}}};
+	dolevel (down);
+	
+	clay.quit ();
+	op.firstsummit ();
+	op.expand (1);
+	window.zoom (adroutline)};
+
+bundle { Â«test code
+	local (f = "Macintosh HD:Websites:MacBird:macbird outline");
+	local (adrtable = @user.websites.macbird);
+	convertclaysite (f, adrtable)}

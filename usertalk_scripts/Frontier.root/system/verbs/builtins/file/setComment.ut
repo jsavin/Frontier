@@ -1,1 +1,2 @@
-on setComment (path, comment) {	kernel (file.setComment)}
+on setComment (path, comment) {
+	kernel (file.setComment)}

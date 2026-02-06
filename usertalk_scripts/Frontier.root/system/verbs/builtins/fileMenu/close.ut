@@ -1,1 +1,2 @@
-on close () {	kernel (filemenu.close)}
+on close () {
+	kernel (filemenu.close)}

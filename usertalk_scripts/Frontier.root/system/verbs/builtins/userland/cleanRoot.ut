@@ -1,1 +1,226 @@
-«run this script to clean up the root for release	«DW 1/1/96: MacBird 1.0 Release	«DW 4/1/96: Brought back stuff from 3.0	«DW 4/20/96: Frontier 4.0b5 release	«DW 11/5/97 Frontier 5.0a11«Changes	«8/18/02; 5:05:04 PM by JES		«Delete the RCS Backups, Manila Backups and backups folders from the Frontier folder. Initialize user.prefs.serialNumber to the empty string. Set up the port 5335 HTTP server at user.inetd.config.http2.try { //disable threads	user.scheduler.prefs.runThreads = false;	scheduler.monitorThreads ()};Frontier.enableAgents (false);inetd.stop ();«bundle //set up the root window	«target.set ("root")	«op.firstSummit ()	«op.fullCollapse ()	«op.findNext ("websites")	«wp.setTextMode (false)	«op.expand (1)	«target.clear ()bundle { «initialize the quick script window	window.quickScript ();	clipboard.putvalue ("dialog.notify (\"Hello World!\")");	editmenu.selectall ();	editmenu.paste ();	window.close ("Quick Script")};«case sys.os ()	«"MacOS"		«if sizeof (webbrowser.protocols.activehandlers) > 0			«scriptError ("The virgin root must have no active trap handlers.")		«user.prefs.texteditorapp = ""		«bundle «user.prefs.newscript			«new (tabletype, @user.prefs.newscript)			«newscript.init ()		«new (tabletype, @netfrontier.buddies)bundle { «empty out standard tables	new (tabletype, @scratchpad);	«new (tabletype, @workspace)	new (outlineType, @workspace.notepad)};bundle { «clear the path for all apps in the apps table	local (adrappstable = @system.verbs.apps, i);	for i = 1 to sizeof (adrappstable^) {		local (adrappinfo = @adrappstable^ [i].appInfo);		if defined (adrappinfo^) {			adrappinfo^.path = ""}}};bundle { «clean passwords out of user.html.sites table	local (i);	for i = 1 to sizeof (user.html.sites) {		if defined (user.html.sites [i].password) {			user.html.sites [i].password = "xxxxx"}}};«bundle «initialize stuff in the webServer suite	«webServer.preferences.hostname = ""	«webServer.preferences.rootPath = ""bundle { «set up user.html	user.html.prefs = userland.htmlprefs; «initialize user.html.prefs table	new (outlinetype, @user.html.changedPages);		new (tableType, @user.html.images)};«edit (@frontier.version)Frontier.shipdate = clock.now ();userland.initialLastUpdateTime = date.netStandardString (Frontier.shipDate);user.prefs.search.winStandardFindCommand = false;user.prefs.agentsEnabled = true;user.prefs.dialogs.jumpAddress = "workspace";user.prefs.firstRootRun = true;user.prefs.serialNumber = "";user.prefs.frontierIsServer = false;user.prefs.flShortTimeStamp = false;user.prefs.flWinStandardMaximize = true;try {delete (@user.prefs.portForwardingAdminPassword)};bundle { //set up trial version info	try {delete (@userland.trialVersion)};	user.prefs.serialNumber = ""};bundle { //set up webserver, betty, rootUpdates, people, custody, and WebEdit	on nuke (name) {		if defined (user.[name]) {			delete (@user.[name])};		return (true)};	nuke ("webserver");	nuke ("betty");	nuke ("people");	nuke ("custody");	nuke ("webEdit");	nuke ("webEditServer");	nuke ("rootUpdates");	nuke ("databases");	nuke ("backups");	nuke ("batchExporter");	nuke ("export");	nuke ("xmlStorageSystem");		try {delete (@user.scheduler.tasks)}; //PBS 07/06/00: let the user.scheduler.tasks table get re-initialized	try {delete (@user.scheduler.everyMinute)};	try {delete (@user.scheduler.threads)};	try {delete (@user.scheduler.hourly)};	try {delete (@user.scheduler.overnight)};		bundle { //user.manila		new (tableType, @user.manila);		new (tableType, @user.manila.data);		new (tableType, @user.manila.data.sites);		new (tableType, @user.manila.prefs);		user.manila.prefs.lastSiteUrl = "http://"};		webserver.init ();	betty.init ();	people.init ();	custody.init ();	webEdit.init ();	webEditServer.init ();	rootUpdates.init ();		user.inetd.config.http = webserver.data.inetd.config.http;	user.inetd.config.http2 = webserver.data.inetd.config.http2; //port 5335 server	if system.environment.isCarbon {		user.inetd.config.http.port = 8080;		user.inetd.config.http.apparentPort = 80};	user.inetd.config.http.timeout = 30;	user.inetd.config.http.startup = true;	user.inetd.config.http.count = 30;	user.inetd.config.http2.timeout = 30;	user.inetd.config.http2.startup = true;	user.inetd.config.http2.count = 30;		new (tableType, @user.inetd.listens)};«bundle //initialize responders	«user.webserver.responders.websiteFramework.data.docTree.samples = @websites.samples	«try		«delete (@user.webserver.responders.websiteFramework.data.docTree.allSites)	«try		«delete (@user.webserver.responders.websiteFramework.data.docTree.contents)filemenu.save ();bundle { //8.0 stuff	«bundle //user.odbEditors		«new (tableType, @user.odbEditors)		«new (tableType, @user.odbEditors.data)		«new (tableType, @user.odbEditors.data.openFiles)		«user.odbEditors.openFiles.data.serialnum = 1		«user.odbEditors.openFiles.data.TextEditor = ""		«user.odbEditors.textFileExtension = ".html"	try {delete (@user.odbEditors)};	bundle { //user.netEvents		try {delete (@user.netEvents)}};	bundle { //user.xmlStorageSystem		try {delete (@user.xmlStorageSystem)}};	try {delete (@user.tools)};	Frontier.tools.thread.ct = 0;	Frontier.tools.thread.enabled = true};bundle { «save a copy	local (f = frontier.pathstring + "Virgin.root");	«file.move (f, file.getSpecialFolderPath (file.volumeFromPath (f), "Trash", false))	local (oldtarget = target.set (@root));	FileMenu.saveCopy (f);	try {target.set (oldtarget)}};«bundle //PBS 07/05/00: delete unwanted databases	«on visitProc (f)		«if not (string.lower (f) == string.lower (Frontier.getFilePath ()))			«fileMenu.close (f)	«table.visitOpenDatabases (@visitProc, true) //close open gdbs	«local (f)	«local (folder = Frontier.getSubFolder ("")) //path to Guest Databases folder	«fileloop (f in folder, infinity)		«local (fname = file.fileFromPath (f))		«local (lowerName = string.lower (fname))		«lowerName = lowerName - file.getPathChar ()		«case lowerName			«"thexmlfiles.root"			«"manila.root"			«"mainresponder.root"			«"prefs.root"				«continue		«file.delete (f)	«folder = Frontier.getSubFolder ("ops")	«fileloop (f in folder)		«local (fname = file.fileFromPath (f))		«if f endsWith ".root"			«try {file.delete (f)}		«if file.isFolder (f)			«if f contains "theme"				«continue			«try {file.deleteFolder (f)}	«file.emptyFolder (folder) //delete everything in the ops folder	«folder = Frontier.getSubFolder ("www")	«fileloop (f in folder)		«local (fname = file.fileFromPath (f))		«if f endsWith ".root"			«if not (f contains "prefs")				«try {file.delete (f)}		«if file.isFolder (f)			«if f contains "theme"				«continue			«try {file.deleteFolder (f)}	«local (pc = file.getPathChar ())	«local (sourceFolder = file.getSystemDisk () + "VirginDatabases" + pc)	«folder = Frontier.getSubFolder ("apps")	«file.emptyFolder (folder)	«file.copy (sourceFolder + "mainResponder.root", folder)	«file.copy (sourceFolder + "manila.root", folder)	«folder = Frontier.getSubFolder ("apps/Tools/")	«file.copy (sourceFolder + "TheXmlFiles.root", folder)	«file.copy (sourceFolder + "serverMonitor.root", folder)	«file.copy (sourceFolder + "radioCommunityServer.root", folder)	«	«folder = Frontier.getSubFolder ("www")	«file.emptyFolder (folder)	«file.copy (sourceFolder + "prefs.root", folder)	«	«folder = Frontier.getSubFolder ("ops")	«file.emptyFolder (folder)	«file.copy (sourceFolder + "ops" + pc, folder)	«	«try {file.deleteFolder (frontier.pathString + "RCS Backups" + file.getPathChar ())}	«try {file.deleteFolder (frontier.pathString + "Manila Backups" + file.getPathChar ())}	«try {file.deleteFolder (frontier.pathString + "backups" + file.getPathChar ())}msg ("Finished.");return (true)
+Â«run this script to clean up the root for release
+	Â«DW 1/1/96: MacBird 1.0 Release
+	Â«DW 4/1/96: Brought back stuff from 3.0
+	Â«DW 4/20/96: Frontier 4.0b5 release
+	Â«DW 11/5/97 Frontier 5.0a11
+Â«Changes
+	Â«8/18/02; 5:05:04 PM by JES
+		Â«Delete the RCS Backups, Manila Backups and backups folders from the Frontier folder. Initialize user.prefs.serialNumber to the empty string. Set up the port 5335 HTTP server at user.inetd.config.http2.
+try { //disable threads
+	user.scheduler.prefs.runThreads = false;
+	scheduler.monitorThreads ()};
+Frontier.enableAgents (false);
+inetd.stop ();
+Â«bundle //set up the root window
+	Â«target.set ("root")
+	Â«op.firstSummit ()
+	Â«op.fullCollapse ()
+	Â«op.findNext ("websites")
+	Â«wp.setTextMode (false)
+	Â«op.expand (1)
+	Â«target.clear ()
+bundle { Â«initialize the quick script window
+	window.quickScript ();
+	clipboard.putvalue ("dialog.notify (\"Hello World!\")");
+	editmenu.selectall ();
+	editmenu.paste ();
+	window.close ("Quick Script")};
+
+Â«case sys.os ()
+	Â«"MacOS"
+		Â«if sizeof (webbrowser.protocols.activehandlers) > 0
+			Â«scriptError ("The virgin root must have no active trap handlers.")
+		Â«user.prefs.texteditorapp = ""
+		Â«bundle Â«user.prefs.newscript
+			Â«new (tabletype, @user.prefs.newscript)
+			Â«newscript.init ()
+		Â«new (tabletype, @netfrontier.buddies)
+
+bundle { Â«empty out standard tables
+	new (tabletype, @scratchpad);
+	Â«new (tabletype, @workspace)
+	new (outlineType, @workspace.notepad)};
+bundle { Â«clear the path for all apps in the apps table
+	local (adrappstable = @system.verbs.apps, i);
+	for i = 1 to sizeof (adrappstable^) {
+		local (adrappinfo = @adrappstable^ [i].appInfo);
+		if defined (adrappinfo^) {
+			adrappinfo^.path = ""}}};
+bundle { Â«clean passwords out of user.html.sites table
+	local (i);
+	for i = 1 to sizeof (user.html.sites) {
+		if defined (user.html.sites [i].password) {
+			user.html.sites [i].password = "xxxxx"}}};
+Â«bundle Â«initialize stuff in the webServer suite
+	Â«webServer.preferences.hostname = ""
+	Â«webServer.preferences.rootPath = ""
+bundle { Â«set up user.html
+	user.html.prefs = userland.htmlprefs; Â«initialize user.html.prefs table
+	new (outlinetype, @user.html.changedPages);
+	
+	new (tableType, @user.html.images)};
+Â«edit (@frontier.version)
+Frontier.shipdate = clock.now ();
+userland.initialLastUpdateTime = date.netStandardString (Frontier.shipDate);
+user.prefs.search.winStandardFindCommand = false;
+user.prefs.agentsEnabled = true;
+user.prefs.dialogs.jumpAddress = "workspace";
+user.prefs.firstRootRun = true;
+user.prefs.serialNumber = "";
+user.prefs.frontierIsServer = false;
+user.prefs.flShortTimeStamp = false;
+user.prefs.flWinStandardMaximize = true;
+try {delete (@user.prefs.portForwardingAdminPassword)};
+bundle { //set up trial version info
+	try {delete (@userland.trialVersion)};
+	user.prefs.serialNumber = ""};
+
+bundle { //set up webserver, betty, rootUpdates, people, custody, and WebEdit
+	on nuke (name) {
+		if defined (user.[name]) {
+			delete (@user.[name])};
+		return (true)};
+	nuke ("webserver");
+	nuke ("betty");
+	nuke ("people");
+	nuke ("custody");
+	nuke ("webEdit");
+	nuke ("webEditServer");
+	nuke ("rootUpdates");
+	nuke ("databases");
+	nuke ("backups");
+	nuke ("batchExporter");
+	nuke ("export");
+	nuke ("xmlStorageSystem");
+	
+	try {delete (@user.scheduler.tasks)}; //PBS 07/06/00: let the user.scheduler.tasks table get re-initialized
+	try {delete (@user.scheduler.everyMinute)};
+	try {delete (@user.scheduler.threads)};
+	try {delete (@user.scheduler.hourly)};
+	try {delete (@user.scheduler.overnight)};
+	
+	bundle { //user.manila
+		new (tableType, @user.manila);
+		new (tableType, @user.manila.data);
+		new (tableType, @user.manila.data.sites);
+		new (tableType, @user.manila.prefs);
+		user.manila.prefs.lastSiteUrl = "http://"};
+	
+	webserver.init ();
+	betty.init ();
+	people.init ();
+	custody.init ();
+	webEdit.init ();
+	webEditServer.init ();
+	rootUpdates.init ();
+	
+	user.inetd.config.http = webserver.data.inetd.config.http;
+	user.inetd.config.http2 = webserver.data.inetd.config.http2; //port 5335 server
+	if system.environment.isCarbon {
+		user.inetd.config.http.port = 8080;
+		user.inetd.config.http.apparentPort = 80};
+	user.inetd.config.http.timeout = 30;
+	user.inetd.config.http.startup = true;
+	user.inetd.config.http.count = 30;
+	user.inetd.config.http2.timeout = 30;
+	user.inetd.config.http2.startup = true;
+	user.inetd.config.http2.count = 30;
+	
+	new (tableType, @user.inetd.listens)};
+
+Â«bundle //initialize responders
+	Â«user.webserver.responders.websiteFramework.data.docTree.samples = @websites.samples
+	Â«try
+		Â«delete (@user.webserver.responders.websiteFramework.data.docTree.allSites)
+	Â«try
+		Â«delete (@user.webserver.responders.websiteFramework.data.docTree.contents)
+
+filemenu.save ();
+
+bundle { //8.0 stuff
+	Â«bundle //user.odbEditors
+		Â«new (tableType, @user.odbEditors)
+		Â«new (tableType, @user.odbEditors.data)
+		Â«new (tableType, @user.odbEditors.data.openFiles)
+		Â«user.odbEditors.openFiles.data.serialnum = 1
+		Â«user.odbEditors.openFiles.data.TextEditor = ""
+		Â«user.odbEditors.textFileExtension = ".html"
+	try {delete (@user.odbEditors)};
+	bundle { //user.netEvents
+		try {delete (@user.netEvents)}};
+	bundle { //user.xmlStorageSystem
+		try {delete (@user.xmlStorageSystem)}};
+	try {delete (@user.tools)};
+	Frontier.tools.thread.ct = 0;
+	Frontier.tools.thread.enabled = true};
+
+bundle { Â«save a copy
+	local (f = frontier.pathstring + "Virgin.root");
+	Â«file.move (f, file.getSpecialFolderPath (file.volumeFromPath (f), "Trash", false))
+	local (oldtarget = target.set (@root));
+	FileMenu.saveCopy (f);
+	try {target.set (oldtarget)}};
+Â«bundle //PBS 07/05/00: delete unwanted databases
+	Â«on visitProc (f)
+		Â«if not (string.lower (f) == string.lower (Frontier.getFilePath ()))
+			Â«fileMenu.close (f)
+	Â«table.visitOpenDatabases (@visitProc, true) //close open gdbs
+	Â«local (f)
+	Â«local (folder = Frontier.getSubFolder ("")) //path to Guest Databases folder
+	Â«fileloop (f in folder, infinity)
+		Â«local (fname = file.fileFromPath (f))
+		Â«local (lowerName = string.lower (fname))
+		Â«lowerName = lowerName - file.getPathChar ()
+		Â«case lowerName
+			Â«"thexmlfiles.root"
+			Â«"manila.root"
+			Â«"mainresponder.root"
+			Â«"prefs.root"
+				Â«continue
+		Â«file.delete (f)
+	Â«folder = Frontier.getSubFolder ("ops")
+	Â«fileloop (f in folder)
+		Â«local (fname = file.fileFromPath (f))
+		Â«if f endsWith ".root"
+			Â«try {file.delete (f)}
+		Â«if file.isFolder (f)
+			Â«if f contains "theme"
+				Â«continue
+			Â«try {file.deleteFolder (f)}
+	Â«file.emptyFolder (folder) //delete everything in the ops folder
+	Â«folder = Frontier.getSubFolder ("www")
+	Â«fileloop (f in folder)
+		Â«local (fname = file.fileFromPath (f))
+		Â«if f endsWith ".root"
+			Â«if not (f contains "prefs")
+				Â«try {file.delete (f)}
+		Â«if file.isFolder (f)
+			Â«if f contains "theme"
+				Â«continue
+			Â«try {file.deleteFolder (f)}
+	Â«local (pc = file.getPathChar ())
+	Â«local (sourceFolder = file.getSystemDisk () + "VirginDatabases" + pc)
+	Â«folder = Frontier.getSubFolder ("apps")
+	Â«file.emptyFolder (folder)
+	Â«file.copy (sourceFolder + "mainResponder.root", folder)
+	Â«file.copy (sourceFolder + "manila.root", folder)
+	Â«folder = Frontier.getSubFolder ("apps/Tools/")
+	Â«file.copy (sourceFolder + "TheXmlFiles.root", folder)
+	Â«file.copy (sourceFolder + "serverMonitor.root", folder)
+	Â«file.copy (sourceFolder + "radioCommunityServer.root", folder)
+	Â«
+	Â«folder = Frontier.getSubFolder ("www")
+	Â«file.emptyFolder (folder)
+	Â«file.copy (sourceFolder + "prefs.root", folder)
+	Â«
+	Â«folder = Frontier.getSubFolder ("ops")
+	Â«file.emptyFolder (folder)
+	Â«file.copy (sourceFolder + "ops" + pc, folder)
+	Â«
+	Â«try {file.deleteFolder (frontier.pathString + "RCS Backups" + file.getPathChar ())}
+	Â«try {file.deleteFolder (frontier.pathString + "Manila Backups" + file.getPathChar ())}
+	Â«try {file.deleteFolder (frontier.pathString + "backups" + file.getPathChar ())}
+
+msg ("Finished.");
+
+return (true)

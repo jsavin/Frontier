@@ -1,1 +1,2 @@
-on bringToFront () {	card.details.notsupported ("bringToFront")}
+on bringToFront () {
+	card.details.notsupported ("bringToFront")}

@@ -1,1 +1,7 @@
-on visitServiceGroups (serviceName, adrCallback) {	on callback (groupName) {		if people.serviceIsAttachedToGroup (serviceName, groupName) {			try {				adrCallback^ (groupName)}}};	people.visitAllGroups (@callback);	return (true)}
+on visitServiceGroups (serviceName, adrCallback) {
+	on callback (groupName) {
+		if people.serviceIsAttachedToGroup (serviceName, groupName) {
+			try {
+				adrCallback^ (groupName)}}};
+	people.visitAllGroups (@callback);
+	return (true)}

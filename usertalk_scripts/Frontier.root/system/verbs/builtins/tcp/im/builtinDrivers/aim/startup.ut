@@ -1,1 +1,9 @@
-on startup () {	«Changes		«7/30/02; 3:23:42 PM by JES			«Created.	tcp.im.builtinDrivers.aim.init ();	if user.im.aim.flConnectAtStartup {		parentOf (this^)^.start ()}};bundle { //test code	startup ()}
+on startup () {
+	Â«Changes
+		Â«7/30/02; 3:23:42 PM by JES
+			Â«Created.
+	tcp.im.builtinDrivers.aim.init ();
+	if user.im.aim.flConnectAtStartup {
+		parentOf (this^)^.start ()}};
+bundle { //test code
+	startup ()}

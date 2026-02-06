@@ -1,1 +1,3 @@
-on countMailfolders () { « returns the number of mailfolders	with objectModel, Eudora, eventInfo {		return (core.count (id, mailfolder[""], mailfolder))}}
+on countMailfolders () { Â« returns the number of mailfolders
+	with objectModel, Eudora, eventInfo {
+		return (core.count (id, mailfolder[""], mailfolder))}}

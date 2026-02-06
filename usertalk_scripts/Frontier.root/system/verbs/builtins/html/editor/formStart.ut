@@ -1,1 +1,46 @@
-on formStart (fieldName=nil, action=nil, name="editPostForm", method="POST", enctype=nil, pta=nil) {	«Changes		«4/8/05; 4:40:51 AM by JES			«Changed default for name from nil to "editPostForm". Makes the default values of this verb work with the defaults for html.editor.get.		«8/5/03; 6:25:29 PM by JES			«Added support for the Mozilla rich text editor.		«8/31/01; 12:37:44 PM by JES			«Created. Get the opening <form> tag for the HTML editor.		if pta == nil {		pta = html.getPageTableAddress ()};		local (editingTool = html.editor.getEditingTool (pta));	local (onsubmit);		if editingTool beginsWith "wysiwygEditor" {		if name == nil { //the WYSIWYG editor won't work without a name attribute			name = "htmlEditor"};		if fieldName == nil { //the WYSIWYG editor won't work without a field name			fieldName = "body"};		if string.lower (editingTool) contains "mozilla" {			onsubmit = "submitEditForm()"}		else { //IE			onsubmit = "document." + name + "." + fieldName + ".value=getEditorContents()"}};		local (htmltext);	on add (s) {		htmltext = htmltext + s};		add ("<form");	if name != nil {		add (" name=\"" + name + "\"")};	if method != nil {		add (" method=\"" + method + "\"")};	if enctype != nil {		add (" enctype=\"" + enctype + "\"")};	if action != nil {		add (" action=\"" + action + "\"")};	if onsubmit != nil {		add (" onsubmit=\"" + onsubmit + "\"")};	add (">");		return (htmltext)};«bundle //testing	«html.editor.formStart (pta:@workspace.pt)		«"<form name=\"htmlEditor\" method=\"POST\" onsubmit=\"setMode(true);document.htmlEditor.body.value=document.frames('idEdit').document.body.innerHtml\">"
+on formStart (fieldName=nil, action=nil, name="editPostForm", method="POST", enctype=nil, pta=nil) {
+	Â«Changes
+		Â«4/8/05; 4:40:51 AM by JES
+			Â«Changed default for name from nil to "editPostForm". Makes the default values of this verb work with the defaults for html.editor.get.
+		Â«8/5/03; 6:25:29 PM by JES
+			Â«Added support for the Mozilla rich text editor.
+		Â«8/31/01; 12:37:44 PM by JES
+			Â«Created. Get the opening <form> tag for the HTML editor.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (editingTool = html.editor.getEditingTool (pta));
+	local (onsubmit);
+	
+	if editingTool beginsWith "wysiwygEditor" {
+		if name == nil { //the WYSIWYG editor won't work without a name attribute
+			name = "htmlEditor"};
+		if fieldName == nil { //the WYSIWYG editor won't work without a field name
+			fieldName = "body"};
+		if string.lower (editingTool) contains "mozilla" {
+			onsubmit = "submitEditForm()"}
+		else { //IE
+			onsubmit = "document." + name + "." + fieldName + ".value=getEditorContents()"}};
+	
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + s};
+	
+	add ("<form");
+	if name != nil {
+		add (" name=\"" + name + "\"")};
+	if method != nil {
+		add (" method=\"" + method + "\"")};
+	if enctype != nil {
+		add (" enctype=\"" + enctype + "\"")};
+	if action != nil {
+		add (" action=\"" + action + "\"")};
+	if onsubmit != nil {
+		add (" onsubmit=\"" + onsubmit + "\"")};
+	add (">");
+	
+	return (htmltext)};
+Â«bundle //testing
+	Â«html.editor.formStart (pta:@workspace.pt)
+		Â«"<form name=\"htmlEditor\" method=\"POST\" onsubmit=\"setMode(true);document.htmlEditor.body.value=document.frames('idEdit').document.body.innerHtml\">"

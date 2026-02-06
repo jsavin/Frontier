@@ -1,1 +1,3 @@
-on fileIsFat (f) {	local (s = fatPages.readSourceFile (f));	return (fatPages.dataIsFat (@s))}
+on fileIsFat (f) {
+	local (s = fatPages.readSourceFile (f));
+	return (fatPages.dataIsFat (@s))}

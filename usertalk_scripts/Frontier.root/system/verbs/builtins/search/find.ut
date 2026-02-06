@@ -1,1 +1,3 @@
-on find (searchstring) {	user.prefs.search.searchfor = searchstring;	search.findNext ()}
+on find (searchstring) {
+	user.prefs.search.searchfor = searchstring;
+	search.findNext ()}

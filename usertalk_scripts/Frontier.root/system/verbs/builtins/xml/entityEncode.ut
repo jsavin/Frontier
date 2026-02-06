@@ -1,1 +1,25 @@
-on entityEncode (s, flAlphaEntities = false) {	«Changes		«10/22/99; 2:14:49 PM by DW			«In some circumstances, sending non-escaped eight-bit ASCII characters causes XML parsers to reject the XML, esp if no character encoding is specified. This can be a problem when you're accepting text that could have been entered on a Mac or a PC or whatever, and you don't know what the characters mean, so you don't know how to declare the encoding. In those cases, we still want to be able to send the text, so we "entity-encode" the text, as specified in the XML spec on the W3C site.			«This new verb processes the input string, and returns a string with all high-bit characters replaced with the equivalent encoding. 			«http://www.w3.org/TR/1998/REC-xml-19980210#wf-Legalchar		«11/14/2000; 5:55:38 PM by DW			«Encode alpha entitites. See the comment at the head of xml.entityEncode.	local (i = 1, num);	while i <= sizeof (s) {		num = number (s [i]);		if num >= 128 {			s = string.delete (s, i, 1);			s = string.insert ("&#" + num + ";", s, i);			i = i + 5};		i++};	bundle { //encode alpha entities		if flAlphaEntities {			s = string.replaceall (s, "<", "&lt;");			s = string.replaceall (s, ">", "&gt;");			s = string.replaceall (s, "&", "&amp;");			s = string.replaceall (s, "\"", "&quot;")}};	return (s)};bundle { //test code	dialog.alert (entityEncode ("Olejováø \"skvrna\" na Labi zøejmì do Nìmecka nedoplujeøíjna 1999 13:49", true))}
+on entityEncode (s, flAlphaEntities = false) {
+	Â«Changes
+		Â«10/22/99; 2:14:49 PM by DW
+			Â«In some circumstances, sending non-escaped eight-bit ASCII characters causes XML parsers to reject the XML, esp if no character encoding is specified. This can be a problem when you're accepting text that could have been entered on a Mac or a PC or whatever, and you don't know what the characters mean, so you don't know how to declare the encoding. In those cases, we still want to be able to send the text, so we "entity-encode" the text, as specified in the XML spec on the W3C site.
+			Â«This new verb processes the input string, and returns a string with all high-bit characters replaced with the equivalent encoding. 
+			Â«http://www.w3.org/TR/1998/REC-xml-19980210#wf-Legalchar
+		Â«11/14/2000; 5:55:38 PM by DW
+			Â«Encode alpha entitites. See the comment at the head of xml.entityEncode.
+	local (i = 1, num);
+	while i <= sizeof (s) {
+		num = number (s [i]);
+		if num >= 128 {
+			s = string.delete (s, i, 1);
+			s = string.insert ("&#" + num + ";", s, i);
+			i = i + 5};
+		i++};
+	bundle { //encode alpha entities
+		if flAlphaEntities {
+			s = string.replaceall (s, "<", "&lt;");
+			s = string.replaceall (s, ">", "&gt;");
+			s = string.replaceall (s, "&", "&amp;");
+			s = string.replaceall (s, "\"", "&quot;")}};
+	return (s)};
+bundle { //test code
+	dialog.alert (entityEncode ("OlejovÃ¡Ã¸ \"skvrna\" na Labi zÃ¸ejmÃ¬ do NÃ¬mecka nedoplujeÃ¸Ã­jna 1999 13:49", true))}

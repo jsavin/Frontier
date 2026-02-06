@@ -1,1 +1,2 @@
-on insert (s, dir) {	kernel (op.insert)}
+on insert (s, dir) {
+	kernel (op.insert)}

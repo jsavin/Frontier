@@ -1,1 +1,2 @@
-on updateObject (param1) {	return (appleEvent (cardEditor.id, 'IOWA', 'upob', 'prm1', string (param1)))}
+on updateObject (param1) {
+	return (appleEvent (cardEditor.id, 'IOWA', 'upob', 'prm1', string (param1)))}

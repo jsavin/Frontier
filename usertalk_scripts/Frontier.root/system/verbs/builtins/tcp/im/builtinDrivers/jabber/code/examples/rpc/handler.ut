@@ -1,1 +1,13 @@
-on handler ( iq, query, connection ) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«This is the handler for RPC calls. You can just run the code, and it should self-install. This is because of what the last line of the code is, not a feature of running handler scripts.	local ( type );	type = xml.getAttributeValue ( iq, "type" );	if type == "set" {		tcp.im.builtinDrivers.jabber.code.examples.rpc.xmlrpcCall(connection, mesAdr, iq, query)};	if type == "result" {		try { // could lose the idtable in mid-processing, causing a script error at "if id^.jabberXMLRPCflAsync"			tcp.im.builtinDrivers.jabber.code.examples.rpc.xmlrpcResponse(connection, mesAdr, iq, query)}}};tcp.im.builtinDrivers.jabber.code.registerHandler ( "iq", this, namespace: "jabber:iq:rpc" )
+on handler ( iq, query, connection ) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«This is the handler for RPC calls. You can just run the code, and it should self-install. This is because of what the last line of the code is, not a feature of running handler scripts.
+	local ( type );
+	type = xml.getAttributeValue ( iq, "type" );
+	if type == "set" {
+		tcp.im.builtinDrivers.jabber.code.examples.rpc.xmlrpcCall(connection, mesAdr, iq, query)};
+	if type == "result" {
+		try { // could lose the idtable in mid-processing, causing a script error at "if id^.jabberXMLRPCflAsync"
+			tcp.im.builtinDrivers.jabber.code.examples.rpc.xmlrpcResponse(connection, mesAdr, iq, query)}}};
+tcp.im.builtinDrivers.jabber.code.registerHandler ( "iq", this, namespace: "jabber:iq:rpc" )

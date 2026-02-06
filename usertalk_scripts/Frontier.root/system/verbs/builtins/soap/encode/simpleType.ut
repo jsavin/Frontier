@@ -1,1 +1,76 @@
-on simpleType (adrmsg, val, adrparent, name, fladdtype=true, flEntityEncodeHighAscii=false) {	«Changes:		«03/27/01; 5:44:21 PM by JES			«Serialize doubles as type "xsd:float", instead of "xsd:double", since float means 32-bit floating point number, and double means 64-bit floating point number. In Frontier, a doubleType is 32-bits.		«04/01/01; 3:30:28 AM by JES			«Encode booleans as 1/0, instead of true/false.		«04/03/01; 7:40:52 PM by JES			«New optional parameter, flEntityEncodeHighAscii, specifies whether to entity-encode high-ascii characters when encoding strings. Default is false.		«04/11/01; 3:25:28 PM by JES			«Encode floats by calling soap.encode.float.		«04/27/01; 6:57:55 PM by JES			«Specify SOAP-ENC:base64 for base64-encoded binary types.	local (type);	case typeof (val) {		binaryType {			if getBinaryType (val) == unknownType and val == nil {				return (true)};			case val { //special IEEE floating point values, INF, -INF and NaN				soap.constants.floatINF;				soap.constants.floatNegativeINF;				soap.constants.floatNaN {					type = soap.constants.nsSchemaDataPrefix + ":float";					val = soap.encode.float (val)}}			else {				type = soap.constants.nsEncodingPrefix + ":base64";				val = base64.encode (val, 0)}};		booleanType {			type = soap.constants.nsSchemaDataPrefix + ":boolean";			val = number (val)}; //04/01/2001 JES: 0 or 1		charType {			type = soap.constants.nsSchemaDataPrefix + ":byte"};		dateType {			local (s, day, month, year, hour, minute, second);			date.get (val, @day, @month, @year, @hour, @minute, @second);			s = string (year) + "-";			s = s + string.padWithZeros (month, 2) + "-";			s = s + string.padWithZeros (day, 2) + "T";			s = s + string.padWithZeros (hour, 2) + ":";			s = s + string.padWithZeros (minute, 2) + ":";			s = s + string.padWithZeros (second, 2);			local (tzsign, tzoffset = date.getCurrentTimeZone () / 60);			if tzoffset < 0 {				tzoffset = -1 * tzoffset;				tzsign = "-"}			else {				tzsign = "+"};			local (tzhours = tzoffset / 60);			local (tzminutes = tzoffset % 60);			val = s + tzsign + string.padWithZeros (tzhours, 2) + ":"  + string.padWithZeros (tzminutes, 2);			type = soap.constants.nsSchemaDataPrefix + ":timeInstant"};		doubleType {			type = soap.constants.nsSchemaDataPrefix + ":float";			val = soap.encode.float (val)};		longType;		intType {			type = soap.constants.nsSchemaDataPrefix + ":int"};		shortType {			type = soap.constants.nsSchemaDataPrefix + ":short"};		stringType {			type = soap.constants.nsSchemaDataPrefix + ":" + "string";			if flEntityEncodeHighAscii {				val = soap.xmlutils.encodeWithAmpersands (val);				val  = xml.entityEncode (val)}			else {				val = soap.xmlutils.encodeWithAmpersands (val)}};		unknownType { //encode as nil value			local (adrelement = soap.xmlutils.addElement (adrparent, name));			soap.xmlutils.addAttributeValue (adrelement, "xsi:null", "1");			return (true)}}	else {		scripterror ("Can't encode \"" + name + "\" because the encoding of type '" + string.typeToString (typeof (val)) + "' is not supported.")};	local (adrelement = soap.xmlutils.addElement (adrparent, name));	if fladdtype {		soap.xmlutils.addAttributeValue (adrelement, soap.constants.nsSchemaPrefix + ":type", type)};	soap.xmlutils.setCharacterData (adrelement, string (val));	return (true)}
+on simpleType (adrmsg, val, adrparent, name, fladdtype=true, flEntityEncodeHighAscii=false) {
+	Â«Changes:
+		Â«03/27/01; 5:44:21 PM by JES
+			Â«Serialize doubles as type "xsd:float", instead of "xsd:double", since float means 32-bit floating point number, and double means 64-bit floating point number. In Frontier, a doubleType is 32-bits.
+		Â«04/01/01; 3:30:28 AM by JES
+			Â«Encode booleans as 1/0, instead of true/false.
+		Â«04/03/01; 7:40:52 PM by JES
+			Â«New optional parameter, flEntityEncodeHighAscii, specifies whether to entity-encode high-ascii characters when encoding strings. Default is false.
+		Â«04/11/01; 3:25:28 PM by JES
+			Â«Encode floats by calling soap.encode.float.
+		Â«04/27/01; 6:57:55 PM by JES
+			Â«Specify SOAP-ENC:base64 for base64-encoded binary types.
+	local (type);
+	case typeof (val) {
+		binaryType {
+			if getBinaryType (val) == unknownType and val == nil {
+				return (true)};
+			case val { //special IEEE floating point values, INF, -INF and NaN
+				soap.constants.floatINF;
+				soap.constants.floatNegativeINF;
+				soap.constants.floatNaN {
+					type = soap.constants.nsSchemaDataPrefix + ":float";
+					val = soap.encode.float (val)}}
+			else {
+				type = soap.constants.nsEncodingPrefix + ":base64";
+				val = base64.encode (val, 0)}};
+		booleanType {
+			type = soap.constants.nsSchemaDataPrefix + ":boolean";
+			val = number (val)}; //04/01/2001 JES: 0 or 1
+		charType {
+			type = soap.constants.nsSchemaDataPrefix + ":byte"};
+		dateType {
+			local (s, day, month, year, hour, minute, second);
+			date.get (val, @day, @month, @year, @hour, @minute, @second);
+			s = string (year) + "-";
+			s = s + string.padWithZeros (month, 2) + "-";
+			s = s + string.padWithZeros (day, 2) + "T";
+			s = s + string.padWithZeros (hour, 2) + ":";
+			s = s + string.padWithZeros (minute, 2) + ":";
+			s = s + string.padWithZeros (second, 2);
+			local (tzsign, tzoffset = date.getCurrentTimeZone () / 60);
+			if tzoffset < 0 {
+				tzoffset = -1 * tzoffset;
+				tzsign = "-"}
+			else {
+				tzsign = "+"};
+			local (tzhours = tzoffset / 60);
+			local (tzminutes = tzoffset % 60);
+			val = s + tzsign + string.padWithZeros (tzhours, 2) + ":"  + string.padWithZeros (tzminutes, 2);
+			type = soap.constants.nsSchemaDataPrefix + ":timeInstant"};
+		doubleType {
+			type = soap.constants.nsSchemaDataPrefix + ":float";
+			val = soap.encode.float (val)};
+		longType;
+		intType {
+			type = soap.constants.nsSchemaDataPrefix + ":int"};
+		shortType {
+			type = soap.constants.nsSchemaDataPrefix + ":short"};
+		stringType {
+			type = soap.constants.nsSchemaDataPrefix + ":" + "string";
+			if flEntityEncodeHighAscii {
+				val = soap.xmlutils.encodeWithAmpersands (val);
+				val  = xml.entityEncode (val)}
+			else {
+				val = soap.xmlutils.encodeWithAmpersands (val)}};
+		unknownType { //encode as nil value
+			local (adrelement = soap.xmlutils.addElement (adrparent, name));
+			soap.xmlutils.addAttributeValue (adrelement, "xsi:null", "1");
+			return (true)}}
+	else {
+		scripterror ("Can't encode \"" + name + "\" because the encoding of type '" + string.typeToString (typeof (val)) + "' is not supported.")};
+	local (adrelement = soap.xmlutils.addElement (adrparent, name));
+	if fladdtype {
+		soap.xmlutils.addAttributeValue (adrelement, soap.constants.nsSchemaPrefix + ":type", type)};
+	soap.xmlutils.setCharacterData (adrelement, string (val));
+	return (true)}

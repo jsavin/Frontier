@@ -1,1 +1,2 @@
-on commentDelete (s) {	kernel (string.commentdelete)}
+on commentDelete (s) {
+	kernel (string.commentdelete)}

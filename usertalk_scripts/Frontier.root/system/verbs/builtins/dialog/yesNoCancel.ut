@@ -1,1 +1,2 @@
-on yesNoCancel (prompt) {	return (dialog.threeWay (prompt, "Yes", "No", "Cancel"))}
+on yesNoCancel (prompt) {
+	return (dialog.threeWay (prompt, "Yes", "No", "Cancel"))}

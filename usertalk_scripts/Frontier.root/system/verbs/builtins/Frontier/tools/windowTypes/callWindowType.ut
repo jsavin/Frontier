@@ -1,1 +1,14 @@
-on callWindowType (scriptname, adrparams=nil, adrwindow=nil) {	if adrwindow == nil {		adrwindow = window.frontmost ()};	local (windowType);	if window.attributes.getOne ("type", @windowType, adrwindow) {		local (adrWindowType);		if Frontier.tools.windowTypes.findWindowType (windowType, @adrWindowType, adrwindow) {			adrscript = @adrWindowType^.[scriptname];			if defined (adrscript^) {				if adrparams != nil {					return (callScript (adrscript, adrparams^))}				else { //call with no params					reutrn (adrscript^ ())}}}};	return (false)} //default behavior
+on callWindowType (scriptname, adrparams=nil, adrwindow=nil) {
+	if adrwindow == nil {
+		adrwindow = window.frontmost ()};
+	local (windowType);
+	if window.attributes.getOne ("type", @windowType, adrwindow) {
+		local (adrWindowType);
+		if Frontier.tools.windowTypes.findWindowType (windowType, @adrWindowType, adrwindow) {
+			adrscript = @adrWindowType^.[scriptname];
+			if defined (adrscript^) {
+				if adrparams != nil {
+					return (callScript (adrscript, adrparams^))}
+				else { //call with no params
+					reutrn (adrscript^ ())}}}};
+	return (false)} //default behavior

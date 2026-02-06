@@ -1,1 +1,2 @@
-on urlEncode (s) {	kernel (string.urlEncode)}
+on urlEncode (s) {
+	kernel (string.urlEncode)}

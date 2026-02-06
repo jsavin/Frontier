@@ -1,1 +1,7 @@
-on getLastDate (adrSitePrefs) {	«Changes		«9/6/01; 8:04:33 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename});		return (manila.callHandler (host, port, "manila.homepage.calendar.getLastDate", @params, rpcPath:rpcPath))}}
+on getLastDate (adrSitePrefs) {
+	Â«Changes
+		Â«9/6/01; 8:04:33 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename});
+		return (manila.callHandler (host, port, "manila.homepage.calendar.getLastDate", @params, rpcPath:rpcPath))}}

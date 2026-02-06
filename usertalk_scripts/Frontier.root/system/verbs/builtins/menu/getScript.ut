@@ -1,1 +1,2 @@
-on getScript (adr) {	kernel (menu.getscript)}
+on getScript (adr) {
+	kernel (menu.getscript)}

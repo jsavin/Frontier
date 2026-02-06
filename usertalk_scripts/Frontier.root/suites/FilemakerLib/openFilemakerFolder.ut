@@ -1,1 +1,3 @@
-on openFilemakerFolder () {	finder.open (file.folderFromPath (filemaker.appInfo.path));	finder.bringToFront ()}
+on openFilemakerFolder () {
+	finder.open (file.folderFromPath (filemaker.appInfo.path));
+	finder.bringToFront ()}

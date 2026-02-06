@@ -1,1 +1,7 @@
-on filesInFolder (path, level) {	local (count = 0);	on visit (f) {		count++;		return (true)}; «keep traversing	file.visitFolder (path, level, @visit);	return (count)}
+on filesInFolder (path, level) {
+	local (count = 0);
+	on visit (f) {
+		count++;
+		return (true)}; Â«keep traversing
+	file.visitFolder (path, level, @visit);
+	return (count)}

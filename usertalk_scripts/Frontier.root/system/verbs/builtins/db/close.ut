@@ -1,1 +1,2 @@
-on close (f) {	kernel (db.close)}
+on close (f) {
+	kernel (db.close)}

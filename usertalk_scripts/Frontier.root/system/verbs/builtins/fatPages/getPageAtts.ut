@@ -1,1 +1,29 @@
-on getPageAtts (adrSource, adrtable) { //Thu, Mar 20, 1997 at 10:24:52 AM by DW	local (ix);	new (tableType, adrTable);	if not (fatPages.dataIsFat (adrSource)) {		return (false)};		ix = string.patternMatch ("<!--\r#fatPage", adrSource^);	adrSource^ = string.delete (adrSource^, 1, ix - 1);		ix = string.patternMatch ("\r-->", adrSource^);	adrSource^ = string.mid (adrSource^, 1, ix - 1);		loop { //over all the lines in the comment		local (name, line1 = string.nthField (adrSource^, '\r', 1));		«adrSource^ = string.delete (adrSource^, 1, sizeOf (line1) + 1)		adrSource^ = adrSource^ - line1;		adrSource^ = adrSource^ - '\r';				if line1 beginsWith '#' {			«line1 = string.delete (line1, 1, 1) //pop off the #			line1 = line1 - '#';			name = string.nthField (line1, ' ', 1);						«adrTable^.[name] = string.delete (line1, 1, sizeOf (name) + 1)			line1 = line1 - name;			line1 = line1 - ' ';			table.moveAndRename (@line1, @adrTable^.[name])};		if adrSource^ == "" {			return (true)}}}
+on getPageAtts (adrSource, adrtable) { //Thu, Mar 20, 1997 at 10:24:52 AM by DW
+	local (ix);
+	new (tableType, adrTable);
+	if not (fatPages.dataIsFat (adrSource)) {
+		return (false)};
+	
+	ix = string.patternMatch ("<!--\r#fatPage", adrSource^);
+	adrSource^ = string.delete (adrSource^, 1, ix - 1);
+	
+	ix = string.patternMatch ("\r-->", adrSource^);
+	adrSource^ = string.mid (adrSource^, 1, ix - 1);
+	
+	loop { //over all the lines in the comment
+		local (name, line1 = string.nthField (adrSource^, '\r', 1));
+		Â«adrSource^ = string.delete (adrSource^, 1, sizeOf (line1) + 1)
+		adrSource^ = adrSource^ - line1;
+		adrSource^ = adrSource^ - '\r';
+		
+		if line1 beginsWith '#' {
+			Â«line1 = string.delete (line1, 1, 1) //pop off the #
+			line1 = line1 - '#';
+			name = string.nthField (line1, ' ', 1);
+			
+			Â«adrTable^.[name] = string.delete (line1, 1, sizeOf (name) + 1)
+			line1 = line1 - name;
+			line1 = line1 - ' ';
+			table.moveAndRename (@line1, @adrTable^.[name])};
+		if adrSource^ == "" {
+			return (true)}}}

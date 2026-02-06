@@ -1,1 +1,2 @@
-on rename (host, path, user, password, url, newname) { «rename file or directory	return (appleEvent (AnArchie.id, 'Arch', 'Rena', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url), 'NewN', string (newname)))}
+on rename (host, path, user, password, url, newname) { Â«rename file or directory
+	return (appleEvent (AnArchie.id, 'Arch', 'Rena', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url), 'NewN', string (newname)))}

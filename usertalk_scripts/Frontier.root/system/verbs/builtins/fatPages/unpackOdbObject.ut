@@ -1,1 +1,24 @@
-on unpackOdbObject (adrAtts, adrDest, path=nil, flRunnable=false, flEdit=true) {	local (data, objectType);	objectType = fatPages.getObjectType (adrAtts);	if not objectType {		fatPages.noObjectError (path)};	data = fatPages.decode (@adrAtts^.pageData);	delete (@adrAtts^.pageData); //we're done with it, free memory now	setBinaryType (@data, objectType);	table.surePath (adrDest);	unpack (@data, adrDest); //unpack the data	delete (@data); //we're done with it, free memory	if flRunnable { //it's a desktop script		local (wasDefined);		system.deskscripts.path = path; //make path available to the script		wasDefined = defined (adrDest^);		adrDest^ (); //It's runnable. Run the script.		if not wasDefined {			delete (adrDest)}}	else { //it's not a desktop script		if parentOf (adrDest^) == @suites {			system.menus.buildSuitesSubMenu ()};		if flEdit {			edit (adrDest)}};	return (true)}
+on unpackOdbObject (adrAtts, adrDest, path=nil, flRunnable=false, flEdit=true) {
+	local (data, objectType);
+	objectType = fatPages.getObjectType (adrAtts);
+	if not objectType {
+		fatPages.noObjectError (path)};
+	data = fatPages.decode (@adrAtts^.pageData);
+	delete (@adrAtts^.pageData); //we're done with it, free memory now
+	setBinaryType (@data, objectType);
+	table.surePath (adrDest);
+	unpack (@data, adrDest); //unpack the data
+	delete (@data); //we're done with it, free memory
+	if flRunnable { //it's a desktop script
+		local (wasDefined);
+		system.deskscripts.path = path; //make path available to the script
+		wasDefined = defined (adrDest^);
+		adrDest^ (); //It's runnable. Run the script.
+		if not wasDefined {
+			delete (adrDest)}}
+	else { //it's not a desktop script
+		if parentOf (adrDest^) == @suites {
+			system.menus.buildSuitesSubMenu ()};
+		if flEdit {
+			edit (adrDest)}};
+	return (true)}

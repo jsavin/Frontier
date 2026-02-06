@@ -1,1 +1,2 @@
-on getNthResInfo (path, type, n, adrid, adrname) {	kernel (rez.getNthResInfo)}
+on getNthResInfo (path, type, n, adrid, adrname) {
+	kernel (rez.getNthResInfo)}

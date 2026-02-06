@@ -1,1 +1,153 @@
-on writeTextFile (f, s, mimeType = nil, blockSize = nil, characterSet = nil, lineEnding = nil, creationDate = nil, type = nil, creator = nil) {	«Changes		«12/18/01; 7:57:44 PM by JES			«Created. Creates a new text file with the specified path, writes the contents to it with the correct line-endings and character set as specified by the input parameters, and closes the file.			«http://docserver.userland.com/file/writeTextFile	local (pc = file.getPathChar ());	local (fname = string.nthField (f, pc, string.countFields (f, pc)));	local (ext = string.nthField (fname, ".", string.countFields (fname, ".")));		local (os);	bundle { //calculate os		if system.environment.isWindows {			os = "win"}		else { //mac			if system.environment.isCarbon {				os = "osx"}			else {				os = "mac"}}};		bundle { //set up default values		if mimeType == nil { //get the mimeType from user.webserver.prefs.ext2MIME			if defined (user.webserver.prefs.ext2MIME.[ext]) {				mimeType = user.webserver.prefs.ext2MIME.[ext]}};		if blockSize == nil { //default to infinity			blockSize = infinity};		if characterSet == nil { //base it on the mimeType			case mimeType {				"text/xml";				"text/x-opml" {					characterSet = "windows"}}			else {				case os {					"win" {						characterSet = "windows"};					"osx";					"mac" {						characterSet = "mac"}}}};		if lineEnding == nil { //base it on the current platform			case os {				"win" {					lineEnding = "windows"};				"osx" {					lineEnding = "unix"};				"mac" {					lineEnding = "mac"}}};		if creationDate == nil { //if the file exists, preserve the creation date			if file.exists (f) {				try {creationDate = file.created (f)}}};		if system.environment.isMac { //set type/creator if not specified			if type == nil { //get the type from user.webserver.prefs.MIME2type				if defined (user.webserver.prefs.MIME2type) {					if defined (user.webserver.prefs.MIME2type.[mimeType]) {						type = user.webserver.prefs.MIME2type.[mimeType]}};				if type == nil { //no type defined -- pick a sensible default					if system.environment.isCarbon {						type = '    '}					else { //classic						type = 'TEXT'}}};			if creator == nil { //get the creator from user.webserver.prefs.MIME2creator, if defined				if defined (user.webserver.prefs.MIME2creator) {					if defined (user.webserver.prefs.MIME2creator.[mimeType]) {						creator = user.webserver.prefs.MIME2creator.[mimeType]}}				else { //set the default creator					case mimeType {						"text/xml";						"text/x-opml" {							creator = Frontier.id};						"text/html" {							creator = user.html.prefs.textFileCreator}}					else { //couldn't determine mimeType -- use default creator for the platform						if system.environment.isCarbon {							creator = 'text'} //TextEdit						else { //classic							creator = 'ttxt'}}}}}}; //SimpleText		file.new (f);	file.open (f);	bundle { //set type and creator on MacOS		if system.environment.isMac {			if type != nil {				file.setType (f, type)};			if creator != nil {				file.setCreator (f, creator)}}};	bundle { //convert text if necessary		bundle { //convert line endings to the specified line endings			local (eolChars);			case lineEnding { //set eolChars				"windows" {					eolChars = "\r\n"};				"unix" {					eolChars = "\n"};				"mac" {					eolChars = "\r"}};			local (ixCr = string.patternMatch ("\r", s));			local (ixLf = string.patternMatch ("\n", s));			if ixLf == 0 { //mac line-endings, or none in s				if ixCr != 0 { //any eol characters at all? if so, convert them					if eolChars != "\r" { //optimization						s = string.replaceAll (s, "\r", eolChars)}}}			else { //windows or unix line-endings in s				if ixCr == 0 { //unix line-endings in s					if lineEnding != "unix" {						if eolChars != "\n" { //optimization							s = string.replaceAll (s, "\n", eolChars)}}}				else { //windows line endings in s					if lineEnding != "windows" {						if eolChars != "\r\n" { //optimization							s = string.replaceAll (s, "\r\n", "\r")}}}}};		case os { //convert character set to the one specified, if different from os			"win" {				case characterSet {					"mac" {						s = string.latinToMac (s)};					"utf-8" {						s = string.ansiToUtf8 (s)};					"utf-16" {						s = string.ansiToUtf16 (s)}}};			"osx";			"mac" {				case characterSet {					"windows" {						s = string.macToLatin (s)};					"utf-8" {						s = string.macToLatin (s);						s = string.ansiToUtf8 (s)};					"utf-16" {						s = string.macToLatin (s);						s = string.ansiToUtf16 (s)}}}}};	bundle { //write the text to the file, yielding processor time if necessary		loop {			ct = sizeOf (s);			if ct > 0 {				file.write (f, string.mid (s, 1, blockSize));				if ct <= blocksize {					break};				s = string.delete (s, 1, blockSize)};			thread.sleepTicks (0)}}; //yield some processor time	file.close (f);		if creationDate != nil { //set it		file.setCreated (f, creationDate)};		bundle { //call the callbacks, if present		local (adrscript);		if not defined (user.callbacks.fileWriteWholeFile) {			new (tableType, @user.callbacks.fileWriteWholeFile)};		for adrscript in @user.callbacks.fileWriteWholeFile {			try {				while typeOf (adrscript^) == addressType {					adrscript = adrscript^};				adrscript^ (f)}}};		return (true)}
+on writeTextFile (f, s, mimeType = nil, blockSize = nil, characterSet = nil, lineEnding = nil, creationDate = nil, type = nil, creator = nil) {
+	Â«Changes
+		Â«12/18/01; 7:57:44 PM by JES
+			Â«Created. Creates a new text file with the specified path, writes the contents to it with the correct line-endings and character set as specified by the input parameters, and closes the file.
+			Â«http://docserver.userland.com/file/writeTextFile
+	local (pc = file.getPathChar ());
+	local (fname = string.nthField (f, pc, string.countFields (f, pc)));
+	local (ext = string.nthField (fname, ".", string.countFields (fname, ".")));
+	
+	local (os);
+	bundle { //calculate os
+		if system.environment.isWindows {
+			os = "win"}
+		else { //mac
+			if system.environment.isCarbon {
+				os = "osx"}
+			else {
+				os = "mac"}}};
+	
+	bundle { //set up default values
+		if mimeType == nil { //get the mimeType from user.webserver.prefs.ext2MIME
+			if defined (user.webserver.prefs.ext2MIME.[ext]) {
+				mimeType = user.webserver.prefs.ext2MIME.[ext]}};
+		if blockSize == nil { //default to infinity
+			blockSize = infinity};
+		if characterSet == nil { //base it on the mimeType
+			case mimeType {
+				"text/xml";
+				"text/x-opml" {
+					characterSet = "windows"}}
+			else {
+				case os {
+					"win" {
+						characterSet = "windows"};
+					"osx";
+					"mac" {
+						characterSet = "mac"}}}};
+		if lineEnding == nil { //base it on the current platform
+			case os {
+				"win" {
+					lineEnding = "windows"};
+				"osx" {
+					lineEnding = "unix"};
+				"mac" {
+					lineEnding = "mac"}}};
+		if creationDate == nil { //if the file exists, preserve the creation date
+			if file.exists (f) {
+				try {creationDate = file.created (f)}}};
+		if system.environment.isMac { //set type/creator if not specified
+			if type == nil { //get the type from user.webserver.prefs.MIME2type
+				if defined (user.webserver.prefs.MIME2type) {
+					if defined (user.webserver.prefs.MIME2type.[mimeType]) {
+						type = user.webserver.prefs.MIME2type.[mimeType]}};
+				if type == nil { //no type defined -- pick a sensible default
+					if system.environment.isCarbon {
+						type = '    '}
+					else { //classic
+						type = 'TEXT'}}};
+			if creator == nil { //get the creator from user.webserver.prefs.MIME2creator, if defined
+				if defined (user.webserver.prefs.MIME2creator) {
+					if defined (user.webserver.prefs.MIME2creator.[mimeType]) {
+						creator = user.webserver.prefs.MIME2creator.[mimeType]}}
+				else { //set the default creator
+					case mimeType {
+						"text/xml";
+						"text/x-opml" {
+							creator = Frontier.id};
+						"text/html" {
+							creator = user.html.prefs.textFileCreator}}
+					else { //couldn't determine mimeType -- use default creator for the platform
+						if system.environment.isCarbon {
+							creator = 'text'} //TextEdit
+						else { //classic
+							creator = 'ttxt'}}}}}}; //SimpleText
+	
+	file.new (f);
+	file.open (f);
+	bundle { //set type and creator on MacOS
+		if system.environment.isMac {
+			if type != nil {
+				file.setType (f, type)};
+			if creator != nil {
+				file.setCreator (f, creator)}}};
+	bundle { //convert text if necessary
+		bundle { //convert line endings to the specified line endings
+			local (eolChars);
+			case lineEnding { //set eolChars
+				"windows" {
+					eolChars = "\r\n"};
+				"unix" {
+					eolChars = "\n"};
+				"mac" {
+					eolChars = "\r"}};
+			local (ixCr = string.patternMatch ("\r", s));
+			local (ixLf = string.patternMatch ("\n", s));
+			if ixLf == 0 { //mac line-endings, or none in s
+				if ixCr != 0 { //any eol characters at all? if so, convert them
+					if eolChars != "\r" { //optimization
+						s = string.replaceAll (s, "\r", eolChars)}}}
+			else { //windows or unix line-endings in s
+				if ixCr == 0 { //unix line-endings in s
+					if lineEnding != "unix" {
+						if eolChars != "\n" { //optimization
+							s = string.replaceAll (s, "\n", eolChars)}}}
+				else { //windows line endings in s
+					if lineEnding != "windows" {
+						if eolChars != "\r\n" { //optimization
+							s = string.replaceAll (s, "\r\n", "\r")}}}}};
+		case os { //convert character set to the one specified, if different from os
+			"win" {
+				case characterSet {
+					"mac" {
+						s = string.latinToMac (s)};
+					"utf-8" {
+						s = string.ansiToUtf8 (s)};
+					"utf-16" {
+						s = string.ansiToUtf16 (s)}}};
+			"osx";
+			"mac" {
+				case characterSet {
+					"windows" {
+						s = string.macToLatin (s)};
+					"utf-8" {
+						s = string.macToLatin (s);
+						s = string.ansiToUtf8 (s)};
+					"utf-16" {
+						s = string.macToLatin (s);
+						s = string.ansiToUtf16 (s)}}}}};
+	bundle { //write the text to the file, yielding processor time if necessary
+		loop {
+			ct = sizeOf (s);
+			if ct > 0 {
+				file.write (f, string.mid (s, 1, blockSize));
+				if ct <= blocksize {
+					break};
+				s = string.delete (s, 1, blockSize)};
+			thread.sleepTicks (0)}}; //yield some processor time
+	file.close (f);
+	
+	if creationDate != nil { //set it
+		file.setCreated (f, creationDate)};
+	
+	bundle { //call the callbacks, if present
+		local (adrscript);
+		if not defined (user.callbacks.fileWriteWholeFile) {
+			new (tableType, @user.callbacks.fileWriteWholeFile)};
+		for adrscript in @user.callbacks.fileWriteWholeFile {
+			try {
+				while typeOf (adrscript^) == addressType {
+					adrscript = adrscript^};
+				adrscript^ (f)}}};
+	
+	return (true)}

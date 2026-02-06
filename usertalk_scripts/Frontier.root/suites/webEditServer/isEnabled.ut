@@ -1,1 +1,4 @@
-«Return true if WebEditServer is currently enabled.if defined (user.betty.rpcHandlers.webEdit) {	return (true)};return (false)
+Â«Return true if WebEditServer is currently enabled.
+if defined (user.betty.rpcHandlers.webEdit) {
+	return (true)};
+return (false)

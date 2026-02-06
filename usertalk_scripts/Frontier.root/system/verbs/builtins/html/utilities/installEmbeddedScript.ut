@@ -1,1 +1,4 @@
-local (apprezfile = "Macintosh HD:Programming:UCMDs & XCMDs:Macro Processor:app.น.rsrc");local (adrScript = @html.ucmds.embeddedscript, compiledScript);osa.compile (adrScript, false, @compiledScript);dialog.alert (rez.putResource (apprezfile, 'scpt', 128, @compiledScript))
+local (apprezfile = "Macintosh HD:Programming:UCMDs & XCMDs:Macro Processor:app.ยน.rsrc");
+local (adrScript = @html.ucmds.embeddedscript, compiledScript);
+osa.compile (adrScript, false, @compiledScript);
+dialog.alert (rez.putResource (apprezfile, 'scpt', 128, @compiledScript))

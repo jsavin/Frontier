@@ -1,1 +1,58 @@
-on date (val, flErrorOnInvalidDate=false) {	«Changes:		«09/16/04; 12:56:38 PM by JES			«Ignore the value of flErrorOnInvalidDate. It's better to get an error if the date format is not valid.		«05/28/03; 2:40:16 PM by JES			«New optional parameter, flErrorOnInvalidDate. If true, an invalid date value will cause an error. Default is false, preserving existing behavior.		«03/26/01; 12:12:02 PM by PBS			«If the kernel can't coerce the value to a date, this may be an international system and the value may be a string in GMT, the output of date.netStandardString. In that case, try to turn that string into a date.	on kernelcall (val) {		kernel (lang.date)};	try {		kernelcall (val)}	else {		local (kernelError = tryError); //save the error string reported by the kernel		try {			val = string (val);			if val endsWith "GMT" { //output of date.netStandardString				local (day, month, year, hour, minute, second);				day = string.nthField (val, ' ', 2);				local (monthString = string.nthField (val, ' ', 3));				case string.lower (monthString) {					"jan" {						month = 1};					"feb" {						month = 2};					"mar" {						month = 3};					"apr" {						month = 4};					"may" {						month = 5};					"jun" {						month = 6};					"jul" {						month = 7};					"aug" {						month = 8};					"sep" {						month = 9};					"oct" {						month = 10};					"nov" {						month = 11};					"dec" {						month = 12}};				year = string.nthField (val, ' ', 4);				local (timeString = string.nthField (val, ' ', 5));				hour = string.nthField (timeString, ':', 1);				minute = string.nthField (timeString, ':', 2);				second = string.nthField (timeString, ':',3);				local (theDate = date.set (day, month, year, hour, minute, second));				theDate = theDate + date.getCurrentTimeZone (); //adjust for time zone				return (theDate)}			else { //JES 5/28/03: re-throw the error				«if flErrorOnInvalidDate //JES 9/16/04: ignore parameter. it's better to get the error				scriptError (kernelError)}}		else {			scriptError (kernelError)}}}
+on date (val, flErrorOnInvalidDate=false) {
+	Â«Changes:
+		Â«09/16/04; 12:56:38 PM by JES
+			Â«Ignore the value of flErrorOnInvalidDate. It's better to get an error if the date format is not valid.
+		Â«05/28/03; 2:40:16 PM by JES
+			Â«New optional parameter, flErrorOnInvalidDate. If true, an invalid date value will cause an error. Default is false, preserving existing behavior.
+		Â«03/26/01; 12:12:02 PM by PBS
+			Â«If the kernel can't coerce the value to a date, this may be an international system and the value may be a string in GMT, the output of date.netStandardString. In that case, try to turn that string into a date.
+	on kernelcall (val) {
+		kernel (lang.date)};
+	try {
+		kernelcall (val)}
+	else {
+		local (kernelError = tryError); //save the error string reported by the kernel
+		try {
+			val = string (val);
+			if val endsWith "GMT" { //output of date.netStandardString
+				local (day, month, year, hour, minute, second);
+				day = string.nthField (val, ' ', 2);
+				local (monthString = string.nthField (val, ' ', 3));
+				case string.lower (monthString) {
+					"jan" {
+						month = 1};
+					"feb" {
+						month = 2};
+					"mar" {
+						month = 3};
+					"apr" {
+						month = 4};
+					"may" {
+						month = 5};
+					"jun" {
+						month = 6};
+					"jul" {
+						month = 7};
+					"aug" {
+						month = 8};
+					"sep" {
+						month = 9};
+					"oct" {
+						month = 10};
+					"nov" {
+						month = 11};
+					"dec" {
+						month = 12}};
+				year = string.nthField (val, ' ', 4);
+				local (timeString = string.nthField (val, ' ', 5));
+				hour = string.nthField (timeString, ':', 1);
+				minute = string.nthField (timeString, ':', 2);
+				second = string.nthField (timeString, ':',3);
+				local (theDate = date.set (day, month, year, hour, minute, second));
+				theDate = theDate + date.getCurrentTimeZone (); //adjust for time zone
+				return (theDate)}
+			else { //JES 5/28/03: re-throw the error
+				Â«if flErrorOnInvalidDate //JES 9/16/04: ignore parameter. it's better to get the error
+				scriptError (kernelError)}}
+		else {
+			scriptError (kernelError)}}}

@@ -1,1 +1,14 @@
-on deletePost (postId, username=nil, password=nil, blogId=nil, flPublish=true, adrdata=@blogger.data) {	blogger.init ();	bundle { //set defaults		if username == nil {			username = user.blogger.username};		if password == nil {			password = string (user.blogger.password)};		if blogId == nil {			blogId = user.blogger.blogId}};	with adrdata^ {		local (params = {appkey, string (postid), string (username), string (password), boolean (flPublish)});		return (xml.rpc (server, port, "blogger.deletePost", @params, rpcPath:rpcPath, protocol:protocol))}};bundle { //test code	dialog.alert (deletePost ("5086754"))}
+on deletePost (postId, username=nil, password=nil, blogId=nil, flPublish=true, adrdata=@blogger.data) {
+	blogger.init ();
+	bundle { //set defaults
+		if username == nil {
+			username = user.blogger.username};
+		if password == nil {
+			password = string (user.blogger.password)};
+		if blogId == nil {
+			blogId = user.blogger.blogId}};
+	with adrdata^ {
+		local (params = {appkey, string (postid), string (username), string (password), boolean (flPublish)});
+		return (xml.rpc (server, port, "blogger.deletePost", @params, rpcPath:rpcPath, protocol:protocol))}};
+bundle { //test code
+	dialog.alert (deletePost ("5086754"))}

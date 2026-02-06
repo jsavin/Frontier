@@ -1,1 +1,7 @@
-on createMessage (whichMailFolder = nil, whichMailBox = nil) {	with objectModel, Eudora, eventInfo {		if whichMailFolder == nil {			whichMailFolder  =  ""};		if whichMailBox == nil {			whichMailBox = "Out"};		return (core.create (id, message, 0, 0, endOf (mailfolder [whichMailFolder].mailbox [whichMailBox])))}}
+on createMessage (whichMailFolder = nil, whichMailBox = nil) {
+	with objectModel, Eudora, eventInfo {
+		if whichMailFolder == nil {
+			whichMailFolder  =  ""};
+		if whichMailBox == nil {
+			whichMailBox = "Out"};
+		return (core.create (id, message, 0, 0, endOf (mailfolder [whichMailFolder].mailbox [whichMailBox])))}}

@@ -1,1 +1,14 @@
-on getAllRecords (db, theLayout = 0, foundSet = true, reportError = false) {	on doIt () {		with objectModel, filemaker {			if foundSet {				return  (get (window [db].layout [theLayout].record [all]))}			else {				return (get (database [db].layout [theLayout].record [all]))}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on getAllRecords (db, theLayout = 0, foundSet = true, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			if foundSet {
+				return  (get (window [db].layout [theLayout].record [all]))}
+			else {
+				return (get (database [db].layout [theLayout].record [all]))}}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

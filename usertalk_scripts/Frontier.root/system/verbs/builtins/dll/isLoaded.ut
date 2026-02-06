@@ -1,1 +1,2 @@
-on isLoaded (dllPath) {	kernel (dll.isLoaded)}
+on isLoaded (dllPath) {
+	kernel (dll.isLoaded)}

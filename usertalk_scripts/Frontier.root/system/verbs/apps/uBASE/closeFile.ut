@@ -1,1 +1,2 @@
-on closeFile (fnum) {	return (appleEvent (ubase.id, 'UBAS', 'clsf', 'fref', short (fnum)))}
+on closeFile (fnum) {
+	return (appleEvent (ubase.id, 'UBAS', 'clsf', 'fref', short (fnum)))}

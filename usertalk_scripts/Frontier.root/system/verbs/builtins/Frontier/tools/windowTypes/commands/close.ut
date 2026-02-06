@@ -1,1 +1,81 @@
-on close (adr=nil) {	«Close a window.	«Changes:		«09/30/00; 12:51:56 PM by PBS			«Call callbacks.		«11/30/00; 12:09:26 AM by JES			«Dereference callback addresses in a try block in case a tool's odb is not opened		«07/03/01; 12:32:56 AM by JES			«Migrated form pike.commands.close.		if adr == nil { //close the frontmost window		adr = window.frontmost ()};		if not defined (adr^) { //close the Find & Replace Dialog or the About window		window.close (adr);		return (true)};		on runCallbacks (adrCallbackTable, adrWindow) {		if defined (adrCallbackTable^) {			local (flConsumed = false);			local (adrScript);			for adrScript in adrCallbackTable {				try { //11/30/00 JES					while typeOf (adrScript^) == addressType { //follow addresses						adrScript = adrScript^};					return (adrScript^ (adrWindow))}}}; //address is parameter		return (false)};	if runCallbacks (@user.tools.commandCallbacks.close, adr) {		return (true)};	if system.environment.isRadio { //legacy support for user.pike.commandCallbacks		if defined (user.pike) {			if defined (user.pike.commandCallbacks) {				if runCallbacks (@user.pike.commandCallbacks.close, adr) {					return (true)}}}};		if nameOf (adr^) != "/atts" { //if the windowType defines a close script, do that, and otherwise ask to save		local (type, adrType);		local (title = window.getTitle (adr), flSaveWindow=false, flCloseWindow=true);		if not window.attributes.getOne ("title", @title, adr) {			title = window.getTitle (adr)};		if window.attributes.getOne ("type", @type, adr) {			if Frontier.tools.windowTypes.findWindowType (type, @adrType, adr) {				local (flDirty = Frontier.tools.windowTypes.isWindowDirty (adr));				if not defined (adrType^.save) { //temp windows can't be saved unless the windowType can do it					if table.tableContains (@system.temp, adr) {						flDirty = false}};				if flDirty { //ask the user if they want to save the window					case dialog.yesNoCancel ("Save " + title + " before closing?") {						1 { //yes							flSaveWindow = true};						2 { //no							flSaveWindow = false};						3 { //cancel							flSaveWindow = false;							flCloseWindow = false}}};				if flSaveWindow {					if defined (adrType^.save) { //the windowType knows how to save						flCloseWindow = Frontier.tools.windowTypes.commands.save (adr, true)}					else { //save the database containing the window						fileMenu.saveMyRoot (adr)}};				if flCloseWindow { //close the window, deleting tables in system.temp.windowTypes.windows					if defined (adrType^.close) { //the windowType adds to the close behavior -- it has a chance to clean up						flCloseWindow = adrType^.close (adr)};					if flCloseWindow { //clean up if we're still supposed to close the window						if defined (adr^) { //don't do anything unless the window still exists							if table.tableContains (@system.temp.windowTypes, adr) {								delete (parentOf (adr^));								return (true)}}}}				else { //the user cancelled the ask to save dialog or the save failed, so we do nothing					return (false)}}}};		try { //hide database windows -- try because this will error for About or Find		if sizeOf (string.parseAddress (window.frontmost ())) == 1 {			window.hide (adr);			return (true)}};	if defined (adr^) { //close the window if it still exists, run callbacks if flRunCallbacks is true		window.close (adr)}; //no fancy logic happened -- just close the window	return (true)};bundle { //debugging	close ()}
+on close (adr=nil) {
+	Â«Close a window.
+	Â«Changes:
+		Â«09/30/00; 12:51:56 PM by PBS
+			Â«Call callbacks.
+		Â«11/30/00; 12:09:26 AM by JES
+			Â«Dereference callback addresses in a try block in case a tool's odb is not opened
+		Â«07/03/01; 12:32:56 AM by JES
+			Â«Migrated form pike.commands.close.
+	
+	if adr == nil { //close the frontmost window
+		adr = window.frontmost ()};
+	
+	if not defined (adr^) { //close the Find & Replace Dialog or the About window
+		window.close (adr);
+		return (true)};
+	
+	on runCallbacks (adrCallbackTable, adrWindow) {
+		if defined (adrCallbackTable^) {
+			local (flConsumed = false);
+			local (adrScript);
+			for adrScript in adrCallbackTable {
+				try { //11/30/00 JES
+					while typeOf (adrScript^) == addressType { //follow addresses
+						adrScript = adrScript^};
+					return (adrScript^ (adrWindow))}}}; //address is parameter
+		return (false)};
+	if runCallbacks (@user.tools.commandCallbacks.close, adr) {
+		return (true)};
+	if system.environment.isRadio { //legacy support for user.pike.commandCallbacks
+		if defined (user.pike) {
+			if defined (user.pike.commandCallbacks) {
+				if runCallbacks (@user.pike.commandCallbacks.close, adr) {
+					return (true)}}}};
+	
+	if nameOf (adr^) != "/atts" { //if the windowType defines a close script, do that, and otherwise ask to save
+		local (type, adrType);
+		local (title = window.getTitle (adr), flSaveWindow=false, flCloseWindow=true);
+		if not window.attributes.getOne ("title", @title, adr) {
+			title = window.getTitle (adr)};
+		if window.attributes.getOne ("type", @type, adr) {
+			if Frontier.tools.windowTypes.findWindowType (type, @adrType, adr) {
+				local (flDirty = Frontier.tools.windowTypes.isWindowDirty (adr));
+				if not defined (adrType^.save) { //temp windows can't be saved unless the windowType can do it
+					if table.tableContains (@system.temp, adr) {
+						flDirty = false}};
+				if flDirty { //ask the user if they want to save the window
+					case dialog.yesNoCancel ("Save " + title + " before closing?") {
+						1 { //yes
+							flSaveWindow = true};
+						2 { //no
+							flSaveWindow = false};
+						3 { //cancel
+							flSaveWindow = false;
+							flCloseWindow = false}}};
+				if flSaveWindow {
+					if defined (adrType^.save) { //the windowType knows how to save
+						flCloseWindow = Frontier.tools.windowTypes.commands.save (adr, true)}
+					else { //save the database containing the window
+						fileMenu.saveMyRoot (adr)}};
+				if flCloseWindow { //close the window, deleting tables in system.temp.windowTypes.windows
+					if defined (adrType^.close) { //the windowType adds to the close behavior -- it has a chance to clean up
+						flCloseWindow = adrType^.close (adr)};
+					if flCloseWindow { //clean up if we're still supposed to close the window
+						if defined (adr^) { //don't do anything unless the window still exists
+							if table.tableContains (@system.temp.windowTypes, adr) {
+								delete (parentOf (adr^));
+								return (true)}}}}
+				else { //the user cancelled the ask to save dialog or the save failed, so we do nothing
+					return (false)}}}};
+	
+	try { //hide database windows -- try because this will error for About or Find
+		if sizeOf (string.parseAddress (window.frontmost ())) == 1 {
+			window.hide (adr);
+			return (true)}};
+	if defined (adr^) { //close the window if it still exists, run callbacks if flRunCallbacks is true
+		window.close (adr)}; //no fancy logic happened -- just close the window
+	return (true)};
+
+bundle { //debugging
+	close ()}

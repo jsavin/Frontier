@@ -1,1 +1,82 @@
-on discoverPingInfo (adrurl) {	«Changes		«7/21/03; 9:46:41 PM by JES			«Fix a bug where the auto-discovery bits could not be found if the page also contained RDF which was not for TrackBack auto-discovery.		«7/15/03; 12:20:13 AM by JES			«We were finding the first set of RDF info on the page, but this assumes that the post we're pinging is the first post on the page, so sometimes the trackback would show up in the wrong place on the target site. Now we find the RDF info with the permalink that corresponds to the post we want to ping.		«7/14/03; 12:12:35 PM by JES			«Pop off the anchor part of the URL if it exists before making the discovery request. Some servers don't handle this properly, and return a 404 page.		«4/25/03; 12:38:43 PM by DW			«Per Ringnalda's suggestion, note how we got the pingUrl. If it came through the "about" element, we'll do a GET, if it came through trackback:ping, we'll do a POST.				«http://blogs.law.harvard.edu/crimson1/2003/04/25#a142		«4/25/03; 8:17:09 AM by DW			«If "trackback:ping" is not present, try to get the ping url from "about".			«Dave Sifry's site has an improperly formatted date. This is not encouraging. There's no really good workaround for this. If the date is mangled, I'll use clock.now. Maybe the users won't notice. :-(				«http://www.sifry.com/alerts/archives/000282.html#000282		«4/23/03; 8:55:57 PM by DW			«Created. The name of the adrurl table is the URL that has been pointed to by the post. Read the page and look for a <RDF> element. If it can be ping'd record the information about the endpoint in the url table and set adrurl^.flSupportsTrackback = true, otherwise set it false.	local (url = nameof (adrurl^));	local (htmltext = tcp.httpreadurl (string.nthField (url, "#", 1)));	«wp.newtextobject (htmltext, @adrurl^.htmltext)	«local (htmltext = string (adrurl^.htmltext)) //debugging	local (xtext);	loop { //find the corresponding RDF snippet		local (ixrdf = string.patternmatch ("<rdf:RDF", htmltext));		if ixrdf == 0 { //no RDF element, return			adrurl^.flChecked = true;			adrurl^.flSupportsTrackback = false;			return};		htmltext = string.delete (htmltext, 1, ixrdf-1);		«wp.newtextobject (htmltext, @adrurl^.partialhtmltext)		local (endpattern = "</rdf:RDF>");		ixrdf = string.patternmatch (endpattern, htmltext);		if ixrdf == 0 { //no RDF element, return			adrurl^.flSupportsTrackback = false;			return};		xtext = string.mid (htmltext, 1, ixrdf + sizeof (endpattern) - 1);		try {			«wp.newtextobject (htmltext, @adrurl^.partialhtmltext)			local (xstruct);			xml.compile (xtext, @xstruct);			local (adrrdf = xml.getaddress (@xstruct, "RDF"));			local (adrdescription = xml.getaddress (adrrdf, "Description"));			local (adratts = @adrdescription^.["/atts"]);			bundle { //JES 7/15/03: skip RDF snippets whose dc:identifier doesn't match the URL				local (flFound = false);				if defined (adratts^.["dc:identifier"]) {					if string.lower (adratts^.["dc:identifier"]) == string.lower (url) {						flFound = true}};				if not flFound {					htmltext = string.delete (htmltext, 1, sizeOf (xtext));					continue}};			adrurl^.xDiscoveryInfo = xstruct;			bundle { //get pingUrl, 4/25/03 by DW				if defined (adratts^.["trackback:ping"]) {					adrurl^.pingUrl = adratts^.["trackback:ping"];					adrurl^.flGotUrlFromAbout = false}				else {					adrurl^.pingUrl = adratts^.about;					adrurl^.flGotUrlFromAbout = true}};			adrurl^.postTitle = adratts^.["dc:title"];			bundle { //get description, 4/25/03 by DW				if defined (adratts^.["dc:description"]) {					adrurl^.postDescription = adratts^.["dc:description"]}				else {					adrurl^.postDescription = ""}};			bundle { //get postDate, 4/25/03 by DW				try {					adrurl^.postDate = date.iso8601StringToDate (adratts^.["dc:date"])}				else {					adrurl^.postDate = clock.now ()}};			break} //JES 7/15/03: if we've gotten this far, we're done		else { // found some RDF, but not the auto-discovery bits			htmltext = string.delete (htmltext, 1, sizeOf (xtext));			continue}};	adrurl^.flSupportsTrackback = true};«bundle //test code	«discoverPingInfo (@tbtestManilaWebsite.["#discussionGroup"].messages.["0000005"].trackback.outbound.urls.["http://127.0.0.1/tbtest/2003/07/14#a4"])«bundle //more test code	«local (url = "http://www.movabletype.org/trackback/archives/000851.html")	«local (adrurl = @scratchpad.aPost.trackback.outbound.urls.[url])	«if not defined (adrurl^) {new (tableType, adrurl)}	«trackback.discoverPingInfo (adrurl)
+on discoverPingInfo (adrurl) {
+	Â«Changes
+		Â«7/21/03; 9:46:41 PM by JES
+			Â«Fix a bug where the auto-discovery bits could not be found if the page also contained RDF which was not for TrackBack auto-discovery.
+		Â«7/15/03; 12:20:13 AM by JES
+			Â«We were finding the first set of RDF info on the page, but this assumes that the post we're pinging is the first post on the page, so sometimes the trackback would show up in the wrong place on the target site. Now we find the RDF info with the permalink that corresponds to the post we want to ping.
+		Â«7/14/03; 12:12:35 PM by JES
+			Â«Pop off the anchor part of the URL if it exists before making the discovery request. Some servers don't handle this properly, and return a 404 page.
+		Â«4/25/03; 12:38:43 PM by DW
+			Â«Per Ringnalda's suggestion, note how we got the pingUrl. If it came through the "about" element, we'll do a GET, if it came through trackback:ping, we'll do a POST.
+				Â«http://blogs.law.harvard.edu/crimson1/2003/04/25#a142
+		Â«4/25/03; 8:17:09 AM by DW
+			Â«If "trackback:ping" is not present, try to get the ping url from "about".
+			Â«Dave Sifry's site has an improperly formatted date. This is not encouraging. There's no really good workaround for this. If the date is mangled, I'll use clock.now. Maybe the users won't notice. :-(
+				Â«http://www.sifry.com/alerts/archives/000282.html#000282
+		Â«4/23/03; 8:55:57 PM by DW
+			Â«Created. The name of the adrurl table is the URL that has been pointed to by the post. Read the page and look for a <RDF> element. If it can be ping'd record the information about the endpoint in the url table and set adrurl^.flSupportsTrackback = true, otherwise set it false.
+	local (url = nameof (adrurl^));
+	local (htmltext = tcp.httpreadurl (string.nthField (url, "#", 1)));
+	Â«wp.newtextobject (htmltext, @adrurl^.htmltext)
+	Â«local (htmltext = string (adrurl^.htmltext)) //debugging
+	local (xtext);
+	loop { //find the corresponding RDF snippet
+		local (ixrdf = string.patternmatch ("<rdf:RDF", htmltext));
+		if ixrdf == 0 { //no RDF element, return
+			adrurl^.flChecked = true;
+			adrurl^.flSupportsTrackback = false;
+			return};
+		htmltext = string.delete (htmltext, 1, ixrdf-1);
+		Â«wp.newtextobject (htmltext, @adrurl^.partialhtmltext)
+		local (endpattern = "</rdf:RDF>");
+		ixrdf = string.patternmatch (endpattern, htmltext);
+		if ixrdf == 0 { //no RDF element, return
+			adrurl^.flSupportsTrackback = false;
+			return};
+		xtext = string.mid (htmltext, 1, ixrdf + sizeof (endpattern) - 1);
+		try {
+			Â«wp.newtextobject (htmltext, @adrurl^.partialhtmltext)
+			local (xstruct);
+			xml.compile (xtext, @xstruct);
+			local (adrrdf = xml.getaddress (@xstruct, "RDF"));
+			local (adrdescription = xml.getaddress (adrrdf, "Description"));
+			local (adratts = @adrdescription^.["/atts"]);
+			bundle { //JES 7/15/03: skip RDF snippets whose dc:identifier doesn't match the URL
+				local (flFound = false);
+				if defined (adratts^.["dc:identifier"]) {
+					if string.lower (adratts^.["dc:identifier"]) == string.lower (url) {
+						flFound = true}};
+				if not flFound {
+					htmltext = string.delete (htmltext, 1, sizeOf (xtext));
+					continue}};
+			adrurl^.xDiscoveryInfo = xstruct;
+			bundle { //get pingUrl, 4/25/03 by DW
+				if defined (adratts^.["trackback:ping"]) {
+					adrurl^.pingUrl = adratts^.["trackback:ping"];
+					adrurl^.flGotUrlFromAbout = false}
+				else {
+					adrurl^.pingUrl = adratts^.about;
+					adrurl^.flGotUrlFromAbout = true}};
+			adrurl^.postTitle = adratts^.["dc:title"];
+			bundle { //get description, 4/25/03 by DW
+				if defined (adratts^.["dc:description"]) {
+					adrurl^.postDescription = adratts^.["dc:description"]}
+				else {
+					adrurl^.postDescription = ""}};
+			bundle { //get postDate, 4/25/03 by DW
+				try {
+					adrurl^.postDate = date.iso8601StringToDate (adratts^.["dc:date"])}
+				else {
+					adrurl^.postDate = clock.now ()}};
+			break} //JES 7/15/03: if we've gotten this far, we're done
+		else { // found some RDF, but not the auto-discovery bits
+			htmltext = string.delete (htmltext, 1, sizeOf (xtext));
+			continue}};
+	adrurl^.flSupportsTrackback = true};
+Â«bundle //test code
+	Â«discoverPingInfo (@tbtestManilaWebsite.["#discussionGroup"].messages.["0000005"].trackback.outbound.urls.["http://127.0.0.1/tbtest/2003/07/14#a4"])
+Â«bundle //more test code
+	Â«local (url = "http://www.movabletype.org/trackback/archives/000851.html")
+	Â«local (adrurl = @scratchpad.aPost.trackback.outbound.urls.[url])
+	Â«if not defined (adrurl^) {new (tableType, adrurl)}
+	Â«trackback.discoverPingInfo (adrurl)

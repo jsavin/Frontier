@@ -1,1 +1,11 @@
-on unlockSemaphores () {	«March 08, 1998 at 3:12:16 PM by WMF		«This script unlocks any semaphores that were locked by the current thread	local {		me = thread.getCurrentID ();		i};	for i=1 to sizeOf(system.compiler.semaphores) {		if (system.compiler.semaphores[i]["who"] == me) {			semaphores.unlock (nameOf (system.compiler.semaphores[i]))}};	true};unlockSemaphores ()
+on unlockSemaphores () {
+	Â«March 08, 1998 at 3:12:16 PM by WMF
+		Â«This script unlocks any semaphores that were locked by the current thread
+	local {
+		me = thread.getCurrentID ();
+		i};
+	for i=1 to sizeOf(system.compiler.semaphores) {
+		if (system.compiler.semaphores[i]["who"] == me) {
+			semaphores.unlock (nameOf (system.compiler.semaphores[i]))}};
+	true};
+unlockSemaphores ()

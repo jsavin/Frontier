@@ -1,1 +1,2 @@
-on set (r, g, b) {	kernel (rgb.set)}
+on set (r, g, b) {
+	kernel (rgb.set)}

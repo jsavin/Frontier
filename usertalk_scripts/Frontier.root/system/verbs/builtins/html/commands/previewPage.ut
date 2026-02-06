@@ -1,1 +1,7 @@
-«Setting html.data.flPreview true alerts the website framework that this is a page preview.html.data.flPreview = true; //set the preview flaghtml.commands.releaseRenderedPage (); //build the pagetry {delete (@html.data.flPreview)} //delete the preview flag
+Â«Setting html.data.flPreview true alerts the website framework that this is a page preview.
+
+html.data.flPreview = true; //set the preview flag
+
+html.commands.releaseRenderedPage (); //build the page
+
+try {delete (@html.data.flPreview)} //delete the preview flag

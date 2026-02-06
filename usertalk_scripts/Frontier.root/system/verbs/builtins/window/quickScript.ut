@@ -1,1 +1,2 @@
-on quickScript () {	kernel (window.quickscript)}
+on quickScript () {
+	kernel (window.quickscript)}

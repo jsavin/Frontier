@@ -1,1 +1,22 @@
-on tortureTest (driverName, screenName, delay = 5) {	«Changes		«5/15/02; 11:01:37 PM by JB			«Created.			«This is a torture testing suite, designed to make sure that what is sent via tcp.im.rpi.client matches what is received by the server and the subsequent rpi handling script. There are two major reasons to use this script: To test the base64 encoding, and to test the encoding of the client in general. Place the "compare" script in user.im.rpiHandlers for both of these cases.			«To test the base64 encoding, rename "tests.base64" to "tests" in this table and run this script with a stock tcp.im.rpi table. You should not encounter any problems.			«To test encoding issues, which is only useful if you are developing an IM driver, you'll need to make a few changes to the rpi scripts. Go into tcp.im.rpi.server and tcp.im.rpi.encode and comment out the base64 code, and uncomment the original code. Then, run this script. If anything goes wrong, a dialog box will pop up, and the text that should have been received and the text that was received will be placed into scratchpad.rpiTest.[testNum].received and scratchpad.rpiTest.[testNum].desired. If everything goes right, a dialog box will pop up and that happiest of messages will be displayed: "No anamolies."			«By my count, sending an RPC call from inside of Radio, through IM, and back into Radio goes through no fewer then *5* encoding stages:				«tcp.im.rpi.client -> tcp.im.send				«tcp.im.send -> driver				«driver -> wire				«wire -> driver				«driver -> tcp.im.rpi.server			«As of this writing (5/21/02; 11:16:34 PM by JB), both AIM and Jabber pass this test suite with no errors, with and without base64 encoding the rpc calls.	for i = 1 to sizeOf ( tcp.im.rpi.testing.tests ) {		tcp.im.rpi.client ( driverName, screenName, "compare", { tcp.im.rpi.testing.tests[i], i } );		msg ( "sending " + string ( i ) + " of " + string ( sizeOf ( tcp.im.rpi.testing.tests ) ) );		thread.sleepFor ( delay )}};bundle { // testing code	«tortureTest ( "jabber", "Jeremy@jabber.xlogs.net/RadioUserland", 0 )	«tortureTest ( "aim", "JerfBowers", 15 )	tortureTest ( "aim", "JerfBowersTest", 10)}
+on tortureTest (driverName, screenName, delay = 5) {
+	Â«Changes
+		Â«5/15/02; 11:01:37 PM by JB
+			Â«Created.
+			Â«This is a torture testing suite, designed to make sure that what is sent via tcp.im.rpi.client matches what is received by the server and the subsequent rpi handling script. There are two major reasons to use this script: To test the base64 encoding, and to test the encoding of the client in general. Place the "compare" script in user.im.rpiHandlers for both of these cases.
+			Â«To test the base64 encoding, rename "tests.base64" to "tests" in this table and run this script with a stock tcp.im.rpi table. You should not encounter any problems.
+			Â«To test encoding issues, which is only useful if you are developing an IM driver, you'll need to make a few changes to the rpi scripts. Go into tcp.im.rpi.server and tcp.im.rpi.encode and comment out the base64 code, and uncomment the original code. Then, run this script. If anything goes wrong, a dialog box will pop up, and the text that should have been received and the text that was received will be placed into scratchpad.rpiTest.[testNum].received and scratchpad.rpiTest.[testNum].desired. If everything goes right, a dialog box will pop up and that happiest of messages will be displayed: "No anamolies."
+			Â«By my count, sending an RPC call from inside of Radio, through IM, and back into Radio goes through no fewer then *5* encoding stages:
+				Â«tcp.im.rpi.client -> tcp.im.send
+				Â«tcp.im.send -> driver
+				Â«driver -> wire
+				Â«wire -> driver
+				Â«driver -> tcp.im.rpi.server
+			Â«As of this writing (5/21/02; 11:16:34 PM by JB), both AIM and Jabber pass this test suite with no errors, with and without base64 encoding the rpc calls.
+	for i = 1 to sizeOf ( tcp.im.rpi.testing.tests ) {
+		tcp.im.rpi.client ( driverName, screenName, "compare", { tcp.im.rpi.testing.tests[i], i } );
+		msg ( "sending " + string ( i ) + " of " + string ( sizeOf ( tcp.im.rpi.testing.tests ) ) );
+		thread.sleepFor ( delay )}};
+bundle { // testing code
+	Â«tortureTest ( "jabber", "Jeremy@jabber.xlogs.net/RadioUserland", 0 )
+	Â«tortureTest ( "aim", "JerfBowers", 15 )
+	tortureTest ( "aim", "JerfBowersTest", 10)}

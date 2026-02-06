@@ -1,1 +1,2 @@
-on urlDecode (s) {	kernel (string.urlDecode)}
+on urlDecode (s) {
+	kernel (string.urlDecode)}

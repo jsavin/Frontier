@@ -1,1 +1,2 @@
-on memAvail () {	kernel (sys.memAvail)}
+on memAvail () {
+	kernel (sys.memAvail)}

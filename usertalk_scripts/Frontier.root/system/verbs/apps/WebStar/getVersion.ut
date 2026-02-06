@@ -1,1 +1,3 @@
-on getVersion (appID = WebStar.id) { « New in  WebStar1.2 (d4)	with objectModel, WebStar.eventInfo {		return (core.get (appID, version))}}
+on getVersion (appID = WebStar.id) { Â« New in  WebStar1.2 (d4)
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, version))}}

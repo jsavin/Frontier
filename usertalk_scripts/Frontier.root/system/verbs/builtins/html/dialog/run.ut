@@ -1,1 +1,59 @@
-on run (adrWizard, dialogNum, adrPrefs=nil, flDrawCancelButton = true) {	«Run an HTML dialog.	«Changes		«Monday, July 24, 2000 at 4:09:02 PM by JES			«Added support for overriding the default JavaScript with a JavaScript object defined in the Wizard table.		«Wednesday, February 28, 2001 at 3:25:23 PM by JES			«New optional parameter, flDrawCancelButton, for specifying whether the dialog has a cancel button. Default is true.		if not system.environment.isWindows {		scriptError ("HTML dialogs are only available on Windows.")};		filemenu.saveMyRoot (this);	local (t);	new (tableType, @t);	bundle { // build the pageTable		t.wizard = adrWizard;		if defined (adrWizard^.javaScript) {			t.javaScript = @adrWizard^.javaScript};		t.panelNum = dialogNum;		t.wizardPrefsAddress = adrPrefs;		bundle { // set #ftpSite.folder			«This is thread-safe, since the platform obviously will not change in the middle of rendering a page.			if system.environment.isWindows {				html.dialog.website.["#ftpSite"].folder = file.getSpecialFolderPath ("", "temp", true) + "UserLand\\HTML Dialogs\\"}			else {				html.dialog.website.["#ftpSite"].folder = file.getSpecialFolderPath ("", "Preferences", true) + "UserLand:HTML Dialogs:"}};		t.flDrawCancelButton = flDrawCancelButton;		new (tableType, @t.argTable)};		html.buildOnePage (@html.dialog.website.default, @t);		local (s);	s = html.dialog.showHtmlDialog (file.fileToUrl (t.f));		if adrPrefs != nil { //set the prefs		if s == "" { //the user cancelled			return (false)};				local (returnTable);		new (tableType, @returnTable);		webserver.parseArgs (s, @returnTable);		local (i);		for i = 1 to sizeOf (returnTable) {			local (adrCallbacks = @t.wizard^.callbacks, flCallbacks = defined (adrCallbacks^));			local (prefName = nameOf (returnTable [i]));			local (prefValue = returnTable [i]);			if flcallbacks { // JES 07/22/00 call set value callbacks				local (adrcallback = @adrcallbacks^.setValue);				if defined (adrcallback^) {					prefValue = adrcallback^ (string.replaceAll (prefName, "_", "."), prefValue)}};			if prefValue == "true" or prefValue == "false" {				prefValue = boolean (prefValue)};			local (adrPref = string (adrPrefs) + "." + prefName);			adrPref = string.replaceAll (adrPref, "_", ".");			adrPref^ = prefValue;						table.rename (@returnTable [i], string.replaceAll (prefName, "_", "."))}};		return (true)}
+on run (adrWizard, dialogNum, adrPrefs=nil, flDrawCancelButton = true) {
+	Â«Run an HTML dialog.
+	Â«Changes
+		Â«Monday, July 24, 2000 at 4:09:02 PM by JES
+			Â«Added support for overriding the default JavaScript with a JavaScript object defined in the Wizard table.
+		Â«Wednesday, February 28, 2001 at 3:25:23 PM by JES
+			Â«New optional parameter, flDrawCancelButton, for specifying whether the dialog has a cancel button. Default is true.
+	
+	if not system.environment.isWindows {
+		scriptError ("HTML dialogs are only available on Windows.")};
+	
+	filemenu.saveMyRoot (this);
+	local (t);
+	new (tableType, @t);
+	bundle { // build the pageTable
+		t.wizard = adrWizard;
+		if defined (adrWizard^.javaScript) {
+			t.javaScript = @adrWizard^.javaScript};
+		t.panelNum = dialogNum;
+		t.wizardPrefsAddress = adrPrefs;
+		bundle { // set #ftpSite.folder
+			Â«This is thread-safe, since the platform obviously will not change in the middle of rendering a page.
+			if system.environment.isWindows {
+				html.dialog.website.["#ftpSite"].folder = file.getSpecialFolderPath ("", "temp", true) + "UserLand\\HTML Dialogs\\"}
+			else {
+				html.dialog.website.["#ftpSite"].folder = file.getSpecialFolderPath ("", "Preferences", true) + "UserLand:HTML Dialogs:"}};
+		t.flDrawCancelButton = flDrawCancelButton;
+		new (tableType, @t.argTable)};
+	
+	html.buildOnePage (@html.dialog.website.default, @t);
+	
+	local (s);
+	s = html.dialog.showHtmlDialog (file.fileToUrl (t.f));
+	
+	if adrPrefs != nil { //set the prefs
+		if s == "" { //the user cancelled
+			return (false)};
+		
+		local (returnTable);
+		new (tableType, @returnTable);
+		webserver.parseArgs (s, @returnTable);
+		local (i);
+		for i = 1 to sizeOf (returnTable) {
+			local (adrCallbacks = @t.wizard^.callbacks, flCallbacks = defined (adrCallbacks^));
+			local (prefName = nameOf (returnTable [i]));
+			local (prefValue = returnTable [i]);
+			if flcallbacks { // JES 07/22/00 call set value callbacks
+				local (adrcallback = @adrcallbacks^.setValue);
+				if defined (adrcallback^) {
+					prefValue = adrcallback^ (string.replaceAll (prefName, "_", "."), prefValue)}};
+			if prefValue == "true" or prefValue == "false" {
+				prefValue = boolean (prefValue)};
+			local (adrPref = string (adrPrefs) + "." + prefName);
+			adrPref = string.replaceAll (adrPref, "_", ".");
+			adrPref^ = prefValue;
+			
+			table.rename (@returnTable [i], string.replaceAll (prefName, "_", "."))}};
+	
+	return (true)}

@@ -1,1 +1,102 @@
-on tableToPlist (adrTable, flAllowSpecialTypes=false) {	«Changes		«9/23/05; 1:21:12 PM by JES			«Created. Given the address of a table, return a representation of the table data in XML plist format.		local (xtext="", il=0);	on add (s) {		xtext = xtext + (string.filledString ("\t", il) + s + "\n");};		bundle { //XML headers		add ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");		add ("<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">")};		add ("<plist version=\"1.0\">");		on typeError (type) {		local (typeString);		if type == unknownType {			typeString = "unknown"}		else {			typeString = string.typeToString (type) - "Type"};		scriptError ("Can't convert the table to a plist because the type, \"" + typeString + "\" can't be represented in a plist.")};		local (entityEncodeTable);	bundle { //create entityEncodeTable		new (tableType, @entityEncodeTable);		entityEncodeTable.["<"] = "&lt;";		entityEncodeTable.[">"] = "&gt;";		entityEncodeTable.["\""] = "&quot;";		entityEncodeTable.["\'"] = "&apos;";		entityEncodeTable.["\r"] = "&#013;";		entityEncodeTable.["\n"] = "&#010;";		entityEncodeTable.["\t"] = "&#009;"};	on encode (adrval) {		return (xml.entityEncode (string.multipleReplaceAll (string.replaceAll (adrval^, "&", "&amp;"), @entityEncodeTable), false) )};		on addScalar (adrval, type, flEncode=false) {		if flEncode {			add ("<" + type + ">" + encode (adrval) + "</" + type + ">")}		else {			add ("<" + type + ">" + adrval^ + "</" + type + ">")}};	on addItem (adr) {		local (type = typeOf (adr^));		case type {			booleanType {				if adr^ {					add ("<true/>")}				else {					add ("<false/>")}};			longType {				addScalar (adr, "real")};			shortType {				addScalar (adr, "integer")};			stringType {				addScalar (adr, "string", true)};			dateType {				add ("<date>" + date.dateToIso8601String (adr^) + "</date>")};			unknownType {				if flAllowSpecialTypes {					if adr^ == nil {						add ("<data></data>")}					else {						typeError (type)}}				else {					typeError (type)}};			addressType {				if flAllowSpecialTypes {					add ("<string>" + string.popFileFromAddress (adr^) + "</string>")}				else {					typeError (type)}};			binaryType {				add ("<data>" + base64.encode (adr^, infinity) + "</data>")};			listType {				add ("<array>"); il++;								local (adritem);				for item in adr^ {					addItem (@item)};								il--;				add ("</array>")};			tableType {				addTable (adr)}}		else {			typeError (type)}};	on addTable (adrTable) {		add ("<dict>"); il++;				local (adr);		for adr in adrTable {			local (name = nameOf (adr^));			add ("<key>" + encode (@name) + "</key>");			addItem (adr)};				il--;		add ("</dict>")};		addTable (adrTable);		add ("</plist>");		return (xtext)}
+on tableToPlist (adrTable, flAllowSpecialTypes=false) {
+	Â«Changes
+		Â«9/23/05; 1:21:12 PM by JES
+			Â«Created. Given the address of a table, return a representation of the table data in XML plist format.
+	
+	local (xtext="", il=0);
+	on add (s) {
+		xtext = xtext + (string.filledString ("\t", il) + s + "\n");};
+	
+	bundle { //XML headers
+		add ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+		add ("<!DOCTYPE plist PUBLIC \"-//Apple Computer//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">")};
+	
+	add ("<plist version=\"1.0\">");
+	
+	on typeError (type) {
+		local (typeString);
+		if type == unknownType {
+			typeString = "unknown"}
+		else {
+			typeString = string.typeToString (type) - "Type"};
+		scriptError ("Can't convert the table to a plist because the type, \"" + typeString + "\" can't be represented in a plist.")};
+	
+	local (entityEncodeTable);
+	bundle { //create entityEncodeTable
+		new (tableType, @entityEncodeTable);
+		entityEncodeTable.["<"] = "&lt;";
+		entityEncodeTable.[">"] = "&gt;";
+		entityEncodeTable.["\""] = "&quot;";
+		entityEncodeTable.["\'"] = "&apos;";
+		entityEncodeTable.["\r"] = "&#013;";
+		entityEncodeTable.["\n"] = "&#010;";
+		entityEncodeTable.["\t"] = "&#009;"};
+	on encode (adrval) {
+		return (xml.entityEncode (string.multipleReplaceAll (string.replaceAll (adrval^, "&", "&amp;"), @entityEncodeTable), false) )};
+	
+	on addScalar (adrval, type, flEncode=false) {
+		if flEncode {
+			add ("<" + type + ">" + encode (adrval) + "</" + type + ">")}
+		else {
+			add ("<" + type + ">" + adrval^ + "</" + type + ">")}};
+	on addItem (adr) {
+		local (type = typeOf (adr^));
+		case type {
+			booleanType {
+				if adr^ {
+					add ("<true/>")}
+				else {
+					add ("<false/>")}};
+			longType {
+				addScalar (adr, "real")};
+			shortType {
+				addScalar (adr, "integer")};
+			stringType {
+				addScalar (adr, "string", true)};
+			dateType {
+				add ("<date>" + date.dateToIso8601String (adr^) + "</date>")};
+			unknownType {
+				if flAllowSpecialTypes {
+					if adr^ == nil {
+						add ("<data></data>")}
+					else {
+						typeError (type)}}
+				else {
+					typeError (type)}};
+			addressType {
+				if flAllowSpecialTypes {
+					add ("<string>" + string.popFileFromAddress (adr^) + "</string>")}
+				else {
+					typeError (type)}};
+			binaryType {
+				add ("<data>" + base64.encode (adr^, infinity) + "</data>")};
+			listType {
+				add ("<array>"); il++;
+				
+				local (adritem);
+				for item in adr^ {
+					addItem (@item)};
+				
+				il--;
+				add ("</array>")};
+			tableType {
+				addTable (adr)}}
+		else {
+			typeError (type)}};
+	on addTable (adrTable) {
+		add ("<dict>"); il++;
+		
+		local (adr);
+		for adr in adrTable {
+			local (name = nameOf (adr^));
+			add ("<key>" + encode (@name) + "</key>");
+			addItem (adr)};
+		
+		il--;
+		add ("</dict>")};
+	
+	addTable (adrTable);
+	
+	add ("</plist>");
+	
+	return (xtext)}

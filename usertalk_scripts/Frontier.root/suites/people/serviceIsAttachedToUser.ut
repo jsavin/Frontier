@@ -1,1 +1,11 @@
-on serviceIsAttachedToUser (serviceName, userName) {	«Does a user have access to a service?	local (adrUser = people.getUserTable (userName));	if not (people.userExists (userName)) {		return (false)};	if not (people.serviceExists (serviceName)) {		return (false)};	if defined (adrUser^.services.[serviceName]) {		if adrUser^.services.[serviceName].enabled {			return (true)}};	return (false)}
+on serviceIsAttachedToUser (serviceName, userName) {
+	Â«Does a user have access to a service?
+	local (adrUser = people.getUserTable (userName));
+	if not (people.userExists (userName)) {
+		return (false)};
+	if not (people.serviceExists (serviceName)) {
+		return (false)};
+	if defined (adrUser^.services.[serviceName]) {
+		if adrUser^.services.[serviceName].enabled {
+			return (true)}};
+	return (false)}

@@ -1,1 +1,2 @@
-on os () {	kernel (sys.os)}
+on os () {
+	kernel (sys.os)}

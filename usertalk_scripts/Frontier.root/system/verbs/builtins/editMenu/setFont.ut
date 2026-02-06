@@ -1,1 +1,2 @@
-on setFont (fontname) {	kernel (editmenu.setfont)}
+on setFont (fontname) {
+	kernel (editmenu.setfont)}

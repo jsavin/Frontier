@@ -1,1 +1,21 @@
-on rePrefixSelection() {	«Revisions:		«11/14/95 ECT: reverted to old grep patterns since glitch has been fixed		«11/07/95 ECT: changed selStar & selEnd to new window properties		«11/01/95 ECT: changed grep patterns to avert replace() glitch		«10/30/95 ECT: changed multiple calls to local() to outline		«08/19/95 ECT: ported from AppleScript to UserTalk	with objectModel, BBEdit, eventInfo {		local {			selStart = window[1].selectionStartLine;			selEnd = window[1].selectionEndLine};		if (selStart != selEnd) {			«Remove all the prefix ">"'s first, and rewrap			replace(everyOccurrence, "^>", "", selectionOnly:true);			hardWrap(selectionOnly:true);			«Prefix new rewrapped selection with ">"			replace(everyOccurrence, "^", ">", selectionOnly:true, grep:true)}		else {			dialog.notify("Select the text to rework first.");			bringToFront()}}};rePrefixSelection()
+on rePrefixSelection() {
+	Â«Revisions:
+		Â«11/14/95 ECT: reverted to old grep patterns since glitch has been fixed
+		Â«11/07/95 ECT: changed selStar & selEnd to new window properties
+		Â«11/01/95 ECT: changed grep patterns to avert replace() glitch
+		Â«10/30/95 ECT: changed multiple calls to local() to outline
+		Â«08/19/95 ECT: ported from AppleScript to UserTalk
+	with objectModel, BBEdit, eventInfo {
+		local {
+			selStart = window[1].selectionStartLine;
+			selEnd = window[1].selectionEndLine};
+		if (selStart != selEnd) {
+			Â«Remove all the prefix ">"'s first, and rewrap
+			replace(everyOccurrence, "^>", "", selectionOnly:true);
+			hardWrap(selectionOnly:true);
+			Â«Prefix new rewrapped selection with ">"
+			replace(everyOccurrence, "^", ">", selectionOnly:true, grep:true)}
+		else {
+			dialog.notify("Select the text to rework first.");
+			bringToFront()}}};
+rePrefixSelection()

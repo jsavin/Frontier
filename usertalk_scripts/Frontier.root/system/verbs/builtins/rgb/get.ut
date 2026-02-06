@@ -1,1 +1,2 @@
-on get (rgb, adrr, adrg, adrb) {	kernel (rgb.get)}
+on get (rgb, adrr, adrg, adrb) {
+	kernel (rgb.get)}

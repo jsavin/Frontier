@@ -1,1 +1,18 @@
-on commandHandle (request, adrparams) {	local (ipAddress, atts, command);	odbServer.init ();	ipAddress = netEvents.addressDecode (adrparams^.client);	command = odbServer.commandDecode (request, @atts);	try {		if not user.odbServer.commandFilter (@atts) {			return ("")}};	case string.lower (command) {		"ping" {			return ("OK")}}	else {		try {			return (user.odbServer.commands.[string.lower (command)] (@atts))}		else {			return ("Can't process the request because \"" + tryError + "\".")}}};«bundle «test code	«commandHandle (scratchpad.encodedCommand, @scratchpad.odbServerparams)
+on commandHandle (request, adrparams) {
+	local (ipAddress, atts, command);
+	odbServer.init ();
+	ipAddress = netEvents.addressDecode (adrparams^.client);
+	command = odbServer.commandDecode (request, @atts);
+	try {
+		if not user.odbServer.commandFilter (@atts) {
+			return ("")}};
+	case string.lower (command) {
+		"ping" {
+			return ("OK")}}
+	else {
+		try {
+			return (user.odbServer.commands.[string.lower (command)] (@atts))}
+		else {
+			return ("Can't process the request because \"" + tryError + "\".")}}};
+Â«bundle Â«test code
+	Â«commandHandle (scratchpad.encodedCommand, @scratchpad.odbServerparams)

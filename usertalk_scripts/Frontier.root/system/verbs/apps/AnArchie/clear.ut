@@ -1,1 +1,2 @@
-on clear () { «delete selection	return (appleEvent (AnArchie.id, 'core', 'delo'))}
+on clear () { Â«delete selection
+	return (appleEvent (AnArchie.id, 'core', 'delo'))}

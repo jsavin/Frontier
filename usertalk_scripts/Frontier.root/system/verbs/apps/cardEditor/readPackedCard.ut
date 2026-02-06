@@ -1,1 +1,15 @@
-on readPackedCard (f) { «read a Card Editor file into the object database	«the data fork of a Card Editor file contains a packed card, and that's all		«updated 1/5/96 DW -- strips off net header, if it's present	«Fri, Dec 5, 1997 at 1:52:15 AM by PBS		«Changed call to toys.readWholeFile to file.readWholeFile.		local (s = string (file.readWholeFile (f)));	local (line1 = string.nthField (s, "\r", 1));	if line1 == "MacBird 1.0 -- 12/31/95" {		s = string.delete (s, 1, sizeof (line1) + 1);		line1 = string.nthField (s, "\r", 1);		s = string.delete (s, 1, sizeof (line1) + 1)};	s = binary (s);	setBinaryType (s, 'CARD');	return (s)}
+on readPackedCard (f) { Â«read a Card Editor file into the object database
+	Â«the data fork of a Card Editor file contains a packed card, and that's all
+		Â«updated 1/5/96 DW -- strips off net header, if it's present
+	Â«Fri, Dec 5, 1997 at 1:52:15 AM by PBS
+		Â«Changed call to toys.readWholeFile to file.readWholeFile.
+	
+	local (s = string (file.readWholeFile (f)));
+	local (line1 = string.nthField (s, "\r", 1));
+	if line1 == "MacBird 1.0 -- 12/31/95" {
+		s = string.delete (s, 1, sizeof (line1) + 1);
+		line1 = string.nthField (s, "\r", 1);
+		s = string.delete (s, 1, sizeof (line1) + 1)};
+	s = binary (s);
+	setBinaryType (s, 'CARD');
+	return (s)}

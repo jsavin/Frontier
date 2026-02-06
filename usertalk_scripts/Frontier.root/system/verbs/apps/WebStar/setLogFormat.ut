@@ -1,1 +1,3 @@
-on setLogFormat (x, appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.set (appID, logFormat, x))}}
+on setLogFormat (x, appID = WebStar.id) {
+	with objectModel, WebStar.eventInfo {
+		return (core.set (appID, logFormat, x))}}

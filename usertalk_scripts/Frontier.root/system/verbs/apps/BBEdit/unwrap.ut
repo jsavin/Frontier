@@ -1,1 +1,2 @@
-on unwrap (selectionOnly = nil) { «Removes extra carriage returns and whitespace from the document.	return (appleEvent (BBEdit.id, 'R*ch', 'Unwp', 'Osel', boolean (selectionOnly)))}
+on unwrap (selectionOnly = nil) { Â«Removes extra carriage returns and whitespace from the document.
+	return (appleEvent (BBEdit.id, 'R*ch', 'Unwp', 'Osel', boolean (selectionOnly)))}

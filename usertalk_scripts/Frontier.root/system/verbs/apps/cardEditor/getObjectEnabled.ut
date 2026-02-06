@@ -1,1 +1,5 @@
-on getObjectEnabled (name) {	local (atts);	if not cardEditor.getObjectAttributes (name, @atts) {		return ("")};	return (atts.enab)}
+on getObjectEnabled (name) {
+	local (atts);
+	if not cardEditor.getObjectAttributes (name, @atts) {
+		return ("")};
+	return (atts.enab)}

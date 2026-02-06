@@ -1,1 +1,7 @@
-on getObjectType (adrAtts) {	local (s = adrAtts^.objectType, objectType);	local (prefix = "application/x-frontier-");	if not (s beginsWith prefix) { //for now, we don't handle objects intended for other apps		return (false)};	objectType = string.delete (s, 1, sizeof (prefix));	return (objectType)}
+on getObjectType (adrAtts) {
+	local (s = adrAtts^.objectType, objectType);
+	local (prefix = "application/x-frontier-");
+	if not (s beginsWith prefix) { //for now, we don't handle objects intended for other apps
+		return (false)};
+	objectType = string.delete (s, 1, sizeof (prefix));
+	return (objectType)}

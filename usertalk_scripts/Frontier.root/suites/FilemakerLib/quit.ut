@@ -1,1 +1,2 @@
-on quit () {	return (filemaker.quit ())}
+on quit () {
+	return (filemaker.quit ())}

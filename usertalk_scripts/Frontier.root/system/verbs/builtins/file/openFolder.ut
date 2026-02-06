@@ -1,1 +1,11 @@
-on openFolder (path) { //open the folder in the operating system	«updated to work on Windows, 10/26/98 by DW	if not file.isFolder (path) {		return (false)};	if system.environment.isMac {		return (launch.anything (path))};	if system.environment.isWindows {		local (osfolder = file.getSpecialFolderPath ("", "windows",  false));		return (launch.appWithDocument (osfolder + "explorer.exe", path))}};«bundle //test code	«openFolder ("C:\\palm springs\\")
+on openFolder (path) { //open the folder in the operating system
+	Â«updated to work on Windows, 10/26/98 by DW
+	if not file.isFolder (path) {
+		return (false)};
+	if system.environment.isMac {
+		return (launch.anything (path))};
+	if system.environment.isWindows {
+		local (osfolder = file.getSpecialFolderPath ("", "windows",  false));
+		return (launch.appWithDocument (osfolder + "explorer.exe", path))}};
+Â«bundle //test code
+	Â«openFolder ("C:\\palm springs\\")

@@ -1,1 +1,2 @@
-on createPublisher (obj, edition = nil) { «Create a publisher	return (misc.createPublisher (BBEdit.id, obj, edition))}
+on createPublisher (obj, edition = nil) { Â«Create a publisher
+	return (misc.createPublisher (BBEdit.id, obj, edition))}

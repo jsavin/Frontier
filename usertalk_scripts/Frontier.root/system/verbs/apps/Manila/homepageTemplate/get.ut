@@ -1,1 +1,9 @@
-on get (adrSitePrefs) {	«Get the home page template.		«10/14/00; 4:02:41 PM by PBS	«Changes		«9/6/01; 8:09:44 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename});		return (manila.callHandler (host, port, "manila.homePageTemplate.get", @params, rpcPath:rpcPath))}}
+on get (adrSitePrefs) {
+	Â«Get the home page template.
+		Â«10/14/00; 4:02:41 PM by PBS
+	Â«Changes
+		Â«9/6/01; 8:09:44 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename});
+		return (manila.callHandler (host, port, "manila.homePageTemplate.get", @params, rpcPath:rpcPath))}}

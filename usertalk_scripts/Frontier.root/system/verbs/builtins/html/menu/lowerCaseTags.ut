@@ -1,1 +1,3 @@
-if html.menu.useLowerCaseTags () {	return ("!Use Lowercase Tags")};return ("Use Lowercase Tags")
+if html.menu.useLowerCaseTags () {
+	return ("!Use Lowercase Tags")};
+return ("Use Lowercase Tags")

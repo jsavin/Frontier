@@ -1,1 +1,16 @@
-«Menu formula for the Update Tool.root... menu item.	«10/01/00; 12:44:21 AM by PBSlocal (adr = window.frontMost ());local (dbPath, dbName);local (command = "(Update...");if defined (adr^) {	adrGdb = table.getRootAddress (adr);	if adrGdb != @root { //is it in a gdb?		dbPath = window.getFile (adrGdb);		dbName = file.fileFromPath (dbPath);		command = "Update " + dbName + "..."}};return (command)
+Â«Menu formula for the Update Tool.root... menu item.
+	Â«10/01/00; 12:44:21 AM by PBS
+
+local (adr = window.frontMost ());
+local (dbPath, dbName);
+
+local (command = "(Update...");
+
+if defined (adr^) {
+	adrGdb = table.getRootAddress (adr);
+	if adrGdb != @root { //is it in a gdb?
+		dbPath = window.getFile (adrGdb);
+		dbName = file.fileFromPath (dbPath);
+		command = "Update " + dbName + "..."}};
+
+return (command)

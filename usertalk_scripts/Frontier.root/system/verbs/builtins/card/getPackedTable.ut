@@ -1,1 +1,2 @@
-on getPackedTable () {	return (appleEvent (0, card.id, 'tabl'))}
+on getPackedTable () {
+	return (appleEvent (0, card.id, 'tabl'))}

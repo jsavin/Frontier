@@ -1,1 +1,11 @@
-on uniqueName (basename) {	if basename == "" {		basename = "item"};	if not cardEditor.objectExists (basename) {		return (basename)};	local (ct = 2, candidate);	loop {		candidate = basename + ct;		if not cardEditor.objectExists (candidate) {			return (candidate)};		ct++}}
+on uniqueName (basename) {
+	if basename == "" {
+		basename = "item"};
+	if not cardEditor.objectExists (basename) {
+		return (basename)};
+	local (ct = 2, candidate);
+	loop {
+		candidate = basename + ct;
+		if not cardEditor.objectExists (candidate) {
+			return (candidate)};
+		ct++}}

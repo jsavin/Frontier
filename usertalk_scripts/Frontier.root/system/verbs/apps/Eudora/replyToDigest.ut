@@ -1,1 +1,97 @@
-on replyToDigest(toField="") {	«reply to the selected text in a digest message	«Pioneerware by Scott S. Lawton 5/22/95		«Internet: ssl@prefab.com		«CompuServe: 70214,424		«Advertisement: our cool Player utility lets scripts control anything via the user interface			«choose menus, set checkboxes, dismiss dialogs & even query the text of an error msg.	«Dick Munroe (munroe@acornsw.com) 23-Jul-96		«Try to figure out the list address if one isn't provided.		«	«Dick Munroe (munroe@acornsw.com) 20-Aug-96		«Add signature.		«	«Dick Munroe (munroe@acornsw.com) 21-Aug-96		«Check internet config if there is no eudora signature.		«	«Fri, Aug 23, 1996 by Preston Holmes <pholmes@ucsd.edu>		«Better check for digest return address		«Will prompt in last resort	local {		defaultListAddress = "lists.acornsw.com";		s;		theLine;		dateField;		fromField;		subjectField;		textField = "";		theMsg;		i = 1;		j;		colon =':'; « more readable (to me)		msg};		«moderately useful general-purpose function (could use a better name)	on getCharsAfter(textString, delimiter) {		local {			index = string.patternMatch(delimiter, textString) + 1; « go 1 beyond the delimiter			space =' '}; « more readable (to me)		return string.popLeading( string.mid(textString, index, infinity), space )};		with objectModel, Eudora, eventInfo {		if toField == "" {			msg = getCurrentMessageObject();			«			«Try to get the list name from the subject			«			try {				toField = get (msg.field["Reply-To"]) - "Reply-To: "}			else {				toField = getMessageSubject(msg);				if  (string.lower(toField) contains " digest v") {					j = string.patternMatch (" Digest V", toField);					toField = string.mid (toField, 1, j -1);					toField = string.popLeading (toField, ' ');					toField = string.popTrailing (toField, ' ');					toField = toField + "@" + defaultListAddress}				else {					if not dialog.ask ("Address of list?", @toField) {						return}}}};		try {			s = getSelectedText()}		else {			dialog.alert ("No digest text was selected");			return};		theLine = string.nthField(s, cr, i);		while not (theLine contains colon) { « skip "---" and blank lines and such			++i;			theLine = string.nthField(s, cr, i)};		dateField = getCharsAfter(theLine, colon); « I actually ignore this field at the moment		++i;		fromField = getCharsAfter(string.nthField(s, cr, i), colon);		++i;		subjectField = getCharsAfter(string.nthField(s, cr, i), colon);		++i; « i.e. advance beyond subject		++i; « skip the blank line				«not sure if there's a more elegant way to get the remainder...		for j = i to string.countFields(s, cr) {			textField = textField + string.nthField(s, cr, j) + cr};				if not ( string.lower(subjectField) beginsWith "re:" ) {			subjectField = "Re: " + subjectField};		textField = ">" + string.replaceAll(textField, cr, cr + ">"); « "quote" the text				local {			signature = ""};		try {			signature =  Eudora.getSignature()};		if (signature == "") and defined(ic) {			try {				signature = ic.getICPreference(ic.eventInfo.signature)}};		theMsg = createMessage(); « creates new message, returns an ObjectSpecifier		setMessageTo(theMsg, toField);		setMessageSubject(theMsg, subjectField);		setMessageText(theMsg, fromField + " typed:" + cr + textField + signature);		}};«setMessageText(theMsg, "On " + dateField + ", " + fromField + " typed:" + cr + textField)replyToDigest()
+on replyToDigest(toField="") {
+	Â«reply to the selected text in a digest message
+	Â«Pioneerware by Scott S. Lawton 5/22/95
+		Â«Internet: ssl@prefab.com
+		Â«CompuServe: 70214,424
+		Â«Advertisement: our cool Player utility lets scripts control anything via the user interface
+			Â«choose menus, set checkboxes, dismiss dialogs & even query the text of an error msg.
+	Â«Dick Munroe (munroe@acornsw.com) 23-Jul-96
+		Â«Try to figure out the list address if one isn't provided.
+		Â«
+	Â«Dick Munroe (munroe@acornsw.com) 20-Aug-96
+		Â«Add signature.
+		Â«
+	Â«Dick Munroe (munroe@acornsw.com) 21-Aug-96
+		Â«Check internet config if there is no eudora signature.
+		Â«
+	Â«Fri, Aug 23, 1996 by Preston Holmes <pholmes@ucsd.edu>
+		Â«Better check for digest return address
+		Â«Will prompt in last resort
+	local {
+		defaultListAddress = "lists.acornsw.com";
+		s;
+		theLine;
+		dateField;
+		fromField;
+		subjectField;
+		textField = "";
+		theMsg;
+		i = 1;
+		j;
+		colon =':'; Â« more readable (to me)
+		msg};
+	
+	Â«moderately useful general-purpose function (could use a better name)
+	on getCharsAfter(textString, delimiter) {
+		local {
+			index = string.patternMatch(delimiter, textString) + 1; Â« go 1 beyond the delimiter
+			space =' '}; Â« more readable (to me)
+		return string.popLeading( string.mid(textString, index, infinity), space )};
+	
+	with objectModel, Eudora, eventInfo {
+		if toField == "" {
+			msg = getCurrentMessageObject();
+			Â«
+			Â«Try to get the list name from the subject
+			Â«
+			try {
+				toField = get (msg.field["Reply-To"]) - "Reply-To: "}
+			else {
+				toField = getMessageSubject(msg);
+				if  (string.lower(toField) contains " digest v") {
+					j = string.patternMatch (" Digest V", toField);
+					toField = string.mid (toField, 1, j -1);
+					toField = string.popLeading (toField, ' ');
+					toField = string.popTrailing (toField, ' ');
+					toField = toField + "@" + defaultListAddress}
+				else {
+					if not dialog.ask ("Address of list?", @toField) {
+						return}}}};
+		try {
+			s = getSelectedText()}
+		else {
+			dialog.alert ("No digest text was selected");
+			return};
+		theLine = string.nthField(s, cr, i);
+		while not (theLine contains colon) { Â« skip "---" and blank lines and such
+			++i;
+			theLine = string.nthField(s, cr, i)};
+		dateField = getCharsAfter(theLine, colon); Â« I actually ignore this field at the moment
+		++i;
+		fromField = getCharsAfter(string.nthField(s, cr, i), colon);
+		++i;
+		subjectField = getCharsAfter(string.nthField(s, cr, i), colon);
+		++i; Â« i.e. advance beyond subject
+		++i; Â« skip the blank line
+		
+		Â«not sure if there's a more elegant way to get the remainder...
+		for j = i to string.countFields(s, cr) {
+			textField = textField + string.nthField(s, cr, j) + cr};
+		
+		if not ( string.lower(subjectField) beginsWith "re:" ) {
+			subjectField = "Re: " + subjectField};
+		textField = ">" + string.replaceAll(textField, cr, cr + ">"); Â« "quote" the text
+		
+		local {
+			signature = ""};
+		try {
+			signature =  Eudora.getSignature()};
+		if (signature == "") and defined(ic) {
+			try {
+				signature = ic.getICPreference(ic.eventInfo.signature)}};
+		theMsg = createMessage(); Â« creates new message, returns an ObjectSpecifier
+		setMessageTo(theMsg, toField);
+		setMessageSubject(theMsg, subjectField);
+		setMessageText(theMsg, fromField + " typed:" + cr + textField + signature);
+		}};Â«setMessageText(theMsg, "On " + dateField + ", " + fromField + " typed:" + cr + textField)
+replyToDigest()

@@ -1,1 +1,25 @@
-on open () {	«the email root is stored in the Frontier folder		«if it doesn't exist, create it		local (f = file.folderFromPath (Frontier.getProgramPath ()) + "mail.root");	if not file.exists (f) {		db.new (f)};	db.open (f, false);	on checkTable (path) {		if not db.defined (f, path) {			db.newTable (f, path)}};	checkTable ("mail");	checkTable ("mail.messages");	on checkObject (adrsource, path) {		if not db.defined (f, path) {			db.setValue (f, path, adrsource^)}};	checkTable ("system.startup");	checkObject (@mail.otherRoot.items.startup, "system.startup.mailStart");	mail.otherRoot.f = f};«bundle «test code	«for i = 1 to 10		«file.delete (mail.otherRoot.f)		«open ()		«db.close (mail.otherRoot.f)
+on open () {
+	Â«the email root is stored in the Frontier folder
+		Â«if it doesn't exist, create it
+	
+	local (f = file.folderFromPath (Frontier.getProgramPath ()) + "mail.root");
+	if not file.exists (f) {
+		db.new (f)};
+	db.open (f, false);
+	on checkTable (path) {
+		if not db.defined (f, path) {
+			db.newTable (f, path)}};
+	checkTable ("mail");
+	checkTable ("mail.messages");
+	on checkObject (adrsource, path) {
+		if not db.defined (f, path) {
+			db.setValue (f, path, adrsource^)}};
+	checkTable ("system.startup");
+	checkObject (@mail.otherRoot.items.startup, "system.startup.mailStart");
+	mail.otherRoot.f = f};
+
+Â«bundle Â«test code
+	Â«for i = 1 to 10
+		Â«file.delete (mail.otherRoot.f)
+		Â«open ()
+		Â«db.close (mail.otherRoot.f)

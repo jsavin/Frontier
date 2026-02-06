@@ -1,1 +1,2 @@
-on shiftRight (n, dist) {	kernel (bit.shiftRight)}
+on shiftRight (n, dist) {
+	kernel (bit.shiftRight)}

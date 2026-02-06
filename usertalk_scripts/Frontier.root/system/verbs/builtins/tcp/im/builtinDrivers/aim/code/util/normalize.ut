@@ -1,1 +1,3 @@
-on normalize(data) {		return ( string.lower(string.dropNonalphas(data)))}
+on normalize(data) {
+	
+	return ( string.lower(string.dropNonalphas(data)))}

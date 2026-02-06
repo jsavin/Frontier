@@ -1,1 +1,4 @@
-on getUserTable (userName) {	«Return the address of the table for this user.		«This is a private verb, not to be documented.	return (@user.people.users.[userName])}
+on getUserTable (userName) {
+	Â«Return the address of the table for this user.
+		Â«This is a private verb, not to be documented.
+	return (@user.people.users.[userName])}

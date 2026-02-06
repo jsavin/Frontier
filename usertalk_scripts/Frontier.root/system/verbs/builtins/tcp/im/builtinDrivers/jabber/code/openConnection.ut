@@ -1,1 +1,113 @@
-on openConnection ( host = "", username = "", password = "", resource = "", port = "", registrationInfoAdr = "", flCreateNewAccount = true, mustCreateNewAccount = false, loginTimeout = 60*60, connection = nil ) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«Jabber framework internal args:		«mustCreateNewAccount: If true, this invocation will attempt to create a new account. Otherwise, it will try to login to an existing account.	tcp.im.builtinDrivers.jabber.code.init();	if not user.im.jabber.flActive {		scriptError ( "Can't open connection because the Jabber framework is inactive." )};	if defined ( connection^ ) {		if connection^.state != "FAILED LOGIN" { //JES 7/29/02: special case -- we're about to create a new account			scriptError ( "Can't open connection to the Jabber server because it is already active." )}};		bundle { // handle default arguments correctly		// when openConnection is called, we can't be sure jabber.init() has run, so the default arg resolution needs to be delayed. Fortunately, for all other verbs, we know openConnection has been called.		if host == "" {			host = user.im.jabber.host};		if username == "" {			username = user.im.jabber.username};		if password == "" {			password = user.im.jabber.password};		if resource == "" {			resource = user.im.jabber.resource};		if port == "" {			port = user.im.jabber.port};		if registrationInfoAdr == "" {			registrationInfoAdr = @user.im.jabber.registrationInfo};				// and this one is because Frontier/Radio gets upset when the default argument is an address to non-existant value		if connection == nil {			connection = @system.temp.jabber.connection}};		new ( tableType, connection );	bundle { // set up connection information		connection^.username = username;		connection^.host = host;		connection^.resource = resource;		connection^.password = password;		connection^.registrationInfoAdr = registrationInfoAdr;		new (tableType, @connection^.presence)};		connection^.tcpStream = tcp.openStream ( host, port );	connection^.state = "LOGGING IN";	local ( loginSemName = "JabLogin" + nameOf ( connection^ ) );	connection^.loginSemName = loginSemName;		bundle { // write out the stream header		tcp.writeStream ( connection^.tcpStream, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n\n<stream:stream to=\"");		tcp.writeStream ( connection^.tcpStream, xml.entityEncode(host, true) + "\" xmlns=\"jabber:client\" xmlns:stream=\"http://etherx.jabber.org/streams\">" )};		if not mustCreateNewAccount {		tcp.im.builtinDrivers.jabber.code.messages.iqAuth ( connection)} // try to login 	else {		local ( idTbl = tcp.im.builtinDrivers.jabber.code.idTables.create () ); // need this for the key, according to spec, but nobody uses it? 		if not defined (connection^.tcpStream) { //JES 7/29/02: make sure the tcp stream is opened			connection^.tcpStream = tcp.openStream ( host, port )};		try {			tcp.im.builtinDrivers.jabber.code.messages.iqRegisterRequest ( idTbl, connection )} // try to create new account //JES 7/29/02: parameter order was reversed -- swapped back		else { //JES 7/29/02: close the tcp stream, and throw the error up the call stack			tcp.closeStream (connection^.tcpStream);			bundle { //JES 7/29/02: this is a fatal error -- do garbage collection				try {delete (system.temp.connections.[nameOf (connection^)] ) };				try {delete (connection)};				try {delete (idTbl)}};			scriptError (tryError)}};		system.temp.jabber.connections[string(connection)] = true;	try {		semaphore.lock(loginSemName, 60)};	// Comment this line out, and you can run the thread by hand for debugging	thread.callScript (@tcp.im.builtinDrivers.jabber.code.thread, { connection } );		// uncomment this if you comment the thread.easyCall, so you don't stall on the code below	«return		try {		semaphore.lock(loginSemName, loginTimeout )};	semaphore.unlock(loginSemName);		if not defined ( connection^ ) {		scriptError ("Can't complete logging in to the Jabber server because the connection was terminated before logging in was complete.")};		// see how the login went, do the appropriate thing	case connection^.state {		"LOGGED IN" {			// stuff we do when we log in: send prescense, ask for server version, get roster			local ( rosterRequestId = tcp.im.builtinDrivers.jabber.code.idTables.create(), versionRequestId = tcp.im.builtinDrivers.jabber.code.idTables.create() );			tcp.im.builtinDrivers.jabber.code.messages.presence(type: "available", status: "Online", priority: 0, connection: connection);			tcp.im.builtinDrivers.jabber.code.messages.iqRosterRequest(connection: connection, idTbl: rosterRequestId);			tcp.im.builtinDrivers.jabber.code.messages.iqVersionRequest(connection: connection, dest: connection^.host, idTbl: versionRequestId);			try {				tcp.im.builtinDrivers.jabber.code.waitForIqReply(rosterRequestId);				tcp.im.builtinDrivers.jabber.code.waitForIqReply(versionRequestId)}			else {				tcp.im.builtinDrivers.jabber.code.closeConnection(connection);				scriptError ( "Can't login to Jabber server because the login attempt timed out." )};			if connection == @system.temp.jabber.connection {				user.scheduler.everyMinute.jabber = @tcp.im.builtinDrivers.jabber.code.everyMinute};			return true};		"LOGGING IN" { // evidently, things timed out			tcp.im.builtinDrivers.jabber.code.closeConnection(connection);			scriptError ( "Can't login to Jabber server because the login attempt timed out." )};		"FAILED LOGIN" {			if flCreateNewAccount and not mustCreateNewAccount { // no account exists, close the stream and create the new account				return tcp.im.builtinDrivers.jabber.code.openConnection ( host: host, username: username, password: "", resource: resource, port: port, registrationInfoAdr: registrationInfoAdr, flCreateNewAccount: flCreateNewAccount, mustCreateNewAccount: true, connection: connection )}			else {				tcp.im.builtinDrivers.jabber.code.closeConnection(connection);				scriptError ( "Can't login to Jabber server because your account information is incorrect. (Most likely either a wrong password, or an unregistered account on a server not accepting new accounts.)" )}};		"ACCOUNT CREATED" { // an account was created, now close the stream and re-open with the new account			tcp.im.builtinDrivers.jabber.code.closeConnection(connection);			return tcp.im.builtinDrivers.jabber.code.openConnection ( host: host, username: username, password: "", resource: resource, port: port, registrationInfoAdr: registrationInfoAdr, connection: connection)}}};bundle { //test code	openConnection ( )}
+on openConnection ( host = "", username = "", password = "", resource = "", port = "", registrationInfoAdr = "", flCreateNewAccount = true, mustCreateNewAccount = false, loginTimeout = 60*60, connection = nil ) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«Jabber framework internal args:
+		Â«mustCreateNewAccount: If true, this invocation will attempt to create a new account. Otherwise, it will try to login to an existing account.
+	tcp.im.builtinDrivers.jabber.code.init();
+	if not user.im.jabber.flActive {
+		scriptError ( "Can't open connection because the Jabber framework is inactive." )};
+	if defined ( connection^ ) {
+		if connection^.state != "FAILED LOGIN" { //JES 7/29/02: special case -- we're about to create a new account
+			scriptError ( "Can't open connection to the Jabber server because it is already active." )}};
+	
+	bundle { // handle default arguments correctly
+		// when openConnection is called, we can't be sure jabber.init() has run, so the default arg resolution needs to be delayed. Fortunately, for all other verbs, we know openConnection has been called.
+		if host == "" {
+			host = user.im.jabber.host};
+		if username == "" {
+			username = user.im.jabber.username};
+		if password == "" {
+			password = user.im.jabber.password};
+		if resource == "" {
+			resource = user.im.jabber.resource};
+		if port == "" {
+			port = user.im.jabber.port};
+		if registrationInfoAdr == "" {
+			registrationInfoAdr = @user.im.jabber.registrationInfo};
+		
+		// and this one is because Frontier/Radio gets upset when the default argument is an address to non-existant value
+		if connection == nil {
+			connection = @system.temp.jabber.connection}};
+	
+	new ( tableType, connection );
+	bundle { // set up connection information
+		connection^.username = username;
+		connection^.host = host;
+		connection^.resource = resource;
+		connection^.password = password;
+		connection^.registrationInfoAdr = registrationInfoAdr;
+		new (tableType, @connection^.presence)};
+	
+	connection^.tcpStream = tcp.openStream ( host, port );
+	connection^.state = "LOGGING IN";
+	local ( loginSemName = "JabLogin" + nameOf ( connection^ ) );
+	connection^.loginSemName = loginSemName;
+	
+	bundle { // write out the stream header
+		tcp.writeStream ( connection^.tcpStream, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n\n<stream:stream to=\"");
+		tcp.writeStream ( connection^.tcpStream, xml.entityEncode(host, true) + "\" xmlns=\"jabber:client\" xmlns:stream=\"http://etherx.jabber.org/streams\">" )};
+	
+	if not mustCreateNewAccount {
+		tcp.im.builtinDrivers.jabber.code.messages.iqAuth ( connection)} // try to login 
+	else {
+		local ( idTbl = tcp.im.builtinDrivers.jabber.code.idTables.create () ); // need this for the key, according to spec, but nobody uses it? 
+		if not defined (connection^.tcpStream) { //JES 7/29/02: make sure the tcp stream is opened
+			connection^.tcpStream = tcp.openStream ( host, port )};
+		try {
+			tcp.im.builtinDrivers.jabber.code.messages.iqRegisterRequest ( idTbl, connection )} // try to create new account //JES 7/29/02: parameter order was reversed -- swapped back
+		else { //JES 7/29/02: close the tcp stream, and throw the error up the call stack
+			tcp.closeStream (connection^.tcpStream);
+			bundle { //JES 7/29/02: this is a fatal error -- do garbage collection
+				try {delete (system.temp.connections.[nameOf (connection^)] ) };
+				try {delete (connection)};
+				try {delete (idTbl)}};
+			scriptError (tryError)}};
+	
+	system.temp.jabber.connections[string(connection)] = true;
+	try {
+		semaphore.lock(loginSemName, 60)};
+	// Comment this line out, and you can run the thread by hand for debugging
+	thread.callScript (@tcp.im.builtinDrivers.jabber.code.thread, { connection } );
+	
+	// uncomment this if you comment the thread.easyCall, so you don't stall on the code below
+	Â«return
+	
+	try {
+		semaphore.lock(loginSemName, loginTimeout )};
+	semaphore.unlock(loginSemName);
+	
+	if not defined ( connection^ ) {
+		scriptError ("Can't complete logging in to the Jabber server because the connection was terminated before logging in was complete.")};
+	
+	// see how the login went, do the appropriate thing
+	case connection^.state {
+		"LOGGED IN" {
+			// stuff we do when we log in: send prescense, ask for server version, get roster
+			local ( rosterRequestId = tcp.im.builtinDrivers.jabber.code.idTables.create(), versionRequestId = tcp.im.builtinDrivers.jabber.code.idTables.create() );
+			tcp.im.builtinDrivers.jabber.code.messages.presence(type: "available", status: "Online", priority: 0, connection: connection);
+			tcp.im.builtinDrivers.jabber.code.messages.iqRosterRequest(connection: connection, idTbl: rosterRequestId);
+			tcp.im.builtinDrivers.jabber.code.messages.iqVersionRequest(connection: connection, dest: connection^.host, idTbl: versionRequestId);
+			try {
+				tcp.im.builtinDrivers.jabber.code.waitForIqReply(rosterRequestId);
+				tcp.im.builtinDrivers.jabber.code.waitForIqReply(versionRequestId)}
+			else {
+				tcp.im.builtinDrivers.jabber.code.closeConnection(connection);
+				scriptError ( "Can't login to Jabber server because the login attempt timed out." )};
+			if connection == @system.temp.jabber.connection {
+				user.scheduler.everyMinute.jabber = @tcp.im.builtinDrivers.jabber.code.everyMinute};
+			return true};
+		"LOGGING IN" { // evidently, things timed out
+			tcp.im.builtinDrivers.jabber.code.closeConnection(connection);
+			scriptError ( "Can't login to Jabber server because the login attempt timed out." )};
+		"FAILED LOGIN" {
+			if flCreateNewAccount and not mustCreateNewAccount { // no account exists, close the stream and create the new account
+				return tcp.im.builtinDrivers.jabber.code.openConnection ( host: host, username: username, password: "", resource: resource, port: port, registrationInfoAdr: registrationInfoAdr, flCreateNewAccount: flCreateNewAccount, mustCreateNewAccount: true, connection: connection )}
+			else {
+				tcp.im.builtinDrivers.jabber.code.closeConnection(connection);
+				scriptError ( "Can't login to Jabber server because your account information is incorrect. (Most likely either a wrong password, or an unregistered account on a server not accepting new accounts.)" )}};
+		"ACCOUNT CREATED" { // an account was created, now close the stream and re-open with the new account
+			tcp.im.builtinDrivers.jabber.code.closeConnection(connection);
+			return tcp.im.builtinDrivers.jabber.code.openConnection ( host: host, username: username, password: "", resource: resource, port: port, registrationInfoAdr: registrationInfoAdr, connection: connection)}}};
+bundle { //test code
+	openConnection ( )}

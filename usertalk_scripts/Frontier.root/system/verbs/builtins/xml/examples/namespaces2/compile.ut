@@ -1,1 +1,3 @@
-with xml.examples.namespaces2 {	xml.compile (string (taggedtext), @scratchpad.tableStructure);	edit (@scratchpad.tableStructure)}
+with xml.examples.namespaces2 {
+	xml.compile (string (taggedtext), @scratchpad.tableStructure);
+	edit (@scratchpad.tableStructure)}

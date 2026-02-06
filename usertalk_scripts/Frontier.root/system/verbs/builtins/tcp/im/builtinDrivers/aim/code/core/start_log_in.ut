@@ -1,1 +1,26 @@
-on start_log_in(adrSelf) {	local {		ep = tcp.im.builtinDrivers.aim.code.util.pwdenc(adrSelf);		msgStr = ""};		adrSelf^._normnick = tcp.im.builtinDrivers.aim.code.util.normalize(adrSelf^._nick);		«UNDONE  This is goign to be interesting...	«msg = struct.pack("!HHHH",0,1,1,len(self._normnick)) + self._normnick		«H is a short. Integers are longs on our platform, so we're doing 0000 0001 0001 sizeOf().  Essentially.	local {		c1;		c2};	pack(1, @c1);	pack(65536+sizeOf(adrSelf^._normnick), @c2);		msgStr = string(c1) +string(c2) + adrSelf^._normnick;	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 1,msgStr);		«#now, login	msgStr = "toc_signon";	for str in {adrSelf^.TOC_SERV_AUTH[1], adrSelf^.TOC_SERV_AUTH[2], adrSelf^._normnick, ep,"english", tcp.im.builtinDrivers.aim.code.util.encode(adrSelf^._agent)} {		msgStr = msgStr +" " + str;		};	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 2, msgStr  );	return(true)}
+on start_log_in(adrSelf) {
+	local {
+		ep = tcp.im.builtinDrivers.aim.code.util.pwdenc(adrSelf);
+		msgStr = ""};
+	
+	adrSelf^._normnick = tcp.im.builtinDrivers.aim.code.util.normalize(adrSelf^._nick);
+	
+	Â«UNDONE  This is goign to be interesting...
+	Â«msg = struct.pack("!HHHH",0,1,1,len(self._normnick)) + self._normnick
+		Â«H is a short. Integers are longs on our platform, so we're doing 0000 0001 0001 sizeOf().  Essentially.
+	local {
+		c1;
+		c2};
+	pack(1, @c1);
+	pack(65536+sizeOf(adrSelf^._normnick), @c2);
+	
+	msgStr = string(c1) +string(c2) + adrSelf^._normnick;
+	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 1,msgStr);
+	
+	Â«#now, login
+	msgStr = "toc_signon";
+	for str in {adrSelf^.TOC_SERV_AUTH[1], adrSelf^.TOC_SERV_AUTH[2], adrSelf^._normnick, ep,"english", tcp.im.builtinDrivers.aim.code.util.encode(adrSelf^._agent)} {
+		msgStr = msgStr +" " + str;
+		};
+	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 2, msgStr  );
+	return(true)}

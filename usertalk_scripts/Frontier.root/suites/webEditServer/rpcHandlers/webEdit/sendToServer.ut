@@ -1,1 +1,37 @@
-on sendToServer (userName, password, adrObject, data, objectType, note="") {	«Changes		«7/6/05; 7:45:50 PM by JES			«Pop off file-part of addresses in all messages returned to the client.		«Tue, Mar 9, 1999 at 3:40:53 PM by PBS			«The client is sending us an object that's checked out, but it shouldn't be checked back in yet. The client is not giving up custody.		local (adrPreCallback = @user.webEditServer.callbacks.preSendToServer);	local (adrCallback = @user.webEditServer.callbacks.sendToServer);	local (now = clock.now ());		if not (people.authenticateUser (userName, password, "WebEdit")) {		scriptError ("Can't replace " + string.popFileFromAddress (adrObject) + " because an invalid username or password was supplied.")};		adrObject = webEditServer.fixGuestDbAdr (adrObject);		«Make sure the object is checked out by this user, if the object already exists.	if defined (adrObject^) {		if not (custody.isCheckedOutByUser (adrObject, userName)) {			return ("Can't replace " + string.popFileFromAddress (adrObject) + " because " + userName + " has not checked it out.")}};		data = fatPages.decode (@data);	setBinaryType (@data, string4 (objectType));	unpack (@data, @data);		webEditServer.callbackLoop (adrPreCallback, adrObject, userName, now, "");		table.assign (address (adrObject), data);		webEditServer.callbackLoop (adrCallback, adrObject, userName, now, note);		«Add to the imported objects log.	export.addToLog (adrObject, notes:"From " + username);		filemenu.saveMyRoot (adrobject);		return (string.popFileFromAddress (adrObject) + " has been replaced on the server.")}
+on sendToServer (userName, password, adrObject, data, objectType, note="") {
+	Â«Changes
+		Â«7/6/05; 7:45:50 PM by JES
+			Â«Pop off file-part of addresses in all messages returned to the client.
+		Â«Tue, Mar 9, 1999 at 3:40:53 PM by PBS
+			Â«The client is sending us an object that's checked out, but it shouldn't be checked back in yet. The client is not giving up custody.
+	
+	local (adrPreCallback = @user.webEditServer.callbacks.preSendToServer);
+	local (adrCallback = @user.webEditServer.callbacks.sendToServer);
+	local (now = clock.now ());
+	
+	if not (people.authenticateUser (userName, password, "WebEdit")) {
+		scriptError ("Can't replace " + string.popFileFromAddress (adrObject) + " because an invalid username or password was supplied.")};
+	
+	adrObject = webEditServer.fixGuestDbAdr (adrObject);
+	
+	Â«Make sure the object is checked out by this user, if the object already exists.
+	if defined (adrObject^) {
+		if not (custody.isCheckedOutByUser (adrObject, userName)) {
+			return ("Can't replace " + string.popFileFromAddress (adrObject) + " because " + userName + " has not checked it out.")}};
+	
+	data = fatPages.decode (@data);
+	setBinaryType (@data, string4 (objectType));
+	unpack (@data, @data);
+	
+	webEditServer.callbackLoop (adrPreCallback, adrObject, userName, now, "");
+	
+	table.assign (address (adrObject), data);
+	
+	webEditServer.callbackLoop (adrCallback, adrObject, userName, now, note);
+	
+	Â«Add to the imported objects log.
+	export.addToLog (adrObject, notes:"From " + username);
+	
+	filemenu.saveMyRoot (adrobject);
+	
+	return (string.popFileFromAddress (adrObject) + " has been replaced on the server.")}

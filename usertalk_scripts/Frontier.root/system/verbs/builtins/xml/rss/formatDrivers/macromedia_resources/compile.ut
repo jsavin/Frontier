@@ -1,1 +1,71 @@
-on compile (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {	«Changes		«3/17/02; 10:39:42 AM by DW			«Created by Dave Babbit, debugged and tweaked by Dave Winer.				«http://radio.userland.com/discuss/msgReader$11985			«Released as the first example for a format driver.				«http://radio.userland.com/aggregatorDriverArchitecture#anExample	on decode (s) {		return (xml.rss.decodeString (s))};	on addToHistory (adritem) {		local (title = adritem^.title);		if sizeOf (title) > 0 {			local (adrinhistory = @adrcompilation^.itemHistory.[title]);			if not defined (adrinhistory^) { //it's a new story				if adrStoryArrivedCallback != nil {					adrStoryArrivedCallback^ (adrservice, adritem)}};			adrinhistory^ = true}}; //it's current	local (adrxstruct = @adrservice^.xmlstruct);	local (adrcompilation = @adrservice^.compilation);	bundle { //set channeltitle, channellink, channeldescription		adrcompilation^.channeltitle = "Macromedia - Designer Developer Center";		adrcompilation^.channellink = "http://www.macromedia.com/desdev/articles/xml_resource_feed.html";		adrcompilation^.channeldescription = "The Latest Macromedia News and Resources"};	bundle { //get the items		local (adrmacromediaresources = xml.getAddress (adrxstruct, "macromedia_resources"));		local (itemlist = xml.getAddressList (adrmacromediaresources, "resource"), item, itemcopy, ct = 1, i);		new (tabletype, @adrcompilation^.items);		for i = sizeof (itemlist) downto 1 {			item = itemlist [i];			itemcopy = item^;			adritem = @adrcompilation^.items.[string.padwithzeros (ct++, 5)];			new (tabletype, adritem);			local (title = decode (xml.getValue (@itemcopy, "title")));			local (link = decode (xml.getValue (@itemcopy, "url")));			local (description = ""); //no description or abstract element in the Macromedia format			local (author = decode (xml.getValue (@itemcopy, "author")));						local (productnamelist = {});			bundle { //fill productnamelist				local (productlist = xml.getAddressList (@itemcopy, "product"), product);				for product in productlist {					productnamelist = productnamelist + {xml.getattributevalue (product, "name")}}};						bundle { //build the string to show on News Aggregator page				local (s);				if sizeof (productnamelist) > 0 {					local (name);					for name in productnamelist {						s = s + ", " + string.replaceall (name, "_", " ")};					s = "; re: " + string.delete (s, 1, 2) + "."}				else {					s = "."};				adritem^.title = "<a href=\"" + link + "\">" + title + "</a> by " + author + s};						if flSaveData {				local (adrdata = @adritem^.data);				new (tabletype, adrdata);				adrdata^.link = link;				adrdata^.title = title;				adrdata^.description = description;				adrdata^.author = author};			addToHistory (adritem)}};	return (true)};«bundle //test code	«local (url = "http://www.macromedia.com/desdev/resources/macromedia_resources.xml")	«local (adrservice = xml.rss.initService (url, @aggregatorData.services))	«new (tabletype, @adrservice^.compilation)	«new (tabletype, @adrservice^.compilation.itemHistory)	«adrservice^.xmltext = tcp.httpReadUrl (url)	«xml.compile (adrservice^.xmltext, @adrservice^.xmlstruct)	«compile (adrservice, true, @xml.aggregator.storyArrivedCallback)
+on compile (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
+	Â«Changes
+		Â«3/17/02; 10:39:42 AM by DW
+			Â«Created by Dave Babbit, debugged and tweaked by Dave Winer.
+				Â«http://radio.userland.com/discuss/msgReader$11985
+			Â«Released as the first example for a format driver.
+				Â«http://radio.userland.com/aggregatorDriverArchitecture#anExample
+	on decode (s) {
+		return (xml.rss.decodeString (s))};
+	on addToHistory (adritem) {
+		local (title = adritem^.title);
+		if sizeOf (title) > 0 {
+			local (adrinhistory = @adrcompilation^.itemHistory.[title]);
+			if not defined (adrinhistory^) { //it's a new story
+				if adrStoryArrivedCallback != nil {
+					adrStoryArrivedCallback^ (adrservice, adritem)}};
+			adrinhistory^ = true}}; //it's current
+	local (adrxstruct = @adrservice^.xmlstruct);
+	local (adrcompilation = @adrservice^.compilation);
+	bundle { //set channeltitle, channellink, channeldescription
+		adrcompilation^.channeltitle = "Macromedia - Designer Developer Center";
+		adrcompilation^.channellink = "http://www.macromedia.com/desdev/articles/xml_resource_feed.html";
+		adrcompilation^.channeldescription = "The Latest Macromedia News and Resources"};
+	bundle { //get the items
+		local (adrmacromediaresources = xml.getAddress (adrxstruct, "macromedia_resources"));
+		local (itemlist = xml.getAddressList (adrmacromediaresources, "resource"), item, itemcopy, ct = 1, i);
+		new (tabletype, @adrcompilation^.items);
+		for i = sizeof (itemlist) downto 1 {
+			item = itemlist [i];
+			itemcopy = item^;
+			adritem = @adrcompilation^.items.[string.padwithzeros (ct++, 5)];
+			new (tabletype, adritem);
+			local (title = decode (xml.getValue (@itemcopy, "title")));
+			local (link = decode (xml.getValue (@itemcopy, "url")));
+			local (description = ""); //no description or abstract element in the Macromedia format
+			local (author = decode (xml.getValue (@itemcopy, "author")));
+			
+			local (productnamelist = {});
+			bundle { //fill productnamelist
+				local (productlist = xml.getAddressList (@itemcopy, "product"), product);
+				for product in productlist {
+					productnamelist = productnamelist + {xml.getattributevalue (product, "name")}}};
+			
+			bundle { //build the string to show on News Aggregator page
+				local (s);
+				if sizeof (productnamelist) > 0 {
+					local (name);
+					for name in productnamelist {
+						s = s + ", " + string.replaceall (name, "_", " ")};
+					s = "; re: " + string.delete (s, 1, 2) + "."}
+				else {
+					s = "."};
+				adritem^.title = "<a href=\"" + link + "\">" + title + "</a> by " + author + s};
+			
+			if flSaveData {
+				local (adrdata = @adritem^.data);
+				new (tabletype, adrdata);
+				adrdata^.link = link;
+				adrdata^.title = title;
+				adrdata^.description = description;
+				adrdata^.author = author};
+			addToHistory (adritem)}};
+	return (true)};
+Â«bundle //test code
+	Â«local (url = "http://www.macromedia.com/desdev/resources/macromedia_resources.xml")
+	Â«local (adrservice = xml.rss.initService (url, @aggregatorData.services))
+	Â«new (tabletype, @adrservice^.compilation)
+	Â«new (tabletype, @adrservice^.compilation.itemHistory)
+	Â«adrservice^.xmltext = tcp.httpReadUrl (url)
+	Â«xml.compile (adrservice^.xmltext, @adrservice^.xmlstruct)
+	Â«compile (adrservice, true, @xml.aggregator.storyArrivedCallback)

@@ -1,1 +1,2 @@
-on update () {	card.details.notsupported ("update")}
+on update () {
+	card.details.notsupported ("update")}

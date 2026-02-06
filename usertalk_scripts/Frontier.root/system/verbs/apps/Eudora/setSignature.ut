@@ -1,1 +1,19 @@
-on setSignature (signature) {	«Sat, Aug 10, 1996 at 12:10:52 AM by BAD		«Added alias folowing capability for Eudora folder	local {		sigFolder;		sigFPath;		sigFCreator};	with Eudora,eventInfo {		sigFolder = file.getSystemFolderPath () + get (setting [6214]) + ":";		if file.isAlias(sigFolder) { « Follow any aliases			sigFolder = file.followAlias(sigFolder)};		sigFolder = sigFolder + get(setting[9205]) + ":";		sigFPath = sigFolder + get (setting [7210]);		sigFCreator = get (setting [7403])};	file.sureFolder (sigFolder);	file.new (sigFPath);	file.setType (sigFPath, 'TEXT');	file.setCreator (sigFPath, sigFCreator);	file.write (sigFPath, signature)}
+on setSignature (signature) {
+	Â«Sat, Aug 10, 1996 at 12:10:52 AM by BAD
+		Â«Added alias folowing capability for Eudora folder
+	local {
+		sigFolder;
+		sigFPath;
+		sigFCreator};
+	with Eudora,eventInfo {
+		sigFolder = file.getSystemFolderPath () + get (setting [6214]) + ":";
+		if file.isAlias(sigFolder) { Â« Follow any aliases
+			sigFolder = file.followAlias(sigFolder)};
+		sigFolder = sigFolder + get(setting[9205]) + ":";
+		sigFPath = sigFolder + get (setting [7210]);
+		sigFCreator = get (setting [7403])};
+	file.sureFolder (sigFolder);
+	file.new (sigFPath);
+	file.setType (sigFPath, 'TEXT');
+	file.setCreator (sigFPath, sigFCreator);
+	file.write (sigFPath, signature)}

@@ -1,1 +1,2 @@
-on stop () {	kernel (quicktime.stop)}
+on stop () {
+	kernel (quicktime.stop)}

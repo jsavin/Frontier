@@ -1,1 +1,183 @@
-on completeSetup (serverDomainName="127.0.0.1", defaultSitePassword="", adminPassword="", flSavePortForwardingPassword=true, flEnablePortForwarding=true) {	«Changes		«12/13/05; 4:05:31 AM by JES			«New default paths for static rendering, gems, static images and downloaded sites: manilaSites, manilaFiles, manilaStaticFiles and manilaDownloadedSites.		«5/19/04; 4:16:11 PM by JES			«The Create-a-Site Manila site must *not* be a news item site.		«5/18/04; 11:17:51 PM by JES			«New optional parameter, flEnablePortForwarding. If false, don't install port forwarding startup callback, don't set password, and don't start forwarding.		«4/2/04; 2:51:52 PM by JES			«Ensure that folders for static rendering, gems, static images and downloaded sites all exist.			«Force recompile of the default domain's site tree after creating all the sub-sites.		«3/12/04; 4:43:38 PM by JES			«Fixed configuration of site tree and manila prefs for static rendering, gems, static images and downloaded sites.		«3/12/04; 4:31:37 PM by JES			«Modified port forwarding startup callback, so that it works properly regardless of whether the sysadmin has saved their MacOS X admin password.		«9/5/02; 11:57:47 PM by JES			«Set config.manila.backups.notifyList after completing the setup. Initialize static file prefs -- static rendering, static pictures, gems and site downloads.		«4/11/02; 5:14:28 PM by JES			«Created. After personalizing Frontier 8.0.7 via the Setup Frontier Control Panel page, this script is called. Code cribbed from userland.finishInstall.			«Here, we do the following:				«1) Add prefs.root to user.databases, and open it.				«2) Set up root-updates prefs for Manila.				«3) Set up the default Manila site (the Create-a-Site Manila site).				«4) Add the Server menu to user.menus, if it's not already there.				«5) If running on MacOS X, set up port-forwarding.		local (pc = file.getPathChar ());		bundle { //add prefs.root to user.databases and open it hidden		local (adrTable = @user.databases.["prefs.root"]);		local (f = Frontier.getSubFolder ("www") + "prefs.root");		if not defined (adrTable^) {			new (tableType, adrTable);			adrTable^.f = f;			adrTable^.openOnStartup = true;			adrTable^.runStartupScript = false;			adrTable^.supportsSubscribe = false};		if not defined ([f]) { //open prefs.root if necessary			fileMenu.open (f, true)}};		bundle { //set up root updates prefs		«local (lastUpdateTime = date.netStandardString (Frontier.shipDate))		local (lastUpdateTime = userland.initialLastUpdateTime);		if date (user.rootUpdates.servers.mainResponder.lastUpdate) < date (lastUpdateTime) {			user.rootUpdates.servers.mainResponder.lastUpdate = lastUpdateTime};		if date (user.rootUpdates.servers.manila.lastUpdate) < date (lastUpdateTime) {			user.rootUpdates.servers.manila.lastUpdate = lastUpdateTime};		if date (user.rootUpdates.servers.Frontier.lastUpdate) < date (lastUpdateTime) {			user.rootUpdates.servers.Frontier.lastUpdate = lastUpdateTime};		user.rootUpdates.servers.prefs = user.rootUpdates.servers.manila;		user.rootUpdates.servers.prefs.dbName = "prefs.root";		user.rootUpdates.servers.prefs.url = "";		user.rootUpdates.servers.manila.url = ""};		bundle { //set up port forwarding if running in MacOS X		if system.environment.isCarbon {			if not defined (user.inetd.config.http.apparentPort) {				user.inetd.config.http.apparentPort = 80};			local (actualPort = user.inetd.config.http.port);			local (apparentPort = user.inetd.config.http.apparentPort);			if (actualPort < 1024) or (actualPort != apparentPort) { //set up port forwarding				if defined (user.prefs.portForwardingAdminPassword) and (adminPassword == "") {					adminPassword = string (user.prefs.portForwardingAdminPassword)};				if flEnablePortForwarding {					userland.portForward (adminPassword:adminPassword, flSaveAdminPassword:flSavePortForwardingPassword);					if defined (user.callbacks.startup.enablePortForwarding) { //possibly delete the old version of the port forwarding callback						if string.trimWhiteSpace (string (user.callbacks.startup.enablePortForwarding)) == "userland.portForward (adminPassword:string (user.prefs.portForwardingAdminPassword))" {							delete (@user.callbacks.startup.enablePortForwarding)}};					if not defined (user.callbacks.startup.enablePortForwarding) { //install port forwarding callback						local (s = "if defined (user.prefs.portForwardingAdminPassword)\r\tuserland.portForward (adminPassword:string (user.prefs.portForwardingAdminPassword))\relse\r\tuserland.portForward ()");						script.newScriptObject (s, @user.callbacks.startup.enablePortForwarding)}}}}};		bundle { //Create the default Manila website if it doesn't already exist.		on createSite (canonicalSiteName, displaySiteName, tagline, theme, path="/", flHostingSite=false) {			local (serverName = string.lower (serverDomainName)); //Some MacOS X installs can't do DNS lookups with uppercase chars			local (port = user.inetd.config.http.port);			if system.environment.isCarbon {				if defined (user.inetd.config.http.apparentPort) {					port = user.inetd.config.http.apparentPort}};			if port != 80 {				serverName = serverName + ":" + port};			if flHostingSite {				config.manila.prefs.baseUrl = "http://" + serverName + "/"};			if defaultSitePassword == "" { //try to get the password from the Admin user's membership table				local (adrMember = mainResponder.members.getMemberTable ("Admin", user.prefs.mailAddress));				if defined (adrMember^) {					defaultSitePassword = adrMember^.password}};			if defaultSitePassword == "" { //couldn't get password from the admin membership group -- that's a fatal error				scriptError ("Could not create the default Manila site because no password was specified.")};			local (flDefaultSiteIsInstalled = false, adrsite);			try {				adrsite = manilaSuite.rpcUtils.getSiteAddress (canonicalSiteName);				flDefaultSiteIsInstalled = true};			if flDefaultSiteIsInstalled { //set its URL to the one the server is set to				local (oldUrl = manilaSuite.getSiteUrl (adrsite));				local (newUrl = config.manila.prefs.baseUrl); //it's a top-level site				if string.lower (oldUrl) != string.lower (newUrl) {					manilaSuite.admin.changeSiteUrl (oldUrl, newUrl, adrsite)}}			else { //create the default site				if not defined ([canonicalSiteName]) { //only create the default site if it doesn't already exist -- it may have been purposely uninstalled					userland.createDefaultSite (canonicalSiteName, defaultSitePassword, serverName, displaySiteName, tagline, theme, path, flHostingSite)}}};				«createSite ("myManilaServerManilaWebsite", "My Manila Server", "View stats, and find and create sites, with a click of the mouse.", "myManilaServer")				createSite ("homeManilaWebsite", "Home", "", "firstSite");		createSite ("createASiteManilaWebsite", "Create a Manila Site", "Create a new Manila site whenever you want.", "ISP2", "/newSite/", true);		createASiteManilaWebsite.["#newsSite"].flNewsItemSite = false};		bundle { //install the RCS sites		mainResponder.siteTree.addSiteToTree ("default", "/rcsPublic/", @radioCommunityServerSuite.websites.public, true, true);		mainResponder.siteTree.addSiteToTree ("default", "/rcsAdmin/", @radioCommunityServerSuite.websites.admin, true, true);		delete (@config.mainResponder.domains.default.siteTree.directory.structure);		mainResponder.siteTree.compileIfDirty (@config.mainResponder.domains.default)};		userland.addServerMenu (); //Add the Server menu to user.menus, if it's not already there.		bundle { //miscellaneous cleanup		if config.manila.backups.notifyList == "" { //default email address for backup notifications			config.manila.backups.notifyList = user.prefs.mailAddress};				local (baseurl);		bundle { //build baseurl			local (serverName = string.lower (serverDomainName));			local (port = user.inetd.config.http.port);			if system.environment.isCarbon {				if defined (user.inetd.config.http.apparentPort) {					port = user.inetd.config.http.apparentPort}};			if port != 80 {				serverName = serverName + ":" + port};			baseurl = "http://" + serverName + "/"};		local (wwwfolder = Frontier.getSubFolder ("www"));		on sureFolder (adrpref, foldername) {			adrpref^ = wwwfolder + foldername + pc;			file.sureFilePath (adrpref^ + "x");			return (true)};		if config.manila.prefs.staticRenderingFolder == "" { //manila static rendering -- /manilaSites/			sureFolder (@config.manila.prefs.staticRenderingFolder, "manilaSites");			config.manila.prefs.staticRenderingUrl = baseurl + "manilaSites/";			mainResponder.siteTree.addSiteToTree ("default", "/manilaSites/", config.manila.prefs.staticRenderingFolder, true, true)};		if config.manila.prefs.staticFilesFolder == "" { //manila static pictures -- /manilaStaticFiles/			sureFolder (@config.manila.prefs.staticFilesFolder, "manilaStaticFiles");			config.manila.prefs.staticFilesUrl = baseurl + "manilaStaticFiles/";			mainResponder.siteTree.addSiteToTree ("default", "/manilaStaticFiles/", config.manila.prefs.staticFilesFolder, true, true)};		if config.manila.prefs.gemsFolder == "" { //manila files (formerly gems) -- /manilaFiles/			sureFolder (@config.manila.prefs.gemsFolder, "manilaFiles");			config.manila.prefs.gemsUrl = baseurl + "manilaFiles/";			mainResponder.siteTree.addSiteToTree ("default", "/manilaFiles/", config.manila.prefs.gemsFolder, true, true)};		if config.manila.prefs.siteDownloadFolder == "" { //manila site downloads -- /manilaDownloadedSites/			sureFolder (@config.manila.prefs.siteDownloadFolder, "manilaDownloadedSites");			config.manila.prefs.siteDownloadUrl = baseurl + "manilaDownloadedSites/";			config.manila.prefs.flFrontierServesDownloadedSites = true;			mainResponder.siteTree.addSiteToTree ("default", "/manilaDownloadedSites/", config.manila.prefs.siteDownloadFolder, true, true)};		bundle { //ensure that all folders exist			file.sureFilePath (config.manila.prefs.staticRenderingFolder + "X");			file.sureFilePath (config.manila.prefs.staticFilesFolder + "X");			file.sureFilePath (config.manila.prefs.gemsFolder + "X");			file.sureFilePath (config.manila.prefs.siteDownloadFolder + "X")};		bundle { //force re-compile of site tree			try {delete (@config.mainResponder.domains.default.siteTree.directory.structure)}}};		bundle { //save all open databases		local (rootPath = window.getFile (@root));		on visitproc (f) {			if f != rootPath {				fileMenu.save (f)}			else {				fileMenu.saveMyRoot (@root)};			return (true)};		table.visitOpenDatabases (@visitproc)};		return (true)};«bundle //testing	«bundle //delete initial sites		«try {delete (@config.manila.sites.home)}		«try {delete (@config.manila.sites.createASite)}		«try {delete (@homeManilaWebsite)}		«try {delete (@homeManilaWebsiteMembers)}		«try {delete (@homeManilaWebsiteDiscuss)}		«try {delete (@createASiteManilaWebsite)}		«try {delete (@createASiteManilaWebsiteMembers)}		«try {delete (@createASiteManilaWebsiteDiscuss)}	«completeSetup ()
+on completeSetup (serverDomainName="127.0.0.1", defaultSitePassword="", adminPassword="", flSavePortForwardingPassword=true, flEnablePortForwarding=true) {
+	Â«Changes
+		Â«12/13/05; 4:05:31 AM by JES
+			Â«New default paths for static rendering, gems, static images and downloaded sites: manilaSites, manilaFiles, manilaStaticFiles and manilaDownloadedSites.
+		Â«5/19/04; 4:16:11 PM by JES
+			Â«The Create-a-Site Manila site must *not* be a news item site.
+		Â«5/18/04; 11:17:51 PM by JES
+			Â«New optional parameter, flEnablePortForwarding. If false, don't install port forwarding startup callback, don't set password, and don't start forwarding.
+		Â«4/2/04; 2:51:52 PM by JES
+			Â«Ensure that folders for static rendering, gems, static images and downloaded sites all exist.
+			Â«Force recompile of the default domain's site tree after creating all the sub-sites.
+		Â«3/12/04; 4:43:38 PM by JES
+			Â«Fixed configuration of site tree and manila prefs for static rendering, gems, static images and downloaded sites.
+		Â«3/12/04; 4:31:37 PM by JES
+			Â«Modified port forwarding startup callback, so that it works properly regardless of whether the sysadmin has saved their MacOS X admin password.
+		Â«9/5/02; 11:57:47 PM by JES
+			Â«Set config.manila.backups.notifyList after completing the setup. Initialize static file prefs -- static rendering, static pictures, gems and site downloads.
+		Â«4/11/02; 5:14:28 PM by JES
+			Â«Created. After personalizing Frontier 8.0.7 via the Setup Frontier Control Panel page, this script is called. Code cribbed from userland.finishInstall.
+			Â«Here, we do the following:
+				Â«1) Add prefs.root to user.databases, and open it.
+				Â«2) Set up root-updates prefs for Manila.
+				Â«3) Set up the default Manila site (the Create-a-Site Manila site).
+				Â«4) Add the Server menu to user.menus, if it's not already there.
+				Â«5) If running on MacOS X, set up port-forwarding.
+	
+	local (pc = file.getPathChar ());
+	
+	bundle { //add prefs.root to user.databases and open it hidden
+		local (adrTable = @user.databases.["prefs.root"]);
+		local (f = Frontier.getSubFolder ("www") + "prefs.root");
+		if not defined (adrTable^) {
+			new (tableType, adrTable);
+			adrTable^.f = f;
+			adrTable^.openOnStartup = true;
+			adrTable^.runStartupScript = false;
+			adrTable^.supportsSubscribe = false};
+		if not defined ([f]) { //open prefs.root if necessary
+			fileMenu.open (f, true)}};
+	
+	bundle { //set up root updates prefs
+		Â«local (lastUpdateTime = date.netStandardString (Frontier.shipDate))
+		local (lastUpdateTime = userland.initialLastUpdateTime);
+		if date (user.rootUpdates.servers.mainResponder.lastUpdate) < date (lastUpdateTime) {
+			user.rootUpdates.servers.mainResponder.lastUpdate = lastUpdateTime};
+		if date (user.rootUpdates.servers.manila.lastUpdate) < date (lastUpdateTime) {
+			user.rootUpdates.servers.manila.lastUpdate = lastUpdateTime};
+		if date (user.rootUpdates.servers.Frontier.lastUpdate) < date (lastUpdateTime) {
+			user.rootUpdates.servers.Frontier.lastUpdate = lastUpdateTime};
+		user.rootUpdates.servers.prefs = user.rootUpdates.servers.manila;
+		user.rootUpdates.servers.prefs.dbName = "prefs.root";
+		user.rootUpdates.servers.prefs.url = "";
+		user.rootUpdates.servers.manila.url = ""};
+	
+	bundle { //set up port forwarding if running in MacOS X
+		if system.environment.isCarbon {
+			if not defined (user.inetd.config.http.apparentPort) {
+				user.inetd.config.http.apparentPort = 80};
+			local (actualPort = user.inetd.config.http.port);
+			local (apparentPort = user.inetd.config.http.apparentPort);
+			if (actualPort < 1024) or (actualPort != apparentPort) { //set up port forwarding
+				if defined (user.prefs.portForwardingAdminPassword) and (adminPassword == "") {
+					adminPassword = string (user.prefs.portForwardingAdminPassword)};
+				if flEnablePortForwarding {
+					userland.portForward (adminPassword:adminPassword, flSaveAdminPassword:flSavePortForwardingPassword);
+					if defined (user.callbacks.startup.enablePortForwarding) { //possibly delete the old version of the port forwarding callback
+						if string.trimWhiteSpace (string (user.callbacks.startup.enablePortForwarding)) == "userland.portForward (adminPassword:string (user.prefs.portForwardingAdminPassword))" {
+							delete (@user.callbacks.startup.enablePortForwarding)}};
+					if not defined (user.callbacks.startup.enablePortForwarding) { //install port forwarding callback
+						local (s = "if defined (user.prefs.portForwardingAdminPassword)\r\tuserland.portForward (adminPassword:string (user.prefs.portForwardingAdminPassword))\relse\r\tuserland.portForward ()");
+						script.newScriptObject (s, @user.callbacks.startup.enablePortForwarding)}}}}};
+	
+	bundle { //Create the default Manila website if it doesn't already exist.
+		on createSite (canonicalSiteName, displaySiteName, tagline, theme, path="/", flHostingSite=false) {
+			local (serverName = string.lower (serverDomainName)); //Some MacOS X installs can't do DNS lookups with uppercase chars
+			local (port = user.inetd.config.http.port);
+			if system.environment.isCarbon {
+				if defined (user.inetd.config.http.apparentPort) {
+					port = user.inetd.config.http.apparentPort}};
+			if port != 80 {
+				serverName = serverName + ":" + port};
+			if flHostingSite {
+				config.manila.prefs.baseUrl = "http://" + serverName + "/"};
+			if defaultSitePassword == "" { //try to get the password from the Admin user's membership table
+				local (adrMember = mainResponder.members.getMemberTable ("Admin", user.prefs.mailAddress));
+				if defined (adrMember^) {
+					defaultSitePassword = adrMember^.password}};
+			if defaultSitePassword == "" { //couldn't get password from the admin membership group -- that's a fatal error
+				scriptError ("Could not create the default Manila site because no password was specified.")};
+			local (flDefaultSiteIsInstalled = false, adrsite);
+			try {
+				adrsite = manilaSuite.rpcUtils.getSiteAddress (canonicalSiteName);
+				flDefaultSiteIsInstalled = true};
+			if flDefaultSiteIsInstalled { //set its URL to the one the server is set to
+				local (oldUrl = manilaSuite.getSiteUrl (adrsite));
+				local (newUrl = config.manila.prefs.baseUrl); //it's a top-level site
+				if string.lower (oldUrl) != string.lower (newUrl) {
+					manilaSuite.admin.changeSiteUrl (oldUrl, newUrl, adrsite)}}
+			else { //create the default site
+				if not defined ([canonicalSiteName]) { //only create the default site if it doesn't already exist -- it may have been purposely uninstalled
+					userland.createDefaultSite (canonicalSiteName, defaultSitePassword, serverName, displaySiteName, tagline, theme, path, flHostingSite)}}};
+		
+		Â«createSite ("myManilaServerManilaWebsite", "My Manila Server", "View stats, and find and create sites, with a click of the mouse.", "myManilaServer")
+		
+		createSite ("homeManilaWebsite", "Home", "", "firstSite");
+		createSite ("createASiteManilaWebsite", "Create a Manila Site", "Create a new Manila site whenever you want.", "ISP2", "/newSite/", true);
+		createASiteManilaWebsite.["#newsSite"].flNewsItemSite = false};
+	
+	bundle { //install the RCS sites
+		mainResponder.siteTree.addSiteToTree ("default", "/rcsPublic/", @radioCommunityServerSuite.websites.public, true, true);
+		mainResponder.siteTree.addSiteToTree ("default", "/rcsAdmin/", @radioCommunityServerSuite.websites.admin, true, true);
+		delete (@config.mainResponder.domains.default.siteTree.directory.structure);
+		mainResponder.siteTree.compileIfDirty (@config.mainResponder.domains.default)};
+	
+	userland.addServerMenu (); //Add the Server menu to user.menus, if it's not already there.
+	
+	bundle { //miscellaneous cleanup
+		if config.manila.backups.notifyList == "" { //default email address for backup notifications
+			config.manila.backups.notifyList = user.prefs.mailAddress};
+		
+		local (baseurl);
+		bundle { //build baseurl
+			local (serverName = string.lower (serverDomainName));
+			local (port = user.inetd.config.http.port);
+			if system.environment.isCarbon {
+				if defined (user.inetd.config.http.apparentPort) {
+					port = user.inetd.config.http.apparentPort}};
+			if port != 80 {
+				serverName = serverName + ":" + port};
+			baseurl = "http://" + serverName + "/"};
+		local (wwwfolder = Frontier.getSubFolder ("www"));
+		on sureFolder (adrpref, foldername) {
+			adrpref^ = wwwfolder + foldername + pc;
+			file.sureFilePath (adrpref^ + "x");
+			return (true)};
+		if config.manila.prefs.staticRenderingFolder == "" { //manila static rendering -- /manilaSites/
+			sureFolder (@config.manila.prefs.staticRenderingFolder, "manilaSites");
+			config.manila.prefs.staticRenderingUrl = baseurl + "manilaSites/";
+			mainResponder.siteTree.addSiteToTree ("default", "/manilaSites/", config.manila.prefs.staticRenderingFolder, true, true)};
+		if config.manila.prefs.staticFilesFolder == "" { //manila static pictures -- /manilaStaticFiles/
+			sureFolder (@config.manila.prefs.staticFilesFolder, "manilaStaticFiles");
+			config.manila.prefs.staticFilesUrl = baseurl + "manilaStaticFiles/";
+			mainResponder.siteTree.addSiteToTree ("default", "/manilaStaticFiles/", config.manila.prefs.staticFilesFolder, true, true)};
+		if config.manila.prefs.gemsFolder == "" { //manila files (formerly gems) -- /manilaFiles/
+			sureFolder (@config.manila.prefs.gemsFolder, "manilaFiles");
+			config.manila.prefs.gemsUrl = baseurl + "manilaFiles/";
+			mainResponder.siteTree.addSiteToTree ("default", "/manilaFiles/", config.manila.prefs.gemsFolder, true, true)};
+		if config.manila.prefs.siteDownloadFolder == "" { //manila site downloads -- /manilaDownloadedSites/
+			sureFolder (@config.manila.prefs.siteDownloadFolder, "manilaDownloadedSites");
+			config.manila.prefs.siteDownloadUrl = baseurl + "manilaDownloadedSites/";
+			config.manila.prefs.flFrontierServesDownloadedSites = true;
+			mainResponder.siteTree.addSiteToTree ("default", "/manilaDownloadedSites/", config.manila.prefs.siteDownloadFolder, true, true)};
+		bundle { //ensure that all folders exist
+			file.sureFilePath (config.manila.prefs.staticRenderingFolder + "X");
+			file.sureFilePath (config.manila.prefs.staticFilesFolder + "X");
+			file.sureFilePath (config.manila.prefs.gemsFolder + "X");
+			file.sureFilePath (config.manila.prefs.siteDownloadFolder + "X")};
+		bundle { //force re-compile of site tree
+			try {delete (@config.mainResponder.domains.default.siteTree.directory.structure)}}};
+	
+	bundle { //save all open databases
+		local (rootPath = window.getFile (@root));
+		on visitproc (f) {
+			if f != rootPath {
+				fileMenu.save (f)}
+			else {
+				fileMenu.saveMyRoot (@root)};
+			return (true)};
+		table.visitOpenDatabases (@visitproc)};
+	
+	return (true)};
+
+Â«bundle //testing
+	Â«bundle //delete initial sites
+		Â«try {delete (@config.manila.sites.home)}
+		Â«try {delete (@config.manila.sites.createASite)}
+		Â«try {delete (@homeManilaWebsite)}
+		Â«try {delete (@homeManilaWebsiteMembers)}
+		Â«try {delete (@homeManilaWebsiteDiscuss)}
+		Â«try {delete (@createASiteManilaWebsite)}
+		Â«try {delete (@createASiteManilaWebsiteMembers)}
+		Â«try {delete (@createASiteManilaWebsiteDiscuss)}
+	Â«completeSetup ()

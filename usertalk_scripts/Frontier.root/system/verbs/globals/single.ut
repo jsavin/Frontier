@@ -1,1 +1,2 @@
-on single (val) {	kernel (lang.single)}
+on single (val) {
+	kernel (lang.single)}

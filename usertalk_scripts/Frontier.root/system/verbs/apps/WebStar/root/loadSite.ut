@@ -1,1 +1,101 @@
-on loadSite (folder) {	local (fldbverbs = false, rootf);	if fldbverbs {		rootf = "macintosh hd:apps:webstar:webstar.root";		db.open (rootf, false)};	local (server = webstar.id, ctfiles = 0);	on getOdbName (s) {		return (string.replaceAll (s, ".", "$"))};	on newTable (tablepath) {		if fldbverbs {			db.newTable (rootf, tablepath)}		else {			webstar.root.newTable (server, tablepath)}};	on isDefined (path) {		if fldbverbs {			db.defined (rootf, path)}		else {			webstar.root.defined (server, tablepath)}};	on newObject (pagepath, value, mimetype) {		rollBeachball ();		if fldbverbs {			msg (pagepath);			db.newTable (rootf, pagepath);			db.setValue (rootf, pagepath + ".data", value);			db.setValue (rootf, pagepath + ".mime", mimetype)}		else {			webstar.root.newObject (server, pagepath, value, mimetype)}};	on save () {		msg ("Saving...");		if fldbverbs {			db.save ()}		else {			webstar.root.save (server)};		msg ("")};	on loadFolder (folder, parentpath) {		local (tablename = getOdbName (file.fileFromPath (folder) - ":"));		local (tablepath = parentpath + tablename);		newTable (tablepath);		local (f);		fileloop (f in folder) {			if file.isFolder (f) {				loadFolder (f, tablepath + ".")}			else {				local (fname = file.fileFromPath (f));				local (suffix);				bundle { «figure out what the file's suffix is					suffix = "." + string.nthfield (fname, '.', string.countfields (fname, '.'))};				local (ct = sizeof (suffix));				local (pagename = string.delete (fname, sizeof (fname) - ct + 1, ct));				pagename = getOdbName (pagename);				local (pagepath = tablepath + "." + pagename);				msg (pagepath);				local (s = string (file.readWholeFile (f)));				local (mime = "text/html");				case string.lower (suffix) {					".txt";					".text";					".html" {						mime = "text/html"};					".gif" {						mime = "image/gif"};					".hqx" {						mime = "application/mac-binhex40"};					".jpeg";					".jpg" {						mime = "image/jpeg"};					".pict" {						mime = "image/pict"};					".au" {						mime = "audio/basic"};					".aiff" {						mime = "audio/x-aiff"};					".xbm" {						mime = "image/x-xbm"};					".mov" {						mime = "video/quicktime"};					".mpeg" {						mime = "video/mpeg"};					".word" {						mime = "application/msword"};					".xl" {						mime = "application/excel"};					".sit" {						mime = "application/x-stuffit"};					".pdf" {						mime = "application/pdf"}};				«if isDefined (pagepath)					«finder.reveal (f)					«scriptError ("This file would replace a page that's already in the odb. Please rename the file or delete it from the website folder.")				newObject (pagepath, s, mime);				ctfiles++}}};	loadFolder (folder, "odb.");	save ();	if fldbverbs {		db.close (rootf)};	return (ctfiles)};bundle { «test code	«file.filteredcopy ("Internal:Apps:WebStar:frontier:", "Jaz Disk 1:frontier:", @msg)	«loadsite ("Macintosh HD:Apps:WebStar:frontier:")	loadsite ("Internal:Apps:WebStar:docserver:")}
+on loadSite (folder) {
+	local (fldbverbs = false, rootf);
+	if fldbverbs {
+		rootf = "macintosh hd:apps:webstar:webstar.root";
+		db.open (rootf, false)};
+	local (server = webstar.id, ctfiles = 0);
+	on getOdbName (s) {
+		return (string.replaceAll (s, ".", "$"))};
+	on newTable (tablepath) {
+		if fldbverbs {
+			db.newTable (rootf, tablepath)}
+		else {
+			webstar.root.newTable (server, tablepath)}};
+	on isDefined (path) {
+		if fldbverbs {
+			db.defined (rootf, path)}
+		else {
+			webstar.root.defined (server, tablepath)}};
+	on newObject (pagepath, value, mimetype) {
+		rollBeachball ();
+		if fldbverbs {
+			msg (pagepath);
+			db.newTable (rootf, pagepath);
+			db.setValue (rootf, pagepath + ".data", value);
+			db.setValue (rootf, pagepath + ".mime", mimetype)}
+		else {
+			webstar.root.newObject (server, pagepath, value, mimetype)}};
+	on save () {
+		msg ("Saving...");
+		if fldbverbs {
+			db.save ()}
+		else {
+			webstar.root.save (server)};
+		msg ("")};
+	on loadFolder (folder, parentpath) {
+		local (tablename = getOdbName (file.fileFromPath (folder) - ":"));
+		local (tablepath = parentpath + tablename);
+		newTable (tablepath);
+		local (f);
+		fileloop (f in folder) {
+			if file.isFolder (f) {
+				loadFolder (f, tablepath + ".")}
+			else {
+				local (fname = file.fileFromPath (f));
+				local (suffix);
+				bundle { Â«figure out what the file's suffix is
+					suffix = "." + string.nthfield (fname, '.', string.countfields (fname, '.'))};
+				local (ct = sizeof (suffix));
+				local (pagename = string.delete (fname, sizeof (fname) - ct + 1, ct));
+				pagename = getOdbName (pagename);
+				local (pagepath = tablepath + "." + pagename);
+				msg (pagepath);
+				local (s = string (file.readWholeFile (f)));
+				local (mime = "text/html");
+				case string.lower (suffix) {
+					".txt";
+					".text";
+					".html" {
+						mime = "text/html"};
+					".gif" {
+						mime = "image/gif"};
+					".hqx" {
+						mime = "application/mac-binhex40"};
+					".jpeg";
+					".jpg" {
+						mime = "image/jpeg"};
+					".pict" {
+						mime = "image/pict"};
+					".au" {
+						mime = "audio/basic"};
+					".aiff" {
+						mime = "audio/x-aiff"};
+					".xbm" {
+						mime = "image/x-xbm"};
+					".mov" {
+						mime = "video/quicktime"};
+					".mpeg" {
+						mime = "video/mpeg"};
+					".word" {
+						mime = "application/msword"};
+					".xl" {
+						mime = "application/excel"};
+					".sit" {
+						mime = "application/x-stuffit"};
+					".pdf" {
+						mime = "application/pdf"}};
+				Â«if isDefined (pagepath)
+					Â«finder.reveal (f)
+					Â«scriptError ("This file would replace a page that's already in the odb. Please rename the file or delete it from the website folder.")
+				newObject (pagepath, s, mime);
+				ctfiles++}}};
+	loadFolder (folder, "odb.");
+	save ();
+	if fldbverbs {
+		db.close (rootf)};
+	return (ctfiles)};
+
+bundle { Â«test code
+	Â«file.filteredcopy ("Internal:Apps:WebStar:frontier:", "Jaz Disk 1:frontier:", @msg)
+	Â«loadsite ("Macintosh HD:Apps:WebStar:frontier:")
+	loadsite ("Internal:Apps:WebStar:docserver:")}

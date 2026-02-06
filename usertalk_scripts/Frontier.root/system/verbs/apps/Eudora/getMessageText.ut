@@ -1,1 +1,3 @@
-on getMessageText (msgObj) {	with objectModel, Eudora, eventInfo {		return (core.get (id, msgObj.body))}}
+on getMessageText (msgObj) {
+	with objectModel, Eudora, eventInfo {
+		return (core.get (id, msgObj.body))}}

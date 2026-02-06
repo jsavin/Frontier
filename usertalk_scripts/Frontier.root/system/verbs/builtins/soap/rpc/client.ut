@@ -1,1 +1,263 @@
-on client (actionURI, methodName, adrparams, rpcServer="localhost", rpcPort=user.inetd.config.http.port, username="", password="", fldebug=false, ticksToTimeOut=nil, flShowMessages=true, soapAction=nil, methodNamespace=nil, methodNamespaceURI=nil, customStructType=nil, customNamespace=nil, customNamespaceURI=nil, charset=soap.constants.charsetUsAscii, flEnforceSimpleTypes=true, adrHeaderData=nil, headerNamespaceURI=nil, flDuplicatesToArrays=false, adrBeforeDecompileCallback=nil) {	«Changes:		«4/21/06; 7:52:03 PM by JES			«New optional parameter, adrBeforeDecompileCallback. If non-nil, the script at this address is called with the address of the compiled XML for the SOAP request, before decompiling into XML-text for the request. This gives callers a last shot at modifying the request XML, before the requst is fired off to the server.		«4/13/06; 2:53:26 AM by JES			«New optional parameters, adrHeaderData and headerNamespaceURI. adrHeaderData is the address of an object to encode as the SOAP-ENV:Header. headerNamespaceURI is the namespace URI for the SOAP-ENV:Header namespace declaration.			«New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior.		«02/04/01; 5:37:09 PM by JES			«Verify that the supplied methodName is valid. Prevents generation of invalid XML.		«03/25/01; 2:22:56 AM by JES			«New optional parameter, soapAction, which overrides the value of the SOAPAction HTTP header. (Normally it defaults to the value of ActionURI.)			«New optional parameters, methodNamespace and methodNamespaceURI, facilitate namespace declaration in the methodCall element (the first sub-element of <Body>).		«03/25/01; 7:12:26 PM by JES			«New optional parameters: customArrayType, customNamespace, and customNamespaceURI -- for setting array type, namespace and namespaceURI for arrays of structs.		«04/01/01; 1:02:03 AM by JES			«If there are no input parameters, don't add a parameter accessor element.		«04/02/01; 5:10:05 PM by JES			«Fixed a bug where a closing tag for the method element wasn't generated.		«04/02/01; 7:29:04 PM by JES			«If methodNamespace is given, but methodNamespaceURI is not, generate an error. If methodNamespaceURI is given, but methodNamespace is not, generate an error.		«04/03/01; 7:21:40 PM by JES			«New optional parameter, charset, specifies the character encoding for the request. Default is us-ascii.		«04/06/01; 7:05:08 PM by JES			«Fixed a bug finding the response element: find the element whose name begins with the request method name. (see Section 7.1)		«04/07/01; 7:21:47 PM by JES			«Fixed a bug where void method calls (calls with no parameters) would not have namespace qualification on the method call element. Changed name of customArrayType parameter to customStructType.		«04/13/01; 12:52:58 PM by JES			«Fixed a bug where void method calls made without specifying a methodNamespace would not have a closing tag on the parameter element.		«05/29/01; 7:34:39 PM by JES			«Fixed a problem decoding entity-encoded markup.		bundle { //make sure methodName is valid		on methodNameError () {			scriptError ("Can't encode the SOAP request because '" + methodName + "' is not a valid method name.")};		local (ch = methodName[1]);		if not string.isAlpha (ch) {			if (ch != '_') and (ch != ':') {				methodNameError ()}};		local (i, ct = sizeOf (methodName));		on isValidNameChar (ch) {			if string.isAlpha (ch) {				return (true)};			if string.isNumeric (ch) {				return (true)};			case ch {				'.';				'-';				'_';				':' {					return (true)}};			return (false)};		if ct > 1 {			for i = 2 to ct {				if not isValidNameChar (methodName[i]) {					methodNameError ()}}}};		soap.init ();		if ticksToTimeOut == nil {		ticksToTimeOut = user.soap.prefs.rpcClientDefaultTimeout};		local (returnvalue, responsename = methodname + "Response");	local (request, adrrequest = @request, requestText);	local (response, adrresponse = @response, responseText, responseHeaders);	local (flEntityEncodeHighAscii = false);			bundle { //encode request		local (adrdocument, adrenvelope, adrbody, adrmethodcall);		bundle { //build document tree			adrdocument = soap.xmlutils.createRequest (adrrequest);						adrenvelope = soap.xmlutils.addElement (adrdocument, "Envelope");			soap.xmlutils.setNamespacePrefixOfElement (adrenvelope, soap.constants.nsEnvelopePrefix);			soap.xmlutils.declareNamespaceInElement (adrenvelope, soap.constants.nsEnvelopePrefix, soap.constants.nsEnvelopeURI);			soap.xmlutils.declareNamespaceInElement (adrenvelope, soap.constants.nsEncodingPrefix, soap.constants.nsEncodingURI);			soap.xmlutils.declareNamespaceInElement (adrenvelope, soap.constants.nsSchemaPrefix, soap.constants.nsSchemaURI);			soap.xmlutils.declareNamespaceInElement (adrenvelope, soap.constants.nsSchemaDataPrefix, soap.constants.nsSchemaDataURI);			soap.xmlutils.addAttributeValue (adrenvelope, soap.constants.nsEnvelopePrefix +":" + "encodingStyle", soap.constants.nsEncodingURI);						if adrHeaderData != nil {				if headerNamespaceURI == nil {					scriptError ("Can't encode the SOAP-ENV:Header because no headerNamespaceURI was supplied.")};				local (adrhead = soap.xmlutils.addElement (adrenvelope, "Header"));				soap.xmlutils.setNamespacePrefixOfElement (adrhead, soap.constants.nsEnvelopePrefix);				soap.encode.main (adrresponse, adrHeaderData^, adrhead, nameOf (adrHeaderData^));				local (adrsub);				for adrsub in adrhead {					if nameOf (adrsub^) beginswith "/" {						continue};					soap.xmlutils.setNamespacePrefixOfElement (adrsub, "h");					soap.xmlutils.declareNamespaceInElement (adrsub, "h", headerNamespaceURI)}};						adrbody = soap.xmlutils.addElement (adrenvelope, "Body");			soap.xmlutils.setNamespacePrefixOfElement (adrbody, soap.constants.nsEnvelopePrefix);						adrmethodcall = soap.xmlutils.addElement (adrbody, methodName);			if methodNamespace != nil or methodNamespaceURI != nil { //04/02/2001 JES: error if both values aren't specified				if methodNamespaceURI == nil {					scriptError ("Can't encode the request because a methodNamespace was specified, but no methodNamespaceURI was given.")};				if methodNamespace == nil {					scriptError ("Can't encode the request because a methodNamespaceURI was specified, but no methodNamespace was given.")}};			if methodNamespace != nil { //03/25/2001 JES: set the methodCall namespace				soap.xmlutils.setNamespacePrefixOfElement (adrmethodcall, methodNamespace)};			if methodNamespaceURI != nil { //03/25/2001 JES: set the methodCall namespaceURI				soap.xmlutils.declareNamespaceInElement (adrmethodcall, methodNamespace, methodNamespaceURI)}};		bundle { //determine character encoding, error if unsupported			local (supportsUTF = true);			if not defined (string.ansiToUtf16) { //check to see if we can do UTF				supportsUTF = false};			case string.lower (charset) {				soap.constants.charsetLatin1 {					};//default behavior				soap.constants.charsetUsAscii {					flEntityEncodeHighAscii = true};				soap.constants.charsetUtf8 {					if not supportsUTF {						flEntityEncodeHighAscii = true}}; //treat UFT-8 as a super-set of US-ASCII, but encode high-ascii characters as XML entities				soap.constants.charsetUtf16 {					if not supportsUTF {						scriptError ("Can't encode the request because you must be running at least version 7.0b42 in order to use UTF-16 character encoding.")}}}			else {				scriptError ("Can't encode the request because \"" + charset + "\" is not a supported character set.")}};		bundle { //encode parameters			local (ix, ct = sizeOf (adrparams^));			if ct > 0 {				case typeOf (adrparams^) {					listType {						for ix = 1 to ct {							soap.encode.main (adrresponse, adrparams^[ix], adrmethodcall, "param" + ix, customStructType, customNamespace, customNamespaceURI, flEntityEncodeHighAscii)}};					recordType {						for ix = 1 to ct {							soap.encode.main (adrresponse, adrparams^[ix], adrmethodcall, nameOf (adrparams^[ix]), customStructType, customNamespace, customNamespaceURI, flEntityEncodeHighAscii)}}}				else {					scripterror ("Can't encode parameters because adrparams is not a list or record.")}}			else {				if methodNamespace == "" {					table.assign (adrmethodcall, "")}}};		bundle { //give caller a chance at the compiled XML before creating the request			if adrBeforeDecompileCallback != nil {				adrBeforeDecompileCallback^ (adrdocument)}};		bundle { //decompile document tree into XML text			requestText = xml.decompile (adrdocument)};		bundle { //convert the text to the character set specified by charset			case string.lower (charset) { //assume us-ascii				soap.constants.charsetUtf8 {					if not flEntityEncodeHighAscii {						requestText = string.ansiToUtf8 (requestText)}};				soap.constants.charsetUtf16 {					requestText = string.ansiToUtf16 (requestText)}}}};		bundle { //make method call		local (requestHeaders);		new (tableType, @headers);		if soapAction == nil { //03/25/2001 JES: default to actionURI			soapAction = actionURI};		headers.SOAPAction = "\"" + soapAction + "\"";		s = tcp.httpClient (method:"POST", server:rpcServer, port:rpcPort, path:actionURI, data:requestText, datatype:"text/xml; charset=\"" + charset + "\"", username:username, password:password, adrHdrTable:@headers, debug:fldebug, timeOutTicks:ticksToTimeOut, flMessages:flShowMessages);		responseText = string.httpResultSplit (s, @responseHeaders)};		bundle { //decode response		local (adrdocument, adrenvelope, adrheader, adrbody, adrothers, adrmethodresponse);		bundle { //convert to response text to ascii, if needed			local (responsecharset = "us-ascii"); //default to ascii			if defined (responseHeaders.["Content-Type"]) {				local (contentType = soap.stringutils.parseHeader (responseHeaders.["Content-Type"]));				if defined (contentType.charset) {					responsecharset = contentType.charset}};			case string.lower (responsecharset) {				soap.constants.charsetUtf8;				soap.constants.charsetUtf16 {					if not defined (string.utf8ToAnsi) {						scriptError ("Can't decode the response because \"" + responsecharset + "\" is not a supported character encoding.")};					if string.lower (responsecharset) == soap.constants.charsetUtf8 {						responseText = string.utf8ToAnsi (responseText)}					else { //utf16						responseText = string.utf16ToAnsi (responseText)}}}};		bundle { //build document tree from XML text			on fixEntities (s) {				«Works around a bug in xml.compile, where both &amp;quot; and &quot; are decoded as &quot;. Clearly this shouldn't be the case, but to fix xml-compile at this point is asking for trouble.				s = string.replaceAll (s, "&amp;amp;", "&amp;amp;amp;");				s = string.replaceAll (s, "&amp;quot;", "&amp;amp;quot;");				s = string.replaceAll (s, "&amp;apos;", "&amp;amp;apos;");				s = string.replaceAll (s, "&amp;lt;", "&amp;amp;lt;");				s = string.replaceAll (s, "&amp;gt;", "&amp;amp;gt;");				return (s)};			local (xmltext = string (responseText));			xmltext = fixEntities (xmltext);			adrdocument = soap.xmlutils.createResponse (adrresponse, string (xmltext))};		bundle { //locate envelope			adrenvelope = soap.xmlutils.getFirstChildElement (adrdocument);			soap.xmlutils.pushScope (adrresponse, adrenvelope);			if not soap.xmlutils.elementMatches (adrresponse, adrenvelope, @soap.qname.envelope) {				scripterror ("Can't decode the response because the Envelope element was not found.")}};		bundle { //locate header, body, and others			local (adrtemp = soap.xmlutils.getFirstChildElement (adrenvelope));			soap.xmlutils.pushScope (adrresponse, adrtemp);			if soap.xmlutils.elementMatches (adrresponse, adrtemp, @soap.qname.header) {				adrheader = adrtemp;				soap.xmlutils.popScope (adrresponse);				adrtemp = soap.xmlutils.getNextSiblingElement (adrtemp);				soap.xmlutils.pushScope (adrresponse, adrtemp)};			if soap.xmlutils.elementMatches (adrresponse, adrtemp, @soap.qname.body) {				adrbody = adrtemp;				adrothers = soap.xmlutils.getNextSiblingElement (adrtemp)}			else {				scripterror ("Can't decode the response because the Body element was not found.")}};		bundle { //check body for fault struct			local (nomad = soap.xmlutils.getFirstChildElement (adrbody));			while (nomad) {				if soap.xmlutils.elementMatches (adrresponse, nomad, @soap.qname.fault) {					local (adrfaultcode = soap.xmlutils.getNamedChildElement (nomad, "faultcode"));					local (adrfaultstring = soap.xmlutils.getNamedChildElement (nomad, "faultstring"));					if adrfaultcode {						scripterror ("The server, " + rpcServer + ", returned a " + soap.xmlutils.getCharacterData (adrfaultcode) + " fault: " + soap.xmlutils.decodeAmpersands (soap.xmlutils.getCharacterData (adrfaultstring)))}					else {						scripterror ("The server, " + rpcServer + ", returned a (malformed) fault with no faultcode element: " + soap.xmlutils.decodeAmpersands (soap.xmlutils.getCharacterData (adrfaultstring)))}};				nomad = soap.xmlutils.getNextSiblingElement (nomad)}};		bundle { //locate method call			adrmethodresponse = soap.xmlutils.getFirstChildElement (adrbody);			if not (xml.convertToDisplayName (nameOf (adrmethodresponse^)) beginsWith methodname) {				scripterror ("Response name is incompatible with request method name.")}};		bundle { //decode the method response struct			soap.xmlutils.pushScope (adrresponse, adrmethodresponse);			local (adritem = soap.xmlutils.getFirstChildElement (adrmethodresponse));			returnvalue = soap.decode.main (adrresponse, adritem, flEnforceSimpleTypes, flDuplicatesToArrays)}};		return (returnvalue)};«bundle //debugging code	«bundle //examples/getStateList		«local (returnvalue, params = {{1, 2, 3}})		«returnvalue = client (actionURI:"/examples", methodName:"getStateList", adrparams:@params, rpcServer:"superhonker.userland.com", fldebug:true)		«edit (@scratchpad.httpCommand)		«edit (@scratchpad.httpResult)		«dialog.notify (returnvalue)	«bundle //examples/getStateName		«local (returnvalue, params = {50})		«returnvalue = client (actionURI:"/examples", methodName:"getStateName", adrparams:@params)		«dialog.notify (returnvalue)	«bundle //examples/getStateNames		«local (returnvalue, params = {11, 22, 33, 44})		«returnvalue = client (actionURI:"/examples", methodName:"getStateNames", rpcServer:"superhonker.userland.com", adrparams:@params)		«dialog.notify (returnvalue)	«bundle //examples/getStateStruct		«local (returnvalue, params, struct)		«new (tableType, @struct)		«struct.a = 11		«struct.b = 22		«struct.c = 33		«struct.d = 44		«params = {struct}		«returnvalue = client (actionURI:"/examples", methodName:"getStateStruct", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)		«temp.returnvalue = returnvalue		«edit (@temp.returnvalue)	«bundle //examples/getCurrentTime		«local (returnvalue, params = {})		«returnvalue = client (actionURI:"/examples", methodName:"getCurrentTime", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)		«dialog.notify (returnvalue)	«bundle //examples/getCurrentTime -- throws an error because there are too many parameters		«local (returnvalue, params = {1, 2, 3})		«returnvalue = client (actionURI:"/examples", methodName:"getCurrentTime", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)		«dialog.notify (returnvalue)
+on client (actionURI, methodName, adrparams, rpcServer="localhost", rpcPort=user.inetd.config.http.port, username="", password="", fldebug=false, ticksToTimeOut=nil, flShowMessages=true, soapAction=nil, methodNamespace=nil, methodNamespaceURI=nil, customStructType=nil, customNamespace=nil, customNamespaceURI=nil, charset=soap.constants.charsetUsAscii, flEnforceSimpleTypes=true, adrHeaderData=nil, headerNamespaceURI=nil, flDuplicatesToArrays=false, adrBeforeDecompileCallback=nil) {
+	Â«Changes:
+		Â«4/21/06; 7:52:03 PM by JES
+			Â«New optional parameter, adrBeforeDecompileCallback. If non-nil, the script at this address is called with the address of the compiled XML for the SOAP request, before decompiling into XML-text for the request. This gives callers a last shot at modifying the request XML, before the requst is fired off to the server.
+		Â«4/13/06; 2:53:26 AM by JES
+			Â«New optional parameters, adrHeaderData and headerNamespaceURI. adrHeaderData is the address of an object to encode as the SOAP-ENV:Header. headerNamespaceURI is the namespace URI for the SOAP-ENV:Header namespace declaration.
+			Â«New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior.
+		Â«02/04/01; 5:37:09 PM by JES
+			Â«Verify that the supplied methodName is valid. Prevents generation of invalid XML.
+		Â«03/25/01; 2:22:56 AM by JES
+			Â«New optional parameter, soapAction, which overrides the value of the SOAPAction HTTP header. (Normally it defaults to the value of ActionURI.)
+			Â«New optional parameters, methodNamespace and methodNamespaceURI, facilitate namespace declaration in the methodCall element (the first sub-element of <Body>).
+		Â«03/25/01; 7:12:26 PM by JES
+			Â«New optional parameters: customArrayType, customNamespace, and customNamespaceURI -- for setting array type, namespace and namespaceURI for arrays of structs.
+		Â«04/01/01; 1:02:03 AM by JES
+			Â«If there are no input parameters, don't add a parameter accessor element.
+		Â«04/02/01; 5:10:05 PM by JES
+			Â«Fixed a bug where a closing tag for the method element wasn't generated.
+		Â«04/02/01; 7:29:04 PM by JES
+			Â«If methodNamespace is given, but methodNamespaceURI is not, generate an error. If methodNamespaceURI is given, but methodNamespace is not, generate an error.
+		Â«04/03/01; 7:21:40 PM by JES
+			Â«New optional parameter, charset, specifies the character encoding for the request. Default is us-ascii.
+		Â«04/06/01; 7:05:08 PM by JES
+			Â«Fixed a bug finding the response element: find the element whose name begins with the request method name. (see Section 7.1)
+		Â«04/07/01; 7:21:47 PM by JES
+			Â«Fixed a bug where void method calls (calls with no parameters) would not have namespace qualification on the method call element. Changed name of customArrayType parameter to customStructType.
+		Â«04/13/01; 12:52:58 PM by JES
+			Â«Fixed a bug where void method calls made without specifying a methodNamespace would not have a closing tag on the parameter element.
+		Â«05/29/01; 7:34:39 PM by JES
+			Â«Fixed a problem decoding entity-encoded markup.
+	
+	bundle { //make sure methodName is valid
+		on methodNameError () {
+			scriptError ("Can't encode the SOAP request because '" + methodName + "' is not a valid method name.")};
+		local (ch = methodName[1]);
+		if not string.isAlpha (ch) {
+			if (ch != '_') and (ch != ':') {
+				methodNameError ()}};
+		local (i, ct = sizeOf (methodName));
+		on isValidNameChar (ch) {
+			if string.isAlpha (ch) {
+				return (true)};
+			if string.isNumeric (ch) {
+				return (true)};
+			case ch {
+				'.';
+				'-';
+				'_';
+				':' {
+					return (true)}};
+			return (false)};
+		if ct > 1 {
+			for i = 2 to ct {
+				if not isValidNameChar (methodName[i]) {
+					methodNameError ()}}}};
+	
+	soap.init ();
+	
+	if ticksToTimeOut == nil {
+		ticksToTimeOut = user.soap.prefs.rpcClientDefaultTimeout};
+	
+	local (returnvalue, responsename = methodname + "Response");
+	local (request, adrrequest = @request, requestText);
+	local (response, adrresponse = @response, responseText, responseHeaders);
+	local (flEntityEncodeHighAscii = false);
+	
+	
+	bundle { //encode request
+		local (adrdocument, adrenvelope, adrbody, adrmethodcall);
+		bundle { //build document tree
+			adrdocument = soap.xmlutils.createRequest (adrrequest);
+			
+			adrenvelope = soap.xmlutils.addElement (adrdocument, "Envelope");
+			soap.xmlutils.setNamespacePrefixOfElement (adrenvelope, soap.constants.nsEnvelopePrefix);
+			soap.xmlutils.declareNamespaceInElement (adrenvelope, soap.constants.nsEnvelopePrefix, soap.constants.nsEnvelopeURI);
+			soap.xmlutils.declareNamespaceInElement (adrenvelope, soap.constants.nsEncodingPrefix, soap.constants.nsEncodingURI);
+			soap.xmlutils.declareNamespaceInElement (adrenvelope, soap.constants.nsSchemaPrefix, soap.constants.nsSchemaURI);
+			soap.xmlutils.declareNamespaceInElement (adrenvelope, soap.constants.nsSchemaDataPrefix, soap.constants.nsSchemaDataURI);
+			soap.xmlutils.addAttributeValue (adrenvelope, soap.constants.nsEnvelopePrefix +":" + "encodingStyle", soap.constants.nsEncodingURI);
+			
+			if adrHeaderData != nil {
+				if headerNamespaceURI == nil {
+					scriptError ("Can't encode the SOAP-ENV:Header because no headerNamespaceURI was supplied.")};
+				local (adrhead = soap.xmlutils.addElement (adrenvelope, "Header"));
+				soap.xmlutils.setNamespacePrefixOfElement (adrhead, soap.constants.nsEnvelopePrefix);
+				soap.encode.main (adrresponse, adrHeaderData^, adrhead, nameOf (adrHeaderData^));
+				local (adrsub);
+				for adrsub in adrhead {
+					if nameOf (adrsub^) beginswith "/" {
+						continue};
+					soap.xmlutils.setNamespacePrefixOfElement (adrsub, "h");
+					soap.xmlutils.declareNamespaceInElement (adrsub, "h", headerNamespaceURI)}};
+			
+			adrbody = soap.xmlutils.addElement (adrenvelope, "Body");
+			soap.xmlutils.setNamespacePrefixOfElement (adrbody, soap.constants.nsEnvelopePrefix);
+			
+			adrmethodcall = soap.xmlutils.addElement (adrbody, methodName);
+			if methodNamespace != nil or methodNamespaceURI != nil { //04/02/2001 JES: error if both values aren't specified
+				if methodNamespaceURI == nil {
+					scriptError ("Can't encode the request because a methodNamespace was specified, but no methodNamespaceURI was given.")};
+				if methodNamespace == nil {
+					scriptError ("Can't encode the request because a methodNamespaceURI was specified, but no methodNamespace was given.")}};
+			if methodNamespace != nil { //03/25/2001 JES: set the methodCall namespace
+				soap.xmlutils.setNamespacePrefixOfElement (adrmethodcall, methodNamespace)};
+			if methodNamespaceURI != nil { //03/25/2001 JES: set the methodCall namespaceURI
+				soap.xmlutils.declareNamespaceInElement (adrmethodcall, methodNamespace, methodNamespaceURI)}};
+		bundle { //determine character encoding, error if unsupported
+			local (supportsUTF = true);
+			if not defined (string.ansiToUtf16) { //check to see if we can do UTF
+				supportsUTF = false};
+			case string.lower (charset) {
+				soap.constants.charsetLatin1 {
+					};//default behavior
+				soap.constants.charsetUsAscii {
+					flEntityEncodeHighAscii = true};
+				soap.constants.charsetUtf8 {
+					if not supportsUTF {
+						flEntityEncodeHighAscii = true}}; //treat UFT-8 as a super-set of US-ASCII, but encode high-ascii characters as XML entities
+				soap.constants.charsetUtf16 {
+					if not supportsUTF {
+						scriptError ("Can't encode the request because you must be running at least version 7.0b42 in order to use UTF-16 character encoding.")}}}
+			else {
+				scriptError ("Can't encode the request because \"" + charset + "\" is not a supported character set.")}};
+		bundle { //encode parameters
+			local (ix, ct = sizeOf (adrparams^));
+			if ct > 0 {
+				case typeOf (adrparams^) {
+					listType {
+						for ix = 1 to ct {
+							soap.encode.main (adrresponse, adrparams^[ix], adrmethodcall, "param" + ix, customStructType, customNamespace, customNamespaceURI, flEntityEncodeHighAscii)}};
+					recordType {
+						for ix = 1 to ct {
+							soap.encode.main (adrresponse, adrparams^[ix], adrmethodcall, nameOf (adrparams^[ix]), customStructType, customNamespace, customNamespaceURI, flEntityEncodeHighAscii)}}}
+				else {
+					scripterror ("Can't encode parameters because adrparams is not a list or record.")}}
+			else {
+				if methodNamespace == "" {
+					table.assign (adrmethodcall, "")}}};
+		bundle { //give caller a chance at the compiled XML before creating the request
+			if adrBeforeDecompileCallback != nil {
+				adrBeforeDecompileCallback^ (adrdocument)}};
+		bundle { //decompile document tree into XML text
+			requestText = xml.decompile (adrdocument)};
+		bundle { //convert the text to the character set specified by charset
+			case string.lower (charset) { //assume us-ascii
+				soap.constants.charsetUtf8 {
+					if not flEntityEncodeHighAscii {
+						requestText = string.ansiToUtf8 (requestText)}};
+				soap.constants.charsetUtf16 {
+					requestText = string.ansiToUtf16 (requestText)}}}};
+	
+	bundle { //make method call
+		local (requestHeaders);
+		new (tableType, @headers);
+		if soapAction == nil { //03/25/2001 JES: default to actionURI
+			soapAction = actionURI};
+		headers.SOAPAction = "\"" + soapAction + "\"";
+		s = tcp.httpClient (method:"POST", server:rpcServer, port:rpcPort, path:actionURI, data:requestText, datatype:"text/xml; charset=\"" + charset + "\"", username:username, password:password, adrHdrTable:@headers, debug:fldebug, timeOutTicks:ticksToTimeOut, flMessages:flShowMessages);
+		responseText = string.httpResultSplit (s, @responseHeaders)};
+	
+	bundle { //decode response
+		local (adrdocument, adrenvelope, adrheader, adrbody, adrothers, adrmethodresponse);
+		bundle { //convert to response text to ascii, if needed
+			local (responsecharset = "us-ascii"); //default to ascii
+			if defined (responseHeaders.["Content-Type"]) {
+				local (contentType = soap.stringutils.parseHeader (responseHeaders.["Content-Type"]));
+				if defined (contentType.charset) {
+					responsecharset = contentType.charset}};
+			case string.lower (responsecharset) {
+				soap.constants.charsetUtf8;
+				soap.constants.charsetUtf16 {
+					if not defined (string.utf8ToAnsi) {
+						scriptError ("Can't decode the response because \"" + responsecharset + "\" is not a supported character encoding.")};
+					if string.lower (responsecharset) == soap.constants.charsetUtf8 {
+						responseText = string.utf8ToAnsi (responseText)}
+					else { //utf16
+						responseText = string.utf16ToAnsi (responseText)}}}};
+		bundle { //build document tree from XML text
+			on fixEntities (s) {
+				Â«Works around a bug in xml.compile, where both &amp;quot; and &quot; are decoded as &quot;. Clearly this shouldn't be the case, but to fix xml-compile at this point is asking for trouble.
+				s = string.replaceAll (s, "&amp;amp;", "&amp;amp;amp;");
+				s = string.replaceAll (s, "&amp;quot;", "&amp;amp;quot;");
+				s = string.replaceAll (s, "&amp;apos;", "&amp;amp;apos;");
+				s = string.replaceAll (s, "&amp;lt;", "&amp;amp;lt;");
+				s = string.replaceAll (s, "&amp;gt;", "&amp;amp;gt;");
+				return (s)};
+			local (xmltext = string (responseText));
+			xmltext = fixEntities (xmltext);
+			adrdocument = soap.xmlutils.createResponse (adrresponse, string (xmltext))};
+		bundle { //locate envelope
+			adrenvelope = soap.xmlutils.getFirstChildElement (adrdocument);
+			soap.xmlutils.pushScope (adrresponse, adrenvelope);
+			if not soap.xmlutils.elementMatches (adrresponse, adrenvelope, @soap.qname.envelope) {
+				scripterror ("Can't decode the response because the Envelope element was not found.")}};
+		bundle { //locate header, body, and others
+			local (adrtemp = soap.xmlutils.getFirstChildElement (adrenvelope));
+			soap.xmlutils.pushScope (adrresponse, adrtemp);
+			if soap.xmlutils.elementMatches (adrresponse, adrtemp, @soap.qname.header) {
+				adrheader = adrtemp;
+				soap.xmlutils.popScope (adrresponse);
+				adrtemp = soap.xmlutils.getNextSiblingElement (adrtemp);
+				soap.xmlutils.pushScope (adrresponse, adrtemp)};
+			if soap.xmlutils.elementMatches (adrresponse, adrtemp, @soap.qname.body) {
+				adrbody = adrtemp;
+				adrothers = soap.xmlutils.getNextSiblingElement (adrtemp)}
+			else {
+				scripterror ("Can't decode the response because the Body element was not found.")}};
+		bundle { //check body for fault struct
+			local (nomad = soap.xmlutils.getFirstChildElement (adrbody));
+			while (nomad) {
+				if soap.xmlutils.elementMatches (adrresponse, nomad, @soap.qname.fault) {
+					local (adrfaultcode = soap.xmlutils.getNamedChildElement (nomad, "faultcode"));
+					local (adrfaultstring = soap.xmlutils.getNamedChildElement (nomad, "faultstring"));
+					if adrfaultcode {
+						scripterror ("The server, " + rpcServer + ", returned a " + soap.xmlutils.getCharacterData (adrfaultcode) + " fault: " + soap.xmlutils.decodeAmpersands (soap.xmlutils.getCharacterData (adrfaultstring)))}
+					else {
+						scripterror ("The server, " + rpcServer + ", returned a (malformed) fault with no faultcode element: " + soap.xmlutils.decodeAmpersands (soap.xmlutils.getCharacterData (adrfaultstring)))}};
+				nomad = soap.xmlutils.getNextSiblingElement (nomad)}};
+		bundle { //locate method call
+			adrmethodresponse = soap.xmlutils.getFirstChildElement (adrbody);
+			if not (xml.convertToDisplayName (nameOf (adrmethodresponse^)) beginsWith methodname) {
+				scripterror ("Response name is incompatible with request method name.")}};
+		bundle { //decode the method response struct
+			soap.xmlutils.pushScope (adrresponse, adrmethodresponse);
+			local (adritem = soap.xmlutils.getFirstChildElement (adrmethodresponse));
+			returnvalue = soap.decode.main (adrresponse, adritem, flEnforceSimpleTypes, flDuplicatesToArrays)}};
+	
+	return (returnvalue)};
+
+Â«bundle //debugging code
+	Â«bundle //examples/getStateList
+		Â«local (returnvalue, params = {{1, 2, 3}})
+		Â«returnvalue = client (actionURI:"/examples", methodName:"getStateList", adrparams:@params, rpcServer:"superhonker.userland.com", fldebug:true)
+		Â«edit (@scratchpad.httpCommand)
+		Â«edit (@scratchpad.httpResult)
+		Â«dialog.notify (returnvalue)
+	Â«bundle //examples/getStateName
+		Â«local (returnvalue, params = {50})
+		Â«returnvalue = client (actionURI:"/examples", methodName:"getStateName", adrparams:@params)
+		Â«dialog.notify (returnvalue)
+	Â«bundle //examples/getStateNames
+		Â«local (returnvalue, params = {11, 22, 33, 44})
+		Â«returnvalue = client (actionURI:"/examples", methodName:"getStateNames", rpcServer:"superhonker.userland.com", adrparams:@params)
+		Â«dialog.notify (returnvalue)
+	Â«bundle //examples/getStateStruct
+		Â«local (returnvalue, params, struct)
+		Â«new (tableType, @struct)
+		Â«struct.a = 11
+		Â«struct.b = 22
+		Â«struct.c = 33
+		Â«struct.d = 44
+		Â«params = {struct}
+		Â«returnvalue = client (actionURI:"/examples", methodName:"getStateStruct", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
+		Â«temp.returnvalue = returnvalue
+		Â«edit (@temp.returnvalue)
+	Â«bundle //examples/getCurrentTime
+		Â«local (returnvalue, params = {})
+		Â«returnvalue = client (actionURI:"/examples", methodName:"getCurrentTime", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
+		Â«dialog.notify (returnvalue)
+	Â«bundle //examples/getCurrentTime -- throws an error because there are too many parameters
+		Â«local (returnvalue, params = {1, 2, 3})
+		Â«returnvalue = client (actionURI:"/examples", methodName:"getCurrentTime", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
+		Â«dialog.notify (returnvalue)

@@ -1,1 +1,8 @@
-on findInList (theString, theList) {	local(lSize = sizeof(theList), matches = {});		loop (x=1;x<=lSize;x++) {		if (string.patternMatch(theString, string(theList[x]))) {			matches = matches + string(theList[x])}};		return(matches)}
+on findInList (theString, theList) {
+	local(lSize = sizeof(theList), matches = {});
+	
+	loop (x=1;x<=lSize;x++) {
+		if (string.patternMatch(theString, string(theList[x]))) {
+			matches = matches + string(theList[x])}};
+	
+	return(matches)}

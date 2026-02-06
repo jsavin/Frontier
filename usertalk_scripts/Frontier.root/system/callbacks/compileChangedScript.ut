@@ -1,1 +1,24 @@
-on compileChangedScript (adr) { «see if the user wants to compile script changes	«this script is called by Frontier before closing a script window that had been edited		«if you never want to see the dialog, delete the dialog call, and just return true		«Callbacks implemented: Tue, Oct 7, 1997		«Callback script returns to true to handle this.		«Else default behavior.	«Changes:		«Thursday, September 28, 2000 at 6:05:24 PM by JES			«Allow callbacks to be addresses or addresses of addresses...	local (i);	if not defined (user.callbacks.compileChangedScript) {		new (tabletype, @user.callbacks.compileChangedScript)};	for i = 1 to sizeof (user.callbacks.compileChangedScript) {		try {			local (adrScript = @user.callbacks.compileChangedScript [i]);			while typeOf (adrScript^) == addressType {				adrScript = adrScript^};			if adrScript^ (adr) {				return (true)}}};		local (scriptname = nameOf (adr^));	speaker.beep ();	return (dialog.yesNoCancel ("Compile changes to \"" + scriptname + "\" before closing?"))}
+on compileChangedScript (adr) { Â«see if the user wants to compile script changes
+	Â«this script is called by Frontier before closing a script window that had been edited
+		Â«if you never want to see the dialog, delete the dialog call, and just return true
+	
+	Â«Callbacks implemented: Tue, Oct 7, 1997
+		Â«Callback script returns to true to handle this.
+		Â«Else default behavior.
+	Â«Changes:
+		Â«Thursday, September 28, 2000 at 6:05:24 PM by JES
+			Â«Allow callbacks to be addresses or addresses of addresses...
+	local (i);
+	if not defined (user.callbacks.compileChangedScript) {
+		new (tabletype, @user.callbacks.compileChangedScript)};
+	for i = 1 to sizeof (user.callbacks.compileChangedScript) {
+		try {
+			local (adrScript = @user.callbacks.compileChangedScript [i]);
+			while typeOf (adrScript^) == addressType {
+				adrScript = adrScript^};
+			if adrScript^ (adr) {
+				return (true)}}};
+	
+	local (scriptname = nameOf (adr^));
+	speaker.beep ();
+	return (dialog.yesNoCancel ("Compile changes to \"" + scriptname + "\" before closing?"))}

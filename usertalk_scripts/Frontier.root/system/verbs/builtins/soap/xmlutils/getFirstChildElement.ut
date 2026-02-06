@@ -1,1 +1,12 @@
-on getFirstChildElement (adrelement) {	if typeOf (adrelement^) != tableType {		return (false)};	local (adrchild);	for adrchild in adrelement { //locate first sub-element		local (childname = xml.convertToDisplayName (nameOf (adrchild^)));		if childname beginsWith "/" {			continue};		if childname beginsWith "?" {			continue};		return (adrchild)};	return (false)}
+on getFirstChildElement (adrelement) {
+	if typeOf (adrelement^) != tableType {
+		return (false)};
+	local (adrchild);
+	for adrchild in adrelement { //locate first sub-element
+		local (childname = xml.convertToDisplayName (nameOf (adrchild^)));
+		if childname beginsWith "/" {
+			continue};
+		if childname beginsWith "?" {
+			continue};
+		return (adrchild)};
+	return (false)}

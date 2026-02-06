@@ -1,1 +1,34 @@
-on any (adrelement, adrservice, adritem) {	«Changes		«10/8/02; 4:41:47 PM by JES			«Created. Implement the RDF Site Summary Content module.			«http://web.resource.org/rss/1.0/modules/content/	local (value);	if typeOf (adrelement^) == stringType {		value = adrelement^}	else {		if defined (adrelement^.["/cdata"]) {			value = adrelement^.["/cdata"]}		else {			value = adrelement^.["/pcdata"]}};	bundle { //try to get the title and link to prepend to the content		local (title = "", link = "");		if defined (adritem^.data) {			if defined (adritem^.data.title) {				title = adritem^.data.title};			if defined (adritem^.data.link) {				link = adritem^.data.link}}		else { //compileService didn't save these for us -- try to get them from the xml			local (adrtable = parentOf (adrelement^)); //this is the address of <item>			try {title = xml.getValue (adrtable, "title")};			try {link = xml.getValue (adrtable, "link")}};		if (sizeOf (title) + sizeOf (link)) > 0 { //one or the other or both exist			if sizeOf (link) > 0 {				if sizeOf (title) == 0 {					title = "[" + html.getLink ("link", link) + "] "}				else {					title = html.getLink (title, link) + ". "}}};		if sizeOf (title) > 0 { //mash onto the front of the content			value = title + value}};	adritem^.title = value;	return}
+on any (adrelement, adrservice, adritem) {
+	Â«Changes
+		Â«10/8/02; 4:41:47 PM by JES
+			Â«Created. Implement the RDF Site Summary Content module.
+			Â«http://web.resource.org/rss/1.0/modules/content/
+	local (value);
+	if typeOf (adrelement^) == stringType {
+		value = adrelement^}
+	else {
+		if defined (adrelement^.["/cdata"]) {
+			value = adrelement^.["/cdata"]}
+		else {
+			value = adrelement^.["/pcdata"]}};
+	bundle { //try to get the title and link to prepend to the content
+		local (title = "", link = "");
+		if defined (adritem^.data) {
+			if defined (adritem^.data.title) {
+				title = adritem^.data.title};
+			if defined (adritem^.data.link) {
+				link = adritem^.data.link}}
+		else { //compileService didn't save these for us -- try to get them from the xml
+			local (adrtable = parentOf (adrelement^)); //this is the address of <item>
+			try {title = xml.getValue (adrtable, "title")};
+			try {link = xml.getValue (adrtable, "link")}};
+		if (sizeOf (title) + sizeOf (link)) > 0 { //one or the other or both exist
+			if sizeOf (link) > 0 {
+				if sizeOf (title) == 0 {
+					title = "[" + html.getLink ("link", link) + "] "}
+				else {
+					title = html.getLink (title, link) + ". "}}};
+		if sizeOf (title) > 0 { //mash onto the front of the content
+			value = title + value}};
+	adritem^.title = value;
+	return}

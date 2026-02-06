@@ -1,1 +1,11 @@
-on wizzyEditorCheckbox (prompt) {	local (pta = html.getpagetableaddress ());	system.temp.radio.flWizzyEditor = weblogData.prefs.editingToolName == "wysiwyg";	local (s = radio.prefs.checkboxPref (prompt, @system.temp.radio.flWizzyEditor));	if pta^.method == "POST" {		if system.temp.radio.flWizzyEditor {			weblogData.prefs.editingToolName = "wysiwyg"}		else {			weblogData.prefs.editingToolName = "htmlTags"}};	delete (@system.temp.radio.flWizzyEditor);	return (s)}
+on wizzyEditorCheckbox (prompt) {
+	local (pta = html.getpagetableaddress ());
+	system.temp.radio.flWizzyEditor = weblogData.prefs.editingToolName == "wysiwyg";
+	local (s = radio.prefs.checkboxPref (prompt, @system.temp.radio.flWizzyEditor));
+	if pta^.method == "POST" {
+		if system.temp.radio.flWizzyEditor {
+			weblogData.prefs.editingToolName = "wysiwyg"}
+		else {
+			weblogData.prefs.editingToolName = "htmlTags"}};
+	delete (@system.temp.radio.flWizzyEditor);
+	return (s)}

@@ -1,1 +1,117 @@
-on new (flHidden=false, title=nil, adradrwindow=nil) {	«Changes:		«4/16/02; 12:19:19 AM by JES			«Set the window's lineEnding attribute to the line ending for the current platform.		«12/2/01; 7:07:19 PM by JES			«if user.radio.settings.flExpired is defined, and true, open the serial number page.		«11/11/01; 1:41:33 PM by JES			«Put the new outline in text mode, so that you can start typing immediately.		«07/04/01; 1:25:13 AM by JES			«Rewrite for the windowTypes/Tools framework.		«Archive			«12/26/00; 4:00:31 PM by PBS				«Call the new bottleneck script at pike.newWindow.			«12/12/00; 10:03:16 PM by PBS				«Set the window title in the call to edit -- so the title doesn't flash, first with the path name, then with the window title.			«11/30/00; 12:13:55 AM by JES				«Dereference callback addresses in a try block in case a tool's odb is not opened			«09/30/00; 12:45:13 PM by PBS				«Call callback scripts.			«07/26/00; 10:01:52 PM by PBS				«New outlines open in text mode, so you can start typing automatically.			«07/24/00; 12:31:47 PM by PBS				«Created. Create a new XML outlineDocument document.		if defined (user.radio.settings.flExpired) {		if user.radio.settings.flExpired {			radio.menuCommands.openPage (radio.data.systemurls.serialnumber);			return (true)}};		Frontier.tools.windowTypes.init ();		on runCallbacks (adrCallback) {		if defined (adrCallback^) {			local (flConsumed = false);			local (adrScript);			for adrScript in adrCallback {				try { //11/30/00 JES					while typeOf (adrScript^) == addressType { //follow addresses						adrScript = adrScript^};					flConsumed = adrScript^ ()}; //no parameters				if flConsumed {					return (true)}}};		return (false)};	if runCallbacks (@user.tools.commandCallbacks) {		return (true)};	if system.environment.isRadio {		if defined (user.pike.commandCallbacks) {			if runCallbacks (@user.pike.commandCallbacks.new) {				return (true)}}};		if title == nil { //get next file number and title string -- Untitled-xxx		if not defined (temp.windowTypes.nextFileNum) {			temp.windowTypes.nextFileNum = 1};		nextFileNum = temp.windowTypes.nextFileNum;		temp.windowTypes.nextFileNum++;		if nextFileNum == 1 {			title = "Untitled"}		else {			title = "Untitled-" + nextFileNum}};	local (adr = Frontier.tools.windowTypes.newWindow ("outlinerFile", flHidden, title));		window.attributes.setOne ("flOutlineDocument", true, adr);	window.attributes.setOne ("title", title, adr);	bundle { //set lineEnding attribute		if system.environment.isMac {			if system.environment.isCarbon {				window.attributes.setOne ("lineEnding", "\r", adr)}			else { //classic				window.attributes.setOne ("lineEnding", "\n", adr)}}		else { //windows			window.attributes.setOne ("lineEnding", "\r\n", adr)}};		local (oldTarget = target.set (adr));	wp.setTextMode (true);	try {target.set (oldTarget)};		if adradrwindow != nil {		adradrwindow^ = adr};		return (true);		«bundle //old code		«local (nextFileNum, titleString)		«		«bundle //get next file number and title string -- Untitled-xxx			«if not defined (temp.pike)				«new (tableType, @temp.pike)			«if not defined (temp.pike.nextFileNum)				«temp.pike.nextFileNum = 1			«nextFileNum = temp.pike.nextFileNum			«temp.pike.nextFileNum++			«if nextFileNum == 1				«titleString = "Untitled"			«else				«titleString = "Untitled-" + nextFileNum		«		«bundle //create a new outline document			«Old code, moved to pike.newWindow:				«if not defined (temp.pike.outlines)					«new (tableType, @temp.pike.outlines)				«local (adrOutlinesTable = @temp.pike.outlines)				«local (adrTable = @adrOutlinesTable^.[titleString])				«new (tableType, adrTable)				«new (outlineType, @adrTable^.outline)				«edit (@adrTable^.outline, windowTitle:titleString) //PBS 12/12/00: set title in call to edit				«wp.setTextMode (true) //PBS 07/26/00: new outlines should be in text mode, so you can start typing automatically				«window.setTitle (@adrTable^.outline, titleString) //PBS 12/12/00: commented this line out -- see call to edit, above, that sets the title				«adrTable^.flSaved = false				«adrTable^.timeCreated = clock.now ()				«adrTable^.title = titleString				«adrTable^.flLocal = true			«pike.newWindow (titleString) //PBS 12/26/00: call new bottleneck script		«		«return (true)};«bundle //debugging	«new ()
+on new (flHidden=false, title=nil, adradrwindow=nil) {
+	Â«Changes:
+		Â«4/16/02; 12:19:19 AM by JES
+			Â«Set the window's lineEnding attribute to the line ending for the current platform.
+		Â«12/2/01; 7:07:19 PM by JES
+			Â«if user.radio.settings.flExpired is defined, and true, open the serial number page.
+		Â«11/11/01; 1:41:33 PM by JES
+			Â«Put the new outline in text mode, so that you can start typing immediately.
+		Â«07/04/01; 1:25:13 AM by JES
+			Â«Rewrite for the windowTypes/Tools framework.
+		Â«Archive
+			Â«12/26/00; 4:00:31 PM by PBS
+				Â«Call the new bottleneck script at pike.newWindow.
+			Â«12/12/00; 10:03:16 PM by PBS
+				Â«Set the window title in the call to edit -- so the title doesn't flash, first with the path name, then with the window title.
+			Â«11/30/00; 12:13:55 AM by JES
+				Â«Dereference callback addresses in a try block in case a tool's odb is not opened
+			Â«09/30/00; 12:45:13 PM by PBS
+				Â«Call callback scripts.
+			Â«07/26/00; 10:01:52 PM by PBS
+				Â«New outlines open in text mode, so you can start typing automatically.
+			Â«07/24/00; 12:31:47 PM by PBS
+				Â«Created. Create a new XML outlineDocument document.
+	
+	if defined (user.radio.settings.flExpired) {
+		if user.radio.settings.flExpired {
+			radio.menuCommands.openPage (radio.data.systemurls.serialnumber);
+			return (true)}};
+	
+	Frontier.tools.windowTypes.init ();
+	
+	on runCallbacks (adrCallback) {
+		if defined (adrCallback^) {
+			local (flConsumed = false);
+			local (adrScript);
+			for adrScript in adrCallback {
+				try { //11/30/00 JES
+					while typeOf (adrScript^) == addressType { //follow addresses
+						adrScript = adrScript^};
+					flConsumed = adrScript^ ()}; //no parameters
+				if flConsumed {
+					return (true)}}};
+		return (false)};
+	if runCallbacks (@user.tools.commandCallbacks) {
+		return (true)};
+	if system.environment.isRadio {
+		if defined (user.pike.commandCallbacks) {
+			if runCallbacks (@user.pike.commandCallbacks.new) {
+				return (true)}}};
+	
+	if title == nil { //get next file number and title string -- Untitled-xxx
+		if not defined (temp.windowTypes.nextFileNum) {
+			temp.windowTypes.nextFileNum = 1};
+		nextFileNum = temp.windowTypes.nextFileNum;
+		temp.windowTypes.nextFileNum++;
+		if nextFileNum == 1 {
+			title = "Untitled"}
+		else {
+			title = "Untitled-" + nextFileNum}};
+	local (adr = Frontier.tools.windowTypes.newWindow ("outlinerFile", flHidden, title));
+	
+	window.attributes.setOne ("flOutlineDocument", true, adr);
+	window.attributes.setOne ("title", title, adr);
+	bundle { //set lineEnding attribute
+		if system.environment.isMac {
+			if system.environment.isCarbon {
+				window.attributes.setOne ("lineEnding", "\r", adr)}
+			else { //classic
+				window.attributes.setOne ("lineEnding", "\n", adr)}}
+		else { //windows
+			window.attributes.setOne ("lineEnding", "\r\n", adr)}};
+	
+	local (oldTarget = target.set (adr));
+	wp.setTextMode (true);
+	try {target.set (oldTarget)};
+	
+	if adradrwindow != nil {
+		adradrwindow^ = adr};
+	
+	return (true);
+	
+	Â«bundle //old code
+		Â«local (nextFileNum, titleString)
+		Â«
+		Â«bundle //get next file number and title string -- Untitled-xxx
+			Â«if not defined (temp.pike)
+				Â«new (tableType, @temp.pike)
+			Â«if not defined (temp.pike.nextFileNum)
+				Â«temp.pike.nextFileNum = 1
+			Â«nextFileNum = temp.pike.nextFileNum
+			Â«temp.pike.nextFileNum++
+			Â«if nextFileNum == 1
+				Â«titleString = "Untitled"
+			Â«else
+				Â«titleString = "Untitled-" + nextFileNum
+		Â«
+		Â«bundle //create a new outline document
+			Â«Old code, moved to pike.newWindow:
+				Â«if not defined (temp.pike.outlines)
+					Â«new (tableType, @temp.pike.outlines)
+				Â«local (adrOutlinesTable = @temp.pike.outlines)
+				Â«local (adrTable = @adrOutlinesTable^.[titleString])
+				Â«new (tableType, adrTable)
+				Â«new (outlineType, @adrTable^.outline)
+				Â«edit (@adrTable^.outline, windowTitle:titleString) //PBS 12/12/00: set title in call to edit
+				Â«wp.setTextMode (true) //PBS 07/26/00: new outlines should be in text mode, so you can start typing automatically
+				Â«window.setTitle (@adrTable^.outline, titleString) //PBS 12/12/00: commented this line out -- see call to edit, above, that sets the title
+				Â«adrTable^.flSaved = false
+				Â«adrTable^.timeCreated = clock.now ()
+				Â«adrTable^.title = titleString
+				Â«adrTable^.flLocal = true
+			Â«pike.newWindow (titleString) //PBS 12/26/00: call new bottleneck script
+		Â«
+		Â«return (true)};
+
+Â«bundle //debugging
+	Â«new ()

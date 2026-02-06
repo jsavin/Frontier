@@ -1,1 +1,4 @@
-on setObjectVisible (name, flag) {	new (tableType, @atts);	atts.visi = boolean (flag);	return (cardEditor.setObjectAttributes (name, @atts))}
+on setObjectVisible (name, flag) {
+	new (tableType, @atts);
+	atts.visi = boolean (flag);
+	return (cardEditor.setObjectAttributes (name, @atts))}

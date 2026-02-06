@@ -1,1 +1,2 @@
-on rename (path, name) {	kernel (file.rename)}
+on rename (path, name) {
+	kernel (file.rename)}

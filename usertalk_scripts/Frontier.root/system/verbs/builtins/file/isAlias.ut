@@ -1,1 +1,2 @@
-on isAlias (path) {	kernel (file.isAlias)}
+on isAlias (path) {
+	kernel (file.isAlias)}

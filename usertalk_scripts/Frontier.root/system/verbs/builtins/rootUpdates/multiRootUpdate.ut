@@ -1,1 +1,25 @@
-on multiRootUpdate (rootNamesList) {	«Monday, November 15, 1999 at 11:55:21 PM by AR		«Don't call this verb directly, use rootUpdates.threadedMultiRootUpdate as a wrapper instead		«rootNamesList is supposed to be a list of strings which are names of entries in user.databases.		«The actual work is done in another thread, one root at a time. We don't return until all updates have completed.	on threadedCall (routinename, param) {		«We can't use thread.easyCall because it doesn't return a thread ID.		param = string.replaceAll (param, "\\", "\\\\");		param = string.replaceAll (param, "\"", "\\\"");		local (s = routinename + " (\"" + param + "\", flQuietMode:true)");		return (thread.evaluate (s))};	local (rootName, id, adrRoot, adrScript);	for rootName in list (rootNamesList) {		msg (string (this) + ": Updating " + rootName);		if string.lower (rootName) == "frontier.root" {			adrRoot = @root}		else {			adrRoot = @[user.databases.[rootName].f]};		table.sureDatabaseOpen (adrRoot);		adrScript = table.copy (@rootUpdates.update, @system.temp);		id = threadedCall (adrScript, adrRoot);		while thread.exists (id) {			thread.sleepFor (5)}};	msg ("");	return (true)}
+on multiRootUpdate (rootNamesList) {
+	Â«Monday, November 15, 1999 at 11:55:21 PM by AR
+		Â«Don't call this verb directly, use rootUpdates.threadedMultiRootUpdate as a wrapper instead
+		Â«rootNamesList is supposed to be a list of strings which are names of entries in user.databases.
+		Â«The actual work is done in another thread, one root at a time. We don't return until all updates have completed.
+	on threadedCall (routinename, param) {
+		Â«We can't use thread.easyCall because it doesn't return a thread ID.
+		param = string.replaceAll (param, "\\", "\\\\");
+		param = string.replaceAll (param, "\"", "\\\"");
+		local (s = routinename + " (\"" + param + "\", flQuietMode:true)");
+		return (thread.evaluate (s))};
+	local (rootName, id, adrRoot, adrScript);
+	for rootName in list (rootNamesList) {
+		msg (string (this) + ": Updating " + rootName);
+		if string.lower (rootName) == "frontier.root" {
+			adrRoot = @root}
+		else {
+			adrRoot = @[user.databases.[rootName].f]};
+		table.sureDatabaseOpen (adrRoot);
+		adrScript = table.copy (@rootUpdates.update, @system.temp);
+		id = threadedCall (adrScript, adrRoot);
+		while thread.exists (id) {
+			thread.sleepFor (5)}};
+	msg ("");
+	return (true)}

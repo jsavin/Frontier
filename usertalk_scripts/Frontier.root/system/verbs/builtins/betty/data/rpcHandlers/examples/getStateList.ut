@@ -1,1 +1,5 @@
-on getStateList (numlist) {	local (num, s = "");	for num in numlist {		s = s + states.nthState (num) + ","};	return (string.poptrailing (s, ","))}
+on getStateList (numlist) {
+	local (num, s = "");
+	for num in numlist {
+		s = s + states.nthState (num) + ","};
+	return (string.poptrailing (s, ","))}

@@ -1,1 +1,8 @@
-on directWeblogPoster (from, type, body, subject, thread, connection) {	«Changes:		«5/13/02; 11:10:20 PM by JB			«Changelog created.	«This will post the body of the message onto your Radio Weblog. Danger, Will Robinson! This has no security! You probably shouldn't use it! But it provides a clean example.	radio.weblog.post(body);	radio.weblog.publish()};tcp.im.builtinDrivers.jabber.code.registerHandler("message", this)
+on directWeblogPoster (from, type, body, subject, thread, connection) {
+	Â«Changes:
+		Â«5/13/02; 11:10:20 PM by JB
+			Â«Changelog created.
+	Â«This will post the body of the message onto your Radio Weblog. Danger, Will Robinson! This has no security! You probably shouldn't use it! But it provides a clean example.
+	radio.weblog.post(body);
+	radio.weblog.publish()};
+tcp.im.builtinDrivers.jabber.code.registerHandler("message", this)

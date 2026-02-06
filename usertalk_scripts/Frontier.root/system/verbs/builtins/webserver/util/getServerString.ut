@@ -1,1 +1,31 @@
-on getServerString () {	«Changes		«6/24/05; 4:04:58 PM by MB			«Updated radio version retrieval		«1/7/2001; 9:25:34 PM by DW			«In Radio, do not implement as a kernel call. I want the header to say Radio UserLand, not Frontier. I did timing tests and there was no difference betw the kernelized and script versions, in the Frontier case, there was no difference, both the scripted versions and the kernelized versions took about 12 ticks to do 10000 calls. In the isPike case, it took about 29 ticks, so it's quite a bit slower (but still quite fast) and it's worth it to be visible at this level.		«Thursday, November 11, 1999 at 3:06:13 AM by AR			«Implemented as a kernel script in Frontier 6.1.			«Old code				«on getServerString () //old code					«Common script to return the server name for an HTTP header.						«Thu, 14 May 1998 21:36:26 GMT by RAB					«Changes						«Thu, Feb 25, 1999 at 10:46:27 PM by PBS							«Call Frontier.version to get Frontier's version.							«Collapse the script into one line.					«return ("UserLand Frontier/" + Frontier.version () + "-" + sys.os ()) // set the server	if system.environment.isPike {		local ( v = Frontier.version () );		if defined ( radio.version ) {			v = radio.version ()};		return ("Radio UserLand/" + v+ "-" + sys.os ())}	else {		on kernelcall () {			kernel (webserver.getServerString)};		kernelcall ()}};«bundle //test code	«local (startticks = clock.ticks ())	«for i = 1 to 10000		«getServerString ()	«dialog.alert (clock.ticks () - startticks)
+on getServerString () {
+	Â«Changes
+		Â«6/24/05; 4:04:58 PM by MB
+			Â«Updated radio version retrieval
+		Â«1/7/2001; 9:25:34 PM by DW
+			Â«In Radio, do not implement as a kernel call. I want the header to say Radio UserLand, not Frontier. I did timing tests and there was no difference betw the kernelized and script versions, in the Frontier case, there was no difference, both the scripted versions and the kernelized versions took about 12 ticks to do 10000 calls. In the isPike case, it took about 29 ticks, so it's quite a bit slower (but still quite fast) and it's worth it to be visible at this level.
+		Â«Thursday, November 11, 1999 at 3:06:13 AM by AR
+			Â«Implemented as a kernel script in Frontier 6.1.
+			Â«Old code
+				Â«on getServerString () //old code
+					Â«Common script to return the server name for an HTTP header.
+						Â«Thu, 14 May 1998 21:36:26 GMT by RAB
+					Â«Changes
+						Â«Thu, Feb 25, 1999 at 10:46:27 PM by PBS
+							Â«Call Frontier.version to get Frontier's version.
+							Â«Collapse the script into one line.
+					Â«return ("UserLand Frontier/" + Frontier.version () + "-" + sys.os ()) // set the server
+	if system.environment.isPike {
+		local ( v = Frontier.version () );
+		if defined ( radio.version ) {
+			v = radio.version ()};
+		return ("Radio UserLand/" + v+ "-" + sys.os ())}
+	else {
+		on kernelcall () {
+			kernel (webserver.getServerString)};
+		kernelcall ()}};
+Â«bundle //test code
+	Â«local (startticks = clock.ticks ())
+	Â«for i = 1 to 10000
+		Â«getServerString ()
+	Â«dialog.alert (clock.ticks () - startticks)

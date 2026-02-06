@@ -1,1 +1,5 @@
-on nthState (n) { «return the name of the nth state, sorted alphabetically	if (n < 1) or (n > 50) {		return ("")}	else {		return (states.table [n])}}
+on nthState (n) { Â«return the name of the nth state, sorted alphabetically
+	if (n < 1) or (n > 50) {
+		return ("")}
+	else {
+		return (states.table [n])}}

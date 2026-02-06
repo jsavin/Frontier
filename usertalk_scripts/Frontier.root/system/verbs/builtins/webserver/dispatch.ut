@@ -1,1 +1,105 @@
-on dispatch (adrParamTable) {	«Thursday, November 11, 1999 at 3:08:16 AM by AR		«Implemented as a kernel script in Frontier 6.1.		«Old code			«Wed, Jun 10, 1998 at 2:36:20 PM by PBS				«Get responder name from user.webserver.responders table, not from actual responder table.			«Script: system.verbs.builtins.webserver.dispatch; Version 2; Date: Thu, 21 May 1998 17:52:33 GMT; ID: RAB				«Allow the condition to be a script			«Script: system.verbs.builtins.webserver.dispatch; Version 1; Date: Wed, 13 May 1998 01:12:57 GMT; ID: RAB			«on dispatch (adrParamTable)				«March 19, 1998 at 5:26:27 PM by WMF					«A common script that dispatches a request to the proper responder				«local (compatibility, method, methodAdr, filterAdr, responderTableAdr)				«local (i) //used for indexing				«				«on isScript (name)					«local (objType)					«if (typeOf (name^) == binaryType)						«objType = getBinaryType (name^)					«else						«objType = typeOf (name^)					«if (objType == scriptType) or (objType == codeType)						«return (true)					«return (false)				«				«bundle  //call pre-filters					«for i = 1 to sizeOf (user.webserver.preFilters)						«try							«filterAdr = @user.webserver.preFilters[i] 							«if typeOf (filterAdr^) == addressType								«filterAdr = filterAdr^							«filterAdr^ (adrParamTable)						«else							«log.add ("Pre filter error: " + @user.webserver.preFilters[i] + ": " + tryError, "webserver")				«				«determine which responder should handle this request				«local (responder = webserver.getPref("defaultResponder"))				«for i =1 to sizeOf(user.webserver.responders)					«responderTableAdr = webserver.util.getResponderTableAdr (nameOf(user.webserver.responders[i]))					«try  //this handles ignoring a bad address dereference on the responderTableAdr						«if defined (responderTableAdr^.condition)							«if (defined (responderTableAdr^.enabled) && responderTableAdr^.enabled)								«try									«with adrParamTable^, adrParamTable^.requestHeaders // allow conditions to see headers easily										«if (typeOf (responderTableAdr^.condition) == scriptType) or (typeOf (responderTableAdr^.condition) == codeType)											«if responderTableAdr^.condition (adrParamTable)												«responder = nameOf (user.webserver.responders [i]) //PBS 6/10/98: get responder name from user.webserver.responders table.												«break										«else											«if evaluate (responderTableAdr^.condition)												«responder = nameOf (user.webserver.responders [i]) //PBS 6/10/98: get responder name from user.webserver.responders table.												«break				«				«adrParamTable^.responder = responder				«adrParamTable^.responderTableAdr = webserver.util.getResponderTableAdr (responder)				«adrParamTable^.code = 200  // fill in default values				«adrParamTable^.responseBody = ""				«new (tableType, @adrParamTable^.responseHeaders)				«				«dispatch the request to the correct responder method				«				«method = adrParamTable^.method				«				«bundle  //handle switching to the any method					«methodAdr = webserver.util.getMethodAdr (responder, method)					«if ! defined(methodAdr^)						«methodAdr = webserver.util.getMethodAdr (responder, "any")						«if defined (methodAdr^)							«method = "any"   //change from the specific method type to the any method				«				«methodAdr = webserver.util.getMethodAdr (responder, method)				«if defined (methodAdr^) && (isScript (methodAdr))					«try						«compatibility = methodAdr^ (adrParamTable)  //call the responder						«if (compatibility == true)							«call post-filters							«for i = 1 to sizeOf (user.webserver.postFilters)								«try									«filterAdr = @user.webserver.postFilters[i] 									«if typeOf (filterAdr^) == addressType										«filterAdr = filterAdr^									«filterAdr^ (adrParamTable)								«else									«log.add ("Post filter error: " + @user.webserver.postFilters[i] + ": " + tryError, "webserver")							«return (webserver.util.buildResponse (adrParamTable^.code, @adrParamTable^.responseHeaders, adrParamTable^.responseBody))						«else							«do the hack for the old CGI framework							«return (compatibility)					«else						«log.add ("Responder method error: " + methodAdr + ": " + tryError, "webserver")						«semaphores.unlock ("")						«return (webserver.util.buildResponse (500, nil, webserver.util.buildErrorPage ("500 Server Error", tryError)))				«else // this service doesn't support this method					«local (allowedMethods, methodTableAdr)					«responderTableAdr = webserver.util.getResponderTableAdr (responder)					«methodTableAdr = @responderTableAdr^.methods					«if typeOf (methodTableAdr^) == addressType						«methodTableAdr = methodTableAdr^					«allowedMethods = ""					«for i =1 to sizeOf (methodTableAdr^)						«allowedMethods = allowedMethods + ", " + nameOf(methodTableAdr^[i])					«new (tableType, @badMethodHeaders)					«badMethodHeaders.Allow = allowedMethods					«return (webserver.util.buildResponse (405, @badMethodHeaders, webserver.util.buildErrorPage ("405 Method Not Allowed", method + " isn't allowed on this object.")))	kernel (webserver.dispatch)}
+on dispatch (adrParamTable) {
+	Â«Thursday, November 11, 1999 at 3:08:16 AM by AR
+		Â«Implemented as a kernel script in Frontier 6.1.
+		Â«Old code
+			Â«Wed, Jun 10, 1998 at 2:36:20 PM by PBS
+				Â«Get responder name from user.webserver.responders table, not from actual responder table.
+			Â«Script: system.verbs.builtins.webserver.dispatch; Version 2; Date: Thu, 21 May 1998 17:52:33 GMT; ID: RAB
+				Â«Allow the condition to be a script
+			Â«Script: system.verbs.builtins.webserver.dispatch; Version 1; Date: Wed, 13 May 1998 01:12:57 GMT; ID: RAB
+			Â«on dispatch (adrParamTable)
+				Â«March 19, 1998 at 5:26:27 PM by WMF
+					Â«A common script that dispatches a request to the proper responder
+				Â«local (compatibility, method, methodAdr, filterAdr, responderTableAdr)
+				Â«local (i) //used for indexing
+				Â«
+				Â«on isScript (name)
+					Â«local (objType)
+					Â«if (typeOf (name^) == binaryType)
+						Â«objType = getBinaryType (name^)
+					Â«else
+						Â«objType = typeOf (name^)
+					Â«if (objType == scriptType) or (objType == codeType)
+						Â«return (true)
+					Â«return (false)
+				Â«
+				Â«bundle  //call pre-filters
+					Â«for i = 1 to sizeOf (user.webserver.preFilters)
+						Â«try
+							Â«filterAdr = @user.webserver.preFilters[i] 
+							Â«if typeOf (filterAdr^) == addressType
+								Â«filterAdr = filterAdr^
+							Â«filterAdr^ (adrParamTable)
+						Â«else
+							Â«log.add ("Pre filter error: " + @user.webserver.preFilters[i] + ": " + tryError, "webserver")
+				Â«
+				Â«determine which responder should handle this request
+				Â«local (responder = webserver.getPref("defaultResponder"))
+				Â«for i =1 to sizeOf(user.webserver.responders)
+					Â«responderTableAdr = webserver.util.getResponderTableAdr (nameOf(user.webserver.responders[i]))
+					Â«try  //this handles ignoring a bad address dereference on the responderTableAdr
+						Â«if defined (responderTableAdr^.condition)
+							Â«if (defined (responderTableAdr^.enabled) && responderTableAdr^.enabled)
+								Â«try
+									Â«with adrParamTable^, adrParamTable^.requestHeaders // allow conditions to see headers easily
+										Â«if (typeOf (responderTableAdr^.condition) == scriptType) or (typeOf (responderTableAdr^.condition) == codeType)
+											Â«if responderTableAdr^.condition (adrParamTable)
+												Â«responder = nameOf (user.webserver.responders [i]) //PBS 6/10/98: get responder name from user.webserver.responders table.
+												Â«break
+										Â«else
+											Â«if evaluate (responderTableAdr^.condition)
+												Â«responder = nameOf (user.webserver.responders [i]) //PBS 6/10/98: get responder name from user.webserver.responders table.
+												Â«break
+				Â«
+				Â«adrParamTable^.responder = responder
+				Â«adrParamTable^.responderTableAdr = webserver.util.getResponderTableAdr (responder)
+				Â«adrParamTable^.code = 200  // fill in default values
+				Â«adrParamTable^.responseBody = ""
+				Â«new (tableType, @adrParamTable^.responseHeaders)
+				Â«
+				Â«dispatch the request to the correct responder method
+				Â«
+				Â«method = adrParamTable^.method
+				Â«
+				Â«bundle  //handle switching to the any method
+					Â«methodAdr = webserver.util.getMethodAdr (responder, method)
+					Â«if ! defined(methodAdr^)
+						Â«methodAdr = webserver.util.getMethodAdr (responder, "any")
+						Â«if defined (methodAdr^)
+							Â«method = "any"   //change from the specific method type to the any method
+				Â«
+				Â«methodAdr = webserver.util.getMethodAdr (responder, method)
+				Â«if defined (methodAdr^) && (isScript (methodAdr))
+					Â«try
+						Â«compatibility = methodAdr^ (adrParamTable)  //call the responder
+						Â«if (compatibility == true)
+							Â«call post-filters
+							Â«for i = 1 to sizeOf (user.webserver.postFilters)
+								Â«try
+									Â«filterAdr = @user.webserver.postFilters[i] 
+									Â«if typeOf (filterAdr^) == addressType
+										Â«filterAdr = filterAdr^
+									Â«filterAdr^ (adrParamTable)
+								Â«else
+									Â«log.add ("Post filter error: " + @user.webserver.postFilters[i] + ": " + tryError, "webserver")
+							Â«return (webserver.util.buildResponse (adrParamTable^.code, @adrParamTable^.responseHeaders, adrParamTable^.responseBody))
+						Â«else
+							Â«do the hack for the old CGI framework
+							Â«return (compatibility)
+					Â«else
+						Â«log.add ("Responder method error: " + methodAdr + ": " + tryError, "webserver")
+						Â«semaphores.unlock ("")
+						Â«return (webserver.util.buildResponse (500, nil, webserver.util.buildErrorPage ("500 Server Error", tryError)))
+				Â«else // this service doesn't support this method
+					Â«local (allowedMethods, methodTableAdr)
+					Â«responderTableAdr = webserver.util.getResponderTableAdr (responder)
+					Â«methodTableAdr = @responderTableAdr^.methods
+					Â«if typeOf (methodTableAdr^) == addressType
+						Â«methodTableAdr = methodTableAdr^
+					Â«allowedMethods = ""
+					Â«for i =1 to sizeOf (methodTableAdr^)
+						Â«allowedMethods = allowedMethods + ", " + nameOf(methodTableAdr^[i])
+					Â«new (tableType, @badMethodHeaders)
+					Â«badMethodHeaders.Allow = allowedMethods
+					Â«return (webserver.util.buildResponse (405, @badMethodHeaders, webserver.util.buildErrorPage ("405 Method Not Allowed", method + " isn't allowed on this object.")))
+	kernel (webserver.dispatch)}

@@ -1,1 +1,2 @@
-on typeUCMD (path) {	return (Frontier.clickers.typersrc (path))}
+on typeUCMD (path) {
+	return (Frontier.clickers.typersrc (path))}

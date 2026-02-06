@@ -1,1 +1,2 @@
-on setItemEnable (itemnumber, enabled) {	kernel (dialog.setitemenable)}
+on setItemEnable (itemnumber, enabled) {
+	kernel (dialog.setitemenable)}

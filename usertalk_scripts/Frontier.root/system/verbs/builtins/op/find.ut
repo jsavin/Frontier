@@ -1,1 +1,2 @@
-on find (searchstring, wholewords=user.prefs.search.wholewords, casesensitive=user.prefs.search.casesensitive) {	kernel (op.find)}
+on find (searchstring, wholewords=user.prefs.search.wholewords, casesensitive=user.prefs.search.casesensitive) {
+	kernel (op.find)}

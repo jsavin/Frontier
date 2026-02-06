@@ -1,1 +1,15 @@
-on set (adrSitePrefs, s, windowInfoTable) {	«Set the text of the custom prefs on the server.	«Changes:		«02/06/00; 9:22:39 PM by PBS			«Try to send the window info table. This try is necessary while we transition the Manila RPC interface.		«02/19/00; 6:48:03 PM by PBS			«Removed the try statement. now that manila.root has been updated.		«03/23/00; 12:31:16 PM by PBS			«Turn off httpClient messages so Pike can display its own message.		«9/6/01; 7:56:41 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename, "s":string (s), "windowInfoTable":windowInfoTable});		return (manila.callHandler (host, port, "manila.customPrefs.set", @params, rpcPath:rpcPath, flShowMessages:false))}}
+on set (adrSitePrefs, s, windowInfoTable) {
+	Â«Set the text of the custom prefs on the server.
+	Â«Changes:
+		Â«02/06/00; 9:22:39 PM by PBS
+			Â«Try to send the window info table. This try is necessary while we transition the Manila RPC interface.
+		Â«02/19/00; 6:48:03 PM by PBS
+			Â«Removed the try statement. now that manila.root has been updated.
+		Â«03/23/00; 12:31:16 PM by PBS
+			Â«Turn off httpClient messages so Pike can display its own message.
+		Â«9/6/01; 7:56:41 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename, "s":string (s), "windowInfoTable":windowInfoTable});
+		return (manila.callHandler (host, port, "manila.customPrefs.set", @params, rpcPath:rpcPath, flShowMessages:false))}}

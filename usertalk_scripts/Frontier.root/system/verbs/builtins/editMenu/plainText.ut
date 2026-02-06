@@ -1,1 +1,2 @@
-on plainText () {	kernel (editmenu.plaintext)}
+on plainText () {
+	kernel (editmenu.plaintext)}

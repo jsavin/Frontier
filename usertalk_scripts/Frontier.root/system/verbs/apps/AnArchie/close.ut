@@ -1,1 +1,2 @@
-on close () { «close the front window	return (appleEvent (AnArchie.id, 'core', 'clos'))}
+on close () { Â«close the front window
+	return (appleEvent (AnArchie.id, 'core', 'clos'))}

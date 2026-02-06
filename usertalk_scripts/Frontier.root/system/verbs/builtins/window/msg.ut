@@ -1,1 +1,2 @@
-on msg (s) {	kernel (window.msg)}
+on msg (s) {
+	kernel (window.msg)}

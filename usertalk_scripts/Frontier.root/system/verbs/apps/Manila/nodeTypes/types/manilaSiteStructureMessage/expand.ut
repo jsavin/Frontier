@@ -1,1 +1,9 @@
-local (siteurl, msgnum);op.attributes.getOne ("siteUrl", @siteurl);op.attributes.getOne ("msgNum", @msgnum);local (adrtype);if Frontier.tools.windowTypes.findWindowType ("manilaMessage", @adrtype) {	«return (adrtype^.openMessage (siteurl, msgnum)) //this didn't work	thread.callScript (@adrtype^.openMessage, {siteurl, msgnum}); //this does work	return (true)}
+local (siteurl, msgnum);
+op.attributes.getOne ("siteUrl", @siteurl);
+op.attributes.getOne ("msgNum", @msgnum);
+
+local (adrtype);
+if Frontier.tools.windowTypes.findWindowType ("manilaMessage", @adrtype) {
+	Â«return (adrtype^.openMessage (siteurl, msgnum)) //this didn't work
+	thread.callScript (@adrtype^.openMessage, {siteurl, msgnum}); //this does work
+	return (true)}

@@ -1,1 +1,21 @@
-on pleaseNotify (url, adrcallback, adrdata = @xmlStorageSystem.data) {	«Changes:		«7/23/01; 9:45:30 PM by JES			«The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.	xmlStorageSystem.init ();	local (params = {"notifyProcedure":"xmlStorageSystemClient.resourceChanged", "port":user.inetd.config.http.port, "path":"/RPC2", "protocol":"xml-rpc", "urllist":{url}});	local (rpcPath);	if defined (adrdata^.xmlRpcPath) {		rpcPath = adrdata^.xmlRpcPath};	if defined (adrdata^.rpcPath) {		rpcPath = adrdata^.rpcPath};	with adrdata^ {		local (result = xml.rpc (server, port, "xmlStorageSystem.rssPleaseNotify", @params, rpcPath:rpcPath, fldebug:fldebug, protocol:protocol, soapAction:soapAction));		if result.flerror {			return (false)};		user.xmlStorageSystem.pubSubCallbacks.[url] = adrcallback;		return (true)}};bundle { //test code	pleaseNotify ("http://www.ourfavoritesongs.com/users/dave@userland.com/bogusTestFile.html", @workspace.clockChanged);	local (f = "c:\\program files\\radio userland\\www\\rss\\bogusTestFile.xml");	file.writewholefile (f, clock.now ())} //it will be upstreamed by Radio
+on pleaseNotify (url, adrcallback, adrdata = @xmlStorageSystem.data) {
+	Â«Changes:
+		Â«7/23/01; 9:45:30 PM by JES
+			Â«The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.
+	xmlStorageSystem.init ();
+	local (params = {"notifyProcedure":"xmlStorageSystemClient.resourceChanged", "port":user.inetd.config.http.port, "path":"/RPC2", "protocol":"xml-rpc", "urllist":{url}});
+	local (rpcPath);
+	if defined (adrdata^.xmlRpcPath) {
+		rpcPath = adrdata^.xmlRpcPath};
+	if defined (adrdata^.rpcPath) {
+		rpcPath = adrdata^.rpcPath};
+	with adrdata^ {
+		local (result = xml.rpc (server, port, "xmlStorageSystem.rssPleaseNotify", @params, rpcPath:rpcPath, fldebug:fldebug, protocol:protocol, soapAction:soapAction));
+		if result.flerror {
+			return (false)};
+		user.xmlStorageSystem.pubSubCallbacks.[url] = adrcallback;
+		return (true)}};
+bundle { //test code
+	pleaseNotify ("http://www.ourfavoritesongs.com/users/dave@userland.com/bogusTestFile.html", @workspace.clockChanged);
+	local (f = "c:\\program files\\radio userland\\www\\rss\\bogusTestFile.xml");
+	file.writewholefile (f, clock.now ())} //it will be upstreamed by Radio

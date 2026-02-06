@@ -1,1 +1,39 @@
-on ["M-POST"] (pta) {	«Changes:		«11/21/00; 3:22:44 PM by JES			«Call soap.rpc.server using callScript, with pta, so that the paramTable will be in scope, since soap.rpc.server needs to call the RPC handler with the name of the responder in scope.		«04/04/01; 5:47:53 PM by JES			«Don't set the Content-Type response header. This is now set by soap.rpc.server.	if not defined (pta^.requestHeaders.Man) {		scripterror ("Can't process M-POST SOAP request because the mandatory extension declaration is missing.")};	on extractActionURI (manheader, adrstring) {		if not (manheader contains ("\"" + soap.constants.nsEnvelopeURI + "\"")) {			return (false)};		local (ix = string.patternMatch (string.lower (manheader), "ns="));		if ix > 0 {			ns = string.nthField (string.delete (manheader, 1, ix + 2), " ", 1);			local (actionheader = pta^.requestHeaders.[ns + "-SOAPAction"]);			if (actionheader == "") or (actionheader == "\"\"") {				adrstring^ = pta^.URI}			else {				adrstring^ = string.nthField (pta^.requestHeaders.[ns + "-SOAPAction"], "\"", 2)};			return (true)};		return (false)};	local (flfound = false);	if typeOf (pta^.requestHeaders.Man) == listType {		local  (headerElement);		for headerElement in pta^.requestHeaders.Man {			if extractActionURI (headerElement, @actionURI) {				flfound = true;				break}}}	else {		flfound = extractActionURI (pta^.requestHeaders.Man, @actionURI)};	if not flfound {		scripterror ("Can't process M-POST SOAP request because the action URI could not be located in the HTTP header.")};	«pta^.responseHeaders.["Content-Type"] = "text/xml"	local (paramlist = {actionURI, @pta^.requestBody, @pta^.responseBody});	if callScript (@soap.rpc.server, paramlist, pta) { //11/21/00 JES: make sure the paramTable is in scope for soap.rpc.server		pta^.code = 200} //everything was OK	else {		pta^.code = 500}; //internal error	return (true)}
+on ["M-POST"] (pta) {
+	Â«Changes:
+		Â«11/21/00; 3:22:44 PM by JES
+			Â«Call soap.rpc.server using callScript, with pta, so that the paramTable will be in scope, since soap.rpc.server needs to call the RPC handler with the name of the responder in scope.
+		Â«04/04/01; 5:47:53 PM by JES
+			Â«Don't set the Content-Type response header. This is now set by soap.rpc.server.
+	if not defined (pta^.requestHeaders.Man) {
+		scripterror ("Can't process M-POST SOAP request because the mandatory extension declaration is missing.")};
+	on extractActionURI (manheader, adrstring) {
+		if not (manheader contains ("\"" + soap.constants.nsEnvelopeURI + "\"")) {
+			return (false)};
+		local (ix = string.patternMatch (string.lower (manheader), "ns="));
+		if ix > 0 {
+			ns = string.nthField (string.delete (manheader, 1, ix + 2), " ", 1);
+			local (actionheader = pta^.requestHeaders.[ns + "-SOAPAction"]);
+			if (actionheader == "") or (actionheader == "\"\"") {
+				adrstring^ = pta^.URI}
+			else {
+				adrstring^ = string.nthField (pta^.requestHeaders.[ns + "-SOAPAction"], "\"", 2)};
+			return (true)};
+		return (false)};
+	local (flfound = false);
+	if typeOf (pta^.requestHeaders.Man) == listType {
+		local  (headerElement);
+		for headerElement in pta^.requestHeaders.Man {
+			if extractActionURI (headerElement, @actionURI) {
+				flfound = true;
+				break}}}
+	else {
+		flfound = extractActionURI (pta^.requestHeaders.Man, @actionURI)};
+	if not flfound {
+		scripterror ("Can't process M-POST SOAP request because the action URI could not be located in the HTTP header.")};
+	Â«pta^.responseHeaders.["Content-Type"] = "text/xml"
+	local (paramlist = {actionURI, @pta^.requestBody, @pta^.responseBody});
+	if callScript (@soap.rpc.server, paramlist, pta) { //11/21/00 JES: make sure the paramTable is in scope for soap.rpc.server
+		pta^.code = 200} //everything was OK
+	else {
+		pta^.code = 500}; //internal error
+	return (true)}

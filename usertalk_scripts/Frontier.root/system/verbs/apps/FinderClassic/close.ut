@@ -1,1 +1,2 @@
-on close (windowpath) {	return (Finder.windowVerb ('clos', windowpath))}
+on close (windowpath) {
+	return (Finder.windowVerb ('clos', windowpath))}

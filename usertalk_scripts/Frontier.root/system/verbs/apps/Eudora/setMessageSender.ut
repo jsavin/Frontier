@@ -1,1 +1,3 @@
-on setMessageSender (msgObj, msgSender) {	with objectModel, Eudora, eventInfo {		return (core.set (id, msgObj.field ["From"], msgSender))}}
+on setMessageSender (msgObj, msgSender) {
+	with objectModel, Eudora, eventInfo {
+		return (core.set (id, msgObj.field ["From"], msgSender))}}

@@ -1,1 +1,6 @@
-on derror(adrSelf,errorstr) {	on clean(str) {		return(string.multipleReplaceAll(str, @tcp.im.builtinDrivers.aim.code.util.repl, true))};	if adrSelf^._debug > 1 {		msg("debug error " + errorstr);		log.add("'"+clean(errorstr)+"'\n", "ftocDebug",flTextFile:true, flGuestDB:true)}}
+on derror(adrSelf,errorstr) {
+	on clean(str) {
+		return(string.multipleReplaceAll(str, @tcp.im.builtinDrivers.aim.code.util.repl, true))};
+	if adrSelf^._debug > 1 {
+		msg("debug error " + errorstr);
+		log.add("'"+clean(errorstr)+"'\n", "ftocDebug",flTextFile:true, flGuestDB:true)}}

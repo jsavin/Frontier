@@ -1,1 +1,10 @@
-on cleanError (s) {	«Changes		«8/12/02; 2:17:33 AM by JES			«Created. Strip out smart quotes.	if system.environment.isMac {		s = string.replaceAll (s, "“", "\"");		s = string.replaceAll (s, "”", "\"");		s = string.replaceAll (s, "Ô", "\'");		s = string.replaceAll (s, "Õ", "\'")};	return (s)}
+on cleanError (s) {
+	Â«Changes
+		Â«8/12/02; 2:17:33 AM by JES
+			Â«Created. Strip out smart quotes.
+	if system.environment.isMac {
+		s = string.replaceAll (s, "â€œ", "\"");
+		s = string.replaceAll (s, "â€", "\"");
+		s = string.replaceAll (s, "Ã”", "\'");
+		s = string.replaceAll (s, "Ã•", "\'")};
+	return (s)}

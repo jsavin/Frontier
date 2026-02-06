@@ -1,1 +1,4 @@
-if not defined (user.netEvents) {	new (tabletype, @user.netEvents)};if not defined (user.netEvents.listens) {	new (tabletype, @user.netEvents.listens)}
+if not defined (user.netEvents) {
+	new (tabletype, @user.netEvents)};
+if not defined (user.netEvents.listens) {
+	new (tabletype, @user.netEvents.listens)}

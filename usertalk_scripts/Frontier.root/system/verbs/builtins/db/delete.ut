@@ -1,1 +1,2 @@
-on delete (f, path) {	kernel (db.delete)}
+on delete (f, path) {
+	kernel (db.delete)}

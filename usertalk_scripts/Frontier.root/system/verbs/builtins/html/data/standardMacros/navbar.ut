@@ -1,1 +1,267 @@
-on navbar (outlineName, orientation="vertical", itemSeparator=" | ", lineSeparator="<p>", maxPerLine=nil, linkColor=nil, hoverColor=nil, boldLinks=false, boldCurrentPage=false, boldCategories=false, categoryColor=nil, showCategories=true, breakAtCategories=false, extraCategoryLine=false, indentSpaces=0, linkClass=nil, adrPageTable=nil, flXmlOutline=false) {	«This is a general macro for creating text-based navigation bars.		«Thu, May 14, 1998 at 4:57:12 PM by PBS		«The outlineName parameter should be the name of an outline that's in your #prefs table.		«This macro uses an outline in this form:			«[odb address or URL] [Text title]			«websites.mySite.default Home			«http://www.scripting.com/ Scripting News		«Any line that is a comment or has subheads is a category line.			«Categories are not links -- they're a type of header.		«Navbars can be horizontal or vertical.		«The current page is not a link.	«Changes:		«Thu, Dec 10, 1998 at 12:14:55 PM by PBS			«Added support for ftp links.		«Tue, 15 Jun 1999 21:24:43 GMT by DW and AR			«Bug fix: If the navbar is built from an old-style outline, we work on a copy to be thread-safe.			«Bug fix: If breakAtCategories is true, we no longer remove a random number of chars from the end of the last line before the new category.			«Added new optional parameter flXmlOutline to support XML-formatted outlines. We compile the outline to a structure, in the same table as the outline, with the same name, with "Structure" appended to the end of the name. We watch the mod date of the outline, if it hasn't changed since the last compilation, we don't recompile it. 			«Example XML outline:				«<navbar>					«<category title="Samples Site"/>					«<odb>websites.samples.default</odb>					«<odb title="Random Stuff">websites.samples.randomStuff</odb>					«<category title="Other Sites"/>					«<url title="Frontier">http://frontier.userland.com/</url>					«<glossref>Scripting News</glossref>					«</navbar>		local (htmlText, indent);	local (flVertical = (string.lower (orientation) == "vertical"));		if indentSpaces > 0 {		indent = string.filledString ("&nbsp;", number (indentSpaces))};		«Try to convert link, hover, and category colors to a hex number.	bundle {		on convertColor (oneColor) {			if defined (system.verbs.colors.[oneColor]) {				return ("#" + system.verbs.colors.[oneColor])};			return (oneColor)}; //PBS 12/16/98: support color parameters of the form #336699		if linkColor != nil {			linkColor = convertColor (linkColor)};		if hoverColor != nil {			hoverColor = convertColor (hoverColor)};		if categoryColor != nil {			categoryColor = convertColor (categoryColor)}};		if maxPerLine == nil {		maxPerLine = infinity};		if adrPageTable == nil { //get the address of the current page table		adrPageTable = html.getPageTableAddress ()};		on add (s) { //add a string to the html text		htmlText = htmlText + s};		on addLineSeparator () { //add a line separator		if lineCt != sizeOutline {			add (lineSeparator + "\r");			lastSeparatorLength = string.length (lineSeparator) + 1;			itemCt = 0};		return (true)};	on addItemSeparator () { //add an item separator		if lineCt != sizeOutline {			add (itemSeparator);			lastSeparatorLength = string.length (itemSeparator)};		return (true)};	on subtractLastSeparator () { //subtract an item separator		«An item separator is the last thing added.		local (lenText = string.length (htmlText));		htmlText = string.mid (htmlText, 1, lenText - lastSeparatorLength);		return (true)};	on addSeparators () { //add appropriate separator		itemCt++;		if flVertical { //it's a vertical navbar			addLineSeparator ()}		else { //it's a horizontal navbar, a little more complex			if itemCt == maxPerLine {				addLineSeparator ()}			else {				addItemSeparator ()}};		return (true)};		on addThisPage (s) { //add the current page		if indent != nil {			add (indent)};		if boldCurrentPage {			add ("<b>" + s + "</b>")}		else {			add (s)};		return (true)};	on addOneLink (s) { //add an anchor tag		local (styleTag = "<span");				if linkColor != nil { //add the link color			styleTag = styleTag + " style=\"color: '" + linkColor + "'\""};		if hoverColor != nil { //add the hover color			«Note: this requires that you have some JavaScript in your pageHeader.				«Like this:					«<script>						«<!--							«var oldcolor							«function highlight (s, highlightcolor) {								«oldcolor = s.style.color								«s.style.color = highlightcolor								«return (true)								«} //highlight							«function unhighlight (s) {								«s.style.color = oldcolor								«return (true)								«} //unhighlight						«-->					«</script>			styleTag = styleTag + " onmouseover=\"highlight (this, '" + hoverColor + "')\" onmouseout=\"unhighlight (this)\""};				styleTag = styleTag + ">";				if styleTag != "<span>" { //only strip this in if we added something			s = string.replace (s, ">", ">" + styleTag); //add the style			s = string.replace (s, "</a>", "</span></a>")};				if linkClass != nil {			s = string.replace (s, "<a ", "<a class=\"" + linkClass + "\" ")};		if indent != nil {			add (indent)};		if boldLinks {			add ("<b>" + s + "</b>")}		else {			add (s)};		return (true)};	on addCategory (s) { //add a category		if breakAtCategories and not (lineCt == 1) {			subtractLastSeparator ();			addLineSeparator ()};		if showCategories {			if extraCategoryLine and not (lineCt == 1) {				add ("<br>")};			if categoryColor != nil {				s = "<font color=\"" + categoryColor + "\">" + s + "</font>"};			if boldCategories {				add ("<b>" + s + "</b>")}			else {				add (s)}}		else {			return (false)}; //we didn't add anything		return (true)};		local (itemCt = 0, lineCt=0, lastSeparatorLength = 0, flAdded);	local (adrOutline = @adrPageTable^.[outlineName]^); //get the address of the outline		if flXmlOutline {		local (adrparent = parentof (adroutline^));		local (adrstruct = @adrparent^.[nameof (adroutline^) + "Structure"]);				bundle { //compile the outline if it changed			local (flcompile = true);			if defined (adrstruct^) {				if timemodified (adrOutline) <= timemodified (adrstruct) {					flcompile = false}};			if flcompile {				xml.compile (string (adrOutline^), adrstruct)}};				local (adrNavbar = xml.getAddress (adrstruct, "navbar"));		local (adritem, itemname);		local (sizeOutline = sizeof (adrNavbar^));		on getValue (adritem) {			if defined (adritem^.["/pcdata"]) {				return (adritem^.["/pcdata"])}			else {				return (adritem^)}};		for lineCt = 1 to sizeOutline {			flAdded = true;			adritem = @adrNavbar^ [lineCt];			itemname = string.nthField (nameOf (adritem^), "\t", 2);			case itemname {				"url" {					local (linkTitle, reference = getValue (adritem));					try {						linkTitle = xml.getAttributeValue (adritem, "title")}					else {						linkTitle = reference};					addOneLink (html.getLink (linkTitle, reference))};				"odb" {					local (reference = getValue (adritem));					local (absoluteAddress = adrPageTable^.adrSiteRootTable + "." + reference);					if defined (absoluteAddress^) { //the reference may be relative, for gdb support. PBS 10/26/98						reference = absoluteAddress};					if defined (reference^) {						local (linkTitle);						try {							linkTitle = xml.getAttributeValue (adritem, "title")}						else {							linkTitle = html.getPagePref ("title", reference, adrPageTable)};						if adrPageTable^.adrObject == address (reference) { //Does this refer the current page							addThisPage (linkTitle)}						else {							addOneLink (html.getLink (linkTitle, html.getPath (adrPageTable^.adrObject, reference, adrPageTable)))}}					else {						scripterror ("Can't build the navbar because \"" + reference + "\" is not defined.")}};				"glossref" {					local (reference = getValue (adritem));					try {						local (linkTitle = xml.getAttributeValue (adritem, "title"));						with adrPageTable^.tools^, user.html.macros, html.data.standardMacros {							addOneLink (glossSub (reference, linkTitle))}}					else {						addOneLink (html.refGlossary (reference))}};				"category" {					flAdded = addCategory (xml.getAttributeValue (adritem, "title"))}}			else {				continue};			if flAdded {				addSeparators ()}}}	else {		local (localoutline = adrOutline^); //work on a copy for thread-safety		local (sizeOutline = sizeOf (localoutline));		local (oldTarget = target.set (@localoutline)); //set the target to this outline		op.setDisplay (false);		op.firstSummit (); //go to the top of the outline		op.fullExpand (); //fully expand the outline (defensive driving -- it should be flat)				local (oneLine, ixSpace, reference, linkTitle);		loop { //loop through the outline, one line at a time			on moveDown () {				if not (op.go (flatdown, 1)) {					break}};			lineCt++;			oneLine = op.getLineText ();			if oneLine == "" { //it's an empty line				moveDown ();				continue};			ixSpace = string.patternMatch (" ", oneLine);			reference = string.mid (oneLine, 1, ixSpace - 1);			linkTitle = string.mid (oneLine, ixSpace + 1, infinity);			flAdded = true;			local (oneLink);						if script.isComment () or op.countSubs (1) > 0 { //is it a category?				flAdded = addCategory (oneLine)} //the whole line is the category text			else {				if reference beginsWith "http://" or reference beginsWith "ftp://" { //is this an http or ftp link?					 addOneLink (html.getLink (linkTitle, reference))}				else {					local (absoluteAddress = adrPageTable^.adrSiteRootTable + "." + reference);					if defined (absoluteAddress^) { //the reference may be relative, for gdb support. PBS 10/26/98						reference = absoluteAddress};					if defined (reference^) or defined (adrRoot + "." + reference) { //is this a local reference?						if adrPageTable^.adrObject == address (reference) { //Does this refer the current page							addThisPage (linkTitle)}						else {							addOneLink (html.getLink (linkTitle, html.getPath (adrPageTable^.adrObject, reference, adrPageTable)))}}					else { //is this an email address?						if reference contains "@" and string.nthField (reference, '@', 2) contains "." {							addOneLink ("<a href=\"mailto:" + reference + "\">" + linkTitle + "</a>")}						else {							flAdded = false}}}};						if flAdded {				addSeparators ()};						moveDown ()}; //move down one line				op.setDisplay (true);		target.set (oldTarget)}; //restore the target		return (htmlText)} //return the html
+on navbar (outlineName, orientation="vertical", itemSeparator=" | ", lineSeparator="<p>", maxPerLine=nil, linkColor=nil, hoverColor=nil, boldLinks=false, boldCurrentPage=false, boldCategories=false, categoryColor=nil, showCategories=true, breakAtCategories=false, extraCategoryLine=false, indentSpaces=0, linkClass=nil, adrPageTable=nil, flXmlOutline=false) {
+	Â«This is a general macro for creating text-based navigation bars.
+		Â«Thu, May 14, 1998 at 4:57:12 PM by PBS
+		Â«The outlineName parameter should be the name of an outline that's in your #prefs table.
+		Â«This macro uses an outline in this form:
+			Â«[odb address or URL] [Text title]
+			Â«websites.mySite.default Home
+			Â«http://www.scripting.com/ Scripting News
+		Â«Any line that is a comment or has subheads is a category line.
+			Â«Categories are not links -- they're a type of header.
+		Â«Navbars can be horizontal or vertical.
+		Â«The current page is not a link.
+	Â«Changes:
+		Â«Thu, Dec 10, 1998 at 12:14:55 PM by PBS
+			Â«Added support for ftp links.
+		Â«Tue, 15 Jun 1999 21:24:43 GMT by DW and AR
+			Â«Bug fix: If the navbar is built from an old-style outline, we work on a copy to be thread-safe.
+			Â«Bug fix: If breakAtCategories is true, we no longer remove a random number of chars from the end of the last line before the new category.
+			Â«Added new optional parameter flXmlOutline to support XML-formatted outlines. We compile the outline to a structure, in the same table as the outline, with the same name, with "Structure" appended to the end of the name. We watch the mod date of the outline, if it hasn't changed since the last compilation, we don't recompile it. 
+			Â«Example XML outline:
+				Â«<navbar>
+					Â«<category title="Samples Site"/>
+					Â«<odb>websites.samples.default</odb>
+					Â«<odb title="Random Stuff">websites.samples.randomStuff</odb>
+					Â«<category title="Other Sites"/>
+					Â«<url title="Frontier">http://frontier.userland.com/</url>
+					Â«<glossref>Scripting News</glossref>
+					Â«</navbar>
+	
+	local (htmlText, indent);
+	local (flVertical = (string.lower (orientation) == "vertical"));
+	
+	if indentSpaces > 0 {
+		indent = string.filledString ("&nbsp;", number (indentSpaces))};
+	
+	Â«Try to convert link, hover, and category colors to a hex number.
+	bundle {
+		on convertColor (oneColor) {
+			if defined (system.verbs.colors.[oneColor]) {
+				return ("#" + system.verbs.colors.[oneColor])};
+			return (oneColor)}; //PBS 12/16/98: support color parameters of the form #336699
+		if linkColor != nil {
+			linkColor = convertColor (linkColor)};
+		if hoverColor != nil {
+			hoverColor = convertColor (hoverColor)};
+		if categoryColor != nil {
+			categoryColor = convertColor (categoryColor)}};
+	
+	if maxPerLine == nil {
+		maxPerLine = infinity};
+	
+	if adrPageTable == nil { //get the address of the current page table
+		adrPageTable = html.getPageTableAddress ()};
+	
+	on add (s) { //add a string to the html text
+		htmlText = htmlText + s};
+	
+	on addLineSeparator () { //add a line separator
+		if lineCt != sizeOutline {
+			add (lineSeparator + "\r");
+			lastSeparatorLength = string.length (lineSeparator) + 1;
+			itemCt = 0};
+		return (true)};
+	on addItemSeparator () { //add an item separator
+		if lineCt != sizeOutline {
+			add (itemSeparator);
+			lastSeparatorLength = string.length (itemSeparator)};
+		return (true)};
+	on subtractLastSeparator () { //subtract an item separator
+		Â«An item separator is the last thing added.
+		local (lenText = string.length (htmlText));
+		htmlText = string.mid (htmlText, 1, lenText - lastSeparatorLength);
+		return (true)};
+	on addSeparators () { //add appropriate separator
+		itemCt++;
+		if flVertical { //it's a vertical navbar
+			addLineSeparator ()}
+		else { //it's a horizontal navbar, a little more complex
+			if itemCt == maxPerLine {
+				addLineSeparator ()}
+			else {
+				addItemSeparator ()}};
+		return (true)};
+	
+	on addThisPage (s) { //add the current page
+		if indent != nil {
+			add (indent)};
+		if boldCurrentPage {
+			add ("<b>" + s + "</b>")}
+		else {
+			add (s)};
+		return (true)};
+	on addOneLink (s) { //add an anchor tag
+		local (styleTag = "<span");
+		
+		if linkColor != nil { //add the link color
+			styleTag = styleTag + " style=\"color: '" + linkColor + "'\""};
+		if hoverColor != nil { //add the hover color
+			Â«Note: this requires that you have some JavaScript in your pageHeader.
+				Â«Like this:
+					Â«<script>
+						Â«<!--
+							Â«var oldcolor
+							Â«function highlight (s, highlightcolor) {
+								Â«oldcolor = s.style.color
+								Â«s.style.color = highlightcolor
+								Â«return (true)
+								Â«} //highlight
+							Â«function unhighlight (s) {
+								Â«s.style.color = oldcolor
+								Â«return (true)
+								Â«} //unhighlight
+						Â«-->
+					Â«</script>
+			styleTag = styleTag + " onmouseover=\"highlight (this, '" + hoverColor + "')\" onmouseout=\"unhighlight (this)\""};
+		
+		styleTag = styleTag + ">";
+		
+		if styleTag != "<span>" { //only strip this in if we added something
+			s = string.replace (s, ">", ">" + styleTag); //add the style
+			s = string.replace (s, "</a>", "</span></a>")};
+		
+		if linkClass != nil {
+			s = string.replace (s, "<a ", "<a class=\"" + linkClass + "\" ")};
+		if indent != nil {
+			add (indent)};
+		if boldLinks {
+			add ("<b>" + s + "</b>")}
+		else {
+			add (s)};
+		return (true)};
+	on addCategory (s) { //add a category
+		if breakAtCategories and not (lineCt == 1) {
+			subtractLastSeparator ();
+			addLineSeparator ()};
+		if showCategories {
+			if extraCategoryLine and not (lineCt == 1) {
+				add ("<br>")};
+			if categoryColor != nil {
+				s = "<font color=\"" + categoryColor + "\">" + s + "</font>"};
+			if boldCategories {
+				add ("<b>" + s + "</b>")}
+			else {
+				add (s)}}
+		else {
+			return (false)}; //we didn't add anything
+		return (true)};
+	
+	local (itemCt = 0, lineCt=0, lastSeparatorLength = 0, flAdded);
+	local (adrOutline = @adrPageTable^.[outlineName]^); //get the address of the outline
+	
+	if flXmlOutline {
+		local (adrparent = parentof (adroutline^));
+		local (adrstruct = @adrparent^.[nameof (adroutline^) + "Structure"]);
+		
+		bundle { //compile the outline if it changed
+			local (flcompile = true);
+			if defined (adrstruct^) {
+				if timemodified (adrOutline) <= timemodified (adrstruct) {
+					flcompile = false}};
+			if flcompile {
+				xml.compile (string (adrOutline^), adrstruct)}};
+		
+		local (adrNavbar = xml.getAddress (adrstruct, "navbar"));
+		local (adritem, itemname);
+		local (sizeOutline = sizeof (adrNavbar^));
+		on getValue (adritem) {
+			if defined (adritem^.["/pcdata"]) {
+				return (adritem^.["/pcdata"])}
+			else {
+				return (adritem^)}};
+		for lineCt = 1 to sizeOutline {
+			flAdded = true;
+			adritem = @adrNavbar^ [lineCt];
+			itemname = string.nthField (nameOf (adritem^), "\t", 2);
+			case itemname {
+				"url" {
+					local (linkTitle, reference = getValue (adritem));
+					try {
+						linkTitle = xml.getAttributeValue (adritem, "title")}
+					else {
+						linkTitle = reference};
+					addOneLink (html.getLink (linkTitle, reference))};
+				"odb" {
+					local (reference = getValue (adritem));
+					local (absoluteAddress = adrPageTable^.adrSiteRootTable + "." + reference);
+					if defined (absoluteAddress^) { //the reference may be relative, for gdb support. PBS 10/26/98
+						reference = absoluteAddress};
+					if defined (reference^) {
+						local (linkTitle);
+						try {
+							linkTitle = xml.getAttributeValue (adritem, "title")}
+						else {
+							linkTitle = html.getPagePref ("title", reference, adrPageTable)};
+						if adrPageTable^.adrObject == address (reference) { //Does this refer the current page
+							addThisPage (linkTitle)}
+						else {
+							addOneLink (html.getLink (linkTitle, html.getPath (adrPageTable^.adrObject, reference, adrPageTable)))}}
+					else {
+						scripterror ("Can't build the navbar because \"" + reference + "\" is not defined.")}};
+				"glossref" {
+					local (reference = getValue (adritem));
+					try {
+						local (linkTitle = xml.getAttributeValue (adritem, "title"));
+						with adrPageTable^.tools^, user.html.macros, html.data.standardMacros {
+							addOneLink (glossSub (reference, linkTitle))}}
+					else {
+						addOneLink (html.refGlossary (reference))}};
+				"category" {
+					flAdded = addCategory (xml.getAttributeValue (adritem, "title"))}}
+			else {
+				continue};
+			if flAdded {
+				addSeparators ()}}}
+	else {
+		local (localoutline = adrOutline^); //work on a copy for thread-safety
+		local (sizeOutline = sizeOf (localoutline));
+		local (oldTarget = target.set (@localoutline)); //set the target to this outline
+		op.setDisplay (false);
+		op.firstSummit (); //go to the top of the outline
+		op.fullExpand (); //fully expand the outline (defensive driving -- it should be flat)
+		
+		local (oneLine, ixSpace, reference, linkTitle);
+		loop { //loop through the outline, one line at a time
+			on moveDown () {
+				if not (op.go (flatdown, 1)) {
+					break}};
+			lineCt++;
+			oneLine = op.getLineText ();
+			if oneLine == "" { //it's an empty line
+				moveDown ();
+				continue};
+			ixSpace = string.patternMatch (" ", oneLine);
+			reference = string.mid (oneLine, 1, ixSpace - 1);
+			linkTitle = string.mid (oneLine, ixSpace + 1, infinity);
+			flAdded = true;
+			local (oneLink);
+			
+			if script.isComment () or op.countSubs (1) > 0 { //is it a category?
+				flAdded = addCategory (oneLine)} //the whole line is the category text
+			else {
+				if reference beginsWith "http://" or reference beginsWith "ftp://" { //is this an http or ftp link?
+					 addOneLink (html.getLink (linkTitle, reference))}
+				else {
+					local (absoluteAddress = adrPageTable^.adrSiteRootTable + "." + reference);
+					if defined (absoluteAddress^) { //the reference may be relative, for gdb support. PBS 10/26/98
+						reference = absoluteAddress};
+					if defined (reference^) or defined (adrRoot + "." + reference) { //is this a local reference?
+						if adrPageTable^.adrObject == address (reference) { //Does this refer the current page
+							addThisPage (linkTitle)}
+						else {
+							addOneLink (html.getLink (linkTitle, html.getPath (adrPageTable^.adrObject, reference, adrPageTable)))}}
+					else { //is this an email address?
+						if reference contains "@" and string.nthField (reference, '@', 2) contains "." {
+							addOneLink ("<a href=\"mailto:" + reference + "\">" + linkTitle + "</a>")}
+						else {
+							flAdded = false}}}};
+			
+			if flAdded {
+				addSeparators ()};
+			
+			moveDown ()}; //move down one line
+		
+		op.setDisplay (true);
+		target.set (oldTarget)}; //restore the target
+	
+	return (htmlText)} //return the html

@@ -1,1 +1,38 @@
-on stripTitle (pta=nil) {	«Changes		«6/5/02; 2:03:54 PM by JES			«Removed debugging code.		«6/4/02; 2:20:18 PM by JES			«Respect macroStartCharacters and macroEndCharacters, if defined in the page table.		«5/10/02; 4:15:57 PM by JES			«Cribbed from manilaSuite.html.stripTitle.		«04/24/00; 3:17:52 PM by PBS			«Strip the title so it doesn't appear in the text of a page. It will still appear in the window title.				«Broken out from manilaSuite.html.stripTitleFromTemplate		if pta == nil {		pta = html.getPageTableAddress ()};	if defined (pta^.template) { //when debugging, template is likely not defined		case typeOf (pta^.template) { //convert template to a string if necessary			wpTextType;			outlineType {				table.assign (@pta^.template, string (pta^.template))}};		if typeOf (pta^.template) == stringType {			local (s = string.lower (pta^.template));			local (mstart = "{", mend = "}");			if defined (pta^.macroStartCharacters) {				mstart = pta^.macroStartCharacters};			if defined (pta^.macroEndCharacters) {				mend = pta^.macroEndCharacters};			local (titlemacro = mstart + "title" + mend);			local (homepagetitlemacro = mstart + "homePageTitle" + mend);			local (ixCloseTitle = string.patternMatch ("</title>", s));			if ixCloseTitle > 0 {				local (ixTitle = string.patternMatch (titlemacro, s));				if ixTitle < ixCloseTitle {					pta^.template = string.replace (pta^.template, titlemacro, homepagetitlemacro, false)}};			pta^.template = string.replaceAll (pta^.template, titlemacro, "", false); //remove {title} from template			pta^.template = string.replace (pta^.template, homepagetitlemacro, titlemacro, false)}}; //{title} should remain in head section, so there's a title in the window bar	pta^.flTitleOnPage = false; //a special boolean used by RCS to prevent the title from appearing on the page		return (true)}
+on stripTitle (pta=nil) {
+	Â«Changes
+		Â«6/5/02; 2:03:54 PM by JES
+			Â«Removed debugging code.
+		Â«6/4/02; 2:20:18 PM by JES
+			Â«Respect macroStartCharacters and macroEndCharacters, if defined in the page table.
+		Â«5/10/02; 4:15:57 PM by JES
+			Â«Cribbed from manilaSuite.html.stripTitle.
+		Â«04/24/00; 3:17:52 PM by PBS
+			Â«Strip the title so it doesn't appear in the text of a page. It will still appear in the window title.
+				Â«Broken out from manilaSuite.html.stripTitleFromTemplate
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	if defined (pta^.template) { //when debugging, template is likely not defined
+		case typeOf (pta^.template) { //convert template to a string if necessary
+			wpTextType;
+			outlineType {
+				table.assign (@pta^.template, string (pta^.template))}};
+		if typeOf (pta^.template) == stringType {
+			local (s = string.lower (pta^.template));
+			local (mstart = "{", mend = "}");
+			if defined (pta^.macroStartCharacters) {
+				mstart = pta^.macroStartCharacters};
+			if defined (pta^.macroEndCharacters) {
+				mend = pta^.macroEndCharacters};
+			local (titlemacro = mstart + "title" + mend);
+			local (homepagetitlemacro = mstart + "homePageTitle" + mend);
+			local (ixCloseTitle = string.patternMatch ("</title>", s));
+			if ixCloseTitle > 0 {
+				local (ixTitle = string.patternMatch (titlemacro, s));
+				if ixTitle < ixCloseTitle {
+					pta^.template = string.replace (pta^.template, titlemacro, homepagetitlemacro, false)}};
+			pta^.template = string.replaceAll (pta^.template, titlemacro, "", false); //remove {title} from template
+			pta^.template = string.replace (pta^.template, homepagetitlemacro, titlemacro, false)}}; //{title} should remain in head section, so there's a title in the window bar
+	pta^.flTitleOnPage = false; //a special boolean used by RCS to prevent the title from appearing on the page
+	
+	return (true)}

@@ -1,1 +1,2 @@
-on isModal (adr) {	kernel (dialog.isModalCard)}
+on isModal (adr) {
+	kernel (dialog.isModalCard)}

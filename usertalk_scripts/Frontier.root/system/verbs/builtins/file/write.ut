@@ -1,1 +1,2 @@
-on write (path, value) {	kernel (file.write)}
+on write (path, value) {
+	kernel (file.write)}

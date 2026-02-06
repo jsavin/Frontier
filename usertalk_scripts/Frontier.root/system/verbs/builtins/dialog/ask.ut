@@ -1,1 +1,11 @@
-«on ask (prompt, adr) 	«local (askstring = "", buttonhit = 0)	«if defined (adr^)		«askstring = string (adr^)	«card.run (@dialog.cards.ask)	«if buttonhit != 1 «OK		«return (false)	«adr^ = askstring	«return (true)on ask (prompt, adr) {	kernel (dialog.ask)}
+Â«on ask (prompt, adr) 
+	Â«local (askstring = "", buttonhit = 0)
+	Â«if defined (adr^)
+		Â«askstring = string (adr^)
+	Â«card.run (@dialog.cards.ask)
+	Â«if buttonhit != 1 Â«OK
+		Â«return (false)
+	Â«adr^ = askstring
+	Â«return (true)
+on ask (prompt, adr) {
+	kernel (dialog.ask)}

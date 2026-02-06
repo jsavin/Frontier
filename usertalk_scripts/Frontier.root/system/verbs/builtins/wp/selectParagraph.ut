@@ -1,1 +1,2 @@
-on selectParagraph () {	kernel (wp.selectparagraph)}
+on selectParagraph () {
+	kernel (wp.selectparagraph)}

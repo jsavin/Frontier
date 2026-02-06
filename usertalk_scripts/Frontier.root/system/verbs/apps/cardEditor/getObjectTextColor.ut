@@ -1,1 +1,5 @@
-on getObjectTextColor (name) {	local (atts);	if not cardEditor.getObjectAttributes (name, @atts) {		return ("")};	return (atts.txtc)}
+on getObjectTextColor (name) {
+	local (atts);
+	if not cardEditor.getObjectAttributes (name, @atts) {
+		return ("")};
+	return (atts.txtc)}

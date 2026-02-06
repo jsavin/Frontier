@@ -1,1 +1,2 @@
-on unComment () {	kernel (script.uncomment)}
+on unComment () {
+	kernel (script.uncomment)}

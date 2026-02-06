@@ -1,1 +1,2 @@
-on setType (path, type) {	kernel (file.settype)}
+on setType (path, type) {
+	kernel (file.settype)}

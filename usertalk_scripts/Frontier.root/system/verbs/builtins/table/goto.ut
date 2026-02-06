@@ -1,1 +1,2 @@
-on goto (row) {	kernel (table.goto)}
+on goto (row) {
+	kernel (table.goto)}

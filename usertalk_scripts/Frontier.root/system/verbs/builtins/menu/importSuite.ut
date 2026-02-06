@@ -1,1 +1,6 @@
-on importSuite (adr, menustring) {	system.menus.buildSuitesSubMenu ();	«if not Frontier.isRuntime ()		«local (s = "menu.addSuite (@suites." + nameOf (adr^)  + ")")		«menu.addMenuCommand (@system.menus.suitesMenu, "Suites", menustring, s)	return (true)}
+on importSuite (adr, menustring) {
+	system.menus.buildSuitesSubMenu ();
+	Â«if not Frontier.isRuntime ()
+		Â«local (s = "menu.addSuite (@suites." + nameOf (adr^)  + ")")
+		Â«menu.addMenuCommand (@system.menus.suitesMenu, "Suites", menustring, s)
+	return (true)}

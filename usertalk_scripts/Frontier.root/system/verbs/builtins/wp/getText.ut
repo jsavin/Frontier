@@ -1,1 +1,2 @@
-on getText () {	kernel (wp.gettext)}
+on getText () {
+	kernel (wp.gettext)}

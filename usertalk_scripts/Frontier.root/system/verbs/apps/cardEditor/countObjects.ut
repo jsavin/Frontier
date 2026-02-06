@@ -1,1 +1,2 @@
-on countObjects () {	return (appleEvent (cardEditor.id, 'IOWA', 'ctob'))}
+on countObjects () {
+	return (appleEvent (cardEditor.id, 'IOWA', 'ctob'))}

@@ -1,1 +1,27 @@
-on checkClient (adrParamTable) {	«Changes		«1/31/02; 2:06:22 PM by JES			«Perform the allow-by-IP address security check for betty.rpc.server and soap.rpc.server. Returns true if the RPC call is allowed, or false if not.			«Factored from betty.rpc.server.	local (flBlocked = false);	if defined (user.betty.prefs.flAllowByIpOnly) {		if user.betty.prefs.flAllowByIpOnly {			flBlocked = true;			local (okIpList = user.betty.prefs.allowedIpAddresses);			if typeOf (okIpList) == stringType {				«It's a comma-delimited string: create a local list from that string.				local (s = okIpList);				okIpList = {};				local (i);				for i = 1 to string.countFields (s, ',') {					local (oneIpAddress = string.nthField (s, ',', i));					oneIpAddress = string.trimWhiteSpace (oneIpAddress);					if oneIpAddress != "" {						okIpList = okIpList + oneIpAddress}}};			local (oneIp);			for oneIp in okIpList {				if string.trimWhiteSpace (oneIp) != "" {					if adrParamTable^.client == oneIp {						flblocked = false;						break}}}}};	return (not flBlocked)}
+on checkClient (adrParamTable) {
+	Â«Changes
+		Â«1/31/02; 2:06:22 PM by JES
+			Â«Perform the allow-by-IP address security check for betty.rpc.server and soap.rpc.server. Returns true if the RPC call is allowed, or false if not.
+			Â«Factored from betty.rpc.server.
+	local (flBlocked = false);
+	if defined (user.betty.prefs.flAllowByIpOnly) {
+		if user.betty.prefs.flAllowByIpOnly {
+			flBlocked = true;
+			local (okIpList = user.betty.prefs.allowedIpAddresses);
+			if typeOf (okIpList) == stringType {
+				Â«It's a comma-delimited string: create a local list from that string.
+				local (s = okIpList);
+				okIpList = {};
+				local (i);
+				for i = 1 to string.countFields (s, ',') {
+					local (oneIpAddress = string.nthField (s, ',', i));
+					oneIpAddress = string.trimWhiteSpace (oneIpAddress);
+					if oneIpAddress != "" {
+						okIpList = okIpList + oneIpAddress}}};
+			local (oneIp);
+			for oneIp in okIpList {
+				if string.trimWhiteSpace (oneIp) != "" {
+					if adrParamTable^.client == oneIp {
+						flblocked = false;
+						break}}}}};
+	return (not flBlocked)}

@@ -1,1 +1,13 @@
-on getGroupServices (groupName, adrGroup=nil) {	«Return a list of services this group has access to.		«Return false if the group doesn't exist.	local (i, serviceList = {});	if adrGroup == nil {		adrGroup = people.getGroupTable (groupName)};	if not (people.groupExists (groupName, adrGroup)) {		return (false)};	for i = 1 to sizeOf (adrGroup^.services) {		local (serviceName = nameOf (adrGroup^.services [i]));		if adrGroup^.services [i].enabled {			serviceList = serviceList + serviceName}};	return (serviceList)}
+on getGroupServices (groupName, adrGroup=nil) {
+	Â«Return a list of services this group has access to.
+		Â«Return false if the group doesn't exist.
+	local (i, serviceList = {});
+	if adrGroup == nil {
+		adrGroup = people.getGroupTable (groupName)};
+	if not (people.groupExists (groupName, adrGroup)) {
+		return (false)};
+	for i = 1 to sizeOf (adrGroup^.services) {
+		local (serviceName = nameOf (adrGroup^.services [i]));
+		if adrGroup^.services [i].enabled {
+			serviceList = serviceList + serviceName}};
+	return (serviceList)}

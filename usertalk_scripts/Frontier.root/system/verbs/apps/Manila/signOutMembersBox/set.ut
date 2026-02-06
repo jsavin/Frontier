@@ -1,1 +1,15 @@
-on set (adrSitePrefs, s, windowInfoTable) {	«Set the text of the signOutMembersBox on the server.	«Changes:		«02/06/00; 9:35:58 PM by PBS			«Try to send the window info table. This try is necessary while we transition the Manila RPC interface.		«02/19/00; 6:49:46 PM by PBS			«Removed the try statement. now that manila.root has been updated.		«03/233/00; 12:35:26 PM by PBS			«Don't show httpClient messages so Pike can display its own message in the About Window.		«9/6/01; 8:31:51 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename, "s":string (s), "windowInfoTable":windowInfoTable});		return (manila.callHandler (host, port, "manila.signOutMembersBox.set", @params, rpcPath:rpcPath, flShowMessages:false))}}
+on set (adrSitePrefs, s, windowInfoTable) {
+	Â«Set the text of the signOutMembersBox on the server.
+	Â«Changes:
+		Â«02/06/00; 9:35:58 PM by PBS
+			Â«Try to send the window info table. This try is necessary while we transition the Manila RPC interface.
+		Â«02/19/00; 6:49:46 PM by PBS
+			Â«Removed the try statement. now that manila.root has been updated.
+		Â«03/233/00; 12:35:26 PM by PBS
+			Â«Don't show httpClient messages so Pike can display its own message in the About Window.
+		Â«9/6/01; 8:31:51 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename, "s":string (s), "windowInfoTable":windowInfoTable});
+		return (manila.callHandler (host, port, "manila.signOutMembersBox.set", @params, rpcPath:rpcPath, flShowMessages:false))}}

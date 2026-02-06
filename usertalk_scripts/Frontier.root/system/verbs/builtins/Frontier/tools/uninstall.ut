@@ -1,1 +1,133 @@
-on uninstall (f) {	«Changes:		«2/10/06; 4:51:42 PM by JES			«Run uninstall script in a try. Works around bug if a Tool's database isn't opened anymore.		«2/10/06; 12:41:04 AM by JES			«If a tool defines a script named customUninstall in its Suite table, run it last, after all default de-registration, but before setting to uninstalled, adjusting the temp table, and calling afterUninstall callbacks.		«Archive			«06/24/02; 3:07:13 PM by JES				«Un-register any languages which were installed by Frontier.tools.install, when the Tool was installed.			«06/13/02; 3:40:42 PM by JES				«Uninstall the Tool's callbacks from user.radio.callbacks, if user.radio.callbacks is defined.			«11/26/01; 11:01:34 PM by JES				«Call callbacks at user.tools.callbacks.beforeUninstall with address of the Tool's database before uninstalling the Tool. If the callback returns false, don't uninstall the Tool.				«Call callbacks at user.tools.callbacks.afterUninstall with the path to the Tool's database, after installing the Tool. The return value is ignored.			«07/02/01; 2:56:01 AM by JES				«Uninstall windowTypes.			«04/28/01; 7:44:21 PM by JES				«Uninstall the website framework site in a try block, because user.webserver.responders.websiteFramework may not exist.			«10/01/00; 11:33:58 PM by PBS				«Minor cleanups.			«09/26/00 at 11:21:55 PM by JES				«Un-install a tool, given the path to the tool's guest database.	local (adrTool = @[f]);		bundle { //run beforeUninstall callbacks -- if any of the callbacks returns false, don't uninstall the Tool		local (adrcallbacks = @user.tools.callbacks.beforeunInstall);		local (adrcallback);		for adrcallback in adrcallbacks {			try {				while typeOf (adrcallback^) == addressType {					adrcallback = adrcallback^};				if not adrcallback^ (adrTool) { //callback returned false -- don't install					return (false)}}}}; //not installed		local (name = Frontier.tools.cleanToolName (file.fileFromPath (f)));		on getTable (t) {		local (adrTable = @adrTool^.[name + t]);		return (adrTable)};	on unInstallAddressEntry (adrEntry, expectedAdr = nil) {		if defined (adrEntry^) {			if typeOf (adrEntry^) == addressType {				delete (adrEntry);				return (true)}};		return (false)};	on deleteFromTable (adrTable) {		«Delete the item in the table, if it exists.		if defined (adrTable^.[name]) {			delete (@adrTable^.[name])}};	on deleteFromSubtables (adrTable) {		«Delete from all the sub-tables of a table. Callbacks, for instance.		local (adr);		for adr in adrTable {			deleteFromTable (adr)}};		deleteFromTable (@user.webserver.responders);	deleteFromTable (@user.betty.rpcHandlers);	deleteFromTable (@user.scheduler.threads);	try { //websiteFramework responder might not be installed		deleteFromTable (@user.webserver.responders.websiteFramework.data.docTree)};	deleteFromTable (@user.scheduler.everyMinute);	deleteFromTable (@user.scheduler.hourly);	deleteFromTable (@user.scheduler.overnight);	deleteFromSubTables (@user.callbacks);	if system.environment.isPike {		deleteFromSubTables (@user.tools.commandCallbacks)};	if defined (user.radio.callbacks) {		deleteFromSubTables (@user.radio.callbacks)};	deleteFromSubTables (@user.html.callbacks.fileWriters.ftp);		Frontier.tools.uninstallSubMenu (name); //delete sub-menu from Tools menu		bundle { //localizations		on uninstallLocalization (adrTable) {			local (adr);			for adr in adrTable {				if typeOf (adr^) == addressType {					local (s = string (adr^));					local (addressList = string.parseAddress (s));					local (path = string.lower (addressList [1]));					if path endsWith (file.getPathChar () + string.lower (file.fileFromPath (f))) {						delete (adr)}}}};		if defined (radio.data.localization.languages) {			uninstallLocalization (@radio.data.localization.languages)};		if defined (mainResponder.localization.languages) {			uninstallLocalization (@mainResponder.localization.languages)};		if defined (manilaData.localization.languages) {			uninstallLocalization (@manilaData.localization.languages)}};		bundle { //nodeTypes -- tricky -- we have to look for the expected file name		local (adr);		for adr in @user.tools.nodeTypes {			if typeOf (adr^) == addressType {				local (s = string (adr^)); //convert to string				local (addressList = string.parseAddress (s));				local (path = string.lower (addressList [1]));				if path endsWith file.getPathChar () + string.lower (file.fileFromPath (f)) {					delete (adr)}}}}; //delete this nodetype		bundle { //windowTypes -- almost exactly like nodeTypes		local (adr);		for adr in @user.tools.windowTypes {			if typeOf (adr^) == addressType {				local (s = string (adr^)); //convert to string				local (addressList = string.parseAddress (s));				local (path = string.lower (addressList [1]));				if path endsWith file.getPathChar () + string.lower (file.fileFromPath (f)) {					delete (adr)}}}}; //delete this windowType		try { //run uninstall script, if defined		local (adrSuite = getTable ("Suite"));		if defined (adrSuite^) {			if defined (adrSuite^.customUninstall) {				try {adrSuite^.customUninstall ()}}}};		bundle { //set to uninstalled		if defined (user.tools.databases.[name]) {			user.tools.databases.[name].flInstalled = false}};		bundle { //adjust the Tools table at temp.Frontier.tools.[name]		if defined (system.temp.Frontier.tools.[name].url) {			delete (@system.temp.Frontier.tools.[name].url)}};		bundle { //run afterUninstall callbacks -- the return value is ignored		local (adrcallbacks = @user.tools.callbacks.afterUninstall);		local (adrcallback);		for adrcallback in adrcallbacks {			try {				while typeOf (adrcallback^) == addressType {					adrcallback = adrcallback^};				adrcallback^ (f)}}}; //return value ignored		return (true)}
+on uninstall (f) {
+	Â«Changes:
+		Â«2/10/06; 4:51:42 PM by JES
+			Â«Run uninstall script in a try. Works around bug if a Tool's database isn't opened anymore.
+		Â«2/10/06; 12:41:04 AM by JES
+			Â«If a tool defines a script named customUninstall in its Suite table, run it last, after all default de-registration, but before setting to uninstalled, adjusting the temp table, and calling afterUninstall callbacks.
+		Â«Archive
+			Â«06/24/02; 3:07:13 PM by JES
+				Â«Un-register any languages which were installed by Frontier.tools.install, when the Tool was installed.
+			Â«06/13/02; 3:40:42 PM by JES
+				Â«Uninstall the Tool's callbacks from user.radio.callbacks, if user.radio.callbacks is defined.
+			Â«11/26/01; 11:01:34 PM by JES
+				Â«Call callbacks at user.tools.callbacks.beforeUninstall with address of the Tool's database before uninstalling the Tool. If the callback returns false, don't uninstall the Tool.
+				Â«Call callbacks at user.tools.callbacks.afterUninstall with the path to the Tool's database, after installing the Tool. The return value is ignored.
+			Â«07/02/01; 2:56:01 AM by JES
+				Â«Uninstall windowTypes.
+			Â«04/28/01; 7:44:21 PM by JES
+				Â«Uninstall the website framework site in a try block, because user.webserver.responders.websiteFramework may not exist.
+			Â«10/01/00; 11:33:58 PM by PBS
+				Â«Minor cleanups.
+			Â«09/26/00 at 11:21:55 PM by JES
+				Â«Un-install a tool, given the path to the tool's guest database.
+	local (adrTool = @[f]);
+	
+	bundle { //run beforeUninstall callbacks -- if any of the callbacks returns false, don't uninstall the Tool
+		local (adrcallbacks = @user.tools.callbacks.beforeunInstall);
+		local (adrcallback);
+		for adrcallback in adrcallbacks {
+			try {
+				while typeOf (adrcallback^) == addressType {
+					adrcallback = adrcallback^};
+				if not adrcallback^ (adrTool) { //callback returned false -- don't install
+					return (false)}}}}; //not installed
+	
+	local (name = Frontier.tools.cleanToolName (file.fileFromPath (f)));
+	
+	on getTable (t) {
+		local (adrTable = @adrTool^.[name + t]);
+		return (adrTable)};
+	on unInstallAddressEntry (adrEntry, expectedAdr = nil) {
+		if defined (adrEntry^) {
+			if typeOf (adrEntry^) == addressType {
+				delete (adrEntry);
+				return (true)}};
+		return (false)};
+	on deleteFromTable (adrTable) {
+		Â«Delete the item in the table, if it exists.
+		if defined (adrTable^.[name]) {
+			delete (@adrTable^.[name])}};
+	on deleteFromSubtables (adrTable) {
+		Â«Delete from all the sub-tables of a table. Callbacks, for instance.
+		local (adr);
+		for adr in adrTable {
+			deleteFromTable (adr)}};
+	
+	deleteFromTable (@user.webserver.responders);
+	deleteFromTable (@user.betty.rpcHandlers);
+	deleteFromTable (@user.scheduler.threads);
+	try { //websiteFramework responder might not be installed
+		deleteFromTable (@user.webserver.responders.websiteFramework.data.docTree)};
+	deleteFromTable (@user.scheduler.everyMinute);
+	deleteFromTable (@user.scheduler.hourly);
+	deleteFromTable (@user.scheduler.overnight);
+	deleteFromSubTables (@user.callbacks);
+	if system.environment.isPike {
+		deleteFromSubTables (@user.tools.commandCallbacks)};
+	if defined (user.radio.callbacks) {
+		deleteFromSubTables (@user.radio.callbacks)};
+	deleteFromSubTables (@user.html.callbacks.fileWriters.ftp);
+	
+	Frontier.tools.uninstallSubMenu (name); //delete sub-menu from Tools menu
+	
+	bundle { //localizations
+		on uninstallLocalization (adrTable) {
+			local (adr);
+			for adr in adrTable {
+				if typeOf (adr^) == addressType {
+					local (s = string (adr^));
+					local (addressList = string.parseAddress (s));
+					local (path = string.lower (addressList [1]));
+					if path endsWith (file.getPathChar () + string.lower (file.fileFromPath (f))) {
+						delete (adr)}}}};
+		if defined (radio.data.localization.languages) {
+			uninstallLocalization (@radio.data.localization.languages)};
+		if defined (mainResponder.localization.languages) {
+			uninstallLocalization (@mainResponder.localization.languages)};
+		if defined (manilaData.localization.languages) {
+			uninstallLocalization (@manilaData.localization.languages)}};
+	
+	bundle { //nodeTypes -- tricky -- we have to look for the expected file name
+		local (adr);
+		for adr in @user.tools.nodeTypes {
+			if typeOf (adr^) == addressType {
+				local (s = string (adr^)); //convert to string
+				local (addressList = string.parseAddress (s));
+				local (path = string.lower (addressList [1]));
+				if path endsWith file.getPathChar () + string.lower (file.fileFromPath (f)) {
+					delete (adr)}}}}; //delete this nodetype
+	
+	bundle { //windowTypes -- almost exactly like nodeTypes
+		local (adr);
+		for adr in @user.tools.windowTypes {
+			if typeOf (adr^) == addressType {
+				local (s = string (adr^)); //convert to string
+				local (addressList = string.parseAddress (s));
+				local (path = string.lower (addressList [1]));
+				if path endsWith file.getPathChar () + string.lower (file.fileFromPath (f)) {
+					delete (adr)}}}}; //delete this windowType
+	
+	try { //run uninstall script, if defined
+		local (adrSuite = getTable ("Suite"));
+		if defined (adrSuite^) {
+			if defined (adrSuite^.customUninstall) {
+				try {adrSuite^.customUninstall ()}}}};
+	
+	bundle { //set to uninstalled
+		if defined (user.tools.databases.[name]) {
+			user.tools.databases.[name].flInstalled = false}};
+	
+	bundle { //adjust the Tools table at temp.Frontier.tools.[name]
+		if defined (system.temp.Frontier.tools.[name].url) {
+			delete (@system.temp.Frontier.tools.[name].url)}};
+	
+	bundle { //run afterUninstall callbacks -- the return value is ignored
+		local (adrcallbacks = @user.tools.callbacks.afterUninstall);
+		local (adrcallback);
+		for adrcallback in adrcallbacks {
+			try {
+				while typeOf (adrcallback^) == addressType {
+					adrcallback = adrcallback^};
+				adrcallback^ (f)}}}; //return value ignored
+	
+	return (true)}

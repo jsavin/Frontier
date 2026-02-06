@@ -1,1 +1,2 @@
-on openApplication () {	return (required.openApplication (Fetch.id))}
+on openApplication () {
+	return (required.openApplication (Fetch.id))}

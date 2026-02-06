@@ -1,1 +1,2 @@
-on setLineText (s) {	kernel (op.setlinetext)}
+on setLineText (s) {
+	kernel (op.setlinetext)}

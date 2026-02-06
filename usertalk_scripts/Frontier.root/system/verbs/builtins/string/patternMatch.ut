@@ -1,1 +1,2 @@
-on patternMatch (pattern, s) {	kernel (string.patternmatch)}
+on patternMatch (pattern, s) {
+	kernel (string.patternmatch)}

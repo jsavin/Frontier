@@ -1,1 +1,13 @@
-«Script: system.verbs.builtins.webserver.responders.default.methods.HEAD; Version 1; Date: Mon, 11 May 1998 17:12:02 GMT; ID: RABon head (adrParamTable) {	«HEAD is the same as GET except that the response body should be empty	local (methodAdr, result);	methodAdr = webserver.util.getMethodAdr (adrParamTable^.responder, "GET");	«There must be a GET method if there is this HEAD method	if ! defined(methodAdr^) {		adrParamTable^.code = 500;		adrParamTable^.responseBody = webserver.util.buildErrorPage ("500 Internal Server Error", "Can't process HEAD request on object " + adrParamTable^.path);		return (true)};	result = methodAdr^(adrParamTable);	adrParamTable^.responseBody = ""; //Clear any data	return (result)}
+Â«Script: system.verbs.builtins.webserver.responders.default.methods.HEAD; Version 1; Date: Mon, 11 May 1998 17:12:02 GMT; ID: RAB
+on head (adrParamTable) {
+	Â«HEAD is the same as GET except that the response body should be empty
+	local (methodAdr, result);
+	methodAdr = webserver.util.getMethodAdr (adrParamTable^.responder, "GET");
+	Â«There must be a GET method if there is this HEAD method
+	if ! defined(methodAdr^) {
+		adrParamTable^.code = 500;
+		adrParamTable^.responseBody = webserver.util.buildErrorPage ("500 Internal Server Error", "Can't process HEAD request on object " + adrParamTable^.path);
+		return (true)};
+	result = methodAdr^(adrParamTable);
+	adrParamTable^.responseBody = ""; //Clear any data
+	return (result)}

@@ -1,1 +1,11 @@
-on init (adrservice) {	«Changes		«10/8/02; 4:33:28 PM by JES			«Created.	local (adrcompilation = @adrservice^.compilation);	if not defined (adrcompilation^) {		new (tableType, adrcompilation)};	local (adrdata = @adrcompilation^.mvcb);	if defined (adrdata^) {		delete (adrdata)};	return}
+on init (adrservice) {
+	Â«Changes
+		Â«10/8/02; 4:33:28 PM by JES
+			Â«Created.
+	local (adrcompilation = @adrservice^.compilation);
+	if not defined (adrcompilation^) {
+		new (tableType, adrcompilation)};
+	local (adrdata = @adrcompilation^.mvcb);
+	if defined (adrdata^) {
+		delete (adrdata)};
+	return}

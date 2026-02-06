@@ -1,1 +1,133 @@
-on theRenderer (adroutline) {	«Changes		«5/27/02; 7:57:33 AM by DW			«Implement support for date-based permalinks.			«http://scriptingnews.userland.com/backissues/2002/05/27#newFormatForPermalinksOnScriptingNews		«6/27/00; 8:48:58 PM by DW			«Added support for <internalLink> rule.		«2/27/01; 6:51:30 PM by BS			«Commented out a line of debugging code.		«9/19/01; 11:36:43 AM by DW			«When generating an internalLink, provide a boolean parameter that says whether or not the line has subheads. A different (smaller) graphic can be used for these entries. See pikeRenderer.drivers.html.internallink for a corresponding change. 	local (adrdriver = @pikeRenderer.drivers.html); //default	bundle { //set driver if it's specified		local (pta = html.getPageTableAddress ());		if defined (pta^.pikeRendererDriver) {			adrdriver = @pikeRenderer.drivers.[pta^.pikeRendererDriver];			if typeof (adrdriver^) == addresstype {				adrdriver = adrdriver^}}};	local (rules); new (tabletype, @rules);	local (legalvaluetags);	bundle { //set legalvaluetags		legalvaluetags = {"textStyle", "textColor", "textSize", "textFace", "outlineSpacing", "leftIndent", "labeling", "internalLink"}};	on pushruleslevel () {		local (nametable = string.padwithzeros (sizeof (rules), 3));		local (adrtable = @rules.[nametable]);		new (tabletype, adrtable);		return (adrtable)};	on popruleslevel () {		delete (@rules [sizeof (rules)])};	on getmyrules (adrtable) {		local (i, level, adritem, adrvalue, adrrule);		new (tabletype, adrtable);		for i = sizeof (rules) downto 1 {			level = sizeof (rules) - i + 1;			for adritem in @rules [i] { //each one represents a single rule				if (level >= adritem^.startlevel) and (level <= adritem^.endlevel) { //add all the values not already defined					for adrvalue in @adritem^.values {						adrrule = @adrtable^.[nameof (adrvalue^)];						if not defined (adrrule^) {							local (val = adrvalue^);							if (typeof (val) == stringtype) and (val == "infinity") {								val = infinity};							adrrule^ = val}}}}};		};«scratchpad.myrules = adrtable^	local (s = "", level = 0);	op.firstsummit ();	on getLevel () {		local (adrlocalrules = pushruleslevel ());		local (myrules);		getmyrules (@myrules);		local (ctAtLevel = 0);		loop {			linetext = op.getlinetext ();			if string.lower (linetext) beginswith "<rules>" {				local (xmltext = op.getsuboutline ());				xml.compile (xmltext, @struct);				«scratchpad.struct = struct //PBS 02/27/01: commented out				local (adrrules = xml.getaddress (@struct, "rules"));				local (rulelist = xml.getaddresslist (adrrules, "rule"), item, startlevel, endlevel);				for item in rulelist {					local (adrsub = @adrlocalrules^.[string.padwithzeros (sizeof (adrlocalrules^), 3)]);					new (tabletype, adrsub);					try {startlevel = xml.getattribute (item, "level")^} else {startlevel = 1};					try {endlevel = xml.getattribute (item, "to")^} else {endlevel = infinity};					adrsub^.startlevel = startlevel; adrsub^.endlevel = endlevel;					bundle { //populate the values sub-table						local (legalvalue);						new (tabletype, @adrsub^.values);						for legalvalue in legalvaluetags {							try {adrsub^.values.[legalvalue] = xml.getaddress (item, legalvalue)^}}}};				getmyrules (@myrules);				}«op.deleteline ()			else {				if string.lower (linetext) == "<debug/>" {					scratchpad.rules = rules;					scratchpad.myrules = myrules}				else {					ctAtLevel++;					bundle { //add text to s, based on myrules						local (prestring = "", poststring = "", indentpixels = 0);						if defined (myrules.textstyle) {							adrdriver^.textstyle (myrules.textstyle, @prestring, @poststring)};						if defined (myrules.textcolor) {							adrdriver^.textcolor (myrules.textcolor, @prestring, @poststring)};						if defined (myrules.textface) {							adrdriver^.textface (myrules.textface, @prestring, @poststring)};						if defined (myrules.textsize) {							adrdriver^.textsize (myrules.textsize, @prestring, @poststring)};						if defined (myrules.labeling) {							adrdriver^.labeling (myrules.labeling, ctAtLevel, @prestring, @poststring)};						if defined (myrules.internalLink) {							try {								local (flsubs = op.countSubs (1) > 0, permalinkstring = "");								bundle { //set permalinkstring, 5/27/02 by DW									local (created);									if op.attributes.getone ("created", @created) {										permalinkstring = "When:" + string.replaceall (date.timestring (date (created)), " ", "")}};								try {									adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring, flsubs, permalinkstring)}								else {									«5/27/02 by DW -- no breakage if they are using a custom driver that doesn't support the permalinkstring param									adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring, flsubs)}}							else {								«9/19/01 by DW -- no breakage if they are using a custom driver that doesn't support the flsubs param								adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring)}};						if defined (myrules.outlinespacing) {							adrdriver^.outlinespacing (myrules.outlinespacing, @prestring, @poststring)};						if defined (myrules.leftindent) {							indentpixels = indentpixels + number (myrules.leftindent) * level};						if indentpixels > 0 {							adrdriver^.indent (indentpixels, @prestring, @poststring)};						s = s + string.filledstring ("\t", level) + prestring + linetext + poststring + "\r"};					op.expand (1);					if op.go (right, 1) {						level++;						getLevel ();						level--;						op.go (left, 1)}}};			if not op.go (down, 1) {				break}};		popruleslevel ()};	getLevel ();	return (s)};«bundle //test code	«edit (@websites.pikerenderer.default)	«scratchpad.theoutline = websites.pikerenderer.default	«target.set (@scratchpad.theoutline)	«op.firstsummit ()	«while op.getlinetext () beginswith "#"		«op.deleteline ()	«wp.newtextobject (pikeRenderer (@scratchpad.theoutline), @scratchpad.theRenderedText)	«edit (@scratchpad.theRenderedText)	«webbrowser.displaytext (string (scratchpad.theRenderedText))
+on theRenderer (adroutline) {
+	Â«Changes
+		Â«5/27/02; 7:57:33 AM by DW
+			Â«Implement support for date-based permalinks.
+			Â«http://scriptingnews.userland.com/backissues/2002/05/27#newFormatForPermalinksOnScriptingNews
+		Â«6/27/00; 8:48:58 PM by DW
+			Â«Added support for <internalLink> rule.
+		Â«2/27/01; 6:51:30 PM by BS
+			Â«Commented out a line of debugging code.
+		Â«9/19/01; 11:36:43 AM by DW
+			Â«When generating an internalLink, provide a boolean parameter that says whether or not the line has subheads. A different (smaller) graphic can be used for these entries. See pikeRenderer.drivers.html.internallink for a corresponding change. 
+	local (adrdriver = @pikeRenderer.drivers.html); //default
+	bundle { //set driver if it's specified
+		local (pta = html.getPageTableAddress ());
+		if defined (pta^.pikeRendererDriver) {
+			adrdriver = @pikeRenderer.drivers.[pta^.pikeRendererDriver];
+			if typeof (adrdriver^) == addresstype {
+				adrdriver = adrdriver^}}};
+	local (rules); new (tabletype, @rules);
+	local (legalvaluetags);
+	bundle { //set legalvaluetags
+		legalvaluetags = {"textStyle", "textColor", "textSize", "textFace", "outlineSpacing", "leftIndent", "labeling", "internalLink"}};
+	on pushruleslevel () {
+		local (nametable = string.padwithzeros (sizeof (rules), 3));
+		local (adrtable = @rules.[nametable]);
+		new (tabletype, adrtable);
+		return (adrtable)};
+	on popruleslevel () {
+		delete (@rules [sizeof (rules)])};
+	on getmyrules (adrtable) {
+		local (i, level, adritem, adrvalue, adrrule);
+		new (tabletype, adrtable);
+		for i = sizeof (rules) downto 1 {
+			level = sizeof (rules) - i + 1;
+			for adritem in @rules [i] { //each one represents a single rule
+				if (level >= adritem^.startlevel) and (level <= adritem^.endlevel) { //add all the values not already defined
+					for adrvalue in @adritem^.values {
+						adrrule = @adrtable^.[nameof (adrvalue^)];
+						if not defined (adrrule^) {
+							local (val = adrvalue^);
+							if (typeof (val) == stringtype) and (val == "infinity") {
+								val = infinity};
+							adrrule^ = val}}}}};
+		};Â«scratchpad.myrules = adrtable^
+	local (s = "", level = 0);
+	op.firstsummit ();
+	on getLevel () {
+		local (adrlocalrules = pushruleslevel ());
+		local (myrules);
+		getmyrules (@myrules);
+		local (ctAtLevel = 0);
+		loop {
+			linetext = op.getlinetext ();
+			if string.lower (linetext) beginswith "<rules>" {
+				local (xmltext = op.getsuboutline ());
+				xml.compile (xmltext, @struct);
+				Â«scratchpad.struct = struct //PBS 02/27/01: commented out
+				local (adrrules = xml.getaddress (@struct, "rules"));
+				local (rulelist = xml.getaddresslist (adrrules, "rule"), item, startlevel, endlevel);
+				for item in rulelist {
+					local (adrsub = @adrlocalrules^.[string.padwithzeros (sizeof (adrlocalrules^), 3)]);
+					new (tabletype, adrsub);
+					try {startlevel = xml.getattribute (item, "level")^} else {startlevel = 1};
+					try {endlevel = xml.getattribute (item, "to")^} else {endlevel = infinity};
+					adrsub^.startlevel = startlevel; adrsub^.endlevel = endlevel;
+					bundle { //populate the values sub-table
+						local (legalvalue);
+						new (tabletype, @adrsub^.values);
+						for legalvalue in legalvaluetags {
+							try {adrsub^.values.[legalvalue] = xml.getaddress (item, legalvalue)^}}}};
+				getmyrules (@myrules);
+				}Â«op.deleteline ()
+			else {
+				if string.lower (linetext) == "<debug/>" {
+					scratchpad.rules = rules;
+					scratchpad.myrules = myrules}
+				else {
+					ctAtLevel++;
+					bundle { //add text to s, based on myrules
+						local (prestring = "", poststring = "", indentpixels = 0);
+						if defined (myrules.textstyle) {
+							adrdriver^.textstyle (myrules.textstyle, @prestring, @poststring)};
+						if defined (myrules.textcolor) {
+							adrdriver^.textcolor (myrules.textcolor, @prestring, @poststring)};
+						if defined (myrules.textface) {
+							adrdriver^.textface (myrules.textface, @prestring, @poststring)};
+						if defined (myrules.textsize) {
+							adrdriver^.textsize (myrules.textsize, @prestring, @poststring)};
+						if defined (myrules.labeling) {
+							adrdriver^.labeling (myrules.labeling, ctAtLevel, @prestring, @poststring)};
+						if defined (myrules.internalLink) {
+							try {
+								local (flsubs = op.countSubs (1) > 0, permalinkstring = "");
+								bundle { //set permalinkstring, 5/27/02 by DW
+									local (created);
+									if op.attributes.getone ("created", @created) {
+										permalinkstring = "When:" + string.replaceall (date.timestring (date (created)), " ", "")}};
+								try {
+									adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring, flsubs, permalinkstring)}
+								else {
+									Â«5/27/02 by DW -- no breakage if they are using a custom driver that doesn't support the permalinkstring param
+									adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring, flsubs)}}
+							else {
+								Â«9/19/01 by DW -- no breakage if they are using a custom driver that doesn't support the flsubs param
+								adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring)}};
+						if defined (myrules.outlinespacing) {
+							adrdriver^.outlinespacing (myrules.outlinespacing, @prestring, @poststring)};
+						if defined (myrules.leftindent) {
+							indentpixels = indentpixels + number (myrules.leftindent) * level};
+						if indentpixels > 0 {
+							adrdriver^.indent (indentpixels, @prestring, @poststring)};
+						s = s + string.filledstring ("\t", level) + prestring + linetext + poststring + "\r"};
+					op.expand (1);
+					if op.go (right, 1) {
+						level++;
+						getLevel ();
+						level--;
+						op.go (left, 1)}}};
+			if not op.go (down, 1) {
+				break}};
+		popruleslevel ()};
+	getLevel ();
+	return (s)};
+Â«bundle //test code
+	Â«edit (@websites.pikerenderer.default)
+	Â«scratchpad.theoutline = websites.pikerenderer.default
+	Â«target.set (@scratchpad.theoutline)
+	Â«op.firstsummit ()
+	Â«while op.getlinetext () beginswith "#"
+		Â«op.deleteline ()
+	Â«wp.newtextobject (pikeRenderer (@scratchpad.theoutline), @scratchpad.theRenderedText)
+	Â«edit (@scratchpad.theRenderedText)
+	Â«webbrowser.displaytext (string (scratchpad.theRenderedText))

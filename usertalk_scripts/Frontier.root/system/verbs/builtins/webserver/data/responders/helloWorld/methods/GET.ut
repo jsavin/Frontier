@@ -1,1 +1,6 @@
-«Script: user.webserver.responders.helloWorld.methods.GET; Version 1; Date: Wed, 13 May 1998 06:26:46 GMT; ID: RABon GET (adrParamTable) {	adrParamTable^.code = 200;	adrParamTable^.responseHeaders.["Content-Type"] = "text/html";	adrParamTable^.responseBody = "<html><body>Hello World!</body></html>";	return (true)}
+Â«Script: user.webserver.responders.helloWorld.methods.GET; Version 1; Date: Wed, 13 May 1998 06:26:46 GMT; ID: RAB
+on GET (adrParamTable) {
+	adrParamTable^.code = 200;
+	adrParamTable^.responseHeaders.["Content-Type"] = "text/html";
+	adrParamTable^.responseBody = "<html><body>Hello World!</body></html>";
+	return (true)}

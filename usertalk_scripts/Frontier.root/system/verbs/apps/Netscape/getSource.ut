@@ -1,1 +1,16 @@
-on getSource (url, timeoutsecs) { «returns the HTML source stored at that URL	local (f = Netscape.getScriptPrefsFolder () + "HTML Source", s);	appleEvent (netscape.id, 'GURL', 'GURL', '----', string (url), 'dest', filespec (f), 'cwin', nil);		local (loopstarttime = clock.now ());	while not file.exists (f) {		rollbeachball ();		if (clock.now () - loopstarttime) > timeoutsecs { «timeout			return ("")}};	while file.isbusy (f) {};		file.open (f);	s = string (file.read (f, infinity));	file.close (f);	file.delete (f);	return (s)}
+on getSource (url, timeoutsecs) { Â«returns the HTML source stored at that URL
+	local (f = Netscape.getScriptPrefsFolder () + "HTML Source", s);
+	appleEvent (netscape.id, 'GURL', 'GURL', '----', string (url), 'dest', filespec (f), 'cwin', nil);
+	
+	local (loopstarttime = clock.now ());
+	while not file.exists (f) {
+		rollbeachball ();
+		if (clock.now () - loopstarttime) > timeoutsecs { Â«timeout
+			return ("")}};
+	while file.isbusy (f) {};
+	
+	file.open (f);
+	s = string (file.read (f, infinity));
+	file.close (f);
+	file.delete (f);
+	return (s)}

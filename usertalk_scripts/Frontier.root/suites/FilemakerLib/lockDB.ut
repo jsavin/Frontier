@@ -1,1 +1,2 @@
-on lockDB (db, timeOut = 3600) {	return (semaphores.lock (db, timeOut))}
+on lockDB (db, timeOut = 3600) {
+	return (semaphores.lock (db, timeOut))}

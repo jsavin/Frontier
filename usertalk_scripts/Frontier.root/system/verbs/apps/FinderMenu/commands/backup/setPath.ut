@@ -1,1 +1,12 @@
-«prompt the user for the "path" to the backup folder	«Cleaned up: Sat, Jan 11, 1997 at 8:42:48 AM by DW.local (folder, sellist);FinderMenu.init ();sellist = finderMenu.getSelectionList ();if sizeof (sellist) > 0 {	folder = sellist [1] + "xxx:"};if not file.getFolderDialog ("Select a folder to receive your backups.", @folder) {	return (false)};user.FinderMenu.finderBackupFolder = folder;fileMenu.save ();return (true)
+Â«prompt the user for the "path" to the backup folder
+	Â«Cleaned up: Sat, Jan 11, 1997 at 8:42:48 AM by DW.
+local (folder, sellist);
+FinderMenu.init ();
+sellist = finderMenu.getSelectionList ();
+if sizeof (sellist) > 0 {
+	folder = sellist [1] + "xxx:"};
+if not file.getFolderDialog ("Select a folder to receive your backups.", @folder) {
+	return (false)};
+user.FinderMenu.finderBackupFolder = folder;
+fileMenu.save ();
+return (true)

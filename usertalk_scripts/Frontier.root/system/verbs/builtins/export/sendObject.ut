@@ -1,1 +1,26 @@
-on sendObject (adr, fname) {	«bundle // old code		«bundle «save the callimporter script			«this deserves some explanation...				«after the user double-clicks on the file, Frontier.finder2Click will get control				«it copies the 'scpt' resource into the object database at its old location and runs it.				«we copy the script first, so it's old location will be in a local table.				«when the script is loaded, it won't clobber the latest version of the script, 				«or collide with another version that is currently running.			«local (callimporter)			«table.assign (@callimporter, export.callimporter)			«export.sendtodesktop (@callimporter, fname)		«bundle «double-pack the object at adr into a 'data' resource			«local (resdata)			«pack (adr^, @resdata)			«pack (resdata, @resdata)			«rez.putnamedresource (fname, 'data', string (adr), @resdata)		«return (true)		«Frontier 5		«Friday, July 18, 1997 at 10:43:49 AM by PBS	«Save a Frontier object as a fat file.	local (s = fatPages.buildFileAtts (adr, false));	local (filetype = frontier.getFileType (typeOf (adr^)));	file.writeWholeFile (fname, s, filetype, 'LAND', clock.now ());	return (true)}
+on sendObject (adr, fname) {
+	Â«bundle // old code
+		Â«bundle Â«save the callimporter script
+			Â«this deserves some explanation...
+				Â«after the user double-clicks on the file, Frontier.finder2Click will get control
+				Â«it copies the 'scpt' resource into the object database at its old location and runs it.
+				Â«we copy the script first, so it's old location will be in a local table.
+				Â«when the script is loaded, it won't clobber the latest version of the script, 
+				Â«or collide with another version that is currently running.
+			Â«local (callimporter)
+			Â«table.assign (@callimporter, export.callimporter)
+			Â«export.sendtodesktop (@callimporter, fname)
+		Â«bundle Â«double-pack the object at adr into a 'data' resource
+			Â«local (resdata)
+			Â«pack (adr^, @resdata)
+			Â«pack (resdata, @resdata)
+			Â«rez.putnamedresource (fname, 'data', string (adr), @resdata)
+		Â«return (true)
+	
+	Â«Frontier 5
+		Â«Friday, July 18, 1997 at 10:43:49 AM by PBS
+	Â«Save a Frontier object as a fat file.
+	local (s = fatPages.buildFileAtts (adr, false));
+	local (filetype = frontier.getFileType (typeOf (adr^)));
+	file.writeWholeFile (fname, s, filetype, 'LAND', clock.now ());
+	return (true)}

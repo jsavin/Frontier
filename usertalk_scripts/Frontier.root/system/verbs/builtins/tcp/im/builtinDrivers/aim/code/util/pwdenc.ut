@@ -1,1 +1,23 @@
-on pwdenc(adrSelf) {	local {		lookup = "Tic/Toc";		ept = "0x";		ctMod = sizeOf(lookup)};		local {		i;		ct = sizeOf(adrSelf^._passwd);		letter};		for i = 1 to ct {		letter = adrSelf^._passwd[i];		«%02x means 2 char lowercase unsigned hex.		«^ is bitwise xor		ept = ept + string.lower(string.mid( string.hex( bit.logicalXOR( number(letter), number( lookup[((i-1) % ctMod) +1]) )) , 5, 2))};	return (ept)};local {	tbl};new(tableType, @tbl);tbl._passwd = "soroose";msg(pwdenc(@tbl))
+on pwdenc(adrSelf) {
+	local {
+		lookup = "Tic/Toc";
+		ept = "0x";
+		ctMod = sizeOf(lookup)};
+	
+	local {
+		i;
+		ct = sizeOf(adrSelf^._passwd);
+		letter};
+	
+	for i = 1 to ct {
+		letter = adrSelf^._passwd[i];
+		Â«%02x means 2 char lowercase unsigned hex.
+		Â«^ is bitwise xor
+		ept = ept + string.lower(string.mid( string.hex( bit.logicalXOR( number(letter), number( lookup[((i-1) % ctMod) +1]) )) , 5, 2))};
+	return (ept)};
+
+local {
+	tbl};
+new(tableType, @tbl);
+tbl._passwd = "soroose";
+msg(pwdenc(@tbl))

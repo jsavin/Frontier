@@ -1,1 +1,2 @@
-on condition (screenname, message) {	return (string.lower (message) beginswith "news")}
+on condition (screenname, message) {
+	return (string.lower (message) beginswith "news")}

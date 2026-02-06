@@ -1,1 +1,4 @@
-on EDsv (scriptdata, adrobject) {	osa.getSource (@scriptdata, adrobject);	fileMenu.save ();	return (true)}
+on EDsv (scriptdata, adrobject) {
+	osa.getSource (@scriptdata, adrobject);
+	fileMenu.save ();
+	return (true)}

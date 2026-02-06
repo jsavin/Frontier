@@ -1,1 +1,14 @@
-on isCheckedOutByUser (adrObject, username) {	«Is an object checked out by a user?		«Sun, Mar 7, 1999 at 2:12:26 AM by PBS	local (fl = false);	custody.lockObjectsTable (); //get a semaphore lock on the objects table	custody.cleanUpObjectsTable (); //clean up timed-out items		if defined (user.custody.objects.[adrObject]) {		if string.lower (user.custody.objects.[adrObject].user) == string.lower (username) {			fl = true}};		custody.unlockObjectsTable (); //unlock the semaphore		return (fl)}
+on isCheckedOutByUser (adrObject, username) {
+	Â«Is an object checked out by a user?
+		Â«Sun, Mar 7, 1999 at 2:12:26 AM by PBS
+	local (fl = false);
+	custody.lockObjectsTable (); //get a semaphore lock on the objects table
+	custody.cleanUpObjectsTable (); //clean up timed-out items
+	
+	if defined (user.custody.objects.[adrObject]) {
+		if string.lower (user.custody.objects.[adrObject].user) == string.lower (username) {
+			fl = true}};
+	
+	custody.unlockObjectsTable (); //unlock the semaphore
+	
+	return (fl)}

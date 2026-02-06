@@ -1,1 +1,56 @@
-on respondToPing (adrRespondCallback=nil) {	«Changes		«7/31/03; 2:03:10 PM by JES			«Bug fix: excerpt, not exceprt.		«5/1/03; 11:50:32 AM by JES			«Created. Respond to a Trackback ping.			«If adrRespondCallback is supplied, it's called with four parameters sent in the Trackback ping request:				«url -- the permalinkUrl of the post doing the ping				«title -- the title of the post doing the ping				«excerpt -- an excerpt of the post doing the ping				«weblogName -- the name of the weblog doing the ping				«Only url is required. If any of the other parameters are not supplied, the callback will be called with the empty string for the value of the missing parameter.	local (pta = html.getPageTableAddress ());		bundle { //set up the pagetable to return some XML instead of HTML		pta^.responseHeaders.["Content-Type"] = "text/xml";		pta^.autoParagraphs = false;		pta^.clayCompatibility = false;		pta^.activeUrls = false;		wp.newTextObject ("{bodytext}", @pta^.template)};		local (xtext = "");	on add (s) {		xtext = xtext + (s + "\r\n");};		add ("<?xml version=\"1.0\"?>");	try { //failure response		local (adrargs);		if system.environment.isRadio {			adrargs = @pta^.radioResponder.postArgs}		else { //Frontier			adrargs = @pta^.postArgs};		if adrRespondCallback != nil {			local (weblogName = "", title = "", excerpt = "");			if defined (adrargs^.blogname) {				weblogName = adrargs^.blogname};			if defined (adrargs^.blog_name) {				weblogName = adrargs^.blog_name};			if defined (adrargs^.title) {				title = adrargs^.title};			if defined (adrargs^.excerpt) {				excerpt = adrargs^.excerpt};			adrRespondCallback^ (adrargs^.url, title, excerpt, weblogName)};		add ("<response>");		add ("\t<error>0</error>");		add ("\t</response>")}	else { //success response		add ("<response>");		add ("\t<error>1</error>");		if system.environment.isMac { //replace curly quotes with normal quotes			tryError = string.replaceAll (tryError, char (210), "\"");			tryError = string.replaceAll (tryError, char (211), "\"")};		add ("\t<message>" + tryError + "</message>");		add ("\t</response>")};		return (xtext)}
+on respondToPing (adrRespondCallback=nil) {
+	Â«Changes
+		Â«7/31/03; 2:03:10 PM by JES
+			Â«Bug fix: excerpt, not exceprt.
+		Â«5/1/03; 11:50:32 AM by JES
+			Â«Created. Respond to a Trackback ping.
+			Â«If adrRespondCallback is supplied, it's called with four parameters sent in the Trackback ping request:
+				Â«url -- the permalinkUrl of the post doing the ping
+				Â«title -- the title of the post doing the ping
+				Â«excerpt -- an excerpt of the post doing the ping
+				Â«weblogName -- the name of the weblog doing the ping
+				Â«Only url is required. If any of the other parameters are not supplied, the callback will be called with the empty string for the value of the missing parameter.
+	local (pta = html.getPageTableAddress ());
+	
+	bundle { //set up the pagetable to return some XML instead of HTML
+		pta^.responseHeaders.["Content-Type"] = "text/xml";
+		pta^.autoParagraphs = false;
+		pta^.clayCompatibility = false;
+		pta^.activeUrls = false;
+		wp.newTextObject ("{bodytext}", @pta^.template)};
+	
+	local (xtext = "");
+	on add (s) {
+		xtext = xtext + (s + "\r\n");};
+	
+	add ("<?xml version=\"1.0\"?>");
+	try { //failure response
+		local (adrargs);
+		if system.environment.isRadio {
+			adrargs = @pta^.radioResponder.postArgs}
+		else { //Frontier
+			adrargs = @pta^.postArgs};
+		if adrRespondCallback != nil {
+			local (weblogName = "", title = "", excerpt = "");
+			if defined (adrargs^.blogname) {
+				weblogName = adrargs^.blogname};
+			if defined (adrargs^.blog_name) {
+				weblogName = adrargs^.blog_name};
+			if defined (adrargs^.title) {
+				title = adrargs^.title};
+			if defined (adrargs^.excerpt) {
+				excerpt = adrargs^.excerpt};
+			adrRespondCallback^ (adrargs^.url, title, excerpt, weblogName)};
+		add ("<response>");
+		add ("\t<error>0</error>");
+		add ("\t</response>")}
+	else { //success response
+		add ("<response>");
+		add ("\t<error>1</error>");
+		if system.environment.isMac { //replace curly quotes with normal quotes
+			tryError = string.replaceAll (tryError, char (210), "\"");
+			tryError = string.replaceAll (tryError, char (211), "\"")};
+		add ("\t<message>" + tryError + "</message>");
+		add ("\t</response>")};
+	
+	return (xtext)}

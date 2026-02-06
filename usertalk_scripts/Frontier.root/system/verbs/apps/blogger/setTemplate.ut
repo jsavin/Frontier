@@ -1,1 +1,16 @@
-on setTemplate (template, blogId=nil, username=nil, password=nil, templateType=nil, adrdata=@blogger.data) {	blogger.init ();	bundle { //set defaults		if username == nil {			username = user.blogger.username};		if password == nil {			password = string (user.blogger.password)};		if blogId == nil {			blogId = user.blogger.blogId};		if templateType == nil {			templateType = "main"}};	with adrdata^ {		local (params = {appkey, string (blogId), string (username), string (password), string (template), string (templateType)});		return (xml.rpc (server, port, "blogger.setTemplate", @params, rpcPath:rpcPath, protocol:protocol))}};bundle { //test code	setTemplate (string (scratchpad.bloggerTemplate))}
+on setTemplate (template, blogId=nil, username=nil, password=nil, templateType=nil, adrdata=@blogger.data) {
+	blogger.init ();
+	bundle { //set defaults
+		if username == nil {
+			username = user.blogger.username};
+		if password == nil {
+			password = string (user.blogger.password)};
+		if blogId == nil {
+			blogId = user.blogger.blogId};
+		if templateType == nil {
+			templateType = "main"}};
+	with adrdata^ {
+		local (params = {appkey, string (blogId), string (username), string (password), string (template), string (templateType)});
+		return (xml.rpc (server, port, "blogger.setTemplate", @params, rpcPath:rpcPath, protocol:protocol))}};
+bundle { //test code
+	setTemplate (string (scratchpad.bloggerTemplate))}

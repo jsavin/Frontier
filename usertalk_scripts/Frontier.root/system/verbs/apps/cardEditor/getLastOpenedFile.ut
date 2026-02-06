@@ -1,1 +1,2 @@
-on getLastOpenedFile () {	return (appleEvent (cardEditor.id, 'IOWA', 'glof'))}
+on getLastOpenedFile () {
+	return (appleEvent (cardEditor.id, 'IOWA', 'glof'))}

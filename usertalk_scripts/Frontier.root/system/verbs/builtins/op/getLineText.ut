@@ -1,1 +1,2 @@
-on getLineText () {	kernel (op.getlinetext)}
+on getLineText () {
+	kernel (op.getlinetext)}

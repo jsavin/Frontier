@@ -1,1 +1,18 @@
-on revert (adr) {		local (f);	if window.attributes.getOne ("f", @f, adr) {		local (adrType = parentOf (this^));		local (windowType = nameOf (adrType^));		window.attributes.makeEmpty (adr);		window.attributes.setOne ("type", windowType, adr);		local (x, y, height, width);		window.getPosition (adr, @x, @y);		window.getSize (adr, @width, @height);		adrType^.open (f, adr, true);		window.setSize (adr, width, height);		window.setPosition (adr, x, y);		edit (adr);		return (true)};		return (false)}
+on revert (adr) {
+	
+	local (f);
+	if window.attributes.getOne ("f", @f, adr) {
+		local (adrType = parentOf (this^));
+		local (windowType = nameOf (adrType^));
+		window.attributes.makeEmpty (adr);
+		window.attributes.setOne ("type", windowType, adr);
+		local (x, y, height, width);
+		window.getPosition (adr, @x, @y);
+		window.getSize (adr, @width, @height);
+		adrType^.open (f, adr, true);
+		window.setSize (adr, width, height);
+		window.setPosition (adr, x, y);
+		edit (adr);
+		return (true)};
+	
+	return (false)}

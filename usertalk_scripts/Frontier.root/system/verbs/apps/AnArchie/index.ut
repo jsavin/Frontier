@@ -1,1 +1,2 @@
-on index (host, path, user, password, url) { «Display an index listing	return (appleEvent (AnArchie.id, 'Arch', 'Indx', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}
+on index (host, path, user, password, url) { Â«Display an index listing
+	return (appleEvent (AnArchie.id, 'Arch', 'Indx', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}

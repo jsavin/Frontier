@@ -1,1 +1,2 @@
-on getLanguage (adrScript) {	kernel (script.getLanguage)}
+on getLanguage (adrScript) {
+	kernel (script.getLanguage)}

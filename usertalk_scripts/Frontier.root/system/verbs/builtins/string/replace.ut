@@ -1,1 +1,2 @@
-on replace (s, searchfor, replacewith, flCaseSensitive = true) {	kernel (string.replace)}
+on replace (s, searchfor, replacewith, flCaseSensitive = true) {
+	kernel (string.replace)}

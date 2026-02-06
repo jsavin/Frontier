@@ -1,1 +1,24 @@
-on indexRemotePage (s, url, title, lastModified, siteName, adrStopWords=nil) {	«Index a page that does not live in this odb.		«This script should be called from an RPC handler		«that allows remote sites to add their pages		«to the search engine.		local (adrIndex = searchEngine.getIndexAddress (siteName));	local (adrPreviews = searchEngine.getPreviewsAddress (siteName));		if adrStopWords == nil {		adrStopWords = @searchEngine.data.stopWords};		msg ("SearchEngine: Indexing: " + url + ".");		«Create the preview. Always create a preview before indexing the page.	searchEngine.createPreview (s, title, url, url, adrPreviews, lastModified);		«Index the page.	searchEngine.indexPage (url, url, title, s, adrIndex, adrStopWords);		«Save the guest database containing the index.	searchEngine.saveIndex (siteName, adrIndex);		return (true)}
+on indexRemotePage (s, url, title, lastModified, siteName, adrStopWords=nil) {
+	Â«Index a page that does not live in this odb.
+		Â«This script should be called from an RPC handler
+		Â«that allows remote sites to add their pages
+		Â«to the search engine.
+	
+	local (adrIndex = searchEngine.getIndexAddress (siteName));
+	local (adrPreviews = searchEngine.getPreviewsAddress (siteName));
+	
+	if adrStopWords == nil {
+		adrStopWords = @searchEngine.data.stopWords};
+	
+	msg ("SearchEngine: Indexing: " + url + ".");
+	
+	Â«Create the preview. Always create a preview before indexing the page.
+	searchEngine.createPreview (s, title, url, url, adrPreviews, lastModified);
+	
+	Â«Index the page.
+	searchEngine.indexPage (url, url, title, s, adrIndex, adrStopWords);
+	
+	Â«Save the guest database containing the index.
+	searchEngine.saveIndex (siteName, adrIndex);
+	
+	return (true)}

@@ -1,1 +1,3 @@
-on getRealms (appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.get (appID, realms))}}
+on getRealms (appID = WebStar.id) {
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, realms))}}

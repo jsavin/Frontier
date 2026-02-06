@@ -1,1 +1,6 @@
-on setCharacterData (adrelement, value) {	if typeof (adrelement^) == tableType {		adrelement^.["/pcdata"] = string (value)}	else {		adrelement^ = string (value)};	return (true)}
+on setCharacterData (adrelement, value) {
+	if typeof (adrelement^) == tableType {
+		adrelement^.["/pcdata"] = string (value)}
+	else {
+		adrelement^ = string (value)};
+	return (true)}

@@ -1,1 +1,2 @@
-on saveCopy (path) {	kernel (filemenu.savecopy)}
+on saveCopy (path) {
+	kernel (filemenu.savecopy)}

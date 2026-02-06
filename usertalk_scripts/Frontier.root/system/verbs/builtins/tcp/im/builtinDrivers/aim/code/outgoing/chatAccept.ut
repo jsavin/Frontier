@@ -1,1 +1,4 @@
-on chatAccept(adrSelf, id) {	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 2,"toc_chat_accept "+id);		return(true)}
+on chatAccept(adrSelf, id) {
+	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 2,"toc_chat_accept "+id);
+	
+	return(true)}

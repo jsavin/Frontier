@@ -1,1 +1,46 @@
-«Changes	«4/3/02; 1:35:57 AM by JES		«If the headline is already expanded, do nothing.	«10/28/01; 5:49:19 PM by JES		«Call Frontier.tools.windowTypes.commands.openUrl, with flOpenInPlace true. Now there's a single bottleneck. The openUrl script knows how to open all kinds of links, not just OPML.		«bundle //original code			«local (oldTarget = target.set (window.frontmost ()))			«local (url)			«op.attributes.getOne ("url", @url)			«local (lowerUrl = string.lower (url))			«local (flOpmlDocument = false)			«if lowerUrl endsWith ".xml" or lowerUrl endsWith ".opml"				«flOpmlDocument = true			«if flOpmlDocument				«url = string.replaceall (url, " ", "%20")				«local (urllist = string.urlsplit (url))				«local (xmltext = string.httpResultSplit (tcp.httpClient (server:urllist [2], path:urllist [3], flAcceptOpml:true, ctFollowRedirects:5)))				«local (localoutline)				«if system.environment.isMac					«xmltext = latinToMac.convert (xmltext)				«op.xmltooutline (xmltext, @localoutline)				«op.deletesubs ()				«op.insertoutline (@localoutline, right)				«if date.versionLessThan (Frontier.version (), "7.0b13")					«op.go (left, 1)			«else				«Frontier.tools.commands.openUrl (url)			«try {target.set (oldTarget)}	«10/22/01; 5:03:52 PM by JES		«Follow redirects when loading the link.	«12/31/00; 5:37:08 PM by JES		«On Macs, convert opml text to Mac text before converting to an outline.	«9/20/2000; 2:17:11 PM by PBS		«Call playlist.httpClient so the script can accept OPML documents.	«9/16/2000; 3:29:27 PM by PBS		«Added .opml as link type that gets expanded in-line.	«8/14/2000 2:58:09 PM by DW		«Called when the user 2clicks on a link node. local (oldTarget = target.set (window.frontmost ()));if op.go (right, 1) { //is the heading already expanded?	op.go (left, 1)}else { //not expanded -- expand in a nodeType-ish way	local (url);	op.attributes.getOne ("url", @url);	Frontier.tools.windowTypes.commands.openUrl (url, true);	try {target.set (oldTarget)}}
+Â«Changes
+	Â«4/3/02; 1:35:57 AM by JES
+		Â«If the headline is already expanded, do nothing.
+	Â«10/28/01; 5:49:19 PM by JES
+		Â«Call Frontier.tools.windowTypes.commands.openUrl, with flOpenInPlace true. Now there's a single bottleneck. The openUrl script knows how to open all kinds of links, not just OPML.
+		Â«bundle //original code
+			Â«local (oldTarget = target.set (window.frontmost ()))
+			Â«local (url)
+			Â«op.attributes.getOne ("url", @url)
+			Â«local (lowerUrl = string.lower (url))
+			Â«local (flOpmlDocument = false)
+			Â«if lowerUrl endsWith ".xml" or lowerUrl endsWith ".opml"
+				Â«flOpmlDocument = true
+			Â«if flOpmlDocument
+				Â«url = string.replaceall (url, " ", "%20")
+				Â«local (urllist = string.urlsplit (url))
+				Â«local (xmltext = string.httpResultSplit (tcp.httpClient (server:urllist [2], path:urllist [3], flAcceptOpml:true, ctFollowRedirects:5)))
+				Â«local (localoutline)
+				Â«if system.environment.isMac
+					Â«xmltext = latinToMac.convert (xmltext)
+				Â«op.xmltooutline (xmltext, @localoutline)
+				Â«op.deletesubs ()
+				Â«op.insertoutline (@localoutline, right)
+				Â«if date.versionLessThan (Frontier.version (), "7.0b13")
+					Â«op.go (left, 1)
+			Â«else
+				Â«Frontier.tools.commands.openUrl (url)
+			Â«try {target.set (oldTarget)}
+	Â«10/22/01; 5:03:52 PM by JES
+		Â«Follow redirects when loading the link.
+	Â«12/31/00; 5:37:08 PM by JES
+		Â«On Macs, convert opml text to Mac text before converting to an outline.
+	Â«9/20/2000; 2:17:11 PM by PBS
+		Â«Call playlist.httpClient so the script can accept OPML documents.
+	Â«9/16/2000; 3:29:27 PM by PBS
+		Â«Added .opml as link type that gets expanded in-line.
+	Â«8/14/2000 2:58:09 PM by DW
+		Â«Called when the user 2clicks on a link node. 
+local (oldTarget = target.set (window.frontmost ()));
+if op.go (right, 1) { //is the heading already expanded?
+	op.go (left, 1)}
+else { //not expanded -- expand in a nodeType-ish way
+	local (url);
+	op.attributes.getOne ("url", @url);
+	Frontier.tools.windowTypes.commands.openUrl (url, true);
+	try {target.set (oldTarget)}}

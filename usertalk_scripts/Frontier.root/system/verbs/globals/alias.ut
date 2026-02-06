@@ -1,1 +1,2 @@
-on alias (path) {	kernel (lang.alias)}
+on alias (path) {
+	kernel (lang.alias)}

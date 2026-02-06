@@ -1,1 +1,2 @@
-on moveWindow (r) {	return (appleEvent (app.id, 'app1', 'mwin', '----', r))}
+on moveWindow (r) {
+	return (appleEvent (app.id, 'app1', 'mwin', '----', r))}

@@ -1,1 +1,7 @@
-on attachPicture (adrSitePrefs, msgnum, mimeType, pictureBits) {	«Changes		«9/6/01; 8:17:10 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename, "msgnum":msgnum, "mimeType":mimeType, "pictureBits":pictureBits});		return (manila.callHandler (host, port, "manila.message.attachPicture", @params, rpcPath:rpcPath))}}
+on attachPicture (adrSitePrefs, msgnum, mimeType, pictureBits) {
+	Â«Changes
+		Â«9/6/01; 8:17:10 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename, "msgnum":msgnum, "mimeType":mimeType, "pictureBits":pictureBits});
+		return (manila.callHandler (host, port, "manila.message.attachPicture", @params, rpcPath:rpcPath))}}

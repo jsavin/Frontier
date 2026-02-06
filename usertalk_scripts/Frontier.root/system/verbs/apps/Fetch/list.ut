@@ -1,1 +1,2 @@
-on list (file, host = nil, path = nil, user = nil, password = nil, url = nil) { «list files in a directory	return (appleEvent (Fetch.id, 'Arch', 'List', '----', alias (file), 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}
+on list (file, host = nil, path = nil, user = nil, password = nil, url = nil) { Â«list files in a directory
+	return (appleEvent (Fetch.id, 'Arch', 'List', '----', alias (file), 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url)))}

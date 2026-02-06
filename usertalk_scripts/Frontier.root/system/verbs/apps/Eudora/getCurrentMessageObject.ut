@@ -1,1 +1,3 @@
-on getCurrentMessageObject () {	with objectModel, Eudora, eventInfo {		return (message [""])}}
+on getCurrentMessageObject () {
+	with objectModel, Eudora, eventInfo {
+		return (message [""])}}

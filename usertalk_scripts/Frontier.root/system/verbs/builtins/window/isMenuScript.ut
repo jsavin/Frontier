@@ -1,1 +1,2 @@
-on isMenuScript (adr) {	kernel (window.ismenuscript)}
+on isMenuScript (adr) {
+	kernel (window.ismenuscript)}

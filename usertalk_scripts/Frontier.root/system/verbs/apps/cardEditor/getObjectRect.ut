@@ -1,1 +1,5 @@
-on getObjectRect (name) {	local (atts);	if not cardEditor.getObjectAttributes (name, @atts) {		return ("")};	return (atts.rect)}
+on getObjectRect (name) {
+	local (atts);
+	if not cardEditor.getObjectAttributes (name, @atts) {
+		return ("")};
+	return (atts.rect)}

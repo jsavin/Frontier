@@ -1,1 +1,2 @@
-on getPosition (adr, adrhoriz, adrvert) {	kernel (window.getposition)}
+on getPosition (adr, adrhoriz, adrvert) {
+	kernel (window.getposition)}

@@ -1,1 +1,18 @@
-if not defined (user.applescripts) {	new (tabletype, @user.applescripts)};if not defined (user.applescripts.prefs) {	new (tabletype, @user.applescripts.prefs)};if not defined (user.applescripts.prefs.lastFileLoaded) {	user.applescripts.prefs.lastFileLoaded = ""};if not defined (user.applescripts.prefs.lastNewScriptName) {	user.applescripts.prefs.lastNewScriptName = "newScript"};if not defined (user.applescripts.prefs.scriptFont) {	user.applescripts.prefs.scriptFont = "geneva"};if not defined (user.applescripts.prefs.scriptFontSize) {	user.applescripts.prefs.scriptFontSize = 12};if not defined (user.applescripts.prefs.lastfolder) {	user.applescripts.prefs.lastfolder = ""};if not defined (user.applescripts.prefs.tablefont) {	user.applescripts.prefs.tablefont = "geneva"};if not defined (user.applescripts.prefs.tablefontsize) {	user.applescripts.prefs.tablefontsize = 12}
+if not defined (user.applescripts) {
+	new (tabletype, @user.applescripts)};
+if not defined (user.applescripts.prefs) {
+	new (tabletype, @user.applescripts.prefs)};
+if not defined (user.applescripts.prefs.lastFileLoaded) {
+	user.applescripts.prefs.lastFileLoaded = ""};
+if not defined (user.applescripts.prefs.lastNewScriptName) {
+	user.applescripts.prefs.lastNewScriptName = "newScript"};
+if not defined (user.applescripts.prefs.scriptFont) {
+	user.applescripts.prefs.scriptFont = "geneva"};
+if not defined (user.applescripts.prefs.scriptFontSize) {
+	user.applescripts.prefs.scriptFontSize = 12};
+if not defined (user.applescripts.prefs.lastfolder) {
+	user.applescripts.prefs.lastfolder = ""};
+if not defined (user.applescripts.prefs.tablefont) {
+	user.applescripts.prefs.tablefont = "geneva"};
+if not defined (user.applescripts.prefs.tablefontsize) {
+	user.applescripts.prefs.tablefontsize = 12}

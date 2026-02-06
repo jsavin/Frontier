@@ -1,1 +1,2 @@
-on shiftKey () {	kernel (kb.shiftkey)}
+on shiftKey () {
+	kernel (kb.shiftkey)}

@@ -1,1 +1,40 @@
-on includeHttp (url, flCache=true) {	«Changes		«3/24/06; 3:10:50 AM by JES			«New optional parameter, flCache. If false, we don't do any caching. Default is true, preserving existing behavior.		«12/29/2000; 12:08:23 PM by DW			«You provide an http url, we'll get the contents and include it in your Manila page. As usual we cache the request for one hour. Maximum size that we'll return is 32K, so it's only good for relatively small snippets.			«We do not neuter curly braces in the text received through HTTP. If you call this script from another script that is then processed beware, you should neuter the text first, otherwise you could open a security hole. We felt it was important to not neuter the text because other languages, notably JavaScript, use curly braces in their syntax, and that's a totally legitimate use for this macro.			«http://macros.userland.com/includeHttp	local (maxsize = 32767);	local (t, adrincache, flread = true);	if flCache {		if not defined (user.webbrowser.cache) {			new (tabletype, @user.webbrowser.cache)};		adrincache = @user.webbrowser.cache.[url]}	else {		new (tableType, @t);		adrincache = @t.[url]};	if defined (adrincache^) {		if clock.now () <= adrincache^.timeExpires {			flread = false}}	else {		new (tabletype, adrincache);		adrincache^.ctReads = 0;		adrincache^.ctHits = 0};	if flread {		try {			local (pta = html.getpagetableaddress ());			local (urllist = string.urlSplit (url), server = urllist [2], path = urllist [3]);			local (headers); new (tabletype, @headers); headers.referer = pta^.url;			local (s = string.httpResultSplit (tcp.httpClient (server:server, path:path, timeOutTicks:60*30, flmessages:false, ctFollowRedirects:5, adrHdrTable:@headers)));			html.setpagetableaddress (pta);			if sizeof (s) > maxsize {				scriptError ("Can't include because the file is larger than " + maxsize + " characters.")};			adrincache^.text = s}		else {			adrincache^.text = "<b>[</b>Macro error: " + tryError +"<b>]</b>"};		adrincache^.ctReads++;		adrincache^.timeExpires = clock.now () + (60 * 60)};	adrincache^.ctHits++;	return (adrincache^.text)}
+on includeHttp (url, flCache=true) {
+	Â«Changes
+		Â«3/24/06; 3:10:50 AM by JES
+			Â«New optional parameter, flCache. If false, we don't do any caching. Default is true, preserving existing behavior.
+		Â«12/29/2000; 12:08:23 PM by DW
+			Â«You provide an http url, we'll get the contents and include it in your Manila page. As usual we cache the request for one hour. Maximum size that we'll return is 32K, so it's only good for relatively small snippets.
+			Â«We do not neuter curly braces in the text received through HTTP. If you call this script from another script that is then processed beware, you should neuter the text first, otherwise you could open a security hole. We felt it was important to not neuter the text because other languages, notably JavaScript, use curly braces in their syntax, and that's a totally legitimate use for this macro.
+			Â«http://macros.userland.com/includeHttp
+	local (maxsize = 32767);
+	local (t, adrincache, flread = true);
+	if flCache {
+		if not defined (user.webbrowser.cache) {
+			new (tabletype, @user.webbrowser.cache)};
+		adrincache = @user.webbrowser.cache.[url]}
+	else {
+		new (tableType, @t);
+		adrincache = @t.[url]};
+	if defined (adrincache^) {
+		if clock.now () <= adrincache^.timeExpires {
+			flread = false}}
+	else {
+		new (tabletype, adrincache);
+		adrincache^.ctReads = 0;
+		adrincache^.ctHits = 0};
+	if flread {
+		try {
+			local (pta = html.getpagetableaddress ());
+			local (urllist = string.urlSplit (url), server = urllist [2], path = urllist [3]);
+			local (headers); new (tabletype, @headers); headers.referer = pta^.url;
+			local (s = string.httpResultSplit (tcp.httpClient (server:server, path:path, timeOutTicks:60*30, flmessages:false, ctFollowRedirects:5, adrHdrTable:@headers)));
+			html.setpagetableaddress (pta);
+			if sizeof (s) > maxsize {
+				scriptError ("Can't include because the file is larger than " + maxsize + " characters.")};
+			adrincache^.text = s}
+		else {
+			adrincache^.text = "<b>[</b>Macro error: " + tryError +"<b>]</b>"};
+		adrincache^.ctReads++;
+		adrincache^.timeExpires = clock.now () + (60 * 60)};
+	adrincache^.ctHits++;
+	return (adrincache^.text)}

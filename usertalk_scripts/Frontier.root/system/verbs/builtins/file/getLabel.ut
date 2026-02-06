@@ -1,1 +1,2 @@
-on getLabel (path) {	kernel (file.getLabel)}
+on getLabel (path) {
+	kernel (file.getLabel)}

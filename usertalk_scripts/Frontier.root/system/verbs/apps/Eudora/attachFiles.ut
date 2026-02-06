@@ -1,1 +1,8 @@
-on attachFiles (msgObj, documents, spooling = nil) { «Attach documents to a message		local(fList);	if (typeof(documents)  != listType) {		putAppleListItem (alias (documents), 1, @fList)}	else {		fList = documents};	return (appleEvent (Eudora.id, 'CSOm', 'eAtc', '----', objspec (msgObj), 'eDcl', fList, 'eSpo', boolean (spooling)))}
+on attachFiles (msgObj, documents, spooling = nil) { Â«Attach documents to a message
+	
+	local(fList);
+	if (typeof(documents)  != listType) {
+		putAppleListItem (alias (documents), 1, @fList)}
+	else {
+		fList = documents};
+	return (appleEvent (Eudora.id, 'CSOm', 'eAtc', '----', objspec (msgObj), 'eDcl', fList, 'eSpo', boolean (spooling)))}

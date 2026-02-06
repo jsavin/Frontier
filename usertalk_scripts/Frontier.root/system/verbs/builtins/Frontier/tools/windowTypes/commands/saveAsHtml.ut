@@ -1,1 +1,80 @@
-on saveAsHtml (adr=nil, adrFilepath=nil, flPreview=false) {	«Changes		«12/26/00; 3:52:29 PM by PBS			«Works for odb outlines as well as local outlines.		«12/13/00; 5:52:54 PM by PBS			«Created. Save a document as HTML on the local file system.	if adr == nil {		adr = window.frontMost ()};		on runCallbacks (adrCallback) { //call callbacks		local (adrScript);		for adrScript in adrCallback {			try {				while typeOf (adrScript^) == addressType { //follow addresses					adrScript = adrScript^};				if adrScript^ (adrItem) {					return (true)}}};		return (false)};		if defined (user.tools.commandCallbacks.saveAsHtml) {		if runCallbacks (@user.tools.commandCallbacks.saveAsHtml) {			return (true)}};	if system.environment.isRadio {		if defined (user.pike.commandCallbacks.saveAsHtml) {			if runCallbacks (@user.pike.commandCallbacks.saveAsHtml) {				return (true)}}};		local (adrtype);		«Find the saveAsHtml script for this window type.	if Frontier.tools.windowTypes.findWindowType (adradrtable:@adrtype, adrwindow:adr) {		if defined (adrtype^.saveAsHtml) {			if adrtype^.saveAsHtml (adr, adrFilepath, flPreview) {				return (false)}}};		«For outlineType windows, we use the outlineFile windowType's saveAsHtml script to save the window.	case typeOf (adr^) {		tableType;		scriptType;		outlineType {			if Frontier.tools.windowTypes.findWindowType ("outlinerFile", @adrtype) {				if not adrtype^.saveAsHtml (adr, adrFilepath, flPreview) {					return (false)}}}};		return (true);		«bundle //this code moved to Frontier.tools.data.windowTypes.outlinerFile.saveAsHtml		«local (extension = user.html.prefs.fileExtension)		«		«local (title, fname)		«if window.attributes.getOne ("title", @title, adr)			«fname = title			«if string.lower (fname) endsWith ".opml"				«fname =  string.popSuffix (fname)		«else //base the title on the title of the window			«title = window.getTitle (adr)			«if string.lower (title) == string.lower (string.popFileFromAddress (adr))				«local (parts = string.parseAddress (string.popFileFromAddress (adr)))				«local (ct = sizeOf (parts))				«fname = parts [ct]				«if ct > 1					«fname = parts [ct - 1] + "." + fname				«				«local (maxCharsMac = 31 - sizeOf (extension))				«				«if system.environment.isMac					«if sizeOf (fname) > maxCharsMac						«if ct > 1							«fname = parts [ct]			«if system.environment.isMac				«if sizeOf (fname) > maxCharsMac					«fname = string.mid (fname, 1, 26)		«fname = fname + extension		«		«local (f = fname)		«if file.putFileDialog ("Save " + title + " as HTML:", @f)			«pike.saveOutlineAsHtml (adrItem, f)};«bundle //test code	«saveAsHtml (window.frontmost ())
+on saveAsHtml (adr=nil, adrFilepath=nil, flPreview=false) {
+	Â«Changes
+		Â«12/26/00; 3:52:29 PM by PBS
+			Â«Works for odb outlines as well as local outlines.
+		Â«12/13/00; 5:52:54 PM by PBS
+			Â«Created. Save a document as HTML on the local file system.
+	if adr == nil {
+		adr = window.frontMost ()};
+	
+	on runCallbacks (adrCallback) { //call callbacks
+		local (adrScript);
+		for adrScript in adrCallback {
+			try {
+				while typeOf (adrScript^) == addressType { //follow addresses
+					adrScript = adrScript^};
+				if adrScript^ (adrItem) {
+					return (true)}}};
+		return (false)};
+	
+	if defined (user.tools.commandCallbacks.saveAsHtml) {
+		if runCallbacks (@user.tools.commandCallbacks.saveAsHtml) {
+			return (true)}};
+	if system.environment.isRadio {
+		if defined (user.pike.commandCallbacks.saveAsHtml) {
+			if runCallbacks (@user.pike.commandCallbacks.saveAsHtml) {
+				return (true)}}};
+	
+	local (adrtype);
+	
+	Â«Find the saveAsHtml script for this window type.
+	if Frontier.tools.windowTypes.findWindowType (adradrtable:@adrtype, adrwindow:adr) {
+		if defined (adrtype^.saveAsHtml) {
+			if adrtype^.saveAsHtml (adr, adrFilepath, flPreview) {
+				return (false)}}};
+	
+	Â«For outlineType windows, we use the outlineFile windowType's saveAsHtml script to save the window.
+	case typeOf (adr^) {
+		tableType;
+		scriptType;
+		outlineType {
+			if Frontier.tools.windowTypes.findWindowType ("outlinerFile", @adrtype) {
+				if not adrtype^.saveAsHtml (adr, adrFilepath, flPreview) {
+					return (false)}}}};
+	
+	return (true);
+	
+	Â«bundle //this code moved to Frontier.tools.data.windowTypes.outlinerFile.saveAsHtml
+		Â«local (extension = user.html.prefs.fileExtension)
+		Â«
+		Â«local (title, fname)
+		Â«if window.attributes.getOne ("title", @title, adr)
+			Â«fname = title
+			Â«if string.lower (fname) endsWith ".opml"
+				Â«fname =  string.popSuffix (fname)
+		Â«else //base the title on the title of the window
+			Â«title = window.getTitle (adr)
+			Â«if string.lower (title) == string.lower (string.popFileFromAddress (adr))
+				Â«local (parts = string.parseAddress (string.popFileFromAddress (adr)))
+				Â«local (ct = sizeOf (parts))
+				Â«fname = parts [ct]
+				Â«if ct > 1
+					Â«fname = parts [ct - 1] + "." + fname
+				Â«
+				Â«local (maxCharsMac = 31 - sizeOf (extension))
+				Â«
+				Â«if system.environment.isMac
+					Â«if sizeOf (fname) > maxCharsMac
+						Â«if ct > 1
+							Â«fname = parts [ct]
+			Â«if system.environment.isMac
+				Â«if sizeOf (fname) > maxCharsMac
+					Â«fname = string.mid (fname, 1, 26)
+		Â«fname = fname + extension
+		Â«
+		Â«local (f = fname)
+		Â«if file.putFileDialog ("Save " + title + " as HTML:", @f)
+			Â«pike.saveOutlineAsHtml (adrItem, f)};
+
+Â«bundle //test code
+	Â«saveAsHtml (window.frontmost ())

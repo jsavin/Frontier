@@ -1,1 +1,17 @@
-bundle { «method 1, using a table	local (name = "Bernie Dekoven", ct = 0);	ticks = clock.ticks ();	for i = 1 to 1000 {		local (adrsubtable = @user.html.glossary [name]);		if defined (adrsubtable^) {			ct++}};	dialog.alert (clock.ticks () - ticks)};«bundle «method 2, using an outline	«local (name = "Bernie Dekoven", ct = 0)	«ticks = clock.ticks ()	«for i = 1 to 100		«target.set (@user.html.glossaryoutline)		«op.firstsummit ()		«op.findNext (name)		«target.clear ()	«dialog.alert (clock.ticks () - ticks)
+bundle { Â«method 1, using a table
+	local (name = "Bernie Dekoven", ct = 0);
+	ticks = clock.ticks ();
+	for i = 1 to 1000 {
+		local (adrsubtable = @user.html.glossary [name]);
+		if defined (adrsubtable^) {
+			ct++}};
+	dialog.alert (clock.ticks () - ticks)};
+Â«bundle Â«method 2, using an outline
+	Â«local (name = "Bernie Dekoven", ct = 0)
+	Â«ticks = clock.ticks ()
+	Â«for i = 1 to 100
+		Â«target.set (@user.html.glossaryoutline)
+		Â«op.firstsummit ()
+		Â«op.findNext (name)
+		Â«target.clear ()
+	Â«dialog.alert (clock.ticks () - ticks)

@@ -1,1 +1,54 @@
-on stringPref (prompt, adrstring, type="text", size=50, maxlength=100, textToRight="", colspan=1, flCheckRepeatedPassword=true) {	«Changes		«8/24/04; 2:51:23 AM by JES			«When running in Frontier, don't do latin-to-mac character set conversion, since mainResponder does this for us already.		«8/3/02; 8:43:10 PM by JES			«Addresses which contained quote characters were mangling the HTML for the form element, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.		«6/10/02; 6:29:40 PM by DW			«Fixed breakage. If the passwords weren't equal, the password would be deleted. I'm surprised we haven't gotten a bunch of bug reports on this. It made the Mail-to-Blog prefs page quite fragile.		«2/5/02; 11:39:37 AM by PBS			«Conditionalized to work in Frontier.		«1/28/02; 6:31:12 PM by JES			«If this is MacOS, convert POSTed strings to Mac text, before storing the value.		«12/20/01; 12:23:29 AM by JES			«New optional parameter: flCheckRepeatedPassword. If true, verify the password against the repeated password stored at system.temp.radio.repeatedPassword. Default is true.		«12/4/01; 12:54:41 AM by JES			«If type is "password", store the value as a binary-type.		«11/20/01; 5:06:08 PM by DW			«Lawrence wrote:				«Name and Email address are only written out to user.prefs. A previous work around wrote out them to the weblogData.prefs as well.					«weblogData.prefs.authorName					«weblogData.prefs.authorMailAddress	local (pta = html.getpagetableaddress ());	local (error = "");	if pta^.method == "POST" {		local (value);		if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier			value = pta^.radioresponder.postargs.[string.urlEncode (string.popFileFromAddress (adrstring))]}		else {			value = pta^.postargs.[string.urlEncode (string.popFileFromAddress (adrstring))]};		if not system.environment.isRadio { //only do latin-to-mac in Radio. mainResponder does this for us in Frontier			if system.environment.isMac {				value = string.latinToMac (value)}};		if string.lower (adrstring) contains "password" {			if flCheckRepeatedPassword {				if adrstring != @system.temp.radio.repeatedPassword {					if system.temp.radio.repeatedPassword != value {						error = radio.prefs.errorstring ("Can't change the password because the values don't match.")}}}}; //localize		if sizeof (error) == 0 {			local (adr = address (string.popFileFromAddress (adrstring)));			if defined (adr^) {				if typeof (adr^) != stringtype {					delete (adr)}};			if string.lower (type) == "password" { //convert to binary value				value = binary (value)};			adr^ = value;			if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier				if adr == @user.prefs.name {					weblogData.prefs.authorName = value};				if adr == @user.prefs.mailAddress {					weblogData.prefs.authorMailAddress = value}}}};	return (error + "<tr><td align=\"left\">" + prompt + ":</td><td valign=\"top\" width=\"70%\" colspan=\"" + colspan + "\"><input type=\"" + type + "\" name=\"" + string.urlEncode (string.popFileFromAddress (adrstring)) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrstring^) + "\">" + textToRight + "</td></tr>")};«bundle //test code	«html.setpagetableaddress (@scratchpad.params)	«stringpref ("Mail server", @user.prefs.mailHost)
+on stringPref (prompt, adrstring, type="text", size=50, maxlength=100, textToRight="", colspan=1, flCheckRepeatedPassword=true) {
+	Â«Changes
+		Â«8/24/04; 2:51:23 AM by JES
+			Â«When running in Frontier, don't do latin-to-mac character set conversion, since mainResponder does this for us already.
+		Â«8/3/02; 8:43:10 PM by JES
+			Â«Addresses which contained quote characters were mangling the HTML for the form element, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
+		Â«6/10/02; 6:29:40 PM by DW
+			Â«Fixed breakage. If the passwords weren't equal, the password would be deleted. I'm surprised we haven't gotten a bunch of bug reports on this. It made the Mail-to-Blog prefs page quite fragile.
+		Â«2/5/02; 11:39:37 AM by PBS
+			Â«Conditionalized to work in Frontier.
+		Â«1/28/02; 6:31:12 PM by JES
+			Â«If this is MacOS, convert POSTed strings to Mac text, before storing the value.
+		Â«12/20/01; 12:23:29 AM by JES
+			Â«New optional parameter: flCheckRepeatedPassword. If true, verify the password against the repeated password stored at system.temp.radio.repeatedPassword. Default is true.
+		Â«12/4/01; 12:54:41 AM by JES
+			Â«If type is "password", store the value as a binary-type.
+		Â«11/20/01; 5:06:08 PM by DW
+			Â«Lawrence wrote:
+				Â«Name and Email address are only written out to user.prefs. A previous work around wrote out them to the weblogData.prefs as well.
+					Â«weblogData.prefs.authorName
+					Â«weblogData.prefs.authorMailAddress
+	local (pta = html.getpagetableaddress ());
+	local (error = "");
+	if pta^.method == "POST" {
+		local (value);
+		if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier
+			value = pta^.radioresponder.postargs.[string.urlEncode (string.popFileFromAddress (adrstring))]}
+		else {
+			value = pta^.postargs.[string.urlEncode (string.popFileFromAddress (adrstring))]};
+		if not system.environment.isRadio { //only do latin-to-mac in Radio. mainResponder does this for us in Frontier
+			if system.environment.isMac {
+				value = string.latinToMac (value)}};
+		if string.lower (adrstring) contains "password" {
+			if flCheckRepeatedPassword {
+				if adrstring != @system.temp.radio.repeatedPassword {
+					if system.temp.radio.repeatedPassword != value {
+						error = radio.prefs.errorstring ("Can't change the password because the values don't match.")}}}}; //localize
+		if sizeof (error) == 0 {
+			local (adr = address (string.popFileFromAddress (adrstring)));
+			if defined (adr^) {
+				if typeof (adr^) != stringtype {
+					delete (adr)}};
+			if string.lower (type) == "password" { //convert to binary value
+				value = binary (value)};
+			adr^ = value;
+			if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier
+				if adr == @user.prefs.name {
+					weblogData.prefs.authorName = value};
+				if adr == @user.prefs.mailAddress {
+					weblogData.prefs.authorMailAddress = value}}}};
+	return (error + "<tr><td align=\"left\">" + prompt + ":</td><td valign=\"top\" width=\"70%\" colspan=\"" + colspan + "\"><input type=\"" + type + "\" name=\"" + string.urlEncode (string.popFileFromAddress (adrstring)) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrstring^) + "\">" + textToRight + "</td></tr>")};
+Â«bundle //test code
+	Â«html.setpagetableaddress (@scratchpad.params)
+	Â«stringpref ("Mail server", @user.prefs.mailHost)

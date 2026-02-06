@@ -1,1 +1,79 @@
-on systemTrayIconRightClick () {	«Changes		«9/10/02; 5:42:26 PM by JES			«Added trial version checks.		«6/27/02; 2:36:56 PM by JES			«Changed Frontier's Control Panel command to Open Admin Site.		«12/24/01; 12:58:55 AM by JES			«Merged the Frontier and Radio systemTrayIconRightClick scripts.		«11/8/01; 4:42:21 PM by BS			«This script is called when the user right-clicks on the system tray icon. In turn it calls all the scripts in user.callbacks.systemTrayIconRightClick. 			«The first callback that returns a menu consumes the event, and we return the address they return to us.	bundle { //run callbacks -- if a callback generates the menu, return it		local (adrscript, adrmenu = nil);		if not defined (user.callbacks.systemTrayIconRightClick) {			new (tableType, @user.callbacks.systemTrayIconRightClick)};		for adrscript in @user.callbacks.systemTrayIconRightClick {			try {				while typeOf (adrScript^) == addressType {					adrScript = adrScript^};				adrscript^ (@adrmenu);				if adrmenu != nil {					return (adrmenu)}}}};	bundle { //default menu with Open, and Quit commands, and a Control Panel command if this is Frontier		local (adrMenu = @system.temp.systemTrayRightClickMenu);		new (menubartype, adrmenu);		local (oldtarget = target.set (adrmenu));		local (menuname = "Right-Click Menu");		op.firstSummit ();		op.setLineText (menuname);				local (appName = "Frontier");		if system.environment.isRadio {			appName = "Radio"};				on addCommand (itemName, scriptString) {			menu.addMenuCommand (adrMenu, menuName, itemName, scriptString)};		on addSeparator () {			op.insert ("-", down)};		if system.environment.isWindows {			if system.environment.isRadio {				addCommand ("Open " + appName, "Frontier.bringToFront ()")}			else { //Frontier				if not userland.trialVersionCheck (false) {					addCommand ("Open " + appName, "Frontier.bringToFront ()")}}};		if not system.environment.isRadio {			if userland.trialVersionCheck (false) { //expired? -- enter serial number command				if defined (mainResponder.adminSite.urls.serialNumber) {					addCommand ("Enter Serial Number", "webBrowser.openUrl (\"http://127.0.0.1:" + user.inetd.config.http2.port + "" + mainResponder.adminSite.urls.serialNumber + "\");webBrowser.bringToFront ()")}				else { //control panel serial number page					addCommand ("Enter Serial Number", "webBrowser.openUrl (\"http://127.0.0.1/controlPanel/serialNumber\");webBrowser.bringToFront ()")}}			else { //open admin site command				addCommand ("Open Admin Site", "webBrowser.openUrl (\"http://127.0.0.1:" + user.inetd.config.http2.port + "/\");webBrowser.bringToFront ()")}};		«local (controlPanelUrl = "http://127.0.0.1")		«if not system.environment.isRadio			«if user.inetd.config.http.port != 80				«controlPanelUrl = controlPanelUrl + ":" + user.inetd.config.http.port			«controlPanelUrl = controlPanelUrl + "/controlPanel/"			«addCommand ("Control Panel", "webBrowser.openUrl (\"" + controlPanelUrl + "\");webBrowser.bringToFront ()")		if system.environment.isWindows {			addSeparator ();			addCommand ("Exit and Shut Down " + appName, "fileMenu.quit ()")};				try {target.set (oldTarget)};				return (adrMenu)}};«on systemTrayIconRightClick ()	«11/8/01; 4:42:21 PM by BS		«This script is called when the user right-clicks on the system tray icon. In turn it calls all the scripts in user.callbacks.systemTrayIconRightClick. 		«The first callback that returns a menu consumes the event, and we return the address they return to us.	«local (adrscript, adrmenu = nil)	«if not defined (user.callbacks.systemTrayIconRightClick)		«new (tableType, @user.callbacks.systemTrayIconRightClick)	«for adrscript in @user.callbacks.systemTrayIconRightClick		«try			«while typeOf (adrScript^) == addressType				«adrScript = adrScript^			«adrscript^ (@adrmenu)			«if adrmenu != nil				«return (adrmenu)
+on systemTrayIconRightClick () {
+	Â«Changes
+		Â«9/10/02; 5:42:26 PM by JES
+			Â«Added trial version checks.
+		Â«6/27/02; 2:36:56 PM by JES
+			Â«Changed Frontier's Control Panel command to Open Admin Site.
+		Â«12/24/01; 12:58:55 AM by JES
+			Â«Merged the Frontier and Radio systemTrayIconRightClick scripts.
+		Â«11/8/01; 4:42:21 PM by BS
+			Â«This script is called when the user right-clicks on the system tray icon. In turn it calls all the scripts in user.callbacks.systemTrayIconRightClick. 
+			Â«The first callback that returns a menu consumes the event, and we return the address they return to us.
+	bundle { //run callbacks -- if a callback generates the menu, return it
+		local (adrscript, adrmenu = nil);
+		if not defined (user.callbacks.systemTrayIconRightClick) {
+			new (tableType, @user.callbacks.systemTrayIconRightClick)};
+		for adrscript in @user.callbacks.systemTrayIconRightClick {
+			try {
+				while typeOf (adrScript^) == addressType {
+					adrScript = adrScript^};
+				adrscript^ (@adrmenu);
+				if adrmenu != nil {
+					return (adrmenu)}}}};
+	bundle { //default menu with Open, and Quit commands, and a Control Panel command if this is Frontier
+		local (adrMenu = @system.temp.systemTrayRightClickMenu);
+		new (menubartype, adrmenu);
+		local (oldtarget = target.set (adrmenu));
+		local (menuname = "Right-Click Menu");
+		op.firstSummit ();
+		op.setLineText (menuname);
+		
+		local (appName = "Frontier");
+		if system.environment.isRadio {
+			appName = "Radio"};
+		
+		on addCommand (itemName, scriptString) {
+			menu.addMenuCommand (adrMenu, menuName, itemName, scriptString)};
+		on addSeparator () {
+			op.insert ("-", down)};
+		if system.environment.isWindows {
+			if system.environment.isRadio {
+				addCommand ("Open " + appName, "Frontier.bringToFront ()")}
+			else { //Frontier
+				if not userland.trialVersionCheck (false) {
+					addCommand ("Open " + appName, "Frontier.bringToFront ()")}}};
+		if not system.environment.isRadio {
+			if userland.trialVersionCheck (false) { //expired? -- enter serial number command
+				if defined (mainResponder.adminSite.urls.serialNumber) {
+					addCommand ("Enter Serial Number", "webBrowser.openUrl (\"http://127.0.0.1:" + user.inetd.config.http2.port + "" + mainResponder.adminSite.urls.serialNumber + "\");webBrowser.bringToFront ()")}
+				else { //control panel serial number page
+					addCommand ("Enter Serial Number", "webBrowser.openUrl (\"http://127.0.0.1/controlPanel/serialNumber\");webBrowser.bringToFront ()")}}
+			else { //open admin site command
+				addCommand ("Open Admin Site", "webBrowser.openUrl (\"http://127.0.0.1:" + user.inetd.config.http2.port + "/\");webBrowser.bringToFront ()")}};
+		Â«local (controlPanelUrl = "http://127.0.0.1")
+		Â«if not system.environment.isRadio
+			Â«if user.inetd.config.http.port != 80
+				Â«controlPanelUrl = controlPanelUrl + ":" + user.inetd.config.http.port
+			Â«controlPanelUrl = controlPanelUrl + "/controlPanel/"
+			Â«addCommand ("Control Panel", "webBrowser.openUrl (\"" + controlPanelUrl + "\");webBrowser.bringToFront ()")
+		if system.environment.isWindows {
+			addSeparator ();
+			addCommand ("Exit and Shut Down " + appName, "fileMenu.quit ()")};
+		
+		try {target.set (oldTarget)};
+		
+		return (adrMenu)}};
+Â«on systemTrayIconRightClick ()
+	Â«11/8/01; 4:42:21 PM by BS
+		Â«This script is called when the user right-clicks on the system tray icon. In turn it calls all the scripts in user.callbacks.systemTrayIconRightClick. 
+		Â«The first callback that returns a menu consumes the event, and we return the address they return to us.
+	Â«local (adrscript, adrmenu = nil)
+	Â«if not defined (user.callbacks.systemTrayIconRightClick)
+		Â«new (tableType, @user.callbacks.systemTrayIconRightClick)
+	Â«for adrscript in @user.callbacks.systemTrayIconRightClick
+		Â«try
+			Â«while typeOf (adrScript^) == addressType
+				Â«adrScript = adrScript^
+			Â«adrscript^ (@adrmenu)
+			Â«if adrmenu != nil
+				Â«return (adrmenu)

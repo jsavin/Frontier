@@ -1,1 +1,22 @@
-on actorSearch (actor, productline="dvd", page=1, flDetails=false) {	«Changes		«9/9/02; 9:34:50 PM by JES			«Created. Do an actor search on Amazon's database, and return the result.			«Parameters:				«actor -- the actor to search for				«productline -- the name of the product line to search				«page -- the page of results to return					«results are paged, since there may be *many* results. Default is to return the 1st page				«flDetails -- if true, the full results including sales ranking and reviews is returned. if false, then only catalog information is returned. default is false.	local (type = "lite");	if flDetails {		type = "heavy"};	local (t); new (tableType, @t);	t.actor = actor;	t.page = string (page);	t.mode = productline;	t.type = type;	return (amazon.call (nameOf (this^), t))};bundle { //test code	scratchpad.result = actorSearch ("pachino");	edit (@scratchpad.result)}
+on actorSearch (actor, productline="dvd", page=1, flDetails=false) {
+	Â«Changes
+		Â«9/9/02; 9:34:50 PM by JES
+			Â«Created. Do an actor search on Amazon's database, and return the result.
+			Â«Parameters:
+				Â«actor -- the actor to search for
+				Â«productline -- the name of the product line to search
+				Â«page -- the page of results to return
+					Â«results are paged, since there may be *many* results. Default is to return the 1st page
+				Â«flDetails -- if true, the full results including sales ranking and reviews is returned. if false, then only catalog information is returned. default is false.
+	local (type = "lite");
+	if flDetails {
+		type = "heavy"};
+	local (t); new (tableType, @t);
+	t.actor = actor;
+	t.page = string (page);
+	t.mode = productline;
+	t.type = type;
+	return (amazon.call (nameOf (this^), t))};
+bundle { //test code
+	scratchpad.result = actorSearch ("pachino");
+	edit (@scratchpad.result)}

@@ -1,1 +1,2 @@
-on get (obj, as = nil) { «Get the data for an object	return (appleEvent (Filemaker.id, 'core', 'getd', '----', obj, 'rtyp', string4 (as)))}
+on get (obj, as = nil) { Â«Get the data for an object
+	return (appleEvent (Filemaker.id, 'core', 'getd', '----', obj, 'rtyp', string4 (as)))}

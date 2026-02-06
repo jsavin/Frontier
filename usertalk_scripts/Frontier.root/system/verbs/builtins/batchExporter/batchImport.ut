@@ -1,1 +1,37 @@
-on batchImport (folder = user.batchExporter.folder) {	«5.0 -- 12/2/97 DW -- updated for fat page files and Windows		«I wanted to add items to the export log, but there was a problem...		«It's almost certain that we're going to import the user.export table.		«That's where the log is stored! Ooops.		«So, instead, I keep the user informed with a msg call.	«Changes		«6/13/03; 7:10:00 PM by JES			«On MacOS X, skip invisible files -- files whose names begin with the period character.				«The Finder creates invisible files like .DS_Store for folder meta-data, but these files will cause an error, preventing valid objects from being imported.	local (f, adrobject, flImported, ctImported = 0);	window.about ();	fileloop (f in folder, infinity) {		bundle { //skip invisible files on MacOS X			if defined (system.environment.isCarbon) {				if system.environment.isCarbon {					if file.fileFromPath (f) beginsWith "." {						continue}}}};		flImported = false;		if sys.os () == "MacOS" {			try { //see if it's a Frontier 4 export file				rez.getNthResource (f, 'data', 1, @adrobject, @resdata);				table.surePath (adrobject);				unpack (@resdata, @resdata);				unpack (@resdata, @resdata);				table.moveAndRename (@resdata, adrobject);				ctImported++;				flImported = true}};		if not flImported {			adrobject = fatPages.importFatFile (f);			ctImported++};		msg ("Imported \"" + adrobject + "\".")};	msg ("Saving the database...");	fileMenu.save ();	msg (ctImported + " objects imported.")};«bundle //test code	«batchImport ()
+on batchImport (folder = user.batchExporter.folder) {
+	Â«5.0 -- 12/2/97 DW -- updated for fat page files and Windows
+		Â«I wanted to add items to the export log, but there was a problem...
+		Â«It's almost certain that we're going to import the user.export table.
+		Â«That's where the log is stored! Ooops.
+		Â«So, instead, I keep the user informed with a msg call.
+	Â«Changes
+		Â«6/13/03; 7:10:00 PM by JES
+			Â«On MacOS X, skip invisible files -- files whose names begin with the period character.
+				Â«The Finder creates invisible files like .DS_Store for folder meta-data, but these files will cause an error, preventing valid objects from being imported.
+	local (f, adrobject, flImported, ctImported = 0);
+	window.about ();
+	fileloop (f in folder, infinity) {
+		bundle { //skip invisible files on MacOS X
+			if defined (system.environment.isCarbon) {
+				if system.environment.isCarbon {
+					if file.fileFromPath (f) beginsWith "." {
+						continue}}}};
+		flImported = false;
+		if sys.os () == "MacOS" {
+			try { //see if it's a Frontier 4 export file
+				rez.getNthResource (f, 'data', 1, @adrobject, @resdata);
+				table.surePath (adrobject);
+				unpack (@resdata, @resdata);
+				unpack (@resdata, @resdata);
+				table.moveAndRename (@resdata, adrobject);
+				ctImported++;
+				flImported = true}};
+		if not flImported {
+			adrobject = fatPages.importFatFile (f);
+			ctImported++};
+		msg ("Imported \"" + adrobject + "\".")};
+	msg ("Saving the database...");
+	fileMenu.save ();
+	msg (ctImported + " objects imported.")};
+Â«bundle //test code
+	Â«batchImport ()

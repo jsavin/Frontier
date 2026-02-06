@@ -1,1 +1,5 @@
-on getCharacterData (adrelement) {	if typeof (adrelement^) == tableType {		return (adrelement^.["/pcdata"])}	else {		return (adrelement^)}}
+on getCharacterData (adrelement) {
+	if typeof (adrelement^) == tableType {
+		return (adrelement^.["/pcdata"])}
+	else {
+		return (adrelement^)}}

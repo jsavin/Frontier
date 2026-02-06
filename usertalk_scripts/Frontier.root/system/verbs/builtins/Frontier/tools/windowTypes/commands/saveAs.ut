@@ -1,1 +1,63 @@
-on saveAs (adrItem=nil) {	«Handle the Save As command.		if adrItem == nil { //default to frontmost window		adrItem = window.frontmost ()};		on saveDatabase () {		msg ("Saving database...");		if typeOf (adrItem) == addressType {			fileMenu.saveMyRoot (adritem)}		else {			fileMenu.save ()};		msg ("")}; //clear the feedback message		if not defined (adrItem^) { //save Radio.root		adrItem = @root;		saveDatabase ();		return (true)};		on runCallbacks (adrCallback) { //call callbacks		if defined (adrCallback^) {			local (flConsumed = false);			local (adrScript);			for adrScript in adrCallback {				try { //11/30/00 JES					while typeOf (adrScript^) == addressType { //follow addresses						adrScript = adrScript^};					flConsumed = adrScript^ (adrItem, flClosing)};				if flConsumed {					return (true)}}};		return (false)};	if runCallbacks (@user.tools.commandCallbacks.saveAs) {		return (true)};	if system.environment.isRadio {		if defined (user.pike.commandCallbacks) {			if runCallbacks (@user.pike.commandCallbacks.saveAs) {				return (true)}}};	bundle { //look for a windowType that handles this command		local (type, adrType);		if window.attributes.getOne ("type", @type, adrItem) {			if Frontier.tools.windowTypes.findWindowType (type, @adrType, adrItem) {				if defined (adrType^.save) {					if adrType^.saveAs (adrItem) {						window.attributes.setOne ("lastSaved", timeModified (adrItem), adrItem);						saveDatabase ();						return (true)}					else {						return (false)}}}}};	bundle { //if this is an outline window, save as an opml file		local (adrType);		if Frontier.tools.windowTypes.findWindowType ("outlinerFile", @adrType) {			if adrType^.saveAs (adrItem) {				return (true)}}};		«Do we want to call the odb-export code here?	export.commands.export ();		saveDatabase ();	return (true);	};«bundle //debugging	«saveAs ()
+on saveAs (adrItem=nil) {
+	Â«Handle the Save As command.
+	
+	if adrItem == nil { //default to frontmost window
+		adrItem = window.frontmost ()};
+	
+	on saveDatabase () {
+		msg ("Saving database...");
+		if typeOf (adrItem) == addressType {
+			fileMenu.saveMyRoot (adritem)}
+		else {
+			fileMenu.save ()};
+		msg ("")}; //clear the feedback message
+	
+	if not defined (adrItem^) { //save Radio.root
+		adrItem = @root;
+		saveDatabase ();
+		return (true)};
+	
+	on runCallbacks (adrCallback) { //call callbacks
+		if defined (adrCallback^) {
+			local (flConsumed = false);
+			local (adrScript);
+			for adrScript in adrCallback {
+				try { //11/30/00 JES
+					while typeOf (adrScript^) == addressType { //follow addresses
+						adrScript = adrScript^};
+					flConsumed = adrScript^ (adrItem, flClosing)};
+				if flConsumed {
+					return (true)}}};
+		return (false)};
+	if runCallbacks (@user.tools.commandCallbacks.saveAs) {
+		return (true)};
+	if system.environment.isRadio {
+		if defined (user.pike.commandCallbacks) {
+			if runCallbacks (@user.pike.commandCallbacks.saveAs) {
+				return (true)}}};
+	bundle { //look for a windowType that handles this command
+		local (type, adrType);
+		if window.attributes.getOne ("type", @type, adrItem) {
+			if Frontier.tools.windowTypes.findWindowType (type, @adrType, adrItem) {
+				if defined (adrType^.save) {
+					if adrType^.saveAs (adrItem) {
+						window.attributes.setOne ("lastSaved", timeModified (adrItem), adrItem);
+						saveDatabase ();
+						return (true)}
+					else {
+						return (false)}}}}};
+	bundle { //if this is an outline window, save as an opml file
+		local (adrType);
+		if Frontier.tools.windowTypes.findWindowType ("outlinerFile", @adrType) {
+			if adrType^.saveAs (adrItem) {
+				return (true)}}};
+	
+	Â«Do we want to call the odb-export code here?
+	export.commands.export ();
+	
+	saveDatabase ();
+	return (true);
+	};
+
+Â«bundle //debugging
+	Â«saveAs ()

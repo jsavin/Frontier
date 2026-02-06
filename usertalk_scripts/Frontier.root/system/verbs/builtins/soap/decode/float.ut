@@ -1,1 +1,29 @@
-on float (cdata) {	«04/1/01; 3:34:57 AM by JES		«Created. Decode a float represented as a string.	«Changes:		«04/10/01; 7:20:46 PM by JES			«Fixed decoding of floats with negative exponents, 1e-5, for example.		«04/12/01; 1:13:43 PM by JES			«Properly decode "special" floating point values, INF, -INF and NaN.	case cdata {		"NaN" {			return (soap.constants.floatNaN)};		"INF" {			return (soap.constants.floatINF)};		"-INF" {			return (soap.constants.floatNegativeINF)}};	try {		return (double (cdata))}	else {		cdata = string.lower (cdata);		if string.countFields (cdata, "e") != 2 {			scriptError ("Can't decode the floating point value '" + cdata + "' because it's not in the form nnne[+/-]nnn, where n is a numeric character.")};		local (firstPart = double (string.nthField (cdata, "e", 1)));		local (secondPart = double (string.nthField (cdata, "e", 2)));		if secondPart < 0 {			local (denominator = double ("1" + string.filledString ("0", 0 - secondPart)));			return (firstPart / denominator)}		else {			local (multiplier = double ("1" + string.filledString ("0", secondPart)));			return (firstPart * multiplier)}}}
+on float (cdata) {
+	Â«04/1/01; 3:34:57 AM by JES
+		Â«Created. Decode a float represented as a string.
+	Â«Changes:
+		Â«04/10/01; 7:20:46 PM by JES
+			Â«Fixed decoding of floats with negative exponents, 1e-5, for example.
+		Â«04/12/01; 1:13:43 PM by JES
+			Â«Properly decode "special" floating point values, INF, -INF and NaN.
+	case cdata {
+		"NaN" {
+			return (soap.constants.floatNaN)};
+		"INF" {
+			return (soap.constants.floatINF)};
+		"-INF" {
+			return (soap.constants.floatNegativeINF)}};
+	try {
+		return (double (cdata))}
+	else {
+		cdata = string.lower (cdata);
+		if string.countFields (cdata, "e") != 2 {
+			scriptError ("Can't decode the floating point value '" + cdata + "' because it's not in the form nnne[+/-]nnn, where n is a numeric character.")};
+		local (firstPart = double (string.nthField (cdata, "e", 1)));
+		local (secondPart = double (string.nthField (cdata, "e", 2)));
+		if secondPart < 0 {
+			local (denominator = double ("1" + string.filledString ("0", 0 - secondPart)));
+			return (firstPart / denominator)}
+		else {
+			local (multiplier = double ("1" + string.filledString ("0", secondPart)));
+			return (firstPart * multiplier)}}}

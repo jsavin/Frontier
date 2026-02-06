@@ -1,1 +1,22 @@
-on findDriver (type, adradrdriver) {	«Changes		«5/6/02; 8:07:29 PM by DW			«Created.	tcp.im.init ();	on findInTable (adrtable) {		local (adr = @adrtable^.[type]);		if not defined (adr^) {			return (false)};		while typeof (adr^) == addressType {			adr = adr^};		adradrdriver^ = adr;		return (true)};	if findInTable (@user.im.drivers) {		return (true)};	if findInTable (@tcp.im.builtinDrivers) {		return (true)};	return (false)};«bundle //test code	«local (adrdriver)	«findDriver ("aim", @adrdriver)	«dialog.alert (adrdriver)
+on findDriver (type, adradrdriver) {
+	Â«Changes
+		Â«5/6/02; 8:07:29 PM by DW
+			Â«Created.
+	tcp.im.init ();
+	on findInTable (adrtable) {
+		local (adr = @adrtable^.[type]);
+		if not defined (adr^) {
+			return (false)};
+		while typeof (adr^) == addressType {
+			adr = adr^};
+		adradrdriver^ = adr;
+		return (true)};
+	if findInTable (@user.im.drivers) {
+		return (true)};
+	if findInTable (@tcp.im.builtinDrivers) {
+		return (true)};
+	return (false)};
+Â«bundle //test code
+	Â«local (adrdriver)
+	Â«findDriver ("aim", @adrdriver)
+	Â«dialog.alert (adrdriver)

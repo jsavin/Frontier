@@ -1,1 +1,2 @@
-on getIconPos (path, hadr, vadr) {	kernel (file.geticonpos)}
+on getIconPos (path, hadr, vadr) {
+	kernel (file.geticonpos)}

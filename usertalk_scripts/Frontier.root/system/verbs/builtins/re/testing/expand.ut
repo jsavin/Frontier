@@ -1,1 +1,7 @@
-local (patternRef);patternRef = re.compile ("(?P<date>(?P<year>(\\d\\d)?\\d\\d)-(?P<month>\\d\\d)-(?P<day>\\d\\d))", flAutoCapture:false);if re.match (patternRef, "2003-05-30", adrMatchInfoTable:@temp.matchInfo, flMakeGroups:true, flMakeNamedGroups:true) {	dialog.notify (re.expand ("\\g<day>.\\g<month>.\\g<year>", @temp.matchInfo));	dialog.notify (re.expand ("\\g<4>.\\g<3>.\\g<2>", @temp.matchInfo));	dialog.notify (re.expand ("\\4.\\3.\\2", @temp.matchInfo))};edit (@temp.matchInfo)
+local (patternRef);
+patternRef = re.compile ("(?P<date>(?P<year>(\\d\\d)?\\d\\d)-(?P<month>\\d\\d)-(?P<day>\\d\\d))", flAutoCapture:false);
+if re.match (patternRef, "2003-05-30", adrMatchInfoTable:@temp.matchInfo, flMakeGroups:true, flMakeNamedGroups:true) {
+	dialog.notify (re.expand ("\\g<day>.\\g<month>.\\g<year>", @temp.matchInfo));
+	dialog.notify (re.expand ("\\g<4>.\\g<3>.\\g<2>", @temp.matchInfo));
+	dialog.notify (re.expand ("\\4.\\3.\\2", @temp.matchInfo))};
+edit (@temp.matchInfo)

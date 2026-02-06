@@ -1,1 +1,18 @@
-on openUrl (url) {	«7/13/01; 5:08:35 PM by JES		«Open a Manila site message URL for editing. The url should be like this: http://www.mysite.com/discuss/reader$40.opml		«Get the siteUrl and msgNum.	local (discussUrl = string.popSuffix (url, '/'));	local (siteUrl = string.popSuffix (discussUrl, '/'));	siteUrl = siteUrl + "/";	local (lastField = string.countFields (url, '$'));	local (msgNum = string.nthField (url, '$', lastField));	msgNum = string.popSuffix (msgNum);		«Open the message.	local (adrtype = parentOf (this^));	return (adrtype^.openMessage (siteUrl, msgNum))}; //open messagebundle { //debugging	openUrl ("http://jake.editthispage.com/discuss/reader$1.opml")}
+on openUrl (url) {
+	Â«7/13/01; 5:08:35 PM by JES
+		Â«Open a Manila site message URL for editing. The url should be like this: http://www.mysite.com/discuss/reader$40.opml
+	
+	Â«Get the siteUrl and msgNum.
+	local (discussUrl = string.popSuffix (url, '/'));
+	local (siteUrl = string.popSuffix (discussUrl, '/'));
+	siteUrl = siteUrl + "/";
+	local (lastField = string.countFields (url, '$'));
+	local (msgNum = string.nthField (url, '$', lastField));
+	msgNum = string.popSuffix (msgNum);
+	
+	Â«Open the message.
+	local (adrtype = parentOf (this^));
+	return (adrtype^.openMessage (siteUrl, msgNum))}; //open message
+
+bundle { //debugging
+	openUrl ("http://jake.editthispage.com/discuss/reader$1.opml")}

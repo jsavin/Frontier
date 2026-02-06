@@ -1,1 +1,76 @@
-«check the States Database to be sure it's correctlocal (fnum, hadError = false);bundle { «start up uBASE, open the file	local (ubasefolder);	ubase.launch ();	ubasefolder = file.folderFromPath (ubase.appinfo.path);	fnum = ubase.openFile (ubasefolder + "States Database");	ubase.bringToFront ()}; «so we can watch the records being checkedon checkState (name, capital, abbrev) {	local (holder);	if ubase.lookupRecord (fnum, name, @holder) {		if holder.capi != capital {			scriptError (holder.capi + " should equal " + capital + " [for " + name + "].")};		if holder.abbr != abbrev {			scriptError (holder.abbr + " should equal " + abbrev + " [for " + name + "].")};		msg (capital)} «show capital in Frontier main window	else { «  Report the error		scriptError ("Error:  " + holder.errs)};	rollBeachball ()};bundle { «check 50 states, their capitals and abbreviations	checkState ("Alabama", "Montgomery", "AL");	checkState ("Alaska", "Juneau", "AK");	checkState ("Arizona", "Phoenix", "AZ");	checkState ("Arkansas", "Little Rock", "AR");	checkState ("California", "Sacramento", "CA");	checkState ("Colorado", "Denver", "CO");	checkState ("Connecticut", "Hartford", "CT");	checkState ("Delaware", "Dover", "DE");	checkState ("Florida", "Tallahassee", "FL");	checkState ("Georgia", "Atlanta", "GA");	checkState ("Hawaii", "Honolulu", "HI");	checkState ("Idaho", "Boise", "ID");	checkState ("Illinois", "Springfield", "IL");	checkState ("Indiana", "Indianapolis", "IN");	checkState ("Iowa", "Des Moines", "IA");	checkState ("Kansas", "Topeka", "KA");	checkState ("Kentucky", "Frankfort", "KY");	checkState ("Louisiana", "Baton Rouge", "LA");	checkState ("Maine", "Augusta", "ME");	checkState ("Maryland", "Annapolis", "MD");	checkState ("Massachusetts", "Boston", "MA");	checkState ("Michigan", "Lansing", "MI");	checkState ("Minnesota", "St. Paul", "MN");	checkState ("Mississippi", "Jackson", "MS");	checkState ("Missouri", "Jefferson City", "MO");	checkState ("Montana", "Helena", "MT");	checkState ("Nebraska", "Lincoln", "NE");	checkState ("Nevada", "Carson City", "NV");	checkState ("New Hampshire", "Concord", "NH");	checkState ("New Jersey", "Trenton", "NJ");	checkState ("New Mexico", "Santa Fe", "NM");	checkState ("New York", "Albany", "NY");	checkState ("North Carolina", "Raleigh", "NC");	checkState ("North Dakota", "Bismarck", "ND");	checkState ("Ohio", "Columbus", "OH");	checkState ("Oklahoma", "Oklahoma City", "OK");	checkState ("Oregon", "Salem", "OR");	checkState ("Pennsylvania", "Harrisburg", "PA");	checkState ("Rhode Island", "Providence", "RI");	checkState ("South Carolina", "Columbia", "SC");	checkState ("South Dakota", "Pierre", "SD");	checkState ("Tennessee", "Nashville", "TN");	checkState ("Texas", "Austin", "TX");	checkState ("Utah", "Salt Lake City", "UT");	checkState ("Vermont", "Montpelier", "VT");	checkState ("Virginia", "Richmond", "VA");	checkState ("Washington", "Olympia", "WA");	checkState ("West Virginia", "Charleston", "WV");	checkState ("Wisconsin", "Madison", "WI");	checkState ("Wyoming", "Cheyenne", "WY")};ubase.closeFile (fnum);msg ("It all checks out!")
+Â«check the States Database to be sure it's correct
+
+local (fnum, hadError = false);
+bundle { Â«start up uBASE, open the file
+	local (ubasefolder);
+	ubase.launch ();
+	ubasefolder = file.folderFromPath (ubase.appinfo.path);
+	fnum = ubase.openFile (ubasefolder + "States Database");
+	ubase.bringToFront ()}; Â«so we can watch the records being checked
+
+on checkState (name, capital, abbrev) {
+	local (holder);
+	if ubase.lookupRecord (fnum, name, @holder) {
+		if holder.capi != capital {
+			scriptError (holder.capi + " should equal " + capital + " [for " + name + "].")};
+		if holder.abbr != abbrev {
+			scriptError (holder.abbr + " should equal " + abbrev + " [for " + name + "].")};
+		msg (capital)} Â«show capital in Frontier main window
+	else { Â«  Report the error
+		scriptError ("Error:  " + holder.errs)};
+	rollBeachball ()};
+
+bundle { Â«check 50 states, their capitals and abbreviations
+	checkState ("Alabama", "Montgomery", "AL");
+	checkState ("Alaska", "Juneau", "AK");
+	checkState ("Arizona", "Phoenix", "AZ");
+	checkState ("Arkansas", "Little Rock", "AR");
+	checkState ("California", "Sacramento", "CA");
+	checkState ("Colorado", "Denver", "CO");
+	checkState ("Connecticut", "Hartford", "CT");
+	checkState ("Delaware", "Dover", "DE");
+	checkState ("Florida", "Tallahassee", "FL");
+	checkState ("Georgia", "Atlanta", "GA");
+	checkState ("Hawaii", "Honolulu", "HI");
+	checkState ("Idaho", "Boise", "ID");
+	checkState ("Illinois", "Springfield", "IL");
+	checkState ("Indiana", "Indianapolis", "IN");
+	checkState ("Iowa", "Des Moines", "IA");
+	checkState ("Kansas", "Topeka", "KA");
+	checkState ("Kentucky", "Frankfort", "KY");
+	checkState ("Louisiana", "Baton Rouge", "LA");
+	checkState ("Maine", "Augusta", "ME");
+	checkState ("Maryland", "Annapolis", "MD");
+	checkState ("Massachusetts", "Boston", "MA");
+	checkState ("Michigan", "Lansing", "MI");
+	checkState ("Minnesota", "St. Paul", "MN");
+	checkState ("Mississippi", "Jackson", "MS");
+	checkState ("Missouri", "Jefferson City", "MO");
+	checkState ("Montana", "Helena", "MT");
+	checkState ("Nebraska", "Lincoln", "NE");
+	checkState ("Nevada", "Carson City", "NV");
+	checkState ("New Hampshire", "Concord", "NH");
+	checkState ("New Jersey", "Trenton", "NJ");
+	checkState ("New Mexico", "Santa Fe", "NM");
+	checkState ("New York", "Albany", "NY");
+	checkState ("North Carolina", "Raleigh", "NC");
+	checkState ("North Dakota", "Bismarck", "ND");
+	checkState ("Ohio", "Columbus", "OH");
+	checkState ("Oklahoma", "Oklahoma City", "OK");
+	checkState ("Oregon", "Salem", "OR");
+	checkState ("Pennsylvania", "Harrisburg", "PA");
+	checkState ("Rhode Island", "Providence", "RI");
+	checkState ("South Carolina", "Columbia", "SC");
+	checkState ("South Dakota", "Pierre", "SD");
+	checkState ("Tennessee", "Nashville", "TN");
+	checkState ("Texas", "Austin", "TX");
+	checkState ("Utah", "Salt Lake City", "UT");
+	checkState ("Vermont", "Montpelier", "VT");
+	checkState ("Virginia", "Richmond", "VA");
+	checkState ("Washington", "Olympia", "WA");
+	checkState ("West Virginia", "Charleston", "WV");
+	checkState ("Wisconsin", "Madison", "WI");
+	checkState ("Wyoming", "Cheyenne", "WY")};
+
+ubase.closeFile (fnum);
+msg ("It all checks out!")

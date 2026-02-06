@@ -1,1 +1,12 @@
-«Script: system.verbs.builtins.webserver.util.getMethodAdr; Version 1; Date: Fri, 15 May 1998 03:21:18 GMT; ID: RABon getMethodAdr (responder, method) {	local (responderTableAdr, methodTableAdr, methodAdr);	responderTableAdr = webserver.util.getResponderTableAdr (responder);	methodTableAdr = @responderTableAdr^.methods;	if typeOf (methodTableAdr^) == addressType {		methodTableAdr = methodTableAdr^};	methodAdr = @methodTableAdr^.[method];	if defined (methodAdr^) {		if typeOf (methodAdr^) == addressType {			methodAdr = methodAdr^}};	return (methodAdr)}
+Â«Script: system.verbs.builtins.webserver.util.getMethodAdr; Version 1; Date: Fri, 15 May 1998 03:21:18 GMT; ID: RAB
+on getMethodAdr (responder, method) {
+	local (responderTableAdr, methodTableAdr, methodAdr);
+	responderTableAdr = webserver.util.getResponderTableAdr (responder);
+	methodTableAdr = @responderTableAdr^.methods;
+	if typeOf (methodTableAdr^) == addressType {
+		methodTableAdr = methodTableAdr^};
+	methodAdr = @methodTableAdr^.[method];
+	if defined (methodAdr^) {
+		if typeOf (methodAdr^) == addressType {
+			methodAdr = methodAdr^}};
+	return (methodAdr)}

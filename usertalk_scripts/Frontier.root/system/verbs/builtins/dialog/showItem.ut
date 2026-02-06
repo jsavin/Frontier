@@ -1,1 +1,2 @@
-on showItem (itemnumber) {	kernel (dialog.showitem)}
+on showItem (itemnumber) {
+	kernel (dialog.showitem)}

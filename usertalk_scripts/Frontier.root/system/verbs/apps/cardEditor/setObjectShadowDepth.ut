@@ -1,1 +1,4 @@
-on setObjectShadowDepth (name, shadowDepth) {	new (tableType, @atts);	atts.sdwd = number (shadowDepth);	return (cardEditor.setObjectAttributes (name, @atts))}
+on setObjectShadowDepth (name, shadowDepth) {
+	new (tableType, @atts);
+	atts.sdwd = number (shadowDepth);
+	return (cardEditor.setObjectAttributes (name, @atts))}

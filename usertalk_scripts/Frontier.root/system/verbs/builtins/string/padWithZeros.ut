@@ -1,1 +1,8 @@
-on padWithZeros (num, places) {	«10/31/97 at 12:28:54 PM by DW -- moved from toys.padWithZeros		«Old code:			«local (s = string (num))			«while sizeof (s) < places				«s = '0' + s			«return (s)	kernel (string.padWithZeros)}
+on padWithZeros (num, places) {
+	Â«10/31/97 at 12:28:54 PM by DW -- moved from toys.padWithZeros
+		Â«Old code:
+			Â«local (s = string (num))
+			Â«while sizeof (s) < places
+				Â«s = '0' + s
+			Â«return (s)
+	kernel (string.padWithZeros)}

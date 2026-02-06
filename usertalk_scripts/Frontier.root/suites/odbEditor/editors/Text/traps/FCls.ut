@@ -1,1 +1,7 @@
-on FCls (fsFileBeingClosed) {	local (adrfiletable = @user.odbEditors.data.openfiles, i);	for i = 1 to sizeof (adrfiletable) {		if adrfiletable^ [i] [1] == fsFileBeingClosed {			delete (@adrfiletable^ [i]);			break}};	return (true)}
+on FCls (fsFileBeingClosed) {
+	local (adrfiletable = @user.odbEditors.data.openfiles, i);
+	for i = 1 to sizeof (adrfiletable) {
+		if adrfiletable^ [i] [1] == fsFileBeingClosed {
+			delete (@adrfiletable^ [i]);
+			break}};
+	return (true)}

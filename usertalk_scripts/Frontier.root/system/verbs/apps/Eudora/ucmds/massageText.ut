@@ -1,1 +1,2 @@
-on massageText (indentlen, maxlinelen, text) {	return (appleEvent (@Eudora.ucmds.wrappercmd, 'wrap', 'txmg', 'idln', short (indentlen), 'mxln', short (maxlinelen), 'text', string (text)))}
+on massageText (indentlen, maxlinelen, text) {
+	return (appleEvent (@Eudora.ucmds.wrappercmd, 'wrap', 'txmg', 'idln', short (indentlen), 'mxln', short (maxlinelen), 'text', string (text)))}

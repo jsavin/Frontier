@@ -1,1 +1,282 @@
-on isValidEmailAddress (s) {	«Changes		«10/15/04; 6:01:15 PM by JES			«Check an email address, s, for conformance to RFC 822 mailbox syntax.				«Returns true if s is a valid email address according to RFC 822.				«Errors are notified by a scriptError if the email address is not valid.				«Copyright David Bayly, Jobsurf Ltd 99/08/28, 21:53:04 					«Permission is hereby granted to make free use of this script as long as this copyright is retained.	on createStack () { //clone of stack.create that puts stacks in temp 		if frontier.version () >= 5 { //store the stack in the temp table			table.surepath ("temp.stack.pool.x");			if not defined (temp.stack.create) {				local (s = string (stack.create));				s = string.replaceAll (s, "user.stack.pool", "temp.stack.pool");				new (scriptType, @temp.stack.create);				target.set (@temp.stack.create);				op.insert (s, down);				op.firstSummit ();				op.deleteLine ();				script.compile (@temp.stack.create)};			return temp.stack.create()}		else { //no system.temp. settle for user.stack			return stack.create ()}};	local {		eofToken = 0;		atToken = 1;		leftAngleToken = 2;		rightAngleToken = 3;		commentToken = 4;		leftbracketToken = 6;		rightBracketToken = 7;		quotedTextToken = 8;		periodToken = 9;		stringToken = 10;		commaToken = 11;		semiToken = 12;		colonToken = 13;		ctlToken = 14;		atomToken = 15;		whiteSpaceToken = 16};	local {		inpLen = string.length (s);		inpInx = 1;		stackAdr = createStack ()};	on gatherString (terminator, exceptList) {		local (st = inpInx, cnt = 0, ch);		loop {			if inpInx > inpLen {				scriptError ("Unmatched terminating " + terminator)};			ch = s[inpInx];			inpInx++;			if exceptList contains ch {				scriptError ("The character " + displayString (ch) + " cannot appear here")};			if ch == terminator {				break};			cnt++};		if cnt == 0 {			return ""}		else {			return string.mid (s, st, cnt)}};	on isCtrlChar (ch) {		return number (ch) < char (32)};	on isSpecialChar (ch) {		return {"(",")","<",">","@",",",";",":","\\","\"",".","[","]"} contains ch};	on getToken (valAdr, returnWhiteSpace = false, returnComments = false) {		local (ch);		loop {			if inpInx > inpLen {				return eofToken};			ch =s[inpInx];			valAdr^ = ch;			inpInx++;			case true {				ch == "@" {					return atToken};				ch == "<" {					return leftAngleToken};				ch == ">" {					return rightAngleToken};				ch == "(" {					valAdr^ = "(" + gatherString (")", {cr, "("}) + ")";					if returnComments {						return commentToken}};				ch == "[" {					return leftbracketToken};				ch == "]" {					return rightBracketToken};				ch == "." {					return periodToken};				ch == "\"" {					valAdr^ = gatherString ("\"", {cr});					return stringToken};				ch == "." {					return periodToken};				ch == "," {					return commaToken};				ch == ";" {					return semiToken};				ch == ":" {					return colonToken};				isCtrlChar (ch) {					return ctlToken};				(ch == " ") or (ch == "\t") {					if returnWhiteSpace {						return whiteSpaceToken}}}			else {				local (st = inpInx-1, cnt = 1);				loop {					if inpInx  > inpLen {						break};					ch = s[inpInx];					if (ch == " ") or isCtrlChar (ch) or isSpecialChar (ch) {						break};					cnt++;					inpInx++};				valAdr^ = string.mid (s, st, cnt);				return atomToken}}};	on showToken (token, value) {		case token {			atToken {				return "@"};			commentToken {				return "comment:" + value};			leftAngleToken {				return  "<"};			rightAngleToken {				return  ">"};			leftbracketToken {				return  "["};			rightBracketToken {				return  "]"};			periodToken {				return  "."};			commaToken {				return  ","};			semiToken {				return  ";"};			colonToken {				return  ":"};			ctlToken {				return  "CTRL"};			atomToken {				return  value};			whiteSpaceToken {				return "whitespace '" + value + "'"}}};	on getTokens (tblAdr, stoppers) {		loop {			new (tableType, tblAdr);			tblAdr^.token  = getToken (@tblAdr^.value, true);			if tblAdr^.token == eofToken {				return false};			if stoppers contains tblAdr^.token {				return true}			else {				stack.push (stackAdr, tblAdr^)}}};	on getDomain () {		local (token, v, dotWanted = false);		loop {			token   = getToken (@v, true);			if token == eofToken {				if not dotWanted {					scriptError ("Domain cannot end with period")};				return};			if dotWanted {				if token != periodToken {					local (tbl);					new (tableType, @tbl);					tbl.token = token;					tbl.value = v;					stack.push (stackadr, tbl);					return}}			else {				case token {					atomToken {						};					leftbracketToken { //[ ] delimited text						gatherString ("]", {"[", cr, "\\"})};					periodToken {						scriptError ("subdomain cannot end with a period")}}				else {					scriptError ("subdomain expected but found " + showToken(token, v))}};			dotWanted = not dotWanted}};	on addrSpec () {		bundle { //first check local-part			local (dotWanted = false);			loop {				try {					tbl = stack.pop (stackAdr)}				else {					if not dotWanted {						scriptError ("Extraneous period")};					break}; //only legal way out				if dotWanted {					if tbl.token != periodToken {						scriptError ("Period expected, but found " + showtoken (tbl.token, tbl.value))}}				else {					if not ( (tbl.token == atomToken) or (tbl.token == stringToken)) {						scriptError ("Word token expected, but found " + showtoken (tbl.token, tbl.value))}};				dotWanted = not dotWanted}};		getDomain ()};	on routeAddr () {		local (tbl);		new (tableType, @tbl);		bundle { //check phrase			loop {				try {					tbl = stack.pop (stackAdr)}				else {					break}; //only way out with valid input				case tbl.token {					atomToken;					stringToken {						}}				else {					scriptError ("Atom or quoted string expected, but found " + showtoken (tbl.token, tbl.value))}}};		tbl.token = getToken (@tbl.v);		while tbl.token == atToken { //we have a route = comma delimited list of domains  			getDomain ();			try {				tbl = stack.pop (stackadr)}			else {				scriptError ("Terminator for route expected")};			if tbl.token == colonToken { //end of list				tbl.token = getToken (@tbl.v);				break};			if tbl.token != commaToken {				scriptError ("comma expected, but found " + showtoken (tbl.token, tbl.v))};			tbl.token = getToken (@tbl.v)};		local (dotWanted = false);		loop {			case tbl.token {				atToken {					if not dotWanted {						scriptError ("atom or quoted string expected, but found @")};					break};				atomToken;				stringToken {					if dotWanted {						scriptError ("Period expected but found " + showToken (tbl.token, tbl.v))}};				periodToken {					if not dotWanted {						scriptError ("atom or quoted string expected, but found .")}};				eofToken {					scriptError ("Incomplete addr-spec")}}			else {				if dotwanted {					scriptError ("Period expected, but found " + showtoken (tbl.token, tbl.v))}				else {					scriptError ("@ or word expected, but found " + showtoken (tbl.token, tbl.v))}};			dotWanted = not dotWanted;			tbl.token = getToken (@tbl.v)};		getDomain ();		try {			tbl = stack.pop (stackAdr)}		else {			scriptError ("terminal > character expected")};		if tbl.token != rightAngleToken {			scriptError ("terminal > expected, but found " + showToken (tbl.token, tbl.value))}};	try {		local (tbl);		if not getTokens (@tbl, {atToken, leftAngleToken}) {			scriptError ("Empty string")};		case tbl.token {			atToken {				addrSpec ()};			leftAngleToken {				routeAddr ()}};		try { //stack should be empty, check it			tbl = stack.pop (stackadr);			scriptError ("superfluous token " + showtoken (tbl.token, tbl.value))};		if inpInx <= inpLen { //haven't consumed all the string			scriptError ("Unexpected input " + string.mid (s, inpInx, infinity))};		stack.dispose (stackAdr); //moved 02/09/19, 10:22:11 by DAB		return true}	else {		stack.dispose (stackAdr);		scriptError ("string.isValidEmailAddress: " + tryError)}};«bundle //testing	«string.isValidEmailAddress ("webmaster@userland.com")		«true	«string.isValidEmailAddress ("webmaster@userland@com>")		«true
+on isValidEmailAddress (s) {
+	Â«Changes
+		Â«10/15/04; 6:01:15 PM by JES
+			Â«Check an email address, s, for conformance to RFC 822 mailbox syntax.
+				Â«Returns true if s is a valid email address according to RFC 822.
+				Â«Errors are notified by a scriptError if the email address is not valid.
+				Â«Copyright David Bayly, Jobsurf Ltd 99/08/28, 21:53:04 
+					Â«Permission is hereby granted to make free use of this script as long as this copyright is retained.
+	on createStack () { //clone of stack.create that puts stacks in temp 
+		if frontier.version () >= 5 { //store the stack in the temp table
+			table.surepath ("temp.stack.pool.x");
+			if not defined (temp.stack.create) {
+				local (s = string (stack.create));
+				s = string.replaceAll (s, "user.stack.pool", "temp.stack.pool");
+				new (scriptType, @temp.stack.create);
+				target.set (@temp.stack.create);
+				op.insert (s, down);
+				op.firstSummit ();
+				op.deleteLine ();
+				script.compile (@temp.stack.create)};
+			return temp.stack.create()}
+		else { //no system.temp. settle for user.stack
+			return stack.create ()}};
+	local {
+		eofToken = 0;
+		atToken = 1;
+		leftAngleToken = 2;
+		rightAngleToken = 3;
+		commentToken = 4;
+		leftbracketToken = 6;
+		rightBracketToken = 7;
+		quotedTextToken = 8;
+		periodToken = 9;
+		stringToken = 10;
+		commaToken = 11;
+		semiToken = 12;
+		colonToken = 13;
+		ctlToken = 14;
+		atomToken = 15;
+		whiteSpaceToken = 16};
+	local {
+		inpLen = string.length (s);
+		inpInx = 1;
+		stackAdr = createStack ()};
+	on gatherString (terminator, exceptList) {
+		local (st = inpInx, cnt = 0, ch);
+		loop {
+			if inpInx > inpLen {
+				scriptError ("Unmatched terminating " + terminator)};
+			ch = s[inpInx];
+			inpInx++;
+			if exceptList contains ch {
+				scriptError ("The character " + displayString (ch) + " cannot appear here")};
+			if ch == terminator {
+				break};
+			cnt++};
+		if cnt == 0 {
+			return ""}
+		else {
+			return string.mid (s, st, cnt)}};
+	on isCtrlChar (ch) {
+		return number (ch) < char (32)};
+	on isSpecialChar (ch) {
+		return {"(",")","<",">","@",",",";",":","\\","\"",".","[","]"} contains ch};
+	on getToken (valAdr, returnWhiteSpace = false, returnComments = false) {
+		local (ch);
+		loop {
+			if inpInx > inpLen {
+				return eofToken};
+			ch =s[inpInx];
+			valAdr^ = ch;
+			inpInx++;
+			case true {
+				ch == "@" {
+					return atToken};
+				ch == "<" {
+					return leftAngleToken};
+				ch == ">" {
+					return rightAngleToken};
+				ch == "(" {
+					valAdr^ = "(" + gatherString (")", {cr, "("}) + ")";
+					if returnComments {
+						return commentToken}};
+				ch == "[" {
+					return leftbracketToken};
+				ch == "]" {
+					return rightBracketToken};
+				ch == "." {
+					return periodToken};
+				ch == "\"" {
+					valAdr^ = gatherString ("\"", {cr});
+					return stringToken};
+				ch == "." {
+					return periodToken};
+				ch == "," {
+					return commaToken};
+				ch == ";" {
+					return semiToken};
+				ch == ":" {
+					return colonToken};
+				isCtrlChar (ch) {
+					return ctlToken};
+				(ch == " ") or (ch == "\t") {
+					if returnWhiteSpace {
+						return whiteSpaceToken}}}
+			else {
+				local (st = inpInx-1, cnt = 1);
+				loop {
+					if inpInx  > inpLen {
+						break};
+					ch = s[inpInx];
+					if (ch == " ") or isCtrlChar (ch) or isSpecialChar (ch) {
+						break};
+					cnt++;
+					inpInx++};
+				valAdr^ = string.mid (s, st, cnt);
+				return atomToken}}};
+	on showToken (token, value) {
+		case token {
+			atToken {
+				return "@"};
+			commentToken {
+				return "comment:" + value};
+			leftAngleToken {
+				return  "<"};
+			rightAngleToken {
+				return  ">"};
+			leftbracketToken {
+				return  "["};
+			rightBracketToken {
+				return  "]"};
+			periodToken {
+				return  "."};
+			commaToken {
+				return  ","};
+			semiToken {
+				return  ";"};
+			colonToken {
+				return  ":"};
+			ctlToken {
+				return  "CTRL"};
+			atomToken {
+				return  value};
+			whiteSpaceToken {
+				return "whitespace '" + value + "'"}}};
+	on getTokens (tblAdr, stoppers) {
+		loop {
+			new (tableType, tblAdr);
+			tblAdr^.token  = getToken (@tblAdr^.value, true);
+			if tblAdr^.token == eofToken {
+				return false};
+			if stoppers contains tblAdr^.token {
+				return true}
+			else {
+				stack.push (stackAdr, tblAdr^)}}};
+	on getDomain () {
+		local (token, v, dotWanted = false);
+		loop {
+			token   = getToken (@v, true);
+			if token == eofToken {
+				if not dotWanted {
+					scriptError ("Domain cannot end with period")};
+				return};
+			if dotWanted {
+				if token != periodToken {
+					local (tbl);
+					new (tableType, @tbl);
+					tbl.token = token;
+					tbl.value = v;
+					stack.push (stackadr, tbl);
+					return}}
+			else {
+				case token {
+					atomToken {
+						};
+					leftbracketToken { //[ ] delimited text
+						gatherString ("]", {"[", cr, "\\"})};
+					periodToken {
+						scriptError ("subdomain cannot end with a period")}}
+				else {
+					scriptError ("subdomain expected but found " + showToken(token, v))}};
+			dotWanted = not dotWanted}};
+	on addrSpec () {
+		bundle { //first check local-part
+			local (dotWanted = false);
+			loop {
+				try {
+					tbl = stack.pop (stackAdr)}
+				else {
+					if not dotWanted {
+						scriptError ("Extraneous period")};
+					break}; //only legal way out
+				if dotWanted {
+					if tbl.token != periodToken {
+						scriptError ("Period expected, but found " + showtoken (tbl.token, tbl.value))}}
+				else {
+					if not ( (tbl.token == atomToken) or (tbl.token == stringToken)) {
+						scriptError ("Word token expected, but found " + showtoken (tbl.token, tbl.value))}};
+				dotWanted = not dotWanted}};
+		getDomain ()};
+	on routeAddr () {
+		local (tbl);
+		new (tableType, @tbl);
+		bundle { //check phrase
+			loop {
+				try {
+					tbl = stack.pop (stackAdr)}
+				else {
+					break}; //only way out with valid input
+				case tbl.token {
+					atomToken;
+					stringToken {
+						}}
+				else {
+					scriptError ("Atom or quoted string expected, but found " + showtoken (tbl.token, tbl.value))}}};
+		tbl.token = getToken (@tbl.v);
+		while tbl.token == atToken { //we have a route = comma delimited list of domains  
+			getDomain ();
+			try {
+				tbl = stack.pop (stackadr)}
+			else {
+				scriptError ("Terminator for route expected")};
+			if tbl.token == colonToken { //end of list
+				tbl.token = getToken (@tbl.v);
+				break};
+			if tbl.token != commaToken {
+				scriptError ("comma expected, but found " + showtoken (tbl.token, tbl.v))};
+			tbl.token = getToken (@tbl.v)};
+		local (dotWanted = false);
+		loop {
+			case tbl.token {
+				atToken {
+					if not dotWanted {
+						scriptError ("atom or quoted string expected, but found @")};
+					break};
+				atomToken;
+				stringToken {
+					if dotWanted {
+						scriptError ("Period expected but found " + showToken (tbl.token, tbl.v))}};
+				periodToken {
+					if not dotWanted {
+						scriptError ("atom or quoted string expected, but found .")}};
+				eofToken {
+					scriptError ("Incomplete addr-spec")}}
+			else {
+				if dotwanted {
+					scriptError ("Period expected, but found " + showtoken (tbl.token, tbl.v))}
+				else {
+					scriptError ("@ or word expected, but found " + showtoken (tbl.token, tbl.v))}};
+			dotWanted = not dotWanted;
+			tbl.token = getToken (@tbl.v)};
+		getDomain ();
+		try {
+			tbl = stack.pop (stackAdr)}
+		else {
+			scriptError ("terminal > character expected")};
+		if tbl.token != rightAngleToken {
+			scriptError ("terminal > expected, but found " + showToken (tbl.token, tbl.value))}};
+	try {
+		local (tbl);
+		if not getTokens (@tbl, {atToken, leftAngleToken}) {
+			scriptError ("Empty string")};
+		case tbl.token {
+			atToken {
+				addrSpec ()};
+			leftAngleToken {
+				routeAddr ()}};
+		try { //stack should be empty, check it
+			tbl = stack.pop (stackadr);
+			scriptError ("superfluous token " + showtoken (tbl.token, tbl.value))};
+		if inpInx <= inpLen { //haven't consumed all the string
+			scriptError ("Unexpected input " + string.mid (s, inpInx, infinity))};
+		stack.dispose (stackAdr); //moved 02/09/19, 10:22:11 by DAB
+		return true}
+	else {
+		stack.dispose (stackAdr);
+		scriptError ("string.isValidEmailAddress: " + tryError)}};
+Â«bundle //testing
+	Â«string.isValidEmailAddress ("webmaster@userland.com")
+		Â«true
+	Â«string.isValidEmailAddress ("webmaster@userland@com>")
+		Â«true

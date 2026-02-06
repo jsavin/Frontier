@@ -1,1 +1,2 @@
-on isInstalled (adr) {	kernel (menu.isinstalled)}
+on isInstalled (adr) {
+	kernel (menu.isinstalled)}

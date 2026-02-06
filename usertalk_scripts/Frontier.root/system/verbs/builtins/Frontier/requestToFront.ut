@@ -1,1 +1,2 @@
-on requestToFront () {	kernel (Frontier.requestToFront)}
+on requestToFront () {
+	kernel (Frontier.requestToFront)}

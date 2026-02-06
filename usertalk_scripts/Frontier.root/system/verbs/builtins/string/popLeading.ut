@@ -1,1 +1,2 @@
-on popLeading (s, ch) {	kernel (string.popleading)}
+on popLeading (s, ch) {
+	kernel (string.popleading)}

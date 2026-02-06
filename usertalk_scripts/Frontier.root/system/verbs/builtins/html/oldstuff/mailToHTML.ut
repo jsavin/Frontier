@@ -1,1 +1,16 @@
-on mailToHTML (sender, recipient, subject, sent, text) {	local (htmltext = "");	on add (s) {		htmltext = htmltext + s + cr};	add ("#title \"" + subject + "\"");	«add ("#template \"" + sitename + "\"")	«add ("#ftpSite \"" + sitename + "\"")	add ("#postTime \"" + sent + "\"");	add ("<table border=0>\r");	add (html.getTableLine ({"<b>Sent:</b>", sent}));	add (html.getTableLine ({"<b>From: </b>", sender}));	«add (html.getTableLine ({"<b>To:</b>", recipient}))	«add (html.getTableLine ({"<b>Re:</b>", subject}))	add ("</table>\r<p>");	add (text);	return (htmltext)}
+on mailToHTML (sender, recipient, subject, sent, text) {
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + s + cr};
+	add ("#title \"" + subject + "\"");
+	Â«add ("#template \"" + sitename + "\"")
+	Â«add ("#ftpSite \"" + sitename + "\"")
+	add ("#postTime \"" + sent + "\"");
+	add ("<table border=0>\r");
+	add (html.getTableLine ({"<b>Sent:</b>", sent}));
+	add (html.getTableLine ({"<b>From: </b>", sender}));
+	Â«add (html.getTableLine ({"<b>To:</b>", recipient}))
+	Â«add (html.getTableLine ({"<b>Re:</b>", subject}))
+	add ("</table>\r<p>");
+	add (text);
+	return (htmltext)}

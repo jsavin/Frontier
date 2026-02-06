@@ -1,1 +1,21 @@
-if double (string.mid (Frontier.version (), 1, 3)) < 4.1 {	scriptError ("The mail suite requires Frontier 4.1 or greater.")};if not defined (user.mail) {	new (tabletype, @user.mail)};if not defined (user.mail.agents) {	new (tabletype, @user.mail.agents);	user.mail.agents.defaultFilter = mail.traps.defaultFilter};if not defined (user.mail.prefs) {	new (tabletype, @user.mail.prefs)};if not defined (user.mail.prefs.msgcount) {	user.mail.prefs.msgcount = 0};if not defined (user.mail.prefs.enabled) {	user.mail.prefs.enabled = false};if not defined (system.verbs.traps.CSOm) {	new (tabletype, @system.verbs.traps.CSOm)};if not defined (system.verbs.traps.CSOm.eNot) {	system.verbs.traps.CSOm.eNot = mail.traps.CSOmeNot};if not defined (user.callbacks.startup.mail) {	user.callbacks.startup.mail = mail.traps.startup};if not defined (user.callbacks.shutdown.mail) {	user.callbacks.shutdown.mail = mail.traps.shutdown}
+if double (string.mid (Frontier.version (), 1, 3)) < 4.1 {
+	scriptError ("The mail suite requires Frontier 4.1 or greater.")};
+if not defined (user.mail) {
+	new (tabletype, @user.mail)};
+if not defined (user.mail.agents) {
+	new (tabletype, @user.mail.agents);
+	user.mail.agents.defaultFilter = mail.traps.defaultFilter};
+if not defined (user.mail.prefs) {
+	new (tabletype, @user.mail.prefs)};
+if not defined (user.mail.prefs.msgcount) {
+	user.mail.prefs.msgcount = 0};
+if not defined (user.mail.prefs.enabled) {
+	user.mail.prefs.enabled = false};
+if not defined (system.verbs.traps.CSOm) {
+	new (tabletype, @system.verbs.traps.CSOm)};
+if not defined (system.verbs.traps.CSOm.eNot) {
+	system.verbs.traps.CSOm.eNot = mail.traps.CSOmeNot};
+if not defined (user.callbacks.startup.mail) {
+	user.callbacks.startup.mail = mail.traps.startup};
+if not defined (user.callbacks.shutdown.mail) {
+	user.callbacks.shutdown.mail = mail.traps.shutdown}

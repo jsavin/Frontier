@@ -1,1 +1,4 @@
-on getArgTable (adrTable) {	local (s = html.getPageTableAddress ()^.searchArgs);	webserver.parseArgs (s, adrTable);	return (true)}
+on getArgTable (adrTable) {
+	local (s = html.getPageTableAddress ()^.searchArgs);
+	webserver.parseArgs (s, adrTable);
+	return (true)}

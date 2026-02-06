@@ -1,1 +1,2 @@
-with xml.examples.namespaces {	wp.newtextobject (xml.decompile (@tableStructure), @xText)}
+with xml.examples.namespaces {
+	wp.newtextobject (xml.decompile (@tableStructure), @xText)}

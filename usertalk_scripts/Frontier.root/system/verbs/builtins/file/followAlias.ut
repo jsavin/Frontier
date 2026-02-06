@@ -1,1 +1,2 @@
-on followAlias (path) {	kernel (file.followAlias)}
+on followAlias (path) {
+	kernel (file.followAlias)}

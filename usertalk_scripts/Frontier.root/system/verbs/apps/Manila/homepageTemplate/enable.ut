@@ -1,1 +1,8 @@
-on enable (adrSitePrefs) {	«11/14/00; 3:33:03 AM by JES	«Changes		«9/6/01; 8:09:32 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename});		return (manila.callHandler (host, port, "manila.homePageTemplate.enable", @params, rpcPath:rpcPath))}}
+on enable (adrSitePrefs) {
+	Â«11/14/00; 3:33:03 AM by JES
+	Â«Changes
+		Â«9/6/01; 8:09:32 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename});
+		return (manila.callHandler (host, port, "manila.homePageTemplate.enable", @params, rpcPath:rpcPath))}}

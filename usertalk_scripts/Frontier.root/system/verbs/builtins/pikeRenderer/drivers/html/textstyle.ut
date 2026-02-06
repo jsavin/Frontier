@@ -1,1 +1,7 @@
-on textstyle (textstyle, adrprestring, adrpoststring) {	if textstyle contains "bold" {		adrprestring^ = adrprestring^ + "<b>";		adrpoststring^ = adrpoststring^ + "</b>"};	if textstyle contains "italic" {		adrprestring^ = adrprestring^ + "<i>";		adrpoststring^ = adrpoststring^ + "</i>"}}
+on textstyle (textstyle, adrprestring, adrpoststring) {
+	if textstyle contains "bold" {
+		adrprestring^ = adrprestring^ + "<b>";
+		adrpoststring^ = adrpoststring^ + "</b>"};
+	if textstyle contains "italic" {
+		adrprestring^ = adrprestring^ + "<i>";
+		adrpoststring^ = adrpoststring^ + "</i>"}}

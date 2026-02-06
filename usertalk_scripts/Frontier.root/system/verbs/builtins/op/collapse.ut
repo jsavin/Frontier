@@ -1,1 +1,2 @@
-on collapse () {	kernel (op.collapse)}
+on collapse () {
+	kernel (op.collapse)}

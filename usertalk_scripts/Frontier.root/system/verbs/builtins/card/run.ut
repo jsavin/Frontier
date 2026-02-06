@@ -1,1 +1,2 @@
-on run (x) {	kernel (dialog.runCard)}
+on run (x) {
+	kernel (dialog.runCard)}

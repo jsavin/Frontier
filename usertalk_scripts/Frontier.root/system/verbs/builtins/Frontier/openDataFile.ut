@@ -1,1 +1,93 @@
-on openDataFile (fname) { //returns an address	«Changes		«3/13/02; 7:54:42 AM by DW			«We used to initialize user.prefs.maxDataFiles to 5. This number is too low, and could result in thrashing on a user's machine if they have more than five data files. So we do something unusual, if the number is 5, we increase it to 25. 		«1/4/02; 2:40:13 PM by DW			«If the table for the file exists and has a flCompacting item, make the caller wait.		«1/2/02; 6:11:00 PM by DW			«Corner-turn for the Guest Databases folder in Radio				«If running in Frontier, no change in behavior, files still live in the Guest Databases folder.				«If running in Radio					«1. Look for the file in the Data Files sub-folder of the Radio folder, if it's there, you're done.					«2. Look for the file in the Guest Databases/ops/datafiles folder. If it's there, move it to the Data Files folder, and open that file.					«3. If the file doesn't exist, create it in the Data Files folder.		«5/16/01; 11:42:11 AM by DW			«Created.			«When an application wants to open its data file, it calls this routine. If the file is already open it's fast. If it's not, we close an existing file if we're at the maximum number, then open or create the file, and return the address of a top-level table where you can store your data. This centralizes an important function.			«This is a higher level routine than fileMenu.openGuestDatabase, which only opens the database, it doesn't manage a pool of databases, and it doesn't do folder management.		«5/18/01; 4:07:01 PM by DW			«When opening a file, open it hidden.		«5/19/01; 9:30:12 AM by DW			«Added ctAccesses to the sub-tables of datafiles.	local (now = clock.now ());	local (adrfilestable = @system.temp.frontier.datafiles);	bundle { //initialization		if not defined (adrfilestable^) {			new (tabletype, adrfilestable)};		if not defined (user.prefs.maxDataFiles) {			user.prefs.maxDataFiles = 25};		if user.prefs.maxDataFiles == 5 { //see comment in changes section for 3/13/02			user.prefs.maxDataFiles = 25}};	local (adrfile = @adrfilestable^.[fname]);	if defined (adrfile^) {		while defined (adrfile^.flCompacting) { //1/4/02; 2:42:20 PM by DW			thread.sleepTicks (30)};		if not window.isopen (adrfile^.f) {			filemenu.open (adrfile^.f, true)};		adrfile^.whenLastUsed = now;		adrfile^.ctAccesses++;		return (adrfile^.adrData)};		if sizeof (adrfilestable^) == user.prefs.maxDataFiles { //swap out least recently used		«scratchpad.ctswaps++		semaphore.lock (this, 3600);		local (adr, adrlru = nil, datelru = clock.now () + 1);		for adr in adrfilestable {			if adr^.whenLastUsed < datelru {				adrlru = adr;				datelru = adr^.whenLastUsed}};		filemenu.save (adrlru^.f);		filemenu.close (adrlru^.f);		delete (adrlru);		semaphore.unlock (this)};		local (f, folder);	bundle { //set f, folder		if system.environment.isRadio {			folder = frontier.pathstring + "Data Files" + file.getpathchar ()}		else {			folder = frontier.getsubfolder ("ops/datafiles")};		f = folder + fname + ".root"};	file.sureFilePath (f);	if file.exists (f) {		if not window.isopen (f) {			filemenu.open (f, true)}}	else { //file doesn't exist		local (flnewfile = true);		bundle { //if Radio, look for file in Guest Databases folder			if system.environment.isRadio {				local (oldfolder = frontier.getsubfolder ("ops/datafiles"));				local (oldfile = oldfolder + fname + ".root");				if file.exists (oldfile) {					if window.isopen (oldfile) {						filemenu.save (oldfile);						filemenu.close (oldfile)};					file.move (oldfile, folder);					filemenu.open (f, true);					flnewfile = false}}};		if flnewfile {			fileMenu.new (f, hidden:true);			window.setPosition (f, 30, 40);			window.setSize (f, 350, 525)}};	local (adrdata = @[f].[fname]);	if not defined (adrdata^) {		new (tabletype, adrdata)};		new (tabletype, adrfile);	adrfile^.f = f;	adrfile^.whenLastUsed = now;	adrfile^.adrData = adrdata;	adrfile^.ctAccesses = 1;	return (adrdata)};«bundle //test code	«openDataFile ("testData")
+on openDataFile (fname) { //returns an address
+	Â«Changes
+		Â«3/13/02; 7:54:42 AM by DW
+			Â«We used to initialize user.prefs.maxDataFiles to 5. This number is too low, and could result in thrashing on a user's machine if they have more than five data files. So we do something unusual, if the number is 5, we increase it to 25. 
+		Â«1/4/02; 2:40:13 PM by DW
+			Â«If the table for the file exists and has a flCompacting item, make the caller wait.
+		Â«1/2/02; 6:11:00 PM by DW
+			Â«Corner-turn for the Guest Databases folder in Radio
+				Â«If running in Frontier, no change in behavior, files still live in the Guest Databases folder.
+				Â«If running in Radio
+					Â«1. Look for the file in the Data Files sub-folder of the Radio folder, if it's there, you're done.
+					Â«2. Look for the file in the Guest Databases/ops/datafiles folder. If it's there, move it to the Data Files folder, and open that file.
+					Â«3. If the file doesn't exist, create it in the Data Files folder.
+		Â«5/16/01; 11:42:11 AM by DW
+			Â«Created.
+			Â«When an application wants to open its data file, it calls this routine. If the file is already open it's fast. If it's not, we close an existing file if we're at the maximum number, then open or create the file, and return the address of a top-level table where you can store your data. This centralizes an important function.
+			Â«This is a higher level routine than fileMenu.openGuestDatabase, which only opens the database, it doesn't manage a pool of databases, and it doesn't do folder management.
+		Â«5/18/01; 4:07:01 PM by DW
+			Â«When opening a file, open it hidden.
+		Â«5/19/01; 9:30:12 AM by DW
+			Â«Added ctAccesses to the sub-tables of datafiles.
+	local (now = clock.now ());
+	local (adrfilestable = @system.temp.frontier.datafiles);
+	bundle { //initialization
+		if not defined (adrfilestable^) {
+			new (tabletype, adrfilestable)};
+		if not defined (user.prefs.maxDataFiles) {
+			user.prefs.maxDataFiles = 25};
+		if user.prefs.maxDataFiles == 5 { //see comment in changes section for 3/13/02
+			user.prefs.maxDataFiles = 25}};
+	local (adrfile = @adrfilestable^.[fname]);
+	if defined (adrfile^) {
+		while defined (adrfile^.flCompacting) { //1/4/02; 2:42:20 PM by DW
+			thread.sleepTicks (30)};
+		if not window.isopen (adrfile^.f) {
+			filemenu.open (adrfile^.f, true)};
+		adrfile^.whenLastUsed = now;
+		adrfile^.ctAccesses++;
+		return (adrfile^.adrData)};
+	
+	if sizeof (adrfilestable^) == user.prefs.maxDataFiles { //swap out least recently used
+		Â«scratchpad.ctswaps++
+		semaphore.lock (this, 3600);
+		local (adr, adrlru = nil, datelru = clock.now () + 1);
+		for adr in adrfilestable {
+			if adr^.whenLastUsed < datelru {
+				adrlru = adr;
+				datelru = adr^.whenLastUsed}};
+		filemenu.save (adrlru^.f);
+		filemenu.close (adrlru^.f);
+		delete (adrlru);
+		semaphore.unlock (this)};
+	
+	local (f, folder);
+	bundle { //set f, folder
+		if system.environment.isRadio {
+			folder = frontier.pathstring + "Data Files" + file.getpathchar ()}
+		else {
+			folder = frontier.getsubfolder ("ops/datafiles")};
+		f = folder + fname + ".root"};
+	file.sureFilePath (f);
+	if file.exists (f) {
+		if not window.isopen (f) {
+			filemenu.open (f, true)}}
+	else { //file doesn't exist
+		local (flnewfile = true);
+		bundle { //if Radio, look for file in Guest Databases folder
+			if system.environment.isRadio {
+				local (oldfolder = frontier.getsubfolder ("ops/datafiles"));
+				local (oldfile = oldfolder + fname + ".root");
+				if file.exists (oldfile) {
+					if window.isopen (oldfile) {
+						filemenu.save (oldfile);
+						filemenu.close (oldfile)};
+					file.move (oldfile, folder);
+					filemenu.open (f, true);
+					flnewfile = false}}};
+		if flnewfile {
+			fileMenu.new (f, hidden:true);
+			window.setPosition (f, 30, 40);
+			window.setSize (f, 350, 525)}};
+	local (adrdata = @[f].[fname]);
+	if not defined (adrdata^) {
+		new (tabletype, adrdata)};
+	
+	new (tabletype, adrfile);
+	adrfile^.f = f;
+	adrfile^.whenLastUsed = now;
+	adrfile^.adrData = adrdata;
+	adrfile^.ctAccesses = 1;
+	return (adrdata)};
+Â«bundle //test code
+	Â«openDataFile ("testData")

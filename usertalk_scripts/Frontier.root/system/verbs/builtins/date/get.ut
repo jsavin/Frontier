@@ -1,1 +1,6 @@
-on get (date, adrday, adrmonth, adryear, adrhour, adrminute, adrsecond) {	kernel (date.get)};«bundle //test code, also a nice place to crib a call	«local (day, month, year, hour, minute, second)	«date.get (clock.now (), @day, @month, @year, @hour, @minute, @second)	«dialog.alert (year)
+on get (date, adrday, adrmonth, adryear, adrhour, adrminute, adrsecond) {
+	kernel (date.get)};
+Â«bundle //test code, also a nice place to crib a call
+	Â«local (day, month, year, hour, minute, second)
+	Â«date.get (clock.now (), @day, @month, @year, @hour, @minute, @second)
+	Â«dialog.alert (year)

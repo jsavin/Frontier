@@ -1,1 +1,5 @@
-on getCardBackColor () {	local (atts);	if not card.getCardAttributes (@atts) {		return ("")};	return (atts.bakc)}
+on getCardBackColor () {
+	local (atts);
+	if not card.getCardAttributes (@atts) {
+		return ("")};
+	return (atts.bakc)}

@@ -1,1 +1,5 @@
-if not defined (user.webEdit.prefs.overrideWebEditServerDirective) {	user.webEdit.prefs.overrideWebEditServerDirective = false};if user.webEdit.prefs.overrideWebEditServerDirective {	return ("!Override Server Directive")};return ("Override Server Directive")
+if not defined (user.webEdit.prefs.overrideWebEditServerDirective) {
+	user.webEdit.prefs.overrideWebEditServerDirective = false};
+if user.webEdit.prefs.overrideWebEditServerDirective {
+	return ("!Override Server Directive")};
+return ("Override Server Directive")

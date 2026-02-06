@@ -1,1 +1,169 @@
-on client (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedureName="", adrparamlist=nil, fldebug=false, ticksToTimeOut=nil, flShowMessages=true, rpcPath=nil, flAsynch=false, adrCallback=nil, extraInfo=nil, adrErrorCallback=nil, username="", password="") {	«Change		«8/20/02; 4:43:35 AM by JES			«Respect user.betty.prefs.flSaveDatabaseAfterAsynchRpcCall.		«1/4/02; 7:15:55 PM by DW			«If user.betty.prefs.flKeepClientCallTicks is true, keep track of call stats in system.temp.betty.clientCallTicks.			«Added a test code bundle at the end of the routine.		«8/20/00 by AR			«Added optional username and password parameters for HTTP Basic Authentication.		«10/8/99 by DW			«Added optional adrErrorCallback parameter, if specified, this script is called when there's an error sending an asynchronous XML-RPC call. 		«3/6/99 by DW			«Added three optional parameters to allow asynchronous RPC-ing that try until they connect.				«flAsynch, defaults to false, if true it's an asynchronous call.				«adrCallback, defaults to nil, if non-nil, it's the routine we call when we connect.				«It takes a single parameter, the value returned by the RPC server.				«The routine pointed to by this address must not be local to the script calling betty.rpc.client because it won't be around when the actual RPC call is made.				«It must be in Frontier.root or in a guest database.				«extraInfo, defaults to nil, it's any kind of object, it's available to the callback to help it interpret the response. 			«It will create a table at user.betty.queueOutgoing, which is watched by the agent.		«1/17/99 by DW			«Change default value of ticksToTimeOut to nil. If it's nil, set it to user.betty.prefs.rpcClientDefaultTimeout.			«Change default value of rpcPath to nil. If it's nil, set it to user.betty.prefs.rpcClientDefaultPath.		«1/15/99 by DW			«added optional parameter, rpcPath, to facilitate communication with non-Frontier XML-RPC servers.		«11/14/98 by DW			«In the 11/5 change, RPC error reporting lost a lot of its value due to a too-local declaration of adrtable.		«11/5/98 by DW			«At the end of betty.rpc.client, there was some real ancient code for producing examples				«It was copying the XML request and the compiled XML that was returned into the params list				«However, it's legal to call this routine without specifying the param list, it would fail if you did so.				«This code was only useful to people writing docs and testing this.				«Now it's deployed, things will run faster if we don't do this.				«And now you can leave out params if the procedure you're calling takes no parameters.		«11/1/98 by DW			«Added ticksToTimeOut optional parameter, it's passed on to tcp.httpClient				«Some operations take more than 30 seconds to complete, that's the default on tcp.httpClient				«I imagine that some take much less than 30 seconds too...			«Added flShowMessages optional parameter, it's also passed on to tcp.httpClient				«If true, it will display messages in Frontier's About window, if false it won't.				«Previously, there was no way for an RPC caller to turn on tcp.httpClient messages.				«This is important if you want to see what's going on at the HTTP level.		«7/17/98 by PBS			«XML header is now lowercase to conform to spec.			«Changed xml table from temp.rpcReturn to a local table for thread-safety.		«4/4/98 by DW			«A full-featured client for the RPC2 responder		local (startticks = clock.ticks ());	betty.init (); //1/17/99 DW, make sure user.betty.prefs is set up		bundle { //3/6/99 DW, handle asynchronous calls		if flAsynch {			local (adragent = @system.agents.asynchRPC);			if not defined (adragent^) {				new (scripttype, adragent);				local (oldtarget = target.set (adragent));				op.setlinetext ("betty.rpc.agent ()");				target.set (oldtarget);				script.compile (adragent)};			local (adrqueue = @user.betty.queueOutgoing);			if not defined (adrqueue^) {				new (tabletype, adrqueue)};			if not defined (adrqueue^.serialNum) {				adrqueue^.serialNum = 1};			local (adrtable = @adrqueue^.table);			if not defined (adrtable^) {				new (tabletype, adrtable)};			local (adritem = @adrtable^.[string.padwithzeros (adrqueue^.serialNum++, 7)]);			bundle { //populate it in a local table, don't want the agent catching it until we're ready				local (localtable);				new (tabletype, @localtable);				localtable.rpcServer = rpcServer;				localtable.rpcPort = rpcPort;				localtable.procedureName = procedureName;				localtable.paramlist = adrparamlist^; //have to copy the param list				localtable.fldebug = fldebug;				localtable.flShowMessages = flShowMessages;				localtable.rpcPath = rpcPath;				localtable.adrCallback = adrCallback;				localtable.adrErrorCallback = adrErrorCallback;				localtable.extraInfo = extraInfo;				localtable.readyToRunAt = clock.now ();				localtable.username = username;				localtable.password = password;				adritem^ = localtable};			if user.betty.prefs.flSaveDatabaseAfterAsynchRpcCall {				fileMenu.save ()};			return (true)}};	bundle { //1/17/99 DW, check ticksToTimeOut, rpcPath		if ticksToTimeOut == nil {			ticksToTimeOut = user.betty.prefs.rpcClientDefaultTimeout};		if rpcPath == nil {			rpcPath = user.betty.prefs.rpcClientDefaultPath}};	local (xmltext = "");	bundle { //build the XML request		local (indentlevel = 0);		on add (s) {			xmltext = xmltext + string.filledString ("\t", indentlevel) + s + "\r\n"};		add ("<?xml version=\"1.0\"?>");		add ("<methodCall>"); indentlevel++;		add ("<methodName>" + procedureName + "</methodName>");		add ("<params>"); indentlevel++;		if adrparamlist != nil {			local (item);			for item in adrparamlist^ {				add ("<param>"); indentlevel++;				«add ("<name>" + nameOf (adritem^) + "</name>")				add ("<value>" + xml.coercions.frontierValueToTaggedText (@item, indentlevel) + "</value>");				add ("</param>"); indentlevel--;				if typeOf (item) == tableType {					delete (@item)}}};		add ("</params>"); indentlevel--;		add ("</methodCall>"); indentlevel--};		local (xtable);	bundle { //send the HTTP request, store result in xtable		local (s);		s = tcp.httpClient (method:"POST", server:rpcServer, port:rpcPort, path:rpcPath, data:xmltext, datatype:"text/xml", username:username, password:password, debug:fldebug, timeOutTicks:ticksToTimeOut, flMessages:flShowMessages);		if fldebug {			edit (@scratchpad.httpResult); //the result of setting debug to true in the call above			edit (@scratchpad.httpCommand)};				xml.compile (string.delete (s, 1, string.patternMatch ("\r\n\r\n", s) + 3), @xtable)};		local (returnedValue, adrtable);	try { //walk the response structure, get returnedValue		adrtable = @xtable;		local (adrresponse = xml.getaddress (adrtable, "methodResponse"));		local (adrparams = xml.getaddress (adrresponse, "params"));		local (adrparam = xml.getaddress (adrparams, "param"));		returnedValue = xml.getvalue (adrparam, "value");		if typeOf (returnedValue) == tableType { //4/16/98; 1:51:28 PM by DW			local (newValue);			xml.coercions.structToFrontierValue (@returnedValue [1], @newValue);			table.assign (@returnedValue, newValue)}}	else { //scriptError		local (adrresponse = xml.getaddress (adrtable, "methodResponse"));		local (adrfault = xml.getaddress (adrresponse, "fault"));		local (adrvalue = xml.getaddress (adrfault, "value"));		local (adrstruct = xml.getaddress (adrvalue, "struct"));		local (memberlist = xml.getaddresslist (adrstruct, "member"));		local (member, name, value, faultCode, faultString);		for member in memberlist {			name = xml.getvalue (member, "name");			value = xml.getvalue (member, "value");			case name {				"faultCode" {					faultCode = value};				"faultString" {					faultString = value}}};		scriptError ("The server, " + rpcServer + ", returned error code " + faultCode + ": " + faultString)};		bundle { //track ticks, by procedure call in system.temp.betty.clientCallTicks		if user.betty.prefs.flKeepClientCallTicks {			local (adrtable = @system.temp.betty);			if not defined (adrtable^) {				new (tabletype, adrtable)};			adrtable = @adrtable^.clientCallTicks;			if not defined (adrtable^) {				new (tabletype, adrtable)};			local (adrcount = @adrtable^.[rpcServer + ":" + rpcPort + rpcPath + "/" + procedureName]);			if not defined (adrcount^) {				adrcount^ = 0};			adrcount^ = adrcount^ + (clock.ticks () - startticks)}};	return (returnedValue)};«bundle //test code	«local (params = {"Dave's Handsome Radio Blog", "http://radio.weblogs.com/0001015/"})	«scratchpad.response = betty.rpc.client ("rpc.weblogs.com", 80, "weblogUpdates.ping", @params)
+on client (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedureName="", adrparamlist=nil, fldebug=false, ticksToTimeOut=nil, flShowMessages=true, rpcPath=nil, flAsynch=false, adrCallback=nil, extraInfo=nil, adrErrorCallback=nil, username="", password="") {
+	Â«Change
+		Â«8/20/02; 4:43:35 AM by JES
+			Â«Respect user.betty.prefs.flSaveDatabaseAfterAsynchRpcCall.
+		Â«1/4/02; 7:15:55 PM by DW
+			Â«If user.betty.prefs.flKeepClientCallTicks is true, keep track of call stats in system.temp.betty.clientCallTicks.
+			Â«Added a test code bundle at the end of the routine.
+		Â«8/20/00 by AR
+			Â«Added optional username and password parameters for HTTP Basic Authentication.
+		Â«10/8/99 by DW
+			Â«Added optional adrErrorCallback parameter, if specified, this script is called when there's an error sending an asynchronous XML-RPC call. 
+		Â«3/6/99 by DW
+			Â«Added three optional parameters to allow asynchronous RPC-ing that try until they connect.
+				Â«flAsynch, defaults to false, if true it's an asynchronous call.
+				Â«adrCallback, defaults to nil, if non-nil, it's the routine we call when we connect.
+				Â«It takes a single parameter, the value returned by the RPC server.
+				Â«The routine pointed to by this address must not be local to the script calling betty.rpc.client because it won't be around when the actual RPC call is made.
+				Â«It must be in Frontier.root or in a guest database.
+				Â«extraInfo, defaults to nil, it's any kind of object, it's available to the callback to help it interpret the response. 
+			Â«It will create a table at user.betty.queueOutgoing, which is watched by the agent.
+		Â«1/17/99 by DW
+			Â«Change default value of ticksToTimeOut to nil. If it's nil, set it to user.betty.prefs.rpcClientDefaultTimeout.
+			Â«Change default value of rpcPath to nil. If it's nil, set it to user.betty.prefs.rpcClientDefaultPath.
+		Â«1/15/99 by DW
+			Â«added optional parameter, rpcPath, to facilitate communication with non-Frontier XML-RPC servers.
+		Â«11/14/98 by DW
+			Â«In the 11/5 change, RPC error reporting lost a lot of its value due to a too-local declaration of adrtable.
+		Â«11/5/98 by DW
+			Â«At the end of betty.rpc.client, there was some real ancient code for producing examples
+				Â«It was copying the XML request and the compiled XML that was returned into the params list
+				Â«However, it's legal to call this routine without specifying the param list, it would fail if you did so.
+				Â«This code was only useful to people writing docs and testing this.
+				Â«Now it's deployed, things will run faster if we don't do this.
+				Â«And now you can leave out params if the procedure you're calling takes no parameters.
+		Â«11/1/98 by DW
+			Â«Added ticksToTimeOut optional parameter, it's passed on to tcp.httpClient
+				Â«Some operations take more than 30 seconds to complete, that's the default on tcp.httpClient
+				Â«I imagine that some take much less than 30 seconds too...
+			Â«Added flShowMessages optional parameter, it's also passed on to tcp.httpClient
+				Â«If true, it will display messages in Frontier's About window, if false it won't.
+				Â«Previously, there was no way for an RPC caller to turn on tcp.httpClient messages.
+				Â«This is important if you want to see what's going on at the HTTP level.
+		Â«7/17/98 by PBS
+			Â«XML header is now lowercase to conform to spec.
+			Â«Changed xml table from temp.rpcReturn to a local table for thread-safety.
+		Â«4/4/98 by DW
+			Â«A full-featured client for the RPC2 responder
+	
+	local (startticks = clock.ticks ());
+	betty.init (); //1/17/99 DW, make sure user.betty.prefs is set up
+	
+	bundle { //3/6/99 DW, handle asynchronous calls
+		if flAsynch {
+			local (adragent = @system.agents.asynchRPC);
+			if not defined (adragent^) {
+				new (scripttype, adragent);
+				local (oldtarget = target.set (adragent));
+				op.setlinetext ("betty.rpc.agent ()");
+				target.set (oldtarget);
+				script.compile (adragent)};
+			local (adrqueue = @user.betty.queueOutgoing);
+			if not defined (adrqueue^) {
+				new (tabletype, adrqueue)};
+			if not defined (adrqueue^.serialNum) {
+				adrqueue^.serialNum = 1};
+			local (adrtable = @adrqueue^.table);
+			if not defined (adrtable^) {
+				new (tabletype, adrtable)};
+			local (adritem = @adrtable^.[string.padwithzeros (adrqueue^.serialNum++, 7)]);
+			bundle { //populate it in a local table, don't want the agent catching it until we're ready
+				local (localtable);
+				new (tabletype, @localtable);
+				localtable.rpcServer = rpcServer;
+				localtable.rpcPort = rpcPort;
+				localtable.procedureName = procedureName;
+				localtable.paramlist = adrparamlist^; //have to copy the param list
+				localtable.fldebug = fldebug;
+				localtable.flShowMessages = flShowMessages;
+				localtable.rpcPath = rpcPath;
+				localtable.adrCallback = adrCallback;
+				localtable.adrErrorCallback = adrErrorCallback;
+				localtable.extraInfo = extraInfo;
+				localtable.readyToRunAt = clock.now ();
+				localtable.username = username;
+				localtable.password = password;
+				adritem^ = localtable};
+			if user.betty.prefs.flSaveDatabaseAfterAsynchRpcCall {
+				fileMenu.save ()};
+			return (true)}};
+	bundle { //1/17/99 DW, check ticksToTimeOut, rpcPath
+		if ticksToTimeOut == nil {
+			ticksToTimeOut = user.betty.prefs.rpcClientDefaultTimeout};
+		if rpcPath == nil {
+			rpcPath = user.betty.prefs.rpcClientDefaultPath}};
+	local (xmltext = "");
+	bundle { //build the XML request
+		local (indentlevel = 0);
+		on add (s) {
+			xmltext = xmltext + string.filledString ("\t", indentlevel) + s + "\r\n"};
+		add ("<?xml version=\"1.0\"?>");
+		add ("<methodCall>"); indentlevel++;
+		add ("<methodName>" + procedureName + "</methodName>");
+		add ("<params>"); indentlevel++;
+		if adrparamlist != nil {
+			local (item);
+			for item in adrparamlist^ {
+				add ("<param>"); indentlevel++;
+				Â«add ("<name>" + nameOf (adritem^) + "</name>")
+				add ("<value>" + xml.coercions.frontierValueToTaggedText (@item, indentlevel) + "</value>");
+				add ("</param>"); indentlevel--;
+				if typeOf (item) == tableType {
+					delete (@item)}}};
+		add ("</params>"); indentlevel--;
+		add ("</methodCall>"); indentlevel--};
+	
+	local (xtable);
+	bundle { //send the HTTP request, store result in xtable
+		local (s);
+		s = tcp.httpClient (method:"POST", server:rpcServer, port:rpcPort, path:rpcPath, data:xmltext, datatype:"text/xml", username:username, password:password, debug:fldebug, timeOutTicks:ticksToTimeOut, flMessages:flShowMessages);
+		if fldebug {
+			edit (@scratchpad.httpResult); //the result of setting debug to true in the call above
+			edit (@scratchpad.httpCommand)};
+		
+		xml.compile (string.delete (s, 1, string.patternMatch ("\r\n\r\n", s) + 3), @xtable)};
+	
+	local (returnedValue, adrtable);
+	try { //walk the response structure, get returnedValue
+		adrtable = @xtable;
+		local (adrresponse = xml.getaddress (adrtable, "methodResponse"));
+		local (adrparams = xml.getaddress (adrresponse, "params"));
+		local (adrparam = xml.getaddress (adrparams, "param"));
+		returnedValue = xml.getvalue (adrparam, "value");
+		if typeOf (returnedValue) == tableType { //4/16/98; 1:51:28 PM by DW
+			local (newValue);
+			xml.coercions.structToFrontierValue (@returnedValue [1], @newValue);
+			table.assign (@returnedValue, newValue)}}
+	else { //scriptError
+		local (adrresponse = xml.getaddress (adrtable, "methodResponse"));
+		local (adrfault = xml.getaddress (adrresponse, "fault"));
+		local (adrvalue = xml.getaddress (adrfault, "value"));
+		local (adrstruct = xml.getaddress (adrvalue, "struct"));
+		local (memberlist = xml.getaddresslist (adrstruct, "member"));
+		local (member, name, value, faultCode, faultString);
+		for member in memberlist {
+			name = xml.getvalue (member, "name");
+			value = xml.getvalue (member, "value");
+			case name {
+				"faultCode" {
+					faultCode = value};
+				"faultString" {
+					faultString = value}}};
+		scriptError ("The server, " + rpcServer + ", returned error code " + faultCode + ": " + faultString)};
+	
+	bundle { //track ticks, by procedure call in system.temp.betty.clientCallTicks
+		if user.betty.prefs.flKeepClientCallTicks {
+			local (adrtable = @system.temp.betty);
+			if not defined (adrtable^) {
+				new (tabletype, adrtable)};
+			adrtable = @adrtable^.clientCallTicks;
+			if not defined (adrtable^) {
+				new (tabletype, adrtable)};
+			local (adrcount = @adrtable^.[rpcServer + ":" + rpcPort + rpcPath + "/" + procedureName]);
+			if not defined (adrcount^) {
+				adrcount^ = 0};
+			adrcount^ = adrcount^ + (clock.ticks () - startticks)}};
+	return (returnedValue)};
+Â«bundle //test code
+	Â«local (params = {"Dave's Handsome Radio Blog", "http://radio.weblogs.com/0001015/"})
+	Â«scratchpad.response = betty.rpc.client ("rpc.weblogs.com", 80, "weblogUpdates.ping", @params)

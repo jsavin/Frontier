@@ -1,1 +1,43 @@
-on buildServerSubMenu () {	«Changes		«8/30/05; 5:38:53 PM by JES			«Changes to include the current server name in the Set Current Server command.		local (oldTarget = target.get ());		bundle { //Find the Set Current Server sub-menu and name it for replacement		target.set (@webEdit.menu);		op.firstSummit ();		op.expand (1);		op.go (right, 1);		loop {			if op.getLineText () == "=suites.webEdit.menuItems.setCurrentServer ()" {				op.setLineText ("Set Current Server");				break};			if not op.go (down, 1) {				break}}};		local (localMenu = webEdit.virginServerMenu);	target.set (@localMenu);		local (adrServersTable = @user.webEdit.servers);	local (i, ct = sizeOf (adrServersTable^), adrServer, name, logic);	for i = 1 to ct {		adrServer = @adrServersTable^ [i];		if typeOf (adrServer^) != tableType {			continue};		name = nameOf (adrServer^);		local (menuItem = "=webEdit.menuItems.displayServerName (\"" +name + "\")");		logic = "webEdit.setCurrentServer (\"" + name + "\")";		menu.addMenuCommand (@localMenu, "Set Current Server", menuItem, logic)};		menu.addSubMenu (@webEdit.menu, "WebEdit", @localMenu);		target.set (@webEdit.menu);	op.setLineText ("=suites.webEdit.menuItems.setCurrentServer ()");		try {target.set (oldTarget)};		return (true)};«bundle //test code	«buildServerSubMenu ()
+on buildServerSubMenu () {
+	Â«Changes
+		Â«8/30/05; 5:38:53 PM by JES
+			Â«Changes to include the current server name in the Set Current Server command.
+	
+	local (oldTarget = target.get ());
+	
+	bundle { //Find the Set Current Server sub-menu and name it for replacement
+		target.set (@webEdit.menu);
+		op.firstSummit ();
+		op.expand (1);
+		op.go (right, 1);
+		loop {
+			if op.getLineText () == "=suites.webEdit.menuItems.setCurrentServer ()" {
+				op.setLineText ("Set Current Server");
+				break};
+			if not op.go (down, 1) {
+				break}}};
+	
+	local (localMenu = webEdit.virginServerMenu);
+	target.set (@localMenu);
+	
+	local (adrServersTable = @user.webEdit.servers);
+	local (i, ct = sizeOf (adrServersTable^), adrServer, name, logic);
+	for i = 1 to ct {
+		adrServer = @adrServersTable^ [i];
+		if typeOf (adrServer^) != tableType {
+			continue};
+		name = nameOf (adrServer^);
+		local (menuItem = "=webEdit.menuItems.displayServerName (\"" +name + "\")");
+		logic = "webEdit.setCurrentServer (\"" + name + "\")";
+		menu.addMenuCommand (@localMenu, "Set Current Server", menuItem, logic)};
+	
+	menu.addSubMenu (@webEdit.menu, "WebEdit", @localMenu);
+	
+	target.set (@webEdit.menu);
+	op.setLineText ("=suites.webEdit.menuItems.setCurrentServer ()");
+	
+	try {target.set (oldTarget)};
+	
+	return (true)};
+Â«bundle //test code
+	Â«buildServerSubMenu ()

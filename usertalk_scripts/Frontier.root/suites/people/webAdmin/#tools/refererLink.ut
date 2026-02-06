@@ -1,1 +1,11 @@
-on refererLink () {	local (thisPage = address (html.getPageTableAddress ()^.adrObject));	local (homePage = address (@html.getPageTableAddress ()^.adrSiteRootTable^.[html.getPref ("defaultFileName")]));	if thisPage == homePage {		return ("")};	try {		local (referer = html.getPageTableAddress ()^.requestHeaders.referer);		if string.lower (referer) contains "/default.wsf" {			return ("")};		return ("\r<p><a href=\"" + referer + "\">Go back...</a>")};	return ("")}
+on refererLink () {
+	local (thisPage = address (html.getPageTableAddress ()^.adrObject));
+	local (homePage = address (@html.getPageTableAddress ()^.adrSiteRootTable^.[html.getPref ("defaultFileName")]));
+	if thisPage == homePage {
+		return ("")};
+	try {
+		local (referer = html.getPageTableAddress ()^.requestHeaders.referer);
+		if string.lower (referer) contains "/default.wsf" {
+			return ("")};
+		return ("\r<p><a href=\"" + referer + "\">Go back...</a>")};
+	return ("")}

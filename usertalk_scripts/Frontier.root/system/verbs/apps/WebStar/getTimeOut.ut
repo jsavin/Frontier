@@ -1,1 +1,3 @@
-on getTimeOut (appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.get (appID, timeOut))}}
+on getTimeOut (appID = WebStar.id) {
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, timeOut))}}

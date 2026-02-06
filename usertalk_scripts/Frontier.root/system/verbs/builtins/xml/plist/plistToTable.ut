@@ -1,1 +1,79 @@
-on plistToTable (s, adrTable, adrCompiledXml=nil, flTrimToPlist=false) {	«Changes		«7/26/05; 2:35:01 AM by JES			«Created. Parse an XML plist into a Frontier table.		if flTrimToPlist { //some of Apple's plist files have cruft at the top and end -- this removes it		local (ix = string.patternMatch ("<plist ", s));		s = string.delete (s, 1, ix - 1);		ix = string.patternMatch ("</plist>", s);		s = string.delete (s, ix + 8, infinity)};		local (xtable);	if adrCompiledXml == nil { //use a local table		adrCompiledXml = @xtable};	xml.compile (s, adrCompiledXml);		new (tableType, adrTable);	local (adrplist = xml.getAddress (adrCompiledXml, "plist"));	local (adrdict = xml.getAddress (adrplist, "dict"));	on setValue (adrsource, adrdest, type) {		case type { //handle each plist type			"true" {				adrdest^ = true};			"false" {				adrdest^ = false};			"string" {				adrdest^ = adrsource^};			"integer" {				adrdest^ = number (adrsource^)};			"real" {				adrdest^ = double (adrsource^)};			"date" {				adrdest^ = date.iso8601StringToDate (adrsource^)};			"data" {				adrdest^ = binary (base64.decode (adrsource^))};			"dict" {				new (tableType, adrdest);				dive (adrsource, adrdest)};			"array" {				if typeOf (adrsource^) == stringType { //work around bug in xml.compile					adrdest^ = {adrsource^}}				else { //dive into the array					arrayDive (adrsource, adrdest)}}}		else { //error -- unknown type			scriptError ("Can't parse this resource because the type, \"" + type + "\" is unknown or not supported.")};		return (true)};	on arrayDive (adrsource, adrdest) {		adrdest^ = {};		local (adr);		for adr in adrsource { //loop over the array, calling setValue for each array item			if nameOf (adr^) endswith "/pcdata" {				if adr^ == "__xxxxx__" { //work around kernel bug in xml.compile					continue}				else {					scriptError ("Can't parse this resource because unxepected text, \"" + nomad^ + "\", appears in the XML.")}};			local (v);			setValue (adr, @v, xml.convertToDisplayName (nameOf (adr^)) );			adrdest^ = adrdest^ + {v}};		return (true)};	on dive (adrsource, adrdest) {		local (ix = 1, sizetable = sizeOf (adrsource^));		while ix < sizetable { //loop over key/value pairs, and parse into adrdest			local (nomad = @adrsource^[ix]);						if not (xml.convertToDisplayName (nameOf (nomad^)) == "key") {				scriptError ("Can't parse this resource because the name of the sub-item could not be determined.")};			local (plistKey = nomad^);			local (adrindest = @adrdest^.[plistKey]);			if defined (adrindest^) {				adrindest = table.uniqueName (plistKey, adrdest)};						nomad = @adrsource^[++ix];			local (plistItemType = xml.convertToDisplayName (nameOf (nomad^)));			setValue (nomad, adrindest, plistItemType);						ix++};		return (true)};	dive (adrdict, adrTable);	return (true)}
+on plistToTable (s, adrTable, adrCompiledXml=nil, flTrimToPlist=false) {
+	Â«Changes
+		Â«7/26/05; 2:35:01 AM by JES
+			Â«Created. Parse an XML plist into a Frontier table.
+	
+	if flTrimToPlist { //some of Apple's plist files have cruft at the top and end -- this removes it
+		local (ix = string.patternMatch ("<plist ", s));
+		s = string.delete (s, 1, ix - 1);
+		ix = string.patternMatch ("</plist>", s);
+		s = string.delete (s, ix + 8, infinity)};
+	
+	local (xtable);
+	if adrCompiledXml == nil { //use a local table
+		adrCompiledXml = @xtable};
+	xml.compile (s, adrCompiledXml);
+	
+	new (tableType, adrTable);
+	local (adrplist = xml.getAddress (adrCompiledXml, "plist"));
+	local (adrdict = xml.getAddress (adrplist, "dict"));
+	on setValue (adrsource, adrdest, type) {
+		case type { //handle each plist type
+			"true" {
+				adrdest^ = true};
+			"false" {
+				adrdest^ = false};
+			"string" {
+				adrdest^ = adrsource^};
+			"integer" {
+				adrdest^ = number (adrsource^)};
+			"real" {
+				adrdest^ = double (adrsource^)};
+			"date" {
+				adrdest^ = date.iso8601StringToDate (adrsource^)};
+			"data" {
+				adrdest^ = binary (base64.decode (adrsource^))};
+			"dict" {
+				new (tableType, adrdest);
+				dive (adrsource, adrdest)};
+			"array" {
+				if typeOf (adrsource^) == stringType { //work around bug in xml.compile
+					adrdest^ = {adrsource^}}
+				else { //dive into the array
+					arrayDive (adrsource, adrdest)}}}
+		else { //error -- unknown type
+			scriptError ("Can't parse this resource because the type, \"" + type + "\" is unknown or not supported.")};
+		return (true)};
+	on arrayDive (adrsource, adrdest) {
+		adrdest^ = {};
+		local (adr);
+		for adr in adrsource { //loop over the array, calling setValue for each array item
+			if nameOf (adr^) endswith "/pcdata" {
+				if adr^ == "__xxxxx__" { //work around kernel bug in xml.compile
+					continue}
+				else {
+					scriptError ("Can't parse this resource because unxepected text, \"" + nomad^ + "\", appears in the XML.")}};
+			local (v);
+			setValue (adr, @v, xml.convertToDisplayName (nameOf (adr^)) );
+			adrdest^ = adrdest^ + {v}};
+		return (true)};
+	on dive (adrsource, adrdest) {
+		local (ix = 1, sizetable = sizeOf (adrsource^));
+		while ix < sizetable { //loop over key/value pairs, and parse into adrdest
+			local (nomad = @adrsource^[ix]);
+			
+			if not (xml.convertToDisplayName (nameOf (nomad^)) == "key") {
+				scriptError ("Can't parse this resource because the name of the sub-item could not be determined.")};
+			local (plistKey = nomad^);
+			local (adrindest = @adrdest^.[plistKey]);
+			if defined (adrindest^) {
+				adrindest = table.uniqueName (plistKey, adrdest)};
+			
+			nomad = @adrsource^[++ix];
+			local (plistItemType = xml.convertToDisplayName (nameOf (nomad^)));
+			setValue (nomad, adrindest, plistItemType);
+			
+			ix++};
+		return (true)};
+	dive (adrdict, adrTable);
+	return (true)}

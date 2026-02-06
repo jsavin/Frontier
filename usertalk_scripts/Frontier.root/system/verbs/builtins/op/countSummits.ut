@@ -1,1 +1,2 @@
-on countSummits () {	kernel (op.countsummits)}
+on countSummits () {
+	kernel (op.countsummits)}

@@ -1,1 +1,2 @@
-on getExpansionState () {	kernel (op.getexpansionstate)}
+on getExpansionState () {
+	kernel (op.getexpansionstate)}

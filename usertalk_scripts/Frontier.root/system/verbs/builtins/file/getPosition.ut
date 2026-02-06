@@ -1,1 +1,2 @@
-on getPosition (path) { «new in Frontier 5.0.1	kernel (file.getPosition)}
+on getPosition (path) { Â«new in Frontier 5.0.1
+	kernel (file.getPosition)}

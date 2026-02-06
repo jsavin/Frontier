@@ -1,1 +1,10 @@
-«7/5/01; 2:33:17 PM by JES	«Initialize Manila site editing nodeTypes.	«All Manila site editing functionality is now implemented in nodeTypes and windowTypes.bundle { //install nodeTypes	local (adrcode = @system.verbs.apps.manila.nodeTypes.types);	local (adrtable = @Frontier.tools.data.nodeTypes);	local (adrtype);	for adrtype in adrcode {		local (name = nameOf (adrtype^));		adrtable^.[name] = adrtype}}
+Â«7/5/01; 2:33:17 PM by JES
+	Â«Initialize Manila site editing nodeTypes.
+	Â«All Manila site editing functionality is now implemented in nodeTypes and windowTypes.
+bundle { //install nodeTypes
+	local (adrcode = @system.verbs.apps.manila.nodeTypes.types);
+	local (adrtable = @Frontier.tools.data.nodeTypes);
+	local (adrtype);
+	for adrtype in adrcode {
+		local (name = nameOf (adrtype^));
+		adrtable^.[name] = adrtype}}

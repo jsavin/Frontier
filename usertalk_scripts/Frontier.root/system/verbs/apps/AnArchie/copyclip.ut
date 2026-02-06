@@ -1,1 +1,2 @@
-on copyclip () { «copy selection	return (appleEvent (AnArchie.id, 'core', 'copy'))}
+on copyclip () { Â«copy selection
+	return (appleEvent (AnArchie.id, 'core', 'copy'))}

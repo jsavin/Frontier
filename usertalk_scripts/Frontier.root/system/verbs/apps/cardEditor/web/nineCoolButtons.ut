@@ -1,1 +1,20 @@
-local (adr = @system.verbs.apps.netscape.examples.coolSites);local (gridOn, gridVisible, gridUnits);cardEditor.getCardGrid (@gridOn, @gridVisible, @gridUnits);local (buttonheight = 2 * gridUnits);local (buttonwidth = 10 * gridUnits);local (i, j, t, l, b, r, ct = 1);for j = 0 to 2 {	t = gridUnits + ((buttonheight + gridUnits) * j);	b = t + buttonheight;	for i = 0 to 2 {		l = gridUnits + ((buttonwidth + gridUnits) * i);		r = l + buttonwidth;		local (ixtable = random (1, sizeof (adr^)));		local (webaddress = adr^ [ixtable]);		local (buttontext = nameof (adr^ [ixtable]));		local (buttonname = "button" + ct++);		local (rect = rectangle.set (t, l, b, r));		cardEditor.web.siteInButton (rect, buttonname, buttontext, webaddress)}}
+local (adr = @system.verbs.apps.netscape.examples.coolSites);
+
+local (gridOn, gridVisible, gridUnits);
+cardEditor.getCardGrid (@gridOn, @gridVisible, @gridUnits);
+local (buttonheight = 2 * gridUnits);
+local (buttonwidth = 10 * gridUnits);
+
+local (i, j, t, l, b, r, ct = 1);
+for j = 0 to 2 {
+	t = gridUnits + ((buttonheight + gridUnits) * j);
+	b = t + buttonheight;
+	for i = 0 to 2 {
+		l = gridUnits + ((buttonwidth + gridUnits) * i);
+		r = l + buttonwidth;
+		local (ixtable = random (1, sizeof (adr^)));
+		local (webaddress = adr^ [ixtable]);
+		local (buttontext = nameof (adr^ [ixtable]));
+		local (buttonname = "button" + ct++);
+		local (rect = rectangle.set (t, l, b, r));
+		cardEditor.web.siteInButton (rect, buttonname, buttontext, webaddress)}}

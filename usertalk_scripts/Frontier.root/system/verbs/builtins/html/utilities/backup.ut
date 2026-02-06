@@ -1,1 +1,23 @@
-local (folder = "Macintosh HD:New Releases:suites.html:backups:");file.surefolder (folder);local (subfolder = folder + "html release #" + ++scratchpad.backupnumber + ":");«local (homepagesource = "Macintosh HD:New Releases:Scripting the Internet:Website Scripting for BBEdit:default.html")file.newfolder (subfolder);on save (adr) {	msg (adr);	export.sendobject (adr, subfolder + string (adr))};save (@bbedit);save (@fetch);save (@suites.html);save (@user.html);export.sendobject (@system.menubars.['R*ch'], subfolder + "system.menubars.R*ch");«save (@system.menubars.MOSS)file.copy (homepagesource, subfolder + file.filefrompath (homepagesource));local (f = folder);f = f + "html." + scratchpad.backupnumber + ".sit";stuff.createArchive (f, {subfolder}, true);file.deletefolder (subfolder);f = f + ".hqx";file.copy (f, file.resolveAlias ("Macintosh HD:Desktop Folder:FTP Agent:bbedit:") + file.filefrompath (f))
+local (folder = "Macintosh HD:New Releases:suites.html:backups:");
+file.surefolder (folder);
+local (subfolder = folder + "html release #" + ++scratchpad.backupnumber + ":");
+Â«local (homepagesource = "Macintosh HD:New Releases:Scripting the Internet:Website Scripting for BBEdit:default.html")
+file.newfolder (subfolder);
+on save (adr) {
+	msg (adr);
+	export.sendobject (adr, subfolder + string (adr))};
+
+save (@bbedit);
+save (@fetch);
+save (@suites.html);
+save (@user.html);
+export.sendobject (@system.menubars.['R*ch'], subfolder + "system.menubars.R*ch");
+Â«save (@system.menubars.MOSS)
+file.copy (homepagesource, subfolder + file.filefrompath (homepagesource));
+
+local (f = folder);
+f = f + "html." + scratchpad.backupnumber + ".sit";
+stuff.createArchive (f, {subfolder}, true);
+file.deletefolder (subfolder);
+f = f + ".hqx";
+file.copy (f, file.resolveAlias ("Macintosh HD:Desktop Folder:FTP Agent:bbedit:") + file.filefrompath (f))

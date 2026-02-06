@@ -1,1 +1,13 @@
-on getServerPrefs (serverName) {	local (adrTable = @user.webEdit.servers.[serverName]);	if defined (adrTable^) {		return (adrTable)};	if sizeOf (user.webEdit.servers) == 1 {		return (@user.webEdit.servers [1])};	local (i);	for i = 1 to sizeOf (user.webEdit.servers) {		if string.lower (nameOf (user.webEdit.servers [i])) contains string.lower (serverName) {			adrTable = @user.webEdit.servers [i]}};	if defined (adrTable^) {		return (adrTable)};	return (false)}
+on getServerPrefs (serverName) {
+	local (adrTable = @user.webEdit.servers.[serverName]);
+	if defined (adrTable^) {
+		return (adrTable)};
+	if sizeOf (user.webEdit.servers) == 1 {
+		return (@user.webEdit.servers [1])};
+	local (i);
+	for i = 1 to sizeOf (user.webEdit.servers) {
+		if string.lower (nameOf (user.webEdit.servers [i])) contains string.lower (serverName) {
+			adrTable = @user.webEdit.servers [i]}};
+	if defined (adrTable^) {
+		return (adrTable)};
+	return (false)}

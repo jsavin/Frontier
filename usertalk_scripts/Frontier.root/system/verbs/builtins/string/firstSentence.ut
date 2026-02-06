@@ -1,1 +1,2 @@
-on firstSentence (s) {	kernel (string.firstsentence)}
+on firstSentence (s) {
+	kernel (string.firstsentence)}

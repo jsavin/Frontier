@@ -1,1 +1,2 @@
-on hide (adr) {	kernel (window.hide)}
+on hide (adr) {
+	kernel (window.hide)}

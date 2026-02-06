@@ -1,1 +1,37 @@
-on writeWholeFile (f, s, type = nil, creator = nil, creationdate = nil) {	«Changes		«11/27/01; 7:58:10 AM by DW			«Add support for callbacks that get control after the file has been written. The callbacks are passed the file path. Their returned value is ignored.		«1/1/01; 12:41:27 PM by DW			«If the file exists prior to writing and the creation date is not specified by the caller, maintain the file's creation date.			«Instead of calling sys.os, use system.environment.isMac.		«10/31/97 at 1:41:20 PM by DW			«Moved from toys.writeWholeFile.		«Friday, July 18, 1997 at 10:22:07 AM by PBS			«Conditionalized for multiple platforms, with optional parameters.	if creationdate == nil {		if file.exists (f) {			try {creationdate = file.created (f)}}};	file.new (f);	file.open (f);	if system.environment.isMac {		if type != nil {			file.settype (f, type)};		if creator != nil {			file.setcreator (f, creator)}};	file.write (f, s);	file.close (f);	if creationdate != nil {		file.setcreated (f, creationdate)};	bundle { //call the callbacks, if present		local (adrscript);		if not defined (user.callbacks.fileWriteWholeFile) {			new (tableType, @user.callbacks.fileWriteWholeFile)};		for adrscript in @user.callbacks.fileWriteWholeFile {			try {				while typeOf (adrscript^) == addressType {					adrscript = adrscript^};				adrscript^ (f)}}};	return (true)};«bundle //test code	«writewholefile ("c:\\tmp.html", clock.now ())
+on writeWholeFile (f, s, type = nil, creator = nil, creationdate = nil) {
+	Â«Changes
+		Â«11/27/01; 7:58:10 AM by DW
+			Â«Add support for callbacks that get control after the file has been written. The callbacks are passed the file path. Their returned value is ignored.
+		Â«1/1/01; 12:41:27 PM by DW
+			Â«If the file exists prior to writing and the creation date is not specified by the caller, maintain the file's creation date.
+			Â«Instead of calling sys.os, use system.environment.isMac.
+		Â«10/31/97 at 1:41:20 PM by DW
+			Â«Moved from toys.writeWholeFile.
+		Â«Friday, July 18, 1997 at 10:22:07 AM by PBS
+			Â«Conditionalized for multiple platforms, with optional parameters.
+	if creationdate == nil {
+		if file.exists (f) {
+			try {creationdate = file.created (f)}}};
+	file.new (f);
+	file.open (f);
+	if system.environment.isMac {
+		if type != nil {
+			file.settype (f, type)};
+		if creator != nil {
+			file.setcreator (f, creator)}};
+	file.write (f, s);
+	file.close (f);
+	if creationdate != nil {
+		file.setcreated (f, creationdate)};
+	bundle { //call the callbacks, if present
+		local (adrscript);
+		if not defined (user.callbacks.fileWriteWholeFile) {
+			new (tableType, @user.callbacks.fileWriteWholeFile)};
+		for adrscript in @user.callbacks.fileWriteWholeFile {
+			try {
+				while typeOf (adrscript^) == addressType {
+					adrscript = adrscript^};
+				adrscript^ (f)}}};
+	return (true)};
+Â«bundle //test code
+	Â«writewholefile ("c:\\tmp.html", clock.now ())

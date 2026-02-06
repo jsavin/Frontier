@@ -1,1 +1,3 @@
-on getMailboxName (mailboxObj) {	with objectModel, Eudora, eventInfo {		return (core.get (id, mailboxObj.name))}}
+on getMailboxName (mailboxObj) {
+	with objectModel, Eudora, eventInfo {
+		return (core.get (id, mailboxObj.name))}}

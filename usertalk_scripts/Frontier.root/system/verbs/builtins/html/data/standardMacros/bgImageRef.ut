@@ -1,1 +1,31 @@
-on bgImageRef (imageSpec="", pageTable=nil) {	«Friday, January 02, 1998 at 2:17:05 AM by PBS		«Returns the url of the specified image.		«Use this in your #pageheader attribute.		«Example:			«{"<body " + bgImageRef () + " alink=\"#008000\" bgcolor=\"#FFFFFF\" text=\"#000000\" link=\"#00008B\" vlink=\"#800080\">"}		«By default, the image is specified by the #background directive.		«Example:			«#background -> "myBackgroundImage"		«If the specified image is the empty string, return an empty string.		local (imageTable);	if pageTable == nil {		pagetable = html.getPageTableAddress ()};		if imageSpec == "" { //get the imageSpec from the page table		try {			imageSpec = pageTable^.background}};	if imageSpec == "" {		return ("")};		if imageSpec contains "/" { //It's not an imageRef-style reference		return ("background=\"" + imageSpec + "\"")};	if imageSpec contains "." {		local (lowerspec = string.lower (imageSpec));		if (lowerspec endsWith ".gif") or (lowerspec endsWith ".jpg") {			return ("background=\"" + imageSpec + "\"")}};		«Get image data table for this image.	imageTable = html.getImageData (imageSpec, pageTable);	return ("background=\"" + imageTable.url + "\"")}
+on bgImageRef (imageSpec="", pageTable=nil) {
+	Â«Friday, January 02, 1998 at 2:17:05 AM by PBS
+		Â«Returns the url of the specified image.
+		Â«Use this in your #pageheader attribute.
+		Â«Example:
+			Â«{"<body " + bgImageRef () + " alink=\"#008000\" bgcolor=\"#FFFFFF\" text=\"#000000\" link=\"#00008B\" vlink=\"#800080\">"}
+		Â«By default, the image is specified by the #background directive.
+		Â«Example:
+			Â«#background -> "myBackgroundImage"
+		Â«If the specified image is the empty string, return an empty string.
+	
+	local (imageTable);
+	if pageTable == nil {
+		pagetable = html.getPageTableAddress ()};
+	
+	if imageSpec == "" { //get the imageSpec from the page table
+		try {
+			imageSpec = pageTable^.background}};
+	if imageSpec == "" {
+		return ("")};
+	
+	if imageSpec contains "/" { //It's not an imageRef-style reference
+		return ("background=\"" + imageSpec + "\"")};
+	if imageSpec contains "." {
+		local (lowerspec = string.lower (imageSpec));
+		if (lowerspec endsWith ".gif") or (lowerspec endsWith ".jpg") {
+			return ("background=\"" + imageSpec + "\"")}};
+	
+	Â«Get image data table for this image.
+	imageTable = html.getImageData (imageSpec, pageTable);
+	return ("background=\"" + imageTable.url + "\"")}

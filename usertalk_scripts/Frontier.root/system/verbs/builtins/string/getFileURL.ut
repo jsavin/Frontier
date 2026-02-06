@@ -1,1 +1,10 @@
-on getFileURL (url) { «takes a URL and returns a file path	«10/31/97 at 8:12:41 AM by DW -- moved from toys.getFileURL	«it's an error if it doesn't begin with file:///	local (f);	if not (string.lower (url) beginsWith "file:///") {		scriptError ("This command only works with URLs that begin with file:///.")};	url = string.delete (url, 1, 8);	url = string.replaceAll (url, "/", file.getPathChar ());	f = string.urlDecode (url);	return (f)}
+on getFileURL (url) { Â«takes a URL and returns a file path
+	Â«10/31/97 at 8:12:41 AM by DW -- moved from toys.getFileURL
+	Â«it's an error if it doesn't begin with file:///
+	local (f);
+	if not (string.lower (url) beginsWith "file:///") {
+		scriptError ("This command only works with URLs that begin with file:///.")};
+	url = string.delete (url, 1, 8);
+	url = string.replaceAll (url, "/", file.getPathChar ());
+	f = string.urlDecode (url);
+	return (f)}

@@ -1,1 +1,14 @@
-on callBrowser (browserName, cmdStr, paramStr="") {	«Send a command to a web browser running in Windows.	case sys.os () {		"Win95";		"WinNT" {			local (ddeName, dllpath);			dllpath = file.folderFromPath (frontier.getProgramPath ());			dllpath = dllpath + "DLLs\\";			file.sureFolder (dllpath);			dllpath = dllpath + "ddedll.dll";			if not file.exists (dllpath) {				file.writeWholeFile (dllpath, webbrowser.data.ddeDLL)};			ddeName = string.popSuffix (file.fileFromPath (browserName));			return (dll.call (dllpath, "DDEExecute", ddeName, cmdStr, paramStr))}}}
+on callBrowser (browserName, cmdStr, paramStr="") {
+	Â«Send a command to a web browser running in Windows.
+	case sys.os () {
+		"Win95";
+		"WinNT" {
+			local (ddeName, dllpath);
+			dllpath = file.folderFromPath (frontier.getProgramPath ());
+			dllpath = dllpath + "DLLs\\";
+			file.sureFolder (dllpath);
+			dllpath = dllpath + "ddedll.dll";
+			if not file.exists (dllpath) {
+				file.writeWholeFile (dllpath, webbrowser.data.ddeDLL)};
+			ddeName = string.popSuffix (file.fileFromPath (browserName));
+			return (dll.call (dllpath, "DDEExecute", ddeName, cmdStr, paramStr))}}}

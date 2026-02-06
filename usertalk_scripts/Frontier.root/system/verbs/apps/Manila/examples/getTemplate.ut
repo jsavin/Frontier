@@ -1,1 +1,16 @@
-«Make sure the scratchpad.manilaRpcSettings table is properly initialized.manila.examples.init ();«Request the template from the site. This will only work if you are the managing editor for the site.local (s, adrSitePrefs = @scratchpad.manilaRpcSettings);s = manila.template.get (adrSitePrefs);«Create a database object holding the template and display itlocal (adrOutline = @temp.manilaRpcTemplate);op.newOutlineObject (s, adrOutline);target.set (adrOutline);op.fullExpand ();target.clear ();window.open (adrOutline);window.zoom (adrOutline);
+
+Â«Make sure the scratchpad.manilaRpcSettings table is properly initialized.
+manila.examples.init ();
+
+Â«Request the template from the site. This will only work if you are the managing editor for the site.
+local (s, adrSitePrefs = @scratchpad.manilaRpcSettings);
+s = manila.template.get (adrSitePrefs);
+
+Â«Create a database object holding the template and display it
+local (adrOutline = @temp.manilaRpcTemplate);
+op.newOutlineObject (s, adrOutline);
+target.set (adrOutline);
+op.fullExpand ();
+target.clear ();
+window.open (adrOutline);
+window.zoom (adrOutline);

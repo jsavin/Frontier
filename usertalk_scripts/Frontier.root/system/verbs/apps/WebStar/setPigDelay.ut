@@ -1,1 +1,3 @@
-on setPigDelay (x, appID = WebStar.id) {	with objectModel, WebStar.eventInfo {		return (core.set (appID, pigDelay, x))}}
+on setPigDelay (x, appID = WebStar.id) {
+	with objectModel, WebStar.eventInfo {
+		return (core.set (appID, pigDelay, x))}}

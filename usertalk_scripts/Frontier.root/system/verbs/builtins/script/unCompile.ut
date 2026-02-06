@@ -1,1 +1,2 @@
-on uncompile (adrScript) {	kernel (script.uncompile)}
+on uncompile (adrScript) {
+	kernel (script.uncompile)}

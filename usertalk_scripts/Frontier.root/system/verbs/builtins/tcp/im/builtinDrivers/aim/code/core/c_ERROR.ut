@@ -1,1 +1,23 @@
-on c_ERROR(adrSelf,id,data) {	«# let's just grab the errors we care about!		«#still more fields	if data contains ':' {		data = number (string.nthField(data,':',1))}	else {		data = number(data)}; //# let's get an int outta it		case data {		980 {			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; Incorrect nickname/password combination")};		981 {			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; The AIM service is temporarily unavailable")};		982 {			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; Your warning level is too high")};		983 {			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; You have been connecting and disconnecting too frequently")};		989 {			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; An unknown error occurred")}}	else {		«# try to let further implementation handle it		tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, id, {adrSelf, data})}}
+on c_ERROR(adrSelf,id,data) {
+	Â«# let's just grab the errors we care about!
+	
+	Â«#still more fields
+	if data contains ':' {
+		data = number (string.nthField(data,':',1))}
+	else {
+		data = number(data)}; //# let's get an int outta it
+	
+	case data {
+		980 {
+			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; Incorrect nickname/password combination")};
+		981 {
+			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; The AIM service is temporarily unavailable")};
+		982 {
+			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; Your warning level is too high")};
+		983 {
+			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; You have been connecting and disconnecting too frequently")};
+		989 {
+			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; An unknown error occurred")}}
+	else {
+		Â«# try to let further implementation handle it
+		tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, id, {adrSelf, data})}}

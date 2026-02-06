@@ -1,1 +1,4 @@
-on setprogressrange (n, max) { «Sets a max value for the progress indicator associated with TransactionID	case sys.os () {		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'PRSR', '----', long (n), 'MAXV', long (max)))}}}
+on setprogressrange (n, max) { Â«Sets a max value for the progress indicator associated with TransactionID
+	case sys.os () {
+		"MacOS" {
+			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'PRSR', '----', long (n), 'MAXV', long (max)))}}}

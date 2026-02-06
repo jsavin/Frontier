@@ -1,1 +1,2 @@
-on show (obj) { «Bring an object into view	return (appleEvent (Filemaker.id, 'misc', 'mvis', '----', objspec (obj)))}
+on show (obj) { Â«Bring an object into view
+	return (appleEvent (Filemaker.id, 'misc', 'mvis', '----', objspec (obj)))}

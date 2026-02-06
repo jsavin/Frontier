@@ -1,1 +1,2 @@
-on geturl (s) { «Get a URL and display it in a window	return (appleEvent (Fetch.id, 'GURL', 'GURL', '----', string (s)))}
+on geturl (s) { Â«Get a URL and display it in a window
+	return (appleEvent (Fetch.id, 'GURL', 'GURL', '----', string (s)))}

@@ -1,1 +1,35 @@
-on doSubTasks (adrtable, fllog=true) { //call all the scripts in the table, with logging	«Notes		«12/18/98; 11:57:57 AM by DW			«For convenience, a few versions ago, we added a higher level to the scheduler, allowing scripts to be stored in user.scheduler.overnight and hourly. In 6.0 we also add a everyMinute table. In 6.0 we also allow the items in these table to be addresses of scripts, making maintenence easier for add-on modules. We also added a very easy way for tasks to add information to the log about what they did. It's tricky, and the details are hidden for the most part in this script.		«Sun, 07 Mar 1999 12:08:30 GMT by AR			«Added conversion of pre-6.0 tasks from string objects to script objects.	on callWithLogging (adrscript) {		new (tabletype, @taskInfo.subTaskInfo);		try {			callScript (string (adrscript), {}, @taskinfo)}		else {			taskInfo.subTaskInfo.scriptError = tryError};		if fllog {			local (s = string (adrscript));			if s beginswith "[\"" {				ix = string.patternmatch ("\"].", s);				s = string.delete (s, 1, ix + 2)};			table.rename (@taskinfo.subTaskInfo, s)}		else {			delete (@taskinfo.subTaskInfo)}};	local (i, adrscript);	for i = 1 to sizeof (adrtable^) {		adrscript = @adrtable^ [i];		case typeof (adrscript^) {			scripttype {				callWithLogging (adrscript)};			addresstype {				local (nomad = adrscript);				while typeof (nomad^) != scripttype {					nomad = nomad^};				callWithLogging (nomad)};			stringType { //Convert a pre-6.0 task from string type to script type and run it				script.newScriptObject (string (adrscript^), adrscript);				script.compile (adrscript); //make sure it is valid UserTalk				callWithLogging (adrscript)}}}}
+on doSubTasks (adrtable, fllog=true) { //call all the scripts in the table, with logging
+	Â«Notes
+		Â«12/18/98; 11:57:57 AM by DW
+			Â«For convenience, a few versions ago, we added a higher level to the scheduler, allowing scripts to be stored in user.scheduler.overnight and hourly. In 6.0 we also add a everyMinute table. In 6.0 we also allow the items in these table to be addresses of scripts, making maintenence easier for add-on modules. We also added a very easy way for tasks to add information to the log about what they did. It's tricky, and the details are hidden for the most part in this script.
+		Â«Sun, 07 Mar 1999 12:08:30 GMT by AR
+			Â«Added conversion of pre-6.0 tasks from string objects to script objects.
+	on callWithLogging (adrscript) {
+		new (tabletype, @taskInfo.subTaskInfo);
+		try {
+			callScript (string (adrscript), {}, @taskinfo)}
+		else {
+			taskInfo.subTaskInfo.scriptError = tryError};
+		if fllog {
+			local (s = string (adrscript));
+			if s beginswith "[\"" {
+				ix = string.patternmatch ("\"].", s);
+				s = string.delete (s, 1, ix + 2)};
+			table.rename (@taskinfo.subTaskInfo, s)}
+		else {
+			delete (@taskinfo.subTaskInfo)}};
+	local (i, adrscript);
+	for i = 1 to sizeof (adrtable^) {
+		adrscript = @adrtable^ [i];
+		case typeof (adrscript^) {
+			scripttype {
+				callWithLogging (adrscript)};
+			addresstype {
+				local (nomad = adrscript);
+				while typeof (nomad^) != scripttype {
+					nomad = nomad^};
+				callWithLogging (nomad)};
+			stringType { //Convert a pre-6.0 task from string type to script type and run it
+				script.newScriptObject (string (adrscript^), adrscript);
+				script.compile (adrscript); //make sure it is valid UserTalk
+				callWithLogging (adrscript)}}}}

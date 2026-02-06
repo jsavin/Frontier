@@ -1,1 +1,3 @@
-local (pta = html.getPageTableAddress ());return (html.dialog.draw ())
+local (pta = html.getPageTableAddress ());
+
+return (html.dialog.draw ())

@@ -1,1 +1,39 @@
-on pubsubUnsubscribe (dest = "", unsubscribeFrom = nil, nsList = {}, id = nil, connection = @system.temp.jabber.connection) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«Sends a pub-sub unsubscription request. See http://www.jabber.org/jeps/jep-0024.html.	on addAtt ( XMLadr, name, value ) {		if not defined ( XMLadr^.["/atts"] ) {			new ( tableType, @XMLadr^.["/atts"] )};		XMLadr^.["/atts"].[name] = value};	if not defined ( connection^ ) { // should I lock a semaphore after this?		scriptError ( "Can't send message over Jabber connection because the connection is not established." )};		if id == nil {		id = tcp.im.builtinDrivers.jabber.code.idTables.create()};		local ( result, iq, query, subscribe);	new (tableType, @result);		iq = xml.addTable ( @result, "iq" );	bundle { // <iq type='set' to="dest" id="id"' from="user">		addAtt(iq, "type", "set");		addAtt(iq, "to", dest);		addAtt(iq, "id", nameOf ( id^ ) );		addAtt(iq, "from", connection^.username + "@" + connection^.host + "/" + connection^.resource)};	bundle { // <query xmlns=radio:iq:pubsub'>		query = xml.addTable(iq, "query");		addAtt(query, "xmlns", "radio:iq:pubsub")};	bundle { // <unsubscribe to="whatever">		// avoid empty-table XML bug		if unsubscribeFrom == nil and nsList == {} {			xml.addValue(query, "unsubscribe", "")}		else {			subscribe = xml.addTable ( query, "unsubscribe" );			if unsubscribeFrom != nil {				addAtt(subscribe, "to", unsubscribeFrom)};			for namespace in nsList {				xml.addValue(subscribe, "ns", namespace)}}};	tcp.im.builtinDrivers.jabber.code.writeXML (iq, connection: connection )};pubsubUnsubscribe( "todd@jerf.org/helpme", unsubscribeFrom: "Helen", nsList: {"hairline", "shoesize"})
+on pubsubUnsubscribe (dest = "", unsubscribeFrom = nil, nsList = {}, id = nil, connection = @system.temp.jabber.connection) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«Sends a pub-sub unsubscription request. See http://www.jabber.org/jeps/jep-0024.html.
+	on addAtt ( XMLadr, name, value ) {
+		if not defined ( XMLadr^.["/atts"] ) {
+			new ( tableType, @XMLadr^.["/atts"] )};
+		XMLadr^.["/atts"].[name] = value};
+	if not defined ( connection^ ) { // should I lock a semaphore after this?
+		scriptError ( "Can't send message over Jabber connection because the connection is not established." )};
+	
+	if id == nil {
+		id = tcp.im.builtinDrivers.jabber.code.idTables.create()};
+	
+	local ( result, iq, query, subscribe);
+	new (tableType, @result);
+	
+	iq = xml.addTable ( @result, "iq" );
+	bundle { // <iq type='set' to="dest" id="id"' from="user">
+		addAtt(iq, "type", "set");
+		addAtt(iq, "to", dest);
+		addAtt(iq, "id", nameOf ( id^ ) );
+		addAtt(iq, "from", connection^.username + "@" + connection^.host + "/" + connection^.resource)};
+	bundle { // <query xmlns=radio:iq:pubsub'>
+		query = xml.addTable(iq, "query");
+		addAtt(query, "xmlns", "radio:iq:pubsub")};
+	bundle { // <unsubscribe to="whatever">
+		// avoid empty-table XML bug
+		if unsubscribeFrom == nil and nsList == {} {
+			xml.addValue(query, "unsubscribe", "")}
+		else {
+			subscribe = xml.addTable ( query, "unsubscribe" );
+			if unsubscribeFrom != nil {
+				addAtt(subscribe, "to", unsubscribeFrom)};
+			for namespace in nsList {
+				xml.addValue(subscribe, "ns", namespace)}}};
+	tcp.im.builtinDrivers.jabber.code.writeXML (iq, connection: connection )};
+pubsubUnsubscribe( "todd@jerf.org/helpme", unsubscribeFrom: "Helen", nsList: {"hairline", "shoesize"})

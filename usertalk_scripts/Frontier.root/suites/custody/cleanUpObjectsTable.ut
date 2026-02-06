@@ -1,1 +1,24 @@
-on cleanUpObjectsTable () {	«Remove objects that have timed out; note it in the log.		«A semaphore should be locked on this table before calling this script.		custody.init ();		local (currentDate = clock.now ());	local (adrTable = @user.custody.objects);	local (i);		if defined (adrTable^ ["item #1"]) {		delete (@adrTable^ ["item #1"])};		if sizeOf (adrTable^) > 0 {		for i = sizeOf (adrTable^) downTo 1 {			local (timeOutSecs = user.custody.prefs.timeOutMinutes * 60);			local (checkedOutDate = adrTable^ [i].checkedOutDate);			local (userName = adrTable^ [i].user);			try {timeOutSecs = adrTable^ [i].timeOutMinutes * 60};			if checkedOutDate + timeOutSecs < currentDate { //check-out has timed out				log.add ("Check-out on " + nameOf (adrTable^ [i]) + " by " +  userName + " timed out", "Custody");				delete (@adrTable^ [i])}}};		return (true)}
+on cleanUpObjectsTable () {
+	Â«Remove objects that have timed out; note it in the log.
+		Â«A semaphore should be locked on this table before calling this script.
+	
+	custody.init ();
+	
+	local (currentDate = clock.now ());
+	local (adrTable = @user.custody.objects);
+	local (i);
+	
+	if defined (adrTable^ ["item #1"]) {
+		delete (@adrTable^ ["item #1"])};
+	
+	if sizeOf (adrTable^) > 0 {
+		for i = sizeOf (adrTable^) downTo 1 {
+			local (timeOutSecs = user.custody.prefs.timeOutMinutes * 60);
+			local (checkedOutDate = adrTable^ [i].checkedOutDate);
+			local (userName = adrTable^ [i].user);
+			try {timeOutSecs = adrTable^ [i].timeOutMinutes * 60};
+			if checkedOutDate + timeOutSecs < currentDate { //check-out has timed out
+				log.add ("Check-out on " + nameOf (adrTable^ [i]) + " by " +  userName + " timed out", "Custody");
+				delete (@adrTable^ [i])}}};
+	
+	return (true)}

@@ -1,1 +1,17 @@
-on waitForIqReply ( id, timeout = 60) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«This will wait for the iq message to come back, and be fully processed, before returning control to the caller		«See rationale in jabber.idTables.create for more info. This script is so simple because of the surrounding infrastructure.	on mungeId ( idStr ) {		// this munges the id string into a semaphore name, this scriptlet will be copied into several places.		if typeOf ( idStr ) == addressType {			idStr = nameOf ( idStr^ )};		return "JabberIQTagSem" + idStr};	try {		semaphore.lock(mungeId(id), timeout * 60)}	else { // provide a nicer scriptError, more descriptive of the problem		scriptError ( "Can't wait until iq tag reply comes back because the reply took too long to come back." )};	semaphore.unlock(mungeId(id));	return}
+on waitForIqReply ( id, timeout = 60) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«This will wait for the iq message to come back, and be fully processed, before returning control to the caller
+		Â«See rationale in jabber.idTables.create for more info. This script is so simple because of the surrounding infrastructure.
+	on mungeId ( idStr ) {
+		// this munges the id string into a semaphore name, this scriptlet will be copied into several places.
+		if typeOf ( idStr ) == addressType {
+			idStr = nameOf ( idStr^ )};
+		return "JabberIQTagSem" + idStr};
+	try {
+		semaphore.lock(mungeId(id), timeout * 60)}
+	else { // provide a nicer scriptError, more descriptive of the problem
+		scriptError ( "Can't wait until iq tag reply comes back because the reply took too long to come back." )};
+	semaphore.unlock(mungeId(id));
+	return}

@@ -1,1 +1,28 @@
-«Changes	«10/20/02; 2:29:14 AM by JES		«Init user.webBrowser.proxy.exceptions.	«12/19/01; 10:02:39 PM by JES		«Created. Initialize webBrowser settings. For now, only user.webBrowser.proxy.if not defined (user.webBrowser) {	new (tableType, @user.webBrowser)};if not defined (user.webBrowser.proxy) {	new (tableType, @user.webBrowser.proxy)};if not defined (user.webBrowser.proxy.enabled) {	if defined (user.webBrowser.proxy.domain) {		if sizeOf (user.webBrowser.proxy.domain) > 0 {			user.webBrowser.proxy.enabled = true}		else {			user.webBrowser.proxy.enabled = false}}	else {		user.webBrowser.proxy.enabled = false}};if not defined (user.webBrowser.proxy.domain) {	user.webBrowser.proxy.domain = ""};if not defined (user.webBrowser.proxy.password) {	user.webBrowser.proxy.password = ""};if not defined (user.webBrowser.proxy.port) {	user.webBrowser.proxy.port = 80};if not defined (user.webBrowser.proxy.username) {	user.webBrowser.proxy.username = ""};if not defined (user.webBrowser.proxy.exceptions) {	new (tabletype, @user.webBrowser.proxy.exceptions)}
+Â«Changes
+	Â«10/20/02; 2:29:14 AM by JES
+		Â«Init user.webBrowser.proxy.exceptions.
+	Â«12/19/01; 10:02:39 PM by JES
+		Â«Created. Initialize webBrowser settings. For now, only user.webBrowser.proxy.
+
+if not defined (user.webBrowser) {
+	new (tableType, @user.webBrowser)};
+if not defined (user.webBrowser.proxy) {
+	new (tableType, @user.webBrowser.proxy)};
+if not defined (user.webBrowser.proxy.enabled) {
+	if defined (user.webBrowser.proxy.domain) {
+		if sizeOf (user.webBrowser.proxy.domain) > 0 {
+			user.webBrowser.proxy.enabled = true}
+		else {
+			user.webBrowser.proxy.enabled = false}}
+	else {
+		user.webBrowser.proxy.enabled = false}};
+if not defined (user.webBrowser.proxy.domain) {
+	user.webBrowser.proxy.domain = ""};
+if not defined (user.webBrowser.proxy.password) {
+	user.webBrowser.proxy.password = ""};
+if not defined (user.webBrowser.proxy.port) {
+	user.webBrowser.proxy.port = 80};
+if not defined (user.webBrowser.proxy.username) {
+	user.webBrowser.proxy.username = ""};
+if not defined (user.webBrowser.proxy.exceptions) {
+	new (tabletype, @user.webBrowser.proxy.exceptions)}

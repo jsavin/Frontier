@@ -1,1 +1,2 @@
-on new (path) {	kernel (file.new)}
+on new (path) {
+	kernel (file.new)}

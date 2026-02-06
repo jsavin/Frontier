@@ -1,1 +1,47 @@
-on importer (path) { «a call to this script is saved with all exported objects	«it's run by Frontier.finder2Click when the user 2clicks on the file		«we import the object in the 'data' resource, into the object db			«if there is already an object with that name, we confirm		«then we edit the new object, so the user can see what he got		Frontier.findertofront = false; «Frontier should remain in front after importing		local {		resdata; «holds the data received from resource fork		cellname; «object database name for the imported stuff		adr}; «address of object database cell for imported stuff		if not rez.getnthresource (path, 'data', 1, @cellname, @resdata) {		return (false)};		loop { «get destination address from the user		if not dialog.ask ("Name for imported object?", @cellname) {			return (false)};				local (objname = nameOf (cellname^));				if objname == "" { «cellname isn't interpretable as an address			if not dialog.confirm ("Can't import to " + cellname + " because the table doesn't exist.") {				return (false)};			continue}; «try again				if objname == cellname { «avoid importing into a local			adr = @root.[cellname]}		else {			adr = address (cellname)};		if defined (adr^) { «confirm, we're going to over-write it			if not dialog.yesNo ("Replace existing object named " +  adr + "?") {				continue}};		break};		bundle { «double-unpack the data into the object database		unpack (@resdata, @resdata);		unpack (@resdata, @resdata);		table.moveAndRename (@resdata, adr)};		if typeOf (adr^) == tableType { «see if it has an importSuite script		if defined (adr^.importSuite) {			adr^.importSuite (adr);			return (true)}}; «suites can open themselves if they want		return (edit (adr))} «show the newly imported object
+on importer (path) { Â«a call to this script is saved with all exported objects
+	Â«it's run by Frontier.finder2Click when the user 2clicks on the file
+		Â«we import the object in the 'data' resource, into the object db
+			Â«if there is already an object with that name, we confirm
+		Â«then we edit the new object, so the user can see what he got
+	
+	Frontier.findertofront = false; Â«Frontier should remain in front after importing
+	
+	local {
+		resdata; Â«holds the data received from resource fork
+		cellname; Â«object database name for the imported stuff
+		adr}; Â«address of object database cell for imported stuff
+	
+	if not rez.getnthresource (path, 'data', 1, @cellname, @resdata) {
+		return (false)};
+	
+	loop { Â«get destination address from the user
+		if not dialog.ask ("Name for imported object?", @cellname) {
+			return (false)};
+		
+		local (objname = nameOf (cellname^));
+		
+		if objname == "" { Â«cellname isn't interpretable as an address
+			if not dialog.confirm ("Can't import to " + cellname + " because the table doesn't exist.") {
+				return (false)};
+			continue}; Â«try again
+		
+		if objname == cellname { Â«avoid importing into a local
+			adr = @root.[cellname]}
+		else {
+			adr = address (cellname)};
+		if defined (adr^) { Â«confirm, we're going to over-write it
+			if not dialog.yesNo ("Replace existing object named " +  adr + "?") {
+				continue}};
+		break};
+	
+	bundle { Â«double-unpack the data into the object database
+		unpack (@resdata, @resdata);
+		unpack (@resdata, @resdata);
+		table.moveAndRename (@resdata, adr)};
+	
+	if typeOf (adr^) == tableType { Â«see if it has an importSuite script
+		if defined (adr^.importSuite) {
+			adr^.importSuite (adr);
+			return (true)}}; Â«suites can open themselves if they want
+	
+	return (edit (adr))} Â«show the newly imported object

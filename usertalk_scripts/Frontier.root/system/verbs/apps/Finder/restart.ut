@@ -1,1 +1,5 @@
-on restart () { «Restart the Macintosh	try { « this will probably work with either old Finder or Scriptable one		return (finderEvent (Finder.id, Finder.class, 'rest'))}	else { « but in case it doesn't, use the new form		return (appleEvent (Finder.id, 'fndr', 'rest'))}}
+on restart () { Â«Restart the Macintosh
+	try { Â« this will probably work with either old Finder or Scriptable one
+		return (finderEvent (Finder.id, Finder.class, 'rest'))}
+	else { Â« but in case it doesn't, use the new form
+		return (appleEvent (Finder.id, 'fndr', 'rest'))}}

@@ -1,1 +1,2 @@
-on random (lower, upper) {	kernel (lang.random)}
+on random (lower, upper) {
+	kernel (lang.random)}

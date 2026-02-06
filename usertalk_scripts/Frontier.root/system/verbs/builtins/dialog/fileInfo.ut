@@ -1,1 +1,50 @@
-on fileInfo (path) {	if not file.exists (path) {		scripterror ("File " + file.filefrompath (path) + " doesn't exist.")};	«bundle «old dialog code		«local			«okitem = 13			«nameitem = 7			«folderitem = 8			«createditem = 9			«modifieditem = 10			«sizeitem = 11			«versionitem = 12			«typeitem = 15			«creatoritem = 17		«on copytodialog () «copy info about "path" into the dialog			«dialog.setvalue (nameitem, file.filefrompath (path))			«dialog.setvalue (folderitem, file.folderfrompath (path))			«dialog.setvalue (createditem, file.created (path))			«dialog.setvalue (modifieditem, file.modified (path))			«dialog.setvalue (sizeitem, file.size (path) / 1024 + "K bytes")			«dialog.setvalue (typeitem, file.type (path))			«dialog.setvalue (creatoritem, file.creator (path))			«bundle «set the version number				«local (s = "n/a")				«if not file.isVolume (path)					«if not file.isbusy (path)						«if not file.isFolder (path)							«s = file.getVersion (path)				«dialog.setvalue (versionitem, s)		«on itemhit (item)			«case item				«-1					«copytodialog ()					«return (true)				«okitem					«bundle «rename file						«local (newpath)						«newpath = dialog.getvalue (nameitem)						«if not file.exists (newpath)							«speaker.beep ()							«return (true) «keep processing the dialog						«path = newpath						«copytodialog ()					«return (false)			«else				«return (true) «keep going if item isn't OK		«dialog.run (270, okitem, @itemhit)	local (f = filespec (path));	card.run (@dialog.cards.fileInfo);	return (true)}
+on fileInfo (path) {
+	if not file.exists (path) {
+		scripterror ("File " + file.filefrompath (path) + " doesn't exist.")};
+	Â«bundle Â«old dialog code
+		Â«local
+			Â«okitem = 13
+			Â«nameitem = 7
+			Â«folderitem = 8
+			Â«createditem = 9
+			Â«modifieditem = 10
+			Â«sizeitem = 11
+			Â«versionitem = 12
+			Â«typeitem = 15
+			Â«creatoritem = 17
+		Â«on copytodialog () Â«copy info about "path" into the dialog
+			Â«dialog.setvalue (nameitem, file.filefrompath (path))
+			Â«dialog.setvalue (folderitem, file.folderfrompath (path))
+			Â«dialog.setvalue (createditem, file.created (path))
+			Â«dialog.setvalue (modifieditem, file.modified (path))
+			Â«dialog.setvalue (sizeitem, file.size (path) / 1024 + "K bytes")
+			Â«dialog.setvalue (typeitem, file.type (path))
+			Â«dialog.setvalue (creatoritem, file.creator (path))
+			Â«bundle Â«set the version number
+				Â«local (s = "n/a")
+				Â«if not file.isVolume (path)
+					Â«if not file.isbusy (path)
+						Â«if not file.isFolder (path)
+							Â«s = file.getVersion (path)
+				Â«dialog.setvalue (versionitem, s)
+		Â«on itemhit (item)
+			Â«case item
+				Â«-1
+					Â«copytodialog ()
+					Â«return (true)
+				Â«okitem
+					Â«bundle Â«rename file
+						Â«local (newpath)
+						Â«newpath = dialog.getvalue (nameitem)
+						Â«if not file.exists (newpath)
+							Â«speaker.beep ()
+							Â«return (true) Â«keep processing the dialog
+						Â«path = newpath
+						Â«copytodialog ()
+					Â«return (false)
+			Â«else
+				Â«return (true) Â«keep going if item isn't OK
+		Â«dialog.run (270, okitem, @itemhit)
+	local (f = filespec (path));
+	card.run (@dialog.cards.fileInfo);
+	return (true)}

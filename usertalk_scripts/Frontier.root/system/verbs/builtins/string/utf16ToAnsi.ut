@@ -1,1 +1,2 @@
-on utf16ToAnsi (s) {	kernel (string.utf16ToAnsi)}
+on utf16ToAnsi (s) {
+	kernel (string.utf16ToAnsi)}

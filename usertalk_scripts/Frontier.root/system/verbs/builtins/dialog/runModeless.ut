@@ -1,1 +1,2 @@
-on runModeless (resnum, defaultitem, itemhitcallback) {	kernel (dialog.runmodeless)}
+on runModeless (resnum, defaultitem, itemhitcallback) {
+	kernel (dialog.runmodeless)}

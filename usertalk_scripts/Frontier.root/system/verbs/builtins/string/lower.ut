@@ -1,1 +1,2 @@
-on lower (s) {	kernel (string.lower)}
+on lower (s) {
+	kernel (string.lower)}

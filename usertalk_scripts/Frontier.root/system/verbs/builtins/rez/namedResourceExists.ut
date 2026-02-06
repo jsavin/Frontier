@@ -1,1 +1,2 @@
-on namedResourceExists (path, resourcetype, name) {	kernel (rez.namedresourceexists)}
+on namedResourceExists (path, resourcetype, name) {
+	kernel (rez.namedresourceexists)}

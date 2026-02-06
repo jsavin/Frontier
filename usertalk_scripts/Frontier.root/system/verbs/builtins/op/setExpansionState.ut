@@ -1,1 +1,2 @@
-on setExpansionState (numlist) {	kernel (op.setexpansionstate)}
+on setExpansionState (numlist) {
+	kernel (op.setexpansionstate)}

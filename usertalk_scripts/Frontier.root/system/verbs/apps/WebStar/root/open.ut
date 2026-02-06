@@ -1,1 +1,2 @@
-on open (adrserver) {	return (appleEvent (adrserver, 'ODBF', 'CLOS'))}
+on open (adrserver) {
+	return (appleEvent (adrserver, 'ODBF', 'CLOS'))}

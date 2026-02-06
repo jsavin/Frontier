@@ -1,1 +1,2 @@
-on isPowerPC () { «new in 4.0b7	kernel (Frontier.isPowerPC)}
+on isPowerPC () { Â«new in 4.0b7
+	kernel (Frontier.isPowerPC)}

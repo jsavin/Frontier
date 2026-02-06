@@ -1,1 +1,2 @@
-on setIndent (indent) {	kernel (wp.setindent)}
+on setIndent (indent) {
+	kernel (wp.setindent)}

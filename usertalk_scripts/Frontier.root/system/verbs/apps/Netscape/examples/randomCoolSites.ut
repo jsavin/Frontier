@@ -1,1 +1,8 @@
-local (adrtable = @netscape.examples.coolSites);local (sizetable = sizeof (adrtable^));netscape.launch ();loop {	local (url = @adrtable^ [random (1, sizetable)]);	window.msg (nameof (url^));	netscape.openUrl (url^);	clock.waitSeconds (20)}
+local (adrtable = @netscape.examples.coolSites);
+local (sizetable = sizeof (adrtable^));
+netscape.launch ();
+loop {
+	local (url = @adrtable^ [random (1, sizetable)]);
+	window.msg (nameof (url^));
+	netscape.openUrl (url^);
+	clock.waitSeconds (20)}

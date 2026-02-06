@@ -1,1 +1,34 @@
-«Universal tellParams script by Mason Hale 9/17/95	«server-independent - doesn't rely on specific parameters	«simply returns contents of parameter table	«encloses multiple line values in <pre> tags	«shows sub-table valueson tellParams (adrParams) {	local (htmltext = webServer.httpHeader (), i);	on add (s) {		htmltext = htmltext + s + cr};		add ("<html>");	add ("<head>");	add ("<title>Parameters Received By Frontier</title>");	add ("<body>");	add ("<h2>Parameters Received By Frontier</h2>");		on addparam (name, val) {		add ("<b>" + name + "</b> = \"" + val + "\"<br>")};		for i = 1 to sizeOf (adrParams^) {		if typeOf (adrParams^ [i]) == tableType {			local (x, tableName = nameOf (adrParams^ [i]) + ".");			for x = 1 to sizeOf (adrParams^ [i]) {				addparam (tableName + nameOf (adrParams^ [i][x]), string (adrParams^ [i][x]))};			continue};		if adrParams^ [i] contains cr {			addparam (nameOf (adrParams^ [i]), "<pre>" + adrParams^ [i] + "</pre>")}		else {			addparam (nameOf (adrParams^ [i]), adrParams^ [i])}};		add ("</body>");	add ("</html>");		return (htmltext)}
+Â«Universal tellParams script by Mason Hale 9/17/95
+	Â«server-independent - doesn't rely on specific parameters
+	Â«simply returns contents of parameter table
+	Â«encloses multiple line values in <pre> tags
+	Â«shows sub-table values
+on tellParams (adrParams) {
+	local (htmltext = webServer.httpHeader (), i);
+	on add (s) {
+		htmltext = htmltext + s + cr};
+	
+	add ("<html>");
+	add ("<head>");
+	add ("<title>Parameters Received By Frontier</title>");
+	add ("<body>");
+	add ("<h2>Parameters Received By Frontier</h2>");
+	
+	on addparam (name, val) {
+		add ("<b>" + name + "</b> = \"" + val + "\"<br>")};
+	
+	for i = 1 to sizeOf (adrParams^) {
+		if typeOf (adrParams^ [i]) == tableType {
+			local (x, tableName = nameOf (adrParams^ [i]) + ".");
+			for x = 1 to sizeOf (adrParams^ [i]) {
+				addparam (tableName + nameOf (adrParams^ [i][x]), string (adrParams^ [i][x]))};
+			continue};
+		if adrParams^ [i] contains cr {
+			addparam (nameOf (adrParams^ [i]), "<pre>" + adrParams^ [i] + "</pre>")}
+		else {
+			addparam (nameOf (adrParams^ [i]), adrParams^ [i])}};
+	
+	add ("</body>");
+	add ("</html>");
+	
+	return (htmltext)}

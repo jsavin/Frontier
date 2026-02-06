@@ -1,1 +1,2 @@
-on endTransaction (transactionID) {	return (misc.endTransaction (BBEdit.id, transactionID))}
+on endTransaction (transactionID) {
+	return (misc.endTransaction (BBEdit.id, transactionID))}

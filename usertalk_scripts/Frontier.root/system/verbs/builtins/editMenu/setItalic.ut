@@ -1,1 +1,2 @@
-on setItalic (flitalic) {	kernel (editmenu.setitalic)}
+on setItalic (flitalic) {
+	kernel (editmenu.setitalic)}

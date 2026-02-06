@@ -1,1 +1,2 @@
-on open (f) {	kernel (quicktime.open)}
+on open (f) {
+	kernel (quicktime.open)}

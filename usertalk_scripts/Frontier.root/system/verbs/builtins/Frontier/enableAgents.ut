@@ -1,1 +1,2 @@
-on enableAgents (bool) {	kernel (Frontier.enableagents)}
+on enableAgents (bool) {
+	kernel (Frontier.enableagents)}

@@ -1,1 +1,2 @@
-on split (cp, s, maxSplits = infinity) {	kernel (re.split)}
+on split (cp, s, maxSplits = infinity) {
+	kernel (re.split)}

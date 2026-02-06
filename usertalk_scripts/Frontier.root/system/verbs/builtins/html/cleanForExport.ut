@@ -1,1 +1,23 @@
-on cleanForExport (text, adrPageTable=@websites.["#data"]) { «prepare text to leave Mac environment	«10/31/97 at 6:45:58 AM by DW -- moved from toys.cleanForExport.	if html.getPref ("useKernelCode", adrPageTable) {		on kernelcall (text) {			kernel (html.cleanforexport)};		return (kernelcall (text))}	else {		if system.environment.isMac {			on replace (searchfor, replacewith) {				if string.patternMatch (searchfor, text) != 0 { «optimization					text = string.replaceAll (text, searchfor, replacewith)}};						replace ("Õ", "'");			replace ("¥", "o");			replace ("...", "...");			replace ("Ô", "'");			replace ("Ê", " "); «a funny space that Word produces			replace ("“", “"”);			replace ("”", “"”);			replace ("Ğ", "--");			replace ("«", "&lt;&lt;");			replace ("»", "&gt;&gt;")};		return (text)}}
+on cleanForExport (text, adrPageTable=@websites.["#data"]) { Â«prepare text to leave Mac environment
+	Â«10/31/97 at 6:45:58 AM by DW -- moved from toys.cleanForExport.
+	if html.getPref ("useKernelCode", adrPageTable) {
+		on kernelcall (text) {
+			kernel (html.cleanforexport)};
+		return (kernelcall (text))}
+	else {
+		if system.environment.isMac {
+			on replace (searchfor, replacewith) {
+				if string.patternMatch (searchfor, text) != 0 { Â«optimization
+					text = string.replaceAll (text, searchfor, replacewith)}};
+			
+			replace ("Ã•", "'");
+			replace ("Â¥", "o");
+			replace ("...", "...");
+			replace ("Ã”", "'");
+			replace ("ÃŠ", " "); Â«a funny space that Word produces
+			replace ("â€œ", â€œ"â€);
+			replace ("â€", â€œ"â€);
+			replace ("Ã", "--");
+			replace ("Â«", "&lt;&lt;");
+			replace ("Â»", "&gt;&gt;")};
+		return (text)}}

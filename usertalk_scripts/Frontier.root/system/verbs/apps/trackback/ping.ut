@@ -1,1 +1,57 @@
-on ping (adrurl, title, permalink, excerpt, weblogName) {	«Changes		«4/25/03; 7:19:07 PM by DW			«Add Content-Length header for POST requests, per Ben Trott's suggestion.		«4/25/03; 12:41:58 PM by DW			«When Trackback was coming online, the Trotts changed from GET to POST. So for older sites that haven't upgraded, we have to use GET. As they upgrade we'll use POST.				«http://blogs.law.harvard.edu/crimson1/2003/04/25#a142		«4/24/03; 6:57:39 AM by DW			«Created. See the spec here:				«http://www.movabletype.org/docs/mttrackback.html			«Comments here:				«http://scriptingnews.userland.com/backissues/2002/10/21#When:3:15:48PM		adrurl^.whenPing = clock.now ();		local (urllist = string.urlSplit (adrurl^.pingUrl), server = urllist [2], path = urllist [3]);		local (tc = clock.ticks (), xmltext);	bundle { //make the request, 4/25/03 by DW		if adrurl^.flGotUrlFromAbout {			path = path + "&title=" + string.urlencode (title) + "&url=" + string.urlencode (permalink) + "&excerpt=" + string.urlencode (excerpt) + "&blog_name=" + string.urlencode (weblogName);			xmltext = string.httpresultsplit (tcp.httpClient ("GET", server:server, path:path, ctFollowRedirects:5))}		else {			on encode (s) {				s = string.replaceall (s, " ", "+");				return (s)};			local (body = "title=" + encode (title) + "&url=" + encode (permalink) + "&excerpt=" + encode (excerpt) + "&blog_name=" + encode (weblogName));			xmltext = string.httpresultsplit (tcp.httpClient ("POST", server:server, path:path, ctFollowRedirects:5, data:body, datatype: "application/x-www-form-urlencoded", debug:false))}};	adrUrl^.ctPingSeconds = (clock.ticks () - tc) / 60;		local (xstruct);	xml.compile (xmltext, @xstruct);	adrurl^.xTrackbackResponse = xstruct;	adrurl^.errorstring = "";	adrurl^.flpinged = true;		local (adrresponse = xml.getaddress (@xstruct, "response"));	local (adrerror = xml.getaddress (adrresponse, "error"));	if adrerror^ != "0" { //error		try {adrurl^.errorstring = xml.getvalue (adrresponse, "message")}}};bundle { //test code	local (adrmsg = @tbtestManilaWebsite.["#discussionGroup"].messages.["0000005"]);	local (adrurl = @adrmsg^.trackback.outbound.urls.["http://127.0.0.1/tbtest/2003/07/14#a4"]);	local (title = adrmsg^.subject);	local (permalink = "http://127.0.0.1/tbtest/2003/07/14#a5");	local (excerpt = adrmsg^.newsitem.description);	local (weblogname = "tbtest");	ping (adrurl, title, permalink, excerpt, weblogname)};«bundle //more test code	«local (adrurl = @scratchpad.aPost.trackback.outbound.urls.["http://127.0.0.1/jaketest2/2003/04/24"])	«new (tableType, adrurl)	«local (title = "New comment prefs")	«local (permalink = "http://127.0.0.1/jaketest2/2003/04/24#a19")	«local (excerpt = "I just finished a pair of new preferences on the News Items preferences page...")	«local (weblogName = "Jake's Test Weblog")	«trackback.discoverPingInfo (adrurl)	«trackback.ping (adrurl, title, permalink, excerpt, weblogName)
+on ping (adrurl, title, permalink, excerpt, weblogName) {
+	Â«Changes
+		Â«4/25/03; 7:19:07 PM by DW
+			Â«Add Content-Length header for POST requests, per Ben Trott's suggestion.
+		Â«4/25/03; 12:41:58 PM by DW
+			Â«When Trackback was coming online, the Trotts changed from GET to POST. So for older sites that haven't upgraded, we have to use GET. As they upgrade we'll use POST.
+				Â«http://blogs.law.harvard.edu/crimson1/2003/04/25#a142
+		Â«4/24/03; 6:57:39 AM by DW
+			Â«Created. See the spec here:
+				Â«http://www.movabletype.org/docs/mttrackback.html
+			Â«Comments here:
+				Â«http://scriptingnews.userland.com/backissues/2002/10/21#When:3:15:48PM
+	
+	adrurl^.whenPing = clock.now ();
+	
+	local (urllist = string.urlSplit (adrurl^.pingUrl), server = urllist [2], path = urllist [3]);
+	
+	local (tc = clock.ticks (), xmltext);
+	bundle { //make the request, 4/25/03 by DW
+		if adrurl^.flGotUrlFromAbout {
+			path = path + "&title=" + string.urlencode (title) + "&url=" + string.urlencode (permalink) + "&excerpt=" + string.urlencode (excerpt) + "&blog_name=" + string.urlencode (weblogName);
+			xmltext = string.httpresultsplit (tcp.httpClient ("GET", server:server, path:path, ctFollowRedirects:5))}
+		else {
+			on encode (s) {
+				s = string.replaceall (s, " ", "+");
+				return (s)};
+			local (body = "title=" + encode (title) + "&url=" + encode (permalink) + "&excerpt=" + encode (excerpt) + "&blog_name=" + encode (weblogName));
+			xmltext = string.httpresultsplit (tcp.httpClient ("POST", server:server, path:path, ctFollowRedirects:5, data:body, datatype: "application/x-www-form-urlencoded", debug:false))}};
+	adrUrl^.ctPingSeconds = (clock.ticks () - tc) / 60;
+	
+	local (xstruct);
+	xml.compile (xmltext, @xstruct);
+	adrurl^.xTrackbackResponse = xstruct;
+	adrurl^.errorstring = "";
+	adrurl^.flpinged = true;
+	
+	local (adrresponse = xml.getaddress (@xstruct, "response"));
+	local (adrerror = xml.getaddress (adrresponse, "error"));
+	if adrerror^ != "0" { //error
+		try {adrurl^.errorstring = xml.getvalue (adrresponse, "message")}}};
+bundle { //test code
+	local (adrmsg = @tbtestManilaWebsite.["#discussionGroup"].messages.["0000005"]);
+	local (adrurl = @adrmsg^.trackback.outbound.urls.["http://127.0.0.1/tbtest/2003/07/14#a4"]);
+	local (title = adrmsg^.subject);
+	local (permalink = "http://127.0.0.1/tbtest/2003/07/14#a5");
+	local (excerpt = adrmsg^.newsitem.description);
+	local (weblogname = "tbtest");
+	ping (adrurl, title, permalink, excerpt, weblogname)};
+Â«bundle //more test code
+	Â«local (adrurl = @scratchpad.aPost.trackback.outbound.urls.["http://127.0.0.1/jaketest2/2003/04/24"])
+	Â«new (tableType, adrurl)
+	Â«local (title = "New comment prefs")
+	Â«local (permalink = "http://127.0.0.1/jaketest2/2003/04/24#a19")
+	Â«local (excerpt = "I just finished a pair of new preferences on the News Items preferences page...")
+	Â«local (weblogName = "Jake's Test Weblog")
+	Â«trackback.discoverPingInfo (adrurl)
+	Â«trackback.ping (adrurl, title, permalink, excerpt, weblogName)

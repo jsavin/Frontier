@@ -1,1 +1,12 @@
-on commandEncode (name, atts) {	odbServer.addToLog ("outgoing", name, atts);	local (commandtext, i, att);	on add (s) {		commandtext = commandtext + s};		add (name + "\r");	for i = 1 to sizeof (atts^) {		att = @atts^ [i];		add ("#" + nameOf (att^) + " \"" + base64.encode (string (att^), 0) + "\"\r")};		return (commandtext)}
+on commandEncode (name, atts) {
+	odbServer.addToLog ("outgoing", name, atts);
+	local (commandtext, i, att);
+	on add (s) {
+		commandtext = commandtext + s};
+	
+	add (name + "\r");
+	for i = 1 to sizeof (atts^) {
+		att = @atts^ [i];
+		add ("#" + nameOf (att^) + " \"" + base64.encode (string (att^), 0) + "\"\r")};
+	
+	return (commandtext)}

@@ -1,1 +1,32 @@
-on importSubMenu (path) {	Frontier.findertofront = false; «Frontier should remain in front after importing		local (subMenu, adrReceiver, parent);	bundle { «load in a menubar object into subMenu, determine location of receiving menubar		local (resdata); «holds the data received from resource fork		local (resname); «name of the resource, tells us which menubar to paste into		if not rez.getNthResource (path, 'data', 1, @resname, @resdata) {			return (false)};		unpack (@resdata, @resdata);		unpack (@resdata, @subMenu);				adrReceiver = address (resname);		if not defined (adrReceiver^) {			if Frontier.isRuntime () {				dialog.notify ("The menubar \"" + resname + "\" does not exist.  Can't import submenubar");				return (false)};			new (menubarType, adrReceiver)}};		bundle { «get the name of the parent menu from the 'STR ' resource		if not rez.getStringResource (path, 132, @parent) {			parent = ""}};		if not menu.addSubMenu (adrReceiver, parent, @subMenu) {		dialog.alert ("Couldn't add the submenu to " + adrReceiver + ".");		return (false)};		if not Frontier.isRuntime () {		edit (adrReceiver);		op.expand (1)};		return (true)}
+on importSubMenu (path) {
+	Frontier.findertofront = false; Â«Frontier should remain in front after importing
+	
+	local (subMenu, adrReceiver, parent);
+	bundle { Â«load in a menubar object into subMenu, determine location of receiving menubar
+		local (resdata); Â«holds the data received from resource fork
+		local (resname); Â«name of the resource, tells us which menubar to paste into
+		if not rez.getNthResource (path, 'data', 1, @resname, @resdata) {
+			return (false)};
+		unpack (@resdata, @resdata);
+		unpack (@resdata, @subMenu);
+		
+		adrReceiver = address (resname);
+		if not defined (adrReceiver^) {
+			if Frontier.isRuntime () {
+				dialog.notify ("The menubar \"" + resname + "\" does not exist.  Can't import submenubar");
+				return (false)};
+			new (menubarType, adrReceiver)}};
+	
+	bundle { Â«get the name of the parent menu from the 'STR ' resource
+		if not rez.getStringResource (path, 132, @parent) {
+			parent = ""}};
+	
+	if not menu.addSubMenu (adrReceiver, parent, @subMenu) {
+		dialog.alert ("Couldn't add the submenu to " + adrReceiver + ".");
+		return (false)};
+	
+	if not Frontier.isRuntime () {
+		edit (adrReceiver);
+		op.expand (1)};
+	
+	return (true)}

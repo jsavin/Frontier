@@ -1,1 +1,9 @@
-on setNamespacePrefixOfElement (adrelement, namespacePrefix) {	if typeOf (adrelement^) != tableType { //convert to table		local (val = string (adrelement^));		new (tableType, adrelement);		xml.addTable (adrelement, "/pcdata")^ = val};	if not defined (adrelement^.["/atts"]) {		new (tableType, @adrelement^.["/atts"])};	adrelement^.["/atts"].namespace = string (namespacePrefix) + ":";	return (true)}
+on setNamespacePrefixOfElement (adrelement, namespacePrefix) {
+	if typeOf (adrelement^) != tableType { //convert to table
+		local (val = string (adrelement^));
+		new (tableType, adrelement);
+		xml.addTable (adrelement, "/pcdata")^ = val};
+	if not defined (adrelement^.["/atts"]) {
+		new (tableType, @adrelement^.["/atts"])};
+	adrelement^.["/atts"].namespace = string (namespacePrefix) + ":";
+	return (true)}

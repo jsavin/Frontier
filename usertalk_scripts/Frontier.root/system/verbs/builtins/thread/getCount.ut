@@ -1,1 +1,2 @@
-on getCount () {	kernel (thread.getCount)}
+on getCount () {
+	kernel (thread.getCount)}

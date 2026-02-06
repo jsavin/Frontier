@@ -1,1 +1,9 @@
-on requestAuth (adrParams, realm="Betty") {	«April 10, 1998 at 7:46:54 PM by WMF		«This script creates an HTTP authentication challenge		«The realm name isn't important; the browser just shows it to the user		«Why should you use this script?		«Because we might support more authentication methods in the future, and this script could handle them for you.	adrParams^.responseHeaders.["WWW-Authenticate"] = "Basic realm=\"" + realm + "\"";	adrParams^.code = 401;	return (true)}
+on requestAuth (adrParams, realm="Betty") {
+	Â«April 10, 1998 at 7:46:54 PM by WMF
+		Â«This script creates an HTTP authentication challenge
+		Â«The realm name isn't important; the browser just shows it to the user
+		Â«Why should you use this script?
+		Â«Because we might support more authentication methods in the future, and this script could handle them for you.
+	adrParams^.responseHeaders.["WWW-Authenticate"] = "Basic realm=\"" + realm + "\"";
+	adrParams^.code = 401;
+	return (true)}

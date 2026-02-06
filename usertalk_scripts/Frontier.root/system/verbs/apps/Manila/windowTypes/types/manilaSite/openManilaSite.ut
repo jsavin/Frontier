@@ -1,1 +1,40 @@
-on openManilaSite (siteUrl=nil, flHidden=false, adradrwindow=nil) {	«Called from the Open Manila Site menu item.	«Changes:		«10/13/00; 11:08:06 AM by PBS			«Fixed a bug when opening a site that hadn't been opened before.			«siteUrl is now optional parameter, so this script can be called from places other than the menu.		«2/15/01; 10:43:54 AM by PBS			«If the URL doesn't begin with http://, prepend it. If the URL doesn't end with a /, append it.		«9/6/01; 9:00:06 PM by JES			«Show an error dialog if an error happens when opening the site.		local (username, password);	on createInfoCallback (adrinfo) {		if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {			manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}		else {			bundle { //don't leave stale data lying around				local (adrtempinfo = @system.temp.manila.data.sites.[nameOf (adrinfo^)]);				if defined (adrtempinfo^) {delete (adrtempinfo)};				delete (adrinfo)};			return (false)}};		local (adrinfo, adrwindow);	if adradrwindow == nil {		adradrwindow = @adrwindow};	if manila.windowTypes.findSiteInfo (siteUrl, @adrinfo, @createInfoCallback) {		try {			return (manila.windowTypes.openSite (adrinfo, username, password, flHidden, adradrwindow))}		else {			if adrwindow != nil {				if defined (adradrwindow^) {					delete (parentOf (adrwindow^))}};			msg ("");			dialog.alert ("Can't open " + siteUrl + ": " + tryError)}};		return (false)};«bundle //debugging	«openManilaSite ("http://private.braincase.net/")	«openManilaSite ("http://radio.userland.com/")
+on openManilaSite (siteUrl=nil, flHidden=false, adradrwindow=nil) {
+	Â«Called from the Open Manila Site menu item.
+	Â«Changes:
+		Â«10/13/00; 11:08:06 AM by PBS
+			Â«Fixed a bug when opening a site that hadn't been opened before.
+			Â«siteUrl is now optional parameter, so this script can be called from places other than the menu.
+		Â«2/15/01; 10:43:54 AM by PBS
+			Â«If the URL doesn't begin with http://, prepend it. If the URL doesn't end with a /, append it.
+		Â«9/6/01; 9:00:06 PM by JES
+			Â«Show an error dialog if an error happens when opening the site.
+	
+	local (username, password);
+	on createInfoCallback (adrinfo) {
+		if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {
+			manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}
+		else {
+			bundle { //don't leave stale data lying around
+				local (adrtempinfo = @system.temp.manila.data.sites.[nameOf (adrinfo^)]);
+				if defined (adrtempinfo^) {delete (adrtempinfo)};
+				delete (adrinfo)};
+			return (false)}};
+	
+	local (adrinfo, adrwindow);
+	if adradrwindow == nil {
+		adradrwindow = @adrwindow};
+	if manila.windowTypes.findSiteInfo (siteUrl, @adrinfo, @createInfoCallback) {
+		try {
+			return (manila.windowTypes.openSite (adrinfo, username, password, flHidden, adradrwindow))}
+		else {
+			if adrwindow != nil {
+				if defined (adradrwindow^) {
+					delete (parentOf (adrwindow^))}};
+			msg ("");
+			dialog.alert ("Can't open " + siteUrl + ": " + tryError)}};
+	
+	return (false)};
+
+Â«bundle //debugging
+	Â«openManilaSite ("http://private.braincase.net/")
+	Â«openManilaSite ("http://radio.userland.com/")

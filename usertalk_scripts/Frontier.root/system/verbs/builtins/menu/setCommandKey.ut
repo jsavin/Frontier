@@ -1,1 +1,2 @@
-on setCommandKey (s) {	kernel (menu.setCommandKey)}
+on setCommandKey (s) {
+	kernel (menu.setCommandKey)}

@@ -1,1 +1,2 @@
-on print (path) { «print a document from the Finder	return (Finder.folderVerb ('spri', path))}
+on print (path) { Â«print a document from the Finder
+	return (Finder.folderVerb ('spri', path))}

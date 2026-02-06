@@ -1,1 +1,9 @@
-on uploadFolder (folder, domain, account, password, directory) {	local (f);	fileloop (f in folder) {		local (fname = file.fileFromPath (f));		if not Fetch.store (f, domain, directory + fname, account, password) {			scriptError ("Fetch failed to upload file " + fname)};		file.delete (f)}};uploadFolder ("Macintosh HD:Websites:DaveNet Website:Upload Folder:", "fully.wired.com", "secret", "secret", "/secrets/scratch/")
+on uploadFolder (folder, domain, account, password, directory) {
+	local (f);
+	fileloop (f in folder) {
+		local (fname = file.fileFromPath (f));
+		if not Fetch.store (f, domain, directory + fname, account, password) {
+			scriptError ("Fetch failed to upload file " + fname)};
+		file.delete (f)}};
+
+uploadFolder ("Macintosh HD:Websites:DaveNet Website:Upload Folder:", "fully.wired.com", "secret", "secret", "/secrets/scratch/")

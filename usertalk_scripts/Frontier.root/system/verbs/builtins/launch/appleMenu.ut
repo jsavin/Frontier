@@ -1,1 +1,2 @@
-on appleMenu (itemname) {	kernel (launch.applemenu)}
+on appleMenu (itemname) {
+	kernel (launch.applemenu)}

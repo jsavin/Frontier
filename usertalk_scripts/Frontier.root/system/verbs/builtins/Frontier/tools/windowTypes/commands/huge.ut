@@ -1,1 +1,4 @@
-on huge () {	«Run the "huge" Common Styles command.		«09/29/00; 5:57:30 PM by PBS	menus.scripts.styleCommand ("huge")}
+on huge () {
+	Â«Run the "huge" Common Styles command.
+		Â«09/29/00; 5:57:30 PM by PBS
+	menus.scripts.styleCommand ("huge")}

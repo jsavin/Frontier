@@ -1,1 +1,2 @@
-on timeString (d = clock.now ()) {	kernel (string.timestring)}
+on timeString (d = clock.now ()) {
+	kernel (string.timestring)}

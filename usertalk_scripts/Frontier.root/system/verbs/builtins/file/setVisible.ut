@@ -1,1 +1,2 @@
-on setVisible (path, setting) {	kernel (file.setVisible)}
+on setVisible (path, setting) {
+	kernel (file.setVisible)}

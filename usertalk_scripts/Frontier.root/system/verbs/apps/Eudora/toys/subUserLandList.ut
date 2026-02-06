@@ -1,1 +1,18 @@
-on subUserLandList (listname) {	local (result, fldigest = false);	if string.lower (listname) != "davenet" {		result = dialog.threeWay ("Subscribe to mail or digest version?", "Mail", "Digest", "Cancel");		case result {			1 {				fldigest = false};			2 {				fldigest = true};			3 {				return (false)}}};	local (x = Eudora.createMessage ());	Eudora.setMessageTo (x, "requests@scripting.com");	if fldigest {		Eudora.setMessageSubject (x, "subscribe digest " + listname)}	else {		Eudora.setMessageSubject (x, "subscribe " + listname)};	return (true)}
+on subUserLandList (listname) {
+	local (result, fldigest = false);
+	if string.lower (listname) != "davenet" {
+		result = dialog.threeWay ("Subscribe to mail or digest version?", "Mail", "Digest", "Cancel");
+		case result {
+			1 {
+				fldigest = false};
+			2 {
+				fldigest = true};
+			3 {
+				return (false)}}};
+	local (x = Eudora.createMessage ());
+	Eudora.setMessageTo (x, "requests@scripting.com");
+	if fldigest {
+		Eudora.setMessageSubject (x, "subscribe digest " + listname)}
+	else {
+		Eudora.setMessageSubject (x, "subscribe " + listname)};
+	return (true)}

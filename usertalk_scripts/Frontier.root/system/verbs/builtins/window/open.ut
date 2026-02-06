@@ -1,1 +1,2 @@
-on open (adr, flReadOnly=false, adrButtonTable=nil) {	kernel (window.open)}
+on open (adr, flReadOnly=false, adrButtonTable=nil) {
+	kernel (window.open)}

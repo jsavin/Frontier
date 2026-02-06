@@ -1,1 +1,4 @@
-on typeosax (path) {	if applescripts.loadOSAX (path) != nil {		Frontier.findertofront = false};	return (true)}
+on typeosax (path) {
+	if applescripts.loadOSAX (path) != nil {
+		Frontier.findertofront = false};
+	return (true)}

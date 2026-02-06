@@ -1,1 +1,46 @@
-on any (adrParamTable) {	«Security fix: 11/12/98 by PBS		«Don't check the Host header to see if localhost is specified.	«Wed, Jun 10, 1998 at 12:46:37 PM by PBS		«Web-admin responder. Implements security for all web-based admin apps.		«The security works like this:			«1) If you're connecting to Frontier on the same machine (IP address) it's running on,			«then you have access.			«2) If you're connecting from a remote machine, then you must have a user account			«in the People Suite, with a username and password, and have the Admin			«service attached to you.			«To access the People Suite web-admin in the first place,			«connect to Frontier from the same machine it's running on.			«The URL is like: http://www.myServer.com/admin/people/default.wsf			«Change www.myServer.com to your address, or use localhost.		«This responder is a wrapper for the website framework responder.	local (flSecure = false);	local (serverAddress);	local (clientAddress = adrParamTable^.client);		try { //get the server address		serverAddress = tcp.addressToName (tcp.myAddress ())}	else {		serverAddress = tcp.myAddress ()};		if tcp.equalNames (serverAddress, clientAddress) {		flSecure = true};	if clientAddress == "127.0.0.1" {		flSecure = true};		if not flSecure { //get username and password		if webserver.util.parseAuth (adrParamTable) {			if people.authenticateUser (adrParamTable^.username, adrParamTable^.password, "admin") {				«The user has web-admin privileges.				flSecure = true}}};		if not flSecure { //send challenge		local (errMsg = "A valid username and password are required to access this URL.");		adrParamTable^.responseBody = webserver.util.buildErrorPage ("401 Unauthorized", errMsg);		adrParamTable^.responseHeaders.["WWW-Authenticate"] = "Basic realm=\"Admin\"";		adrParamTable^.code = 401;		return (true)};		adrParamTable^.responder = "websiteFramework"; //this is a security wrapper for the website framework responder		return (webserver.responders.websiteFramework.methods.any (adrParamTable))}
+on any (adrParamTable) {
+	Â«Security fix: 11/12/98 by PBS
+		Â«Don't check the Host header to see if localhost is specified.
+	Â«Wed, Jun 10, 1998 at 12:46:37 PM by PBS
+		Â«Web-admin responder. Implements security for all web-based admin apps.
+		Â«The security works like this:
+			Â«1) If you're connecting to Frontier on the same machine (IP address) it's running on,
+			Â«then you have access.
+			Â«2) If you're connecting from a remote machine, then you must have a user account
+			Â«in the People Suite, with a username and password, and have the Admin
+			Â«service attached to you.
+			Â«To access the People Suite web-admin in the first place,
+			Â«connect to Frontier from the same machine it's running on.
+			Â«The URL is like: http://www.myServer.com/admin/people/default.wsf
+			Â«Change www.myServer.com to your address, or use localhost.
+		Â«This responder is a wrapper for the website framework responder.
+	local (flSecure = false);
+	local (serverAddress);
+	local (clientAddress = adrParamTable^.client);
+	
+	try { //get the server address
+		serverAddress = tcp.addressToName (tcp.myAddress ())}
+	else {
+		serverAddress = tcp.myAddress ()};
+	
+	if tcp.equalNames (serverAddress, clientAddress) {
+		flSecure = true};
+	if clientAddress == "127.0.0.1" {
+		flSecure = true};
+	
+	if not flSecure { //get username and password
+		if webserver.util.parseAuth (adrParamTable) {
+			if people.authenticateUser (adrParamTable^.username, adrParamTable^.password, "admin") {
+				Â«The user has web-admin privileges.
+				flSecure = true}}};
+	
+	if not flSecure { //send challenge
+		local (errMsg = "A valid username and password are required to access this URL.");
+		adrParamTable^.responseBody = webserver.util.buildErrorPage ("401 Unauthorized", errMsg);
+		adrParamTable^.responseHeaders.["WWW-Authenticate"] = "Basic realm=\"Admin\"";
+		adrParamTable^.code = 401;
+		return (true)};
+	
+	adrParamTable^.responder = "websiteFramework"; //this is a security wrapper for the website framework responder
+	
+	return (webserver.responders.websiteFramework.methods.any (adrParamTable))}

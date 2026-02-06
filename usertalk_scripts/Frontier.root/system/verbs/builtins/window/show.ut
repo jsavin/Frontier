@@ -1,1 +1,2 @@
-on show (adr) {	kernel (window.show)}
+on show (adr) {
+	kernel (window.show)}

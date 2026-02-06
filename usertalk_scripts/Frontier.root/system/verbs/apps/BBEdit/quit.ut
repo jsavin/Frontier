@@ -1,1 +1,2 @@
-on quit () {	return (required.quitApplication (BBEdit.id))}
+on quit () {
+	return (required.quitApplication (BBEdit.id))}

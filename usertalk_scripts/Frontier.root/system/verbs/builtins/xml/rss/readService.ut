@@ -1,1 +1,160 @@
-on readService (url, adrservices, referer="", adrStoryArrivedCallback=nil, flSaveData=false) {	«Changes		«10/29/03; 1:58:10 AM by JES			«Fix a bug username/password support: Decode url-encoded characters in the username and password as present in the service URL, before passing them to tcp.httpClient.		«11/8/02; 11:10:52 AM by DW			«If the service has a skipHoursList as part of its compliation table, and if it's one of the hours we've been told to skip, skip it.		«10/31/02; 4:52:43 PM by DW			«Add call to xml.rss.serviceDidntChange to flow control through the changesUrl. If it says it didn't change, we don't read the feed.		«10/23/02; 11:50:18 AM by DW			«Track updates in a new sub-table of the service table called hourlyUpdateCounts. 		«10/22/02; 6:50:00 AM by DW			«Allow for callbacks..				«1. They receive the same parameter list that this routine receives. 				«2. They return the address of the service table.				«3. This routine returns after calling the first callback that does not scriptError.				«4. The scripts table is at aggregatorData.callbacks.readService.		«10/21/02; 8:11:31 AM by DW			«Store the HTTP response headers in the (new) httpResponseHeaders sub-table of each service table.			«And we're now ETag-aware, per Simon Fell's excellent Busy Developer's Guide.				«http://www.pocketsoap.com/weblog/stories/2002/05/19/bdgToEtags.html				«Thanks Simon!		«10/17/02; 9:31:32 AM by DW			«When we do the redirection, mark the subscriptions as dirty to force the users mySubscriptions.opml to be saved. Some people's subs file contains the non-redirected urls which makes the (in development) RSS Explorer tool behave very strangely when you subscribe and unsubscribe to the pre-redirected urls.		«10/13/02; 6:47:17 PM by DW			«Changes to make 301-type redirection permanent. This script changed, as did tcp.httpClient. 			«Also had to change xml.aggregator.subscribeService. It watches for an address change for the service table.			«Also had to change xml.aggregator.readService to percolate the redirect up the call stack.			«Summary, changed parts:				«tcp.httpClient				«xml.rss.readService				«xml.aggregator.subscribeService				«xml.aggregator.readService		«3/24/02; 8:49:35 AM by DW			«New optional parameter, flSaveData, passed to xml.rss.compiledService. If true, each item has a data sub-table, containing the non-mashed elements from the items in the XML feed.		«12/17/01; 4:47:26 PM by DW			«Support username-password's encoded in the URL, per request by Doug Kaye.		«12/3/01; 5:43:04 PM by DW			«Manage ctErrors, ctConsecutiveErrors, timeLastError.		«Thursday, December 28, 2000 at 7:26:03 AM by DW			«Added adrStoryArrivedCallback, it's called when a new story has arrived. You can store it in a database, or whatever else you might want to do.		«Sunday, December 17, 2000 at 10:16:37 AM by DW			«Created. Reads a URL into a service table. 			«Referer is passed as a header if non-empty, allows the server to track references. It shows up in the /stats/referers page on Manila sites.	bundle { //callbacks, 10/22/02 by DW		local (adrdata = xml.aggregator.init ());		local (adrtable = @adrdata^.callbacks.readService);		if not defined (adrtable^) {			new (tabletype, adrtable)};		local (adrscript);		for adrscript in adrtable {			try {				while typeof (adrscript^) == addresstype {					adrscript = adrscript^};				return (adrscript^ (url, adrservices, referer, adrStoryArrivedCallback, flSaveData))}}};	local (adrservice = xml.rss.initService (url, adrservices)); //make sure all fields are init'd	bundle { //11/8/02 by DW, respect skipHoursList, if present		if defined (adrservice^.compilation.skipHoursList) {			local (day, month, year, hour, minute, second);			date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);			if adrservice^.compilation.skipHoursList contains hour {				return (adrservice)}}};	«bundle //10/31/02 by DW, if it uses a changes.xml ping, and it hasn't updated, skip the read, optimize		«This feature isn't ready for general use yet.			«11/8/02; 11:12:20 AM by DW		«if xml.rss.serviceDidntChange (adrservice)			«return (adrservice)	try {		local (headers, adrheaders = nil, flHaveEtag = false);		if sizeof (referer) > 0 {			new (tabletype, @headers);			headers.referer = referer;			adrheaders = @headers};		bundle { //if we have an ETag, add a If-None-Match header			«See http://www.pocketsoap.com/weblog/stories/2002/05/19/bdgToEtags.html			try {				etag = adrservice^.httpResponseHeaders.ETag;				if adrheaders == nil {					new (tabletype, @headers);					adrheaders = @headers};				headers.["If-None-Match"] = etag;				flHaveEtag = true}};		local (urllist = string.urlSplit (url), server = urllist [2], path = urllist [3], username = "", password = "");		bundle { //set username, password, if they were present in the URL			«Example: http://doug:guacamole@www.infrastrat.com/ht/rss.xml			if server contains "@" {				local (s = string.nthfield (server, "@", 1));				username = string.urlDecode (string.nthfield (s, ":", 1));				password = string.urlDecode (string.nthfield (s, ":", 2));				server = string.nthfield (server, "@", 2)}};		local (redirectInfo); new (tabletype, @redirectInfo);		local (s = tcp.httpClient (server:server, path:path, timeOutTicks:60*30, flmessages:false, ctFollowRedirects:5, adrHdrTable:adrheaders, username:username, password:password, adrRedirectInfo:@redirectInfo));		local (statusCode = string.nthField (s, ' ', 2));		s = string.httpResultSplit (s, @adrservice^.httpResponseHeaders);		local (flchanged = true);		if flHaveEtag {			if statusCode == "304" {				flchanged = false}};		if flchanged {			if sizeof (redirectInfo) > 0 { //at least one level of redirection, 10/13/02 by DW				local (i, adr);				for i = sizeof (redirectInfo) downto 1 {					adr = @redirectinfo [i];					if adr^.code == "301" { //permanent redirect						local (newurl = "http://" + adr^.server);						if adr^.port != 80 {							newurl = newurl + ":" + adr^.port};						newurl = newurl + "/" + adr^.path;						table.rename (adrservice, newurl);						adrservice = parentof (adrservice^);						adrservice = @adrservice^.[newurl];						bundle { //10/17/02 by DW, mark subscriptions as needing a refresh							try {								local (adraggregatordata = xml.aggregator.init ());								adraggregatordata^.settings.flSubscriptionsChanged = true}};						break}}};			local (now = clock.now ());			adrservice^.timeLastRead = now;			adrservice^.ctReads++;			if defined (adrservice^.xmltext) {				if s == adrservice^.xmltext {					flchanged = false}};			if flchanged {				bundle { //track hourlyUpdateCounts per service					local (adrtable = @adrservice^.hourlyUpdateCounts);					if not defined (adrtable^) {						local (i);						new (tabletype, adrtable);						for i = 0 to 23 {							adrtable^.[string.padwithzeros (i, 2)] = 0}};					local (day, month, year, hour, minute, second);					date.get (now, @day, @month, @year, @hour, @minute, @second);					adrtable^.[string.padwithzeros (hour, 2)]++};								adrservice^.ctChanges++;				adrservice^.xmltext = s;				adrservice^.timeLastChange = now;				local (errorstring = "");				semaphore.lock (this, 3600); //keep stories from each channel in a group				try {					xml.rss.compileService (adrservice, flSaveData, adrStoryArrivedCallback)}				else {					errorstring = tryerror};				semaphore.unlock (this);				if errorstring != "" {					scripterror (errorstring)}};			try {delete (@adrservice^.error)};			adrservice^.ctConsecutiveErrors = 0}}	else {		adrservice^.error = tryError;		adrservice^.ctErrors++;		adrservice^.ctConsecutiveErrors++;		adrservice^.timeLastError = clock.now ()};	return (adrservice)};«bundle //test code	«readService ("http://www.scripting.com/rss.xml", @aggregatordata.services, "jerzy")	«readService ("http://inessential.com/xml/rss.xml", @aggregatordata.services, "jerzy")	«readService ("http://boingboing.net/rss.xml", @aggregatordata.services, "jerzy")	«readService ("http://www.infrastrat.com/ht/rss.xml", @scratchpad) //should get an error	«readService ("http://doug:guacamole@www.infrastrat.com/ht/rss.xml", @scratchpad)	«readService ("http://radio.weblogs.com/0001015/categories/radio7.1/rss.xml", @scratchpad)
+on readService (url, adrservices, referer="", adrStoryArrivedCallback=nil, flSaveData=false) {
+	Â«Changes
+		Â«10/29/03; 1:58:10 AM by JES
+			Â«Fix a bug username/password support: Decode url-encoded characters in the username and password as present in the service URL, before passing them to tcp.httpClient.
+		Â«11/8/02; 11:10:52 AM by DW
+			Â«If the service has a skipHoursList as part of its compliation table, and if it's one of the hours we've been told to skip, skip it.
+		Â«10/31/02; 4:52:43 PM by DW
+			Â«Add call to xml.rss.serviceDidntChange to flow control through the changesUrl. If it says it didn't change, we don't read the feed.
+		Â«10/23/02; 11:50:18 AM by DW
+			Â«Track updates in a new sub-table of the service table called hourlyUpdateCounts. 
+		Â«10/22/02; 6:50:00 AM by DW
+			Â«Allow for callbacks..
+				Â«1. They receive the same parameter list that this routine receives. 
+				Â«2. They return the address of the service table.
+				Â«3. This routine returns after calling the first callback that does not scriptError.
+				Â«4. The scripts table is at aggregatorData.callbacks.readService.
+		Â«10/21/02; 8:11:31 AM by DW
+			Â«Store the HTTP response headers in the (new) httpResponseHeaders sub-table of each service table.
+			Â«And we're now ETag-aware, per Simon Fell's excellent Busy Developer's Guide.
+				Â«http://www.pocketsoap.com/weblog/stories/2002/05/19/bdgToEtags.html
+				Â«Thanks Simon!
+		Â«10/17/02; 9:31:32 AM by DW
+			Â«When we do the redirection, mark the subscriptions as dirty to force the users mySubscriptions.opml to be saved. Some people's subs file contains the non-redirected urls which makes the (in development) RSS Explorer tool behave very strangely when you subscribe and unsubscribe to the pre-redirected urls.
+		Â«10/13/02; 6:47:17 PM by DW
+			Â«Changes to make 301-type redirection permanent. This script changed, as did tcp.httpClient. 
+			Â«Also had to change xml.aggregator.subscribeService. It watches for an address change for the service table.
+			Â«Also had to change xml.aggregator.readService to percolate the redirect up the call stack.
+			Â«Summary, changed parts:
+				Â«tcp.httpClient
+				Â«xml.rss.readService
+				Â«xml.aggregator.subscribeService
+				Â«xml.aggregator.readService
+		Â«3/24/02; 8:49:35 AM by DW
+			Â«New optional parameter, flSaveData, passed to xml.rss.compiledService. If true, each item has a data sub-table, containing the non-mashed elements from the items in the XML feed.
+		Â«12/17/01; 4:47:26 PM by DW
+			Â«Support username-password's encoded in the URL, per request by Doug Kaye.
+		Â«12/3/01; 5:43:04 PM by DW
+			Â«Manage ctErrors, ctConsecutiveErrors, timeLastError.
+		Â«Thursday, December 28, 2000 at 7:26:03 AM by DW
+			Â«Added adrStoryArrivedCallback, it's called when a new story has arrived. You can store it in a database, or whatever else you might want to do.
+		Â«Sunday, December 17, 2000 at 10:16:37 AM by DW
+			Â«Created. Reads a URL into a service table. 
+			Â«Referer is passed as a header if non-empty, allows the server to track references. It shows up in the /stats/referers page on Manila sites.
+	bundle { //callbacks, 10/22/02 by DW
+		local (adrdata = xml.aggregator.init ());
+		local (adrtable = @adrdata^.callbacks.readService);
+		if not defined (adrtable^) {
+			new (tabletype, adrtable)};
+		local (adrscript);
+		for adrscript in adrtable {
+			try {
+				while typeof (adrscript^) == addresstype {
+					adrscript = adrscript^};
+				return (adrscript^ (url, adrservices, referer, adrStoryArrivedCallback, flSaveData))}}};
+	local (adrservice = xml.rss.initService (url, adrservices)); //make sure all fields are init'd
+	bundle { //11/8/02 by DW, respect skipHoursList, if present
+		if defined (adrservice^.compilation.skipHoursList) {
+			local (day, month, year, hour, minute, second);
+			date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+			if adrservice^.compilation.skipHoursList contains hour {
+				return (adrservice)}}};
+	Â«bundle //10/31/02 by DW, if it uses a changes.xml ping, and it hasn't updated, skip the read, optimize
+		Â«This feature isn't ready for general use yet.
+			Â«11/8/02; 11:12:20 AM by DW
+		Â«if xml.rss.serviceDidntChange (adrservice)
+			Â«return (adrservice)
+	try {
+		local (headers, adrheaders = nil, flHaveEtag = false);
+		if sizeof (referer) > 0 {
+			new (tabletype, @headers);
+			headers.referer = referer;
+			adrheaders = @headers};
+		bundle { //if we have an ETag, add a If-None-Match header
+			Â«See http://www.pocketsoap.com/weblog/stories/2002/05/19/bdgToEtags.html
+			try {
+				etag = adrservice^.httpResponseHeaders.ETag;
+				if adrheaders == nil {
+					new (tabletype, @headers);
+					adrheaders = @headers};
+				headers.["If-None-Match"] = etag;
+				flHaveEtag = true}};
+		local (urllist = string.urlSplit (url), server = urllist [2], path = urllist [3], username = "", password = "");
+		bundle { //set username, password, if they were present in the URL
+			Â«Example: http://doug:guacamole@www.infrastrat.com/ht/rss.xml
+			if server contains "@" {
+				local (s = string.nthfield (server, "@", 1));
+				username = string.urlDecode (string.nthfield (s, ":", 1));
+				password = string.urlDecode (string.nthfield (s, ":", 2));
+				server = string.nthfield (server, "@", 2)}};
+		local (redirectInfo); new (tabletype, @redirectInfo);
+		local (s = tcp.httpClient (server:server, path:path, timeOutTicks:60*30, flmessages:false, ctFollowRedirects:5, adrHdrTable:adrheaders, username:username, password:password, adrRedirectInfo:@redirectInfo));
+		local (statusCode = string.nthField (s, ' ', 2));
+		s = string.httpResultSplit (s, @adrservice^.httpResponseHeaders);
+		local (flchanged = true);
+		if flHaveEtag {
+			if statusCode == "304" {
+				flchanged = false}};
+		if flchanged {
+			if sizeof (redirectInfo) > 0 { //at least one level of redirection, 10/13/02 by DW
+				local (i, adr);
+				for i = sizeof (redirectInfo) downto 1 {
+					adr = @redirectinfo [i];
+					if adr^.code == "301" { //permanent redirect
+						local (newurl = "http://" + adr^.server);
+						if adr^.port != 80 {
+							newurl = newurl + ":" + adr^.port};
+						newurl = newurl + "/" + adr^.path;
+						table.rename (adrservice, newurl);
+						adrservice = parentof (adrservice^);
+						adrservice = @adrservice^.[newurl];
+						bundle { //10/17/02 by DW, mark subscriptions as needing a refresh
+							try {
+								local (adraggregatordata = xml.aggregator.init ());
+								adraggregatordata^.settings.flSubscriptionsChanged = true}};
+						break}}};
+			local (now = clock.now ());
+			adrservice^.timeLastRead = now;
+			adrservice^.ctReads++;
+			if defined (adrservice^.xmltext) {
+				if s == adrservice^.xmltext {
+					flchanged = false}};
+			if flchanged {
+				bundle { //track hourlyUpdateCounts per service
+					local (adrtable = @adrservice^.hourlyUpdateCounts);
+					if not defined (adrtable^) {
+						local (i);
+						new (tabletype, adrtable);
+						for i = 0 to 23 {
+							adrtable^.[string.padwithzeros (i, 2)] = 0}};
+					local (day, month, year, hour, minute, second);
+					date.get (now, @day, @month, @year, @hour, @minute, @second);
+					adrtable^.[string.padwithzeros (hour, 2)]++};
+				
+				adrservice^.ctChanges++;
+				adrservice^.xmltext = s;
+				adrservice^.timeLastChange = now;
+				local (errorstring = "");
+				semaphore.lock (this, 3600); //keep stories from each channel in a group
+				try {
+					xml.rss.compileService (adrservice, flSaveData, adrStoryArrivedCallback)}
+				else {
+					errorstring = tryerror};
+				semaphore.unlock (this);
+				if errorstring != "" {
+					scripterror (errorstring)}};
+			try {delete (@adrservice^.error)};
+			adrservice^.ctConsecutiveErrors = 0}}
+	else {
+		adrservice^.error = tryError;
+		adrservice^.ctErrors++;
+		adrservice^.ctConsecutiveErrors++;
+		adrservice^.timeLastError = clock.now ()};
+	return (adrservice)};
+Â«bundle //test code
+	Â«readService ("http://www.scripting.com/rss.xml", @aggregatordata.services, "jerzy")
+	Â«readService ("http://inessential.com/xml/rss.xml", @aggregatordata.services, "jerzy")
+	Â«readService ("http://boingboing.net/rss.xml", @aggregatordata.services, "jerzy")
+	Â«readService ("http://www.infrastrat.com/ht/rss.xml", @scratchpad) //should get an error
+	Â«readService ("http://doug:guacamole@www.infrastrat.com/ht/rss.xml", @scratchpad)
+	Â«readService ("http://radio.weblogs.com/0001015/categories/radio7.1/rss.xml", @scratchpad)

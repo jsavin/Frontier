@@ -1,1 +1,3 @@
-on dataIsFat (adrText) {	adrText^ = string.replaceAll (adrText^, "<!C-\r#fatPage", "<!--\r#fatPage"); //web browser bug	return (string.patternMatch ("<!--\r#fatPage", adrText^) > 0)}
+on dataIsFat (adrText) {
+	adrText^ = string.replaceAll (adrText^, "<!C-\r#fatPage", "<!--\r#fatPage"); //web browser bug
+	return (string.patternMatch ("<!--\r#fatPage", adrText^) > 0)}

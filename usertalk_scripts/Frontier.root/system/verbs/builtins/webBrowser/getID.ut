@@ -1,1 +1,13 @@
-on getID () {	case sys.os () {		"MacOS" {			local (id = user.webBrowser.currentid);			if sys.appIsRunning (id) {				return (id)};						try {				local (rec = ic.geticpreference (ic.eventinfo.webHelper));				id = rec ['pCre'];				return (id)};						return (Netscape.id)}}} «all other methods failed, punt!
+on getID () {
+	case sys.os () {
+		"MacOS" {
+			local (id = user.webBrowser.currentid);
+			if sys.appIsRunning (id) {
+				return (id)};
+			
+			try {
+				local (rec = ic.geticpreference (ic.eventinfo.webHelper));
+				id = rec ['pCre'];
+				return (id)};
+			
+			return (Netscape.id)}}} Â«all other methods failed, punt!

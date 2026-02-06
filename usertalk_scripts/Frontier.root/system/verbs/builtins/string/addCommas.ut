@@ -1,1 +1,2 @@
-on addCommas (num) {	kernel (string.addcommas)}
+on addCommas (num) {
+	kernel (string.addcommas)}

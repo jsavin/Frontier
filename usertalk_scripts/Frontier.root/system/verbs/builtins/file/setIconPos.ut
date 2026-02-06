@@ -1,1 +1,2 @@
-on setIconPos (path, h, v) {	kernel (file.seticonpos)}
+on setIconPos (path, h, v) {
+	kernel (file.seticonpos)}

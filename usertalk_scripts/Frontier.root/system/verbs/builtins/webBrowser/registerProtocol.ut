@@ -1,1 +1,6 @@
-on registerProtocol (x, forProtocol) { «Registers application as a “handler” for this protocol with a given prefix. The handler will receive “OpenURL”, or if that fails, “GetURL” event.	case sys.os () {		"MacOS" {			pack (x, @x);			setbinarytype (@x, 'sign');			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'RGPR', '----', x, 'PROT', string (forProtocol)))}}}
+on registerProtocol (x, forProtocol) { Â«Registers application as a â€œhandlerâ€ for this protocol with a given prefix. The handler will receive â€œOpenURLâ€, or if that fails, â€œGetURLâ€ event.
+	case sys.os () {
+		"MacOS" {
+			pack (x, @x);
+			setbinarytype (@x, 'sign');
+			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'RGPR', '----', x, 'PROT', string (forProtocol)))}}}

@@ -1,1 +1,3 @@
-on countMessages (mailboxObj) { « returns the number of message in a given mailbox	with objectModel, Eudora, eventInfo {		return (core.count (id, mailboxObj, message))}}
+on countMessages (mailboxObj) { Â« returns the number of message in a given mailbox
+	with objectModel, Eudora, eventInfo {
+		return (core.count (id, mailboxObj, message))}}

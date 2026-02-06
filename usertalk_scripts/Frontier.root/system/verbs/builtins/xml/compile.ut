@@ -1,1 +1,2 @@
-on compile (s, adrtable) {	kernel (xml.compile)}
+on compile (s, adrtable) {
+	kernel (xml.compile)}

@@ -1,1 +1,123 @@
-on renderWithTemplate (adrService, template, itemTemplate, serviceTitle=nil, maxItems=infinity, timeZone="PST") {	«Changes:		«12/23/01; 10:18:39 PM by JES			«Add itemText as a synonym for item.		«6/28/01; 2:58:23 PM by JES			«Restore the page table address, before exiting, when called in the context of the website framework.		«1/8/01; 11:54:00 AM by JES			«Render a service, given the address of the service, and two templates as strings.				«The templates are:					«template						«Macros:						«{title ()} -- The name of the channel.						«{updateTime ()} -- The time the channel was last updated.						«{items ()} -- The items as rendered through #rssItemTemplate.						«{channelLink (linetext, title=nil)} -- Generate a link to the URL specified by channelLink.						«{channelDescription ()} -- The description of the channel.						«{image (imageUrl=nil)} -- The channel's image if defined, or the empty string.					«itemTemplate						«Macros:						«{itemText ()} -- The text of a single item.						«{sourceTitle ()} -- The name of the source channel if defined, or this channel if not defined.						«{sourceLink (linetext, title=nil)} -- The URL of the source channel if defined, or this channel if not defined.	local (adrTable = @adrService^.compilation);	local (htmltext, adrItem);	local (pageTable);		on neuter (s) {		s = string.replaceAll (s, "{", "&#123;"); //neuter macros		s = string.replaceAll (s, "&apos;", "'");		return (s)};		bundle { //add a comment with the date/time		htmltext = "<!-- RSS-to-HTML rendering done by UserLand on " + date.netstandardstring (clock.now ()) + " -->\r\n"};		on channelTitle () {		if serviceTitle == nil {			return (neuter (adrtable^.channelTitle))};		return (neuter (serviceTitle))};	on updateTime () {		local (timeString);		local (day, month, year, hour, minute, second, nowday, nowmonth, nowyear);		date.get (clock.now (), @nowday, @nowmonth, @nowyear, @hour, @minute, @second);		date.get (adrService^.timeLastChange, @day, @month, @year, @hour, @minute, @second);				if (nowday == day) and (nowmonth == month) and (nowyear == year) { //only show time			minute = string.padwithzeros (minute, 2);			if hour == 0 {				timeString = "12:" + minute + "AM"}			else {				if hour < 12 {					timeString = hour + ":" + minute + "AM"}				else {					if hour == 12 {						timeString = hour + ":" + minute + "PM"}					else {						timeString = (hour - 12) + ":" + minute + "PM"}}};			timestring = timeString + " " + timeZone}		else {			timeString = month + "/" + day + "/" + year};		template = string.replaceAll (template, "{updateTime}", timeString, false);		return (timeString)};	on image (imageUrl = nil) {		local (imageHtml = "");		if imageUrl == nil {			if defined (adrTable^.imageLink) { //the image is optional				imageUrl = adrTable^.imageLink}};		if imageUrl != nil {			imageHtml = "<a href=\"" + imageUrl + "\"><img src=\"" + adrTable^.imageUrl + "\" border=\"0\" align=\"right\" vspace=\"3\"></a>"};		return (imageHtml)};	on sourceTitle () {		if defined (adritem^.sourceChannelTitle) {			return (neuter (adritem^.sourceChannelTitle))};		return (neuter (adrtable^.channelTitle))};	on channelLink (linetext = serviceTitle, title = nil) {		if defined (adrtable^.channelLink) {			local (titleText = "");			if title != nil {				titleText = " title=\"" + title + "\""};			return ("<a href=\"" + neuter (adrtable^.channelLink) + "\"" + titleText + ">" + linetext + "</a>")};		return (linetext)};	on channelDescription () {		if defined (adrtable^.channelDescription) {			return (adrtable^.channelDescription)};		return ("")};	on sourceLink (linetext, title = nil) {		if defined (adritem^.sourceChannelUrl) {			local (titleText = "");			if title != nil {				titleText = " title=\"" + title + "\""};			return ("<a href=\"" + neuter (adritem^.sourceChannelUrl) + "\"" + titleText + ">" + linetext + "</a>")};		return (linetext)};	on item () {		return (neuter (adritem^.title))};	on itemText () {		return (item ())};	on items () {		local (itemsHtml);		for i = sizeof (adrtable^.items) downto 1 {			adrItem = @adrtable^.items[i];			itemsHtml = itemsHtml + html.processMacros (itemTemplate, adrPageTable: @pageTable);			maxItems--;			if maxItems == 0 {				break}};		return (itemsHtml)};		bundle { //render the channel		new (tableType, @pageTable);		pageTable.adrObject = adrService; // don't mask macro errors; pass them through to HTML		local (oldPta);		try {			oldPta = html.getPageTableAddress ()};		html.setPageTableAddress (@pageTable);		htmltext = htmltext + html.processMacros (template, adrPageTable: @pageTable);		html.deletePageTableAddress ();		if oldPta != nil {			html.setPageTableAddress (oldPta)}};		return (htmltext)};«bundle //test code	«local (adrService = @myUserLandData.services.["http://www.ourfavoritesongs.com/users/dave@userland.com/rss/mindBombs.xml"])	«local (template = string (myUserLandData.prefs.templates.serviceTemplate))	«local (itemTemplate = string (myUserLandData.prefs.templates.serviceItemTemplate))	«webbrowser.displaytext (renderWithTemplate (adrService, template, itemTemplate))
+on renderWithTemplate (adrService, template, itemTemplate, serviceTitle=nil, maxItems=infinity, timeZone="PST") {
+	Â«Changes:
+		Â«12/23/01; 10:18:39 PM by JES
+			Â«Add itemText as a synonym for item.
+		Â«6/28/01; 2:58:23 PM by JES
+			Â«Restore the page table address, before exiting, when called in the context of the website framework.
+		Â«1/8/01; 11:54:00 AM by JES
+			Â«Render a service, given the address of the service, and two templates as strings.
+				Â«The templates are:
+					Â«template
+						Â«Macros:
+						Â«{title ()} -- The name of the channel.
+						Â«{updateTime ()} -- The time the channel was last updated.
+						Â«{items ()} -- The items as rendered through #rssItemTemplate.
+						Â«{channelLink (linetext, title=nil)} -- Generate a link to the URL specified by channelLink.
+						Â«{channelDescription ()} -- The description of the channel.
+						Â«{image (imageUrl=nil)} -- The channel's image if defined, or the empty string.
+					Â«itemTemplate
+						Â«Macros:
+						Â«{itemText ()} -- The text of a single item.
+						Â«{sourceTitle ()} -- The name of the source channel if defined, or this channel if not defined.
+						Â«{sourceLink (linetext, title=nil)} -- The URL of the source channel if defined, or this channel if not defined.
+	local (adrTable = @adrService^.compilation);
+	local (htmltext, adrItem);
+	local (pageTable);
+	
+	on neuter (s) {
+		s = string.replaceAll (s, "{", "&#123;"); //neuter macros
+		s = string.replaceAll (s, "&apos;", "'");
+		return (s)};
+	
+	bundle { //add a comment with the date/time
+		htmltext = "<!-- RSS-to-HTML rendering done by UserLand on " + date.netstandardstring (clock.now ()) + " -->\r\n"};
+	
+	on channelTitle () {
+		if serviceTitle == nil {
+			return (neuter (adrtable^.channelTitle))};
+		return (neuter (serviceTitle))};
+	on updateTime () {
+		local (timeString);
+		local (day, month, year, hour, minute, second, nowday, nowmonth, nowyear);
+		date.get (clock.now (), @nowday, @nowmonth, @nowyear, @hour, @minute, @second);
+		date.get (adrService^.timeLastChange, @day, @month, @year, @hour, @minute, @second);
+		
+		if (nowday == day) and (nowmonth == month) and (nowyear == year) { //only show time
+			minute = string.padwithzeros (minute, 2);
+			if hour == 0 {
+				timeString = "12:" + minute + "AM"}
+			else {
+				if hour < 12 {
+					timeString = hour + ":" + minute + "AM"}
+				else {
+					if hour == 12 {
+						timeString = hour + ":" + minute + "PM"}
+					else {
+						timeString = (hour - 12) + ":" + minute + "PM"}}};
+			timestring = timeString + " " + timeZone}
+		else {
+			timeString = month + "/" + day + "/" + year};
+		template = string.replaceAll (template, "{updateTime}", timeString, false);
+		return (timeString)};
+	on image (imageUrl = nil) {
+		local (imageHtml = "");
+		if imageUrl == nil {
+			if defined (adrTable^.imageLink) { //the image is optional
+				imageUrl = adrTable^.imageLink}};
+		if imageUrl != nil {
+			imageHtml = "<a href=\"" + imageUrl + "\"><img src=\"" + adrTable^.imageUrl + "\" border=\"0\" align=\"right\" vspace=\"3\"></a>"};
+		return (imageHtml)};
+	on sourceTitle () {
+		if defined (adritem^.sourceChannelTitle) {
+			return (neuter (adritem^.sourceChannelTitle))};
+		return (neuter (adrtable^.channelTitle))};
+	on channelLink (linetext = serviceTitle, title = nil) {
+		if defined (adrtable^.channelLink) {
+			local (titleText = "");
+			if title != nil {
+				titleText = " title=\"" + title + "\""};
+			return ("<a href=\"" + neuter (adrtable^.channelLink) + "\"" + titleText + ">" + linetext + "</a>")};
+		return (linetext)};
+	on channelDescription () {
+		if defined (adrtable^.channelDescription) {
+			return (adrtable^.channelDescription)};
+		return ("")};
+	on sourceLink (linetext, title = nil) {
+		if defined (adritem^.sourceChannelUrl) {
+			local (titleText = "");
+			if title != nil {
+				titleText = " title=\"" + title + "\""};
+			return ("<a href=\"" + neuter (adritem^.sourceChannelUrl) + "\"" + titleText + ">" + linetext + "</a>")};
+		return (linetext)};
+	on item () {
+		return (neuter (adritem^.title))};
+	on itemText () {
+		return (item ())};
+	on items () {
+		local (itemsHtml);
+		for i = sizeof (adrtable^.items) downto 1 {
+			adrItem = @adrtable^.items[i];
+			itemsHtml = itemsHtml + html.processMacros (itemTemplate, adrPageTable: @pageTable);
+			maxItems--;
+			if maxItems == 0 {
+				break}};
+		return (itemsHtml)};
+	
+	bundle { //render the channel
+		new (tableType, @pageTable);
+		pageTable.adrObject = adrService; // don't mask macro errors; pass them through to HTML
+		local (oldPta);
+		try {
+			oldPta = html.getPageTableAddress ()};
+		html.setPageTableAddress (@pageTable);
+		htmltext = htmltext + html.processMacros (template, adrPageTable: @pageTable);
+		html.deletePageTableAddress ();
+		if oldPta != nil {
+			html.setPageTableAddress (oldPta)}};
+	
+	return (htmltext)};
+Â«bundle //test code
+	Â«local (adrService = @myUserLandData.services.["http://www.ourfavoritesongs.com/users/dave@userland.com/rss/mindBombs.xml"])
+	Â«local (template = string (myUserLandData.prefs.templates.serviceTemplate))
+	Â«local (itemTemplate = string (myUserLandData.prefs.templates.serviceItemTemplate))
+	Â«webbrowser.displaytext (renderWithTemplate (adrService, template, itemTemplate))

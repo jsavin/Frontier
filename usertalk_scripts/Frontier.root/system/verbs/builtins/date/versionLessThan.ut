@@ -1,1 +1,91 @@
-on versionLessThan (vs1, vs2) {	«Thursday, November 11, 1999 at 2:32:09 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on versionLessThan (vs1, vs2) //old code				«1/6/98 by DW					«fixed this case:						«date.versionLessThan ("2.0b9", "2.0")							«true				«on explodeVersion (s, adrtable)					«new (tableType, adrtable)					«adrtable^.mainVersionNum = 0					«adrtable^.stageNum = 0					«adrtable^.subVersionNum = 0					«					«local (mainVersionString = "")					«local (stageChars = {'d', 'a', 'b', 'f'})					«while sizeof (s) > 0						«if stageChars contains s [1]							«break						«mainVersionString = mainVersionString + s [1]						«s = string.delete (s, 1, 1)					«					«case string.countFields (mainVersionString, '.')						«0 //no string							«mainVersionString = "0.0.0"						«1 //no dots							«mainVersionString = mainVersionString + ".0.0"						«2 //one dot							«mainVersionString = mainVersionString + ".0"					«while mainVersionString contains "."						«mainVersionString = mainVersionString - "."					«adrtable^.mainVersionNum = number (mainVersionString)					«					«if s == ""						«return					«					«local (stage = 0, charstodelete = 0)					«case string.lower (s [1])						«'d'							«stage = 1							«charstodelete = 1						«'a'							«stage = 2							«charstodelete = 1						«'b'							«stage = 3							«charstodelete = 1						«'f'							«stage = 4							«if string.lower (s [2]) == 'c'								«charstodelete = 2							«else								«charstodelete = 1					«s = string.delete (s, 1, charstodelete)					«adrtable^.stageNum = stage					«					«adrtable^.subVersionNum = number (s)				«				«local (vt1, vt2)				«explodeVersion (vs1, @vt1)				«explodeVersion (vs2, @vt2)				«				«on error ()					«scriptError ("This feature requires Frontier " + minVersionString + " and this is version " + Frontier.version () + ".")				«				«if vt1.mainVersionNum != vt2.mainVersionNum					«return (vt1.mainVersionNum < vt2.mainVersionNum)				«if vt1.stageNum != vt2.stageNum					«if vt1.stageNum == 0 						«return (false) //it's greater than any other value					«else						«if vt2.stagenum == 0 							«return (true)						«return (vt1.stageNum < vt2.stageNum)				«if vt1.subVersionNum != vt2.subVersionNum					«if vt1.subVersionNum == 0						«return (false) //it's greater than any other value					«else						«return (vt1.subVersionNum < vt2.subVersionNum)				«return (false) //they're equal	kernel (date.versionLessThan)};«bundle //test code, all should return false	«dialog.notify (not date.versionLessThan ("2.0b9", "2.0"))	«dialog.notify (not date.versionLessThan ("2.0b9", "2.0"))	«dialog.notify (date.versionLessThan ("2.0", "2.0b9"))	«dialog.notify (date.versionLessThan ("5.1.5b9", "5.1.5b9"))	«dialog.notify (date.versionLessThan ("5.1.5b9", "5.0.2b18"))	«dialog.notify (date.versionLessThan ("5.1.5", "5.0.2b18"))	«dialog.notify (date.versionLessThan ("5.1.5", "5.1.5b18"))	«dialog.notify (date.versionLessThan ("5.1.5b18", "5.1.5a18"))
+on versionLessThan (vs1, vs2) {
+	Â«Thursday, November 11, 1999 at 2:32:09 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on versionLessThan (vs1, vs2) //old code
+				Â«1/6/98 by DW
+					Â«fixed this case:
+						Â«date.versionLessThan ("2.0b9", "2.0")
+							Â«true
+				Â«on explodeVersion (s, adrtable)
+					Â«new (tableType, adrtable)
+					Â«adrtable^.mainVersionNum = 0
+					Â«adrtable^.stageNum = 0
+					Â«adrtable^.subVersionNum = 0
+					Â«
+					Â«local (mainVersionString = "")
+					Â«local (stageChars = {'d', 'a', 'b', 'f'})
+					Â«while sizeof (s) > 0
+						Â«if stageChars contains s [1]
+							Â«break
+						Â«mainVersionString = mainVersionString + s [1]
+						Â«s = string.delete (s, 1, 1)
+					Â«
+					Â«case string.countFields (mainVersionString, '.')
+						Â«0 //no string
+							Â«mainVersionString = "0.0.0"
+						Â«1 //no dots
+							Â«mainVersionString = mainVersionString + ".0.0"
+						Â«2 //one dot
+							Â«mainVersionString = mainVersionString + ".0"
+					Â«while mainVersionString contains "."
+						Â«mainVersionString = mainVersionString - "."
+					Â«adrtable^.mainVersionNum = number (mainVersionString)
+					Â«
+					Â«if s == ""
+						Â«return
+					Â«
+					Â«local (stage = 0, charstodelete = 0)
+					Â«case string.lower (s [1])
+						Â«'d'
+							Â«stage = 1
+							Â«charstodelete = 1
+						Â«'a'
+							Â«stage = 2
+							Â«charstodelete = 1
+						Â«'b'
+							Â«stage = 3
+							Â«charstodelete = 1
+						Â«'f'
+							Â«stage = 4
+							Â«if string.lower (s [2]) == 'c'
+								Â«charstodelete = 2
+							Â«else
+								Â«charstodelete = 1
+					Â«s = string.delete (s, 1, charstodelete)
+					Â«adrtable^.stageNum = stage
+					Â«
+					Â«adrtable^.subVersionNum = number (s)
+				Â«
+				Â«local (vt1, vt2)
+				Â«explodeVersion (vs1, @vt1)
+				Â«explodeVersion (vs2, @vt2)
+				Â«
+				Â«on error ()
+					Â«scriptError ("This feature requires Frontier " + minVersionString + " and this is version " + Frontier.version () + ".")
+				Â«
+				Â«if vt1.mainVersionNum != vt2.mainVersionNum
+					Â«return (vt1.mainVersionNum < vt2.mainVersionNum)
+				Â«if vt1.stageNum != vt2.stageNum
+					Â«if vt1.stageNum == 0 
+						Â«return (false) //it's greater than any other value
+					Â«else
+						Â«if vt2.stagenum == 0 
+							Â«return (true)
+						Â«return (vt1.stageNum < vt2.stageNum)
+				Â«if vt1.subVersionNum != vt2.subVersionNum
+					Â«if vt1.subVersionNum == 0
+						Â«return (false) //it's greater than any other value
+					Â«else
+						Â«return (vt1.subVersionNum < vt2.subVersionNum)
+				Â«return (false) //they're equal
+	kernel (date.versionLessThan)};
+Â«bundle //test code, all should return false
+	Â«dialog.notify (not date.versionLessThan ("2.0b9", "2.0"))
+	Â«dialog.notify (not date.versionLessThan ("2.0b9", "2.0"))
+	Â«dialog.notify (date.versionLessThan ("2.0", "2.0b9"))
+	Â«dialog.notify (date.versionLessThan ("5.1.5b9", "5.1.5b9"))
+	Â«dialog.notify (date.versionLessThan ("5.1.5b9", "5.0.2b18"))
+	Â«dialog.notify (date.versionLessThan ("5.1.5", "5.0.2b18"))
+	Â«dialog.notify (date.versionLessThan ("5.1.5", "5.1.5b18"))
+	Â«dialog.notify (date.versionLessThan ("5.1.5b18", "5.1.5a18"))

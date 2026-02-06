@@ -1,1 +1,2 @@
-on getWindowList () { «Lists the IDs of all the hypertext windows	return (appleEvent (Netscape.id, 'WWW!', 'LSTW'))}
+on getWindowList () { Â«Lists the IDs of all the hypertext windows
+	return (appleEvent (Netscape.id, 'WWW!', 'LSTW'))}

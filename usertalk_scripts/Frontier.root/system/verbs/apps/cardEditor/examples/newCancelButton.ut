@@ -1,1 +1,36 @@
-cardEditor.newObject (card.types.buttonType, "cancelButton", "Cancel", "card.close ()");bundle { «set up attributes of new object	local (atts);	new (tableType, @atts);	bundle { «set up atts.objectrect		local (gridOn, gridVisible, gridUnits);		cardEditor.getCardGrid (@gridOn, @gridVisible, @gridUnits);				if cardEditor.objectExists ("okButton") {			local (t, l, b, r);			rectangle.get (cardEditor.getObjectRect ("okButton"), @t, @l, @b, @r);			r = l - gridUnits;			l = r - 60;			atts.rect = rectangle.set (t, l, b, r)}		else {			local (width, height, t, l, b, r);			cardEditor.getCardSize (@width, @height);			r = width - gridUnits;			b = height - gridUnits;			l = r - 60; «60 pixels wide			t = b - 24; «24 pixels high			atts.rect = rectangle.set (t, l, b, r)}};	atts.enab = true;	atts.filc = rgb.set (-1, -1, -1);	atts.txtc = rgb.set (0, 0, 0);	atts.frmc = rgb.set (0, 0, 0);	atts.flag = false; «it's not the default button	atts.font = "Chicago";	atts.size = 12;	atts.styl = 0;	atts.fram = false;	atts.just = 1;	atts.sdwd = 0;	atts.tran = false;	atts.visi = true;	cardEditor.setObjectAttributes ("cancelButton", @atts)}
+cardEditor.newObject (card.types.buttonType, "cancelButton", "Cancel", "card.close ()");
+bundle { Â«set up attributes of new object
+	local (atts);
+	new (tableType, @atts);
+	bundle { Â«set up atts.objectrect
+		local (gridOn, gridVisible, gridUnits);
+		cardEditor.getCardGrid (@gridOn, @gridVisible, @gridUnits);
+		
+		if cardEditor.objectExists ("okButton") {
+			local (t, l, b, r);
+			rectangle.get (cardEditor.getObjectRect ("okButton"), @t, @l, @b, @r);
+			r = l - gridUnits;
+			l = r - 60;
+			atts.rect = rectangle.set (t, l, b, r)}
+		else {
+			local (width, height, t, l, b, r);
+			cardEditor.getCardSize (@width, @height);
+			r = width - gridUnits;
+			b = height - gridUnits;
+			l = r - 60; Â«60 pixels wide
+			t = b - 24; Â«24 pixels high
+			atts.rect = rectangle.set (t, l, b, r)}};
+	atts.enab = true;
+	atts.filc = rgb.set (-1, -1, -1);
+	atts.txtc = rgb.set (0, 0, 0);
+	atts.frmc = rgb.set (0, 0, 0);
+	atts.flag = false; Â«it's not the default button
+	atts.font = "Chicago";
+	atts.size = 12;
+	atts.styl = 0;
+	atts.fram = false;
+	atts.just = 1;
+	atts.sdwd = 0;
+	atts.tran = false;
+	atts.visi = true;
+	cardEditor.setObjectAttributes ("cancelButton", @atts)}

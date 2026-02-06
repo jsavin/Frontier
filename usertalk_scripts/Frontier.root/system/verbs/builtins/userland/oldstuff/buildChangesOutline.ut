@@ -1,1 +1,47 @@
-«build a list of things that have changed since last releaselocal (cutoffdate = frontier.shipdate);local (ct = 0);local (adrOutline = @userland.changes2);new (outlineType, adrOutline);editMenu.setFont ("Geneva");editMenu.setFontSize (12);edit (adrOutline);target.set (adrOutline);local (adrsubitem, moddate);on traverse (adr) {	local (i);	for i = 1 to sizeof (adr^) {		try {			adrsubitem = @adr^ [i];			moddate = timeModified (adrsubitem^);			if moddate { «it's false if the item doesn't have a moddate				if moddate >= cutoffdate {					local (day, month, year, hour, minute, second, s);					msg (moddate);					date.get (moddate, @day, @month, @year, @hour, @minute, @second);					s = string.delete (year, 1, 2) + "/";					s = s + string.padwithzeros (month, 2) + "/";					s = s + tstring.padwithzeros (day, 2);					op.insert (adrsubitem, down);					ct++}				else {					if typeOf (adrsubitem^) == tableType {						traverse (adrsubitem)}}}}}}; «recursetraverse (@system.agents);traverse (@system.verbs.apps);traverse (@system.extensions);traverse (@system.menubars);traverse (@people);traverse (@system.startup);traverse (@system.shutdown);traverse (@suites);traverse (@system.verbs.traps);traverse (@user);op.firstSummit ();op.deleteline ();op.sort ();op.firstSummit ();op.insert (ct + " objects changed between " + string.nthfield (cutoffdate, ';', 1) + " and " + string.nthfield (clock.now (), ';', 1), up);op.demote ();window.zoom (adrOutline)
+Â«build a list of things that have changed since last release
+local (cutoffdate = frontier.shipdate);
+
+local (ct = 0);
+local (adrOutline = @userland.changes2);
+new (outlineType, adrOutline);
+editMenu.setFont ("Geneva");
+editMenu.setFontSize (12);
+edit (adrOutline);
+target.set (adrOutline);
+local (adrsubitem, moddate);
+on traverse (adr) {
+	local (i);
+	for i = 1 to sizeof (adr^) {
+		try {
+			adrsubitem = @adr^ [i];
+			moddate = timeModified (adrsubitem^);
+			if moddate { Â«it's false if the item doesn't have a moddate
+				if moddate >= cutoffdate {
+					local (day, month, year, hour, minute, second, s);
+					msg (moddate);
+					date.get (moddate, @day, @month, @year, @hour, @minute, @second);
+					s = string.delete (year, 1, 2) + "/";
+					s = s + string.padwithzeros (month, 2) + "/";
+					s = s + tstring.padwithzeros (day, 2);
+					op.insert (adrsubitem, down);
+					ct++}
+				else {
+					if typeOf (adrsubitem^) == tableType {
+						traverse (adrsubitem)}}}}}}; Â«recurse
+traverse (@system.agents);
+traverse (@system.verbs.apps);
+traverse (@system.extensions);
+traverse (@system.menubars);
+traverse (@people);
+traverse (@system.startup);
+traverse (@system.shutdown);
+traverse (@suites);
+traverse (@system.verbs.traps);
+traverse (@user);
+op.firstSummit ();
+op.deleteline ();
+op.sort ();
+op.firstSummit ();
+op.insert (ct + " objects changed between " + string.nthfield (cutoffdate, ';', 1) + " and " + string.nthfield (clock.now (), ';', 1), up);
+op.demote ();
+window.zoom (adrOutline)

@@ -1,1 +1,14 @@
-on arrayOfStructToStructOfStruct (adrArray) {	«Changes		«4/19/06; 5:46:08 PM by JES			«Created. Convert an array (list) containing tables to a struct (table) containing tables.	local (t); new (tableType, @t);	local (name = nameOf (adrArray^));	local (i, ct = sizeOf (adrArray^));	for i = 1 to ct {		local (adrdest = table.uniqueName (name + "_", @t, 7));		adrdest^ = adrArray^[i]};	table.assign (adrArray, t);	return (ct)};bundle { //testing	arrayOfStructToStructOfStruct (@workspace.retval.layouts.detailLayoutSections)}
+on arrayOfStructToStructOfStruct (adrArray) {
+	Â«Changes
+		Â«4/19/06; 5:46:08 PM by JES
+			Â«Created. Convert an array (list) containing tables to a struct (table) containing tables.
+	local (t); new (tableType, @t);
+	local (name = nameOf (adrArray^));
+	local (i, ct = sizeOf (adrArray^));
+	for i = 1 to ct {
+		local (adrdest = table.uniqueName (name + "_", @t, 7));
+		adrdest^ = adrArray^[i]};
+	table.assign (adrArray, t);
+	return (ct)};
+bundle { //testing
+	arrayOfStructToStructOfStruct (@workspace.retval.layouts.detailLayoutSections)}

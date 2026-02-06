@@ -1,1 +1,41 @@
-on findApplication (creator) {	«Changes:		«05/11/01; 6:54:10 PM by JES			«If the kernel call fails on Windows, try to find the application by examining the registry directly (if the winRegistry verb is present).	on kernelCall (creator) {		kernel (file.findApplication)};	if system.environment.isMac {		return (kernelCall (creator))}	else { //Windows		local (appPath = "");		try { //this will fail for extensions longer than 4 chars			appPath = kernelCall (creator)};		if not defined (winRegistry.read) {			return (appPath)};		if appPath == "" { //look in the registry			local (fileType = winRegistry.read ("HKCR\\." + creator));			if not fileType { //winRegistry.read returns false if there's no key at the specified path				return (appPath)};			local (systemPath = file.folderFromPath (file.getSystemFolderPath ()));			systemPath = string.popTrailing (systemPath, "\\");			local (command = winRegistry.read ("HKCR\\" + fileType + "\\shell\\open\\command\\"));			command = string.trimWhiteSpace (command);			if command beginsWith "\"" {				appPath = string.nthField (command, "\"", 2)}			else { //parse the command				local (ch, ix = 0, ct = sizeOf (command));				loop {					if ++ix == ct {						break};					ch = command[ix];					if ch == " " {						case command[ix+1] {							"%";							"\"";							"/" {								appPath = string.mid (command, 1, ix);								break}}}};				appPath = string.replace (appPath, "%SystemRoot%", systemPath)}};		return (appPath)}};«bundle //test code	«findApplication ("txt")
+on findApplication (creator) {
+	Â«Changes:
+		Â«05/11/01; 6:54:10 PM by JES
+			Â«If the kernel call fails on Windows, try to find the application by examining the registry directly (if the winRegistry verb is present).
+	on kernelCall (creator) {
+		kernel (file.findApplication)};
+	if system.environment.isMac {
+		return (kernelCall (creator))}
+	else { //Windows
+		local (appPath = "");
+		try { //this will fail for extensions longer than 4 chars
+			appPath = kernelCall (creator)};
+		if not defined (winRegistry.read) {
+			return (appPath)};
+		if appPath == "" { //look in the registry
+			local (fileType = winRegistry.read ("HKCR\\." + creator));
+			if not fileType { //winRegistry.read returns false if there's no key at the specified path
+				return (appPath)};
+			local (systemPath = file.folderFromPath (file.getSystemFolderPath ()));
+			systemPath = string.popTrailing (systemPath, "\\");
+			local (command = winRegistry.read ("HKCR\\" + fileType + "\\shell\\open\\command\\"));
+			command = string.trimWhiteSpace (command);
+			if command beginsWith "\"" {
+				appPath = string.nthField (command, "\"", 2)}
+			else { //parse the command
+				local (ch, ix = 0, ct = sizeOf (command));
+				loop {
+					if ++ix == ct {
+						break};
+					ch = command[ix];
+					if ch == " " {
+						case command[ix+1] {
+							"%";
+							"\"";
+							"/" {
+								appPath = string.mid (command, 1, ix);
+								break}}}};
+				appPath = string.replace (appPath, "%SystemRoot%", systemPath)}};
+		return (appPath)}};
+Â«bundle //test code
+	Â«findApplication ("txt")

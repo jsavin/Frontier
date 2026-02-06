@@ -1,1 +1,10 @@
-on set (adrSitePrefs, s) {	«Set the site outline on the server.		«11/14/00; 3:02:08 AM by JES	«Changes		«9/6/01; 7:57:40 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		with adrSitePrefs^ {		local (params = {"siteName":sitename, "username":username, "password":string (password), "binaryOpmlText":base64.encode (string (s), 0)});		return (manila.callHandler (host, port, "manila.editorialOutline.set", @params, rpcPath:rpcPath))}}
+on set (adrSitePrefs, s) {
+	Â«Set the site outline on the server.
+		Â«11/14/00; 3:02:08 AM by JES
+	Â«Changes
+		Â«9/6/01; 7:57:40 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	with adrSitePrefs^ {
+		local (params = {"siteName":sitename, "username":username, "password":string (password), "binaryOpmlText":base64.encode (string (s), 0)});
+		return (manila.callHandler (host, port, "manila.editorialOutline.set", @params, rpcPath:rpcPath))}}

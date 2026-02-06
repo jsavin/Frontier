@@ -1,1 +1,11 @@
-on dbIsOpen (db, reportError = false) {	on doIt () {		with objectModel, filemaker {			return (exists (database [db]))}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on dbIsOpen (db, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			return (exists (database [db]))}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

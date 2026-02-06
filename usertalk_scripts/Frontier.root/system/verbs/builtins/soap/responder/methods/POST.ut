@@ -1,1 +1,18 @@
-on POST (pta) {	«Changes:		«11/21/00; 3:22:44 PM by JES			«Call soap.rpc.server using callScript, with pta, so that the paramTable will be in scope, since soap.rpc.server needs to call the RPC handler with the name of the responder in scope.		«04/04/01; 5:49:17 PM by JES			«Don't set the Content-Type response header. This is now set by soap.rpc.server.	local (actionURI, actionheader = pta^.requestHeaders.SOAPAction);	if (actionheader == "") or (actionheader == "\"\"") {		actionURI = pta^.URI}	else {		actionURI = string.nthField (actionheader, "\"", 2)};	«pta^.responseHeaders.["Content-Type"] = "text/xml"	local (paramlist = {actionURI, @pta^.requestBody, @pta^.responseBody});	if callScript (@soap.rpc.server, paramlist, pta) { //11/21/00 JES: make sure the paramTable is in scope for soap.rpc.server		pta^.code = 200} //everything was OK	else {		pta^.code = 500}; //internal error	return (true)}
+on POST (pta) {
+	Â«Changes:
+		Â«11/21/00; 3:22:44 PM by JES
+			Â«Call soap.rpc.server using callScript, with pta, so that the paramTable will be in scope, since soap.rpc.server needs to call the RPC handler with the name of the responder in scope.
+		Â«04/04/01; 5:49:17 PM by JES
+			Â«Don't set the Content-Type response header. This is now set by soap.rpc.server.
+	local (actionURI, actionheader = pta^.requestHeaders.SOAPAction);
+	if (actionheader == "") or (actionheader == "\"\"") {
+		actionURI = pta^.URI}
+	else {
+		actionURI = string.nthField (actionheader, "\"", 2)};
+	Â«pta^.responseHeaders.["Content-Type"] = "text/xml"
+	local (paramlist = {actionURI, @pta^.requestBody, @pta^.responseBody});
+	if callScript (@soap.rpc.server, paramlist, pta) { //11/21/00 JES: make sure the paramTable is in scope for soap.rpc.server
+		pta^.code = 200} //everything was OK
+	else {
+		pta^.code = 500}; //internal error
+	return (true)}

@@ -1,1 +1,23 @@
-«3/31/01; 8:22:10 PM by DW	«See http://frontier.userland.com/mailToTheFuture	«Step through this script in the debugger. It will show you the results it gets.local (msgnum);mailToTheFuture.init ();bundle { //create a new message, sent to you, at 8AM tomorrow	local (day, month, year, hour, minute, second);	date.get (date.tomorrow (clock.now ()), @day, @month, @year, @hour, @minute, @second);	local (when = date.set (day, month, year, 8, 0, 0));	msgnum = mailToTheFuture.addMessage (user.prefs.mailaddress, "Test message", "This is a quick test of MTTF.", when)};bundle { //open the message in the browser	webBrowser.openUrl ("http://www.mailtothefuture.com/editMessage$" + msgnum)};bundle { //get the message back as a odb table	scratchpad.mttfMessage = mailToTheFuture.getMessage (msgnum);	edit (@scratchpad.mttfMessage)};bundle { //tell me how many messages are in my queue	dialog.alert (mailToTheFuture.getMessageCount ())};bundle { //get all the messages in an odb table	scratchpad.mttfMessages = mailToTheFuture.getAllMessages ();	edit (@scratchpad.mttfMessages)};bundle { //add and delete a message	mailToTheFuture.deleteMessage (mailToTheFuture.addMessage (user.prefs.mailaddress, ":-(", "This message will never be sent", clock.now ()))}
+Â«3/31/01; 8:22:10 PM by DW
+	Â«See http://frontier.userland.com/mailToTheFuture
+	Â«Step through this script in the debugger. It will show you the results it gets.
+
+local (msgnum);
+mailToTheFuture.init ();
+bundle { //create a new message, sent to you, at 8AM tomorrow
+	local (day, month, year, hour, minute, second);
+	date.get (date.tomorrow (clock.now ()), @day, @month, @year, @hour, @minute, @second);
+	local (when = date.set (day, month, year, 8, 0, 0));
+	msgnum = mailToTheFuture.addMessage (user.prefs.mailaddress, "Test message", "This is a quick test of MTTF.", when)};
+bundle { //open the message in the browser
+	webBrowser.openUrl ("http://www.mailtothefuture.com/editMessage$" + msgnum)};
+bundle { //get the message back as a odb table
+	scratchpad.mttfMessage = mailToTheFuture.getMessage (msgnum);
+	edit (@scratchpad.mttfMessage)};
+bundle { //tell me how many messages are in my queue
+	dialog.alert (mailToTheFuture.getMessageCount ())};
+bundle { //get all the messages in an odb table
+	scratchpad.mttfMessages = mailToTheFuture.getAllMessages ();
+	edit (@scratchpad.mttfMessages)};
+bundle { //add and delete a message
+	mailToTheFuture.deleteMessage (mailToTheFuture.addMessage (user.prefs.mailaddress, ":-(", "This message will never be sent", clock.now ()))}

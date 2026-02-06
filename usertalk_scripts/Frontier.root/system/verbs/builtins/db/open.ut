@@ -1,1 +1,2 @@
-on open (f, readOnly) {	kernel (db.open)}
+on open (f, readOnly) {
+	kernel (db.open)}

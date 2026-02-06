@@ -1,1 +1,2 @@
-on frontmost () {	kernel (window.frontmost)}
+on frontmost () {
+	kernel (window.frontmost)}

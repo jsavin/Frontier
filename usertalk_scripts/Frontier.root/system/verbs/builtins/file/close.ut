@@ -1,1 +1,2 @@
-on close (path) {	kernel (file.close)}
+on close (path) {
+	kernel (file.close)}

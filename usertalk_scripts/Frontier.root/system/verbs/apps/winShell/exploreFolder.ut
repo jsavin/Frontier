@@ -1,1 +1,7 @@
-on exploreFolder (folderPath) {	return (boolean (dll.call (winShell.getDllPath (), "shellexplore", folderPath)))};«bundle //test code	«winShell.exploreFolder (frontier.pathString)		«true	«winShell.exploreFolder ("d:\\")		«true
+on exploreFolder (folderPath) {
+	return (boolean (dll.call (winShell.getDllPath (), "shellexplore", folderPath)))};
+Â«bundle //test code
+	Â«winShell.exploreFolder (frontier.pathString)
+		Â«true
+	Â«winShell.exploreFolder ("d:\\")
+		Â«true

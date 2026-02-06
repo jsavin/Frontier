@@ -1,1 +1,121 @@
-on any (adrParamTable) {	«Changes		«12/15/01; 8:44:25 AM by DW			«Allow the Radio responder to handle the .wsf's it sees fit to. Meet the new boss. ;->		«3/18/01; 1:48:03 PM by PBS			«Don't leave dangling page table addresses in the temp table after building a page -- call html.deletePageTableAddress.		«3/16/01; 10:03:25 PM by PBS			«If the request is for the default page in a table, but the request doesn't end with a /, redirect so the request ends with a /.		«1/23/01; 5:13:53 PM by JES			«Call html.buildObject in a try block, so that a firstFilter script can set the response code and call scriptError, to redirect the browser or make an authentication challenge.		«1/19/01; 1:48:26 PM by PBS			«Don't url-encode the URI when serving the default page in a table. This broke My UserLand on the Desktop.		«Sat, 06 Jun 1998 01:51:15 GMT; RAB			«Gave html.buildObject direct access to the real adrParamTable so that it can make error conditions, etc.	local (objType, mimeType); //For type info	local (adrRequestHeaders, adrResponseHeaders);	local (dataTableAdr, responderTableAdr,  docTreeTableAdr, prefsTableAdr);	local (objName);	local (s);		on getODBTypeInfo(name) {		if (typeOf (name^) == binaryType) {			objType = getBinaryType (name^)}		else {			objType = typeOf (name^)};				if defined (user.webserver.prefs.type2MIME.[objType]) {			mimeType = user.webserver.prefs.type2MIME.[objType]}		else {			mimeType = "text/html"}};	on serve (name) {		if typeOf (name^) == binaryType {			getODBTypeInfo(name);			adrParamTable^.responseBody =  string(name^);			adrResponseHeaders^.["Content-Type"] = mimeType;			adrParamTable^.code = 200}		else {			adrParamTable^.code = 200;			adrResponseHeaders^.["Content-Type"] = "text/html";			try {				adrParamTable^.responseBody =  html.buildObject (name, adrParamTable);				try {html.deletePageTableAddress ()}} //PBS 03/18/01: don't leave dangling page table addresses in the temp table			else {				if adrParamTable^.code == 200 {					scriptError (tryError)}				else {					if not defined (adrParamTable^.responseBody) {						adrParamTable^.responseBody = webserver.util.buildErrorPage (code + " Error", tryError)}}}};		return (true)};	on fileServe (name) {		s = file.readWholeFile (name);		return (serve (@s))};	bundle { //allow Radio to handle the request		try {			if radio.webserver.wsfMasterControl (adrParamTable) { //the new main dude handled it				return (true)}}}; //you da man	adrRequestHeaders = @adrParamTable^.requestHeaders;	adrResponseHeaders = @adrParamTable^.responseHeaders;	responderTableAdr = adrParamTable^.responderTableAdr; // the responder table	dataTableAdr = @responderTableAdr^.["data"]; //This table contains the user data for this responder	docTreeTableAdr = @dataTableAdr^.["docTree"]; //This table is the base "server" root	prefsTableAdr = @dataTableAdr^.["prefs"]; //This table contains the user prefs for this responder		bundle { //parse the URl into an ODB/file path		objName = string.urlDecode(adrParamTable^.path);		objName = string.popSuffix (objName, '.'); //pop off the .wsf extension		«The following is the main security and path processing script.  The result from this script is an error or the final		«file or odb specification for the responder to serve.		if ! webserver.util.pathToAddressExt (objName, docTreeTableAdr, adrParamTable) {			return (true)}; //The error is already set.		objName = adrParamTable^.resultPath}; //as returned from pathToAddressExt		if adrParamTable^.resultType == addressType { // we are serving out of the ODB		«Start the serving process		if typeOf (objName^) == tableType {			local (i);			«Check for the default element to render			for i in prefsTableAdr^.ODBdefault {				local (default);				default = @objName^.[i];				if defined (default^) {					if not (adrParamTable^.path endsWith "/") { //PBS 03/16/01: must end with / -- redirect						local (url = adrParamTable^.path + "/");						adrParamTable^.code = 302; //non-permanent redirect						adrParamTable^.responseBody = webserver.util.buildErrorPage ("302 FOUND", "Found the page.");						adrParamTable^.responseHeaders.location = url;						adrParamTable^.responseHeaders.URI = url;						try {delete (@adrParamTable^.responseHeaders.["Content-Type"])};						return (true)};					adrParamTable^.path = string.popTrailing (adrParamTable^.path, "/");					adrParamTable^.path = adrParamTable^.path + "/" + i + ".wsf";					«adrParamTable^.URI = string.urlEncode(adrParamTable^.path)					adrParamTable^.URI = adrParamTable^.path; //PBS 01/19/01: don't URL-encode the URI					return (this^ (adrParamTable))}}; // Yes we recurse here so default behaves correctly			bundle { //Tables are not served				adrParamTable^.code = 403;				adrParamTable^.responseBody = webserver.util.buildErrorPage ("403 Forbidden", "Access to the object " + adrParamTable^.path + " is forbidden.");				return (true)}}		else { // Not a table			return (serve (objName))}}	else { //otherwise it should be serving out of the file system		if adrParamTable^.resultType == filespecType { // we are serving out of the File System			«Start the serving process			if file.isFolder (objName) {				local (i);				«Check for the default element to render				for i in prefsTableAdr^.fileDefault {					local (default);					default = string.popTrailing (objName, file.getPathChar()) + file.getPathChar() + i;					if file.exists (default) {						return(fileServe(default))}};				bundle { //Directories are not served					adrParamTable^.code = 403;					adrParamTable^.responseBody = webserver.util.buildErrorPage ("403 Forbidden", "Access to the object " + adrParamTable^.path + " is forbidden.");					return (true)}}			else { // Just a simple file...				return (fileServe (objName))}}		else { //this should never occur			adrParamTable^.code = 500;			adrParamTable^.responseBody = webserver.util.buildErrorPage ("500 Internal Server Error", "The type of the object " + adrParamTable^.path + " is unknown.")}};	return (true)}
+on any (adrParamTable) {
+	Â«Changes
+		Â«12/15/01; 8:44:25 AM by DW
+			Â«Allow the Radio responder to handle the .wsf's it sees fit to. Meet the new boss. ;->
+		Â«3/18/01; 1:48:03 PM by PBS
+			Â«Don't leave dangling page table addresses in the temp table after building a page -- call html.deletePageTableAddress.
+		Â«3/16/01; 10:03:25 PM by PBS
+			Â«If the request is for the default page in a table, but the request doesn't end with a /, redirect so the request ends with a /.
+		Â«1/23/01; 5:13:53 PM by JES
+			Â«Call html.buildObject in a try block, so that a firstFilter script can set the response code and call scriptError, to redirect the browser or make an authentication challenge.
+		Â«1/19/01; 1:48:26 PM by PBS
+			Â«Don't url-encode the URI when serving the default page in a table. This broke My UserLand on the Desktop.
+		Â«Sat, 06 Jun 1998 01:51:15 GMT; RAB
+			Â«Gave html.buildObject direct access to the real adrParamTable so that it can make error conditions, etc.
+	local (objType, mimeType); //For type info
+	local (adrRequestHeaders, adrResponseHeaders);
+	local (dataTableAdr, responderTableAdr,  docTreeTableAdr, prefsTableAdr);
+	local (objName);
+	local (s);
+	
+	on getODBTypeInfo(name) {
+		if (typeOf (name^) == binaryType) {
+			objType = getBinaryType (name^)}
+		else {
+			objType = typeOf (name^)};
+		
+		if defined (user.webserver.prefs.type2MIME.[objType]) {
+			mimeType = user.webserver.prefs.type2MIME.[objType]}
+		else {
+			mimeType = "text/html"}};
+	on serve (name) {
+		if typeOf (name^) == binaryType {
+			getODBTypeInfo(name);
+			adrParamTable^.responseBody =  string(name^);
+			adrResponseHeaders^.["Content-Type"] = mimeType;
+			adrParamTable^.code = 200}
+		else {
+			adrParamTable^.code = 200;
+			adrResponseHeaders^.["Content-Type"] = "text/html";
+			try {
+				adrParamTable^.responseBody =  html.buildObject (name, adrParamTable);
+				try {html.deletePageTableAddress ()}} //PBS 03/18/01: don't leave dangling page table addresses in the temp table
+			else {
+				if adrParamTable^.code == 200 {
+					scriptError (tryError)}
+				else {
+					if not defined (adrParamTable^.responseBody) {
+						adrParamTable^.responseBody = webserver.util.buildErrorPage (code + " Error", tryError)}}}};
+		return (true)};
+	on fileServe (name) {
+		s = file.readWholeFile (name);
+		return (serve (@s))};
+	bundle { //allow Radio to handle the request
+		try {
+			if radio.webserver.wsfMasterControl (adrParamTable) { //the new main dude handled it
+				return (true)}}}; //you da man
+	adrRequestHeaders = @adrParamTable^.requestHeaders;
+	adrResponseHeaders = @adrParamTable^.responseHeaders;
+	responderTableAdr = adrParamTable^.responderTableAdr; // the responder table
+	dataTableAdr = @responderTableAdr^.["data"]; //This table contains the user data for this responder
+	docTreeTableAdr = @dataTableAdr^.["docTree"]; //This table is the base "server" root
+	prefsTableAdr = @dataTableAdr^.["prefs"]; //This table contains the user prefs for this responder
+	
+	bundle { //parse the URl into an ODB/file path
+		objName = string.urlDecode(adrParamTable^.path);
+		objName = string.popSuffix (objName, '.'); //pop off the .wsf extension
+		Â«The following is the main security and path processing script.  The result from this script is an error or the final
+		Â«file or odb specification for the responder to serve.
+		if ! webserver.util.pathToAddressExt (objName, docTreeTableAdr, adrParamTable) {
+			return (true)}; //The error is already set.
+		objName = adrParamTable^.resultPath}; //as returned from pathToAddressExt
+	
+	if adrParamTable^.resultType == addressType { // we are serving out of the ODB
+		Â«Start the serving process
+		if typeOf (objName^) == tableType {
+			local (i);
+			Â«Check for the default element to render
+			for i in prefsTableAdr^.ODBdefault {
+				local (default);
+				default = @objName^.[i];
+				if defined (default^) {
+					if not (adrParamTable^.path endsWith "/") { //PBS 03/16/01: must end with / -- redirect
+						local (url = adrParamTable^.path + "/");
+						adrParamTable^.code = 302; //non-permanent redirect
+						adrParamTable^.responseBody = webserver.util.buildErrorPage ("302 FOUND", "Found the page.");
+						adrParamTable^.responseHeaders.location = url;
+						adrParamTable^.responseHeaders.URI = url;
+						try {delete (@adrParamTable^.responseHeaders.["Content-Type"])};
+						return (true)};
+					adrParamTable^.path = string.popTrailing (adrParamTable^.path, "/");
+					adrParamTable^.path = adrParamTable^.path + "/" + i + ".wsf";
+					Â«adrParamTable^.URI = string.urlEncode(adrParamTable^.path)
+					adrParamTable^.URI = adrParamTable^.path; //PBS 01/19/01: don't URL-encode the URI
+					return (this^ (adrParamTable))}}; // Yes we recurse here so default behaves correctly
+			bundle { //Tables are not served
+				adrParamTable^.code = 403;
+				adrParamTable^.responseBody = webserver.util.buildErrorPage ("403 Forbidden", "Access to the object " + adrParamTable^.path + " is forbidden.");
+				return (true)}}
+		else { // Not a table
+			return (serve (objName))}}
+	else { //otherwise it should be serving out of the file system
+		if adrParamTable^.resultType == filespecType { // we are serving out of the File System
+			Â«Start the serving process
+			if file.isFolder (objName) {
+				local (i);
+				Â«Check for the default element to render
+				for i in prefsTableAdr^.fileDefault {
+					local (default);
+					default = string.popTrailing (objName, file.getPathChar()) + file.getPathChar() + i;
+					if file.exists (default) {
+						return(fileServe(default))}};
+				bundle { //Directories are not served
+					adrParamTable^.code = 403;
+					adrParamTable^.responseBody = webserver.util.buildErrorPage ("403 Forbidden", "Access to the object " + adrParamTable^.path + " is forbidden.");
+					return (true)}}
+			else { // Just a simple file...
+				return (fileServe (objName))}}
+		else { //this should never occur
+			adrParamTable^.code = 500;
+			adrParamTable^.responseBody = webserver.util.buildErrorPage ("500 Internal Server Error", "The type of the object " + adrParamTable^.path + " is unknown.")}};
+	return (true)}

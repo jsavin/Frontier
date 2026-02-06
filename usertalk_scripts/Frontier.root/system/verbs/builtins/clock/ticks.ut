@@ -1,1 +1,2 @@
-on ticks () {	kernel (clock.ticks)}
+on ticks () {
+	kernel (clock.ticks)}

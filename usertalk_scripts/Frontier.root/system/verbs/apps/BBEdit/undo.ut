@@ -1,1 +1,2 @@
-on undo () { «Undoes the effects of the last command, if possible.	return (appleEvent (BBEdit.id, 'misc', 'undo'))}
+on undo () { Â«Undoes the effects of the last command, if possible.
+	return (appleEvent (BBEdit.id, 'misc', 'undo'))}

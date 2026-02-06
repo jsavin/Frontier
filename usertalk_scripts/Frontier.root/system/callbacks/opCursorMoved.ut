@@ -1,1 +1,16 @@
-on opCursorMoved () {	«Called when the cursor moves in an outline.		«08/14/00; 4:22:13 PM by PBS	«Changes:		«Thursday, September 28, 2000 at 5:07:01 PM by JES			«Allow callback entries to be addresses or addresses of addresses...		local (adrScript);	if not defined (user.callbacks.opCursorMoved) {		new (tableType, @user.callbacks.opCursorMoved)};	for adrScript in @user.callbacks.opCursorMoved {		try {			while typeOf (adrScript^) == addressType {				adrScript = adrScript^};			adrScript^ ()}};	return} //this callback can't consume events, it's for notification only
+on opCursorMoved () {
+	Â«Called when the cursor moves in an outline.
+		Â«08/14/00; 4:22:13 PM by PBS
+	Â«Changes:
+		Â«Thursday, September 28, 2000 at 5:07:01 PM by JES
+			Â«Allow callback entries to be addresses or addresses of addresses...
+	
+	local (adrScript);
+	if not defined (user.callbacks.opCursorMoved) {
+		new (tableType, @user.callbacks.opCursorMoved)};
+	for adrScript in @user.callbacks.opCursorMoved {
+		try {
+			while typeOf (adrScript^) == addressType {
+				adrScript = adrScript^};
+			adrScript^ ()}};
+	return} //this callback can't consume events, it's for notification only

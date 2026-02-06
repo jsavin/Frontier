@@ -1,1 +1,44 @@
-on getPresenceInfo ( jabberId, connection = @system.temp.jabber.connection ) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«Returns presence information on the given resource.	local ( jId = tcp.im.builtinDrivers.jabber.code.parseJabberId ( jabberId ) );	local ( userserver = jId[1] + "@" + jId[2] );	local ( presenceAdr = @connection^.presence[userserver] );	if not defined ( presenceAdr^ ) {		return {"UNSUBSCRIBED", "", ""}};		if defined ( presenceAdr^.unknown ) { // only if we haven't received presence yet		return {"UNKNOWN", "", ""}};		if jId[3] != "" { // handle when the user asked for a specific resource		if not defined ( presenceAdr^[jId[3]] ) { // requested resource not found			return {"UNKNOWN", "", ""}};		presenceAdr = @presenceAdr^[jId[3]];		local ( availability = "AVAILABLE", show = "", status = "" );		if presenceAdr^.JabberFrameworkAvailable == "unavailable" {			availability = "UNAVAILABLE"};		try { show = presenceAdr^.JabberFrameworkShow };		try { status = presenceAdr^.JabberFrameworkStatus };		return {availability, show, status}};		if defined ( presenceAdr^.jabberFrameworkAvailable ) and presenceAdr^.jabberFrameworkAvailable == true {		local ( show = "", status = "" );		try { show = presenceAdr^.JabberFrameworkShow };		try { status = presenceAdr^.JabberFrameworkStatus };		return {"AVAILABLE", show, status}};		// we have to scan the connections until we find a resource	for element in presenceAdr {		if typeOf ( element^ ) == tableType {			if defined ( element^.JabberFrameworkAvailable ) and element^.JabberFrameworkAvailable == true { // we found an available resource				local ( show = "", status = "" );				try { show = element^.JabberFrameworkShow };				try { status = element^.JabberFrameworkStatus };				return {"AVAILABLE", show, status}}}};		// if we made it here, we didn't find an available resource, so the account is unavailable	return {"UNAVAILABLE", "", ""}};bundle { //test code	dialog.alert(getPresenceInfo(@system.temp.jabber.references[1], "dsheridan@jabber.xlogs.net"))}
+on getPresenceInfo ( jabberId, connection = @system.temp.jabber.connection ) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«Returns presence information on the given resource.
+	local ( jId = tcp.im.builtinDrivers.jabber.code.parseJabberId ( jabberId ) );
+	local ( userserver = jId[1] + "@" + jId[2] );
+	local ( presenceAdr = @connection^.presence[userserver] );
+	if not defined ( presenceAdr^ ) {
+		return {"UNSUBSCRIBED", "", ""}};
+	
+	if defined ( presenceAdr^.unknown ) { // only if we haven't received presence yet
+		return {"UNKNOWN", "", ""}};
+	
+	if jId[3] != "" { // handle when the user asked for a specific resource
+		if not defined ( presenceAdr^[jId[3]] ) { // requested resource not found
+			return {"UNKNOWN", "", ""}};
+		presenceAdr = @presenceAdr^[jId[3]];
+		local ( availability = "AVAILABLE", show = "", status = "" );
+		if presenceAdr^.JabberFrameworkAvailable == "unavailable" {
+			availability = "UNAVAILABLE"};
+		try { show = presenceAdr^.JabberFrameworkShow };
+		try { status = presenceAdr^.JabberFrameworkStatus };
+		return {availability, show, status}};
+	
+	if defined ( presenceAdr^.jabberFrameworkAvailable ) and presenceAdr^.jabberFrameworkAvailable == true {
+		local ( show = "", status = "" );
+		try { show = presenceAdr^.JabberFrameworkShow };
+		try { status = presenceAdr^.JabberFrameworkStatus };
+		return {"AVAILABLE", show, status}};
+	
+	// we have to scan the connections until we find a resource
+	for element in presenceAdr {
+		if typeOf ( element^ ) == tableType {
+			if defined ( element^.JabberFrameworkAvailable ) and element^.JabberFrameworkAvailable == true { // we found an available resource
+				local ( show = "", status = "" );
+				try { show = element^.JabberFrameworkShow };
+				try { status = element^.JabberFrameworkStatus };
+				return {"AVAILABLE", show, status}}}};
+	
+	// if we made it here, we didn't find an available resource, so the account is unavailable
+	return {"UNAVAILABLE", "", ""}};
+bundle { //test code
+	dialog.alert(getPresenceInfo(@system.temp.jabber.references[1], "dsheridan@jabber.xlogs.net"))}

@@ -1,1 +1,2 @@
-on countResources (path, type) {	kernel (rez.countresources)}
+on countResources (path, type) {
+	kernel (rez.countresources)}

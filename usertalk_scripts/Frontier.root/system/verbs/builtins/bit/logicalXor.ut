@@ -1,1 +1,2 @@
-on logicalXor (n1, n2) {	kernel (bit.logicalXor)}
+on logicalXor (n1, n2) {
+	kernel (bit.logicalXor)}

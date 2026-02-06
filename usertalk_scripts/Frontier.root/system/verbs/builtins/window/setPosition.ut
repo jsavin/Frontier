@@ -1,1 +1,2 @@
-on setPosition (adr, horiz, vert) {	kernel (window.setposition)}
+on setPosition (adr, horiz, vert) {
+	kernel (window.setposition)}

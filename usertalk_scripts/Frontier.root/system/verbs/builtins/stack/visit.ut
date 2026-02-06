@@ -1,1 +1,8 @@
-on visit (adrStack, callback) {	local (top = adrStack^.top);	local (i, adrElement);	loop (i = top; i > 0; i--) {		adrElement = @adrstack^.vals.["item" + i];		if not callback^ (adrElement^) {			return (false)}};	return (true)}
+on visit (adrStack, callback) {
+	local (top = adrStack^.top);
+	local (i, adrElement);
+	loop (i = top; i > 0; i--) {
+		adrElement = @adrstack^.vals.["item" + i];
+		if not callback^ (adrElement^) {
+			return (false)}};
+	return (true)}

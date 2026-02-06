@@ -1,1 +1,2 @@
-on insertFile (file) { «Insert the contents of the designated file.	return (appleEvent (BBEdit.id, 'R*ch', 'Nsrf', '----', filespec (file)))}
+on insertFile (file) { Â«Insert the contents of the designated file.
+	return (appleEvent (BBEdit.id, 'R*ch', 'Nsrf', '----', filespec (file)))}

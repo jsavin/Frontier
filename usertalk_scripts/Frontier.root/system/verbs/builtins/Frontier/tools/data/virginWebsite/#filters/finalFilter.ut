@@ -1,1 +1,3 @@
-on finalFilter (pta) {	pta^.renderedText = string.replace (pta^.renderedText, "[[title]]", "<title>");	return (true)}
+on finalFilter (pta) {
+	pta^.renderedText = string.replace (pta^.renderedText, "[[title]]", "<title>");
+	return (true)}

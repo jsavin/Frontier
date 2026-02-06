@@ -1,1 +1,2 @@
-on buildMenubar () {	kernel (menu.buildmenubar)}
+on buildMenubar () {
+	kernel (menu.buildmenubar)}

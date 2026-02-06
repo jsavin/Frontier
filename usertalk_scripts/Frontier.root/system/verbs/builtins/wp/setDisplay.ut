@@ -1,1 +1,2 @@
-on setDisplay (x) {	kernel (wp.setdisplay)}
+on setDisplay (x) {
+	kernel (wp.setdisplay)}

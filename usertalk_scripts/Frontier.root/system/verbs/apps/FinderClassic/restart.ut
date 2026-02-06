@@ -1,1 +1,2 @@
-on restart () { «restart the Macintosh	return (finderEvent (Finder.id, Finder.class, 'rest'))}
+on restart () { Â«restart the Macintosh
+	return (finderEvent (Finder.id, Finder.class, 'rest'))}

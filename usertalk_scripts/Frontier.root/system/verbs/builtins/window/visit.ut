@@ -1,1 +1,9 @@
-on visit (visitproc) {	local (wname, wnext);	wname = window.frontmost ();	while (wname != "") { «loop until window is nil		wnext = window.next (wname); «get now in case window is closed		if not visitproc^ (wname) {			return (false)};		wname = wnext};	return (true)} «we visited every window
+on visit (visitproc) {
+	local (wname, wnext);
+	wname = window.frontmost ();
+	while (wname != "") { Â«loop until window is nil
+		wnext = window.next (wname); Â«get now in case window is closed
+		if not visitproc^ (wname) {
+			return (false)};
+		wname = wnext};
+	return (true)} Â«we visited every window

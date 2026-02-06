@@ -1,1 +1,25 @@
-netEvents.launch ();if not defined (user.odbServer) {	new (tabletype, @user.odbServer)};if not defined (user.odbServer.log) {	new (outlinetype, @user.odbServer.log)};if not defined (user.odbServer.commandFilter) {	new (scripttype, @user.odbServer.commandFilter);	odbServer.targetSet (@user.odbServer.commandFilter);	op.setLineText ("on commandFilter (adrAttributes)");	op.insert ("Add your own code to filter all incoming messages", right);	script.makeComment ();	op.insert ("", down);	op.insert ("return (true) «return false to skip processing message", down);	op.firstSummit ();	odbServer.targetClear (@user.odbServer.commandFilter)};bundle { «set up user.odbServer.prefs	if not defined (user.odbServer.prefs) {		new (tabletype, @user.odbServer.prefs)};	if not defined (user.odbServer.prefs.serverAddress) {		user.odbServer.prefs.serverAddress = "206.204.24.4"};	if not defined (user.odbServer.prefs.timeoutSecs) {		user.odbServer.prefs.timeoutSecs = 3}};bundle { «set up user.odbServer.commands	if not defined (user.odbServer.commands) {		new (tabletype, @user.odbServer.commands)}}
+netEvents.launch ();
+if not defined (user.odbServer) {
+	new (tabletype, @user.odbServer)};
+if not defined (user.odbServer.log) {
+	new (outlinetype, @user.odbServer.log)};
+if not defined (user.odbServer.commandFilter) {
+	new (scripttype, @user.odbServer.commandFilter);
+	odbServer.targetSet (@user.odbServer.commandFilter);
+	op.setLineText ("on commandFilter (adrAttributes)");
+	op.insert ("Add your own code to filter all incoming messages", right);
+	script.makeComment ();
+	op.insert ("", down);
+	op.insert ("return (true) Â«return false to skip processing message", down);
+	op.firstSummit ();
+	odbServer.targetClear (@user.odbServer.commandFilter)};
+bundle { Â«set up user.odbServer.prefs
+	if not defined (user.odbServer.prefs) {
+		new (tabletype, @user.odbServer.prefs)};
+	if not defined (user.odbServer.prefs.serverAddress) {
+		user.odbServer.prefs.serverAddress = "206.204.24.4"};
+	if not defined (user.odbServer.prefs.timeoutSecs) {
+		user.odbServer.prefs.timeoutSecs = 3}};
+bundle { Â«set up user.odbServer.commands
+	if not defined (user.odbServer.commands) {
+		new (tabletype, @user.odbServer.commands)}}

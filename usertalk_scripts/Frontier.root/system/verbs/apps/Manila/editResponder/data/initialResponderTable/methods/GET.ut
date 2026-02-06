@@ -1,1 +1,2 @@
-on GET (pta) {	return (manila.editResponder.respond (pta))}
+on GET (pta) {
+	return (manila.editResponder.respond (pta))}

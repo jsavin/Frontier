@@ -1,1 +1,72 @@
-adrOutline=@eudora.data.docserversource;bundle { «traverse the outline, writing one verb at a time	target.set (adrOutline);	op.firstsummit ();	op.fullcollapse ();	loop {		local {			verbName="";			syntax="";			Parameters="";			Action="";			Returns="";			Examples="";			Notes="";			SeeAlso="";			s};		verbName=op.getLineText ();		msg(verbName);		op.expand (1);		op.go (right, 1);		loop {			local (section);			section = op.getLineText ();			op.expand (1);			op.go (right, 1);			s="";			loop {				s = s + op.getLineText () + cr;				ctSubs = op.countsubs (1);				if ctSubs > 0 {					op.expand (1);					op.go (right, 1);					if (ctSubs == 1) and (section == "Examples") { «an example						local (line);						line = op.getLineText ();						s = s + tab + line + cr}					else {						loop {							s = s + tab + op.getLineText () + cr;							if not op.go (down, 1) {								break}}};					op.go (left, 1);					op.collapse ()};				if not op.go (down, 1) {					break}};			case section {				"Syntax" {					syntax=s};				"Parameters" {					Parameters=s};				"Action" {					Action=s};				"Returns" {					Returns=s};				"Examples" {					Examples=s};				"Notes" {					Notes=s};				"See Also" {					seeAlso=s}};			op.go (left, 1);			op.collapse ();			if not op.go (down, 1) {				break}};		op.go (left, 1);		op.collapse ();		appleEvent (DocServer.id, 'DOCS', 'updt', 'vnam', string (verbName), 'synt', string (syntax), 'parm', string (Parameters),'actn', string (Action), 'rtrn', string (Returns), 'exmp', string (Examples),'erro', "", 'note', Notes, 'seea', seeAlso,'keyw', "", 'modb', "");		if not op.go (down, 1) {			break}};	op.firstsummit ();	target.clear (); «done with the outline	msg("")}
+adrOutline=@eudora.data.docserversource;
+bundle { Â«traverse the outline, writing one verb at a time
+	target.set (adrOutline);
+	op.firstsummit ();
+	op.fullcollapse ();
+	loop {
+		local {
+			verbName="";
+			syntax="";
+			Parameters="";
+			Action="";
+			Returns="";
+			Examples="";
+			Notes="";
+			SeeAlso="";
+			s};
+		verbName=op.getLineText ();
+		msg(verbName);
+		op.expand (1);
+		op.go (right, 1);
+		loop {
+			local (section);
+			section = op.getLineText ();
+			op.expand (1);
+			op.go (right, 1);
+			s="";
+			loop {
+				s = s + op.getLineText () + cr;
+				ctSubs = op.countsubs (1);
+				if ctSubs > 0 {
+					op.expand (1);
+					op.go (right, 1);
+					if (ctSubs == 1) and (section == "Examples") { Â«an example
+						local (line);
+						line = op.getLineText ();
+						s = s + tab + line + cr}
+					else {
+						loop {
+							s = s + tab + op.getLineText () + cr;
+							if not op.go (down, 1) {
+								break}}};
+					op.go (left, 1);
+					op.collapse ()};
+				if not op.go (down, 1) {
+					break}};
+			case section {
+				"Syntax" {
+					syntax=s};
+				"Parameters" {
+					Parameters=s};
+				"Action" {
+					Action=s};
+				"Returns" {
+					Returns=s};
+				"Examples" {
+					Examples=s};
+				"Notes" {
+					Notes=s};
+				"See Also" {
+					seeAlso=s}};
+			op.go (left, 1);
+			op.collapse ();
+			if not op.go (down, 1) {
+				break}};
+		op.go (left, 1);
+		op.collapse ();
+		appleEvent (DocServer.id, 'DOCS', 'updt', 'vnam', string (verbName), 'synt', string (syntax), 'parm', string (Parameters),'actn', string (Action), 'rtrn', string (Returns), 'exmp', string (Examples),'erro', "", 'note', Notes, 'seea', seeAlso,'keyw', "", 'modb', "");
+		if not op.go (down, 1) {
+			break}};
+	op.firstsummit ();
+	target.clear (); Â«done with the outline
+	msg("")}

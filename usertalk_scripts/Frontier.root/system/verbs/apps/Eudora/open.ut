@@ -1,1 +1,2 @@
-on open (obj) { «Open the specified object	return (appleEvent (Eudora.id, 'aevt', 'odoc', '----', objspec (obj)))}
+on open (obj) { Â«Open the specified object
+	return (appleEvent (Eudora.id, 'aevt', 'odoc', '----', objspec (obj)))}

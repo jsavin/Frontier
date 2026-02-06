@@ -1,1 +1,24 @@
-on duplicate (obj, duplicateTo = nil, replacing = nil) {	«Duplicate object(s).  duplicateTo (if present) must refer to a container	«Replacing can be false (the default), in which case it is an error if there already is a file with the same name		«in the duplicateTo container;		«or true, conflicts, or existingItems in which case the newly created file(s) replaces existing file(s)	«on adjustDuplicateTo (dupSpec)		«case typeOf (dupSpec)			«listType				«local (x, newList = {})				«for x in dupSpec					«newList = adjustDuplicateTo (x)				«return (newList)			«aliasType			«stringType				«return (filespec (dupSpec))		«else			«return (dupSpec)		if Finder.isScriptable () {		if typeOf (duplicateTo) != unknownType {			duplicateTo = Finder.insertionSpec (duplicateTo)};		return (appleEvent (Finder.id, 'core', 'clon', '----', Finder.finderSpec (obj), 'insh', duplicateTo, 'alrp', replacing))}	else {		return (Finder.folderVerb ('sdup', string(obj)))}}
+on duplicate (obj, duplicateTo = nil, replacing = nil) {
+	Â«Duplicate object(s).  duplicateTo (if present) must refer to a container
+	Â«Replacing can be false (the default), in which case it is an error if there already is a file with the same name
+		Â«in the duplicateTo container;
+		Â«or true, conflicts, or existingItems in which case the newly created file(s) replaces existing file(s)
+	Â«on adjustDuplicateTo (dupSpec)
+		Â«case typeOf (dupSpec)
+			Â«listType
+				Â«local (x, newList = {})
+				Â«for x in dupSpec
+					Â«newList = adjustDuplicateTo (x)
+				Â«return (newList)
+			Â«aliasType
+			Â«stringType
+				Â«return (filespec (dupSpec))
+		Â«else
+			Â«return (dupSpec)
+	
+	if Finder.isScriptable () {
+		if typeOf (duplicateTo) != unknownType {
+			duplicateTo = Finder.insertionSpec (duplicateTo)};
+		return (appleEvent (Finder.id, 'core', 'clon', '----', Finder.finderSpec (obj), 'insh', duplicateTo, 'alrp', replacing))}
+	else {
+		return (Finder.folderVerb ('sdup', string(obj)))}}

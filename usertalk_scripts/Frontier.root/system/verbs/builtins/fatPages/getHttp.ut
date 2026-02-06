@@ -1,1 +1,18 @@
-on getHttp (url, adr=nil) {	«Changes		«4/8/02; 12:55:16 PM by DW			«Created. Load a fatpage file over HTTP. 			«If the address is not supplied, load the object into the address specified in the fatpage file; if it is specified, load it into that location.			«I found I was writing this code over and over. Paving a cowpath.	local (s = tcp.httpReadUrl (url));	local (atts);	if not fatPages.getPageAtts (@s, @atts) {		fatPages.noObjectError (f)};	if not defined (atts.pageData) {		fatPages.noObjectError (url:url)};	if adr == nil {		adr = atts.adrPageData};	fatPages.unpackOdbObject (@atts, adr, flEdit:false);	return (adr)};«bundle //test code	«getHttp ("http://nyt.weblogs.com/homepage.fttb", @scratchpad.nytHeadlines)
+on getHttp (url, adr=nil) {
+	Â«Changes
+		Â«4/8/02; 12:55:16 PM by DW
+			Â«Created. Load a fatpage file over HTTP. 
+			Â«If the address is not supplied, load the object into the address specified in the fatpage file; if it is specified, load it into that location.
+			Â«I found I was writing this code over and over. Paving a cowpath.
+	local (s = tcp.httpReadUrl (url));
+	local (atts);
+	if not fatPages.getPageAtts (@s, @atts) {
+		fatPages.noObjectError (f)};
+	if not defined (atts.pageData) {
+		fatPages.noObjectError (url:url)};
+	if adr == nil {
+		adr = atts.adrPageData};
+	fatPages.unpackOdbObject (@atts, adr, flEdit:false);
+	return (adr)};
+Â«bundle //test code
+	Â«getHttp ("http://nyt.weblogs.com/homepage.fttb", @scratchpad.nytHeadlines)

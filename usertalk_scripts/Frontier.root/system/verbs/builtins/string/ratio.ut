@@ -1,1 +1,16 @@
-on ratio (numerator, denominator, places) { //return a string that represents a fraction	on powerOf (num, power) {		local (val = num, i, prevval);		for i = 1 to (power - 1) {			prevval = val;			val = val * num;			if (val / num) != prevval {				scriptError ("Can't raise " + num + " to the power of " + power + " because of integer overflow.")}};		return (val)};	local (num = (double (numerator) / denominator));	local (shifter = powerOf (10, places));	num = long (num * shifter); //let the rounding code kick in	num = double (num) / shifter;	return (string (num))};«bundle //test code	«dialog.alert (ratio (1, 3, 2))
+on ratio (numerator, denominator, places) { //return a string that represents a fraction
+	on powerOf (num, power) {
+		local (val = num, i, prevval);
+		for i = 1 to (power - 1) {
+			prevval = val;
+			val = val * num;
+			if (val / num) != prevval {
+				scriptError ("Can't raise " + num + " to the power of " + power + " because of integer overflow.")}};
+		return (val)};
+	local (num = (double (numerator) / denominator));
+	local (shifter = powerOf (10, places));
+	num = long (num * shifter); //let the rounding code kick in
+	num = double (num) / shifter;
+	return (string (num))};
+Â«bundle //test code
+	Â«dialog.alert (ratio (1, 3, 2))

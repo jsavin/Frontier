@@ -1,1 +1,2 @@
-on quit () {	return (required.quitApplication (AnArchie.id))}
+on quit () {
+	return (required.quitApplication (AnArchie.id))}

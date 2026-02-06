@@ -1,1 +1,2 @@
-on geturl (x) { «Display the contents of a URL.	return (appleEvent (Eudora.id, 'GURL', 'GURL', '----', string (x)))}
+on geturl (x) { Â«Display the contents of a URL.
+	return (appleEvent (Eudora.id, 'GURL', 'GURL', '----', string (x)))}

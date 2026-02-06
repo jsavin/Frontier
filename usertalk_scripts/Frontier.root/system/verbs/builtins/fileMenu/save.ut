@@ -1,1 +1,2 @@
-on save (f=nil) {	kernel (filemenu.save)}
+on save (f=nil) {
+	kernel (filemenu.save)}

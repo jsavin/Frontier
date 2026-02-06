@@ -1,1 +1,28 @@
-«Changes	«2/2/02; 4:23:16 PM by JES		«Pass a 0 to file.getFileDialog, for the type parameter instead of nil. Fixes a bug where files could not be opened on MacOS X.	«11/25/01; 9:13:34 AM by DW		«Created.local (f);if file.getfiledialog ("Choose a subscriptions file:", @f, 0) {	local (adrdata = xml.aggregator.init ());		local (xmltext = file.readwholefile (f), xstruct);	xml.compile (xmltext, @xstruct);		local (adropml = xml.getAddress (@xstruct, "opml"));	local (adrbody = xml.getAddress (adropml, "body"));	local (outlinelist = xml.getAddressList (adrbody, "outline"));	local (adr, xmlurl, adrservice, ctimports = 0);	for adr in outlineList {		xmlurl = xml.getAttributeValue (adr, "xmlUrl");		adrservice = @adrdata^.services.[xmlurl];		if not defined (adrservice^) {			new (tabletype, adrservice);			ctimports++}};	if ctimports > 0 {		if dialog.yesno (ctimports + " services were imported, would you like to do a scan now?") {			xml.aggregator.readAllServices ()}}	else {		dialog.alert ("All the services in the subscription file were already in your subscription list.")}}
+Â«Changes
+	Â«2/2/02; 4:23:16 PM by JES
+		Â«Pass a 0 to file.getFileDialog, for the type parameter instead of nil. Fixes a bug where files could not be opened on MacOS X.
+	Â«11/25/01; 9:13:34 AM by DW
+		Â«Created.
+
+local (f);
+if file.getfiledialog ("Choose a subscriptions file:", @f, 0) {
+	local (adrdata = xml.aggregator.init ());
+	
+	local (xmltext = file.readwholefile (f), xstruct);
+	xml.compile (xmltext, @xstruct);
+	
+	local (adropml = xml.getAddress (@xstruct, "opml"));
+	local (adrbody = xml.getAddress (adropml, "body"));
+	local (outlinelist = xml.getAddressList (adrbody, "outline"));
+	local (adr, xmlurl, adrservice, ctimports = 0);
+	for adr in outlineList {
+		xmlurl = xml.getAttributeValue (adr, "xmlUrl");
+		adrservice = @adrdata^.services.[xmlurl];
+		if not defined (adrservice^) {
+			new (tabletype, adrservice);
+			ctimports++}};
+	if ctimports > 0 {
+		if dialog.yesno (ctimports + " services were imported, would you like to do a scan now?") {
+			xml.aggregator.readAllServices ()}}
+	else {
+		dialog.alert ("All the services in the subscription file were already in your subscription list.")}}

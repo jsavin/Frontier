@@ -1,1 +1,2 @@
-on callImportSubMenu (path) { «this script is saved with all exported subMenus	return (export.importSubMenu (path))}
+on callImportSubMenu (path) { Â«this script is saved with all exported subMenus
+	return (export.importSubMenu (path))}

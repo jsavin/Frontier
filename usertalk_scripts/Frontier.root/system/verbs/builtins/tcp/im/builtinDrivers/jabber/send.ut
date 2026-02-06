@@ -1,1 +1,5 @@
-on send (jabberId, messagetext) {	«Changes		«5/11/02; 1:58:12 PM by JB			«Created.	return tcp.im.builtinDrivers.jabber.code.messages.message (jabberId, messageText)}
+on send (jabberId, messagetext) {
+	Â«Changes
+		Â«5/11/02; 1:58:12 PM by JB
+			Â«Created.
+	return tcp.im.builtinDrivers.jabber.code.messages.message (jabberId, messageText)}

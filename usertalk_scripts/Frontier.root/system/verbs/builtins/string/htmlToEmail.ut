@@ -1,1 +1,95 @@
-on htmlToEmail (htmltext) {	«Changes		«10/4/01; 9:46:54 AM by DW			«When looking for the closing anchor, </a>, do a unicase search.		«9/6/01; 1:19:42 PM by DW			«If a link begins with a #, don't add it to the linkarray, and don't add a [number] next to it, just strip it out. Relative links internal to a document can't be represented in plain text email, which is what we produce. This change was precipitated by the Mail-This-Story feature in Manila.		«9/2/01; 9:23:21 AM by DW			«This verb takes HTML-formatted text and converts it to a format that's easy to read in email.			«http://docserver.userland.com/string/htmlToEmail	local (linkarray = {});	bundle { //extract links		local (pat = "<a href=\"");		local (s = htmltext);		htmltext = "";		loop {			local (ix = string.patternMatch (pat, string.lower (s)));			if ix < 1 {				htmltext = htmltext + s;				break};			htmltext = htmltext + string.mid (s, 1, ix - 1);			s = string.delete (s, 1, ix - 1);			ix = string.patternMatch (">", s);			local (link = string.mid (s, 1, ix - 1) + "/>");			s = string.delete (s, 1, ix);			local (t);			new (tableType, @t);			try {				xml.compile (link, @t);				local (url = t [1].["/atts"].href, fladdnumber = true);				if url beginswith "#" { //9/6/01; 1:21:29 PM by DW					fladdnumber = false}				else {					linkarray = linkarray + {url}};				ix = string.patternMatch ("</a>", string.lower (s)); //10/4/01 by DW, add string.lower				if fladdnumber {					htmltext = htmltext + string.mid (s, 1, ix - 1) + " [" + sizeof (linkarray) + "]"}				else {					htmltext = htmltext + string.mid (s, 1, ix - 1)}};			s = string.delete (s, 1, ix + 3)}};	bundle { //add link text at end		if sizeof (linkarray) > 0 {			local (s = "\r\n\r\n", link, ix = 1);			for link in linkarray {				s = s + "[" + ix++ + "] " + link + "\r\n"};			htmltext = htmltext + s}};	«bundle //add ad text at end		«local (adtext = manilaSuite.callbacks.getEmailNotificationAdText ())		«if sizeof (adtext) > 0			«htmltext = htmltext + "\r\n\r\n" + adtext	bundle { //convert HTML elements to email text		htmltext = string.replaceAll (htmltext, "<i>", "/", false);		htmltext = string.replaceAll (htmltext, "</i>", "/", false);		htmltext = string.replaceAll (htmltext, "<b>", "*", false);		htmltext = string.replaceAll (htmltext, "</b>", "*", false);		htmltext = string.replaceAll (htmltext, "<p>", "\r\n\r\n", false);		htmltext = string.replaceAll (htmltext, "</p>", "", false);		htmltext = string.replaceAll (htmltext, "<br>", "\r\n", false);		htmltext = string.replaceAll (htmltext, "<li>", "* ", false);		htmltext = string.replaceAll (htmltext, "</li>", "", false);		htmltext = string.replaceAll (htmltext, "&nbsp;", " ", false)};	bundle { //strip all remaining markup		local (ixopen, ixclose);		loop {			ixopen = string.patternmatch ("<", htmltext);			if ixopen == 0 {				break};			ixclose = string.patternmatch (">", htmltext);			if ixopen > ixclose {				htmltext = string.delete (htmltext, ixclose, 1);				continue};			if ixclose == 0 {				break};			htmltext = string.delete (htmltext, ixopen, ixclose - ixopen + 1)}};	bundle { //do whitespace stuff		while htmltext contains "\t" {			htmltext = string.replaceAll (htmltext, "\t", " ")};		while htmltext contains "  " {			htmltext = string.replaceAll (htmltext, "  ", " ")};		while htmltext contains " \r" {			htmltext = string.replaceAll (htmltext, " \r", "\r")};		while htmltext contains "\r " {			htmltext = string.replaceAll (htmltext, "\r ", "")};		while htmltext contains "\r\r" {			htmltext = string.replaceAll (htmltext, "\r\r", "\r\n\r\n")};		while htmltext contains "\n\n" {			htmltext = string.replaceAll (htmltext, "\n\n", "\n")};		while htmltext contains "\r\n\r\n\r\n" { //never more than double-space			htmltext = string.replaceAll (htmltext, "\r\n\r\n\r\n", "\r\n\r\n")};		htmltext = string.trimWhitespace (htmltext)};	return (htmltext)};«bundle //test code	«local (s = "This is a test message. Here is some <i>italic text</i>. Here is some <b>boldface text</b>. <p>Now I would like to <a href=\"http://radiodiscuss.userland.com/itsAnOutliner\">link</a> to a story that I find interesting.<p>Oh and here's a <a href=\"http://www.scripting.com/wavs/fargo5.wav\">sound file</a> that might entertain you.\r\n \r \n \r\n \r\n \r\n \r\n", t)	«s = worldoutlineManilaWebsite.["#discussionGroup"].messages.["0000016"].body	«window.about () //so you can see messages	«tcp.sendmail (user.prefs.mailaddress, "Test message", string.htmlToEmail (s))
+on htmlToEmail (htmltext) {
+	Â«Changes
+		Â«10/4/01; 9:46:54 AM by DW
+			Â«When looking for the closing anchor, </a>, do a unicase search.
+		Â«9/6/01; 1:19:42 PM by DW
+			Â«If a link begins with a #, don't add it to the linkarray, and don't add a [number] next to it, just strip it out. Relative links internal to a document can't be represented in plain text email, which is what we produce. This change was precipitated by the Mail-This-Story feature in Manila.
+		Â«9/2/01; 9:23:21 AM by DW
+			Â«This verb takes HTML-formatted text and converts it to a format that's easy to read in email.
+			Â«http://docserver.userland.com/string/htmlToEmail
+	local (linkarray = {});
+	bundle { //extract links
+		local (pat = "<a href=\"");
+		local (s = htmltext);
+		htmltext = "";
+		loop {
+			local (ix = string.patternMatch (pat, string.lower (s)));
+			if ix < 1 {
+				htmltext = htmltext + s;
+				break};
+			htmltext = htmltext + string.mid (s, 1, ix - 1);
+			s = string.delete (s, 1, ix - 1);
+			ix = string.patternMatch (">", s);
+			local (link = string.mid (s, 1, ix - 1) + "/>");
+			s = string.delete (s, 1, ix);
+			local (t);
+			new (tableType, @t);
+			try {
+				xml.compile (link, @t);
+				local (url = t [1].["/atts"].href, fladdnumber = true);
+				if url beginswith "#" { //9/6/01; 1:21:29 PM by DW
+					fladdnumber = false}
+				else {
+					linkarray = linkarray + {url}};
+				ix = string.patternMatch ("</a>", string.lower (s)); //10/4/01 by DW, add string.lower
+				if fladdnumber {
+					htmltext = htmltext + string.mid (s, 1, ix - 1) + " [" + sizeof (linkarray) + "]"}
+				else {
+					htmltext = htmltext + string.mid (s, 1, ix - 1)}};
+			s = string.delete (s, 1, ix + 3)}};
+	bundle { //add link text at end
+		if sizeof (linkarray) > 0 {
+			local (s = "\r\n\r\n", link, ix = 1);
+			for link in linkarray {
+				s = s + "[" + ix++ + "] " + link + "\r\n"};
+			htmltext = htmltext + s}};
+	Â«bundle //add ad text at end
+		Â«local (adtext = manilaSuite.callbacks.getEmailNotificationAdText ())
+		Â«if sizeof (adtext) > 0
+			Â«htmltext = htmltext + "\r\n\r\n" + adtext
+	bundle { //convert HTML elements to email text
+		htmltext = string.replaceAll (htmltext, "<i>", "/", false);
+		htmltext = string.replaceAll (htmltext, "</i>", "/", false);
+		htmltext = string.replaceAll (htmltext, "<b>", "*", false);
+		htmltext = string.replaceAll (htmltext, "</b>", "*", false);
+		htmltext = string.replaceAll (htmltext, "<p>", "\r\n\r\n", false);
+		htmltext = string.replaceAll (htmltext, "</p>", "", false);
+		htmltext = string.replaceAll (htmltext, "<br>", "\r\n", false);
+		htmltext = string.replaceAll (htmltext, "<li>", "* ", false);
+		htmltext = string.replaceAll (htmltext, "</li>", "", false);
+		htmltext = string.replaceAll (htmltext, "&nbsp;", " ", false)};
+	bundle { //strip all remaining markup
+		local (ixopen, ixclose);
+		loop {
+			ixopen = string.patternmatch ("<", htmltext);
+			if ixopen == 0 {
+				break};
+			ixclose = string.patternmatch (">", htmltext);
+			if ixopen > ixclose {
+				htmltext = string.delete (htmltext, ixclose, 1);
+				continue};
+			if ixclose == 0 {
+				break};
+			htmltext = string.delete (htmltext, ixopen, ixclose - ixopen + 1)}};
+	bundle { //do whitespace stuff
+		while htmltext contains "\t" {
+			htmltext = string.replaceAll (htmltext, "\t", " ")};
+		while htmltext contains "  " {
+			htmltext = string.replaceAll (htmltext, "  ", " ")};
+		while htmltext contains " \r" {
+			htmltext = string.replaceAll (htmltext, " \r", "\r")};
+		while htmltext contains "\r " {
+			htmltext = string.replaceAll (htmltext, "\r ", "")};
+		while htmltext contains "\r\r" {
+			htmltext = string.replaceAll (htmltext, "\r\r", "\r\n\r\n")};
+		while htmltext contains "\n\n" {
+			htmltext = string.replaceAll (htmltext, "\n\n", "\n")};
+		while htmltext contains "\r\n\r\n\r\n" { //never more than double-space
+			htmltext = string.replaceAll (htmltext, "\r\n\r\n\r\n", "\r\n\r\n")};
+		htmltext = string.trimWhitespace (htmltext)};
+	return (htmltext)};
+Â«bundle //test code
+	Â«local (s = "This is a test message. Here is some <i>italic text</i>. Here is some <b>boldface text</b>. <p>Now I would like to <a href=\"http://radiodiscuss.userland.com/itsAnOutliner\">link</a> to a story that I find interesting.<p>Oh and here's a <a href=\"http://www.scripting.com/wavs/fargo5.wav\">sound file</a> that might entertain you.\r\n \r \n \r\n \r\n \r\n \r\n", t)
+	Â«s = worldoutlineManilaWebsite.["#discussionGroup"].messages.["0000016"].body
+	Â«window.about () //so you can see messages
+	Â«tcp.sendmail (user.prefs.mailaddress, "Test message", string.htmlToEmail (s))

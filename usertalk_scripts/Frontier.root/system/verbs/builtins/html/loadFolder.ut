@@ -1,1 +1,16 @@
-on loadFolder (folder, adrtable) {	local (f);	new (tableType, adrtable);	fileloop (f in folder) {		local (fname = file.fileFromPath (f));		msg (fname);		if file.isFolder (f) {			local (adrsubtable = @adrtable^.[fname - file.getPathChar ()]);			new (tabletype, adrsubtable);			html.loadFolder (f, adrsubtable)} //recurse		else {			html.loadTextFile (f, adrtable)}}};«bundle «test code	«local (folder = "C:\\Frontier 5\\Websites\\samples\\davenet\\")	«local (adrtable = @websites.test)	«loadFolder (folder, adrtable)
+on loadFolder (folder, adrtable) {
+	local (f);
+	new (tableType, adrtable);
+	fileloop (f in folder) {
+		local (fname = file.fileFromPath (f));
+		msg (fname);
+		if file.isFolder (f) {
+			local (adrsubtable = @adrtable^.[fname - file.getPathChar ()]);
+			new (tabletype, adrsubtable);
+			html.loadFolder (f, adrsubtable)} //recurse
+		else {
+			html.loadTextFile (f, adrtable)}}};
+Â«bundle Â«test code
+	Â«local (folder = "C:\\Frontier 5\\Websites\\samples\\davenet\\")
+	Â«local (adrtable = @websites.test)
+	Â«loadFolder (folder, adrtable)

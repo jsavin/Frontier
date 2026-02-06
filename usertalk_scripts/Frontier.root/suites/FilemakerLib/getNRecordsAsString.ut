@@ -1,1 +1,16 @@
-on getNRecordsAsString (db, firstRecord, numRecordsToGet, theLayout = 0, foundSet = true, reportError = false) {	local {		lastRecord = (firstRecord + numRecordsToGet) - 1};	on doIt () {		with objectModel, filemaker {			if foundSet {				return  (get (window [db].layout [theLayout].record [firstRecord to lastRecord], stringType))}			else {				return (get (database [db].layout [theLayout].record [firstRecord to lastRecord], stringType))}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on getNRecordsAsString (db, firstRecord, numRecordsToGet, theLayout = 0, foundSet = true, reportError = false) {
+	local {
+		lastRecord = (firstRecord + numRecordsToGet) - 1};
+	on doIt () {
+		with objectModel, filemaker {
+			if foundSet {
+				return  (get (window [db].layout [theLayout].record [firstRecord to lastRecord], stringType))}
+			else {
+				return (get (database [db].layout [theLayout].record [firstRecord to lastRecord], stringType))}}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

@@ -1,1 +1,5 @@
-on addMessage (adrmsgtable, msgnum) {	«Sat, Dec 6, 1997 at 2:02:36 AM by PBS		«Fixed toys reference.	local (adr = "mail.messages.[\"" + string.padwithzeros (msgnum, 6) + "\"]");	db.setValue (mail.otherroot.f, adr, adrmsgtable^)}
+on addMessage (adrmsgtable, msgnum) {
+	Â«Sat, Dec 6, 1997 at 2:02:36 AM by PBS
+		Â«Fixed toys reference.
+	local (adr = "mail.messages.[\"" + string.padwithzeros (msgnum, 6) + "\"]");
+	db.setValue (mail.otherroot.f, adr, adrmsgtable^)}

@@ -1,1 +1,29 @@
-«Fri, Dec 5, 1997 at 1:28:29 AM by PBS	«Moved from toys.listSelectedScripts.	«Cleaned up for Frontier 5:		«Files can be of type 2CLK, FATP, or FTsc.		«Don't set font and size of new outline.		«Change 'LAND' to frontier.id.on visit (path) {	local (f);	fileloop (f in path, infinity) {		if file.creator (f) == frontier.id {			case file.type (f) {				'FTsc';				'FATP';				'2CLK' {					if firstline {						op.setLineText (f); «replace the blank line in all new outline windows						firstline = false}					else {						op.insert (f, down)}}}}}; «add a new line	return (true)};local (firstline = true);local (adrOutline = @scratchpad.finderList);Frontier.bringToFront ();new (outlineType, adrOutline); «create a new outline, overwrites any existing outlinetarget.set (adrOutline); «all subsequent commands apply to this windowedit (adrOutline); «open the outline in a window so you can watch the script runFinderMenu.visitPaths (@visit); «process each of the files selected in the Findertarget.clear ()
+Â«Fri, Dec 5, 1997 at 1:28:29 AM by PBS
+	Â«Moved from toys.listSelectedScripts.
+	Â«Cleaned up for Frontier 5:
+		Â«Files can be of type 2CLK, FATP, or FTsc.
+		Â«Don't set font and size of new outline.
+		Â«Change 'LAND' to frontier.id.
+on visit (path) {
+	local (f);
+	fileloop (f in path, infinity) {
+		if file.creator (f) == frontier.id {
+			case file.type (f) {
+				'FTsc';
+				'FATP';
+				'2CLK' {
+					if firstline {
+						op.setLineText (f); Â«replace the blank line in all new outline windows
+						firstline = false}
+					else {
+						op.insert (f, down)}}}}}; Â«add a new line
+	return (true)};
+
+local (firstline = true);
+local (adrOutline = @scratchpad.finderList);
+Frontier.bringToFront ();
+new (outlineType, adrOutline); Â«create a new outline, overwrites any existing outline
+target.set (adrOutline); Â«all subsequent commands apply to this window
+edit (adrOutline); Â«open the outline in a window so you can watch the script run
+FinderMenu.visitPaths (@visit); Â«process each of the files selected in the Finder
+target.clear ()

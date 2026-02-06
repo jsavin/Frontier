@@ -1,1 +1,7 @@
-on create () {	stack.init ();	local (adrstack = table.uniqueName ("stack", @user.stack.pool, 3));	new (tableType, adrstack);	adrstack^.top = 0;	new (tableType, @adrstack^.vals);	return (adrstack)}
+on create () {
+	stack.init ();
+	local (adrstack = table.uniqueName ("stack", @user.stack.pool, 3));
+	new (tableType, adrstack);
+	adrstack^.top = 0;
+	new (tableType, @adrstack^.vals);
+	return (adrstack)}

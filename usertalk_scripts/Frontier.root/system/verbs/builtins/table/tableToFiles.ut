@@ -1,1 +1,216 @@
-on tableToFiles (adrTable, destFolderPath, flMsgs = false) {	«Changes:		«10/2/25; 1:49:10 AM by JES			«Given the address of a table, export the table to a hierarchy of files and folders on disk.				«Description:					«Tables are represented by folders whose name matches the table name.					«Scalars within each table are saved in a .tsv file named _scalars.tsv.					«Non-scalars (besides tables) are saved with an extension matching the object type, so for example Scripts get a .scpt extension. 					«List and record type objects are saved in TSV format (tab-separated values). Tab and CR characters are escaped to ensure the TSV is valid. Each value will have two columns: the type, and the value itself. For records, the columns are name, type, value. For lists the columns are type and value. Lists or records that contain non-scalar members will trigger a scriptError.					«tableToFiles is loosely based on table.tableToXml.				«Parameters:					«adrTable: The address of the table to export					«destFolderPath: The file path to the folder where the table should be exported					«flMsgs: Whether or not to show msgs about progress (default: false)				«Exceptions:					«Outlines are saved as .opml files (via op.outlineToXml).					«WPTexts are saved as plain text files with a .txt extension (text formatting is lost).				«Filename normalization:					«Filenames are normalized using string.urlEncode first, then replacing all the % characters with ( and using a closing ) after the two-character hex number representing the character, so Tab first becomes %09 and is converted to (09).					«This ensures that filenames are always valid on any system, while preserving the special characters.					«Note: string.urlEncode doesn't handle some characters, so we convert them here.					«Note: For readability, spaces are preserved as-is, and are not converted to (20).		on normalize (s) {		s = string.urlEncode (s);		on normalizeChar (ch) {			s = string.replaceAll (s, ch, "%" + string.mid (string.hex (number (char (ch))), 5, 2) )};		local (normalizer = "();|`~^<>!@*", i);		for i = 1 to sizeOf (normalizer) {			normalizeChar (normalizer[i])};				s = string.replaceAll (s, "%20", " ");		local (name = "", ctChars = sizeOf (s));		i = 1;				while i <= ctChars {			if s[i] == "%" { // encoded character to be parenthesized				name = name + "(" + string.mid (s, i+1, 2) + ")";				i = i + 3}			else {				name = name + s[i];				i++}};		return (name)};	on escape (s) { //escape-encode values of list and record type objects		«10/2/25; 2:08:32 PM by JES			«We use TSV format for these objects, so we need to ensure that values escape carriage returns, linefeeds, and tabs.			«Note: table.tableToFiles will fail if lists or records contain non-scalar objects.		s = string.replaceAll ("\t", "\\t");		s = string.replaceAll ("\r", "\\r");		s = string.replaceAll ("\n", "\\n");		return (s)};		local {		ctTables = 0;		ctObjects = 0;		ctScalars = 0;		currentFolder = destFolderPath};		on doMenubar (adr, name=nil) {		local (t = getAtts (adr, name));		addElement ("menubar", adratts:@t, flclose:false); indlev++;				local (localmenu = adr^);		local (oldtarget = target.set (@localmenu));		op.firstSummit ();		op.fullExpand ();		on doOneLevel () {			loop {				local (l = op.getLineText ());				if l == "-" {					addElement ("separator")}				else { //a real menu command or sub-menu					if op.countSubs (1) { //sub-menu						local (t); new (tableType, @t);						t.name = entityEncode (l);						addElement ("menubar", adratts:@t, flclose:false); indlev++;						op.go (right, 1);						doOneLevel (); //dive						add ("</menubar>"); indlev--;						op.go (left, 1)}					else { //menu command						local (menuscript);						menu.getScript (@menuscript);						local (commandKey = menu.getCommandKey ());						if commandKey != "" {							commandKey = commandKey[sizeOf (commandKey)]};						doOutline (@menuscript, l, true, commandKey)}};				if not op.go (down, 1) {					return}}};		doOneLevel ();		target.set (oldtarget);				add ("</menubar>"); indlev--};	on doListOrRecord (adr, name=nil) {		local (t = getAtts (adr, name));		local (elementname = "list");		local (flrecord = false);		if typeOf (adr^) == recordType {			elementname = "record";			flrecord = true};		addElement (elementname, adratts:@t, flclose:false); indlev++;				local (ct = sizeOf (adr^));		for i = 1 to ct {			local (item = adr^[i]);			local (name = false);			«if flrecord				«name = nameOf (adr^[i])			main (@item, name)};				add ("</" + elementname + ">"); indlev--};	on doScalar (adr, name=nil) {				local (atts = getAtts (adr, name));		local (elementname = string.typeToString (typeOf (adr^)));		elementname = string.mid (elementname, 1, sizeOf (elementname) - 4);				case typeOf (adr^) {			filespecType;			string4Type;			stringType {				atts.value = entityEncode (string (adr^))};			doubleType;			longType {				atts.value = adr^};			addressType {				atts.value = entityEncode (string.popFileFromAddress (adr^))};			dateType {				atts.value = date.netStandardString (adr^)};			charType {				atts.value = number (adr^)};			booleanType {				if adr^ {					atts.value = "true"}				else {					atts.value = "false"}};			directionType {				atts.value = string (adr^)};			unknownType {				if adr^ == nil {					elementname = "nil"}				else {					scriptError ("Can't serialize " + string.popFileFromAddress (adr) + " because unknownType objects are not supported in XML at this time.")}}}		else {			scriptError ("Can't serialize " + string.popFileFromAddress (adr) + " because " + string.typeToString (typeOf (adr^)) + " objects are not supported in XML at this time.")};				addElement (elementname, adratts:@atts);				return (true)};	on doTable (adrtable, name=nil, flIncludeAddress=false) {				local (adrstruct); //this points at the xstruct for the sub-item we're encoding				local (t = getAtts (adrtable, name));		if flIncludeAddress { //add the address attribute to the <table>			t.address = string.popFileFromAddress (adrtable)};		addElement ("table", adratts:@t, flclose:false); indlev++;				local (adr);		for adr in adrtable {			main (adr)};				add ("</table>"); indlev--};		on pathUnderFolder (folder, name, ext="") { //allows for [folder] names without extensions		if ext != "" {			if ext[1] != '.' { //ensure extension starts with '.'				ext = "." + ext}};		return (folder + file.getPathChar () + name + ext)};	on saveObject (adr, s="", type=nil) {		local (name = normalize (nameOf (adr^)));		if type == nil { //enables overriding the file extension			type = typeOf (adr^)};		type = string.trimWhitespace (type);		if type == "" {type = "obj"};		if s == "" { //enables overriding the content, for example saving outlines as opml files			s = string (adr^)};		local (filepath = pathUnderFolder (currentFolder, name, type));		local (createDate = clock.now ());		try {createDate = timeCreated (adr^) };		file.sureFilePath (filepath);		file.writeWholeFile (filepath, s, creationdate: createDate);		try {file.setModified (filepath, timeModified (adr^)) }};		on main (adr, folder) {		case typeOf (adr^) {			binaryType {				local (binType = string.trimWhitespace (getBinaryType (adr^)));				saveObject (adr, type: binType)};			listType {				doList (adr)}; //TODO			recordType {				doRecord (adr)}; //TODO			wpTextType {				saveObject (adr)};			outlineType {				local (s = op.outlineToXml (adr, "", "", flDeHoist: true)); //owner and email are empty				saveObject (adr, s, "opml")};			scriptType {				saveObject (adr)};			menubarType {				doMenubar (adr, name)};			tableType { //recurse				local (nomad);				for nomad in adr { //recurse					main (nomad, pathUnderFolder (folder, normalize (nameOf (adr^))))}}}		else { //scalar			doScalar (adr, name)};		return (true)};		main (adrTable);		return (true)};bundle { //testing	msg (normalize ("Test 1, 2, 3"))}
+on tableToFiles (adrTable, destFolderPath, flMsgs = false) {
+	Â«Changes:
+		Â«10/2/25; 1:49:10 AM by JES
+			Â«Given the address of a table, export the table to a hierarchy of files and folders on disk.
+				Â«Description:
+					Â«Tables are represented by folders whose name matches the table name.
+					Â«Scalars within each table are saved in a .tsv file named _scalars.tsv.
+					Â«Non-scalars (besides tables) are saved with an extension matching the object type, so for example Scripts get a .scpt extension. 
+					Â«List and record type objects are saved in TSV format (tab-separated values). Tab and CR characters are escaped to ensure the TSV is valid. Each value will have two columns: the type, and the value itself. For records, the columns are name, type, value. For lists the columns are type and value. Lists or records that contain non-scalar members will trigger a scriptError.
+					Â«tableToFiles is loosely based on table.tableToXml.
+				Â«Parameters:
+					Â«adrTable: The address of the table to export
+					Â«destFolderPath: The file path to the folder where the table should be exported
+					Â«flMsgs: Whether or not to show msgs about progress (default: false)
+				Â«Exceptions:
+					Â«Outlines are saved as .opml files (via op.outlineToXml).
+					Â«WPTexts are saved as plain text files with a .txt extension (text formatting is lost).
+				Â«Filename normalization:
+					Â«Filenames are normalized using string.urlEncode first, then replacing all the % characters with ( and using a closing ) after the two-character hex number representing the character, so Tab first becomes %09 and is converted to (09).
+					Â«This ensures that filenames are always valid on any system, while preserving the special characters.
+					Â«Note: string.urlEncode doesn't handle some characters, so we convert them here.
+					Â«Note: For readability, spaces are preserved as-is, and are not converted to (20).
+	
+	on normalize (s) {
+		s = string.urlEncode (s);
+		on normalizeChar (ch) {
+			s = string.replaceAll (s, ch, "%" + string.mid (string.hex (number (char (ch))), 5, 2) )};
+		local (normalizer = "();|`~^<>!@*", i);
+		for i = 1 to sizeOf (normalizer) {
+			normalizeChar (normalizer[i])};
+		
+		s = string.replaceAll (s, "%20", " ");
+		local (name = "", ctChars = sizeOf (s));
+		i = 1;
+		
+		while i <= ctChars {
+			if s[i] == "%" { // encoded character to be parenthesized
+				name = name + "(" + string.mid (s, i+1, 2) + ")";
+				i = i + 3}
+			else {
+				name = name + s[i];
+				i++}};
+		return (name)};
+	on escape (s) { //escape-encode values of list and record type objects
+		Â«10/2/25; 2:08:32 PM by JES
+			Â«We use TSV format for these objects, so we need to ensure that values escape carriage returns, linefeeds, and tabs.
+			Â«Note: table.tableToFiles will fail if lists or records contain non-scalar objects.
+		s = string.replaceAll ("\t", "\\t");
+		s = string.replaceAll ("\r", "\\r");
+		s = string.replaceAll ("\n", "\\n");
+		return (s)};
+	
+	local {
+		ctTables = 0;
+		ctObjects = 0;
+		ctScalars = 0;
+		currentFolder = destFolderPath};
+	
+	on doMenubar (adr, name=nil) {
+		local (t = getAtts (adr, name));
+		addElement ("menubar", adratts:@t, flclose:false); indlev++;
+		
+		local (localmenu = adr^);
+		local (oldtarget = target.set (@localmenu));
+		op.firstSummit ();
+		op.fullExpand ();
+		on doOneLevel () {
+			loop {
+				local (l = op.getLineText ());
+				if l == "-" {
+					addElement ("separator")}
+				else { //a real menu command or sub-menu
+					if op.countSubs (1) { //sub-menu
+						local (t); new (tableType, @t);
+						t.name = entityEncode (l);
+						addElement ("menubar", adratts:@t, flclose:false); indlev++;
+						op.go (right, 1);
+						doOneLevel (); //dive
+						add ("</menubar>"); indlev--;
+						op.go (left, 1)}
+					else { //menu command
+						local (menuscript);
+						menu.getScript (@menuscript);
+						local (commandKey = menu.getCommandKey ());
+						if commandKey != "" {
+							commandKey = commandKey[sizeOf (commandKey)]};
+						doOutline (@menuscript, l, true, commandKey)}};
+				if not op.go (down, 1) {
+					return}}};
+		doOneLevel ();
+		target.set (oldtarget);
+		
+		add ("</menubar>"); indlev--};
+	on doListOrRecord (adr, name=nil) {
+		local (t = getAtts (adr, name));
+		local (elementname = "list");
+		local (flrecord = false);
+		if typeOf (adr^) == recordType {
+			elementname = "record";
+			flrecord = true};
+		addElement (elementname, adratts:@t, flclose:false); indlev++;
+		
+		local (ct = sizeOf (adr^));
+		for i = 1 to ct {
+			local (item = adr^[i]);
+			local (name = false);
+			Â«if flrecord
+				Â«name = nameOf (adr^[i])
+			main (@item, name)};
+		
+		add ("</" + elementname + ">"); indlev--};
+	on doScalar (adr, name=nil) {
+		
+		local (atts = getAtts (adr, name));
+		local (elementname = string.typeToString (typeOf (adr^)));
+		elementname = string.mid (elementname, 1, sizeOf (elementname) - 4);
+		
+		case typeOf (adr^) {
+			filespecType;
+			string4Type;
+			stringType {
+				atts.value = entityEncode (string (adr^))};
+			doubleType;
+			longType {
+				atts.value = adr^};
+			addressType {
+				atts.value = entityEncode (string.popFileFromAddress (adr^))};
+			dateType {
+				atts.value = date.netStandardString (adr^)};
+			charType {
+				atts.value = number (adr^)};
+			booleanType {
+				if adr^ {
+					atts.value = "true"}
+				else {
+					atts.value = "false"}};
+			directionType {
+				atts.value = string (adr^)};
+			unknownType {
+				if adr^ == nil {
+					elementname = "nil"}
+				else {
+					scriptError ("Can't serialize " + string.popFileFromAddress (adr) + " because unknownType objects are not supported in XML at this time.")}}}
+		else {
+			scriptError ("Can't serialize " + string.popFileFromAddress (adr) + " because " + string.typeToString (typeOf (adr^)) + " objects are not supported in XML at this time.")};
+		
+		addElement (elementname, adratts:@atts);
+		
+		return (true)};
+	on doTable (adrtable, name=nil, flIncludeAddress=false) {
+		
+		local (adrstruct); //this points at the xstruct for the sub-item we're encoding
+		
+		local (t = getAtts (adrtable, name));
+		if flIncludeAddress { //add the address attribute to the <table>
+			t.address = string.popFileFromAddress (adrtable)};
+		addElement ("table", adratts:@t, flclose:false); indlev++;
+		
+		local (adr);
+		for adr in adrtable {
+			main (adr)};
+		
+		add ("</table>"); indlev--};
+	
+	on pathUnderFolder (folder, name, ext="") { //allows for [folder] names without extensions
+		if ext != "" {
+			if ext[1] != '.' { //ensure extension starts with '.'
+				ext = "." + ext}};
+		return (folder + file.getPathChar () + name + ext)};
+	on saveObject (adr, s="", type=nil) {
+		local (name = normalize (nameOf (adr^)));
+		if type == nil { //enables overriding the file extension
+			type = typeOf (adr^)};
+		type = string.trimWhitespace (type);
+		if type == "" {type = "obj"};
+		if s == "" { //enables overriding the content, for example saving outlines as opml files
+			s = string (adr^)};
+		local (filepath = pathUnderFolder (currentFolder, name, type));
+		local (createDate = clock.now ());
+		try {createDate = timeCreated (adr^) };
+		file.sureFilePath (filepath);
+		file.writeWholeFile (filepath, s, creationdate: createDate);
+		try {file.setModified (filepath, timeModified (adr^)) }};
+	
+	on main (adr, folder) {
+		case typeOf (adr^) {
+			binaryType {
+				local (binType = string.trimWhitespace (getBinaryType (adr^)));
+				saveObject (adr, type: binType)};
+			listType {
+				doList (adr)}; //TODO
+			recordType {
+				doRecord (adr)}; //TODO
+			wpTextType {
+				saveObject (adr)};
+			outlineType {
+				local (s = op.outlineToXml (adr, "", "", flDeHoist: true)); //owner and email are empty
+				saveObject (adr, s, "opml")};
+			scriptType {
+				saveObject (adr)};
+			menubarType {
+				doMenubar (adr, name)};
+			tableType { //recurse
+				local (nomad);
+				for nomad in adr { //recurse
+					main (nomad, pathUnderFolder (folder, normalize (nameOf (adr^))))}}}
+		else { //scalar
+			doScalar (adr, name)};
+		return (true)};
+	
+	main (adrTable);
+	
+	return (true)};
+
+bundle { //testing
+	msg (normalize ("Test 1, 2, 3"))}

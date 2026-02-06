@@ -1,1 +1,2 @@
-on binary (val) {	kernel (lang.binary)}
+on binary (val) {
+	kernel (lang.binary)}

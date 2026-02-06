@@ -1,1 +1,6 @@
-on registerUrlEcho (x) { ´Registers the ìechoî application. Each download from now on will be echoed to this application.	case sys.os () {		"MacOS" {			pack (x, @x);			setbinarytype (@x, 'sign');			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'RGUE', '----', x))}}}
+on registerUrlEcho (x) { ¬´Registers the ‚Äúecho‚Äù application. Each download from now on will be echoed to this application.
+	case sys.os () {
+		"MacOS" {
+			pack (x, @x);
+			setbinarytype (@x, 'sign');
+			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'RGUE', '----', x))}}}

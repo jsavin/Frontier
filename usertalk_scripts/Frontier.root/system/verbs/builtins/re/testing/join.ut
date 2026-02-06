@@ -1,1 +1,2 @@
-local (theList = {"a", "b", "c"});dialog.notify (re.join ("|", theList))
+local (theList = {"a", "b", "c"});
+dialog.notify (re.join ("|", theList))

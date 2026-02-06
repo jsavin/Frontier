@@ -1,1 +1,2 @@
-on delete (obj) { «Delete an element from an object	return (core.delete (Fetch.id, obj))}
+on delete (obj) { Â«Delete an element from an object
+	return (core.delete (Fetch.id, obj))}

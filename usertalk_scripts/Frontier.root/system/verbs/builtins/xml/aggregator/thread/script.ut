@@ -1,1 +1,6 @@
-«10/18/05; 9:33:22 AM by SK	«Created.  A simple script for the aggregator that calls the everyMinutes script in it's own thread instead of by an agent.  Finally allows Radio to do other scheduled tasks at the same time as an aggregator run.	«This script is part of a change made in xml.aggregator.init loop { //call the aggregator's everyMinute script then sleep for a minute	xml.aggregator.everyMinute ();	thread.sleepFor (60)} //sleep for sixty seconds
+Â«10/18/05; 9:33:22 AM by SK
+	Â«Created.  A simple script for the aggregator that calls the everyMinutes script in it's own thread instead of by an agent.  Finally allows Radio to do other scheduled tasks at the same time as an aggregator run.
+	Â«This script is part of a change made in xml.aggregator.init 
+loop { //call the aggregator's everyMinute script then sleep for a minute
+	xml.aggregator.everyMinute ();
+	thread.sleepFor (60)} //sleep for sixty seconds

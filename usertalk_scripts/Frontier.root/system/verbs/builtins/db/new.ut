@@ -1,1 +1,2 @@
-on new (f) {	kernel (db.new)}
+on new (f) {
+	kernel (db.new)}

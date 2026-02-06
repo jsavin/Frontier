@@ -1,1 +1,4 @@
-on setObjectFrame (name, flag) {	new (tableType, @atts);	atts.fram = boolean (flag);	return (card.setObjectAttributes (name, @atts))}
+on setObjectFrame (name, flag) {
+	new (tableType, @atts);
+	atts.fram = boolean (flag);
+	return (card.setObjectAttributes (name, @atts))}

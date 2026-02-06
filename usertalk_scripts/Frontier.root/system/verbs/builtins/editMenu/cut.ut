@@ -1,1 +1,2 @@
-on cut () {	kernel (editmenu.cut)}
+on cut () {
+	kernel (editmenu.cut)}

@@ -1,1 +1,30 @@
-on closeWindow (title) { «new in Frontier 4.0b7	«Sat, Apr 27, 1996 at 9:24:55 AM by DMB		«The script can prevent the close from happening by returning false		«Or it can just make a note of the change		«The title may be the address of a database object, or "Error Info", "QuickScript", etc.		«It can also be called for the main window, when the database is about to be closed.			«system.shutdown scripts are called later, after changes have been saved.		«The script is only called when the user closes the window; not when a script does it.		«Here's how to avoid the "Save Changes?" dialog:			«if title == file.fileFromPath (Frontier.getFilePath ())				«FileMenu.Save ()	«Thu, Dec 19, 1996 at 9:08:29 AM by DW		«call any number of scripts in user.hooks.closeWindow table		«any of these scripts can stop the window from closing		«the last script has the last word	«Thursday, September 28, 2000 at 5:32:27 PM by JES		«Allow callbacks to be addresses or addresses of addresses...		if not defined (user.callbacks.closeWindow) {		new (tabletype, @user.callbacks.closeWindow)};	bundle { //old code		local (i);		for i = 1 to sizeof (user.callbacks.closeWindow) {			try {				local (adrScript = @user.callbacks.closeWindow [i]);				while typeOf (adrScript^) == addressType {					adrScript = adrScript^};				if not adrScript^ (title) {					return (false)}}}};	return (true)} «return true to allow the window to close
+on closeWindow (title) { Â«new in Frontier 4.0b7
+	Â«Sat, Apr 27, 1996 at 9:24:55 AM by DMB
+		Â«The script can prevent the close from happening by returning false
+		Â«Or it can just make a note of the change
+		Â«The title may be the address of a database object, or "Error Info", "QuickScript", etc.
+		Â«It can also be called for the main window, when the database is about to be closed.
+			Â«system.shutdown scripts are called later, after changes have been saved.
+		Â«The script is only called when the user closes the window; not when a script does it.
+		Â«Here's how to avoid the "Save Changes?" dialog:
+			Â«if title == file.fileFromPath (Frontier.getFilePath ())
+				Â«FileMenu.Save ()
+	Â«Thu, Dec 19, 1996 at 9:08:29 AM by DW
+		Â«call any number of scripts in user.hooks.closeWindow table
+		Â«any of these scripts can stop the window from closing
+		Â«the last script has the last word
+	Â«Thursday, September 28, 2000 at 5:32:27 PM by JES
+		Â«Allow callbacks to be addresses or addresses of addresses...
+	
+	if not defined (user.callbacks.closeWindow) {
+		new (tabletype, @user.callbacks.closeWindow)};
+	bundle { //old code
+		local (i);
+		for i = 1 to sizeof (user.callbacks.closeWindow) {
+			try {
+				local (adrScript = @user.callbacks.closeWindow [i]);
+				while typeOf (adrScript^) == addressType {
+					adrScript = adrScript^};
+				if not adrScript^ (title) {
+					return (false)}}}};
+	return (true)} Â«return true to allow the window to close

@@ -1,1 +1,19 @@
-local (origTicks = clock.ticks ());local (ctThreads = 10);local (ctReps = 100);local (i, j);temp.testct = 0; //each thread will incremement this at the end -- it's a check for silent failuresfor i = 1 to ctReps {	msg ("Test " + i + " of " + ctReps + ". Thread count: " + frontier.countThreads ());	for j = 1 to ctThreads {		thread.evaluate ("com.tests.oneThread ()")};	sys.systemTask ()};while (frontier.countThreads () > 2) { //wait until all spawned threads have stopped executing	msg (frontier.countThreads ())};if temp.testct != ctReps * ctThreads { //each thread increments temp.testct	scriptError ("Not all the threads ran all the way!")};msg (((clock.ticks () - origticks)))
+local (origTicks = clock.ticks ());
+local (ctThreads = 10);
+local (ctReps = 100);
+local (i, j);
+
+temp.testct = 0; //each thread will incremement this at the end -- it's a check for silent failures
+
+for i = 1 to ctReps {
+	msg ("Test " + i + " of " + ctReps + ". Thread count: " + frontier.countThreads ());
+	for j = 1 to ctThreads {
+		thread.evaluate ("com.tests.oneThread ()")};
+	sys.systemTask ()};
+while (frontier.countThreads () > 2) { //wait until all spawned threads have stopped executing
+	msg (frontier.countThreads ())};
+
+if temp.testct != ctReps * ctThreads { //each thread increments temp.testct
+	scriptError ("Not all the threads ran all the way!")};
+
+msg (((clock.ticks () - origticks)))

@@ -1,1 +1,5 @@
-on newObject (server, path, value, mimetype) {	webstar.root.newTable (server, path);	webstar.root.setValue (server, path + ".data", value);	webstar.root.setValue (server, path + ".mime", mimetype);	return (true)}
+on newObject (server, path, value, mimetype) {
+	webstar.root.newTable (server, path);
+	webstar.root.setValue (server, path + ".data", value);
+	webstar.root.setValue (server, path + ".mime", mimetype);
+	return (true)}

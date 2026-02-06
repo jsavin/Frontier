@@ -1,1 +1,2 @@
-on version () {	return (file.getVersion (cardEditor.appinfo.path))}
+on version () {
+	return (file.getVersion (cardEditor.appinfo.path))}

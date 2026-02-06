@@ -1,1 +1,29 @@
-on addPageToGlossary (adrPageTable) { //5.0	«Changes:		«Sunday, January 18, 1998 at 8:31:46 PM by PBS			«Build glossary references relative to the ftpSite rather than the glossary.		«Sat, May 16, 1998 at 5:29:08 PM by PBS			«Avoid name collisions -- remove "with adrPageTable" statement.		«Thu, Jan 14, 1999 at 3:28:18 PM by PBS			«The name of the page may contain a .html (for example) --				«don't convert that . to a /, or else glossary entries will be wrong.	local (stringStrip = string (parentOf (adrPageTable^.ftpSite^)));	local (path = string (adrPageTable^.adrObject));		if stringStrip beginsWith "root." {		stringStrip = stringStrip - "root."};		path = string.mid (string (adrPageTable^.adrObject), sizeOf (stringStrip) + 2, infinity);	local (name = nameOf (adrPageTable^.adrObject^)); //PBS 1/14/99	path = string.replaceAll (path, "[\"", "");	path = string.replaceAll (path, "\"]", "");	path = string.mid (path, 1, sizeOf (path) - sizeOf (name)); //PBS 1/14/99	path = string.replaceAll (path, ".", "/");	path = path + name; //PBS 1/14/99		local (adrGlossSubtable = @adrPageTable^.glossary^.[adrPageTable^.title]);	new (tableType, adrGlossSubtable);	adrGlossSubtable^.linetext = adrPageTable^.title;	adrGlossSubtable^.path = path + html.getPref ("fileExtension", adrPageTable);		return (true)}
+on addPageToGlossary (adrPageTable) { //5.0
+	Â«Changes:
+		Â«Sunday, January 18, 1998 at 8:31:46 PM by PBS
+			Â«Build glossary references relative to the ftpSite rather than the glossary.
+		Â«Sat, May 16, 1998 at 5:29:08 PM by PBS
+			Â«Avoid name collisions -- remove "with adrPageTable" statement.
+		Â«Thu, Jan 14, 1999 at 3:28:18 PM by PBS
+			Â«The name of the page may contain a .html (for example) --
+				Â«don't convert that . to a /, or else glossary entries will be wrong.
+	local (stringStrip = string (parentOf (adrPageTable^.ftpSite^)));
+	local (path = string (adrPageTable^.adrObject));
+	
+	if stringStrip beginsWith "root." {
+		stringStrip = stringStrip - "root."};
+	
+	path = string.mid (string (adrPageTable^.adrObject), sizeOf (stringStrip) + 2, infinity);
+	local (name = nameOf (adrPageTable^.adrObject^)); //PBS 1/14/99
+	path = string.replaceAll (path, "[\"", "");
+	path = string.replaceAll (path, "\"]", "");
+	path = string.mid (path, 1, sizeOf (path) - sizeOf (name)); //PBS 1/14/99
+	path = string.replaceAll (path, ".", "/");
+	path = path + name; //PBS 1/14/99
+	
+	local (adrGlossSubtable = @adrPageTable^.glossary^.[adrPageTable^.title]);
+	new (tableType, adrGlossSubtable);
+	adrGlossSubtable^.linetext = adrPageTable^.title;
+	adrGlossSubtable^.path = path + html.getPref ("fileExtension", adrPageTable);
+	
+	return (true)}

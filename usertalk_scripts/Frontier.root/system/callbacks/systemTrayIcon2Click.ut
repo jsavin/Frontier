@@ -1,1 +1,11 @@
-on systemTrayIcon2Click () {	if not defined (user.callbacks.systemTrayIcon2Click) {		new (tabletype, @user.callbacks.systemTrayIcon2Click)};	local (i);	for i = 1 to sizeof (user.callbacks.systemTrayIcon2Click) {		try {			local (adrScript = @user.callbacks.systemTrayIcon2Click [i]);			while typeOf (adrScript^) == addressType {				adrScript = adrScript^};			adrScript^ ()}};	return (true)}
+on systemTrayIcon2Click () {
+	if not defined (user.callbacks.systemTrayIcon2Click) {
+		new (tabletype, @user.callbacks.systemTrayIcon2Click)};
+	local (i);
+	for i = 1 to sizeof (user.callbacks.systemTrayIcon2Click) {
+		try {
+			local (adrScript = @user.callbacks.systemTrayIcon2Click [i]);
+			while typeOf (adrScript^) == addressType {
+				adrScript = adrScript^};
+			adrScript^ ()}};
+	return (true)}

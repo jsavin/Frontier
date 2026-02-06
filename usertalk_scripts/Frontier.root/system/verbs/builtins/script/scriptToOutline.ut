@@ -1,1 +1,47 @@
-on scriptToOutline (adrscript, adroutline) { «Fri, Aug 16, 1996 at 8:36:58 AM by DW	«10/31/97 at 1:17:49 PM by DW -- moved from toys.scriptToOutline	«this script is used in producing the Samples website		«http://www.scripting.com/samples/		«we have good html rendering tools for outlines, that don't work with scripts		«we make an outline that reflects the contents of the script, suitable for display	local (oldTarget = target.set (adrscript));	local (wasmodified = window.isModified (adrscript));	window.setModified (adrscript, true);	op.firstSummit ();	op.fullExpand ();	new (outlinetype, adroutline);	local (dir = nodirection);	on copyLevel (leveliscomment) {		local (s, ctsubs, curlineiscomment);		loop {			target.set (adrscript);			ctsubs = op.countSubs (1);			s = op.getLineText (); «get line from the script			curlineiscomment = script.isComment ();			if curlineiscomment or leveliscomment {				s = "«" + s};			target.set (adroutline);			if dir == nodirection {				op.setlinetext (s)}			else {				op.insert (s, dir)};			if ctsubs > 0 {				dir = right;				target.set (adrscript);				op.go (right, 1);				copyLevel (curlineiscomment or leveliscomment);				if dir != right {					target.set (adrscript);					op.go (left, 1);					target.set (adroutline);					op.go (left, 1)}};			dir = down;			target.set (adrscript);			if not op.go (down, 1) {				target.clear();				return}}};	copyLevel (false);	target.set (adrscript);	window.setModified (adrscript, wasmodified);	try {target.set (oldTarget)};	return (true)}
+on scriptToOutline (adrscript, adroutline) { Â«Fri, Aug 16, 1996 at 8:36:58 AM by DW
+	Â«10/31/97 at 1:17:49 PM by DW -- moved from toys.scriptToOutline
+	Â«this script is used in producing the Samples website
+		Â«http://www.scripting.com/samples/
+		Â«we have good html rendering tools for outlines, that don't work with scripts
+		Â«we make an outline that reflects the contents of the script, suitable for display
+	local (oldTarget = target.set (adrscript));
+	local (wasmodified = window.isModified (adrscript));
+	window.setModified (adrscript, true);
+	op.firstSummit ();
+	op.fullExpand ();
+	new (outlinetype, adroutline);
+	local (dir = nodirection);
+	on copyLevel (leveliscomment) {
+		local (s, ctsubs, curlineiscomment);
+		loop {
+			target.set (adrscript);
+			ctsubs = op.countSubs (1);
+			s = op.getLineText (); Â«get line from the script
+			curlineiscomment = script.isComment ();
+			if curlineiscomment or leveliscomment {
+				s = "Â«" + s};
+			target.set (adroutline);
+			if dir == nodirection {
+				op.setlinetext (s)}
+			else {
+				op.insert (s, dir)};
+			if ctsubs > 0 {
+				dir = right;
+				target.set (adrscript);
+				op.go (right, 1);
+				copyLevel (curlineiscomment or leveliscomment);
+				if dir != right {
+					target.set (adrscript);
+					op.go (left, 1);
+					target.set (adroutline);
+					op.go (left, 1)}};
+			dir = down;
+			target.set (adrscript);
+			if not op.go (down, 1) {
+				target.clear();
+				return}}};
+	copyLevel (false);
+	target.set (adrscript);
+	window.setModified (adrscript, wasmodified);
+	try {target.set (oldTarget)};
+	return (true)}

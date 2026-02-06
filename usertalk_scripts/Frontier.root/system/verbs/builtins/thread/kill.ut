@@ -1,1 +1,2 @@
-on kill (id) {	kernel (thread.kill)}
+on kill (id) {
+	kernel (thread.kill)}

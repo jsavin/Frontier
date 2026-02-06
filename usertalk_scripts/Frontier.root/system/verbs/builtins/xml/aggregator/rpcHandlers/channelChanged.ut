@@ -1,1 +1,14 @@
-on channelChanged (url) {	«Changes		«1/25/01; 7:26:29 PM by DW			«Read the service in thread, we want to be kind to the cloud. Gotta return quickly. (It was taking over 3 seconds to read it.)	local (adrdata = xml.aggregator.init ());	local (adrservice = @adrdata^.services.[url], startticks = clock.ticks ());	if defined (adrservice^) {		thread.callscript (@xml.aggregator.readservice, {url, @adrdata^.services});		if adrdata^.prefs.flChannelChange {			local (link = "<a href=\"" + url + "\">" + adrservice^.compilation.channeltitle + "</a>");			try {radio.log.add ("Channel change", link + " changed.", startticks)}}};	return (true)};«bundle //test code	«channelChanged ("http://www.salon.com/feed/RDF/salon_use.rdf")
+on channelChanged (url) {
+	Â«Changes
+		Â«1/25/01; 7:26:29 PM by DW
+			Â«Read the service in thread, we want to be kind to the cloud. Gotta return quickly. (It was taking over 3 seconds to read it.)
+	local (adrdata = xml.aggregator.init ());
+	local (adrservice = @adrdata^.services.[url], startticks = clock.ticks ());
+	if defined (adrservice^) {
+		thread.callscript (@xml.aggregator.readservice, {url, @adrdata^.services});
+		if adrdata^.prefs.flChannelChange {
+			local (link = "<a href=\"" + url + "\">" + adrservice^.compilation.channeltitle + "</a>");
+			try {radio.log.add ("Channel change", link + " changed.", startticks)}}};
+	return (true)};
+Â«bundle //test code
+	Â«channelChanged ("http://www.salon.com/feed/RDF/salon_use.rdf")

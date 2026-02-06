@@ -1,1 +1,31 @@
-on getSource (url, timeoutsecs) { «returns the HTML source stored at that URL	case sys.os () {		"MacOS" {			local (f = webBrowser.getScriptPrefsFolder () + "HTML Source", s);			appleEvent (user.webBrowser.currentid, 'GURL', 'GURL', '----', string (url), 'dest', filespec (f), 'cwin', nil);						local (loopstarttime = clock.now ());			while not file.exists (f) {				rollbeachball ();				if (clock.now () - loopstarttime) > timeoutsecs { «timeout					return ("")}};			while file.isbusy (f) {};						file.open (f);			s = string (file.read (f, infinity));			file.close (f);			file.delete (f);			return (s)};		"Win95";		"WinNT" {			local (port = 80, domain, path, urlparts, ix);			urlparts = string.urlSplit (url);			if not string.lower (urlparts [1]) == "http://" {				scriptError ("Can't get source because \"" + url + "\" is not an http url.")};			domain = urlparts [2];			path = "/" + urlparts [3];			ix = string.patternMatch (":", domain);			if ix > 0 {				port = string.mid (domain, ix, infinity);				domain = string.mid (domain, 1, ix - 1)};			return (tcp.examples.httpGet (domain, path, port))}}}
+on getSource (url, timeoutsecs) { Â«returns the HTML source stored at that URL
+	case sys.os () {
+		"MacOS" {
+			local (f = webBrowser.getScriptPrefsFolder () + "HTML Source", s);
+			appleEvent (user.webBrowser.currentid, 'GURL', 'GURL', '----', string (url), 'dest', filespec (f), 'cwin', nil);
+			
+			local (loopstarttime = clock.now ());
+			while not file.exists (f) {
+				rollbeachball ();
+				if (clock.now () - loopstarttime) > timeoutsecs { Â«timeout
+					return ("")}};
+			while file.isbusy (f) {};
+			
+			file.open (f);
+			s = string (file.read (f, infinity));
+			file.close (f);
+			file.delete (f);
+			return (s)};
+		"Win95";
+		"WinNT" {
+			local (port = 80, domain, path, urlparts, ix);
+			urlparts = string.urlSplit (url);
+			if not string.lower (urlparts [1]) == "http://" {
+				scriptError ("Can't get source because \"" + url + "\" is not an http url.")};
+			domain = urlparts [2];
+			path = "/" + urlparts [3];
+			ix = string.patternMatch (":", domain);
+			if ix > 0 {
+				port = string.mid (domain, ix, infinity);
+				domain = string.mid (domain, 1, ix - 1)};
+			return (tcp.examples.httpGet (domain, path, port))}}}

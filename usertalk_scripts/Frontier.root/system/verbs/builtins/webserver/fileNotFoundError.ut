@@ -1,1 +1,5 @@
-on fileNotFoundError (adrParamTable) {	local (htmlText = webserver.httpHeader ("404 FILE NOT FOUND"));	local (errPage = webserver.getPref ("fileNotFoundPage"));	htmlText = htmlText + webserver.processMacros (errPage, adrParamTable);	return (htmlText)}
+on fileNotFoundError (adrParamTable) {
+	local (htmlText = webserver.httpHeader ("404 FILE NOT FOUND"));
+	local (errPage = webserver.getPref ("fileNotFoundPage"));
+	htmlText = htmlText + webserver.processMacros (errPage, adrParamTable);
+	return (htmlText)}

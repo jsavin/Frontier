@@ -1,1 +1,2 @@
-on putText (textinfo) {	return (appleEvent (app.id, 'app1', 'ptex', '----', string (textinfo)))}
+on putText (textinfo) {
+	return (appleEvent (app.id, 'app1', 'ptex', '----', string (textinfo)))}

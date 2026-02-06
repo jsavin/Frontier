@@ -1,1 +1,13 @@
-on gigabyteString (size) { «display size in gigabytes, the next step after string.megabyteString	«New verb: 5/5/00; 10:20:20 AM by DW		«http://docserver.userland.com/string/gigabyteString	size = double (size);	local (onegig = 1024 * 1024 * 1024);	if size <= onegig {		return (string.megabyteString (number (size)))};	local (rawgigs = size / onegig);	local (leftofdecimal = string.nthfield (rawgigs, ".", 1));	local (rightofdecimal = string.nthfield (rawgigs, ".", 2));	return (leftofdecimal + "." +  rightofdecimal [1] + "GB")};«bundle //test code	«dialog.alert (string.gigabyteString (file.volumeSize (file.volumeFromPath (Frontier.getProgramPath ()))))
+on gigabyteString (size) { Â«display size in gigabytes, the next step after string.megabyteString
+	Â«New verb: 5/5/00; 10:20:20 AM by DW
+		Â«http://docserver.userland.com/string/gigabyteString
+	size = double (size);
+	local (onegig = 1024 * 1024 * 1024);
+	if size <= onegig {
+		return (string.megabyteString (number (size)))};
+	local (rawgigs = size / onegig);
+	local (leftofdecimal = string.nthfield (rawgigs, ".", 1));
+	local (rightofdecimal = string.nthfield (rawgigs, ".", 2));
+	return (leftofdecimal + "." +  rightofdecimal [1] + "GB")};
+Â«bundle //test code
+	Â«dialog.alert (string.gigabyteString (file.volumeSize (file.volumeFromPath (Frontier.getProgramPath ()))))

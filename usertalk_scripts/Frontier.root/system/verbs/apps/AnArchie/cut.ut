@@ -1,1 +1,2 @@
-on cut () { «cut selection	return (appleEvent (AnArchie.id, 'core', 'cut '))}
+on cut () { Â«cut selection
+	return (appleEvent (AnArchie.id, 'core', 'cut '))}

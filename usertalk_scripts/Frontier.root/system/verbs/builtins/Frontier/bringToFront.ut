@@ -1,1 +1,3 @@
-on bringToFront () {	local (path = Frontier.getProgramPath ());	return (sys.bringAppToFront (file.fileFromPath (path)))}
+on bringToFront () {
+	local (path = Frontier.getProgramPath ());
+	return (sys.bringAppToFront (file.fileFromPath (path)))}

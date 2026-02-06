@@ -1,1 +1,2 @@
-on forward (obj) { «Forward a message	return (appleEvent (Eudora.id, 'CSOm', 'eFwd', '----', objspec (obj)))}
+on forward (obj) { Â«Forward a message
+	return (appleEvent (Eudora.id, 'CSOm', 'eFwd', '----', objspec (obj)))}

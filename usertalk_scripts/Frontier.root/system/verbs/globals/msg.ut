@@ -1,1 +1,2 @@
-on msg (s) {	kernel (lang.msg)}
+on msg (s) {
+	kernel (lang.msg)}

@@ -1,1 +1,5 @@
-on getCardGridUnits () {	local (atts);	if not cardEditor.getCardAttributes (@atts) {		return (0)};	return (atts.grun)}
+on getCardGridUnits () {
+	local (atts);
+	if not cardEditor.getCardAttributes (@atts) {
+		return (0)};
+	return (atts.grun)}

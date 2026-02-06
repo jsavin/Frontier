@@ -1,1 +1,4 @@
-on createResponse (adrresponse, s = nil) {	local (adrdocument = soap.xmlutils.createMessage (adrresponse, s));	adrresponse^.type = "response";	return (adrdocument)}
+on createResponse (adrresponse, s = nil) {
+	local (adrdocument = soap.xmlutils.createMessage (adrresponse, s));
+	adrresponse^.type = "response";
+	return (adrdocument)}

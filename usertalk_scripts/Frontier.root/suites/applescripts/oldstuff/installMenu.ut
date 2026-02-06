@@ -1,1 +1,2 @@
-on installMenu () {	return (menu.install (@applescripts.menu))}
+on installMenu () {
+	return (menu.install (@applescripts.menu))}

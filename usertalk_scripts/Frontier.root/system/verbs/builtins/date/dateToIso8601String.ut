@@ -1,1 +1,27 @@
-on dateToIso8601String (d) {	«Changes		«2/12/03; 6:17:57 PM by JES			«Created. Return the given date as an ISO 8601 formatted string.			«Example: 1994-11-05T08:15:30-05:00			«Spec: http://www.w3.org/TR/NOTE-datetime			«Cribbed from code written by Andre Radke at soap.encode.simpleType.	local (s, day, month, year, hour, minute, second);	date.get (d, @day, @month, @year, @hour, @minute, @second);	s = string (year) + "-";	s = s + string.padWithZeros (month, 2) + "-";	s = s + string.padWithZeros (day, 2) + "T";	s = s + string.padWithZeros (hour, 2) + ":";	s = s + string.padWithZeros (minute, 2) + ":";	s = s + string.padWithZeros (second, 2);	local (tzsign, tzoffset = date.getCurrentTimeZone () / 60);	if tzoffset < 0 {		tzoffset = -1 * tzoffset;		tzsign = "-"}	else {		tzsign = "+"};	local (tzhours = tzoffset / 60);	local (tzminutes = tzoffset % 60);	return (s + tzsign + string.padWithZeros (tzhours, 2) + ":"  + string.padWithZeros (tzminutes, 2))};«bundle //test code	«date.dateToIso8601String (clock.now ())		«"2003-02-12T18:25:38-08:00"
+on dateToIso8601String (d) {
+	Â«Changes
+		Â«2/12/03; 6:17:57 PM by JES
+			Â«Created. Return the given date as an ISO 8601 formatted string.
+			Â«Example: 1994-11-05T08:15:30-05:00
+			Â«Spec: http://www.w3.org/TR/NOTE-datetime
+			Â«Cribbed from code written by Andre Radke at soap.encode.simpleType.
+	local (s, day, month, year, hour, minute, second);
+	date.get (d, @day, @month, @year, @hour, @minute, @second);
+	s = string (year) + "-";
+	s = s + string.padWithZeros (month, 2) + "-";
+	s = s + string.padWithZeros (day, 2) + "T";
+	s = s + string.padWithZeros (hour, 2) + ":";
+	s = s + string.padWithZeros (minute, 2) + ":";
+	s = s + string.padWithZeros (second, 2);
+	local (tzsign, tzoffset = date.getCurrentTimeZone () / 60);
+	if tzoffset < 0 {
+		tzoffset = -1 * tzoffset;
+		tzsign = "-"}
+	else {
+		tzsign = "+"};
+	local (tzhours = tzoffset / 60);
+	local (tzminutes = tzoffset % 60);
+	return (s + tzsign + string.padWithZeros (tzhours, 2) + ":"  + string.padWithZeros (tzminutes, 2))};
+Â«bundle //test code
+	Â«date.dateToIso8601String (clock.now ())
+		Â«"2003-02-12T18:25:38-08:00"

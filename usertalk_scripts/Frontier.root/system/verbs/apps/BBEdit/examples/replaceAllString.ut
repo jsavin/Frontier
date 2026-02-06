@@ -1,1 +1,11 @@
-on replaceAllString() {	«Revisions:		«08/19/95 ECT: ported from AppleScript to UserTalk	«Description:		«Short sample which shows how to use the Replace All functionality from a script	with objectModel, BBEdit, eventInfo {		if (file.getFileDialog("Select a document:", @sourceFileName, 'TEXT')) {			openDocument(sourceFileName);			replace(everyOccurrence, "</h3>", "</h3><p>")};		bringToFront();}};replaceAllString()
+on replaceAllString() {
+	Â«Revisions:
+		Â«08/19/95 ECT: ported from AppleScript to UserTalk
+	Â«Description:
+		Â«Short sample which shows how to use the Replace All functionality from a script
+	with objectModel, BBEdit, eventInfo {
+		if (file.getFileDialog("Select a document:", @sourceFileName, 'TEXT')) {
+			openDocument(sourceFileName);
+			replace(everyOccurrence, "</h3>", "</h3><p>")};
+		bringToFront();}};
+replaceAllString()

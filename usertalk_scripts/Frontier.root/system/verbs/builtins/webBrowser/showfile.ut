@@ -1,1 +1,4 @@
-on showfile (file, mimeType = nil, windowId = nil, url = nil, resultapp = nil) { «Passes FileSpec containing data of a given MIME type to be rendered in a given WindowID.	case sys.os () {		"MacOS" {			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'SHWF', '----', alias (file), 'MIME', string (mimeType), 'WIND', long (windowId), 'URL ', string (url), 'RSLT', resultapp))}}}
+on showfile (file, mimeType = nil, windowId = nil, url = nil, resultapp = nil) { Â«Passes FileSpec containing data of a given MIME type to be rendered in a given WindowID.
+	case sys.os () {
+		"MacOS" {
+			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'SHWF', '----', alias (file), 'MIME', string (mimeType), 'WIND', long (windowId), 'URL ', string (url), 'RSLT', resultapp))}}}

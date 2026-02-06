@@ -1,1 +1,23 @@
-on undoCheckOut (userName, password, adrObject) {	«Undo a checkout.		«Sat, Mar 6, 1999 at 10:36:58 PM by PBS		custody.authenticate (userName, password, adrObject, false);		local (adrTable = @user.custody.objects);		custody.lockObjectsTable (); //lock the table with a semaphore	custody.cleanUpObjectsTable (); //clean out any timed-out objects		if (defined (adrTable^.[adrObject])) {		if string.lower (adrTable^.[adrObject].user) != string.lower (userName) {			custody.unlockObjectsTable (); //unlock the table			scriptError ("Can't undo check out for \"" + adrObject + "\" because another user checked it out.")}};		try {delete (@adrTable^.[adrObject])}; //try because the object may not have been checked out		custody.unlockObjectsTable (); //unlock the table		log.add (adrObject + " check out undone by " + username, "Custody");		return (true)}
+on undoCheckOut (userName, password, adrObject) {
+	Â«Undo a checkout.
+		Â«Sat, Mar 6, 1999 at 10:36:58 PM by PBS
+	
+	custody.authenticate (userName, password, adrObject, false);
+	
+	local (adrTable = @user.custody.objects);
+	
+	custody.lockObjectsTable (); //lock the table with a semaphore
+	custody.cleanUpObjectsTable (); //clean out any timed-out objects
+	
+	if (defined (adrTable^.[adrObject])) {
+		if string.lower (adrTable^.[adrObject].user) != string.lower (userName) {
+			custody.unlockObjectsTable (); //unlock the table
+			scriptError ("Can't undo check out for \"" + adrObject + "\" because another user checked it out.")}};
+	
+	try {delete (@adrTable^.[adrObject])}; //try because the object may not have been checked out
+	
+	custody.unlockObjectsTable (); //unlock the table
+	
+	log.add (adrObject + " check out undone by " + username, "Custody");
+	
+	return (true)}

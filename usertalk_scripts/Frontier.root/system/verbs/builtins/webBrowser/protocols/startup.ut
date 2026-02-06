@@ -1,1 +1,6 @@
-if webBrowser.isRunning () {	local (i);	with webBrowser.protocols {		for i = 1 to sizeOf (activehandlers) {			if typeOf (activehandlers [i]) == scriptType {				webBrowser.registerProtocol (Frontier.id, nameOf (activehandlers [i]))}}}}
+if webBrowser.isRunning () {
+	local (i);
+	with webBrowser.protocols {
+		for i = 1 to sizeOf (activehandlers) {
+			if typeOf (activehandlers [i]) == scriptType {
+				webBrowser.registerProtocol (Frontier.id, nameOf (activehandlers [i]))}}}}

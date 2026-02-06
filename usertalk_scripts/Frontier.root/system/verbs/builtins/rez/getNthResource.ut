@@ -1,1 +1,2 @@
-on getNthResource (path, type, n, adrname, adrdata) {	kernel (rez.getnthresource)}
+on getNthResource (path, type, n, adrname, adrdata) {
+	kernel (rez.getnthresource)}

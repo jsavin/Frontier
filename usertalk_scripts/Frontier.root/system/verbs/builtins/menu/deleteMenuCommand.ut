@@ -1,1 +1,2 @@
-on deleteMenuCommand (adrmenubar, menuname, itemstring) {	kernel (menu.deleteMenuCommand)}
+on deleteMenuCommand (adrmenubar, menuname, itemstring) {
+	kernel (menu.deleteMenuCommand)}

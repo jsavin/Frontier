@@ -1,1 +1,5 @@
-on getObjectFrame (name) {	local (atts);	if not cardEditor.getObjectAttributes (name, @atts) {		return ("")};	return (atts.fram)}
+on getObjectFrame (name) {
+	local (atts);
+	if not cardEditor.getObjectAttributes (name, @atts) {
+		return ("")};
+	return (atts.fram)}

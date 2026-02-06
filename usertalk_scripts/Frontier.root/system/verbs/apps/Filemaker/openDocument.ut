@@ -1,1 +1,3 @@
-on openDocument (file) {	filemaker.bringtofront(); «added 3/12/96 PBS	return (required.openDocument (Filemaker.id, file))}
+on openDocument (file) {
+	filemaker.bringtofront(); Â«added 3/12/96 PBS
+	return (required.openDocument (Filemaker.id, file))}

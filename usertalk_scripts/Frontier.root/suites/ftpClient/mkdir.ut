@@ -1,1 +1,15 @@
-on mkdir (domain, path, account, password) { « Make directory remotely.	case ftpClient.data.currentid {		Anarchie.id {			local (result);			if path[sizeOf (path)] == '/' { « Anarchie doesn't like slashes at the end of directory names.				path = string.delete (path, sizeOf (path), infinity)};			result = Anarchie.mkdir (domain, path, account, password, nil);			if result == 0 {				return (true)}			else {				scriptError ("FTP Error: " + result + ".")}};		Fetch.id {			Fetch.mkdir (domain, path, account, password, nil)}}	else {		scriptError ("The app whose ID is '" + ftpClient.data.currentid + "' is not a supported FTP client.")}}
+on mkdir (domain, path, account, password) { Â« Make directory remotely.
+	case ftpClient.data.currentid {
+		Anarchie.id {
+			local (result);
+			if path[sizeOf (path)] == '/' { Â« Anarchie doesn't like slashes at the end of directory names.
+				path = string.delete (path, sizeOf (path), infinity)};
+			result = Anarchie.mkdir (domain, path, account, password, nil);
+			if result == 0 {
+				return (true)}
+			else {
+				scriptError ("FTP Error: " + result + ".")}};
+		Fetch.id {
+			Fetch.mkdir (domain, path, account, password, nil)}}
+	else {
+		scriptError ("The app whose ID is '" + ftpClient.data.currentid + "' is not a supported FTP client.")}}

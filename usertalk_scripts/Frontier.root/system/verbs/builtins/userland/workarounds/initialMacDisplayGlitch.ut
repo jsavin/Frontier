@@ -1,1 +1,13 @@
-«called on startup, it fixes up the root window	«without this fix, all the elements of the root window pile up at the top	«called from startup.startupScript	«Sat, Nov 22, 1997 at 12:37:15 PM by DW«target.set (@root)«op.firstSummit ()«op.fullCollapse ()«op.findNext ("websites")«wp.setTextMode (false)«op.expand (1)«target.clear ()window.zoom (@root);window.zoom (@root)
+Â«called on startup, it fixes up the root window
+	Â«without this fix, all the elements of the root window pile up at the top
+	Â«called from startup.startupScript
+	Â«Sat, Nov 22, 1997 at 12:37:15 PM by DW
+Â«target.set (@root)
+Â«op.firstSummit ()
+Â«op.fullCollapse ()
+Â«op.findNext ("websites")
+Â«wp.setTextMode (false)
+Â«op.expand (1)
+Â«target.clear ()
+window.zoom (@root);
+window.zoom (@root)

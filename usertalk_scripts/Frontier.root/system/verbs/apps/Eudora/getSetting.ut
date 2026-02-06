@@ -1,1 +1,3 @@
-on getSetting (x) {	with objectModel, Eudora, eventInfo {		return (get (setting [long (x)]))}}
+on getSetting (x) {
+	with objectModel, Eudora, eventInfo {
+		return (get (setting [long (x)]))}}

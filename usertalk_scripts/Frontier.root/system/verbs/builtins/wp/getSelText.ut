@@ -1,1 +1,2 @@
-on getSelText () {	kernel (wp.getseltext)}
+on getSelText () {
+	kernel (wp.getseltext)}

@@ -1,1 +1,2 @@
-on declareNamespaceInElement (adrelement, prefix, URI) {	return (soap.xmlutils.addAttributeValue (adrelement, "xmlns" + ":" + prefix, URI))}
+on declareNamespaceInElement (adrelement, prefix, URI) {
+	return (soap.xmlutils.addAttributeValue (adrelement, "xmlns" + ":" + prefix, URI))}

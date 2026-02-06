@@ -1,1 +1,2 @@
-on bringToFront (adr) {	kernel (window.bringtofront)}
+on bringToFront (adr) {
+	kernel (window.bringtofront)}

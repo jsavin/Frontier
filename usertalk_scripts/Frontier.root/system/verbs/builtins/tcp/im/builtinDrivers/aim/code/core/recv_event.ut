@@ -1,1 +1,40 @@
-on recv_event(adrSelf) {	«I'm thinking here that I can just do a readStringFromStream and be all happy about it. 	local {		header = "";		data=""};	while not header {		try {			tcp.readStreamBytes(adrself^._socket, 6, 60, @header)}		else {			«msg("looping" + clock.ticks())			case true {				tryerror contains "closed" {					tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,tryerror);					break};				tryError contains "timed out" {					«Nothing Special, we just didn't get data in timeout seconds					1}}			else {				tcp.im.builtinDrivers.aim.code.core.derror(adrSelf,tryerror)};			thread.sleepfor(1);			};		«This will loop till there is something on the port. 			«probably need to be nicer about it. };		if header == "" {		tcp.im.builtinDrivers.aim.code.core.err_disconnect(adrSelf);		return (false)};		local {		marker = char(header[1]);		mtype = number(char(header[2]));		seq = number(number(char(header[3]))*256 + number(char(header[4])));		buflen = number(number(char(header[5]))*256 + number(char(header[6])))};	«(marker,mtype,seq,buflen) = struct.unpack("!sBhh",header)		«#get the info	if not tcp.readStreamBytes(adrself^._socket, buflen, 3, @data) {		tcp.im.builtinDrivers.aim.code.core.err_disconnect(adrSelf)};	return ({mtype, string(data)});	};
+on recv_event(adrSelf) {
+	Â«I'm thinking here that I can just do a readStringFromStream and be all happy about it. 
+	local {
+		header = "";
+		data=""};
+	while not header {
+		try {
+			tcp.readStreamBytes(adrself^._socket, 6, 60, @header)}
+		else {
+			Â«msg("looping" + clock.ticks())
+			case true {
+				tryerror contains "closed" {
+					tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,tryerror);
+					break};
+				tryError contains "timed out" {
+					Â«Nothing Special, we just didn't get data in timeout seconds
+					1}}
+			else {
+				tcp.im.builtinDrivers.aim.code.core.derror(adrSelf,tryerror)};
+			thread.sleepfor(1);
+			};
+		Â«This will loop till there is something on the port. 
+			Â«probably need to be nicer about it. };
+	
+	if header == "" {
+		tcp.im.builtinDrivers.aim.code.core.err_disconnect(adrSelf);
+		return (false)};
+	
+	local {
+		marker = char(header[1]);
+		mtype = number(char(header[2]));
+		seq = number(number(char(header[3]))*256 + number(char(header[4])));
+		buflen = number(number(char(header[5]))*256 + number(char(header[6])))};
+	Â«(marker,mtype,seq,buflen) = struct.unpack("!sBhh",header)
+	
+	Â«#get the info
+	if not tcp.readStreamBytes(adrself^._socket, buflen, 3, @data) {
+		tcp.im.builtinDrivers.aim.code.core.err_disconnect(adrSelf)};
+	return ({mtype, string(data)});
+	};

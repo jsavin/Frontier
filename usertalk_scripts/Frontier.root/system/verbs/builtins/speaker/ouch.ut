@@ -1,1 +1,2 @@
-on ouch () {	return (speaker.sound (2, 200, 15000))}
+on ouch () {
+	return (speaker.sound (2, 200, 15000))}

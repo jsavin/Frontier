@@ -1,1 +1,2 @@
-on endTransaction () { «End a transaction	return (appleEvent (Filemaker.id, 'misc', 'endt'))}
+on endTransaction () { Â«End a transaction
+	return (appleEvent (Filemaker.id, 'misc', 'endt'))}

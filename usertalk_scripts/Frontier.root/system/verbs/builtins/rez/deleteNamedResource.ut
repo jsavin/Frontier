@@ -1,1 +1,2 @@
-on deleteNamedResource (path, resourcetype, name) {	kernel (rez.deletenamedresource)}
+on deleteNamedResource (path, resourcetype, name) {
+	kernel (rez.deletenamedresource)}

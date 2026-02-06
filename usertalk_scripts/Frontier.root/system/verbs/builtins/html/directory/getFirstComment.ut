@@ -1,1 +1,13 @@
-on getFirstComment (adrinxstruct) {	«Changes		«11/26/2000; 10:28:32 AM by DW			«Created. Given an address in a compiled OPML structure, check the first subitem to see if it's a comment, if so, return the text, otherwise return the empty string. 	try {		local (adrsub = @adrinxstruct^ [1]);		if adrsub^.["/atts"].isComment {			local (s = xml.entityDecode (adrsub^.["/atts"].text, flAlphaEntities:true));			if not (s beginswith "<") { //it's not a rule				return (s)}}};	return ("")};«bundle //test code	«dialog.alert (getFirstComment (table.getcursor ()))
+on getFirstComment (adrinxstruct) {
+	Â«Changes
+		Â«11/26/2000; 10:28:32 AM by DW
+			Â«Created. Given an address in a compiled OPML structure, check the first subitem to see if it's a comment, if so, return the text, otherwise return the empty string. 
+	try {
+		local (adrsub = @adrinxstruct^ [1]);
+		if adrsub^.["/atts"].isComment {
+			local (s = xml.entityDecode (adrsub^.["/atts"].text, flAlphaEntities:true));
+			if not (s beginswith "<") { //it's not a rule
+				return (s)}}};
+	return ("")};
+Â«bundle //test code
+	Â«dialog.alert (getFirstComment (table.getcursor ()))

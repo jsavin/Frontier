@@ -1,1 +1,13 @@
-on erase (obj) { «Erase the specified disk(s)	«Because Finder puts up a dialog, Finder should be brought to the front first	local (result, wasFront);	with objectModel, Finder {		wasFront = get (process[frontmost == true]);		if wasFront != {} { « Current Scriptable Finder returns {} if Finder was in front			«and won't get the name of a "process object", which is really a 'psn '			wasFront = get (process[frontmost == true].name)};		bringToFront ();		result = appleEvent (Finder.id, 'fndr', 'fera', '----', finderSpec (obj));		if wasFront != {} { « Current Scriptable Finder returns {} if Finder was in front			sys.bringAppToFront (wasFront)};		return (result)}} « An object spec for the disk under its old name!
+on erase (obj) { Â«Erase the specified disk(s)
+	Â«Because Finder puts up a dialog, Finder should be brought to the front first
+	local (result, wasFront);
+	with objectModel, Finder {
+		wasFront = get (process[frontmost == true]);
+		if wasFront != {} { Â« Current Scriptable Finder returns {} if Finder was in front
+			Â«and won't get the name of a "process object", which is really a 'psn '
+			wasFront = get (process[frontmost == true].name)};
+		bringToFront ();
+		result = appleEvent (Finder.id, 'fndr', 'fera', '----', finderSpec (obj));
+		if wasFront != {} { Â« Current Scriptable Finder returns {} if Finder was in front
+			sys.bringAppToFront (wasFront)};
+		return (result)}} Â« An object spec for the disk under its old name!

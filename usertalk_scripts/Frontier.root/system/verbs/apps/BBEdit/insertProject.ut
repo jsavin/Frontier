@@ -1,1 +1,2 @@
-on insertProject (file) { «Insert the file list of a THINK Project Manager, THINK Pascal, or CodeWarrior project.	return (appleEvent (BBEdit.id, 'R*ch', 'Nspr', '----', filespec (file)))}
+on insertProject (file) { Â«Insert the file list of a THINK Project Manager, THINK Pascal, or CodeWarrior project.
+	return (appleEvent (BBEdit.id, 'R*ch', 'Nspr', '----', filespec (file)))}

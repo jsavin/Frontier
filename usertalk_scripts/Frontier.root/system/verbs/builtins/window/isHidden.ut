@@ -1,1 +1,2 @@
-on isHidden (adr) {	return (not window.isVisible (adr))}
+on isHidden (adr) {
+	return (not window.isVisible (adr))}

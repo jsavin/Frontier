@@ -1,1 +1,6 @@
-on getNamedChildElement (adrelement, localpart) {	if (typeOf (adrelement^) != tableType) {		return (false)};	try {		return (xml.getAddress (adrelement, localpart))};	return (false)}
+on getNamedChildElement (adrelement, localpart) {
+	if (typeOf (adrelement^) != tableType) {
+		return (false)};
+	try {
+		return (xml.getAddress (adrelement, localpart))};
+	return (false)}

@@ -1,1 +1,9 @@
-on open (obj, using = nil) { «Open the specified object(s)	if Finder.isScriptable () {		if typeOf (using) != unknownType {			using = Finder.finderParam (using)};		return (appleEvent (Finder.id, 'aevt', 'odoc', '----', Finder.finderParam (obj), 'usin',using))}	else {		if not Finder.folderVerb ('sope', obj) {			return (false)};		return (Finder.bringToFront ())}}
+on open (obj, using = nil) { Â«Open the specified object(s)
+	if Finder.isScriptable () {
+		if typeOf (using) != unknownType {
+			using = Finder.finderParam (using)};
+		return (appleEvent (Finder.id, 'aevt', 'odoc', '----', Finder.finderParam (obj), 'usin',using))}
+	else {
+		if not Finder.folderVerb ('sope', obj) {
+			return (false)};
+		return (Finder.bringToFront ())}}

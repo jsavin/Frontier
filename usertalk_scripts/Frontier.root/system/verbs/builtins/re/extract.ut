@@ -1,1 +1,2 @@
-on extract (cp, s, groups = {}) {	kernel (re.extract)}
+on extract (cp, s, groups = {}) {
+	kernel (re.extract)}

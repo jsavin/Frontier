@@ -1,1 +1,46 @@
-on save (adr, flClosing=false) {	«Changes		«12/19/01; 2:05:52 PM by JES			«Fixed a bug where the site structure outline could not be saved because it was mistakenly sent as plain text, instead of as site structure XML.		«7/9/01; 7:32:12 PM by JES			«Created. Save a Manila template or advanced item.		local (atts);	window.attributes.getAll (@atts, adr);	if atts.flReadOnly { //read only windows can't be saved		return (true)};	try { //if tcp.isOffline, show a dialog, and then return false		if tcp.isOffline () {			dialog.alert ("Can't save " + atts.title + " because you are working offline.");			return (false)}};		local (adrinfo = atts.adrSiteInfo, username, password);	if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {		manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}	else { //the user cancelled the password dialog -- return false		return (false)};		local (siteInfoTable = adrinfo^);	siteInfoTable.username = username;	siteInfoTable.password = password;		msg ("Saving \"" + atts.title + "\"...");		local (windowInfo = manila.windowTypes.getWindowInfoTable (adr));		on saveItem (adr, type) {		case string.lower (type) { //custom serializer			"sitestructure" {				local (adrtype = parentOf (this^));				manila.advancedPref.set (adrinfo, atts.manilaType, adrtype^.scripts.siteStructure.outlineToXml (adr), windowInfo)}}		else { //default behavior			manila.advancedPref.set (@siteInfoTable, type, string (adr^), windowInfo)}};		local (response);	response = saveItem (adr, atts.manilaType);		msg ("");	return (true)};bundle { //debugging	save (window.frontmost ())}
+on save (adr, flClosing=false) {
+	Â«Changes
+		Â«12/19/01; 2:05:52 PM by JES
+			Â«Fixed a bug where the site structure outline could not be saved because it was mistakenly sent as plain text, instead of as site structure XML.
+		Â«7/9/01; 7:32:12 PM by JES
+			Â«Created. Save a Manila template or advanced item.
+	
+	local (atts);
+	window.attributes.getAll (@atts, adr);
+	if atts.flReadOnly { //read only windows can't be saved
+		return (true)};
+	try { //if tcp.isOffline, show a dialog, and then return false
+		if tcp.isOffline () {
+			dialog.alert ("Can't save " + atts.title + " because you are working offline.");
+			return (false)}};
+	
+	local (adrinfo = atts.adrSiteInfo, username, password);
+	if manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {
+		manila.windowTypes.setUsernameAndPassword (adrinfo, username, password)}
+	else { //the user cancelled the password dialog -- return false
+		return (false)};
+	
+	local (siteInfoTable = adrinfo^);
+	siteInfoTable.username = username;
+	siteInfoTable.password = password;
+	
+	msg ("Saving \"" + atts.title + "\"...");
+	
+	local (windowInfo = manila.windowTypes.getWindowInfoTable (adr));
+	
+	on saveItem (adr, type) {
+		case string.lower (type) { //custom serializer
+			"sitestructure" {
+				local (adrtype = parentOf (this^));
+				manila.advancedPref.set (adrinfo, atts.manilaType, adrtype^.scripts.siteStructure.outlineToXml (adr), windowInfo)}}
+		else { //default behavior
+			manila.advancedPref.set (@siteInfoTable, type, string (adr^), windowInfo)}};
+	
+	local (response);
+	response = saveItem (adr, atts.manilaType);
+	
+	msg ("");
+	return (true)};
+
+bundle { //debugging
+	save (window.frontmost ())}

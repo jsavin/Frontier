@@ -1,1 +1,2 @@
-on freeSpaceOnVolumeDouble (path) { //6.1	kernel (file.freespaceonvolumedouble)}
+on freeSpaceOnVolumeDouble (path) { //6.1
+	kernel (file.freespaceonvolumedouble)}

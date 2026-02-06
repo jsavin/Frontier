@@ -1,1 +1,2 @@
-on revertWindow () {	return (appleEvent (app.id, 'app1', 'rwin'))}
+on revertWindow () {
+	return (appleEvent (app.id, 'app1', 'rwin'))}

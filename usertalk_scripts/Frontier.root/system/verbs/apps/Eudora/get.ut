@@ -1,1 +1,2 @@
-on get (obj) { «Get the data for an object	return (appleEvent (Eudora.id, 'core', 'getd', '----', objspec (obj)))}
+on get (obj) { Â«Get the data for an object
+	return (appleEvent (Eudora.id, 'core', 'getd', '----', objspec (obj)))}

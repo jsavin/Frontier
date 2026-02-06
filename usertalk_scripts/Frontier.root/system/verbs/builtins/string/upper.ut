@@ -1,1 +1,2 @@
-on upper (s) {	kernel (string.upper)}
+on upper (s) {
+	kernel (string.upper)}

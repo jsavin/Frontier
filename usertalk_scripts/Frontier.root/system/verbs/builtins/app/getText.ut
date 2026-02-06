@@ -1,1 +1,2 @@
-on getText () {	return (appleEvent (app.id, 'app1', 'gtex'))}
+on getText () {
+	return (appleEvent (app.id, 'app1', 'gtex'))}

@@ -1,1 +1,150 @@
-on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil) {	«Thu, Nov 28, 1996 at 6:09:18 AM by DW	local (flPreview = false, pc = file.getPathChar ());	if defined (html.data.flPreview) { //See html.commands.previewPage, 5.0 11/29/97 DW		flPreview = html.data.flPreview;		adrPageTable^.flPreview = flPreview;		try {delete (@html.data.flPreview)}};		adrPageTable^.adrObject = adrObject;	adrPageTable^.indirectTemplate = true; «4.1		on buildTable (adrObject, adrPageTable) {		local (nomad = parentOf (adrObject^), subdirpath = "");		on addItemToPageTable (adr) { «adr points to an attribute			local (name = nameOf (adr^));			if name beginsWith "#" {				name = string.delete (name, 1, 1)};			if not defined (adrPageTable^.[name]) {				local (lowername = string.lower (name));				local (objecttype = typeOf (adr^));				case objecttype {					outlinetype;					tabletype {						if lowername == "prefs" {							local (i);							for i = 1 to sizeOf (adr^) {								addItemToPageTable (@adr^ [i])}}						else {							adrPageTable^.[name] = adr}}}				else {					adrPageTable^.[name] = string (adr^)};				if lowername == "ftpsite" {					adrPageTable^.subDirectoryPath = subdirpath;					adrPageTable^.adrSiteRootTable = nomad}; «4.2				if lowername == "template" { «4.1, 4.2					if (objecttype == wptexttype) or (objecttype == outlinetype) {						«Wed, Nov 20, 1996 at 7:58:21 AM by DW -- allow outlines to be templates						adrPageTable^.indirectTemplate = false;						if objecttype == outlinetype {							«dialog.alert (name) //debugging							«scratchpad.adr = adr //debugging							adrPageTable^.[name] = adr^}}}};			return (true)};		loop { «pop out to the root looking for #directives			local (i);			if nomad == nil or nomad == @root {				break};			for i = 1 to sizeOf (nomad^) {				if nameOf (nomad^ [i]) beginsWith "#" {					addItemToPageTable (@nomad^ [i])}};			if defined (nomad^.tools) {				addItemToPageTable (@nomad^.tools)};			if defined (nomad^.glossary) {				addItemToPageTable (@nomad^.glossary)};			subdirpath = nameOf (nomad^) + pc + subdirpath;			nomad = parentOf (nomad^)}};	on kernelcall (adrObject, adrPageTable) {		kernel (html.buildpagetable)};	if html.getPref ("useKernelCode", adrPageTable) {		kernelcall (adrObject, adrPageTable)}	else {		buildTable (adrObject, adrPageTable)};		«Check for type of glossary and tools entries.		«They should be addresses pointing to tables.		«This is necessary because glossary and tools tables may not have a leading # character.	bundle {		on checkValue (name) {			if typeOf (adrPageTable^.[name]) == addressType {				if typeOf (adrPageTable^.[name]^) == tableType {					return}}; //it's fine, return			local (nomad = adrPageTable^.adrObject);			loop {				nomad = parentOf (nomad^);				if nomad == nil or nomad == @root { //set default values					adrPageTable^.[name] = @websites.["#" + name];					break};				if defined (nomad^.[name]) {					if typeOf (nomad^.[name]) == tableType {						adrPageTable^.[name] = @nomad^.[name];						return};					if typeOf (nomad^.[name]) == addressType {						if typeOf (nomad^.[name]^) == tableType {							adrPageTable^.[name] = nomad^.[name];							return}}}}};		checkValue ("tools");		checkValue ("glossary")};		«Check if we're running inside the website framework responder.	if html.inResponder (adrPageTable) {		table.assign (@adrPageTable^.fileExtension, ".wsf")};		«make sure ftpSite, template, title etc are set to something	if not defined (adrPageTable^.ftpSite) { //must be set to something		try {			adrPageTable^.ftpSite = nameOf (user.html.sites.default)}		else {			adrPageTable^.ftpSite = nameOf (user.html.sites [1])}};	if not defined (adrPageTable^.template) { //must be set to something		adrPageTable^.template = html.getPref ("defaultTemplate", adrPageTable)}; //new in 4.1	if not defined (adrPageTable^.title) { //must be set to something		adrPageTable^.title = string (adrObject)};	if not defined (adrPageTable^.subDirectoryPath) { //must be set to something		adrPageTable^.subDirectoryPath = ""};		«Scalable content: support for named templates.	if templateName != nil { //was an alternate template specified?		«Saturday, May 30, 1998 at 4:11:52 PM by PBS		adrPageTable^.indirectTemplate = true;		table.assign (@adrPageTable^.template, templateName)};		local (adrSiteTable = html.getSiteTable (adrPageTable));	bundle { //add name of current file writer		«PBS 4/15/98		local (method);		if flPreview {			method = "file"}		else {			try {method = adrSiteTable^.method};			try {method = adrSiteTable^.[templateName].method};			if method == nil { //backward compatibility				method = "file";				try {					if not adrSiteTable^.isLocal {						method = "ftp"}}}};		adrPageTable^.fileWriter = method};		if not defined (adrPageTable^.fname) {		adrPageTable^.fname = html.getFileName (nameOf (adrObject^), adrPageTable)}; «4.0.1	bundle { //4.2, set f		if not defined (adrSiteTable^) {			scriptError ("Site table is missing at \"" + adrSiteTable + "\".")};		local (folder = html.getSiteFolder (adrPageTable));		adrPageTable^.f = folder + adrPageTable^.subDirectoryPath + adrPageTable^.fname;		if not defined (adrPageTable^.requestHeaders) { //PBS 12/3/98			«Don't create the folders if this is a dynamic page.			file.sureFilePath (adrPageTable^.f)}};	bundle { //set url		local (url = adrSiteTable^.url);		try {url = adrSiteTable^.[templateName].url};		try {			string.urlSplit (url)} //error if it's not a complete URL		else {			url = "http://" + url};		if not (url endsWith "/") { //check for trailing slash -- PBS 4/24/98			url = url + "/"};		url = url + string.replaceall (adrPageTable^.subDirectoryPath, pc, "/");		url = url + adrPageTable^.fname;		adrPageTable^.url = url};	return (true)}
+on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil) {
+	Â«Thu, Nov 28, 1996 at 6:09:18 AM by DW
+	local (flPreview = false, pc = file.getPathChar ());
+	if defined (html.data.flPreview) { //See html.commands.previewPage, 5.0 11/29/97 DW
+		flPreview = html.data.flPreview;
+		adrPageTable^.flPreview = flPreview;
+		try {delete (@html.data.flPreview)}};
+	
+	adrPageTable^.adrObject = adrObject;
+	adrPageTable^.indirectTemplate = true; Â«4.1
+	
+	on buildTable (adrObject, adrPageTable) {
+		local (nomad = parentOf (adrObject^), subdirpath = "");
+		on addItemToPageTable (adr) { Â«adr points to an attribute
+			local (name = nameOf (adr^));
+			if name beginsWith "#" {
+				name = string.delete (name, 1, 1)};
+			if not defined (adrPageTable^.[name]) {
+				local (lowername = string.lower (name));
+				local (objecttype = typeOf (adr^));
+				case objecttype {
+					outlinetype;
+					tabletype {
+						if lowername == "prefs" {
+							local (i);
+							for i = 1 to sizeOf (adr^) {
+								addItemToPageTable (@adr^ [i])}}
+						else {
+							adrPageTable^.[name] = adr}}}
+				else {
+					adrPageTable^.[name] = string (adr^)};
+				if lowername == "ftpsite" {
+					adrPageTable^.subDirectoryPath = subdirpath;
+					adrPageTable^.adrSiteRootTable = nomad}; Â«4.2
+				if lowername == "template" { Â«4.1, 4.2
+					if (objecttype == wptexttype) or (objecttype == outlinetype) {
+						Â«Wed, Nov 20, 1996 at 7:58:21 AM by DW -- allow outlines to be templates
+						adrPageTable^.indirectTemplate = false;
+						if objecttype == outlinetype {
+							Â«dialog.alert (name) //debugging
+							Â«scratchpad.adr = adr //debugging
+							adrPageTable^.[name] = adr^}}}};
+			return (true)};
+		loop { Â«pop out to the root looking for #directives
+			local (i);
+			if nomad == nil or nomad == @root {
+				break};
+			for i = 1 to sizeOf (nomad^) {
+				if nameOf (nomad^ [i]) beginsWith "#" {
+					addItemToPageTable (@nomad^ [i])}};
+			if defined (nomad^.tools) {
+				addItemToPageTable (@nomad^.tools)};
+			if defined (nomad^.glossary) {
+				addItemToPageTable (@nomad^.glossary)};
+			subdirpath = nameOf (nomad^) + pc + subdirpath;
+			nomad = parentOf (nomad^)}};
+	on kernelcall (adrObject, adrPageTable) {
+		kernel (html.buildpagetable)};
+	if html.getPref ("useKernelCode", adrPageTable) {
+		kernelcall (adrObject, adrPageTable)}
+	else {
+		buildTable (adrObject, adrPageTable)};
+	
+	Â«Check for type of glossary and tools entries.
+		Â«They should be addresses pointing to tables.
+		Â«This is necessary because glossary and tools tables may not have a leading # character.
+	bundle {
+		on checkValue (name) {
+			if typeOf (adrPageTable^.[name]) == addressType {
+				if typeOf (adrPageTable^.[name]^) == tableType {
+					return}}; //it's fine, return
+			local (nomad = adrPageTable^.adrObject);
+			loop {
+				nomad = parentOf (nomad^);
+				if nomad == nil or nomad == @root { //set default values
+					adrPageTable^.[name] = @websites.["#" + name];
+					break};
+				if defined (nomad^.[name]) {
+					if typeOf (nomad^.[name]) == tableType {
+						adrPageTable^.[name] = @nomad^.[name];
+						return};
+					if typeOf (nomad^.[name]) == addressType {
+						if typeOf (nomad^.[name]^) == tableType {
+							adrPageTable^.[name] = nomad^.[name];
+							return}}}}};
+		checkValue ("tools");
+		checkValue ("glossary")};
+	
+	Â«Check if we're running inside the website framework responder.
+	if html.inResponder (adrPageTable) {
+		table.assign (@adrPageTable^.fileExtension, ".wsf")};
+	
+	Â«make sure ftpSite, template, title etc are set to something
+	if not defined (adrPageTable^.ftpSite) { //must be set to something
+		try {
+			adrPageTable^.ftpSite = nameOf (user.html.sites.default)}
+		else {
+			adrPageTable^.ftpSite = nameOf (user.html.sites [1])}};
+	if not defined (adrPageTable^.template) { //must be set to something
+		adrPageTable^.template = html.getPref ("defaultTemplate", adrPageTable)}; //new in 4.1
+	if not defined (adrPageTable^.title) { //must be set to something
+		adrPageTable^.title = string (adrObject)};
+	if not defined (adrPageTable^.subDirectoryPath) { //must be set to something
+		adrPageTable^.subDirectoryPath = ""};
+	
+	Â«Scalable content: support for named templates.
+	if templateName != nil { //was an alternate template specified?
+		Â«Saturday, May 30, 1998 at 4:11:52 PM by PBS
+		adrPageTable^.indirectTemplate = true;
+		table.assign (@adrPageTable^.template, templateName)};
+	
+	local (adrSiteTable = html.getSiteTable (adrPageTable));
+	bundle { //add name of current file writer
+		Â«PBS 4/15/98
+		local (method);
+		if flPreview {
+			method = "file"}
+		else {
+			try {method = adrSiteTable^.method};
+			try {method = adrSiteTable^.[templateName].method};
+			if method == nil { //backward compatibility
+				method = "file";
+				try {
+					if not adrSiteTable^.isLocal {
+						method = "ftp"}}}};
+		adrPageTable^.fileWriter = method};
+	
+	if not defined (adrPageTable^.fname) {
+		adrPageTable^.fname = html.getFileName (nameOf (adrObject^), adrPageTable)}; Â«4.0.1
+	bundle { //4.2, set f
+		if not defined (adrSiteTable^) {
+			scriptError ("Site table is missing at \"" + adrSiteTable + "\".")};
+		local (folder = html.getSiteFolder (adrPageTable));
+		adrPageTable^.f = folder + adrPageTable^.subDirectoryPath + adrPageTable^.fname;
+		if not defined (adrPageTable^.requestHeaders) { //PBS 12/3/98
+			Â«Don't create the folders if this is a dynamic page.
+			file.sureFilePath (adrPageTable^.f)}};
+	bundle { //set url
+		local (url = adrSiteTable^.url);
+		try {url = adrSiteTable^.[templateName].url};
+		try {
+			string.urlSplit (url)} //error if it's not a complete URL
+		else {
+			url = "http://" + url};
+		if not (url endsWith "/") { //check for trailing slash -- PBS 4/24/98
+			url = url + "/"};
+		url = url + string.replaceall (adrPageTable^.subDirectoryPath, pc, "/");
+		url = url + adrPageTable^.fname;
+		adrPageTable^.url = url};
+	return (true)}

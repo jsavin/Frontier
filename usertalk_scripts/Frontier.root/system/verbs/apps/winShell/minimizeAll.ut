@@ -1,1 +1,12 @@
-on minimizeAll () {	«Minimize all windows.		«The windows are just minimized, with no animation.		local (s = string (winShell.data.scripts.minimizeAll));		com.callScript (s, "VBScript", "Main", {});		return (true)};«bundle //test code	«winShell.minimizeAll ()		«true
+on minimizeAll () {
+	Â«Minimize all windows.
+		Â«The windows are just minimized, with no animation.
+	
+	local (s = string (winShell.data.scripts.minimizeAll));
+	
+	com.callScript (s, "VBScript", "Main", {});
+	
+	return (true)};
+Â«bundle //test code
+	Â«winShell.minimizeAll ()
+		Â«true

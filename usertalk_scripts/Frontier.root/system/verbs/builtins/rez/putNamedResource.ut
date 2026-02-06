@@ -1,1 +1,2 @@
-on putNamedResource (path, type, name, adr) {	kernel (rez.putnamedresource)}
+on putNamedResource (path, type, name, adr) {
+	kernel (rez.putnamedresource)}

@@ -1,1 +1,17 @@
-on window2Position80Col() {	«Revisions:		«11/25/95 ECT: removed rect() call		«10/31/95 ECT: changed multiple calls to local() to outline		«08/19/95 ECT: ported from AppleScript to UserTalk	«Description:		«Move window to top-right position on a 1024-pixel wide screen. Used with putting two files,		«80 columns wide, side by side on a 17” screen, and this also resizes the window horizontally		«to 80 columns at Monaco 9.	with objectModel, BBEdit, eventInfo {		«Remember: {top, left, bottom, right}		local {			lRect = get(window[1].bounds);			lHeight = (number(string.nthField(lRect, ',', 3)) - number(string.nthField(lRect, ',', 1)))};		«Remember: {left, top, right, bottom}		set(window[1].bounds, {514, 41, (514 + 507), (41 + lHeight)})}};window2Position80Col()
+on window2Position80Col() {
+	Â«Revisions:
+		Â«11/25/95 ECT: removed rect() call
+		Â«10/31/95 ECT: changed multiple calls to local() to outline
+		Â«08/19/95 ECT: ported from AppleScript to UserTalk
+	Â«Description:
+		Â«Move window to top-right position on a 1024-pixel wide screen. Used with putting two files,
+		Â«80 columns wide, side by side on a 17â€ screen, and this also resizes the window horizontally
+		Â«to 80 columns at Monaco 9.
+	with objectModel, BBEdit, eventInfo {
+		Â«Remember: {top, left, bottom, right}
+		local {
+			lRect = get(window[1].bounds);
+			lHeight = (number(string.nthField(lRect, ',', 3)) - number(string.nthField(lRect, ',', 1)))};
+		Â«Remember: {left, top, right, bottom}
+		set(window[1].bounds, {514, 41, (514 + 507), (41 + lHeight)})}};
+window2Position80Col()

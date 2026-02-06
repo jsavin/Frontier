@@ -1,1 +1,19 @@
-on uniqueName (prefix, folder, places=nil, extension = "") { «New 11/11/97 DW	«follows the pattern of table.uniqueName		«return a unique filename in the indicated folder		local (name, ct = 1, f);	if places == nil {		places = 3};	file.sureFolder (folder);	loop {		f = folder + prefix + string.padWithZeros (ct, places) + extension;		if not file.exists (f) {			return (f)};		ct++}};«bundle «test code	«local (i, f)	«for i = 1 to 100		«f = uniqueName ("testfile", "D:\\testfolder\\", 3, ".txt")		«msg (f)		«file.writeWholeFile (f, "xxx")
+on uniqueName (prefix, folder, places=nil, extension = "") { Â«New 11/11/97 DW
+	Â«follows the pattern of table.uniqueName
+		Â«return a unique filename in the indicated folder
+	
+	local (name, ct = 1, f);
+	if places == nil {
+		places = 3};
+	file.sureFolder (folder);
+	loop {
+		f = folder + prefix + string.padWithZeros (ct, places) + extension;
+		if not file.exists (f) {
+			return (f)};
+		ct++}};
+Â«bundle Â«test code
+	Â«local (i, f)
+	Â«for i = 1 to 100
+		Â«f = uniqueName ("testfile", "D:\\testfolder\\", 3, ".txt")
+		Â«msg (f)
+		Â«file.writeWholeFile (f, "xxx")

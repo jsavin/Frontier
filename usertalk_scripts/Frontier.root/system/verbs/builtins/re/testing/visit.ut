@@ -1,1 +1,6 @@
-local (test = " <A  href  ='index.html' > <A href=      'index2.html'     >    ");on testCallback (adrTable) {	dialog.notify (string(adrTable^));	return (true)};local (patternRef = re.compile ("<([^>]+)>"));re.visit (patternRef, test, @testCallback, flMakeGroups:true)
+local (test = " <A  href  ='index.html' > <A href=      'index2.html'     >    ");
+on testCallback (adrTable) {
+	dialog.notify (string(adrTable^));
+	return (true)};
+local (patternRef = re.compile ("<([^>]+)>"));
+re.visit (patternRef, test, @testCallback, flMakeGroups:true)

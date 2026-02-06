@@ -1,1 +1,2 @@
-on setEndOfFile (path, eof) { «new in Frontier 4.0b7	kernel (file.setEndoffile)}
+on setEndOfFile (path, eof) { Â«new in Frontier 4.0b7
+	kernel (file.setEndoffile)}

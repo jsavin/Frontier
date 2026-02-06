@@ -1,1 +1,4 @@
-on setQualifiedName (adrmsg, localpart, namespaceURI = false) {	if (namespaceURI) {		return (soap.xmlutils.namespaceURIToPrefix (adrmsg, namespaceURI) + ":" + localpart)};	return (localpart)}
+on setQualifiedName (adrmsg, localpart, namespaceURI = false) {
+	if (namespaceURI) {
+		return (soap.xmlutils.namespaceURIToPrefix (adrmsg, namespaceURI) + ":" + localpart)};
+	return (localpart)}

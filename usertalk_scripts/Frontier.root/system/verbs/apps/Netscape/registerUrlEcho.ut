@@ -1,1 +1,4 @@
-on registerUrlEcho (x) { «Registers the “echo” application. Each download from now on will be echoed to this application.	pack (x, @x);	setbinarytype (@x, 'sign');	return (appleEvent (Netscape.id, 'WWW!', 'RGUE', '----', x))}
+on registerUrlEcho (x) { Â«Registers the â€œechoâ€ application. Each download from now on will be echoed to this application.
+	pack (x, @x);
+	setbinarytype (@x, 'sign');
+	return (appleEvent (Netscape.id, 'WWW!', 'RGUE', '----', x))}

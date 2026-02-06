@@ -1,1 +1,45 @@
-on float (val) {	«04/11/01; 3:07:28 PM by JES		«Created. Encodes a float as a string, possibly in exponential notation.	«Changes:		«04/11/01; 4:06:57 PM by JES			«Properly encode negative numbers when using exponential notation.		«04/12/01; 1:14:43 PM by JES			«Fixed a bug where "special" floating point values, INF, -INF and NaN, weren't properly encoded.	case val { //special IEEE floating point values, INF, -INF and NaN		soap.constants.floatINF {			return ("INF")};		soap.constants.floatNegativeINF {			return ("-INF")};		soap.constants.floatNaN {			return ("NaN")};		-0.0;		0.0 {			return (string (val))}};	local (isNegative = val < 0);	if isNegative {		val = 0.0 - val};	case true {		val <= 0.00001 {			local (exponent);			while val < 1 {				val = val * 10;				exponent--};			if isNegative {				return ("-" + val + "e" + exponent)}			else {				return (val + "e" + exponent)}};		val >= 10000000 {			local (exponent);			while val >= 10 {				val = val / 10;				exponent++};			if isNegative {				return ("-" + val + "e" + exponent)}			else {				return (val + "e" + exponent)}}}	else {		if isNegative {			return ("-" + string (val))}		else {			return (string (val))}}}
+on float (val) {
+	Â«04/11/01; 3:07:28 PM by JES
+		Â«Created. Encodes a float as a string, possibly in exponential notation.
+	Â«Changes:
+		Â«04/11/01; 4:06:57 PM by JES
+			Â«Properly encode negative numbers when using exponential notation.
+		Â«04/12/01; 1:14:43 PM by JES
+			Â«Fixed a bug where "special" floating point values, INF, -INF and NaN, weren't properly encoded.
+	case val { //special IEEE floating point values, INF, -INF and NaN
+		soap.constants.floatINF {
+			return ("INF")};
+		soap.constants.floatNegativeINF {
+			return ("-INF")};
+		soap.constants.floatNaN {
+			return ("NaN")};
+		-0.0;
+		0.0 {
+			return (string (val))}};
+	local (isNegative = val < 0);
+	if isNegative {
+		val = 0.0 - val};
+	case true {
+		val <= 0.00001 {
+			local (exponent);
+			while val < 1 {
+				val = val * 10;
+				exponent--};
+			if isNegative {
+				return ("-" + val + "e" + exponent)}
+			else {
+				return (val + "e" + exponent)}};
+		val >= 10000000 {
+			local (exponent);
+			while val >= 10 {
+				val = val / 10;
+				exponent++};
+			if isNegative {
+				return ("-" + val + "e" + exponent)}
+			else {
+				return (val + "e" + exponent)}}}
+	else {
+		if isNegative {
+			return ("-" + string (val))}
+		else {
+			return (string (val))}}}

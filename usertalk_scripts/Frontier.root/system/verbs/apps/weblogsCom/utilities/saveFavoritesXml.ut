@@ -1,1 +1,13 @@
-local (myWeblogFavorites);new (tabletype, @myWeblogFavorites);local (adrdata = weblogsCom.init (), adrfavorite, adrweblog);for adrfavorite in @adrdata^.favorites {	local (name = nameof (adrfavorite^));	adrweblog = @adrdata^.weblogs.[name];	if defined (adrweblog^) {		myWeblogFavorites.[adrweblog^.url] = name}};scratchpad.myFavorites = myWeblogFavorites;local (xmltext = table.tableToXml (@myWeblogFavorites));file.writewholefile (frontier.pathstring + "myWeblogFavorites.xml", xmltext)
+local (myWeblogFavorites);
+new (tabletype, @myWeblogFavorites);
+
+local (adrdata = weblogsCom.init (), adrfavorite, adrweblog);
+for adrfavorite in @adrdata^.favorites {
+	local (name = nameof (adrfavorite^));
+	adrweblog = @adrdata^.weblogs.[name];
+	if defined (adrweblog^) {
+		myWeblogFavorites.[adrweblog^.url] = name}};
+scratchpad.myFavorites = myWeblogFavorites;
+
+local (xmltext = table.tableToXml (@myWeblogFavorites));
+file.writewholefile (frontier.pathstring + "myWeblogFavorites.xml", xmltext)

@@ -1,1 +1,25 @@
-on iqVersionRequest (connection = @system.temp.jabber.connection, dest = "", idTbl = nil) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«iqVersionRequest requests the version from the given user		on addAtt ( XMLadr, name, value ) {		if not defined ( XMLadr^.["/atts"] ) {			new ( tableType, @XMLadr^.["/atts"] )};		XMLadr^.["/atts"].[name] = value};	if idTbl == nil {		idTbl = tcp.im.builtinDrivers.jabber.code.idTables.create()};	local ( result, iqTag, queryTag, id = nameOf (idTbl^));	new ( tableType, @result );	bundle { // <iq type="set" id="id">		iqTag = xml.addTable ( @result, "iq" );		addAtt (iqTag, "type", "get");		idTbl^.type = "Version Request";		addAtt (iqTag, "id", id );		addAtt (iqTag, "to", dest )};	bundle { // <query xmlns="jabber:iq:roster">		queryTag = xml.addTable(iqTag, "query" );		addAtt (queryTag, "xmlns", "jabber:iq:version")};	tcp.im.builtinDrivers.jabber.code.writeXML(iqTag, connection: connection)};iqVersionRequest(@system.temp.jabber.connection, system.temp.jabber.connection.host)
+on iqVersionRequest (connection = @system.temp.jabber.connection, dest = "", idTbl = nil) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«iqVersionRequest requests the version from the given user
+	
+	on addAtt ( XMLadr, name, value ) {
+		if not defined ( XMLadr^.["/atts"] ) {
+			new ( tableType, @XMLadr^.["/atts"] )};
+		XMLadr^.["/atts"].[name] = value};
+	if idTbl == nil {
+		idTbl = tcp.im.builtinDrivers.jabber.code.idTables.create()};
+	local ( result, iqTag, queryTag, id = nameOf (idTbl^));
+	new ( tableType, @result );
+	bundle { // <iq type="set" id="id">
+		iqTag = xml.addTable ( @result, "iq" );
+		addAtt (iqTag, "type", "get");
+		idTbl^.type = "Version Request";
+		addAtt (iqTag, "id", id );
+		addAtt (iqTag, "to", dest )};
+	bundle { // <query xmlns="jabber:iq:roster">
+		queryTag = xml.addTable(iqTag, "query" );
+		addAtt (queryTag, "xmlns", "jabber:iq:version")};
+	tcp.im.builtinDrivers.jabber.code.writeXML(iqTag, connection: connection)};
+iqVersionRequest(@system.temp.jabber.connection, system.temp.jabber.connection.host)

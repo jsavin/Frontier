@@ -1,1 +1,14 @@
-on showHtmlDialog (url) {		if not system.environment.isWindows {		scriptError ("Can't display the dialog because HTML dialogs are not implemented on this platform.")};		local (dllPath = Frontier.pathString + "DLLs\\htmlDialogs.dll");		if not file.exists (dllpath) {		file.writeWholeFile (dllPath, html.dialog.data.htmlDialogsDll)};		local (s);	s = dll.call (dllPath, "showhtmldialog", url);		return (s)}
+on showHtmlDialog (url) {
+	
+	if not system.environment.isWindows {
+		scriptError ("Can't display the dialog because HTML dialogs are not implemented on this platform.")};
+	
+	local (dllPath = Frontier.pathString + "DLLs\\htmlDialogs.dll");
+	
+	if not file.exists (dllpath) {
+		file.writeWholeFile (dllPath, html.dialog.data.htmlDialogsDll)};
+	
+	local (s);
+	s = dll.call (dllPath, "showhtmldialog", url);
+	
+	return (s)}

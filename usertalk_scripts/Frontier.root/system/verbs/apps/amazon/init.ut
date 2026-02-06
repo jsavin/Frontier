@@ -1,1 +1,11 @@
-on init () {	«Changes		«9/9/02; 9:49:39 PM by JES			«Created.	if not defined (user.amazon) {		new (tableType, @user.amazon)};	if not defined (user.amazon.key) {		user.amazon.key = ""};	if not defined (system.temp.amazon) {		new (tableType, @system.temp.amazon)};	return (@user.amazon)}
+on init () {
+	Â«Changes
+		Â«9/9/02; 9:49:39 PM by JES
+			Â«Created.
+	if not defined (user.amazon) {
+		new (tableType, @user.amazon)};
+	if not defined (user.amazon.key) {
+		user.amazon.key = ""};
+	if not defined (system.temp.amazon) {
+		new (tableType, @system.temp.amazon)};
+	return (@user.amazon)}

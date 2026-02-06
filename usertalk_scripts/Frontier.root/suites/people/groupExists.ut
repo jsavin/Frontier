@@ -1,1 +1,6 @@
-on groupExists (groupName, adrGroup=nil) {	if adrGroup == nil {		adrGroup = people.getGroupTable (groupName)};	if defined (adrGroup^) and adrGroup^.enabled {		return (true)};	return (false)}
+on groupExists (groupName, adrGroup=nil) {
+	if adrGroup == nil {
+		adrGroup = people.getGroupTable (groupName)};
+	if defined (adrGroup^) and adrGroup^.enabled {
+		return (true)};
+	return (false)}

@@ -1,1 +1,2 @@
-on renderObject (adr) {	return (html.processMacros (html.tenderRender (adr)))}
+on renderObject (adr) {
+	return (html.processMacros (html.tenderRender (adr)))}

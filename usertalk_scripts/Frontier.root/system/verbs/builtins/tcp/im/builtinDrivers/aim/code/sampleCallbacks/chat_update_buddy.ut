@@ -1,1 +1,2 @@
-on CHAT_UPDATE_BUDDY(adrSelf, roomId, flEnter, screenNameList) {	return("on chat update buddy")}
+on CHAT_UPDATE_BUDDY(adrSelf, roomId, flEnter, screenNameList) {
+	return("on chat update buddy")}

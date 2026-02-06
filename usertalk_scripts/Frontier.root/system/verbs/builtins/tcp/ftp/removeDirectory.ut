@@ -1,1 +1,28 @@
-on removeDirectory (adrconnectiontable, path) {	«Changes		«12/13/01; 11:28:34 AM by JES			«Created. Remove a directory a file via FTP. The directory must already be empty, or most servers will report an error.	on setDirectory (directory) {		if directory == adrconnectiontable^.currentHostDirectory { //we're already there			return (true)};		response = tcp.ftp.sendCommand (adrconnectiontable, "CWD " + directory);		if not (response beginsWith "2") { //error			scriptError ("Can't remove the directory because the server reported an error when attempting to change directories: " + response)};		if directory beginswith "/" {			directory = string.mid (directory, 2, infinity)};		adrconnectiontable^.currentHostDirectory = directory};	local (directoryName);	bundle { //set directoryName, possibly modify the path		if path endsWith "/" {			path = string.mid (path, 1, sizeOf (path) - 1)};		if path contains "/" {			directoryName = string.nthfield (path, "/", string.countfields (path, "/"));			path = string.mid (path, 1, sizeof (path) - sizeof (directoryName))}		else {			directoryName = path;			path = ""}};	setDirectory (path);	response = tcp.ftp.sendCommand (adrconnectiontable, "RMD " + directoryName);	if not (response beginsWith "2") { //error		scriptError ("Can't remove the directory because the server reported an error: " + response)};	return (true)}
+on removeDirectory (adrconnectiontable, path) {
+	Â«Changes
+		Â«12/13/01; 11:28:34 AM by JES
+			Â«Created. Remove a directory a file via FTP. The directory must already be empty, or most servers will report an error.
+	on setDirectory (directory) {
+		if directory == adrconnectiontable^.currentHostDirectory { //we're already there
+			return (true)};
+		response = tcp.ftp.sendCommand (adrconnectiontable, "CWD " + directory);
+		if not (response beginsWith "2") { //error
+			scriptError ("Can't remove the directory because the server reported an error when attempting to change directories: " + response)};
+		if directory beginswith "/" {
+			directory = string.mid (directory, 2, infinity)};
+		adrconnectiontable^.currentHostDirectory = directory};
+	local (directoryName);
+	bundle { //set directoryName, possibly modify the path
+		if path endsWith "/" {
+			path = string.mid (path, 1, sizeOf (path) - 1)};
+		if path contains "/" {
+			directoryName = string.nthfield (path, "/", string.countfields (path, "/"));
+			path = string.mid (path, 1, sizeof (path) - sizeof (directoryName))}
+		else {
+			directoryName = path;
+			path = ""}};
+	setDirectory (path);
+	response = tcp.ftp.sendCommand (adrconnectiontable, "RMD " + directoryName);
+	if not (response beginsWith "2") { //error
+		scriptError ("Can't remove the directory because the server reported an error: " + response)};
+	return (true)}

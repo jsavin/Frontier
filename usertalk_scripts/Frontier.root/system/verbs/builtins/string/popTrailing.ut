@@ -1,1 +1,9 @@
-on popTrailing (s, ch) {	«Thursday, November 11, 1999 at 2:57:27 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on popTrailing (s, ch)				« while s endsWith ch					«s = string.delete (s, string.length (s), 1)				«return (s)	kernel (string.poptrailing)}
+on popTrailing (s, ch) {
+	Â«Thursday, November 11, 1999 at 2:57:27 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on popTrailing (s, ch)
+				Â« while s endsWith ch
+					Â«s = string.delete (s, string.length (s), 1)
+				Â«return (s)
+	kernel (string.poptrailing)}

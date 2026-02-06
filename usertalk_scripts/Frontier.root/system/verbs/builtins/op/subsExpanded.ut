@@ -1,1 +1,2 @@
-on subsExpanded () {	kernel (op.subsexpanded)}
+on subsExpanded () {
+	kernel (op.subsexpanded)}

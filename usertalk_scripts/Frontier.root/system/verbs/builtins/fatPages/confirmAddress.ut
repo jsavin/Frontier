@@ -1,1 +1,47 @@
-on confirmAddress (adr) {	«Changes		«3/31/2004; 1:37:38 PM by JES			«Use string.popFileFromAddress to shorten the address in the replace confirmation dialog.	loop { //get destination address from the user, confirmation		on popPath (s) {			local (i, flbrackets = false, ch);			local (flquotes = false);			for i = sizeof (s) downto 2 {				ch = s [i];				if ch == '"' {					if s [i - 1] != '\\' {						if flquotes {							flquotes = false}						else {							flquotes = true}}};				if ch == ']' {					if not flquotes {						flbrackets = true}};				if ch == '[' {					if not flquotes {						flbrackets = false}};				if ch == '.' {					if not flquotes and not flbrackets {						s = string.mid (s, 1, i - 1);						return (s)}}};			return (s)};				if not dialog.ask ("Name for imported object?", @adr) {			return (false)};				local (objname = nameOf (adr^));				if objname == "" { // objname isn't interpretable as an address			if not dialog.confirm ("Can't import to " + popPath (adr) + " because the table doesn't exist.") {				return (false)};			continue}; //try again				if objname == adr { //avoid importing into a local			adr = @root.[adr]}		else {			adr = address (adr)};		if defined (adr^) { //confirm, we're going to over-write it			if not dialog.yesNo ("Replace existing object named " + string.popFileFromAddress (adr) + "?") {				continue}};		break};	return (adr)}
+on confirmAddress (adr) {
+	Â«Changes
+		Â«3/31/2004; 1:37:38 PM by JES
+			Â«Use string.popFileFromAddress to shorten the address in the replace confirmation dialog.
+	loop { //get destination address from the user, confirmation
+		on popPath (s) {
+			local (i, flbrackets = false, ch);
+			local (flquotes = false);
+			for i = sizeof (s) downto 2 {
+				ch = s [i];
+				if ch == '"' {
+					if s [i - 1] != '\\' {
+						if flquotes {
+							flquotes = false}
+						else {
+							flquotes = true}}};
+				if ch == ']' {
+					if not flquotes {
+						flbrackets = true}};
+				if ch == '[' {
+					if not flquotes {
+						flbrackets = false}};
+				if ch == '.' {
+					if not flquotes and not flbrackets {
+						s = string.mid (s, 1, i - 1);
+						return (s)}}};
+			return (s)};
+		
+		if not dialog.ask ("Name for imported object?", @adr) {
+			return (false)};
+		
+		local (objname = nameOf (adr^));
+		
+		if objname == "" { // objname isn't interpretable as an address
+			if not dialog.confirm ("Can't import to " + popPath (adr) + " because the table doesn't exist.") {
+				return (false)};
+			continue}; //try again
+		
+		if objname == adr { //avoid importing into a local
+			adr = @root.[adr]}
+		else {
+			adr = address (adr)};
+		if defined (adr^) { //confirm, we're going to over-write it
+			if not dialog.yesNo ("Replace existing object named " + string.popFileFromAddress (adr) + "?") {
+				continue}};
+		break};
+	return (adr)}

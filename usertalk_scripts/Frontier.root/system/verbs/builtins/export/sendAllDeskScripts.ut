@@ -1,1 +1,14 @@
-on sendAllDeskScripts (folder) {	if not file.exists (folder) {		file.newFolder (folder)}	else {		if not file.isFolder (folder) {			scriptError (folder + " isn't a folder!")}};		local (adr = @system.deskscripts);	local (i);	for i = 1 to sizeof (adr^) {		adrscript = @adr^ [i];		if typeOf (adrscript^) == scripttype {			msg (adrscript);			export.sendtodesktop (adrscript, folder + nameOf (adrscript^))}}}
+on sendAllDeskScripts (folder) {
+	if not file.exists (folder) {
+		file.newFolder (folder)}
+	else {
+		if not file.isFolder (folder) {
+			scriptError (folder + " isn't a folder!")}};
+	
+	local (adr = @system.deskscripts);
+	local (i);
+	for i = 1 to sizeof (adr^) {
+		adrscript = @adr^ [i];
+		if typeOf (adrscript^) == scripttype {
+			msg (adrscript);
+			export.sendtodesktop (adrscript, folder + nameOf (adrscript^))}}}

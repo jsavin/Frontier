@@ -1,1 +1,280 @@
-on respond (pta) {	«Implement the edit responder that opens Manila objects for editing.		«11/26/00; 9:33:13 PM by PBS		«Changes:			«11/26/00; 9:33:35 PM by PBS				«pathArgs have priority over searchArgs, since sometimes we need to send a form, and searchArgs get wiped out in that case. So we use pathArgs in that case. For instance -- the Create a New Story form uses pathArgs, since it's a form.			«11/27/00; 12:47:13 AM by PBS				«Fixed a bug with editing messages -- you would sometimes get the rendered text instead of the outline.			«11/27/00; 3:46:47 PM by PBS				«Shortening the URL the server generates -- less info is sent now. Get info from referer, assume defaults, when certain arguments aren't specified. If not supplied, get username and password from prefs or prompt user.			«12/04/00 at 3:53:37 PM by JES				«If there's a scriptError when checking out an item, forget the username and password, so the user will have a chance to enter them again.			«12/04/00 4:16:11 PM by PBS				«If there's an error, display a friendly It Didn't Work page rather than a 500 Server Error page.			«12/12/00; 10:29:11 PM by PBS				«If this is a Macintosh, bring the app to front right away, to work around the MSIE 5 CPU hogging bug.			«12/17/00; 6:32:24 PM by JES				«Optimizations: If we already know the canonical site name, get it from user.playlist.manila.sites, instead of calling the server. If the story is already open for editing, don't make any calls to the server; just bring the window to the front.			«12/27/00; 2:50:35 PM by PBS				«Bring Radio to front on Windows right away (same as on Macs). If there's an error page to display, bring the Web browser to the front.			«12/30/00; 5:51:36 PM by JES				«Edit Manila sites' site structure using the structure outline, instead of plain XML.			«01/22/01; 1:59:38 AM by JES				«Fix a bug where stories created in the browser would not correctly translate to Mac text for editing in Radio.			«3/22/01; 6:38:26 PM by PBS				«When creating a new story, convert the title that was typed in the form on the web page to Macintosh text (when on a Macintosh).			«3/12/02; 4:00:26 AM by JES				«Convert the title of new stories from Latin to Mac text, if running on a Mac. (This conversion used to happen, but was lost in the move to the windowTypes framework.)		Frontier.bringToFront ();		bundle { //init windowTypes and nodeTypes		manila.nodeTypes.init ();		manila.windowTypes.init ()};		pta^.responseHeaders.["Content-Type"] = "text/html"; //a sensible default		try {		on buildResponse (code, shortmessage, longmessage) {			pta^.code = code;			pta^.responseBody = webserver.util.buildErrorPage (code + " " + string.upper (shortmessage), longmessage);			return};				local (args, siteinfo, redirectURL, adrinfo);		bundle { //decode args, copy items to siteinfo table and to redirectURL			try {				new (tabletype, @args);				if pta^.pathArgs != "" {					webserver.parseArgs (pta^.pathArgs, @args)};				bundle { //add search args					local (t);					new (tableType, @t);					webserver.parseArgs (pta^.searchArgs, @t);					table.copyContents (@t, @args)};				new (tabletype, @siteinfo);								siteInfo.url = args.url;								bundle { //host					if defined (args.host) { //PBS 11/27/00: if not defined, get from site URL						siteinfo.host = args.host}					else {						local (urlParts = string.urlSplit (siteInfo.url));						local (host = urlParts [2]);						host = string.nthField (host, ':', 1); //strip port						siteInfo.host = host}};				bundle { //port					if defined (args.port) { //PBS 11/27/00: assume port 80 if not sent						siteinfo.port = args.port}					else {						siteInfo.port = 80}};				bundle { //rpcPath					if defined (args.rpcPath) { //PBS 11/27/00: assume /RPC2 if not sent						siteinfo.rpcPath = args.rpcPath}					else {						siteInfo.rpcPath = "/RPC2"}};				bundle { //canonical site name					if defined (args.siteName) { //PBS 11/27/00: get siteName via XML-RPC if not defined						siteInfo.siteName = args.sitename}					else {						if defined (args.s) { //short name							siteInfo.siteName = args.s}						else {							try { //12/17/00 JES: try to get the siteName from prefs								«siteInfo.siteName = playlist.manila.getCanonicalNameFromPrefs (siteInfo.url)								bundle { //get the name from the siteInfoTable at user.manila.data.sites									local (adrinfo);									if manila.windowTypes.findSiteInfo (siteInfo.url, @adrinfo) {										siteInfo.siteName = adrinfo^.siteName}};								if siteInfo.siteName == "" {									siteInfo.siteName = manila.getSiteName (args.url)}}							else {								siteInfo.siteName = manila.getSiteName (args.url)}}}};				bundle { //display site name					if defined (args.displaySiteName) { //PBS 11/27/00: use canonical site name if not defined						siteInfo.displaySiteName = args.displaySiteName}					else {						if defined (args.d) { //short name							siteInfo.displaySiteName = args.d}						else {							siteInfo.displaySiteName == "";							bundle { //get the displaySiteName from the siteInfoTable at user.manila.data.sites								local (adrinfo);								if manila.windowTypes.findSiteInfo (siteInfo.url, @adrinfo) {									siteInfo.siteName = adrinfo^.displaySiteName}};							if siteInfo.displaySiteName == "" { //fall back to the canonical site name for displaySiteName								siteInfo.displaySiteName = siteInfo.siteName}}}};				bundle { //redirect URL					if defined (args.redirectUrl) { //PBS 11/27/00: if not defined, use referer						redirectURL = args.redirectURL}					else {						redirectUrl = pta^.requestHeaders.referer}};				bundle { //server accepts OPML					if defined (args.flAcceptsOpml) {						siteInfo.flAcceptsOpml = args.flAcceptsOpml}};				bundle { //username and password					siteInfo.username = "";					siteInfo.password = "";										if defined (args.u) {						siteinfo.username = base64.decode (args.u)};					if defined (args.p) {						siteinfo.password = base64.decode (args.p)};										«if siteInfo.username == "" or siteInfo.password == "" //get from prefs or prompt user						«siteInfo.password = ""						«playlist.manila.getUserNameAndPassword (siteinfo.URL, @siteInfo.username, @siteInfo.password)}}			else {				scripterror ("Can't edit with Radio because an error occured while decoding the GET arguments: " + tryerror)}};				on passwordError () {			try { //to clear the password				manila.windowTypes.setUsernameAndPassword (adrinfo, siteInfo.username, "")};			scriptError ("Can't edit with Radio because the username and password have not been set.")};				local (s = string.delete (pta^.path, 1, sizeOf ("/manilaEdit/")));		local (command = string.lower (string.nthField (s, '/', 1)));		try {			on createInfoCallback (adrinfo) {				if manila.windowTypes.getUsernameAndPassword (adrinfo, @siteInfo.username, @siteInfo.password) {					manila.windowTypes.setUsernameAndPassword (adrinfo, siteInfo.username, siteInfo.password);					return (true)}				else {					return (false)}};						if manila.windowTypes.findSiteInfo (siteinfo.url, @adrinfo, @createInfoCallback) {				bundle { //copy siteInfo items returned by the server					if defined (siteinfo.host) {						adrinfo^.host = siteinfo.host};					if defined (siteinfo.port) {						adrinfo^.port = siteinfo.port};					if defined (siteinfo.rpcPath) {						adrinfo^.rpcPath = siteinfo.rpcPath};					if defined (siteinfo.protocol) {						adrinfo^.protocol = siteinfo.protocol};					if defined (siteinfo.soapAction) {						adrinfo^.soapAction = siteinfo.soapAction};					if defined (siteinfo.siteName) {						adrinfo^.siteName = siteinfo.siteName};					if defined (siteinfo.displaySiteName) {						adrinfo^.displaySiteName = siteinfo.displaySiteName};					if defined (siteinfo.flAcceptsOpml) {						adrinfo^.flAcceptsOpml = siteinfo.flAcceptsOpml}};				case command {					"newstory" {						local (adrtype);						if Frontier.tools.windowTypes.findWindowType ("manilaMessage", @adrtype) {							local (inResponseTo = 0);							if defined (args.inResponseTo) {								inResponseTo = args.inResponseTo};							local (title = args.title);							if system.environment.isMac {								title = latinToMac.convert (title)};							if not adrtype^.newMessage (args.url, title, inResponseTo, boolean (args.flPromoteToStory)) {								scriptError ("Can't create story because there was a problem calling the manilaMessage.newMessage windowType script. It returned false.")}};						«bundle //old code							«pike.checkSiteInfoTable (@siteinfo, "create story in Radio")							«local (storyinfo)							«new (tableType, @storyinfo)							«new (tableType, @storyinfo.rendererInfo)							«try								«storyinfo.subject = args.title								«if system.environment.isMac //PBS 03/22/01: convert title to Mac text									«storyInfo.subject = latinToMac.convert (storyInfo.subject)								«storyinfo.rendererInfo.name = args.rendererName								«storyinfo.rendererInfo.flRenderOnEntry = boolean (args.flRenderOnEntry)								«storyInfo.flPromoteToStory = boolean (args.flPromoteToStory)								«if defined (args.inResponseTo)									«storyInfo.inResponseTo = args.inResponseTo								«if defined (args.flAcceptsOpml)									«storyInfo.flServerAcceptsOpml = true							«else								«scripterror ("Can't edit in Radio because an error occured while decoding the GET arguments: " + tryerror)							«local (adrStoryTable = pike.getNewStoryTableAddress (@siteinfo))							«adrStoryTable^.siteinfo = siteinfo							«adrStoryTable^.storyinfo = storyinfo							«							«thread.callScript (@pike.commands.newStory, {adrStoryTable})};					"editstory" {						local (adrtype);						if Frontier.tools.windowTypes.findWindowType ("manilaMessage", @adrtype) {							local (flHomePage = false, adrwindow);							try {flHomePage = (args.url == args.redirectUrl)};							if not adrtype^.openMessage (args.url, args.msgnum, false, flHomePage, @adrwindow) {								scriptError ("Can't edit message because there was a problem calling the manilaMessage.openMessage windowType script. It returned false.")}};						«bundle //old code							«pike.checkSiteInfoTable (@siteinfo, "edit story in Radio")							«local (msgnum) //actually, we don't care if it's a number							«try								«msgnum = args.msgnum							«else								«scripterror ("Can't edit in Radio because an error occured while decoding the GET arguments: " + tryerror)							«local (adrStoryTable = pike.getStoryTableAddress (@siteinfo, msgnum), flAlreadyOpen = false)							«if defined (adrStoryTable^.outline) //12/17/00 JES: bring the outline to the front if already open								«if window.isOpen (@adrStoryTable^.outline)									«window.bringToFront (@adrStoryTable^.outline)									«flAlreadyOpen = true							«if not flAlreadyOpen //12/17/00 JES: only call the server if the outline wasn't already open								«manila.message.checkOut (@siteInfo, msgNum) //check out the story: custody support								«local (storyinfo = manila.message.get (@siteinfo, msgnum))								«if defined (storyInfo.outline)									«storyInfo.body = storyInfo.outline								«pike.checkStoryInfoTable (@storyinfo, "edit story in Radio")								«if defined (args.flAcceptsOpml)									«storyInfo.flServerAcceptsOpml = true								«if system.environment.isMac //convert from Latin to Mac text (if this is a Mac)									«if defined (storyinfo.opml) //01/22/01 JES: only convert to Mac text if the body is opml										«storyInfo.body = latinToMac.convert (storyInfo.body)								«thread.callScript (@pike.commands.editStory, {siteinfo, storyinfo})};					"editadvanceditem" {						local (item);						try { //get the itemtype							itemtype = args.itemtype}						else {							scripterror ("Can't edit in Radio because an error occured while decoding the GET arguments: " + tryerror)};						local (adrtype);						if Frontier.tools.windowTypes.findWindowType ("manilaTemplate", @adrtype) {							if not adrtype^.openTemplate (args.url, itemtype) {								scriptError ("Can't edit message because there was a problem calling the manilaTemplate.openTemplate windowType script. It returned false.")}};						«bundle //old code							«manila.advancedPref.checkOut (@siteInfo, itemType) //check it out							«local (itemInfo = manila.advancedPref.get (@siteInfo, itemType))							«itemInfo.type = itemType							«							«local (adrBuildDisplayRoutine, adrSerializeRoutine)							«case string.lower (itemInfo.type) //12/30/00 JES: edit site structure with site structure editor								«"sitestructure"									«adrBuildDisplayRoutine = @playlist.manila.siteStructure.xmlToOutline									«adrSerializeRoutine = @playlist.manila.siteStructure.outlineToXml							«thread.callScript (@pike.commands.editAdvancedItem, {siteinfo, iteminfo, true, adrBuildDisplayRoutine, adrSerializeRoutine})}}				else { //unimplemented command					buildResponse (404, "NOT FOUND", "The object \"" + command + "\" doesn't exist.");					return (true)}}			else { //username/password error				passwordError ()}}		else { //the script that implements the command had an error			local (lowerError = string.lower (tryError));			if (lowerError contains "password") or (lowerError contains "not a member") {				passwordError ()}			else { //unhandled error				scriptError (tryError)}};				pta^.responseHeaders.location = redirectURL;		pta^.responseHeaders.URI = redirectURL;		buildResponse (302, "FOUND", "Found the page.")}	else { //an error -- show It Didn't Work page		webBrowser.bringToFront ();		local (htmlText = "<html><head><title>It Didn't Work</title></head>");		on add (s) {			htmlText = htmlText + s + "\r"};		add ("<body bgcolor=\"#FFFFFF\">");		add ("<blockquote><h2>It Didn't Work</h2>");		add ("<b>Radio UserLand reported an error:</b><p>" + tryError + "");		add ("</blockquote></body></html>");		pta^.code = 200;		pta^.responseBody = htmlText};		return (true)};«bundle //debugging	«respond (@scratchpad.pt)
+on respond (pta) {
+	Â«Implement the edit responder that opens Manila objects for editing.
+		Â«11/26/00; 9:33:13 PM by PBS
+		Â«Changes:
+			Â«11/26/00; 9:33:35 PM by PBS
+				Â«pathArgs have priority over searchArgs, since sometimes we need to send a form, and searchArgs get wiped out in that case. So we use pathArgs in that case. For instance -- the Create a New Story form uses pathArgs, since it's a form.
+			Â«11/27/00; 12:47:13 AM by PBS
+				Â«Fixed a bug with editing messages -- you would sometimes get the rendered text instead of the outline.
+			Â«11/27/00; 3:46:47 PM by PBS
+				Â«Shortening the URL the server generates -- less info is sent now. Get info from referer, assume defaults, when certain arguments aren't specified. If not supplied, get username and password from prefs or prompt user.
+			Â«12/04/00 at 3:53:37 PM by JES
+				Â«If there's a scriptError when checking out an item, forget the username and password, so the user will have a chance to enter them again.
+			Â«12/04/00 4:16:11 PM by PBS
+				Â«If there's an error, display a friendly It Didn't Work page rather than a 500 Server Error page.
+			Â«12/12/00; 10:29:11 PM by PBS
+				Â«If this is a Macintosh, bring the app to front right away, to work around the MSIE 5 CPU hogging bug.
+			Â«12/17/00; 6:32:24 PM by JES
+				Â«Optimizations: If we already know the canonical site name, get it from user.playlist.manila.sites, instead of calling the server. If the story is already open for editing, don't make any calls to the server; just bring the window to the front.
+			Â«12/27/00; 2:50:35 PM by PBS
+				Â«Bring Radio to front on Windows right away (same as on Macs). If there's an error page to display, bring the Web browser to the front.
+			Â«12/30/00; 5:51:36 PM by JES
+				Â«Edit Manila sites' site structure using the structure outline, instead of plain XML.
+			Â«01/22/01; 1:59:38 AM by JES
+				Â«Fix a bug where stories created in the browser would not correctly translate to Mac text for editing in Radio.
+			Â«3/22/01; 6:38:26 PM by PBS
+				Â«When creating a new story, convert the title that was typed in the form on the web page to Macintosh text (when on a Macintosh).
+			Â«3/12/02; 4:00:26 AM by JES
+				Â«Convert the title of new stories from Latin to Mac text, if running on a Mac. (This conversion used to happen, but was lost in the move to the windowTypes framework.)
+	
+	Frontier.bringToFront ();
+	
+	bundle { //init windowTypes and nodeTypes
+		manila.nodeTypes.init ();
+		manila.windowTypes.init ()};
+	
+	pta^.responseHeaders.["Content-Type"] = "text/html"; //a sensible default
+	
+	try {
+		on buildResponse (code, shortmessage, longmessage) {
+			pta^.code = code;
+			pta^.responseBody = webserver.util.buildErrorPage (code + " " + string.upper (shortmessage), longmessage);
+			return};
+		
+		local (args, siteinfo, redirectURL, adrinfo);
+		bundle { //decode args, copy items to siteinfo table and to redirectURL
+			try {
+				new (tabletype, @args);
+				if pta^.pathArgs != "" {
+					webserver.parseArgs (pta^.pathArgs, @args)};
+				bundle { //add search args
+					local (t);
+					new (tableType, @t);
+					webserver.parseArgs (pta^.searchArgs, @t);
+					table.copyContents (@t, @args)};
+				new (tabletype, @siteinfo);
+				
+				siteInfo.url = args.url;
+				
+				bundle { //host
+					if defined (args.host) { //PBS 11/27/00: if not defined, get from site URL
+						siteinfo.host = args.host}
+					else {
+						local (urlParts = string.urlSplit (siteInfo.url));
+						local (host = urlParts [2]);
+						host = string.nthField (host, ':', 1); //strip port
+						siteInfo.host = host}};
+				bundle { //port
+					if defined (args.port) { //PBS 11/27/00: assume port 80 if not sent
+						siteinfo.port = args.port}
+					else {
+						siteInfo.port = 80}};
+				bundle { //rpcPath
+					if defined (args.rpcPath) { //PBS 11/27/00: assume /RPC2 if not sent
+						siteinfo.rpcPath = args.rpcPath}
+					else {
+						siteInfo.rpcPath = "/RPC2"}};
+				bundle { //canonical site name
+					if defined (args.siteName) { //PBS 11/27/00: get siteName via XML-RPC if not defined
+						siteInfo.siteName = args.sitename}
+					else {
+						if defined (args.s) { //short name
+							siteInfo.siteName = args.s}
+						else {
+							try { //12/17/00 JES: try to get the siteName from prefs
+								Â«siteInfo.siteName = playlist.manila.getCanonicalNameFromPrefs (siteInfo.url)
+								bundle { //get the name from the siteInfoTable at user.manila.data.sites
+									local (adrinfo);
+									if manila.windowTypes.findSiteInfo (siteInfo.url, @adrinfo) {
+										siteInfo.siteName = adrinfo^.siteName}};
+								if siteInfo.siteName == "" {
+									siteInfo.siteName = manila.getSiteName (args.url)}}
+							else {
+								siteInfo.siteName = manila.getSiteName (args.url)}}}};
+				bundle { //display site name
+					if defined (args.displaySiteName) { //PBS 11/27/00: use canonical site name if not defined
+						siteInfo.displaySiteName = args.displaySiteName}
+					else {
+						if defined (args.d) { //short name
+							siteInfo.displaySiteName = args.d}
+						else {
+							siteInfo.displaySiteName == "";
+							bundle { //get the displaySiteName from the siteInfoTable at user.manila.data.sites
+								local (adrinfo);
+								if manila.windowTypes.findSiteInfo (siteInfo.url, @adrinfo) {
+									siteInfo.siteName = adrinfo^.displaySiteName}};
+							if siteInfo.displaySiteName == "" { //fall back to the canonical site name for displaySiteName
+								siteInfo.displaySiteName = siteInfo.siteName}}}};
+				bundle { //redirect URL
+					if defined (args.redirectUrl) { //PBS 11/27/00: if not defined, use referer
+						redirectURL = args.redirectURL}
+					else {
+						redirectUrl = pta^.requestHeaders.referer}};
+				bundle { //server accepts OPML
+					if defined (args.flAcceptsOpml) {
+						siteInfo.flAcceptsOpml = args.flAcceptsOpml}};
+				bundle { //username and password
+					siteInfo.username = "";
+					siteInfo.password = "";
+					
+					if defined (args.u) {
+						siteinfo.username = base64.decode (args.u)};
+					if defined (args.p) {
+						siteinfo.password = base64.decode (args.p)};
+					
+					Â«if siteInfo.username == "" or siteInfo.password == "" //get from prefs or prompt user
+						Â«siteInfo.password = ""
+						Â«playlist.manila.getUserNameAndPassword (siteinfo.URL, @siteInfo.username, @siteInfo.password)}}
+			else {
+				scripterror ("Can't edit with Radio because an error occured while decoding the GET arguments: " + tryerror)}};
+		
+		on passwordError () {
+			try { //to clear the password
+				manila.windowTypes.setUsernameAndPassword (adrinfo, siteInfo.username, "")};
+			scriptError ("Can't edit with Radio because the username and password have not been set.")};
+		
+		local (s = string.delete (pta^.path, 1, sizeOf ("/manilaEdit/")));
+		local (command = string.lower (string.nthField (s, '/', 1)));
+		try {
+			on createInfoCallback (adrinfo) {
+				if manila.windowTypes.getUsernameAndPassword (adrinfo, @siteInfo.username, @siteInfo.password) {
+					manila.windowTypes.setUsernameAndPassword (adrinfo, siteInfo.username, siteInfo.password);
+					return (true)}
+				else {
+					return (false)}};
+			
+			if manila.windowTypes.findSiteInfo (siteinfo.url, @adrinfo, @createInfoCallback) {
+				bundle { //copy siteInfo items returned by the server
+					if defined (siteinfo.host) {
+						adrinfo^.host = siteinfo.host};
+					if defined (siteinfo.port) {
+						adrinfo^.port = siteinfo.port};
+					if defined (siteinfo.rpcPath) {
+						adrinfo^.rpcPath = siteinfo.rpcPath};
+					if defined (siteinfo.protocol) {
+						adrinfo^.protocol = siteinfo.protocol};
+					if defined (siteinfo.soapAction) {
+						adrinfo^.soapAction = siteinfo.soapAction};
+					if defined (siteinfo.siteName) {
+						adrinfo^.siteName = siteinfo.siteName};
+					if defined (siteinfo.displaySiteName) {
+						adrinfo^.displaySiteName = siteinfo.displaySiteName};
+					if defined (siteinfo.flAcceptsOpml) {
+						adrinfo^.flAcceptsOpml = siteinfo.flAcceptsOpml}};
+				case command {
+					"newstory" {
+						local (adrtype);
+						if Frontier.tools.windowTypes.findWindowType ("manilaMessage", @adrtype) {
+							local (inResponseTo = 0);
+							if defined (args.inResponseTo) {
+								inResponseTo = args.inResponseTo};
+							local (title = args.title);
+							if system.environment.isMac {
+								title = latinToMac.convert (title)};
+							if not adrtype^.newMessage (args.url, title, inResponseTo, boolean (args.flPromoteToStory)) {
+								scriptError ("Can't create story because there was a problem calling the manilaMessage.newMessage windowType script. It returned false.")}};
+						Â«bundle //old code
+							Â«pike.checkSiteInfoTable (@siteinfo, "create story in Radio")
+							Â«local (storyinfo)
+							Â«new (tableType, @storyinfo)
+							Â«new (tableType, @storyinfo.rendererInfo)
+							Â«try
+								Â«storyinfo.subject = args.title
+								Â«if system.environment.isMac //PBS 03/22/01: convert title to Mac text
+									Â«storyInfo.subject = latinToMac.convert (storyInfo.subject)
+								Â«storyinfo.rendererInfo.name = args.rendererName
+								Â«storyinfo.rendererInfo.flRenderOnEntry = boolean (args.flRenderOnEntry)
+								Â«storyInfo.flPromoteToStory = boolean (args.flPromoteToStory)
+								Â«if defined (args.inResponseTo)
+									Â«storyInfo.inResponseTo = args.inResponseTo
+								Â«if defined (args.flAcceptsOpml)
+									Â«storyInfo.flServerAcceptsOpml = true
+							Â«else
+								Â«scripterror ("Can't edit in Radio because an error occured while decoding the GET arguments: " + tryerror)
+							Â«local (adrStoryTable = pike.getNewStoryTableAddress (@siteinfo))
+							Â«adrStoryTable^.siteinfo = siteinfo
+							Â«adrStoryTable^.storyinfo = storyinfo
+							Â«
+							Â«thread.callScript (@pike.commands.newStory, {adrStoryTable})};
+					"editstory" {
+						local (adrtype);
+						if Frontier.tools.windowTypes.findWindowType ("manilaMessage", @adrtype) {
+							local (flHomePage = false, adrwindow);
+							try {flHomePage = (args.url == args.redirectUrl)};
+							if not adrtype^.openMessage (args.url, args.msgnum, false, flHomePage, @adrwindow) {
+								scriptError ("Can't edit message because there was a problem calling the manilaMessage.openMessage windowType script. It returned false.")}};
+						Â«bundle //old code
+							Â«pike.checkSiteInfoTable (@siteinfo, "edit story in Radio")
+							Â«local (msgnum) //actually, we don't care if it's a number
+							Â«try
+								Â«msgnum = args.msgnum
+							Â«else
+								Â«scripterror ("Can't edit in Radio because an error occured while decoding the GET arguments: " + tryerror)
+							Â«local (adrStoryTable = pike.getStoryTableAddress (@siteinfo, msgnum), flAlreadyOpen = false)
+							Â«if defined (adrStoryTable^.outline) //12/17/00 JES: bring the outline to the front if already open
+								Â«if window.isOpen (@adrStoryTable^.outline)
+									Â«window.bringToFront (@adrStoryTable^.outline)
+									Â«flAlreadyOpen = true
+							Â«if not flAlreadyOpen //12/17/00 JES: only call the server if the outline wasn't already open
+								Â«manila.message.checkOut (@siteInfo, msgNum) //check out the story: custody support
+								Â«local (storyinfo = manila.message.get (@siteinfo, msgnum))
+								Â«if defined (storyInfo.outline)
+									Â«storyInfo.body = storyInfo.outline
+								Â«pike.checkStoryInfoTable (@storyinfo, "edit story in Radio")
+								Â«if defined (args.flAcceptsOpml)
+									Â«storyInfo.flServerAcceptsOpml = true
+								Â«if system.environment.isMac //convert from Latin to Mac text (if this is a Mac)
+									Â«if defined (storyinfo.opml) //01/22/01 JES: only convert to Mac text if the body is opml
+										Â«storyInfo.body = latinToMac.convert (storyInfo.body)
+								Â«thread.callScript (@pike.commands.editStory, {siteinfo, storyinfo})};
+					"editadvanceditem" {
+						local (item);
+						try { //get the itemtype
+							itemtype = args.itemtype}
+						else {
+							scripterror ("Can't edit in Radio because an error occured while decoding the GET arguments: " + tryerror)};
+						local (adrtype);
+						if Frontier.tools.windowTypes.findWindowType ("manilaTemplate", @adrtype) {
+							if not adrtype^.openTemplate (args.url, itemtype) {
+								scriptError ("Can't edit message because there was a problem calling the manilaTemplate.openTemplate windowType script. It returned false.")}};
+						Â«bundle //old code
+							Â«manila.advancedPref.checkOut (@siteInfo, itemType) //check it out
+							Â«local (itemInfo = manila.advancedPref.get (@siteInfo, itemType))
+							Â«itemInfo.type = itemType
+							Â«
+							Â«local (adrBuildDisplayRoutine, adrSerializeRoutine)
+							Â«case string.lower (itemInfo.type) //12/30/00 JES: edit site structure with site structure editor
+								Â«"sitestructure"
+									Â«adrBuildDisplayRoutine = @playlist.manila.siteStructure.xmlToOutline
+									Â«adrSerializeRoutine = @playlist.manila.siteStructure.outlineToXml
+							Â«thread.callScript (@pike.commands.editAdvancedItem, {siteinfo, iteminfo, true, adrBuildDisplayRoutine, adrSerializeRoutine})}}
+				else { //unimplemented command
+					buildResponse (404, "NOT FOUND", "The object \"" + command + "\" doesn't exist.");
+					return (true)}}
+			else { //username/password error
+				passwordError ()}}
+		else { //the script that implements the command had an error
+			local (lowerError = string.lower (tryError));
+			if (lowerError contains "password") or (lowerError contains "not a member") {
+				passwordError ()}
+			else { //unhandled error
+				scriptError (tryError)}};
+		
+		pta^.responseHeaders.location = redirectURL;
+		pta^.responseHeaders.URI = redirectURL;
+		buildResponse (302, "FOUND", "Found the page.")}
+	else { //an error -- show It Didn't Work page
+		webBrowser.bringToFront ();
+		local (htmlText = "<html><head><title>It Didn't Work</title></head>");
+		on add (s) {
+			htmlText = htmlText + s + "\r"};
+		add ("<body bgcolor=\"#FFFFFF\">");
+		add ("<blockquote><h2>It Didn't Work</h2>");
+		add ("<b>Radio UserLand reported an error:</b><p>" + tryError + "");
+		add ("</blockquote></body></html>");
+		pta^.code = 200;
+		pta^.responseBody = htmlText};
+	
+	return (true)};
+Â«bundle //debugging
+	Â«respond (@scratchpad.pt)

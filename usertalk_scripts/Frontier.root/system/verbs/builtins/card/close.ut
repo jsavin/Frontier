@@ -1,1 +1,2 @@
-on close () {	return (appleEvent (0, card.id, 'clos'))}
+on close () {
+	return (appleEvent (0, card.id, 'clos'))}

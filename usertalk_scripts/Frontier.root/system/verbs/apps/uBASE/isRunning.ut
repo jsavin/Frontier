@@ -1,1 +1,2 @@
-on isRunning () {	return (sys.appIsRunning (ubase.id))}
+on isRunning () {
+	return (sys.appIsRunning (ubase.id))}

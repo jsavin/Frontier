@@ -1,1 +1,17 @@
-on siteInButton (rect, buttonname, buttontext, webaddress) {	local (atts);	cardEditor.newObject (card.types.buttonType, buttonname, buttontext, webaddress);	cardEditor.getObjectAttributes (buttonname, @atts);	atts.rect = rect;	atts.lang = 'NURL';	atts.enab = true;	atts.flag = false; «it's not the default button	atts.font = "geneva";	atts.size = 9;	atts.styl = 0;	atts.fram = false;	atts.just = 1;	atts.sdwd = 0;	atts.tran = false;	atts.visi = true;	cardEditor.setObjectAttributes (buttonname, @atts)}
+on siteInButton (rect, buttonname, buttontext, webaddress) {
+	local (atts);
+	cardEditor.newObject (card.types.buttonType, buttonname, buttontext, webaddress);
+	cardEditor.getObjectAttributes (buttonname, @atts);
+	atts.rect = rect;
+	atts.lang = 'NURL';
+	atts.enab = true;
+	atts.flag = false; Â«it's not the default button
+	atts.font = "geneva";
+	atts.size = 9;
+	atts.styl = 0;
+	atts.fram = false;
+	atts.just = 1;
+	atts.sdwd = 0;
+	atts.tran = false;
+	atts.visi = true;
+	cardEditor.setObjectAttributes (buttonname, @atts)}

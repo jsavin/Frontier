@@ -1,1 +1,17 @@
-on newGroup () {	local (groupName, htmlText, flNew);		groupName = html.getPageTableAddress ()^.tools^.getArgs ();	groupName = string.nthField (groupName, '=', 2);	groupName = string.urlDecode (groupName);	flNew = people.newGroup (groupName);		on add (s) {		htmlText = htmlText + s};		if flNew {		add ("Group \"" + groupName + "\" created.")}	else {		add ("Group \"" + groupName + "\" already exists.")};		return (htmlText)}
+on newGroup () {
+	local (groupName, htmlText, flNew);
+	
+	groupName = html.getPageTableAddress ()^.tools^.getArgs ();
+	groupName = string.nthField (groupName, '=', 2);
+	groupName = string.urlDecode (groupName);
+	flNew = people.newGroup (groupName);
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	if flNew {
+		add ("Group \"" + groupName + "\" created.")}
+	else {
+		add ("Group \"" + groupName + "\" already exists.")};
+	
+	return (htmlText)}

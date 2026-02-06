@@ -1,1 +1,2 @@
-odbServer.init ();inetd.startOne (@odbServer.daemon)
+odbServer.init ();
+inetd.startOne (@odbServer.daemon)

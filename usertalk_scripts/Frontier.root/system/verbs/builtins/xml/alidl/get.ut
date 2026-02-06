@@ -1,1 +1,109 @@
-on get (adrhandlers, path, protocol, flObscureIp = false) {	«Changes		«3/5/01; 3:41:09 PM by DW			«Add flObscureIp optional param, makes it possible to produce sample files without publishing the IP address of a specific machine.		«3/5/01; 12:34:51 PM by DW			«Added SOAP 1.1 support.		«3/4/01; 9:00:07 PM by DW			«Created. 		local (xmltext = "", indentlevel = 0);	on add (s) {		xmltext = xmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};		add ("<?xml version=\"1.0\"?>");	add ("<alidl version=\"1.0\" whenLastUpdated=\"" + date.netstandardstring (clock.now ()) + "\">"); indentlevel++;	bundle { //add the head		add ("<head>"); indentlevel++;		local (ip);		if flObscureIp {			ip = "0.0.0.0"}		else {			ip = tcp.dns.getMyDottedId ()};		add ("<server>" + ip + "</server>");		add ("<port>" + user.inetd.config.http.port + "</port>");		add ("<path>" + path + "</path>");		case protocol {			"xml-rpc" {				add ("<protocol>" + protocol + "</protocol>")};			"soap" {				add ("<protocol version=\"1.1\">" + protocol + "</protocol>")}};		add ("</head>"); indentlevel--};	bundle { //add the body		add ("<body>"); indentlevel++;		on visit (adrtable, path) {			local (adr, name);			for adr in adrtable {				name = nameof (adr^);				if name beginswith "#" {					continue};				if path != "" {					name = path + "." + name};				case typeof (adr^) {					addresstype {						visit (adr^, name)};					tabletype {						visit (adr, name)};					scripttype {						local (s, params = {});						bundle { //set s to the "on" header for the script, or the empty string if it doesn't have one							s = string (adr^);							loop {								firstline = string.nthfield (s, "\r", 1);								if firstline beginswith "on" { //found it									s = firstline - "{";									break};								s = string.delete (s, 1, sizeof (firstline) + 1);								if s == "" {									break}}};						if s beginswith "on" {							s = string.nthfield (s, "(", 2);							s = string.trimwhitespace (string.nthfield (s, ")", 1));							if sizeof (s) > 0 {								loop {									if string.countfields (s, ",") == 1 {										params = params + {string.trimwhitespace (s)};										break}									else {										local (field = string.nthfield (s, ",", 1));										s = string.delete (s, 1, sizeof (field) + 1);										params = params + {string.trimwhitespace (field)}}}}};						«msg ("betty.rpc.getAlidl: " + name)						case protocol {							"xml-rpc" {								add ("<procedure name=\"" + name + "\" ctParams=\"" + sizeof (params) + "\">"); indentlevel++};							"soap" {								«3/5/01; 1:10:07 PM by DW									«name contains a dotted path to the object. This won't work in SOAP. We allowed for this with the optional path attribute. We split the name into two parts.									«								local (procname = name, procpath = "");								if procname contains "." {									procname = string.nthfield (procname, ".", string.countfields (procname, "."));									procpath = string.mid (name, 1, sizeof (name) - sizeof (procname) - 1);									procpath = string.replaceall (procpath, ".", "/")};								add ("<procedure path=\"" + procpath + "/\" name=\"" + procname + "\" ctParams=\"" + sizeof (params) + "\">"); indentlevel++}};						local (paramname, optional = "");						for paramname in params {							if paramname contains "=" {								optional = " optional=\"true\"";								paramname = string.trimwhitespace (string.nthfield (paramname, "=", 1))};							add ("<param name=\"" + paramname + "\"" + optional + "/>")};						add ("</procedure>"); indentlevel--}}}};		visit (adrhandlers, "");		add ("</body>"); indentlevel--};	add ("</alidl>"); indentlevel--;		return (xmltext)};bundle { //test code	on writefile (s, foldername) {		local (productname);		if system.environment.ispike {			productname = "radio"}		else {			productname = "frontier"};		local (f = "c:\\program files\\radio userland\\www\\alidlExamples\\" + foldername + "\\" + productname + ".xml");		file.surefilepath (f);		file.writewholefile (f, s);		};«webbrowser.openurl ("http://www.ourfavoritesongs.com/users/dave@userland.com/alidlExamples/" + foldername + "/" + productname + ".xml")	writefile (get (@user.soap.rpcHandlers, "/", "soap", true), "soap");	writefile (get (@user.betty.rpcHandlers, "/RPC2", "xml-rpc", true), "xmlrpc")}
+on get (adrhandlers, path, protocol, flObscureIp = false) {
+	Â«Changes
+		Â«3/5/01; 3:41:09 PM by DW
+			Â«Add flObscureIp optional param, makes it possible to produce sample files without publishing the IP address of a specific machine.
+		Â«3/5/01; 12:34:51 PM by DW
+			Â«Added SOAP 1.1 support.
+		Â«3/4/01; 9:00:07 PM by DW
+			Â«Created. 
+	
+	local (xmltext = "", indentlevel = 0);
+	on add (s) {
+		xmltext = xmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};
+	
+	add ("<?xml version=\"1.0\"?>");
+	add ("<alidl version=\"1.0\" whenLastUpdated=\"" + date.netstandardstring (clock.now ()) + "\">"); indentlevel++;
+	bundle { //add the head
+		add ("<head>"); indentlevel++;
+		local (ip);
+		if flObscureIp {
+			ip = "0.0.0.0"}
+		else {
+			ip = tcp.dns.getMyDottedId ()};
+		add ("<server>" + ip + "</server>");
+		add ("<port>" + user.inetd.config.http.port + "</port>");
+		add ("<path>" + path + "</path>");
+		case protocol {
+			"xml-rpc" {
+				add ("<protocol>" + protocol + "</protocol>")};
+			"soap" {
+				add ("<protocol version=\"1.1\">" + protocol + "</protocol>")}};
+		add ("</head>"); indentlevel--};
+	bundle { //add the body
+		add ("<body>"); indentlevel++;
+		on visit (adrtable, path) {
+			local (adr, name);
+			for adr in adrtable {
+				name = nameof (adr^);
+				if name beginswith "#" {
+					continue};
+				if path != "" {
+					name = path + "." + name};
+				case typeof (adr^) {
+					addresstype {
+						visit (adr^, name)};
+					tabletype {
+						visit (adr, name)};
+					scripttype {
+						local (s, params = {});
+						bundle { //set s to the "on" header for the script, or the empty string if it doesn't have one
+							s = string (adr^);
+							loop {
+								firstline = string.nthfield (s, "\r", 1);
+								if firstline beginswith "on" { //found it
+									s = firstline - "{";
+									break};
+								s = string.delete (s, 1, sizeof (firstline) + 1);
+								if s == "" {
+									break}}};
+						if s beginswith "on" {
+							s = string.nthfield (s, "(", 2);
+							s = string.trimwhitespace (string.nthfield (s, ")", 1));
+							if sizeof (s) > 0 {
+								loop {
+									if string.countfields (s, ",") == 1 {
+										params = params + {string.trimwhitespace (s)};
+										break}
+									else {
+										local (field = string.nthfield (s, ",", 1));
+										s = string.delete (s, 1, sizeof (field) + 1);
+										params = params + {string.trimwhitespace (field)}}}}};
+						Â«msg ("betty.rpc.getAlidl: " + name)
+						case protocol {
+							"xml-rpc" {
+								add ("<procedure name=\"" + name + "\" ctParams=\"" + sizeof (params) + "\">"); indentlevel++};
+							"soap" {
+								Â«3/5/01; 1:10:07 PM by DW
+									Â«name contains a dotted path to the object. This won't work in SOAP. We allowed for this with the optional path attribute. We split the name into two parts.
+									Â«
+								local (procname = name, procpath = "");
+								if procname contains "." {
+									procname = string.nthfield (procname, ".", string.countfields (procname, "."));
+									procpath = string.mid (name, 1, sizeof (name) - sizeof (procname) - 1);
+									procpath = string.replaceall (procpath, ".", "/")};
+								add ("<procedure path=\"" + procpath + "/\" name=\"" + procname + "\" ctParams=\"" + sizeof (params) + "\">"); indentlevel++}};
+						local (paramname, optional = "");
+						for paramname in params {
+							if paramname contains "=" {
+								optional = " optional=\"true\"";
+								paramname = string.trimwhitespace (string.nthfield (paramname, "=", 1))};
+							add ("<param name=\"" + paramname + "\"" + optional + "/>")};
+						add ("</procedure>"); indentlevel--}}}};
+		visit (adrhandlers, "");
+		add ("</body>"); indentlevel--};
+	add ("</alidl>"); indentlevel--;
+	
+	return (xmltext)};
+bundle { //test code
+	on writefile (s, foldername) {
+		local (productname);
+		if system.environment.ispike {
+			productname = "radio"}
+		else {
+			productname = "frontier"};
+		local (f = "c:\\program files\\radio userland\\www\\alidlExamples\\" + foldername + "\\" + productname + ".xml");
+		file.surefilepath (f);
+		file.writewholefile (f, s);
+		};Â«webbrowser.openurl ("http://www.ourfavoritesongs.com/users/dave@userland.com/alidlExamples/" + foldername + "/" + productname + ".xml")
+	writefile (get (@user.soap.rpcHandlers, "/", "soap", true), "soap");
+	writefile (get (@user.betty.rpcHandlers, "/RPC2", "xml-rpc", true), "xmlrpc")}

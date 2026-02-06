@@ -1,1 +1,7 @@
-on stringToAddress (dotsstring) { //turns a string with dots into a legal odb address, if possible	local (i, s = "");	for i = 1 to string.countfields (dotsstring, '.') {		s = s + "[\"" + string.nthField (dotsstring, '.', i) + "\"]."};	return (address (string.delete (s, sizeof (s), 1)))};«bundle //test code	«dialog.alert (stringToAddress ("dweb.home.98.02"))
+on stringToAddress (dotsstring) { //turns a string with dots into a legal odb address, if possible
+	local (i, s = "");
+	for i = 1 to string.countfields (dotsstring, '.') {
+		s = s + "[\"" + string.nthField (dotsstring, '.', i) + "\"]."};
+	return (address (string.delete (s, sizeof (s), 1)))};
+Â«bundle //test code
+	Â«dialog.alert (stringToAddress ("dweb.home.98.02"))

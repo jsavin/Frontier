@@ -1,1 +1,5 @@
-on runsCards () {	case sys.os () {		"MacOS" {			return (true)}};	return (false)}
+on runsCards () {
+	case sys.os () {
+		"MacOS" {
+			return (true)}};
+	return (false)}

@@ -1,1 +1,2 @@
-on isOpen (adr) {	kernel (window.isopen)}
+on isOpen (adr) {
+	kernel (window.isopen)}

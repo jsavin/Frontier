@@ -1,1 +1,8 @@
-on makeSystemAlias (systemSubFolder) {	«creates an alias of all the selected files in a subfolder of the System Folder	on visit (path) {		local (fname = file.fileFromPath (path));		fname = string.poptrailing (fname, ':'); «work around Frontier 1.0 bug in file.newAlias		path = string.poptrailing (path, ':'); «work around Frontier 1.0 bug in file.newAlias		return (file.newAlias (path, file.getSystemFolderPath () + systemSubFolder + fname))};	return (FinderMenu.visitPaths (@visit))}
+on makeSystemAlias (systemSubFolder) {
+	Â«creates an alias of all the selected files in a subfolder of the System Folder
+	on visit (path) {
+		local (fname = file.fileFromPath (path));
+		fname = string.poptrailing (fname, ':'); Â«work around Frontier 1.0 bug in file.newAlias
+		path = string.poptrailing (path, ':'); Â«work around Frontier 1.0 bug in file.newAlias
+		return (file.newAlias (path, file.getSystemFolderPath () + systemSubFolder + fname))};
+	return (FinderMenu.visitPaths (@visit))}

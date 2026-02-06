@@ -1,1 +1,3 @@
-on resourceChanged (url) {	try {user.xmlStorageSystem.pubSubCallbacks.[url]^ (url)};	return (true)}
+on resourceChanged (url) {
+	try {user.xmlStorageSystem.pubSubCallbacks.[url]^ (url)};
+	return (true)}

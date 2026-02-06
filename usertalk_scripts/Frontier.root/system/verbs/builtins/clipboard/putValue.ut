@@ -1,1 +1,3 @@
-on putValue (value) {	local (x = binary (value));	return (clipboard.put (getBinaryType (x), @x))}
+on putValue (value) {
+	local (x = binary (value));
+	return (clipboard.put (getBinaryType (x), @x))}

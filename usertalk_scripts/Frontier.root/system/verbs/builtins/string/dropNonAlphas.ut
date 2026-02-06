@@ -1,1 +1,2 @@
-on dropNonAlphas (s) { «drop out all non-alpha chars from string	kernel (string.dropNonAlphas)}
+on dropNonAlphas (s) { Â«drop out all non-alpha chars from string
+	kernel (string.dropNonAlphas)}

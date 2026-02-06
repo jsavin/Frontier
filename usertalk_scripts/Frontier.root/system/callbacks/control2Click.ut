@@ -1,1 +1,23 @@
-on control2Click (name) {	«This script is called when:		«On Windows, you alt-2click some text.		«On Macintosh, you control-2click some text.		«Call into user.callbacks.control2Click		«Callback script returns true if it handles the click.		«Otherwise, this script handles the click.	«Changes:		«Thursday, September 28, 2000 at 6:05:24 PM by JES			«Allow callbacks to be addresses or addresses of addresses...	local (i);	if not defined (user.callbacks.control2Click) {		new (tableType, @user.callbacks.control2Click)};	for i = 1 to sizeOf (user.callbacks.control2Click) {		try {			local (adrScript = @user.callbacks.control2Click [i]);			while typeOf (adrScript^) == addressType {				adrScript = adrScript^};			if adrScript^ (name) {				return (true)}}};		return (true)}
+on control2Click (name) {
+	Â«This script is called when:
+		Â«On Windows, you alt-2click some text.
+		Â«On Macintosh, you control-2click some text.
+	
+	Â«Call into user.callbacks.control2Click
+		Â«Callback script returns true if it handles the click.
+		Â«Otherwise, this script handles the click.
+	Â«Changes:
+		Â«Thursday, September 28, 2000 at 6:05:24 PM by JES
+			Â«Allow callbacks to be addresses or addresses of addresses...
+	local (i);
+	if not defined (user.callbacks.control2Click) {
+		new (tableType, @user.callbacks.control2Click)};
+	for i = 1 to sizeOf (user.callbacks.control2Click) {
+		try {
+			local (adrScript = @user.callbacks.control2Click [i]);
+			while typeOf (adrScript^) == addressType {
+				adrScript = adrScript^};
+			if adrScript^ (name) {
+				return (true)}}};
+	
+	return (true)}

@@ -1,1 +1,12 @@
-local (folder = "Macintosh HD:New Releases:MacBird 1.0:system.misc.cards:", f);local (adrtable = @system.misc.cards);new (tabletype, adrtable);fileloop (f in folder) {	adrtable^.[file.filefrompath (f)] = cardEditor.readPackedCard (f)};bundle { «init window, make it look nice, open it	target.set (adrtable);	editmenu.setfont ("geneva");	editmenu.setfontsize (9);	target.clear ();	edit (adrtable);	window.zoom (adrtable)}
+local (folder = "Macintosh HD:New Releases:MacBird 1.0:system.misc.cards:", f);
+local (adrtable = @system.misc.cards);
+new (tabletype, adrtable);
+fileloop (f in folder) {
+	adrtable^.[file.filefrompath (f)] = cardEditor.readPackedCard (f)};
+bundle { Â«init window, make it look nice, open it
+	target.set (adrtable);
+	editmenu.setfont ("geneva");
+	editmenu.setfontsize (9);
+	target.clear ();
+	edit (adrtable);
+	window.zoom (adrtable)}

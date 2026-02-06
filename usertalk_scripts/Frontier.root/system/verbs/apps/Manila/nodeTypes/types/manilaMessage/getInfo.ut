@@ -1,1 +1,9 @@
-local (infoText =  "");on add (s) {	infoText = infoText + s + "\r"};local (atts);if op.attributes.getAll (@atts) {	add ("Posted: " + atts.postTime);	add ("Author: " + atts.memberName);	add ("Message number: " + atts.msgNum);	playlist.notifyDialog (infoText)}
+local (infoText =  "");
+on add (s) {
+	infoText = infoText + s + "\r"};
+local (atts);
+if op.attributes.getAll (@atts) {
+	add ("Posted: " + atts.postTime);
+	add ("Author: " + atts.memberName);
+	add ("Message number: " + atts.msgNum);
+	playlist.notifyDialog (infoText)}

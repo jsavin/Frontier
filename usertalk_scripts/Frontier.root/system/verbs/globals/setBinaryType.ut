@@ -1,1 +1,2 @@
-on setBinaryType (adr, type) {	kernel (lang.setbinarytype)}
+on setBinaryType (adr, type) {
+	kernel (lang.setbinarytype)}

@@ -1,1 +1,8 @@
-«Script: system.verbs.builtins.webserver.getPref; Version 1; Date: Thu, 14 May 1998 21:31:51 GMT; ID: RABon getPref (prefName, adrParamTable = nil) {	if defined (user.webserver.prefs.[prefName]) {		if typeOf (user.webserver.prefs.[prefName]) == wpTextType {			return (string (user.webserver.prefs.[prefName]))}		else {			return (user.webserver.prefs.[prefName])}};	return (false)}
+Â«Script: system.verbs.builtins.webserver.getPref; Version 1; Date: Thu, 14 May 1998 21:31:51 GMT; ID: RAB
+on getPref (prefName, adrParamTable = nil) {
+	if defined (user.webserver.prefs.[prefName]) {
+		if typeOf (user.webserver.prefs.[prefName]) == wpTextType {
+			return (string (user.webserver.prefs.[prefName]))}
+		else {
+			return (user.webserver.prefs.[prefName])}};
+	return (false)}

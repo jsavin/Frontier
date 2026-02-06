@@ -1,1 +1,32 @@
-on numberPref (prompt, adrnumber, lowerbound=0, upperbound=infinity, colspan=1, textToRight="") {	«Changes:		«8/3/02; 8:43:10 PM by JES			«Quote characters in addresses were mangling the HTML, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.		«2/5/02; 11:34:44 AM by PBS			«Conditionalized to work in Frontier.	local (pta = html.getpagetableaddress ());	local (size = sizeof (string (upperbound)));	if sizeof (string (lowerbound)) > size {		size = sizeof (string (lowerbound))};	local (maxlength = size, type = "text");	local (error = "");	if pta^.method == "POST" {		local (value);		try {			if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier				value = number (pta^.radioresponder.postargs.[string.urlEncode (string.popFileFromAddress (adrnumber))])}			else {				value = number (pta^.postargs.[string.urlEncode (string.popFileFromAddress (adrnumber))])};			if value < lowerbound {				error = radio.prefs.errorstring ("Can't set the number because it is too small. The smallest permissible value is " + lowerbound + ".")};			if value > upperbound {				error = radio.prefs.errorstring ("Can't set the number because it is too large. The largest permissible value is " + upperbound + ".")};			if sizeof (error) == 0 {				local (adr = address (string.popFileFromAddress (adrnumber)));				adr^ = value}}		else {			error = radio.prefs.errorstring (tryError)}};	local (inputField = "<input type=\"" + type + "\" name=\"" + string.popFileFromAddress (adrnumber) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrnumber^) + "\">");	local (s = "<tr><td colspan=\"2\"><table><tr><td valign=\"middle\">" + prompt + ":</td><td valign=\"middle\">" + inputField + textToRight + "</tr></table></td></tr>");	return (error + "<tr><td align=\"left\" nowrap>" + prompt + ":</td><td align=\"left\" valign=\"top\" colspan=\"" + colspan + "\" width=\"70%\"><input type=\"" + type + "\" name=\"" + string.urlEncode (string.popFileFromAddress (adrnumber)) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrnumber^) + "\">" + textToRight + "</td></tr>");	return (error + s)}
+on numberPref (prompt, adrnumber, lowerbound=0, upperbound=infinity, colspan=1, textToRight="") {
+	Â«Changes:
+		Â«8/3/02; 8:43:10 PM by JES
+			Â«Quote characters in addresses were mangling the HTML, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
+		Â«2/5/02; 11:34:44 AM by PBS
+			Â«Conditionalized to work in Frontier.
+	local (pta = html.getpagetableaddress ());
+	local (size = sizeof (string (upperbound)));
+	if sizeof (string (lowerbound)) > size {
+		size = sizeof (string (lowerbound))};
+	local (maxlength = size, type = "text");
+	local (error = "");
+	if pta^.method == "POST" {
+		local (value);
+		try {
+			if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier
+				value = number (pta^.radioresponder.postargs.[string.urlEncode (string.popFileFromAddress (adrnumber))])}
+			else {
+				value = number (pta^.postargs.[string.urlEncode (string.popFileFromAddress (adrnumber))])};
+			if value < lowerbound {
+				error = radio.prefs.errorstring ("Can't set the number because it is too small. The smallest permissible value is " + lowerbound + ".")};
+			if value > upperbound {
+				error = radio.prefs.errorstring ("Can't set the number because it is too large. The largest permissible value is " + upperbound + ".")};
+			if sizeof (error) == 0 {
+				local (adr = address (string.popFileFromAddress (adrnumber)));
+				adr^ = value}}
+		else {
+			error = radio.prefs.errorstring (tryError)}};
+	local (inputField = "<input type=\"" + type + "\" name=\"" + string.popFileFromAddress (adrnumber) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrnumber^) + "\">");
+	local (s = "<tr><td colspan=\"2\"><table><tr><td valign=\"middle\">" + prompt + ":</td><td valign=\"middle\">" + inputField + textToRight + "</tr></table></td></tr>");
+	return (error + "<tr><td align=\"left\" nowrap>" + prompt + ":</td><td align=\"left\" valign=\"top\" colspan=\"" + colspan + "\" width=\"70%\"><input type=\"" + type + "\" name=\"" + string.urlEncode (string.popFileFromAddress (adrnumber)) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrnumber^) + "\">" + textToRight + "</td></tr>");
+	return (error + s)}

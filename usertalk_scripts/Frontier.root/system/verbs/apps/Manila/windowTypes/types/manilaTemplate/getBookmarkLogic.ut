@@ -1,1 +1,16 @@
-on getBookmarkLogic (adr, adrlogic, adrtitle) {	local (atts);	if window.attributes.getAll (@atts, adr) {		bundle { //reality checks			if not defined (atts.adrSiteInfo) {				return (false)}};				local (title);		if defined (atts.title) {			adrTitle^ = atts.title}		else {			adrTitle^ = window.getTitle (adr)};		adrLogic^ = "Frontier.tools.windowTypes.commands.openManilaTemplate (\"" + nameOf (atts.adrSiteInfo^) + "\", \"" + atts.manilaType + "\")";		return (true)};		return (false)}
+on getBookmarkLogic (adr, adrlogic, adrtitle) {
+	local (atts);
+	if window.attributes.getAll (@atts, adr) {
+		bundle { //reality checks
+			if not defined (atts.adrSiteInfo) {
+				return (false)}};
+		
+		local (title);
+		if defined (atts.title) {
+			adrTitle^ = atts.title}
+		else {
+			adrTitle^ = window.getTitle (adr)};
+		adrLogic^ = "Frontier.tools.windowTypes.commands.openManilaTemplate (\"" + nameOf (atts.adrSiteInfo^) + "\", \"" + atts.manilaType + "\")";
+		return (true)};
+	
+	return (false)}

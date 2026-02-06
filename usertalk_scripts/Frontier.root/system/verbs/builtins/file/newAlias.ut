@@ -1,1 +1,2 @@
-on newAlias (sourcepath, destpath) {	kernel (file.newalias)}
+on newAlias (sourcepath, destpath) {
+	kernel (file.newalias)}

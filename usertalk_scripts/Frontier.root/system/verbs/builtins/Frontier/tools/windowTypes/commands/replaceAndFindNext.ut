@@ -1,1 +1,4 @@
-on replaceAndFindNext () {	«Run the Replace and Find Next command.		«09/29/00; 6:00:49 PM by PBS	system.menus.scripts.replaceAndFindNextCommand ()}
+on replaceAndFindNext () {
+	Â«Run the Replace and Find Next command.
+		Â«09/29/00; 6:00:49 PM by PBS
+	system.menus.scripts.replaceAndFindNextCommand ()}

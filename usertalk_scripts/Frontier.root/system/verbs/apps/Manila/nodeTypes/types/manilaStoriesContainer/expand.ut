@@ -1,1 +1,67 @@
-«Expand the Stories list.	«10/09/00; 11:41:37 AM by PBSlocal (oldTarget = target.set (window.frontmost ()));local (oldDisplay = op.getDisplay ());local (cursor = op.getCursor ());op.setDisplay (false);bundle {	local (flGoneRight = false);	local (atts);	op.attributes.getAll (@atts);	local (siteUrl = atts.siteUrl);	local (baseDiscussUrl = atts.baseDiscussUrl);		local (adrinfo);	local (username, password);	on createInfoCallback (adrinfo) {		if not (manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password)) {			bundle { //don't leave stale data lying around				local (adrtempinfo = @system.temp.manila.data.sites.[nameOf (adrinfo^)]);				if defined (adrtempinfo^) {delete (adrtempinfo)};				delete (adrinfo)};			return (false)}};	if not manila.windowTypes.findSiteInfo (siteUrl, @adrinfo, @createInfoCallback) {		return (true)};	if adrinfo^.siteName == "" {		adrinfo^.siteName = manila.getSiteName (nameOf (adrinfo^))};	local (siteprefs = manila.nodeTypes.attsToSitePrefsTable (@atts)); //a table for RPC calls	if not manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {		return (true)}; //user cancelled the dialog	siteprefs.username = username;	siteprefs.password = password;		op.deleteSubs ();		on addMessage (adrTable, flLastMessage=false) {		local (linetext = adrTable^.subject);		local (author = adrTable^.memberName);		if author != adrTable^.member {			author = author + " (" + adrTable^.member + ")"};		if system.environment.isMac {			linetext = string.latinToMac (linetext)};		local (dir = down);		if not flGoneRight {			dir = right;			flGoneRight = true};		op.insert (linetext, dir);				adrTable^.siteUrl = siteUrl;		adrTable^.type = "manilaMessage";		manila.nodeTypes.addSitePrefsToAtts (adrinfo, adrTable);		op.attributes.addGroup (adrTable)};		local (messageHeaders = manila.message.getStoriesHeaders (@siteprefs));	local (i);	for i = sizeOf (messageHeaders) downTo 1 {		local (flLastMessage = false);		if i == 1 {			flLastMessage = true};		addMessage (@messageHeaders [i], flLastMessage)}};op.setCursor (cursor);op.setDisplay (oldDisplay);try {target.set (oldTarget)};return (true)
+Â«Expand the Stories list.
+	Â«10/09/00; 11:41:37 AM by PBS
+
+local (oldTarget = target.set (window.frontmost ()));
+local (oldDisplay = op.getDisplay ());
+local (cursor = op.getCursor ());
+op.setDisplay (false);
+
+bundle {
+	local (flGoneRight = false);
+	local (atts);
+	op.attributes.getAll (@atts);
+	local (siteUrl = atts.siteUrl);
+	local (baseDiscussUrl = atts.baseDiscussUrl);
+	
+	local (adrinfo);
+	local (username, password);
+	on createInfoCallback (adrinfo) {
+		if not (manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password)) {
+			bundle { //don't leave stale data lying around
+				local (adrtempinfo = @system.temp.manila.data.sites.[nameOf (adrinfo^)]);
+				if defined (adrtempinfo^) {delete (adrtempinfo)};
+				delete (adrinfo)};
+			return (false)}};
+	if not manila.windowTypes.findSiteInfo (siteUrl, @adrinfo, @createInfoCallback) {
+		return (true)};
+	if adrinfo^.siteName == "" {
+		adrinfo^.siteName = manila.getSiteName (nameOf (adrinfo^))};
+	local (siteprefs = manila.nodeTypes.attsToSitePrefsTable (@atts)); //a table for RPC calls
+	if not manila.windowTypes.getUsernameAndPassword (adrinfo, @username, @password) {
+		return (true)}; //user cancelled the dialog
+	siteprefs.username = username;
+	siteprefs.password = password;
+	
+	op.deleteSubs ();
+	
+	on addMessage (adrTable, flLastMessage=false) {
+		local (linetext = adrTable^.subject);
+		local (author = adrTable^.memberName);
+		if author != adrTable^.member {
+			author = author + " (" + adrTable^.member + ")"};
+		if system.environment.isMac {
+			linetext = string.latinToMac (linetext)};
+		local (dir = down);
+		if not flGoneRight {
+			dir = right;
+			flGoneRight = true};
+		op.insert (linetext, dir);
+		
+		adrTable^.siteUrl = siteUrl;
+		adrTable^.type = "manilaMessage";
+		manila.nodeTypes.addSitePrefsToAtts (adrinfo, adrTable);
+		op.attributes.addGroup (adrTable)};
+	
+	local (messageHeaders = manila.message.getStoriesHeaders (@siteprefs));
+	local (i);
+	for i = sizeOf (messageHeaders) downTo 1 {
+		local (flLastMessage = false);
+		if i == 1 {
+			flLastMessage = true};
+		addMessage (@messageHeaders [i], flLastMessage)}};
+
+op.setCursor (cursor);
+op.setDisplay (oldDisplay);
+try {target.set (oldTarget)};
+
+return (true)

@@ -1,1 +1,2 @@
-on open (path) {	kernel (file.open)}
+on open (path) {
+	kernel (file.open)}

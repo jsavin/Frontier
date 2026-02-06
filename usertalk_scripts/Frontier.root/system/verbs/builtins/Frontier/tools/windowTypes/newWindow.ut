@@ -1,1 +1,20 @@
-on newWindow (type, flHidden=false, title=nil, windowType=outlineType, flReadOnly=false, adrWindows=nil) {	if adrWindows == nil {		adrWindows = Frontier.tools.windowTypes.init ()};	local (adrNewWindowTable = table.uniqueName ("", adrWindows, 7));	new (tableType, adrNewWindowTable);	local (adrWindow = @adrNewWindowTable^.window);	new (windowType, adrWindow);	if title == nil {		title = string.popFileFromAddress (adrWindow)};	bundle { //set default attributes		local (t); new (tableType, @t);		t.type = type;		t.flReadOnly = flReadOnly;		t.title = title;		t.timeCreated = timeModified (adrWindow);		t.lastSaved = timeModified (adrWindow);		window.attributes.addGroup (@t, adrWindow)};	if not flHidden {		edit (adrWindow, title, flReadOnly:flReadOnly)};	return (adrWindow)}
+on newWindow (type, flHidden=false, title=nil, windowType=outlineType, flReadOnly=false, adrWindows=nil) {
+	if adrWindows == nil {
+		adrWindows = Frontier.tools.windowTypes.init ()};
+	local (adrNewWindowTable = table.uniqueName ("", adrWindows, 7));
+	new (tableType, adrNewWindowTable);
+	local (adrWindow = @adrNewWindowTable^.window);
+	new (windowType, adrWindow);
+	if title == nil {
+		title = string.popFileFromAddress (adrWindow)};
+	bundle { //set default attributes
+		local (t); new (tableType, @t);
+		t.type = type;
+		t.flReadOnly = flReadOnly;
+		t.title = title;
+		t.timeCreated = timeModified (adrWindow);
+		t.lastSaved = timeModified (adrWindow);
+		window.attributes.addGroup (@t, adrWindow)};
+	if not flHidden {
+		edit (adrWindow, title, flReadOnly:flReadOnly)};
+	return (adrWindow)}

@@ -1,1 +1,2 @@
-on quit () {	return (required.quitApplication (netscape.id))}
+on quit () {
+	return (required.quitApplication (netscape.id))}

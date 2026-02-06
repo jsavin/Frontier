@@ -1,1 +1,167 @@
-on isFileMenuItemEnabled (cmd) {	«Changes:		«10/14/05; 6:41:05 PM by JES			«If the front window is read-only, disable the Save command.		«12/2/01; 6:55:44 PM by JES			«if user.radio.settings.flExpired is defined, and true, disable all commands except quit.		«Archive			«2/19/01; 2:46:08 PM by PBS				«The Close menu item is always enabled.			«2/2/01; 11:32:23 AM by PBS				«Save is now always enabled.			«1/28/01; 11:29:50 AM by DW				«See comment at the head of system.menus.agent. We use the cached version of window.frontmost, to work around a performance bottleneck.			«12/26/00; 4:02:39 PM by PBS				«Always enable View in Browser, Save As HTML, and Save As Plain Text if the frontmost window is an outline.			«12/15/00; 6:39:02 PM by PBS				«Enable Save As HTML and Save As Plain Text if the frontmost outline is a local outline.			«12/14/00; 12:22:23 AM by PBS				«Enable the View in Browser command if the frontmost window is a local outline or an outline from a Manila site.			«10/16/00; 7:16:33 PM by PBS				«Support Open Manila Site item.				«Open URL... and Update Radio.root are disabled when working offline.			«09/23/00; 4:22:31 PM by PBS				«Handle the Work Offline File menu item.			«08/30/00; 9:58:54 PM by PBS				«Backtrack on Save-always-enabled.			«08/30/00; 4:55:37 PM by PBS				«Save is always enabled -- so you can save the object database, at least.				«Added case for Open URL command.			«07/27/00; 10:58:35 PM by PBS				«Save As is now enabled for outline objects in the odb, such as the Notepad.			«07/27/00; 3:42:57 PM by PBS				«This script now gets called for the Update Radio.root File menu item. It always returns true, it's enabled.			«07/24/00; 12:40:14 PM by PBS				«Updated for local XML outline documents.			«Fri, Jul 7, 2000 at 11:00:09 PM by AR				«Return true if a File menu item should be enabled, false otherwise.				«Call any scripts in user.pike.commandCallbacks.isMenuItemEnabled				«If one of the scripts returns true, we're done	if defined (user.radio.settings.flExpired) {		if user.radio.settings.flExpired {			case cmd {				"close" {					return (true)}};			return (false)}};		local (windowFrontmost = window.frontmost ());	on getCursorAddress () {		«Special version that uses cached version of window.frontmost.		local (adrobject = address (windowFrontmost));		if adrobject == nil {			return (nil)};		if typeOf (adrobject^) == tabletype {			adrobject = table.getCursor ()};		return (adrobject)};	«scratchpad.ctfilemenuitemenable++	on runCallbacks (adrtable) {		if defined (adrtable^) {			try {				local (adrcallback);				for adrcallback in @user.pike.commandCallbacks.isMenuItemEnabled {					try {						if adrcallback^ (cmd) {							return (true)}}}}};		return (false)};	if defined (user.tools.commandCallbacks.isMenuItemEnabled) {		if runCallbacks (@user.tools.commandCallbacks.isMenuItemEnabled) {			return (true)}};	if system.environment.isRadio {		if defined (user.pike.commandCallbacks.isMenuItemEnabled) {			if runCallbacks (@user.pike.commandCallbacks.isMenuItemEnabled) {				return (true)}}};	local (type, adrtype, isWindowTypesWindow);	if window.attributes.getOne ("type", @type, windowFrontmost) {		isWindowTypesWindow = Frontier.tools.windowTypes.findWindowType (type, @adrtype, windowFrontmost)};	case cmd {		"whatisthis" {			return (true)};		"openurl" {			if defined (tcp.isOffline) {				if tcp.isOffline () {					return (false)}};			return (true)};		"close" {			return (true); //PBS 02/19/01: always enabled			«local (adr = windowFrontmost)			};«return ((adr != "") and (not window.ishidden (adr)))		"save" {			local (flReadOnly = false);			if isWindowTypesWindow {				if window.attributes.getOne ("flReadOnly", @flReadOnly, windowFrontmost) {					return (not flReadOnly)}}; //JES 10/14/05: save disabled for read-only windows			return (true);			«local (adr = getCursorAddress ())			«local (windowType = pike.getWindowType (adr))			«if windowType == ""				«return (true)			};«return (pike.isItemDirty (parentOf (adr^)))		"revert" {			if isWindowTypesWindow {				if defined (adrtype^.revert) {					if Frontier.tools.windowTypes.isWindowDirty (windowFrontmost) {						return (true)}}};			return (false);			«bundle //old code				«local (adr = getCursorAddress ())				«if pike.isLocalOutline (adr) //PBS 07/24/00: check local outlines					«return (pike.isItemDirty (parentOf (adr^)))				«local (windowType = pike.getWindowType (adr))				«case windowType					«"savedStories"					«"advancedItems"						«return (pike.isItemDirty (parentOf (adr^)))					«"newStories"						«return (false)				«return (false)};		"viewinbrowser";		"saveashtml";		"saveasplaintext" { //PBS 12/15/00: enable all outlines			if isWindowTypesWindow {				if defined (adrtype^.viewInBrowser) {					return (true)}};			local (adr = getCursorAddress ());			case typeOf (adr^) {				scriptType;				outlineType {					return (true)}}};		"saveas" //PBS 07/24/00: Save As now is the same as Change Title			«return (true) //uncomment this line to make the Save As command equivalent to the Export Object command.;		"changetitle" {			if isWindowTypesWindow {				if defined (adrtype^.saveAs) {					return (true)}};			local (adr = getCursorAddress ());			if typeOf (adr^) == outlineType {				return (true)};			return (false);			«bundle //old code				«local (adr = getCursorAddress ())				«if pike.isLocalOutline (adr) //PBS 07/24/00					«return (true)				«case pike.getWindowType (adr)					«"savedStories"					«"newStories"						«return (true)					«"advancedItems"						«return (false)				«if typeOf (adr^) == outlineType					«return (true)				«return (false)};		"update" {			if defined (tcp.isOffline) {				if tcp.isOffline () {					return (false)}};			return (true)};		"workoffline" { //PBS 09/23/00: work offline menu item			if defined (tcp.setOffline) {				return (true)}};		"openmanilasite" { //PBS 10/16/00: enable/disable Open Manila Site command			if defined (tcp.isOffline) {				if tcp.isOffline () {					return (false)}};			return (true)}};	return (false)};«bundle //debugging	«msg (isFileMenuItemEnabled ("save"))
+on isFileMenuItemEnabled (cmd) {
+	Â«Changes:
+		Â«10/14/05; 6:41:05 PM by JES
+			Â«If the front window is read-only, disable the Save command.
+		Â«12/2/01; 6:55:44 PM by JES
+			Â«if user.radio.settings.flExpired is defined, and true, disable all commands except quit.
+		Â«Archive
+			Â«2/19/01; 2:46:08 PM by PBS
+				Â«The Close menu item is always enabled.
+			Â«2/2/01; 11:32:23 AM by PBS
+				Â«Save is now always enabled.
+			Â«1/28/01; 11:29:50 AM by DW
+				Â«See comment at the head of system.menus.agent. We use the cached version of window.frontmost, to work around a performance bottleneck.
+			Â«12/26/00; 4:02:39 PM by PBS
+				Â«Always enable View in Browser, Save As HTML, and Save As Plain Text if the frontmost window is an outline.
+			Â«12/15/00; 6:39:02 PM by PBS
+				Â«Enable Save As HTML and Save As Plain Text if the frontmost outline is a local outline.
+			Â«12/14/00; 12:22:23 AM by PBS
+				Â«Enable the View in Browser command if the frontmost window is a local outline or an outline from a Manila site.
+			Â«10/16/00; 7:16:33 PM by PBS
+				Â«Support Open Manila Site item.
+				Â«Open URL... and Update Radio.root are disabled when working offline.
+			Â«09/23/00; 4:22:31 PM by PBS
+				Â«Handle the Work Offline File menu item.
+			Â«08/30/00; 9:58:54 PM by PBS
+				Â«Backtrack on Save-always-enabled.
+			Â«08/30/00; 4:55:37 PM by PBS
+				Â«Save is always enabled -- so you can save the object database, at least.
+				Â«Added case for Open URL command.
+			Â«07/27/00; 10:58:35 PM by PBS
+				Â«Save As is now enabled for outline objects in the odb, such as the Notepad.
+			Â«07/27/00; 3:42:57 PM by PBS
+				Â«This script now gets called for the Update Radio.root File menu item. It always returns true, it's enabled.
+			Â«07/24/00; 12:40:14 PM by PBS
+				Â«Updated for local XML outline documents.
+			Â«Fri, Jul 7, 2000 at 11:00:09 PM by AR
+				Â«Return true if a File menu item should be enabled, false otherwise.
+				Â«Call any scripts in user.pike.commandCallbacks.isMenuItemEnabled
+				Â«If one of the scripts returns true, we're done
+	if defined (user.radio.settings.flExpired) {
+		if user.radio.settings.flExpired {
+			case cmd {
+				"close" {
+					return (true)}};
+			return (false)}};
+	
+	local (windowFrontmost = window.frontmost ());
+	on getCursorAddress () {
+		Â«Special version that uses cached version of window.frontmost.
+		local (adrobject = address (windowFrontmost));
+		if adrobject == nil {
+			return (nil)};
+		if typeOf (adrobject^) == tabletype {
+			adrobject = table.getCursor ()};
+		return (adrobject)};
+	Â«scratchpad.ctfilemenuitemenable++
+	on runCallbacks (adrtable) {
+		if defined (adrtable^) {
+			try {
+				local (adrcallback);
+				for adrcallback in @user.pike.commandCallbacks.isMenuItemEnabled {
+					try {
+						if adrcallback^ (cmd) {
+							return (true)}}}}};
+		return (false)};
+	if defined (user.tools.commandCallbacks.isMenuItemEnabled) {
+		if runCallbacks (@user.tools.commandCallbacks.isMenuItemEnabled) {
+			return (true)}};
+	if system.environment.isRadio {
+		if defined (user.pike.commandCallbacks.isMenuItemEnabled) {
+			if runCallbacks (@user.pike.commandCallbacks.isMenuItemEnabled) {
+				return (true)}}};
+	local (type, adrtype, isWindowTypesWindow);
+	if window.attributes.getOne ("type", @type, windowFrontmost) {
+		isWindowTypesWindow = Frontier.tools.windowTypes.findWindowType (type, @adrtype, windowFrontmost)};
+	case cmd {
+		"whatisthis" {
+			return (true)};
+		"openurl" {
+			if defined (tcp.isOffline) {
+				if tcp.isOffline () {
+					return (false)}};
+			return (true)};
+		"close" {
+			return (true); //PBS 02/19/01: always enabled
+			Â«local (adr = windowFrontmost)
+			};Â«return ((adr != "") and (not window.ishidden (adr)))
+		"save" {
+			local (flReadOnly = false);
+			if isWindowTypesWindow {
+				if window.attributes.getOne ("flReadOnly", @flReadOnly, windowFrontmost) {
+					return (not flReadOnly)}}; //JES 10/14/05: save disabled for read-only windows
+			return (true);
+			Â«local (adr = getCursorAddress ())
+			Â«local (windowType = pike.getWindowType (adr))
+			Â«if windowType == ""
+				Â«return (true)
+			};Â«return (pike.isItemDirty (parentOf (adr^)))
+		"revert" {
+			if isWindowTypesWindow {
+				if defined (adrtype^.revert) {
+					if Frontier.tools.windowTypes.isWindowDirty (windowFrontmost) {
+						return (true)}}};
+			return (false);
+			Â«bundle //old code
+				Â«local (adr = getCursorAddress ())
+				Â«if pike.isLocalOutline (adr) //PBS 07/24/00: check local outlines
+					Â«return (pike.isItemDirty (parentOf (adr^)))
+				Â«local (windowType = pike.getWindowType (adr))
+				Â«case windowType
+					Â«"savedStories"
+					Â«"advancedItems"
+						Â«return (pike.isItemDirty (parentOf (adr^)))
+					Â«"newStories"
+						Â«return (false)
+				Â«return (false)};
+		"viewinbrowser";
+		"saveashtml";
+		"saveasplaintext" { //PBS 12/15/00: enable all outlines
+			if isWindowTypesWindow {
+				if defined (adrtype^.viewInBrowser) {
+					return (true)}};
+			local (adr = getCursorAddress ());
+			case typeOf (adr^) {
+				scriptType;
+				outlineType {
+					return (true)}}};
+		"saveas" //PBS 07/24/00: Save As now is the same as Change Title
+			Â«return (true) //uncomment this line to make the Save As command equivalent to the Export Object command.;
+		"changetitle" {
+			if isWindowTypesWindow {
+				if defined (adrtype^.saveAs) {
+					return (true)}};
+			local (adr = getCursorAddress ());
+			if typeOf (adr^) == outlineType {
+				return (true)};
+			return (false);
+			Â«bundle //old code
+				Â«local (adr = getCursorAddress ())
+				Â«if pike.isLocalOutline (adr) //PBS 07/24/00
+					Â«return (true)
+				Â«case pike.getWindowType (adr)
+					Â«"savedStories"
+					Â«"newStories"
+						Â«return (true)
+					Â«"advancedItems"
+						Â«return (false)
+				Â«if typeOf (adr^) == outlineType
+					Â«return (true)
+				Â«return (false)};
+		"update" {
+			if defined (tcp.isOffline) {
+				if tcp.isOffline () {
+					return (false)}};
+			return (true)};
+		"workoffline" { //PBS 09/23/00: work offline menu item
+			if defined (tcp.setOffline) {
+				return (true)}};
+		"openmanilasite" { //PBS 10/16/00: enable/disable Open Manila Site command
+			if defined (tcp.isOffline) {
+				if tcp.isOffline () {
+					return (false)}};
+			return (true)}};
+	return (false)};
+
+Â«bundle //debugging
+	Â«msg (isFileMenuItemEnabled ("save"))

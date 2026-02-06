@@ -1,1 +1,5 @@
-on runFromFile (path) {	local (x);	card.import (@x, path);	card.run (@x);	return (true)}
+on runFromFile (path) {
+	local (x);
+	card.import (@x, path);
+	card.run (@x);
+	return (true)}

@@ -1,1 +1,3 @@
-on setSetting (x, s) {	with objectModel, Eudora, eventInfo {		return (set (setting [long (x)], string (s)))}}
+on setSetting (x, s) {
+	with objectModel, Eudora, eventInfo {
+		return (set (setting [long (x)], string (s)))}}

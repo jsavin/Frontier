@@ -1,1 +1,77 @@
-«How to work with this example:	«Given the objectmodel nature of Eudora it is not easy to only one run line of this script at a time.	«What you should do is Debug this script and step through it one line at a time.  Use the lookup feature of	«the debugger to look at the value of the "result" variable as you go.with objectModel, Eudora, eventInfo { «most scripts should issue Eudora commands from within a statement like this one	local (result);	if not isRunning() { «make sure it is running if not launch it.		launch()};		bundle { «opening and closing things		open (mailfolder[""].mailbox["In"]); «Open a mailbox		close (window[1]); «Eudora 3 or greater «Close the frontmost window				open (mailfolder[""].mailbox["In"]); «Open a mailbox		close (mailfolder[""].mailbox["In"]); «Close a mailbox		open (mailfolder[""].mailbox["In"].message[1])};		bundle { «getting things		«objectModel way:		result = get (mailfolder[""].mailbox["In"].message[1].subject);		result = get (setting[25]); «Does Eudora send message immediately?		result = get  (mailfolder[""].mailbox["In"].message[1].sender);		«Non Object Model way:		result = getMessageSubject (mailfolder[""].mailbox["In"].message[1]);		result = getSetting(25);		result = getMessageSender (mailfolder[""].mailbox["In"].message[1]);		«Notice that sender is a different concept in objectModel vs non objectModel scripts			«getMessageSender actually returns the "From:" field, where getting the sender property of a message gets			«what Eudora displays in the sender column of index views.};		bundle { «moving messages		result = move (mailfolder[""].mailbox["in"].message[1], endOf (mailfolder[""].mailbox["trash"]));		«result now contains a reference to the moved message		move (result, endOf (mailfolder[""].mailbox["In"]))}; «move it back to the Inbox		bundle { «Does something exist?		result = exists (mailfolder[""].mailbox["In"]); «Does an inbox exist?		result = exists (mailfolder[""].mailbox["blah"]); «does a mailbox called blah exist?		result = exists (mailfolder[""].mailbox["in"].message[1])}; «Does the Inbox contain an inbox message		bundle { «forward a message		local (newMsg);		newMsg = forward (mailfolder[""].mailbox["in"].message[1]); «forward a message, no fields can be set at this time		result = get (newMsg.subject);		setMessageSubject (newMsg, "Test Subject")}; «setting of the subject by setting msg property seems to be broken in 3.0		bundle { «connecting		« connect and send Outgoing mail		connect (sendMail:true);				« connect and check mail		connect (checkMail:true)};		bundle { «misc		result = duplicate (mailfolder[""].mailbox["in"].message[1], endof (mailFolder[""].mailbox["Trash"])); «duplicate a message to the trash		result = count (mailfolder[""].mailbox["In"], message); «how many messages in "In" box? «Count message in In box		«Won't work if you keep your signature somewhere other than the system folder...		result = getSignature()};		bundle { «creating and working with a message		local (msg);		msg = createMessage(); «create a new Outgoing message		«set (msg.subject, "Subject")			«Setting of message subject property doesn't seem to work in Eudora 3			«Using the setMessageSubject verb actually sets the "subject" field of the message.		setMessageSubject (msg, "Subject");		set (msg.body, "Boo!");				«The one step way:		newOutgoingMessage ("bob@bobo.com", user.mailAddress, "What a subject", "Hello There")};		bundle { «attaching a file		local (f, msg);		msg = createMessage();		file.getFileDialog ("choose file to attach", @f, 0);		attachFiles (msg, f)};	}
+Â«How to work with this example:
+	Â«Given the objectmodel nature of Eudora it is not easy to only one run line of this script at a time.
+	Â«What you should do is Debug this script and step through it one line at a time.  Use the lookup feature of
+	Â«the debugger to look at the value of the "result" variable as you go.
+with objectModel, Eudora, eventInfo { Â«most scripts should issue Eudora commands from within a statement like this one
+	local (result);
+	if not isRunning() { Â«make sure it is running if not launch it.
+		launch()};
+	
+	bundle { Â«opening and closing things
+		open (mailfolder[""].mailbox["In"]); Â«Open a mailbox
+		close (window[1]); Â«Eudora 3 or greater Â«Close the frontmost window
+		
+		open (mailfolder[""].mailbox["In"]); Â«Open a mailbox
+		close (mailfolder[""].mailbox["In"]); Â«Close a mailbox
+		open (mailfolder[""].mailbox["In"].message[1])};
+	
+	bundle { Â«getting things
+		Â«objectModel way:
+		result = get (mailfolder[""].mailbox["In"].message[1].subject);
+		result = get (setting[25]); Â«Does Eudora send message immediately?
+		result = get  (mailfolder[""].mailbox["In"].message[1].sender);
+		Â«Non Object Model way:
+		result = getMessageSubject (mailfolder[""].mailbox["In"].message[1]);
+		result = getSetting(25);
+		result = getMessageSender (mailfolder[""].mailbox["In"].message[1]);
+		Â«Notice that sender is a different concept in objectModel vs non objectModel scripts
+			Â«getMessageSender actually returns the "From:" field, where getting the sender property of a message gets
+			Â«what Eudora displays in the sender column of index views.};
+	
+	bundle { Â«moving messages
+		result = move (mailfolder[""].mailbox["in"].message[1], endOf (mailfolder[""].mailbox["trash"]));
+		Â«result now contains a reference to the moved message
+		move (result, endOf (mailfolder[""].mailbox["In"]))}; Â«move it back to the Inbox
+	
+	bundle { Â«Does something exist?
+		result = exists (mailfolder[""].mailbox["In"]); Â«Does an inbox exist?
+		result = exists (mailfolder[""].mailbox["blah"]); Â«does a mailbox called blah exist?
+		result = exists (mailfolder[""].mailbox["in"].message[1])}; Â«Does the Inbox contain an inbox message
+	
+	bundle { Â«forward a message
+		local (newMsg);
+		newMsg = forward (mailfolder[""].mailbox["in"].message[1]); Â«forward a message, no fields can be set at this time
+		result = get (newMsg.subject);
+		setMessageSubject (newMsg, "Test Subject")}; Â«setting of the subject by setting msg property seems to be broken in 3.0
+	
+	bundle { Â«connecting
+		Â« connect and send Outgoing mail
+		connect (sendMail:true);
+		
+		Â« connect and check mail
+		connect (checkMail:true)};
+	
+	bundle { Â«misc
+		result = duplicate (mailfolder[""].mailbox["in"].message[1], endof (mailFolder[""].mailbox["Trash"])); Â«duplicate a message to the trash
+		result = count (mailfolder[""].mailbox["In"], message); Â«how many messages in "In" box? Â«Count message in In box
+		Â«Won't work if you keep your signature somewhere other than the system folder...
+		result = getSignature()};
+	
+	bundle { Â«creating and working with a message
+		local (msg);
+		msg = createMessage(); Â«create a new Outgoing message
+		Â«set (msg.subject, "Subject")
+			Â«Setting of message subject property doesn't seem to work in Eudora 3
+			Â«Using the setMessageSubject verb actually sets the "subject" field of the message.
+		setMessageSubject (msg, "Subject");
+		set (msg.body, "Boo!");
+		
+		Â«The one step way:
+		newOutgoingMessage ("bob@bobo.com", user.mailAddress, "What a subject", "Hello There")};
+	
+	bundle { Â«attaching a file
+		local (f, msg);
+		msg = createMessage();
+		file.getFileDialog ("choose file to attach", @f, 0);
+		attachFiles (msg, f)};
+	}

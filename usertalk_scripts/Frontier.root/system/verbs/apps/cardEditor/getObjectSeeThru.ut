@@ -1,1 +1,5 @@
-on getObjectSeeThru (name) {	local (atts);	if not cardEditor.getObjectAttributes (name, @atts) {		return ("")};	return (atts.tran)}
+on getObjectSeeThru (name) {
+	local (atts);
+	if not cardEditor.getObjectAttributes (name, @atts) {
+		return ("")};
+	return (atts.tran)}

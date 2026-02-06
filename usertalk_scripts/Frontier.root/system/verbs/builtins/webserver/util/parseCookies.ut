@@ -1,1 +1,30 @@
-on parseCookies (adrParamTable) {	«Thursday, November 11, 1999 at 3:06:49 AM by AR		«Implemented as a kernel script in Frontier 6.1.		«Old code			«on parseCookies (adrParamTable)				«Script: system.verbs.builtins.webserver.util.parseCookies; Version 1; Date: Thu, 4 June 1998 16:14:51 GMT; ID: RAB				«local (adrRequestHeaders, adrCookies)				«local (remainder, firstpart, name, value)				«				«adrRequestHeaders = @adrParamTable^.requestHeaders				«				«if defined (adrRequestHeaders^.Cookie)					«new (tableType, @adrRequestHeaders^.cookies)					«adrCookies = @adrRequestHeaders^.cookies					«					«remainder = adrRequestHeaders^.Cookie					«bundle //walk the cookie						«loop							«if remainder == "" 								«break							«firstpart = string.nthfield (remainder, ';', 1)							«remainder = string.delete (remainder, 1, sizeof (firstpart) + 1)							«remainder = string.popLeading (remainder, " ")							«name = string.nthfield (firstpart, '=', 1)							«value = string.delete (firstpart, 1, sizeof(name) + 1)							«adrCookies^.[name] = value					«return (true)				«else					«return (false)	kernel (webserver.parseCookies)}
+on parseCookies (adrParamTable) {
+	Â«Thursday, November 11, 1999 at 3:06:49 AM by AR
+		Â«Implemented as a kernel script in Frontier 6.1.
+		Â«Old code
+			Â«on parseCookies (adrParamTable)
+				Â«Script: system.verbs.builtins.webserver.util.parseCookies; Version 1; Date: Thu, 4 June 1998 16:14:51 GMT; ID: RAB
+				Â«local (adrRequestHeaders, adrCookies)
+				Â«local (remainder, firstpart, name, value)
+				Â«
+				Â«adrRequestHeaders = @adrParamTable^.requestHeaders
+				Â«
+				Â«if defined (adrRequestHeaders^.Cookie)
+					Â«new (tableType, @adrRequestHeaders^.cookies)
+					Â«adrCookies = @adrRequestHeaders^.cookies
+					Â«
+					Â«remainder = adrRequestHeaders^.Cookie
+					Â«bundle //walk the cookie
+						Â«loop
+							Â«if remainder == "" 
+								Â«break
+							Â«firstpart = string.nthfield (remainder, ';', 1)
+							Â«remainder = string.delete (remainder, 1, sizeof (firstpart) + 1)
+							Â«remainder = string.popLeading (remainder, " ")
+							Â«name = string.nthfield (firstpart, '=', 1)
+							Â«value = string.delete (firstpart, 1, sizeof(name) + 1)
+							Â«adrCookies^.[name] = value
+					Â«return (true)
+				Â«else
+					Â«return (false)
+	kernel (webserver.parseCookies)}

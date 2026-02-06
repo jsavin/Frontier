@@ -1,1 +1,6 @@
-on countServiceUsers (serviceName) {	«Count all the users of a service.	local (serviceUsers = people.getServiceUsersList (serviceName));	if serviceUsers == false {		return (false)};	return (sizeOf (serviceUsers))}
+on countServiceUsers (serviceName) {
+	Â«Count all the users of a service.
+	local (serviceUsers = people.getServiceUsersList (serviceName));
+	if serviceUsers == false {
+		return (false)};
+	return (sizeOf (serviceUsers))}

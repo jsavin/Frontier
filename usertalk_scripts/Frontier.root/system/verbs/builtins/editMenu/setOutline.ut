@@ -1,1 +1,2 @@
-on setOutline (floutline) {	kernel (editmenu.setoutline)}
+on setOutline (floutline) {
+	kernel (editmenu.setoutline)}

@@ -1,1 +1,6 @@
-on year (theDate = clock.now ()) { //return just the year from the date	local (day, month, year, hour, minute, second);	date.get (theDate, @day, @month, @year, @hour, @minute, @second);	return (year)};«bundle //test code	«dialog.alert (date.year ())
+on year (theDate = clock.now ()) { //return just the year from the date
+	local (day, month, year, hour, minute, second);
+	date.get (theDate, @day, @month, @year, @hour, @minute, @second);
+	return (year)};
+Â«bundle //test code
+	Â«dialog.alert (date.year ())

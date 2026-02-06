@@ -1,1 +1,3 @@
-on getLogFormat (appID = WebStar.id) { «get log format settings	with objectModel, WebStar.eventInfo {		return (core.get (appID, logFormat))}}
+on getLogFormat (appID = WebStar.id) { Â«get log format settings
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, logFormat))}}

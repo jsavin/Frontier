@@ -1,1 +1,5 @@
-with objectModel, Eudora, eventInfo {	local (msg, f);	file.getFileDialog ("Choose File to attach", @f, 0);	msg = createMessage();	attachFiles (msg, f)}
+with objectModel, Eudora, eventInfo {
+	local (msg, f);
+	file.getFileDialog ("Choose File to attach", @f, 0);
+	msg = createMessage();
+	attachFiles (msg, f)}

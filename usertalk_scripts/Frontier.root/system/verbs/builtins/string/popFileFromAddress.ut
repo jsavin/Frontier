@@ -1,1 +1,21 @@
-on popFileFromAddress (adr) {	«Pop the leading file path from an address. Return a string. The string can be coerced back to an address.		«Given an address to an item in a guest database, return the address as a string.			«@["C:\\Frontier\\Guest Databases\\apps\\mainResponder.root"].mainResponder.discuss.readMessage returns mainResponder.discuss.readMessage.		«If the address is not to an item inside a guest database, but to a guest database, return a string version of the address. Don't pop the file path so the string can still be coerced back to an address.			«@["C:\\Frontier\\Guest Databases\\apps\\mainResponder.root"] returns ["C:\\Frontier\\Guest Databases\\apps\\mainResponder.root"].		«If the address is to an item in Frontier.root, return a string version of the address.			«@websites.samples returns websites.samples.		«10/11/99; 3:04:30 PM by PBS	if table.inGuestDatabase (adr) { //it's a guest database address		local (addressList = string.parseAddress (adr));		if sizeOf (addressList) == 1 { //the address is not in a guest database, but to a guest database			return (string (adr))};		local (i, s = string (adr));		s = string.delete (s, 1, sizeOf (addressList [1]));		local (ix = string.patternMatch ("\"].", s)); //there are probably additional characters		if ix > 0 {			s = string.delete (s, 1, ix + 2)};		return (s)}	else { //it's an address to an object in Frontier.root		return (string (adr))}} //if it's not in a guest database, return the string version of this address
+on popFileFromAddress (adr) {
+	Â«Pop the leading file path from an address. Return a string. The string can be coerced back to an address.
+		Â«Given an address to an item in a guest database, return the address as a string.
+			Â«@["C:\\Frontier\\Guest Databases\\apps\\mainResponder.root"].mainResponder.discuss.readMessage returns mainResponder.discuss.readMessage.
+		Â«If the address is not to an item inside a guest database, but to a guest database, return a string version of the address. Don't pop the file path so the string can still be coerced back to an address.
+			Â«@["C:\\Frontier\\Guest Databases\\apps\\mainResponder.root"] returns ["C:\\Frontier\\Guest Databases\\apps\\mainResponder.root"].
+		Â«If the address is to an item in Frontier.root, return a string version of the address.
+			Â«@websites.samples returns websites.samples.
+		Â«10/11/99; 3:04:30 PM by PBS
+	if table.inGuestDatabase (adr) { //it's a guest database address
+		local (addressList = string.parseAddress (adr));
+		if sizeOf (addressList) == 1 { //the address is not in a guest database, but to a guest database
+			return (string (adr))};
+		local (i, s = string (adr));
+		s = string.delete (s, 1, sizeOf (addressList [1]));
+		local (ix = string.patternMatch ("\"].", s)); //there are probably additional characters
+		if ix > 0 {
+			s = string.delete (s, 1, ix + 2)};
+		return (s)}
+	else { //it's an address to an object in Frontier.root
+		return (string (adr))}} //if it's not in a guest database, return the string version of this address

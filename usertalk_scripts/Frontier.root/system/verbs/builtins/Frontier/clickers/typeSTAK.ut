@@ -1,1 +1,2 @@
-on typeSTAK (path) {	return (Frontier.clickers.typersrc (path))}
+on typeSTAK (path) {
+	return (Frontier.clickers.typersrc (path))}

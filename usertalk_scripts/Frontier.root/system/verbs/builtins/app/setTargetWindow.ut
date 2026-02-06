@@ -1,1 +1,2 @@
-on setTargetWindow (s) {	return (appleEvent (app.id, 'app1', 'strg', '----', string (s)))}
+on setTargetWindow (s) {
+	return (appleEvent (app.id, 'app1', 'strg', '----', string (s)))}

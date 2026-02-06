@@ -1,1 +1,27 @@
-on mailMessageToTable (s, adrtable) { //breaks a message up into its parts	«Changes suggested by Christopher Short, 9/23/98; 6:31:13 AM by DW		«create the table if it doesn't exist		«consistently return true		«don't change the names of any of the parts	local (label, value, linestring);	if not defined (adrtable^) {		new (tabletype, adrtable)};	s = string.replaceAll (s, "\n", "");	loop {		linestring = string.nthfield (s, cr, 1);		s = string.delete (s, 1, sizeof (linestring) + 1);		label = string.lower (string.nthfield (linestring, ":", 1));		value = string.delete (linestring, 1, sizeof (label) + 2);		if (sizeof (label) == 0) or (label contains cr) {			wp.newTextObject (s, @adrtable^.text);			break};		if value endsWith "\r" {			value = string.delete (value, sizeof (value), 1)};		adrtable^.[label] = value};	return (true)};«bundle //test code	«local (s = "X-Sender: dave@scripting.com\r\nX-Mailer: Random mail program\r\nDate: Tue, 22 Sep 1998 06:55:54 -0700\r\nTo: dave@userland.com\r\nFrom: Dave Winer <dave@userland.com>\r\nSubject: Test message\r\n\r\nHello, this is a test. Dave")	«new (tabletype, @scratchpad.mailparts)	«mailMessageToTable (s, @scratchpad.mailparts)	«edit (@scratchpad.mailparts)	«window.zoom (@scratchpad.mailparts)
+on mailMessageToTable (s, adrtable) { //breaks a message up into its parts
+	Â«Changes suggested by Christopher Short, 9/23/98; 6:31:13 AM by DW
+		Â«create the table if it doesn't exist
+		Â«consistently return true
+		Â«don't change the names of any of the parts
+	local (label, value, linestring);
+	if not defined (adrtable^) {
+		new (tabletype, adrtable)};
+	s = string.replaceAll (s, "\n", "");
+	loop {
+		linestring = string.nthfield (s, cr, 1);
+		s = string.delete (s, 1, sizeof (linestring) + 1);
+		label = string.lower (string.nthfield (linestring, ":", 1));
+		value = string.delete (linestring, 1, sizeof (label) + 2);
+		if (sizeof (label) == 0) or (label contains cr) {
+			wp.newTextObject (s, @adrtable^.text);
+			break};
+		if value endsWith "\r" {
+			value = string.delete (value, sizeof (value), 1)};
+		adrtable^.[label] = value};
+	return (true)};
+Â«bundle //test code
+	Â«local (s = "X-Sender: dave@scripting.com\r\nX-Mailer: Random mail program\r\nDate: Tue, 22 Sep 1998 06:55:54 -0700\r\nTo: dave@userland.com\r\nFrom: Dave Winer <dave@userland.com>\r\nSubject: Test message\r\n\r\nHello, this is a test. Dave")
+	Â«new (tabletype, @scratchpad.mailparts)
+	Â«mailMessageToTable (s, @scratchpad.mailparts)
+	Â«edit (@scratchpad.mailparts)
+	Â«window.zoom (@scratchpad.mailparts)

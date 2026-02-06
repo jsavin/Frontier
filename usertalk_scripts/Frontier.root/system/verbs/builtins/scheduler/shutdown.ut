@@ -1,1 +1,12 @@
-«9/10/99; 2:07:19 PM by DW	«This script is called from system.shutdown.shutdownscript.	«It removes all traces of the threads from user.scheduler.threads.	«Changes:		«11/15/99; 12:42:19 AM by PBS			«Not needed if version is 6.1b5 or greater.if date.versionLessThan (Frontier.version (), "6.1b5") {	local (fl = user.scheduler.prefs.runThreads);	user.scheduler.prefs.runThreads = false;	scheduler.monitor ();	user.scheduler.prefs.runThreads = fl};return (true)
+Â«9/10/99; 2:07:19 PM by DW
+	Â«This script is called from system.shutdown.shutdownscript.
+	Â«It removes all traces of the threads from user.scheduler.threads.
+	Â«Changes:
+		Â«11/15/99; 12:42:19 AM by PBS
+			Â«Not needed if version is 6.1b5 or greater.
+if date.versionLessThan (Frontier.version (), "6.1b5") {
+	local (fl = user.scheduler.prefs.runThreads);
+	user.scheduler.prefs.runThreads = false;
+	scheduler.monitor ();
+	user.scheduler.prefs.runThreads = fl};
+return (true)

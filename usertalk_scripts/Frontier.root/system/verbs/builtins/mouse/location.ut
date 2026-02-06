@@ -1,1 +1,2 @@
-on location () {	kernel (mouse.location)}
+on location () {
+	kernel (mouse.location)}

@@ -1,1 +1,2 @@
-on alertDialog (s) {	return (appleEvent (app.id, 'app1', 'alrt', '----', string (s)))}
+on alertDialog (s) {
+	return (appleEvent (app.id, 'app1', 'alrt', '----', string (s)))}

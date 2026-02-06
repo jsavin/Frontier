@@ -1,1 +1,58 @@
-on register (email, password, name, adrgreeting = nil, adrdata = @xmlStorageSystem.data, adrresponse = nil) {	«Changes		«6/23/05; 9:23:08 PM by MB			«Updated version number inclusion in useragent for Radio		«10/6/01; 2:10:07 AM by JES			«Commented out debugging code.		«10/6/01; 1:55:51 AM by JES			«Send the serial number as a parameter in the RPC request.			«New optional parameter, adrresponse. If not nil, the entire response struct will be copied to adrresponse. This is required in order to get usernums back from an xmlStorageSystem server.		«7/23/01; 9:45:30 PM by JES			«The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.		«4/2/01; 7:58:22 AM by DW			«Created. Send a registerUser message to the cloud, returning true if the user is registered, false if there was a failure.			«email is an email address, it could be fictitious, it identifies the user. 			«We send an MD5 hash of the password to the server.			«The user's name is displayed in various lists, it's nice to know people's real name. You may lie if you want.			«adrgreeting points to a string that will receive the English-language message from the server, but it's optional. 	local (useragent);	local (version = Frontier.version ());	bundle { //set useragent		if system.environment.isPike {			useragent = "Radio UserLand";			if defined (radio.version) {				version = radio.version ()}}		else {			useragent = "UserLand Frontier"};		useragent = useragent + " v" + version + ", " + system.environment.osFullNameForDisplay + " " + system.environment.osVersionString};	local (params = {"email":email, "name":name, "password":string.hashmd5 (password), "clientPort":user.inetd.config.http.port, "userAgent":useragent});	if defined (adrdata^.serialNumber) {		params = params + {"serialNumber":user.prefs.serialNumber}};	local (rpcPath);	if defined (adrdata^.xmlRpcPath) {		rpcPath = adrdata^.xmlRpcPath};	if defined (adrdata^.rpcPath) {		rpcPath = adrdata^.rpcPath};	with adrdata^ {		local (result);		result = xml.rpc (server, port, "xmlStorageSystem.registerUser", @params, rpcPath:rpcPath, fldebug:fldebug, protocol:protocol, soapAction:soapAction);		if adrgreeting != nil {			adrgreeting^ = result.message};		if adrresponse != nil {			adrresponse^ = result};		return (not result.flerror)}};«bundle //test code	«local (greeting)	«local (data); new (tableType, @data)	«bundle //init data table		«data.fldebug = false		«data.port = 80		«data.protocol = "xml-rpc"		«data.server = "xmlstoragesystem.com"		«data.xmlRpcPath = "/RPC2"		«data.soapAction = "/xmlStorageSystem"		«data.serialNumber = user.prefs.serialNumber	«xmlStorageSystem.init ()	«with user.xmlStorageSystem		«register (email, password, name, @greeting, @data)	«dialog.alert (greeting)
+on register (email, password, name, adrgreeting = nil, adrdata = @xmlStorageSystem.data, adrresponse = nil) {
+	Â«Changes
+		Â«6/23/05; 9:23:08 PM by MB
+			Â«Updated version number inclusion in useragent for Radio
+		Â«10/6/01; 2:10:07 AM by JES
+			Â«Commented out debugging code.
+		Â«10/6/01; 1:55:51 AM by JES
+			Â«Send the serial number as a parameter in the RPC request.
+			Â«New optional parameter, adrresponse. If not nil, the entire response struct will be copied to adrresponse. This is required in order to get usernums back from an xmlStorageSystem server.
+		Â«7/23/01; 9:45:30 PM by JES
+			Â«The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.
+		Â«4/2/01; 7:58:22 AM by DW
+			Â«Created. Send a registerUser message to the cloud, returning true if the user is registered, false if there was a failure.
+			Â«email is an email address, it could be fictitious, it identifies the user. 
+			Â«We send an MD5 hash of the password to the server.
+			Â«The user's name is displayed in various lists, it's nice to know people's real name. You may lie if you want.
+			Â«adrgreeting points to a string that will receive the English-language message from the server, but it's optional. 
+	local (useragent);
+	local (version = Frontier.version ());
+	bundle { //set useragent
+		if system.environment.isPike {
+			useragent = "Radio UserLand";
+			if defined (radio.version) {
+				version = radio.version ()}}
+		else {
+			useragent = "UserLand Frontier"};
+		useragent = useragent + " v" + version + ", " + system.environment.osFullNameForDisplay + " " + system.environment.osVersionString};
+	local (params = {"email":email, "name":name, "password":string.hashmd5 (password), "clientPort":user.inetd.config.http.port, "userAgent":useragent});
+	if defined (adrdata^.serialNumber) {
+		params = params + {"serialNumber":user.prefs.serialNumber}};
+	local (rpcPath);
+	if defined (adrdata^.xmlRpcPath) {
+		rpcPath = adrdata^.xmlRpcPath};
+	if defined (adrdata^.rpcPath) {
+		rpcPath = adrdata^.rpcPath};
+	with adrdata^ {
+		local (result);
+		result = xml.rpc (server, port, "xmlStorageSystem.registerUser", @params, rpcPath:rpcPath, fldebug:fldebug, protocol:protocol, soapAction:soapAction);
+		if adrgreeting != nil {
+			adrgreeting^ = result.message};
+		if adrresponse != nil {
+			adrresponse^ = result};
+		return (not result.flerror)}};
+Â«bundle //test code
+	Â«local (greeting)
+	Â«local (data); new (tableType, @data)
+	Â«bundle //init data table
+		Â«data.fldebug = false
+		Â«data.port = 80
+		Â«data.protocol = "xml-rpc"
+		Â«data.server = "xmlstoragesystem.com"
+		Â«data.xmlRpcPath = "/RPC2"
+		Â«data.soapAction = "/xmlStorageSystem"
+		Â«data.serialNumber = user.prefs.serialNumber
+	Â«xmlStorageSystem.init ()
+	Â«with user.xmlStorageSystem
+		Â«register (email, password, name, @greeting, @data)
+	Â«dialog.alert (greeting)

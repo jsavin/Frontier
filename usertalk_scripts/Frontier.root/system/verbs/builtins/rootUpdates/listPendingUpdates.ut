@@ -1,1 +1,29 @@
-on listPendingUpdates (adrUpdatesTable) {	«Changes		«12/16/03; 2:03:59 AM by JES			«Created. List the pending root updates available from UserLand, which have not yet been downloaded/installed.	«IMPORTANT: If future changes are made to this script, they must run outside the website framework, since we also call through here to send HTML-email.	local (htext="");	on add (s) {		htext = htext + (s + "\r");};		bundle { //build the HTML text		if defined (adrUpdatesTable^) {			if defined (adrUpdatesTable^.pendingUpdates) {				if sizeOf (adrUpdatesTable^.pendingUpdates) > 0 {					local (ctupdates = sizeOf (adrUpdatesTable^.pendingUpdates), i);					for i = ctupdates downto 1 {						local (adr = @adrUpdatesTable^.pendingUpdates[i]);						local (title = adr^.data.title);						local (link = adr^.data.link);						local (description = adr^.data.description);						local (pubdate = date.shortString (date (adr^.data.pubdate)));						add ("<b>" + (ctupdates - i + 1) + ". <a href=\"" + link + "\" title=\"Click to read more about this feature.\">" + title + "</a></b><br>");						add (description + "<br>");						add ("<font size=\"-1\" class=\"small\"><i>Released " + pubdate + ".</i></font>");						if i > 1 {							add ("<hr size=\"1\" width=\"100%\">")}};					return (htext)}}}};	return ("There are no new features or bug fixes to list at this time.")};«bundle //test code	«listPendingUpdates ()
+on listPendingUpdates (adrUpdatesTable) {
+	Â«Changes
+		Â«12/16/03; 2:03:59 AM by JES
+			Â«Created. List the pending root updates available from UserLand, which have not yet been downloaded/installed.
+	Â«IMPORTANT: If future changes are made to this script, they must run outside the website framework, since we also call through here to send HTML-email.
+	local (htext="");
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	bundle { //build the HTML text
+		if defined (adrUpdatesTable^) {
+			if defined (adrUpdatesTable^.pendingUpdates) {
+				if sizeOf (adrUpdatesTable^.pendingUpdates) > 0 {
+					local (ctupdates = sizeOf (adrUpdatesTable^.pendingUpdates), i);
+					for i = ctupdates downto 1 {
+						local (adr = @adrUpdatesTable^.pendingUpdates[i]);
+						local (title = adr^.data.title);
+						local (link = adr^.data.link);
+						local (description = adr^.data.description);
+						local (pubdate = date.shortString (date (adr^.data.pubdate)));
+						add ("<b>" + (ctupdates - i + 1) + ". <a href=\"" + link + "\" title=\"Click to read more about this feature.\">" + title + "</a></b><br>");
+						add (description + "<br>");
+						add ("<font size=\"-1\" class=\"small\"><i>Released " + pubdate + ".</i></font>");
+						if i > 1 {
+							add ("<hr size=\"1\" width=\"100%\">")}};
+					return (htext)}}}};
+	return ("There are no new features or bug fixes to list at this time.")};
+Â«bundle //test code
+	Â«listPendingUpdates ()

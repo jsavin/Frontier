@@ -1,1 +1,73 @@
-on releaseRenderedPage (adrObject = table.getCursorAddress ()) {	«Changes notes:		«Allow binary items in any table -- images, for example -- to be published.		«Tue, Aug 11, 1998 at 8:50:23 PM by PBS	local (flShiftKey = kb.shiftKey ()); //sample it before we build the page	local (s, adrPageTable = @websites.["#data"], url);	local (flDisplayEachRendering = false);		bundle { //Don't publish certain objects as pages. PBS 5/3/98		on noPageError () {			dialog.alert ("Can't publish \"" + nameOf (adrObject^) + "\" because it's not a page.")};		on checkParent (adr) {			«Check if this object is enclosed by a table whose name begins with #				«If so, this isn't a page, but a tool, glossary item, filter, or ftpSite element.			local (nomad = adr);			loop {				if nomad == nil or nomad == @root {					break};				if nameOf (nomad^) beginsWith "#" {					return (false)};				nomad = parentOf (nomad^)};			return (true)};		if typeOf (adrObject^) != binaryType {			case true {				adrObject == nil; //no page is selected				typeOf (adrObject^) == unknownType; //it's an object with no type or content				checkParent (adrObject) == false { //it's a #template or #prefs table, etc.					noPageError ();					return (false)}}}};		on buildPage (templateName=nil) {		local (flDisplay = true);		«Call file writer startup script.			«Tuesday, April 14, 1998 at 3:41:48 PM by PBS		html.callFileWriterStartup (adrObject, adrPageTable, templateName);				«Build the page.		s = html.buildObject (adrObject, adrPageTable, templateName);				«Write the page to disk (or upload via ftp, etc.)		html.ftpText (s, adrPageTable);				«Call file writer shutdown script.		html.callFileWriterShutdown (adrObject, adrPageTable, templateName);				«Should this page be displayed in the browser?		if templateName != nil {			if not flDisplayEachRendering {				flDisplay = false}};				«Show in browser.		if flDisplay {			if (string.lower (adrPageTable^.fileWriter) == "file") and (not flShiftKey) {				webBrowser.openDocument (adrPageTable^.f)}			else {				webBrowser.openURL (adrPageTable^.url)};			if user.webBrowser.bringToFrontOnPreview {				webBrowser.bringToFront ()}}};		bundle { //are there additional templates that should be used?		local (templateList = html.getExtraTemplates (adrObject));		if templateList {			«Get the displayEachRendering pref.			flDisplayEachRendering = html.getPagePref ("displayEachRendering", parentOf (adrObject^), adrPageTable);						«Loop through list of templates.			local (i);			for i = 1 to sizeOf (templateList) {				buildPage (templateList [i])}}};		buildPage (); //build page with default template last		return (true)}
+on releaseRenderedPage (adrObject = table.getCursorAddress ()) {
+	Â«Changes notes:
+		Â«Allow binary items in any table -- images, for example -- to be published.
+		Â«Tue, Aug 11, 1998 at 8:50:23 PM by PBS
+	local (flShiftKey = kb.shiftKey ()); //sample it before we build the page
+	local (s, adrPageTable = @websites.["#data"], url);
+	local (flDisplayEachRendering = false);
+	
+	bundle { //Don't publish certain objects as pages. PBS 5/3/98
+		on noPageError () {
+			dialog.alert ("Can't publish \"" + nameOf (adrObject^) + "\" because it's not a page.")};
+		on checkParent (adr) {
+			Â«Check if this object is enclosed by a table whose name begins with #
+				Â«If so, this isn't a page, but a tool, glossary item, filter, or ftpSite element.
+			local (nomad = adr);
+			loop {
+				if nomad == nil or nomad == @root {
+					break};
+				if nameOf (nomad^) beginsWith "#" {
+					return (false)};
+				nomad = parentOf (nomad^)};
+			return (true)};
+		if typeOf (adrObject^) != binaryType {
+			case true {
+				adrObject == nil; //no page is selected
+				typeOf (adrObject^) == unknownType; //it's an object with no type or content
+				checkParent (adrObject) == false { //it's a #template or #prefs table, etc.
+					noPageError ();
+					return (false)}}}};
+	
+	on buildPage (templateName=nil) {
+		local (flDisplay = true);
+		Â«Call file writer startup script.
+			Â«Tuesday, April 14, 1998 at 3:41:48 PM by PBS
+		html.callFileWriterStartup (adrObject, adrPageTable, templateName);
+		
+		Â«Build the page.
+		s = html.buildObject (adrObject, adrPageTable, templateName);
+		
+		Â«Write the page to disk (or upload via ftp, etc.)
+		html.ftpText (s, adrPageTable);
+		
+		Â«Call file writer shutdown script.
+		html.callFileWriterShutdown (adrObject, adrPageTable, templateName);
+		
+		Â«Should this page be displayed in the browser?
+		if templateName != nil {
+			if not flDisplayEachRendering {
+				flDisplay = false}};
+		
+		Â«Show in browser.
+		if flDisplay {
+			if (string.lower (adrPageTable^.fileWriter) == "file") and (not flShiftKey) {
+				webBrowser.openDocument (adrPageTable^.f)}
+			else {
+				webBrowser.openURL (adrPageTable^.url)};
+			if user.webBrowser.bringToFrontOnPreview {
+				webBrowser.bringToFront ()}}};
+	
+	bundle { //are there additional templates that should be used?
+		local (templateList = html.getExtraTemplates (adrObject));
+		if templateList {
+			Â«Get the displayEachRendering pref.
+			flDisplayEachRendering = html.getPagePref ("displayEachRendering", parentOf (adrObject^), adrPageTable);
+			
+			Â«Loop through list of templates.
+			local (i);
+			for i = 1 to sizeOf (templateList) {
+				buildPage (templateList [i])}}};
+	
+	buildPage (); //build page with default template last
+	
+	return (true)}

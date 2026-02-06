@@ -1,1 +1,11 @@
-on detachServiceFromGroup (groupName, serviceName) {	«Remove a service from a group.	local (adrGroup);	if not (people.groupExists (groupName)) {		return (false)};	if not (people.serviceExists (serviceName)) {		return (false)};	adrGroup = people.getGroupTable (groupName);	«adrGroup^.services.[serviceName].enabled = false	delete (@adrGroup^.services.[serviceName]);	return (true)}
+on detachServiceFromGroup (groupName, serviceName) {
+	Â«Remove a service from a group.
+	local (adrGroup);
+	if not (people.groupExists (groupName)) {
+		return (false)};
+	if not (people.serviceExists (serviceName)) {
+		return (false)};
+	adrGroup = people.getGroupTable (groupName);
+	Â«adrGroup^.services.[serviceName].enabled = false
+	delete (@adrGroup^.services.[serviceName]);
+	return (true)}

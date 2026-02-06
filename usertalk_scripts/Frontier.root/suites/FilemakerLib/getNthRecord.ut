@@ -1,1 +1,14 @@
-on getNthRecord (db, recordNum, theLayout = 0, foundSet = true, reportError = false) {	on doIt () {		with objectModel, filemaker {			if foundSet {				return (get (window [db].layout[theLayout].record[recordNum]))}			else {				return (get (database [db].layout[theLayout].record[recordNum]))}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on getNthRecord (db, recordNum, theLayout = 0, foundSet = true, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			if foundSet {
+				return (get (window [db].layout[theLayout].record[recordNum]))}
+			else {
+				return (get (database [db].layout[theLayout].record[recordNum]))}}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

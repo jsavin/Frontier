@@ -1,1 +1,12 @@
-on getCellByRecordID (db, theCell, recordID, theLayout=0, reportError = false) {	«Get the data for a cell in a record whose uniqueID is recordID.	on doIt () {		with objectModel, filemaker {			get (database [db].layout [theLayout]. record [id2:recordID].cell [theCell])}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on getCellByRecordID (db, theCell, recordID, theLayout=0, reportError = false) {
+	Â«Get the data for a cell in a record whose uniqueID is recordID.
+	on doIt () {
+		with objectModel, filemaker {
+			get (database [db].layout [theLayout]. record [id2:recordID].cell [theCell])}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

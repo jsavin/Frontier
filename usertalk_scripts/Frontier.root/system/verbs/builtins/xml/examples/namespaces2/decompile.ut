@@ -1,1 +1,3 @@
-with xml.examples.namespaces2 {	wp.newtextobject (xml.decompile (@tableStructure), @scratchpad.namespaces2Text);	edit (@scratchpad.namespaces2Text)}
+with xml.examples.namespaces2 {
+	wp.newtextobject (xml.decompile (@tableStructure), @scratchpad.namespaces2Text);
+	edit (@scratchpad.namespaces2Text)}

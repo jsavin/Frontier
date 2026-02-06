@@ -1,1 +1,16 @@
-local (adrtable = @websites.dw.crossPlatformWork.iso8859work.table);table.emptytable (adrtable);local (f = "c:\\frontier 5\\test.txt", s, ch, code);s = string (file.readwholefile (f));while sizeof (s) > 0 {	while s [1] == ' ' {		s = string.delete (s, 1, 1)};	ch = s [1];	s = string.delete (s, 1, 1);	while s [1] == ' ' {		s = string.delete (s, 1, 1)};	code = string.nthfield (s, '\r', 1);	msg (code);	adrtable^.[string (number (ch))] = "&" + (code  - " ") + ";";	s = string.delete (s, 1, sizeof (code) + 2)};msg (sizeof (s))
+local (adrtable = @websites.dw.crossPlatformWork.iso8859work.table);
+table.emptytable (adrtable);
+local (f = "c:\\frontier 5\\test.txt", s, ch, code);
+s = string (file.readwholefile (f));
+while sizeof (s) > 0 {
+	while s [1] == ' ' {
+		s = string.delete (s, 1, 1)};
+	ch = s [1];
+	s = string.delete (s, 1, 1);
+	while s [1] == ' ' {
+		s = string.delete (s, 1, 1)};
+	code = string.nthfield (s, '\r', 1);
+	msg (code);
+	adrtable^.[string (number (ch))] = "&" + (code  - " ") + ";";
+	s = string.delete (s, 1, sizeof (code) + 2)};
+msg (sizeof (s))

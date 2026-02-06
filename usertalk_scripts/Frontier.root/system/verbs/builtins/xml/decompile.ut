@@ -1,1 +1,2 @@
-on decompile (adrtable) { //turn a Frontier-table structure into XML text	kernel (xml.decompile)}
+on decompile (adrtable) { //turn a Frontier-table structure into XML text
+	kernel (xml.decompile)}

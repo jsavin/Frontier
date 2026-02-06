@@ -1,1 +1,9 @@
-local (folder = "Macintosh HD:New Releases:Frontier:");«local (miscfolder = folder + "Misc Stuff:")local (f = "Macintosh HD:New Releases:binhex files:frontier4.0b7.sit");userland.data.frontierurl = "<a href=\"ftp://166.90.1.200/pub/dwiner/apps/frontier4.0b7.sit.hqx\">download Frontier</a>";«file.copy ("Macintosh HD:New Releases:Website Scripting for BBEdit:default.html", )file.writewholefile (miscfolder + "Website Scripting", string (websites.frontier.apps.bbedit), 'TEXT', BBEdit.id, clock.now ());stuff.createArchive (f, {folder}, true);f = f + ".hqx";file.copy (f, file.resolveAlias ("Macintosh HD:Desktop Folder:FTP Agent:apps:") + file.filefrompath (f))
+local (folder = "Macintosh HD:New Releases:Frontier:");
+Â«local (miscfolder = folder + "Misc Stuff:")
+local (f = "Macintosh HD:New Releases:binhex files:frontier4.0b7.sit");
+userland.data.frontierurl = "<a href=\"ftp://166.90.1.200/pub/dwiner/apps/frontier4.0b7.sit.hqx\">download Frontier</a>";
+Â«file.copy ("Macintosh HD:New Releases:Website Scripting for BBEdit:default.html", )
+file.writewholefile (miscfolder + "Website Scripting", string (websites.frontier.apps.bbedit), 'TEXT', BBEdit.id, clock.now ());
+stuff.createArchive (f, {folder}, true);
+f = f + ".hqx";
+file.copy (f, file.resolveAlias ("Macintosh HD:Desktop Folder:FTP Agent:apps:") + file.filefrompath (f))

@@ -1,1 +1,31 @@
-on tableContains (adrTable, adrItem) { //4.2	«Change Notes:		«10/4/04; 7:08:23 PM by JES			«Properly handle objects inside sub-tables which are not defined, rather than cause an error. Change suggested by DAB.		«5/18/98 PBS			«Use parentOf instead of string manipulation.			«More reliable, will work with guest databases.			«Old code:				«if string.lower (adrTable) beginsWith "root."					«adrTable = string.mid (adrTable, 6, infinity)				«if string.lower (adrItem) beginsWith "root."					«adrTable = string.mid (adrItem, 6, infinity)				«return (string.lower (adrItem) beginsWith string.lower (adrTable))		«4/6/98 PBS			«Compare with string.lower.		«2/12/98 at 3:14:52 PM by PBS			«Sometimes the addresses begin with "root.", sometimes not.			«Take that into account.		«10/31/97 at 1:25:00 PM by DW -- moved from toys.tableContains			«return true if adritem points to something contained within the table	adrTable = address (adrTable);	local (nomad = adrItem);	if not defined (nomad^) or typeOf (nomad^) != tableType { //01/03/23, 14:22:48 by DAB		nomad = parentOf (nomad^)};	loop {		if nomad == adrTable {			return (true)};		nomad = parentOf (nomad^);		if nomad == nil {			return (false)}}};«tablecontains(@scratchpad, @mainresponder.nosuchaddress)
+on tableContains (adrTable, adrItem) { //4.2
+	Â«Change Notes:
+		Â«10/4/04; 7:08:23 PM by JES
+			Â«Properly handle objects inside sub-tables which are not defined, rather than cause an error. Change suggested by DAB.
+		Â«5/18/98 PBS
+			Â«Use parentOf instead of string manipulation.
+			Â«More reliable, will work with guest databases.
+			Â«Old code:
+				Â«if string.lower (adrTable) beginsWith "root."
+					Â«adrTable = string.mid (adrTable, 6, infinity)
+				Â«if string.lower (adrItem) beginsWith "root."
+					Â«adrTable = string.mid (adrItem, 6, infinity)
+				Â«return (string.lower (adrItem) beginsWith string.lower (adrTable))
+		Â«4/6/98 PBS
+			Â«Compare with string.lower.
+		Â«2/12/98 at 3:14:52 PM by PBS
+			Â«Sometimes the addresses begin with "root.", sometimes not.
+			Â«Take that into account.
+		Â«10/31/97 at 1:25:00 PM by DW -- moved from toys.tableContains
+			Â«return true if adritem points to something contained within the table
+	adrTable = address (adrTable);
+	local (nomad = adrItem);
+	if not defined (nomad^) or typeOf (nomad^) != tableType { //01/03/23, 14:22:48 by DAB
+		nomad = parentOf (nomad^)};
+	loop {
+		if nomad == adrTable {
+			return (true)};
+		nomad = parentOf (nomad^);
+		if nomad == nil {
+			return (false)}}};
+Â«tablecontains(@scratchpad, @mainresponder.nosuchaddress)

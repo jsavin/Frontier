@@ -1,1 +1,4 @@
-on tiny () {	«Run the "tiny" Common Styles command.		«09/29/00; 6:01:34 PM by PBS	menus.scripts.styleCommand ("tiny")}
+on tiny () {
+	Â«Run the "tiny" Common Styles command.
+		Â«09/29/00; 6:01:34 PM by PBS
+	menus.scripts.styleCommand ("tiny")}

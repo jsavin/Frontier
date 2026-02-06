@@ -1,1 +1,4 @@
-on setObjectSeeThru (name, flag) {	new (tableType, @atts);	atts.tran = boolean (flag);	return (card.setObjectAttributes (name, @atts))}
+on setObjectSeeThru (name, flag) {
+	new (tableType, @atts);
+	atts.tran = boolean (flag);
+	return (card.setObjectAttributes (name, @atts))}

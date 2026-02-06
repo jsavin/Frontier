@@ -1,1 +1,2 @@
-on isFolder (path) {	kernel (file.isfolder)}
+on isFolder (path) {
+	kernel (file.isfolder)}

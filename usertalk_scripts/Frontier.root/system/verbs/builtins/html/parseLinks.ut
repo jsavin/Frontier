@@ -1,1 +1,33 @@
-on parseLinks (htmltext, adrlinks) {	«Changes		«6/3/02; 7:59:19 AM by DW			«Created. 			«A very simple parser with a single goal, pull all the <links> out of an HTML document, and return a table with the extracted information. 			«Each sub-table of the table pointed to by adrlinks will contain the attributes of one of the <link>s. We use a trick to build this, for each link element, we convert it to XML and pass it through xml.compile. Its attributes sub-table is then copied into the returned links table. Works like a charm.			«We don't make sure that it's valid HTML. In other words, it will accept link elements that are in the body, not just in the head. 			«If there's an error, adrlinks contains the links we found before the error, we return false.	local (s = string.lower (htmltext), ct = 1);	new (tabletype, adrlinks);	try {		loop {			local (ix = string.patternmatch ("<link", s));			if ix == 0 {				break};			s = string.delete (s, 1, ix - 1);			ix = string.patternmatch (">", s);			local (linktext = string.mid (s, 1, ix));			s = string.delete (s, 1, ix);						local (linkstruct);			if not (linktext endswith "/>") {				linktext = string.replace (linktext, ">", "/>")};			xml.compile (linktext, @linkstruct);			local (adrsubtable = @adrlinks^.[string.padwithzeros (ct++, 3)]);			adrsubtable^ = linkstruct [1].["/atts"]};		return (true)}	else {		return (false)}};«bundle //test code	«if not defined (scratchpad.dhrbhome)		«scratchpad.dhrbhome = tcp.httpreadurl ("http://radio.weblogs.com/0001015/")	«parselinks (scratchpad.dhrbhome, @scratchpad.links)
+on parseLinks (htmltext, adrlinks) {
+	Â«Changes
+		Â«6/3/02; 7:59:19 AM by DW
+			Â«Created. 
+			Â«A very simple parser with a single goal, pull all the <links> out of an HTML document, and return a table with the extracted information. 
+			Â«Each sub-table of the table pointed to by adrlinks will contain the attributes of one of the <link>s. We use a trick to build this, for each link element, we convert it to XML and pass it through xml.compile. Its attributes sub-table is then copied into the returned links table. Works like a charm.
+			Â«We don't make sure that it's valid HTML. In other words, it will accept link elements that are in the body, not just in the head. 
+			Â«If there's an error, adrlinks contains the links we found before the error, we return false.
+	local (s = string.lower (htmltext), ct = 1);
+	new (tabletype, adrlinks);
+	try {
+		loop {
+			local (ix = string.patternmatch ("<link", s));
+			if ix == 0 {
+				break};
+			s = string.delete (s, 1, ix - 1);
+			ix = string.patternmatch (">", s);
+			local (linktext = string.mid (s, 1, ix));
+			s = string.delete (s, 1, ix);
+			
+			local (linkstruct);
+			if not (linktext endswith "/>") {
+				linktext = string.replace (linktext, ">", "/>")};
+			xml.compile (linktext, @linkstruct);
+			local (adrsubtable = @adrlinks^.[string.padwithzeros (ct++, 3)]);
+			adrsubtable^ = linkstruct [1].["/atts"]};
+		return (true)}
+	else {
+		return (false)}};
+Â«bundle //test code
+	Â«if not defined (scratchpad.dhrbhome)
+		Â«scratchpad.dhrbhome = tcp.httpreadurl ("http://radio.weblogs.com/0001015/")
+	Â«parselinks (scratchpad.dhrbhome, @scratchpad.links)

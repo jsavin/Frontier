@@ -1,1 +1,15 @@
-case sys.os () {	"MacCn";	"MacOS" {		local (url = webbrowser.getfrontwindowurl (), s, i);		url = url - "http://";		for i = 1 to sizeof (url) {			if url [i] == "/" {				msg (url [i]);				url = string.mid (url, 1, i - 1);				break}};		url = url - "www.";		if dialog.ask ("Who is?", @url) {			netEvents.launch ();			s = netEvents.examples.whois (url);			webbrowser.displaytext ("<html><body><pre>" + s + "</pre></body></html>")}}}
+case sys.os () {
+	"MacCn";
+	"MacOS" {
+		local (url = webbrowser.getfrontwindowurl (), s, i);
+		url = url - "http://";
+		for i = 1 to sizeof (url) {
+			if url [i] == "/" {
+				msg (url [i]);
+				url = string.mid (url, 1, i - 1);
+				break}};
+		url = url - "www.";
+		if dialog.ask ("Who is?", @url) {
+			netEvents.launch ();
+			s = netEvents.examples.whois (url);
+			webbrowser.displaytext ("<html><body><pre>" + s + "</pre></body></html>")}}}

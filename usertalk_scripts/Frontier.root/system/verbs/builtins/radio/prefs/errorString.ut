@@ -1,1 +1,2 @@
-on errorstring (s) {	return ("<tr><td colspan=\"2\"><font color=\"#" + red + "\">" + s + "</font></td></tr>")}
+on errorstring (s) {
+	return ("<tr><td colspan=\"2\"><font color=\"#" + red + "\">" + s + "</font></td></tr>")}

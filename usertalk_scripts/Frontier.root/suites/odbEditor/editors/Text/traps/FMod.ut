@@ -1,1 +1,26 @@
-on FMod (fsFileBeingModified, fsNewLocation=nil) {	«scratchpad.fsFileBeingModified = fsFileBeingModified	«scratchpad.fsNewLocation = fsNewLocation	local (adrfiletable = @user.odbEditors.data.openfiles, i);	for i = 1 to sizeof (adrfiletable) {		if adrfiletable^ [i] [1] == fsFileBeingModified {			local (filetext);			if file.exists (fsNewLocation) {				adrfiletable^ [i] [1] = fsNewLocation;				filetext = string (file.readwholefile (fsNewLocation))}			else {				filetext = string (file.readwholefile (fsFileBeingModified))};			local (adrobject = adrfiletable^ [i] [2]);			case typeof (adrobject^) {				stringtype {					adrobject^ = filetext;					fileMenu.saveMyRoot (adrobject)}; //PBS 2/9/99				wptexttype {					target.set (adrobject);					wp.settext (filetext);					target.clear ();					fileMenu.saveMyRoot (adrObject)}} //PBS 2/9/99			else {				dialog.alert ("Can't save objects whose type is '" + typeof (adrobject^) + "' in the object database.")};			break}};	return (true)}
+on FMod (fsFileBeingModified, fsNewLocation=nil) {
+	Â«scratchpad.fsFileBeingModified = fsFileBeingModified
+	Â«scratchpad.fsNewLocation = fsNewLocation
+	local (adrfiletable = @user.odbEditors.data.openfiles, i);
+	for i = 1 to sizeof (adrfiletable) {
+		if adrfiletable^ [i] [1] == fsFileBeingModified {
+			local (filetext);
+			if file.exists (fsNewLocation) {
+				adrfiletable^ [i] [1] = fsNewLocation;
+				filetext = string (file.readwholefile (fsNewLocation))}
+			else {
+				filetext = string (file.readwholefile (fsFileBeingModified))};
+			local (adrobject = adrfiletable^ [i] [2]);
+			case typeof (adrobject^) {
+				stringtype {
+					adrobject^ = filetext;
+					fileMenu.saveMyRoot (adrobject)}; //PBS 2/9/99
+				wptexttype {
+					target.set (adrobject);
+					wp.settext (filetext);
+					target.clear ();
+					fileMenu.saveMyRoot (adrObject)}} //PBS 2/9/99
+			else {
+				dialog.alert ("Can't save objects whose type is '" + typeof (adrobject^) + "' in the object database.")};
+			break}};
+	return (true)}

@@ -1,1 +1,2 @@
-on getFullVersion (path) {	kernel (file.getfullversion)}
+on getFullVersion (path) {
+	kernel (file.getfullversion)}

@@ -1,1 +1,7 @@
-on decodeAmpersands (s) {	s = string.replaceAll (s, "&lt;", "<");	s = string.replaceAll (s, "&gt;", ">");	s = string.replaceAll (s, "&quot;", "\"");	s = string.replaceAll (s, "&apos;", "\'");	s = string.replaceAll (s, "&amp;", "&");	return (s)}
+on decodeAmpersands (s) {
+	s = string.replaceAll (s, "&lt;", "<");
+	s = string.replaceAll (s, "&gt;", ">");
+	s = string.replaceAll (s, "&quot;", "\"");
+	s = string.replaceAll (s, "&apos;", "\'");
+	s = string.replaceAll (s, "&amp;", "&");
+	return (s)}

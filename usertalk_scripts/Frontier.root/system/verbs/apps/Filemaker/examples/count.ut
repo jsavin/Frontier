@@ -1,1 +1,28 @@
-«Examples of syntax for the "count()" verb	«be sure the State Capitals database is open before running this		«If you do not alread have this database you can create a simple database		«with two fields, the first being "Name" the second "Capitol"	«Step through this script and use lookup to watch the value of scratchVar«The following are the objects the Count event can operate on:	«Windows	«Documents	«Databases	«FileMaker Scripts	«Layouts (layout 0 is never counted, however)	«Records	«Requests	«Fields	«Cells«syntax:	«on count (obj, class) «Return the number of elements of a particular class within an objectwith objectModel, Filemaker {	local {		scratchVar};	scratchVar=count(database[1],record);	scratchVar=count(database[1],cell); «cells in a database (records*cells)	scratchVar=count(document[1],record); «current found set	scratchVar=count(database[1].record[1],cell); «cells in record 1	scratchVar=count("",window); «counts windows, hidden windows are counted	scratchVar=count("",document); «counts documents	scratchVar=count(database[1],field);	scratchVar=0} «a step so that the last change to scratchVar can be seen in the lookup
+Â«Examples of syntax for the "count()" verb
+	Â«be sure the State Capitals database is open before running this
+		Â«If you do not alread have this database you can create a simple database
+		Â«with two fields, the first being "Name" the second "Capitol"
+	Â«Step through this script and use lookup to watch the value of scratchVar
+Â«The following are the objects the Count event can operate on:
+	Â«Windows
+	Â«Documents
+	Â«Databases
+	Â«FileMaker Scripts
+	Â«Layouts (layout 0 is never counted, however)
+	Â«Records
+	Â«Requests
+	Â«Fields
+	Â«Cells
+Â«syntax:
+	Â«on count (obj, class) Â«Return the number of elements of a particular class within an object
+with objectModel, Filemaker {
+	local {
+		scratchVar};
+	scratchVar=count(database[1],record);
+	scratchVar=count(database[1],cell); Â«cells in a database (records*cells)
+	scratchVar=count(document[1],record); Â«current found set
+	scratchVar=count(database[1].record[1],cell); Â«cells in record 1
+	scratchVar=count("",window); Â«counts windows, hidden windows are counted
+	scratchVar=count("",document); Â«counts documents
+	scratchVar=count(database[1],field);
+	scratchVar=0} Â«a step so that the last change to scratchVar can be seen in the lookup

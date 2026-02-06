@@ -1,1 +1,45 @@
-«Changes	«Saturday, August 12, 2000 at 9:36:47 PM by DW		«Called when the user 2clicks on a user node. We fill in the contents of their directory outline, in the indicated folder.	«Friday, August 25, 2000 at 12:15:48 PM by DW		«Don't expand all folders and sub-folders on initial expand. 	«Monday, August 28, 2000 at 5:41:57 PM by PBS		«Collapse the sub-outline before inserting it, to prevent the bug where the user's node jumps to the top of the window when it doesn't need to.	«Saturday, September 16, 2000 at 5:03:55 PM by PBS		«Ask for directory.opml first. If not found, ask for directory.xml.	«Wednesday, September 20, 2000 at 2:19:51 PM by PBS		«Call playlist.httpClient so the script can accept OPML documents.	«12/31/00; 5:56:10 PM by JES		«On Macs, convert opml text to Mac text before converting to an outline.local (url);op.attributes.getOne ("url", @url);local (xmlText);bundle { //PBS 09/16/00: get directory.opml or directory.xml	on getUrl (url, adrText) { //return false if file not found returned by server		local (urlList = string.urlSplit (url));		local (s = tcp.httpClient (server:urlList [2], path:urlList [3], flAcceptOpml:true));		local (code = string.nthField (s, ' ', 2));		if code == "404" {			return (false)};		adrText^ = string.httpResultSplit (s); //strip headers		return (true)};	local (oneDirectoryFileName);	for oneDirectoryFileName in playlist.data.upstream.directoryFileNames {		if getUrl (url + oneDirectoryFileName, @xmlText) {			break}};	if xmlText == nil {		scriptError ("Can't get directory.opml because the server reported that the file wasn't found.")}};local (localoutline);playlist.manila.convertToMac (@xmltext); //12/31/00 JESop.xmltooutline (xmltext, @localoutline);local (oldTarget = target.set (@localoutline)); //PBS 08/28/00: collapse sub-outline; fix display glitchop.fullCollapse ();target.set (oldTarget);op.deletesubs ();op.setdisplay (false);op.insertoutline (@localoutline, right);if date.versionLessThan (Frontier.version (), "7.0b13") {	op.go (left, 1)};op.collapse ();op.expand (1);op.setdisplay (true)
+Â«Changes
+	Â«Saturday, August 12, 2000 at 9:36:47 PM by DW
+		Â«Called when the user 2clicks on a user node. We fill in the contents of their directory outline, in the indicated folder.
+	Â«Friday, August 25, 2000 at 12:15:48 PM by DW
+		Â«Don't expand all folders and sub-folders on initial expand. 
+	Â«Monday, August 28, 2000 at 5:41:57 PM by PBS
+		Â«Collapse the sub-outline before inserting it, to prevent the bug where the user's node jumps to the top of the window when it doesn't need to.
+	Â«Saturday, September 16, 2000 at 5:03:55 PM by PBS
+		Â«Ask for directory.opml first. If not found, ask for directory.xml.
+	Â«Wednesday, September 20, 2000 at 2:19:51 PM by PBS
+		Â«Call playlist.httpClient so the script can accept OPML documents.
+	Â«12/31/00; 5:56:10 PM by JES
+		Â«On Macs, convert opml text to Mac text before converting to an outline.
+local (url);
+op.attributes.getOne ("url", @url);
+local (xmlText);
+bundle { //PBS 09/16/00: get directory.opml or directory.xml
+	on getUrl (url, adrText) { //return false if file not found returned by server
+		local (urlList = string.urlSplit (url));
+		local (s = tcp.httpClient (server:urlList [2], path:urlList [3], flAcceptOpml:true));
+		local (code = string.nthField (s, ' ', 2));
+		if code == "404" {
+			return (false)};
+		adrText^ = string.httpResultSplit (s); //strip headers
+		return (true)};
+	local (oneDirectoryFileName);
+	for oneDirectoryFileName in playlist.data.upstream.directoryFileNames {
+		if getUrl (url + oneDirectoryFileName, @xmlText) {
+			break}};
+	if xmlText == nil {
+		scriptError ("Can't get directory.opml because the server reported that the file wasn't found.")}};
+local (localoutline);
+playlist.manila.convertToMac (@xmltext); //12/31/00 JES
+op.xmltooutline (xmltext, @localoutline);
+local (oldTarget = target.set (@localoutline)); //PBS 08/28/00: collapse sub-outline; fix display glitch
+op.fullCollapse ();
+target.set (oldTarget);
+op.deletesubs ();
+op.setdisplay (false);
+op.insertoutline (@localoutline, right);
+if date.versionLessThan (Frontier.version (), "7.0b13") {
+	op.go (left, 1)};
+op.collapse ();
+op.expand (1);
+op.setdisplay (true)

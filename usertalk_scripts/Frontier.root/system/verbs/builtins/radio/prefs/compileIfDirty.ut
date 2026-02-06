@@ -1,1 +1,100 @@
-on compileIfDirty (adroutline) {	«Changes		«9/27/05; 12:39:31 AM by JES			«When running in mainResponder, preserve pathArgs, if present and non-empty.		«9/24/02; 12:51:45 AM by JES			«Decode ampersand entities in category and topic names. Needed for localization.		«3/6/02; 1:25:40 PM by JES			«Decode XML entities in explanatory text, so that HTML will render properly in the browser.		«3/6/02; 12:13:09 PM by JES			«When getting the base-url for the prefs page in Radio, first check to see if a corresponding entry exists in radio.data.systemUrls, and if not, then get the base-url from pta^.uri. Insert the text of headings with no subheadings, in place in the prefs home page.		«2/5/02; 11:50:13 AM by PBS			«Conditionalized to work in Frontier.		«1/9/02; 3:33:19 PM by JES			«Created.			«Check to see if the outline has changed, and update the cache, next/prev links and page titles if necessary. Returns the address of the cache table in system.temp.radio.prefsCache.	local (pta = html.getPageTableAddress ());		local (adrcache);	bundle { //find the cache for this outline		if not defined (system.temp.radio) { //PBS 02/05/02: this table may not exist in Frontier			new (tableType, @system.temp.radio)};		local (adr = @system.temp.radio.prefsCache);		if not defined (adr^) {			new (tabletype, adr)};		adr = @adr^.[string.popFileFromAddress (adroutline)];		if not defined (adr^) {			new (tabletype, adr)};		adrcache = adr};		local (flcompile, adrxstruct = @adrcache^.xstruct);	bundle { //compile the outline if it changed		flcompile = true;		if defined (adrxstruct^) {			if timemodified (adroutline) <= timemodified (adrxstruct) {				flcompile = false}};		if flcompile {			xml.compile (op.outlinetoxml (adroutline), adrxstruct)}};		local (adropml = xml.getAddress (adrxstruct, "opml"));	local (adrbody = xml.getAddress (adropml, "body"));		local (adrhomepagehtml = @adrcache^.homePageHtml, adrnextprevlist = @adrcache^.nextPrevList, adrpagetitles = @adrcache^.pagetitles);	if flcompile { //cache the text for the home page, create next-prevs list and cache it, and the page-titles table		adrnextprevlist^ = {};		new (tabletype, adrpagetitles);		local (htmltext = "", indentlevel = 0);		on add (s) {			htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};		local (adrcat, catnum = 1);		local (baseurl);		if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier			if defined (radio.data.systemurls.[nameOf (adroutline^)] ) {				baseurl = radio.data.systemurls.[nameOf (adroutline^)]}			else {				baseurl = pta^.uri}}		else { //not Radio -- assume mainResponder			baseurl = pta^.uri;			if defined (pta^.pathArgs) {				if pta^.pathArgs != "" {					baseurl = baseurl + "$" + pta^.pathArgs}}};		on hasSubs (adrcat) {			try {				xml.getAddress (adrcat, "outline");				return (true)};			return (false)};		for adrcat in adrbody {			if not (nameof (adrcat^) beginswith "/") {				local (catname = xml.getattributevalue (adrcat, "text"), adrtopic, topicnum = 1);				catname = string.replaceAll (catname, "&amp;", "&");				if hasSubs (adrcat) {					add ("<h4>" + catname + "</h4>")}				else { //explanatory text					add ("<p>" + xml.entityDecode (catname, true) + "</p>")};				local (flListStarted = false);				for adrtopic in adrcat {					if not (nameof (adrtopic^) beginswith "/") {						if hasSubs (adrtopic) {							if not flListStarted {								add ("<ul>"); indentlevel++;								flListStarted = true};							local (dottedid = catnum + "." + topicnum);							adrnextprevlist^ = adrnextprevlist^ + {dottedid};							local (url = baseurl + "?page=" + dottedid);							local (pagetitle = xml.getattributevalue (adrtopic, "text"));							pagetitle = string.replaceAll (pagetitle, "&amp;", "&");							adrpagetitles^.[pagetitle] = dottedid;							add ("<li><a href=\"" + url + "\">" + pagetitle + "</a></li>");							topicnum++}						else { //explanatory text							if flListStarted {								add ("</ul>"); indentlevel--;								flListStarted = false};							local (text = xml.entityDecode (xml.getattributevalue (adrtopic, "text"), true));							add ("<p>" + text + "</p>")}}};				if flListStarted {					add ("</ul>"); indentlevel--};				catnum++}};		adrhomepagehtml^ = htmltext};		return (adrcache)}
+on compileIfDirty (adroutline) {
+	Â«Changes
+		Â«9/27/05; 12:39:31 AM by JES
+			Â«When running in mainResponder, preserve pathArgs, if present and non-empty.
+		Â«9/24/02; 12:51:45 AM by JES
+			Â«Decode ampersand entities in category and topic names. Needed for localization.
+		Â«3/6/02; 1:25:40 PM by JES
+			Â«Decode XML entities in explanatory text, so that HTML will render properly in the browser.
+		Â«3/6/02; 12:13:09 PM by JES
+			Â«When getting the base-url for the prefs page in Radio, first check to see if a corresponding entry exists in radio.data.systemUrls, and if not, then get the base-url from pta^.uri. Insert the text of headings with no subheadings, in place in the prefs home page.
+		Â«2/5/02; 11:50:13 AM by PBS
+			Â«Conditionalized to work in Frontier.
+		Â«1/9/02; 3:33:19 PM by JES
+			Â«Created.
+			Â«Check to see if the outline has changed, and update the cache, next/prev links and page titles if necessary. Returns the address of the cache table in system.temp.radio.prefsCache.
+	local (pta = html.getPageTableAddress ());
+	
+	local (adrcache);
+	bundle { //find the cache for this outline
+		if not defined (system.temp.radio) { //PBS 02/05/02: this table may not exist in Frontier
+			new (tableType, @system.temp.radio)};
+		local (adr = @system.temp.radio.prefsCache);
+		if not defined (adr^) {
+			new (tabletype, adr)};
+		adr = @adr^.[string.popFileFromAddress (adroutline)];
+		if not defined (adr^) {
+			new (tabletype, adr)};
+		adrcache = adr};
+	
+	local (flcompile, adrxstruct = @adrcache^.xstruct);
+	bundle { //compile the outline if it changed
+		flcompile = true;
+		if defined (adrxstruct^) {
+			if timemodified (adroutline) <= timemodified (adrxstruct) {
+				flcompile = false}};
+		if flcompile {
+			xml.compile (op.outlinetoxml (adroutline), adrxstruct)}};
+	
+	local (adropml = xml.getAddress (adrxstruct, "opml"));
+	local (adrbody = xml.getAddress (adropml, "body"));
+	
+	local (adrhomepagehtml = @adrcache^.homePageHtml, adrnextprevlist = @adrcache^.nextPrevList, adrpagetitles = @adrcache^.pagetitles);
+	if flcompile { //cache the text for the home page, create next-prevs list and cache it, and the page-titles table
+		adrnextprevlist^ = {};
+		new (tabletype, adrpagetitles);
+		local (htmltext = "", indentlevel = 0);
+		on add (s) {
+			htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};
+		local (adrcat, catnum = 1);
+		local (baseurl);
+		if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier
+			if defined (radio.data.systemurls.[nameOf (adroutline^)] ) {
+				baseurl = radio.data.systemurls.[nameOf (adroutline^)]}
+			else {
+				baseurl = pta^.uri}}
+		else { //not Radio -- assume mainResponder
+			baseurl = pta^.uri;
+			if defined (pta^.pathArgs) {
+				if pta^.pathArgs != "" {
+					baseurl = baseurl + "$" + pta^.pathArgs}}};
+		on hasSubs (adrcat) {
+			try {
+				xml.getAddress (adrcat, "outline");
+				return (true)};
+			return (false)};
+		for adrcat in adrbody {
+			if not (nameof (adrcat^) beginswith "/") {
+				local (catname = xml.getattributevalue (adrcat, "text"), adrtopic, topicnum = 1);
+				catname = string.replaceAll (catname, "&amp;", "&");
+				if hasSubs (adrcat) {
+					add ("<h4>" + catname + "</h4>")}
+				else { //explanatory text
+					add ("<p>" + xml.entityDecode (catname, true) + "</p>")};
+				local (flListStarted = false);
+				for adrtopic in adrcat {
+					if not (nameof (adrtopic^) beginswith "/") {
+						if hasSubs (adrtopic) {
+							if not flListStarted {
+								add ("<ul>"); indentlevel++;
+								flListStarted = true};
+							local (dottedid = catnum + "." + topicnum);
+							adrnextprevlist^ = adrnextprevlist^ + {dottedid};
+							local (url = baseurl + "?page=" + dottedid);
+							local (pagetitle = xml.getattributevalue (adrtopic, "text"));
+							pagetitle = string.replaceAll (pagetitle, "&amp;", "&");
+							adrpagetitles^.[pagetitle] = dottedid;
+							add ("<li><a href=\"" + url + "\">" + pagetitle + "</a></li>");
+							topicnum++}
+						else { //explanatory text
+							if flListStarted {
+								add ("</ul>"); indentlevel--;
+								flListStarted = false};
+							local (text = xml.entityDecode (xml.getattributevalue (adrtopic, "text"), true));
+							add ("<p>" + text + "</p>")}}};
+				if flListStarted {
+					add ("</ul>"); indentlevel--};
+				catnum++}};
+		adrhomepagehtml^ = htmltext};
+	
+	return (adrcache)}

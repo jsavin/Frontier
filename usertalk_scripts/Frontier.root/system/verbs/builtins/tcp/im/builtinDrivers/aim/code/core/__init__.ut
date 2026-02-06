@@ -1,1 +1,16 @@
-on __init__(adrSelf,nick,passwd, adrCallbacks) {	adrSelf^ = tcp.im.builtinDrivers.aim.code.prefs;	if not defined (adrSelf^._passwd) {		adrSelf^._passwd = passwd};	if not defined (adrSelf^._nick) {		adrSelf^._nick = nick};	if not defined (adrSelf^._seq) {		adrSelf^._seq = random(0,65535)}	else {		if not defined (adrSelf^._socket) {			adrSelf^._seq = random(0,65535)}};	if not defined (adrSelf^._adrCallbacks) {		adrSelf^._adrCallbacks = @tcp.im.builtinDrivers.aim.code.incoming};	if not defined (adrSelf^._adrSubCallbacks) {		adrSelf^._adrSubCallbacks = adrCallbacks};	return(true)}
+on __init__(adrSelf,nick,passwd, adrCallbacks) {
+	adrSelf^ = tcp.im.builtinDrivers.aim.code.prefs;
+	if not defined (adrSelf^._passwd) {
+		adrSelf^._passwd = passwd};
+	if not defined (adrSelf^._nick) {
+		adrSelf^._nick = nick};
+	if not defined (adrSelf^._seq) {
+		adrSelf^._seq = random(0,65535)}
+	else {
+		if not defined (adrSelf^._socket) {
+			adrSelf^._seq = random(0,65535)}};
+	if not defined (adrSelf^._adrCallbacks) {
+		adrSelf^._adrCallbacks = @tcp.im.builtinDrivers.aim.code.incoming};
+	if not defined (adrSelf^._adrSubCallbacks) {
+		adrSelf^._adrSubCallbacks = adrCallbacks};
+	return(true)}

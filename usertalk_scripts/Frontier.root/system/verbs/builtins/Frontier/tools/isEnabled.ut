@@ -1,1 +1,37 @@
-on isEnabled (f) {	«Return true if a Tool is enabled, false otherwise. Tools are disabled when:		«1. There is a top-level item in the gdb named #enabled.		«2. #enabled is false.		«01/05/01; 5:12:27 PM by PBS	«Changes		«10/7/01; 8:34:11 PM by JES			«Respect the flEnabled flag in the tool's user table.		local (flEnabled = true);		if not (file.exists (f)) { //it's an error if the Tool doesn't exist		scriptError ("Can't determine if " + file.FileFromPath (f) + " is enabled because it doesn't exist.")};		on checkBoolean () {		local (toolName = Frontier.tools.cleanToolName (file.fileFromPath (f)));		if defined (user.tools.databases.[toolName]) {			if not defined (user.tools.databases.[toolName].flEnabled) {				user.tools.databases.[toolName].flEnabled = true};			if not user.tools.databases.[toolName].flEnabled {				return (false)}};		if defined ([f].["#enabled"]) {			if not ([f].["#enabled"]) {				if defined (user.tools.databases.[toolName]) {					user.tools.databases.[toolName].flEnabled = false};				return (false)}};		return (true)};		if not defined ([f]) { //is the gdb open?		fileMenu.open (f, true); //open hidden		flEnabled = checkBoolean ();		if not flEnabled {			fileMenu.close (f)}} //close it, it's not enabled	else {		flEnabled = checkBoolean ()};		return (flEnabled)}
+on isEnabled (f) {
+	Â«Return true if a Tool is enabled, false otherwise. Tools are disabled when:
+		Â«1. There is a top-level item in the gdb named #enabled.
+		Â«2. #enabled is false.
+		Â«01/05/01; 5:12:27 PM by PBS
+	Â«Changes
+		Â«10/7/01; 8:34:11 PM by JES
+			Â«Respect the flEnabled flag in the tool's user table.
+	
+	local (flEnabled = true);
+	
+	if not (file.exists (f)) { //it's an error if the Tool doesn't exist
+		scriptError ("Can't determine if " + file.FileFromPath (f) + " is enabled because it doesn't exist.")};
+	
+	on checkBoolean () {
+		local (toolName = Frontier.tools.cleanToolName (file.fileFromPath (f)));
+		if defined (user.tools.databases.[toolName]) {
+			if not defined (user.tools.databases.[toolName].flEnabled) {
+				user.tools.databases.[toolName].flEnabled = true};
+			if not user.tools.databases.[toolName].flEnabled {
+				return (false)}};
+		if defined ([f].["#enabled"]) {
+			if not ([f].["#enabled"]) {
+				if defined (user.tools.databases.[toolName]) {
+					user.tools.databases.[toolName].flEnabled = false};
+				return (false)}};
+		return (true)};
+	
+	if not defined ([f]) { //is the gdb open?
+		fileMenu.open (f, true); //open hidden
+		flEnabled = checkBoolean ();
+		if not flEnabled {
+			fileMenu.close (f)}} //close it, it's not enabled
+	else {
+		flEnabled = checkBoolean ()};
+	
+	return (flEnabled)}

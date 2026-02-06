@@ -1,1 +1,5 @@
-on getObjectFrameColor (name) {	local (atts);	if not card.getObjectAttributes (name, @atts) {		return ("")};	return (atts.frmc)}
+on getObjectFrameColor (name) {
+	local (atts);
+	if not card.getObjectAttributes (name, @atts) {
+		return ("")};
+	return (atts.frmc)}

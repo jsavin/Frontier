@@ -1,1 +1,11 @@
-local (myStack, i);myStack = stack.create ();for i = 1 to 100 {	stack.push (myStack, i);	msg (i)};stack.visit (myStack, @msg); «display the value of each stack elementfor i = 1 to 100 {	if stack.pop (myStack) != (100 - i + 1) {		scriptError ("Stacks are broken")};	msg (i)};stack.dispose (myStack)
+local (myStack, i);
+myStack = stack.create ();
+for i = 1 to 100 {
+	stack.push (myStack, i);
+	msg (i)};
+stack.visit (myStack, @msg); Â«display the value of each stack element
+for i = 1 to 100 {
+	if stack.pop (myStack) != (100 - i + 1) {
+		scriptError ("Stacks are broken")};
+	msg (i)};
+stack.dispose (myStack)

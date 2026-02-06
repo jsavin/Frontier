@@ -1,1 +1,2 @@
-on setRightMargin (rightmargin) {	kernel (wp.setrightmargin)}
+on setRightMargin (rightmargin) {
+	kernel (wp.setrightmargin)}

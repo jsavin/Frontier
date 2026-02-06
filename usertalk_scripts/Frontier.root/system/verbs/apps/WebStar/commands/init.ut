@@ -1,1 +1,35 @@
-if not defined (user.webstar) {	new (tabletype, @user.webstar)};if not defined (user.webstar.nightlyLogRoll) {	user.webstar.nightlyLogRoll = false};if not defined (user.webstar.nightlyRestart) {	user.webstar.nightlyRestart = false};if not defined (user.webstar.nightlyMirror) {	user.webstar.nightlyMirror = false};if not defined (user.webstar.nightlyLogDigest) {	user.webstar.nightlyLogDigest = false};if not defined (user.webstar.urls) {	new (tabletype, @user.webstar.urls)};if not defined (user.webstar.ctreporturls) {	user.webstar.ctreporturls = 25};if not defined (user.webstar.lastRanking) {	user.webstar.lastRanking = {}};if not defined (user.webstar.domainname) {	user.webstar.domainname = "www.yourserver.com"};if not defined (user.webstar.hosts) {	new (tabletype, @user.webstar.hosts)};if not defined (user.scheduler.overnight.webstarTasks) {	new (scriptType, @user.scheduler.overnight.webstarTasks);	target.set (@user.scheduler.overnight.webstarTasks);	op.setLineText ("WebSTAR.commands.doNightlyTasks ()");	editMenu.setFont (user.preferences.scriptFont);	editMenu.setFontSize (user.preferences.scriptFontSize);	target.clear ()};local (frontierfolder = file.folderFromPath (Frontier.getProgramPath ()));local (wsfolder = frontierfolder + "WebSTAR Tasks:");file.sureFolder (wsfolder);local (aliasesfolder = wsfolder + "Mirror Aliases:");file.sureFolder (aliasesfolder);local (archivefolder = wsfolder + "Saved Logfiles:");file.sureFolder (archivefolder)
+if not defined (user.webstar) {
+	new (tabletype, @user.webstar)};
+if not defined (user.webstar.nightlyLogRoll) {
+	user.webstar.nightlyLogRoll = false};
+if not defined (user.webstar.nightlyRestart) {
+	user.webstar.nightlyRestart = false};
+if not defined (user.webstar.nightlyMirror) {
+	user.webstar.nightlyMirror = false};
+if not defined (user.webstar.nightlyLogDigest) {
+	user.webstar.nightlyLogDigest = false};
+if not defined (user.webstar.urls) {
+	new (tabletype, @user.webstar.urls)};
+if not defined (user.webstar.ctreporturls) {
+	user.webstar.ctreporturls = 25};
+if not defined (user.webstar.lastRanking) {
+	user.webstar.lastRanking = {}};
+if not defined (user.webstar.domainname) {
+	user.webstar.domainname = "www.yourserver.com"};
+if not defined (user.webstar.hosts) {
+	new (tabletype, @user.webstar.hosts)};
+if not defined (user.scheduler.overnight.webstarTasks) {
+	new (scriptType, @user.scheduler.overnight.webstarTasks);
+	target.set (@user.scheduler.overnight.webstarTasks);
+	op.setLineText ("WebSTAR.commands.doNightlyTasks ()");
+	editMenu.setFont (user.preferences.scriptFont);
+	editMenu.setFontSize (user.preferences.scriptFontSize);
+	target.clear ()};
+
+local (frontierfolder = file.folderFromPath (Frontier.getProgramPath ()));
+local (wsfolder = frontierfolder + "WebSTAR Tasks:");
+file.sureFolder (wsfolder);
+local (aliasesfolder = wsfolder + "Mirror Aliases:");
+file.sureFolder (aliasesfolder);
+local (archivefolder = wsfolder + "Saved Logfiles:");
+file.sureFolder (archivefolder)

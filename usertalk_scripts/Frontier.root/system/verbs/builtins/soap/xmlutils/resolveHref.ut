@@ -1,1 +1,21 @@
-on resolveHref (adrmsg, adrelement) {	«Changes:		«04/05/01; 5:49:40 PM by JES			«Look for elements whose id matches the href value, without a leading '#' character. Fixes a bug where referenced elements would never be found.	on resolveOneReference (adrmsg, id) {		if id beginsWith "#" {			id = string.mid (id, 2, infinity)};		if defined (adrmsg^.elementIDs.[id]) {			return (adrmsg^.elementIDs.[id])};		if defined (adrmsg^.elementIDs.["#" + id]) { //fallback: try the #id version			return (adrmsg^.elementIDs.["#" + id])};		scripterror ("Can't resolve the href because there is no element with the id \"" + id + "\".")};		loop {		local (href = soap.xmlutils.getAttributeValue (adrelement, "href"));		if href {			adrelement = resolveOneReference (adrmsg, href)}		else {			break}};		return (adrelement)}
+on resolveHref (adrmsg, adrelement) {
+	Â«Changes:
+		Â«04/05/01; 5:49:40 PM by JES
+			Â«Look for elements whose id matches the href value, without a leading '#' character. Fixes a bug where referenced elements would never be found.
+	on resolveOneReference (adrmsg, id) {
+		if id beginsWith "#" {
+			id = string.mid (id, 2, infinity)};
+		if defined (adrmsg^.elementIDs.[id]) {
+			return (adrmsg^.elementIDs.[id])};
+		if defined (adrmsg^.elementIDs.["#" + id]) { //fallback: try the #id version
+			return (adrmsg^.elementIDs.["#" + id])};
+		scripterror ("Can't resolve the href because there is no element with the id \"" + id + "\".")};
+	
+	loop {
+		local (href = soap.xmlutils.getAttributeValue (adrelement, "href"));
+		if href {
+			adrelement = resolveOneReference (adrmsg, href)}
+		else {
+			break}};
+	
+	return (adrelement)}

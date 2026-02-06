@@ -1,1 +1,2 @@
-on promote () {	kernel (op.promote)}
+on promote () {
+	kernel (op.promote)}

@@ -1,1 +1,2 @@
-on doScript (appScript) { «Execute a script	return (misc.doScript (BBEdit.id, appScript))}
+on doScript (appScript) { Â«Execute a script
+	return (misc.doScript (BBEdit.id, appScript))}

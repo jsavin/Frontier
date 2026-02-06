@@ -1,1 +1,2 @@
-on insert (source, dest, ix) {	kernel (string.insert)}
+on insert (source, dest, ix) {
+	kernel (string.insert)}

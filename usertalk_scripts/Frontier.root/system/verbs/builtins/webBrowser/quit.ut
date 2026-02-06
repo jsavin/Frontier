@@ -1,1 +1,9 @@
-on quit (id=user.webBrowser.currentid) {	if not (webBrowser.isRunning ()) {		return (true)};	case sys.os () {		"MacOS" {			return (required.quitApplication (user.webBrowser.currentid))};		"Win95";		"WinNT" {			return (webBrowser.callBrowser (user.webBrowser.currentid, "WWW_Quit"))}}}
+on quit (id=user.webBrowser.currentid) {
+	if not (webBrowser.isRunning ()) {
+		return (true)};
+	case sys.os () {
+		"MacOS" {
+			return (required.quitApplication (user.webBrowser.currentid))};
+		"Win95";
+		"WinNT" {
+			return (webBrowser.callBrowser (user.webBrowser.currentid, "WWW_Quit"))}}}

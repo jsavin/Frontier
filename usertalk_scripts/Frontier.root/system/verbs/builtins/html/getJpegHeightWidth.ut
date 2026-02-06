@@ -1,1 +1,22 @@
-on getJpegHeightWidth (f) {	«Get the height and width in pixels of a JPEG.		«Changes:			«10/20/99; at 2:57:07 PM by PBS				«Like html.getGifHeightWidth, it now supports addresses. It does still write the file out to disk, but in a temporary location, in Guest Databases/ops/Temporary Items/. After writing out the file, it deletes it.	on kernelcall (f) {		kernel (string.getJpegHeightWidth)};	if typeOf (f) == addressType { //write the file to disk in a temporary location		local (tempFolder = Frontier.getSubFolder ("ops/Temporary Items/"));		if not (file.exists (tempFolder)) {			file.newFolder (tempFolder)};		local (tempFilePath = file.uniqueName ("tempJpeg", tempFolder, 7));		file.writeWholeFile (tempFilePath, f^, 'JPEG', user.html.prefs.imgFileCreator, clock.now ());		local (hwList);		hwList = kernelcall (tempFilePath);		file.delete (tempFilePath);		return (hwList)};	return (kernelcall (f))};«bundle //test code	«dialog.alert (getJpegHeightWidth (@websites.samples.["#images"].wozJobs)) //test addresses	«dialog.alert (getJpegHeightWidth ("C:\\Frontier\\Websites\\samples\\images\\wozjobs.jpg")) //test files on Windows	«dialog.alert (getJpegHeightWidth ("Power HD:Frontier:Websites:samples:images:wozJobs.jpg")) //test files on Mac
+on getJpegHeightWidth (f) {
+	Â«Get the height and width in pixels of a JPEG.
+		Â«Changes:
+			Â«10/20/99; at 2:57:07 PM by PBS
+				Â«Like html.getGifHeightWidth, it now supports addresses. It does still write the file out to disk, but in a temporary location, in Guest Databases/ops/Temporary Items/. After writing out the file, it deletes it.
+	on kernelcall (f) {
+		kernel (string.getJpegHeightWidth)};
+	if typeOf (f) == addressType { //write the file to disk in a temporary location
+		local (tempFolder = Frontier.getSubFolder ("ops/Temporary Items/"));
+		if not (file.exists (tempFolder)) {
+			file.newFolder (tempFolder)};
+		local (tempFilePath = file.uniqueName ("tempJpeg", tempFolder, 7));
+		file.writeWholeFile (tempFilePath, f^, 'JPEG', user.html.prefs.imgFileCreator, clock.now ());
+		local (hwList);
+		hwList = kernelcall (tempFilePath);
+		file.delete (tempFilePath);
+		return (hwList)};
+	return (kernelcall (f))};
+Â«bundle //test code
+	Â«dialog.alert (getJpegHeightWidth (@websites.samples.["#images"].wozJobs)) //test addresses
+	Â«dialog.alert (getJpegHeightWidth ("C:\\Frontier\\Websites\\samples\\images\\wozjobs.jpg")) //test files on Windows
+	Â«dialog.alert (getJpegHeightWidth ("Power HD:Frontier:Websites:samples:images:wozJobs.jpg")) //test files on Mac

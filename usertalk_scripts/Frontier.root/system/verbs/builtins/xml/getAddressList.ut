@@ -1,1 +1,2 @@
-on getAddressList (adrtable, commonname, justone=false) { //return a list of all objects with this name in the table	kernel (xml.getAddressList)}
+on getAddressList (adrtable, commonname, justone=false) { //return a list of all objects with this name in the table
+	kernel (xml.getAddressList)}

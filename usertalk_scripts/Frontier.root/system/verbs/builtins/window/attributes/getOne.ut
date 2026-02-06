@@ -1,1 +1,16 @@
-on getOne (attname, adrval, adrwindow=nil) {	if adrwindow == nil {		adrwindow = window.frontMost ()};	local (adrparent = parentOf (adrwindow^));	if defined (adrparent^) {		local (adratts = @adrparent^.["/atts"]);		if defined (adratts^) {			if typeOf (adratts^) == tableType {				if defined (adratts^.[attname]) {					adrval^ = adratts^.[attname];					return (true)}}}};	return (false)};«bundle //test code	«local (val)	«getOne ("type", @val)	«dialog.alert (val)
+on getOne (attname, adrval, adrwindow=nil) {
+	if adrwindow == nil {
+		adrwindow = window.frontMost ()};
+	local (adrparent = parentOf (adrwindow^));
+	if defined (adrparent^) {
+		local (adratts = @adrparent^.["/atts"]);
+		if defined (adratts^) {
+			if typeOf (adratts^) == tableType {
+				if defined (adratts^.[attname]) {
+					adrval^ = adratts^.[attname];
+					return (true)}}}};
+	return (false)};
+Â«bundle //test code
+	Â«local (val)
+	Â«getOne ("type", @val)
+	Â«dialog.alert (val)

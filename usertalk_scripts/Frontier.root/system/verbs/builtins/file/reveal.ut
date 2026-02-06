@@ -1,1 +1,11 @@
-on reveal (f) { //open the folder containing f, and highlight it	«New verb, 10/26/98 by DW	if not file.exists (f) {		return (false)};	if system.environment.isMac {		return (Finder.reveal (f))};	if system.environment.isWindows {		local (osfolder = file.getSpecialFolderPath ("", "windows",  false));		return (launch.appWithDocument (osfolder + "explorer.exe", "/select," + f))}};«bundle //test code	«reveal ("c:\\palm springs\\frontier.exe")
+on reveal (f) { //open the folder containing f, and highlight it
+	Â«New verb, 10/26/98 by DW
+	if not file.exists (f) {
+		return (false)};
+	if system.environment.isMac {
+		return (Finder.reveal (f))};
+	if system.environment.isWindows {
+		local (osfolder = file.getSpecialFolderPath ("", "windows",  false));
+		return (launch.appWithDocument (osfolder + "explorer.exe", "/select," + f))}};
+Â«bundle //test code
+	Â«reveal ("c:\\palm springs\\frontier.exe")

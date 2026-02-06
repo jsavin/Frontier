@@ -1,1 +1,3 @@
-on getErrorFile (appID = WebStar.id) { «gets error file setting	with objectModel, WebStar.eventInfo {		return (core.get (appID, errorFile))}}
+on getErrorFile (appID = WebStar.id) { Â«gets error file setting
+	with objectModel, WebStar.eventInfo {
+		return (core.get (appID, errorFile))}}

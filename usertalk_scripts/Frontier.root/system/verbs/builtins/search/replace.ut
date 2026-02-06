@@ -1,1 +1,2 @@
-on replace () {	kernel (search.replace)}
+on replace () {
+	kernel (search.replace)}

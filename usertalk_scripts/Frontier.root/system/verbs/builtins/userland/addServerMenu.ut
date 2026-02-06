@@ -1,1 +1,14 @@
-«Add the Server menu to user.menus, if it's not already there. Re-build the menubar if the menu was added.local (i, flMenuFound = false);for i = 1 to sizeOf (user.menus) {	if user.menus [i] == @mainResponder.menu {		flMenuFound = true;		break}};if not flMenuFound {	user.menus.server = @mainResponder.menu; //PBS 10/25//99: Server menu	menus.buildMenuBar ()};return (true)
+Â«Add the Server menu to user.menus, if it's not already there. Re-build the menubar if the menu was added.
+
+local (i, flMenuFound = false);
+
+for i = 1 to sizeOf (user.menus) {
+	if user.menus [i] == @mainResponder.menu {
+		flMenuFound = true;
+		break}};
+
+if not flMenuFound {
+	user.menus.server = @mainResponder.menu; //PBS 10/25//99: Server menu
+	menus.buildMenuBar ()};
+
+return (true)

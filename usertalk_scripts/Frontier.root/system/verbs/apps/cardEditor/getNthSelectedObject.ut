@@ -1,1 +1,2 @@
-on getNthSelectedObject (param1) {	return (appleEvent (cardEditor.id, 'IOWA', 'gnso', 'prm1', long (param1)))}
+on getNthSelectedObject (param1) {
+	return (appleEvent (cardEditor.id, 'IOWA', 'gnso', 'prm1', long (param1)))}

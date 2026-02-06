@@ -1,1 +1,101 @@
-on saveAsPlainText (adr=nil, adrFilepath=nil) {	«Save as plain text. Remember that this document is a plain text document -- always save it as plain text.		«12/15/00; 5:04:18 PM by PBS		«Changes:			«12/29/00; 2:55:43 PM by PBS				«Save non file-based outlines -- such as the notepad -- as plain text.		if adr == nil {		adr = window.frontMost ()};		bundle { //run callbacks		on runCallbacks (adrtable) {			local (flConsumed = false);			if defined (adrtable^) {				local (adrcallback);				for adrcallback in adrtable {					try { //11/30/00 JES						while typeOf (adrcallback^) == addressType {							adrcallback = adrcallback^};						flConsumed = adrcallback^ (adr)};					if flConsumed {						return (true)}}};			return (false)};		if runCallbacks (@user.tools.commandCallbacks.saveAsPlainText) {			return (true)};		if system.environment.isRadio {			if defined (user.pike.commandCallbacks.saveAsPlainText) {				if runCallbacks (@user.pike.commandCallbacks.saveAsPlainText) {					return (true)}}}};		local (adrType);	bundle { //if there's a windowType that handles this command, call it		if Frontier.tools.windowTypes.findWindowType (adradrtable:@adrtype, adrwindow:adr) {			if defined (adrtype^.saveAsPlainText) {				if adrtype^.saveAsPlainText (adr, adrFilepath) {					return (false)}}}};		case typeOf (adr^) { //we only know how to render outlines and tables at this time		scriptType;		outlineType {			local (adrtype);			if Frontier.tools.windowTypes.findWindowType ("outlinerFile", @adrtype) {				if defined (adrtype^.saveAsPlainText) {					if not adrtype^.saveAsPlainText (adr) {						return (false)}}};			«bundle //old code				«local (adrParentTable = parentOf (adrItem^))				«local (title = window.getTitle (adrItem))				«if not window.attributes.getOne ("title", @title, adrItem) //base the filename on the window title					«local (l = string.parseAddress (adrItem))					«local (ct = sizeOf (l))					«if ct > 1						«title = l[ct-1] + "." + l[ct]					«else						«title = l[ct]					«if system.environment.isMac //shorten the filename						«if sizeOf (title) > 27							«title = l[ct]						«if sizeOf (title) > 27							«title = string.mid (title, 1, 27)				«if string.lower (title) endsWith ".opml"					«title = string.popSuffix (title)				«if string.lower (title) endsWith ".txt"					«title = string.popSuffix (title)				«title = title + ".txt"				«local (fname = title)				«local (f = fname)				«if file.putFileDialog ("Save as plain text:", @f)					«pike.saveAsPlainText (adrItem, f)					«local (s = string (adrItem^))					«if system.environment.isWindows //add linefeeds						«s = string.replaceAll (s, "\r", "\r\n")					«local (creator = 'Radu')					«if string.lower (f) endsWith ".py" //special case for Python scripts						«creator = 'Pyth'					«file.writeWholeFile (f, s, 'TEXT', creator, clock.now ())					«bundle //old code fragment						«local (adrTable = parentOf (adrOutline^))						«adrTable^.title = file.fileFromPath (f)						«window.setTitle (adrOutline, adrTable^.title)						«adrTable^.f = f						«adrTable^.lastSaved = clock.now ()						«adrTable^.flOutlineDocument = false						«adrTable^.flPlainText = true					«return (Frontier.tools.windowTypes.commands.open (f))}};	«else //not a local, file-based outline, but something like the notepad		«local (title = window.getTitle (adrItem))		«local (adrTable = pike.newWindow (title, false, false))		«adrTable^.outline = adrItem^		«window.getPosition (adrItem, @horiz, @vert)		«edit (@adrTable^.outline, windowTitle:title)		«window.setPosition (@adrTable^.outline, horiz + 15, vert + 15)		«pike.commands.save (@adrTable^.outline)		if adrFilepath != nil { //tell the caller where the file is -- used for View in Browser		adrFilepath^ = f};		return (true)};bundle { //debugging	saveAsPlainText (window.frontmost ())}
+on saveAsPlainText (adr=nil, adrFilepath=nil) {
+	Â«Save as plain text. Remember that this document is a plain text document -- always save it as plain text.
+		Â«12/15/00; 5:04:18 PM by PBS
+		Â«Changes:
+			Â«12/29/00; 2:55:43 PM by PBS
+				Â«Save non file-based outlines -- such as the notepad -- as plain text.
+	
+	if adr == nil {
+		adr = window.frontMost ()};
+	
+	bundle { //run callbacks
+		on runCallbacks (adrtable) {
+			local (flConsumed = false);
+			if defined (adrtable^) {
+				local (adrcallback);
+				for adrcallback in adrtable {
+					try { //11/30/00 JES
+						while typeOf (adrcallback^) == addressType {
+							adrcallback = adrcallback^};
+						flConsumed = adrcallback^ (adr)};
+					if flConsumed {
+						return (true)}}};
+			return (false)};
+		if runCallbacks (@user.tools.commandCallbacks.saveAsPlainText) {
+			return (true)};
+		if system.environment.isRadio {
+			if defined (user.pike.commandCallbacks.saveAsPlainText) {
+				if runCallbacks (@user.pike.commandCallbacks.saveAsPlainText) {
+					return (true)}}}};
+	
+	local (adrType);
+	bundle { //if there's a windowType that handles this command, call it
+		if Frontier.tools.windowTypes.findWindowType (adradrtable:@adrtype, adrwindow:adr) {
+			if defined (adrtype^.saveAsPlainText) {
+				if adrtype^.saveAsPlainText (adr, adrFilepath) {
+					return (false)}}}};
+	
+	case typeOf (adr^) { //we only know how to render outlines and tables at this time
+		scriptType;
+		outlineType {
+			local (adrtype);
+			if Frontier.tools.windowTypes.findWindowType ("outlinerFile", @adrtype) {
+				if defined (adrtype^.saveAsPlainText) {
+					if not adrtype^.saveAsPlainText (adr) {
+						return (false)}}};
+			Â«bundle //old code
+				Â«local (adrParentTable = parentOf (adrItem^))
+				Â«local (title = window.getTitle (adrItem))
+				Â«if not window.attributes.getOne ("title", @title, adrItem) //base the filename on the window title
+					Â«local (l = string.parseAddress (adrItem))
+					Â«local (ct = sizeOf (l))
+					Â«if ct > 1
+						Â«title = l[ct-1] + "." + l[ct]
+					Â«else
+						Â«title = l[ct]
+					Â«if system.environment.isMac //shorten the filename
+						Â«if sizeOf (title) > 27
+							Â«title = l[ct]
+						Â«if sizeOf (title) > 27
+							Â«title = string.mid (title, 1, 27)
+				Â«if string.lower (title) endsWith ".opml"
+					Â«title = string.popSuffix (title)
+				Â«if string.lower (title) endsWith ".txt"
+					Â«title = string.popSuffix (title)
+				Â«title = title + ".txt"
+				Â«local (fname = title)
+				Â«local (f = fname)
+				Â«if file.putFileDialog ("Save as plain text:", @f)
+					Â«pike.saveAsPlainText (adrItem, f)
+					Â«local (s = string (adrItem^))
+					Â«if system.environment.isWindows //add linefeeds
+						Â«s = string.replaceAll (s, "\r", "\r\n")
+					Â«local (creator = 'Radu')
+					Â«if string.lower (f) endsWith ".py" //special case for Python scripts
+						Â«creator = 'Pyth'
+					Â«file.writeWholeFile (f, s, 'TEXT', creator, clock.now ())
+					Â«bundle //old code fragment
+						Â«local (adrTable = parentOf (adrOutline^))
+						Â«adrTable^.title = file.fileFromPath (f)
+						Â«window.setTitle (adrOutline, adrTable^.title)
+						Â«adrTable^.f = f
+						Â«adrTable^.lastSaved = clock.now ()
+						Â«adrTable^.flOutlineDocument = false
+						Â«adrTable^.flPlainText = true
+					Â«return (Frontier.tools.windowTypes.commands.open (f))}};
+	Â«else //not a local, file-based outline, but something like the notepad
+		Â«local (title = window.getTitle (adrItem))
+		Â«local (adrTable = pike.newWindow (title, false, false))
+		Â«adrTable^.outline = adrItem^
+		Â«window.getPosition (adrItem, @horiz, @vert)
+		Â«edit (@adrTable^.outline, windowTitle:title)
+		Â«window.setPosition (@adrTable^.outline, horiz + 15, vert + 15)
+		Â«pike.commands.save (@adrTable^.outline)
+	
+	if adrFilepath != nil { //tell the caller where the file is -- used for View in Browser
+		adrFilepath^ = f};
+	
+	return (true)};
+
+bundle { //debugging
+	saveAsPlainText (window.frontmost ())}

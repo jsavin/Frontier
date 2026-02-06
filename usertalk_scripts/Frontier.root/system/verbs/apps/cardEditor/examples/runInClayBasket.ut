@@ -1,1 +1,3 @@
-clay.launch ();clay.bringtofront ();clay.card.run (cardEditor.getPackedCard ())
+clay.launch ();
+clay.bringtofront ();
+clay.card.run (cardEditor.getPackedCard ())

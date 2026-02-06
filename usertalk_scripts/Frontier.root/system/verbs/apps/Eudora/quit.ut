@@ -1,1 +1,2 @@
-on quit () {	return (required.quitApplication (Eudora.id))}
+on quit () {
+	return (required.quitApplication (Eudora.id))}

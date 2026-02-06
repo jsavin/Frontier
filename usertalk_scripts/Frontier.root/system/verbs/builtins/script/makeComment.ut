@@ -1,1 +1,2 @@
-on makeComment () {	kernel (script.makecomment)}
+on makeComment () {
+	kernel (script.makecomment)}

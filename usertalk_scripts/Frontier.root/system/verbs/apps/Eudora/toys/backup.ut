@@ -1,1 +1,37 @@
-local (releasefolder = "UserLand:New Releases:Eudora:");local (backuppointer = releasefolder + "Backup Folder", destfolder);bundle { «error checking on the backup folder, set destfolder	on error () {		scriptError ("You must have an alias named “Backup Folder”Êin the same folder as this script.")};	if not file.exists (backuppointer) {		error ()};	if not file.isAlias (backuppointer) {		error ()};	destfolder = file.followAlias (backuppointer);	if not file.isFolder (destfolder) {		error ()}};file.setmodified (backuppointer, clock.now ()); «in case we're viewing by datelocal (keystring = "Install Files.");local (maxnum = 0);local (f);fileloop (f in destfolder) {	if f contains keystring {		try {			local (num = number (file.filefrompath (f) - keystring - ":"));			if num > maxnum {				maxnum = num}}}};destfolder = destfolder + keystring + (maxnum + 1) + ":";file.sureFolder (destfolder);commercial.createinstallfile ("Eudora", Eudora.id, destfolder + "Eudora.Frontier");commercial.createinstallfile ("Netscape", Netscape.id, destfolder + "Netscape.Frontier");«export.sendObject (@netscape.toys, destfolder + "netscape.toys")export.sendObject (@user.getMailAddress, destfolder + "user.getMailAddress");file.copy ("System:System Folder:Preferences:UserLand:Eudora:", destfolder + "Prefs Folder:");local (installfolder = releasefolder + "Install Files:");try {file.deleteFolder (installfolder)};file.copy (destfolder, installfolder);msg ("Backup complete at " + clock.now ())
+local (releasefolder = "UserLand:New Releases:Eudora:");
+local (backuppointer = releasefolder + "Backup Folder", destfolder);
+bundle { Â«error checking on the backup folder, set destfolder
+	on error () {
+		scriptError ("You must have an alias named â€œBackup Folderâ€ÃŠin the same folder as this script.")};
+	if not file.exists (backuppointer) {
+		error ()};
+	if not file.isAlias (backuppointer) {
+		error ()};
+	destfolder = file.followAlias (backuppointer);
+	if not file.isFolder (destfolder) {
+		error ()}};
+file.setmodified (backuppointer, clock.now ()); Â«in case we're viewing by date
+
+local (keystring = "Install Files.");
+local (maxnum = 0);
+local (f);
+fileloop (f in destfolder) {
+	if f contains keystring {
+		try {
+			local (num = number (file.filefrompath (f) - keystring - ":"));
+			if num > maxnum {
+				maxnum = num}}}};
+
+destfolder = destfolder + keystring + (maxnum + 1) + ":";
+file.sureFolder (destfolder);
+commercial.createinstallfile ("Eudora", Eudora.id, destfolder + "Eudora.Frontier");
+commercial.createinstallfile ("Netscape", Netscape.id, destfolder + "Netscape.Frontier");
+Â«export.sendObject (@netscape.toys, destfolder + "netscape.toys")
+export.sendObject (@user.getMailAddress, destfolder + "user.getMailAddress");
+file.copy ("System:System Folder:Preferences:UserLand:Eudora:", destfolder + "Prefs Folder:");
+
+local (installfolder = releasefolder + "Install Files:");
+try {file.deleteFolder (installfolder)};
+file.copy (destfolder, installfolder);
+
+msg ("Backup complete at " + clock.now ())

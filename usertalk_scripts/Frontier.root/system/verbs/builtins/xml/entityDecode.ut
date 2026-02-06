@@ -1,1 +1,99 @@
-on entityDecode (s, flAlphaEntities = false, flSkipMalformedEntities = true, flDecodeHexEntities = true) {	«Changes -- the flipside of xml.entityEncode		«8/2/05; 3:31:24 PM by JES			«Fixed decoding of alpha entities when s contains no numeric entities, and flAlphaEntities is true.			«If flSkipMalformedEntities is false, we now actually generate an error.			«flSkipMalformedEntities and flDecodeHexEntities now default to true.		«8/16/04; 4:07:17 PM by JES			«New optional parameter, flDecodeHexEntities. If true, then entities in the form, &x2A; will be decoded to their equivalent character.			«Default is false, preserving existing behavior.		«12/12/01; 2:47:54 AM by JES			«New optional parameter, flSkipMalformedEntities. If true, then malformed numerical entities which either contain non-numeric characters or which lack an ending semicolon character don't cause an error. They're passed through as-is.		«10/22/99; 3:35:56 PM by DW			«decode &#xxx; to the equivalent ASCII character.		«11/14/2000; 5:44:31 PM by DW			«xml.entityDecode now takes an optional boolean parameter, default value false, that says whether "alpha" entities are decoded. This is necessary to avoid breakage. The four entities are: &lt; &gt; &amp; &quot;		«11/29/01; 6:56:06 PM by PBS			«Skip entities > 255, since they can't be decoded into characters.	local (ix, ixremainder, numstring, ixsemi, remainder = s);	loop {		ixremainder = string.patternMatch ("&#", remainder);		if ixremainder == 0 {			if flDecodeHexEntities { //do this here to ensure that alpha entities get decoded even if no numeric entities are present				«JES 8/19/04: If flDecodeHexEntities is true, alpha-entities are decoded inline with numeric entities. Prevents double-decoding.				s = string.replaceall (s, "&lt;", "<");				s = string.replaceall (s, "&gt;", ">");				s = string.replaceall (s, "&quot;", "\"");				s = string.replaceall (s, "&amp;", "&")}; //&amp; is always last to prevent double-decoding			break};		ix = ixremainder + (sizeof (s) - sizeof (remainder));		numstring = ""; ixsemi = sizeof (s);		local (endloop = ix + 8);		if endloop > sizeOf (s) {			endloop = sizeOf (s)};		for i = ix + 2 to endloop {			if s [i] == ';' {				ixsemi = i;				break};			numstring = numstring + s [i]};		local (num, flMalformed = false);		try {			num = number (numstring)}		else { //hex entity or malformed			if flDecodeHexEntities { //JES 8/16/04: decode hex entities				if numstring[1] == "x" {					try {						num = number ("0" + numstring)}					else {						flMalformed = true}}				else {					if flAlphaEntities { //decode alpha entities inline with numeric entities to prevent double-decoding						case numstring {							"amp" {								s = string.delete (s, ix, ixsemi - ix + 1);								s = string.insert ("&", s, ix)};							"lt" {								s = string.delete (s, ix, ixsemi - ix + 1);								s = string.insert ("<", s, ix)};							"gt" {								s = string.delete (s, ix, ixsemi - ix + 1);								s = string.insert (">", s, ix)};							"quot" {								s = string.delete (s, ix, ixsemi - ix + 1);								s = string.insert ("\"", s, ix)}}						else {							flMalformed = true}}					else {						flMalformed = true}}}			else {				flMalformed = true}};		if flMalformed {			if flSkipMalformedEntities {				remainder = string.mid (s, ix + 1, infinity);				continue}			else {				scriptError ("Can't decode this string because it contains a malformed entity at character " + ix + ".")}};		if num < 256 { //PBS //11/29/01: skip large entities			s = string.delete (s, ix, ixsemi - ix + 1);			s = string.insert (char (num), s, ix)};		remainder = string.mid (s, ix + 1, infinity)};	bundle { //decode alpha entities		if flAlphaEntities and (not flDecodeHexEntities) {			«JES 8/19/04: If flDecodeHexEntities is true, alpha-entities are decoded inline with numeric entities. Prevents double-decoding.			s = string.replaceall (s, "&lt;", "<");			s = string.replaceall (s, "&gt;", ">");			s = string.replaceall (s, "&amp;", "&");			s = string.replaceall (s, "&quot;", "\"")}};	return (s)};«bundle //test code	«xml.entityDecode ("Oh the &lt;buzzing&gt; of the bees &amp; the &quot;sycamore&quot; trees.", true)		«"Oh the <buzzing> of the bees & the \"sycamore\" trees."	«xml.entityDecode ("A&#8217;&#80;B")		«"A&#8217;PB"	«xml.entityDecode (xml.entityEncode ("Olejováø skvrna na \"Labi\"zøejmì do <Nìmecka> & nedoplujeøíjna 1999 13:49"), true)		«"Olejováø skvrna na \"Labi\"zøejmì do <Nìmecka> & nedoplujeøíjna 1999 13:49"	«xml.entityDecode ("&#123Hello&#125;", flSkipMalformedEntities:true)		«"&#123Hello}"	«xml.entityDecode ("&#123Hello&#125;", flSkipMalformedEntities:false) //should be an error	«xml.entityDecode ("03 Flip Flop &amp; Bop", true, true, true)		«"03 Flip Flop & Bop"
+on entityDecode (s, flAlphaEntities = false, flSkipMalformedEntities = true, flDecodeHexEntities = true) {
+	Â«Changes -- the flipside of xml.entityEncode
+		Â«8/2/05; 3:31:24 PM by JES
+			Â«Fixed decoding of alpha entities when s contains no numeric entities, and flAlphaEntities is true.
+			Â«If flSkipMalformedEntities is false, we now actually generate an error.
+			Â«flSkipMalformedEntities and flDecodeHexEntities now default to true.
+		Â«8/16/04; 4:07:17 PM by JES
+			Â«New optional parameter, flDecodeHexEntities. If true, then entities in the form, &x2A; will be decoded to their equivalent character.
+			Â«Default is false, preserving existing behavior.
+		Â«12/12/01; 2:47:54 AM by JES
+			Â«New optional parameter, flSkipMalformedEntities. If true, then malformed numerical entities which either contain non-numeric characters or which lack an ending semicolon character don't cause an error. They're passed through as-is.
+		Â«10/22/99; 3:35:56 PM by DW
+			Â«decode &#xxx; to the equivalent ASCII character.
+		Â«11/14/2000; 5:44:31 PM by DW
+			Â«xml.entityDecode now takes an optional boolean parameter, default value false, that says whether "alpha" entities are decoded. This is necessary to avoid breakage. The four entities are: &lt; &gt; &amp; &quot;
+		Â«11/29/01; 6:56:06 PM by PBS
+			Â«Skip entities > 255, since they can't be decoded into characters.
+	local (ix, ixremainder, numstring, ixsemi, remainder = s);
+	loop {
+		ixremainder = string.patternMatch ("&#", remainder);
+		if ixremainder == 0 {
+			if flDecodeHexEntities { //do this here to ensure that alpha entities get decoded even if no numeric entities are present
+				Â«JES 8/19/04: If flDecodeHexEntities is true, alpha-entities are decoded inline with numeric entities. Prevents double-decoding.
+				s = string.replaceall (s, "&lt;", "<");
+				s = string.replaceall (s, "&gt;", ">");
+				s = string.replaceall (s, "&quot;", "\"");
+				s = string.replaceall (s, "&amp;", "&")}; //&amp; is always last to prevent double-decoding
+			break};
+		ix = ixremainder + (sizeof (s) - sizeof (remainder));
+		numstring = ""; ixsemi = sizeof (s);
+		local (endloop = ix + 8);
+		if endloop > sizeOf (s) {
+			endloop = sizeOf (s)};
+		for i = ix + 2 to endloop {
+			if s [i] == ';' {
+				ixsemi = i;
+				break};
+			numstring = numstring + s [i]};
+		local (num, flMalformed = false);
+		try {
+			num = number (numstring)}
+		else { //hex entity or malformed
+			if flDecodeHexEntities { //JES 8/16/04: decode hex entities
+				if numstring[1] == "x" {
+					try {
+						num = number ("0" + numstring)}
+					else {
+						flMalformed = true}}
+				else {
+					if flAlphaEntities { //decode alpha entities inline with numeric entities to prevent double-decoding
+						case numstring {
+							"amp" {
+								s = string.delete (s, ix, ixsemi - ix + 1);
+								s = string.insert ("&", s, ix)};
+							"lt" {
+								s = string.delete (s, ix, ixsemi - ix + 1);
+								s = string.insert ("<", s, ix)};
+							"gt" {
+								s = string.delete (s, ix, ixsemi - ix + 1);
+								s = string.insert (">", s, ix)};
+							"quot" {
+								s = string.delete (s, ix, ixsemi - ix + 1);
+								s = string.insert ("\"", s, ix)}}
+						else {
+							flMalformed = true}}
+					else {
+						flMalformed = true}}}
+			else {
+				flMalformed = true}};
+		if flMalformed {
+			if flSkipMalformedEntities {
+				remainder = string.mid (s, ix + 1, infinity);
+				continue}
+			else {
+				scriptError ("Can't decode this string because it contains a malformed entity at character " + ix + ".")}};
+		if num < 256 { //PBS //11/29/01: skip large entities
+			s = string.delete (s, ix, ixsemi - ix + 1);
+			s = string.insert (char (num), s, ix)};
+		remainder = string.mid (s, ix + 1, infinity)};
+	bundle { //decode alpha entities
+		if flAlphaEntities and (not flDecodeHexEntities) {
+			Â«JES 8/19/04: If flDecodeHexEntities is true, alpha-entities are decoded inline with numeric entities. Prevents double-decoding.
+			s = string.replaceall (s, "&lt;", "<");
+			s = string.replaceall (s, "&gt;", ">");
+			s = string.replaceall (s, "&amp;", "&");
+			s = string.replaceall (s, "&quot;", "\"")}};
+	return (s)};
+Â«bundle //test code
+	Â«xml.entityDecode ("Oh the &lt;buzzing&gt; of the bees &amp; the &quot;sycamore&quot; trees.", true)
+		Â«"Oh the <buzzing> of the bees & the \"sycamore\" trees."
+	Â«xml.entityDecode ("A&#8217;&#80;B")
+		Â«"A&#8217;PB"
+	Â«xml.entityDecode (xml.entityEncode ("OlejovÃ¡Ã¸ skvrna na \"Labi\"zÃ¸ejmÃ¬ do <NÃ¬mecka> & nedoplujeÃ¸Ã­jna 1999 13:49"), true)
+		Â«"OlejovÃ¡Ã¸ skvrna na \"Labi\"zÃ¸ejmÃ¬ do <NÃ¬mecka> & nedoplujeÃ¸Ã­jna 1999 13:49"
+	Â«xml.entityDecode ("&#123Hello&#125;", flSkipMalformedEntities:true)
+		Â«"&#123Hello}"
+	Â«xml.entityDecode ("&#123Hello&#125;", flSkipMalformedEntities:false) //should be an error
+	Â«xml.entityDecode ("03 Flip Flop &amp; Bop", true, true, true)
+		Â«"03 Flip Flop & Bop"

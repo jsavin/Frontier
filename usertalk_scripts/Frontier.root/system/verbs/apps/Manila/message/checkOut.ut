@@ -1,1 +1,10 @@
-on checkOut (adrSitePrefs, msgNum) {	«Take custody of a message.		«11/14/00; 10:22:24 PM by JES	«Changes		«9/6/01; 8:19:14 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":sitename, "msgnum":msgnum});		return (manila.callHandler (host, port, "manila.message.checkOut", @params, rpcPath:rpcPath))}}
+on checkOut (adrSitePrefs, msgNum) {
+	Â«Take custody of a message.
+		Â«11/14/00; 10:22:24 PM by JES
+	Â«Changes
+		Â«9/6/01; 8:19:14 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":sitename, "msgnum":msgnum});
+		return (manila.callHandler (host, port, "manila.message.checkOut", @params, rpcPath:rpcPath))}}

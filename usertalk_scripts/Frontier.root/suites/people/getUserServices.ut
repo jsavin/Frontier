@@ -1,1 +1,14 @@
-on getUserServices (userName, adrUser=nil) {	«Return a list of services this user has access to.		«Return false if the user doesn't exist.	local (i, serviceList = {});	if adrUser == nil {		adrUser = people.getUserTable (userName)};	if not (people.userExists (userName, adrUser)) {		return (false)};	for i = 1 to sizeOf (adrUser^.services) {		local (serviceName = nameOf (adrUser^.services [i]));		if people.serviceExists (serviceName) {			if adrUser^.services [i].enabled {				serviceList = serviceList + serviceName}}};	return (serviceList)}
+on getUserServices (userName, adrUser=nil) {
+	Â«Return a list of services this user has access to.
+		Â«Return false if the user doesn't exist.
+	local (i, serviceList = {});
+	if adrUser == nil {
+		adrUser = people.getUserTable (userName)};
+	if not (people.userExists (userName, adrUser)) {
+		return (false)};
+	for i = 1 to sizeOf (adrUser^.services) {
+		local (serviceName = nameOf (adrUser^.services [i]));
+		if people.serviceExists (serviceName) {
+			if adrUser^.services [i].enabled {
+				serviceList = serviceList + serviceName}}};
+	return (serviceList)}

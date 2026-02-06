@@ -1,1 +1,7 @@
-on setValue (pref, value) {		case string.lower (pref) {		"NOP" {			}};//do nothing		return (value)}
+on setValue (pref, value) {
+	
+	case string.lower (pref) {
+		"NOP" {
+			}};//do nothing
+	
+	return (value)}

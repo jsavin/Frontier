@@ -1,1 +1,2 @@
-on FCls (fsFileBeingClosed) {	return (true)}
+on FCls (fsFileBeingClosed) {
+	return (true)}

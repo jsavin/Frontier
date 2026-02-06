@@ -1,1 +1,11 @@
-on expandEnvironmentStrings (s) {	local (scriptCode = string (winShell.data.scripts.expandEnvironmentStrings));		return (com.callScript (scriptCode, "VBScript", "Main", {s}))};«bundle //test code	«winShell.expandEnvironmentStrings ("%SystemRoot%\\system32\\cmd.exe")		«"C:\\WINNTSVR\\system32\\cmd.exe"	«winShell.expandEnvironmentStrings ("%SystemRoot%\\system32;%SystemRoot%;C:\\Program Files\\Mts")		«"C:\\WINNTSVR\\system32;C:\\WINNTSVR;C:\\Program Files\\Mts"	«winShell.expandEnvironmentStrings ("%bogus%\\system32")		«"%bogus%\\system32"
+on expandEnvironmentStrings (s) {
+	local (scriptCode = string (winShell.data.scripts.expandEnvironmentStrings));
+	
+	return (com.callScript (scriptCode, "VBScript", "Main", {s}))};
+Â«bundle //test code
+	Â«winShell.expandEnvironmentStrings ("%SystemRoot%\\system32\\cmd.exe")
+		Â«"C:\\WINNTSVR\\system32\\cmd.exe"
+	Â«winShell.expandEnvironmentStrings ("%SystemRoot%\\system32;%SystemRoot%;C:\\Program Files\\Mts")
+		Â«"C:\\WINNTSVR\\system32;C:\\WINNTSVR;C:\\Program Files\\Mts"
+	Â«winShell.expandEnvironmentStrings ("%bogus%\\system32")
+		Â«"%bogus%\\system32"

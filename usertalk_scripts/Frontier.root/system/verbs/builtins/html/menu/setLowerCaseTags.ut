@@ -1,1 +1,2 @@
-on setLowerCaseTags (fl) {	user.html.menu.lowerCaseTags = fl}
+on setLowerCaseTags (fl) {
+	user.html.menu.lowerCaseTags = fl}

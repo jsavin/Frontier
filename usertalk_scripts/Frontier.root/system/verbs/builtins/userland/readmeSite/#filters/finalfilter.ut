@@ -1,1 +1,5 @@
-«fix up the bodytext so that a href's into this site are relativehtml.data.standardMacros.glossaryPatcher ();with html.data.page {	if defined (realFile) {		file.writeWholeFile (realFile, renderedText, 'TEXT', 'MOSS', clock.now ())}}
+Â«fix up the bodytext so that a href's into this site are relative
+html.data.standardMacros.glossaryPatcher ();
+with html.data.page {
+	if defined (realFile) {
+		file.writeWholeFile (realFile, renderedText, 'TEXT', 'MOSS', clock.now ())}}

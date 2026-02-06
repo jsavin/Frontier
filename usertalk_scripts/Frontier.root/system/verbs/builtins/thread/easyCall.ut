@@ -1,1 +1,19 @@
-on easyCall (routinename, paramlist) { «4.2	«Launch a call to the routine in a separate thread.		«For an example of a call, see Create MCF command in system.menus.sharedMenus.MACS.		«Mon, Jan 20, 1997 at 9:55:04 AM by DW		«Changes:			«10/31/97 at 1:28:07 PM by DW -- moves from toys.threadCall			«10/12/99; 1:49:49 PM by PBS				«Makes sure paramlist is a list -- it must be a list, tables are not allowed.				«A change in 6.1 -- for..in looping for tables -- makes this explicitness necessary.	local (s = routinename + " (", param, firstparam = true);	for param in list (paramlist) {		if not firstparam {			s = s + ", "};		firstparam = false;		s = s + "\"" + string.replaceAll (param, "\"", "\\\"") + "\""};	s = s + ")";	return (evaluateThread (s))};«bundle //test code	«easyCall ("dialog.threeway", {"Pick a word!", "oh", "the", "buzz"})
+on easyCall (routinename, paramlist) { Â«4.2
+	Â«Launch a call to the routine in a separate thread.
+		Â«For an example of a call, see Create MCF command in system.menus.sharedMenus.MACS.
+		Â«Mon, Jan 20, 1997 at 9:55:04 AM by DW
+		Â«Changes:
+			Â«10/31/97 at 1:28:07 PM by DW -- moves from toys.threadCall
+			Â«10/12/99; 1:49:49 PM by PBS
+				Â«Makes sure paramlist is a list -- it must be a list, tables are not allowed.
+				Â«A change in 6.1 -- for..in looping for tables -- makes this explicitness necessary.
+	local (s = routinename + " (", param, firstparam = true);
+	for param in list (paramlist) {
+		if not firstparam {
+			s = s + ", "};
+		firstparam = false;
+		s = s + "\"" + string.replaceAll (param, "\"", "\\\"") + "\""};
+	s = s + ")";
+	return (evaluateThread (s))};
+Â«bundle //test code
+	Â«easyCall ("dialog.threeway", {"Pick a word!", "oh", "the", "buzz"})

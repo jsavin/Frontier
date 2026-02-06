@@ -1,1 +1,28 @@
-on getOneTagValue (htmltext, tagname) {	«given the html text, extract the value of a specific tag		«if you ask for "title" you'll get the text between <title> and </title>		«it handles tags that contain values, so you can use it to extract the <body> of a page		«Fri, Nov 29, 1996 at 12:29:12 PM by DW	local (lowertext = string.lower (htmltext), tagval = htmltext);	tagname = string.lower (tagname);		on deleteUpTo (s) {		local (ix);		ix = string.patternmatch (s, lowertext);		if ix == 0 {			return (false)};		tagval = string.delete (tagval, 1, ix);		lowertext = string.delete (lowertext, 1, ix);		return (true)};	if not deleteUpTo ("<" + tagname) {		return ("")};	if not deleteUpTo (">") {		return ("")};		local (ix = string.patternmatch ("</" + tagname + ">", lowertext));	if ix == 0 {		return ("")};	return (string.mid (tagval, 1, ix - 1))};«bundle «test code	«dialog.alert ("*" + getOneTagValue ("xxx<Title val1 val2>hello!</title>yyy", "tiTle") + "*")	«dialog.alert ("*" + getOneTagValue ("<TItle>hello!</tiTle>", "tiTle") + "*")
+on getOneTagValue (htmltext, tagname) {
+	Â«given the html text, extract the value of a specific tag
+		Â«if you ask for "title" you'll get the text between <title> and </title>
+		Â«it handles tags that contain values, so you can use it to extract the <body> of a page
+		Â«Fri, Nov 29, 1996 at 12:29:12 PM by DW
+	local (lowertext = string.lower (htmltext), tagval = htmltext);
+	tagname = string.lower (tagname);
+	
+	on deleteUpTo (s) {
+		local (ix);
+		ix = string.patternmatch (s, lowertext);
+		if ix == 0 {
+			return (false)};
+		tagval = string.delete (tagval, 1, ix);
+		lowertext = string.delete (lowertext, 1, ix);
+		return (true)};
+	if not deleteUpTo ("<" + tagname) {
+		return ("")};
+	if not deleteUpTo (">") {
+		return ("")};
+	
+	local (ix = string.patternmatch ("</" + tagname + ">", lowertext));
+	if ix == 0 {
+		return ("")};
+	return (string.mid (tagval, 1, ix - 1))};
+Â«bundle Â«test code
+	Â«dialog.alert ("*" + getOneTagValue ("xxx<Title val1 val2>hello!</title>yyy", "tiTle") + "*")
+	Â«dialog.alert ("*" + getOneTagValue ("<TItle>hello!</tiTle>", "tiTle") + "*")

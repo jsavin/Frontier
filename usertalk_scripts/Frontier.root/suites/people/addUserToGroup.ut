@@ -1,1 +1,9 @@
-on addUserToGroup (userName, groupName) {	«Add a user to a group. Return false if the user or group doesn't exist.	local (adrGroup = people.getGroupTable (groupName));	if not (people.groupExists (groupName, adrGroup)) {		return (false)};	if not (people.userExists (userName)) {		return (false)};	adrGroup^.members.[userName] = true;	return (true)}
+on addUserToGroup (userName, groupName) {
+	Â«Add a user to a group. Return false if the user or group doesn't exist.
+	local (adrGroup = people.getGroupTable (groupName));
+	if not (people.groupExists (groupName, adrGroup)) {
+		return (false)};
+	if not (people.userExists (userName)) {
+		return (false)};
+	adrGroup^.members.[userName] = true;
+	return (true)}

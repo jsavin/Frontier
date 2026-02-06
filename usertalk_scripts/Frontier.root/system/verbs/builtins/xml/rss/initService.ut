@@ -1,1 +1,26 @@
-on initService (url, adrservices) {	«Changes		«12/3/01; 5:41:21 PM by DW			«Initialize new fields of a service: ctErrors, ctConsecutiveErrors, timeLastError.		«Wednesday, December 27, 2000 at 4:32:01 PM by DW			«Created	local (adrservice = @adrservices^.[url]);	if not defined (adrservice^) {		new (tabletype, adrservice)};	if not defined (adrservice^.ctReads) {		adrservice^.ctReads = 0};	if not defined (adrservice^.ctChanges) {		adrservice^.ctChanges = 0};	if not defined (adrservice^.timeLastRead) {		adrservice^.timeLastRead = date (0)};	if not defined (adrservice^.timeLastChange) {		adrservice^.timeLastChange = date (0)};	if not defined (adrservice^.ctErrors) {		adrservice^.ctErrors = 0};	if not defined (adrservice^.ctConsecutiveErrors) {		adrservice^.ctConsecutiveErrors = 0};	if not defined (adrservice^.timeLastError) {		adrservice^.timeLastError = date (0)};	return (adrservice)};«bundle //test code	«initservice ("http://www.wired.com/news_drop/netcenter/netcenter.rdf", @scratchpad)
+on initService (url, adrservices) {
+	Â«Changes
+		Â«12/3/01; 5:41:21 PM by DW
+			Â«Initialize new fields of a service: ctErrors, ctConsecutiveErrors, timeLastError.
+		Â«Wednesday, December 27, 2000 at 4:32:01 PM by DW
+			Â«Created
+	local (adrservice = @adrservices^.[url]);
+	if not defined (adrservice^) {
+		new (tabletype, adrservice)};
+	if not defined (adrservice^.ctReads) {
+		adrservice^.ctReads = 0};
+	if not defined (adrservice^.ctChanges) {
+		adrservice^.ctChanges = 0};
+	if not defined (adrservice^.timeLastRead) {
+		adrservice^.timeLastRead = date (0)};
+	if not defined (adrservice^.timeLastChange) {
+		adrservice^.timeLastChange = date (0)};
+	if not defined (adrservice^.ctErrors) {
+		adrservice^.ctErrors = 0};
+	if not defined (adrservice^.ctConsecutiveErrors) {
+		adrservice^.ctConsecutiveErrors = 0};
+	if not defined (adrservice^.timeLastError) {
+		adrservice^.timeLastError = date (0)};
+	return (adrservice)};
+Â«bundle //test code
+	Â«initservice ("http://www.wired.com/news_drop/netcenter/netcenter.rdf", @scratchpad)

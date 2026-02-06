@@ -1,1 +1,3 @@
-local (f = "UserLand:Programming:Iowa:apps.card");export.sendObject (@system.verbs.apps.card, f);dialog.notify ("\"" + f + "\" is " + string.kBytes (file.size (f)) + ".")
+local (f = "UserLand:Programming:Iowa:apps.card");
+export.sendObject (@system.verbs.apps.card, f);
+dialog.notify ("\"" + f + "\" is " + string.kBytes (file.size (f)) + ".")

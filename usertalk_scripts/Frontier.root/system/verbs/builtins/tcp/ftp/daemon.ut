@@ -1,1 +1,3 @@
-on daemon (stream, refcon) {	system.temp.ftpClientListens.[refcon].stream = stream;	system.temp.ftpClientListens.[refcon].ready = true}
+on daemon (stream, refcon) {
+	system.temp.ftpClientListens.[refcon].stream = stream;
+	system.temp.ftpClientListens.[refcon].ready = true}

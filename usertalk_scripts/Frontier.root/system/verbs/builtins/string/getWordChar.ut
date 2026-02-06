@@ -1,1 +1,2 @@
-on getWordChar () {	kernel (string.getwordchar)}
+on getWordChar () {
+	kernel (string.getwordchar)}

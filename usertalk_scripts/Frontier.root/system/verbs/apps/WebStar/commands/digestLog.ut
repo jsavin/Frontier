@@ -1,1 +1,65 @@
-on digestLog (f) {	file.open (f);	local (fieldnames = {}, ixhost, ixurl);	while not file.endoffile (f) {		s = file.readline (f);		if s beginswith "!!" {			if s beginswith "!!LOG_FORMAT" {				«!!LOG_FORMAT DATE TIME RESULT HOSTNAME URL BYTES_SENT				local (ct = string.countfields (s, ' '), i);				for i = 2 to ct {					local (name = string.nthfield (s, ' ', i));					fieldnames = fieldnames + name;					if name == "HOSTNAME" {						ixhost = i - 1};					if name == "URL" {						ixurl = i - 1}}}}		else {			bundle { «gather information about URLs				local (url);				url = string.nthfield (s, '\t', ixurl);				if not (string.lower (url) endsWith ".html") { «we only count page-reads					continue};				local (adr = @user.webstar.urls.[url]);				if defined (adr^) {					adr^++}				else {					adr^ = 1};				msg (url)};			«bundle «gather information about hosts				«on gatherHostInfo ()					«local (host)					«host = string.nthfield (s, '\t', ixhost)					«host = string.delete (host, sizeof (host), 1) «pop off period at end of host name					«local (ctfields = string.countFields (host, '.'))					«msg (host)					«bundle «eliminate all-numeric IP addresses						«if ctfields == 4							«local (i, flnumeric = true)							«for i = 1 to 4								«try									«number (string.nthField (host, '.', i))								«else «didn't coerce to a number, must contain non-numeric chars									«flnumeric = false									«break							«if flnumeric								«return					«adr = @user.webstar.hosts.[host]					«if defined (adr^)						«adr^++					«else						«adr^ = 1				«gatherHostInfo ()}};	file.close (f);	bundle { «sort the tables		msg ("Sorting user.webstar.urls");		target.set (@user.webstar.urls);		table.sortby ("Value");				msg ("Sorting user.webstar.hosts");		target.set (@user.webstar.hosts);		table.sortby ("Value")};		msg ("Log analysis complete at " + clock.now () + ".")};bundle { «test code	digestLog ("Jaz Disk 1:WebSTAR.log.1/13/97")}
+on digestLog (f) {
+	file.open (f);
+	local (fieldnames = {}, ixhost, ixurl);
+	while not file.endoffile (f) {
+		s = file.readline (f);
+		if s beginswith "!!" {
+			if s beginswith "!!LOG_FORMAT" {
+				Â«!!LOG_FORMAT DATE TIME RESULT HOSTNAME URL BYTES_SENT
+				local (ct = string.countfields (s, ' '), i);
+				for i = 2 to ct {
+					local (name = string.nthfield (s, ' ', i));
+					fieldnames = fieldnames + name;
+					if name == "HOSTNAME" {
+						ixhost = i - 1};
+					if name == "URL" {
+						ixurl = i - 1}}}}
+		else {
+			bundle { Â«gather information about URLs
+				local (url);
+				url = string.nthfield (s, '\t', ixurl);
+				if not (string.lower (url) endsWith ".html") { Â«we only count page-reads
+					continue};
+				local (adr = @user.webstar.urls.[url]);
+				if defined (adr^) {
+					adr^++}
+				else {
+					adr^ = 1};
+				msg (url)};
+			Â«bundle Â«gather information about hosts
+				Â«on gatherHostInfo ()
+					Â«local (host)
+					Â«host = string.nthfield (s, '\t', ixhost)
+					Â«host = string.delete (host, sizeof (host), 1) Â«pop off period at end of host name
+					Â«local (ctfields = string.countFields (host, '.'))
+					Â«msg (host)
+					Â«bundle Â«eliminate all-numeric IP addresses
+						Â«if ctfields == 4
+							Â«local (i, flnumeric = true)
+							Â«for i = 1 to 4
+								Â«try
+									Â«number (string.nthField (host, '.', i))
+								Â«else Â«didn't coerce to a number, must contain non-numeric chars
+									Â«flnumeric = false
+									Â«break
+							Â«if flnumeric
+								Â«return
+					Â«adr = @user.webstar.hosts.[host]
+					Â«if defined (adr^)
+						Â«adr^++
+					Â«else
+						Â«adr^ = 1
+				Â«gatherHostInfo ()}};
+	file.close (f);
+	bundle { Â«sort the tables
+		msg ("Sorting user.webstar.urls");
+		target.set (@user.webstar.urls);
+		table.sortby ("Value");
+		
+		msg ("Sorting user.webstar.hosts");
+		target.set (@user.webstar.hosts);
+		table.sortby ("Value")};
+	
+	msg ("Log analysis complete at " + clock.now () + ".")};
+bundle { Â«test code
+	digestLog ("Jaz Disk 1:WebSTAR.log.1/13/97")}

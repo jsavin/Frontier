@@ -1,1 +1,3 @@
-on getMessageCC (msgObj) {	with objectModel, Eudora, eventInfo {		return (core.get (id, msgObj.field ["Cc"]) - "Cc: ")}}
+on getMessageCC (msgObj) {
+	with objectModel, Eudora, eventInfo {
+		return (core.get (id, msgObj.field ["Cc"]) - "Cc: ")}}

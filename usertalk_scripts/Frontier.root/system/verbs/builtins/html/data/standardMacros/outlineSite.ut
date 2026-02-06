@@ -1,1 +1,172 @@
-on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { «4.2	«return HTML that represents an outline of the site		«For each page, if it has a #subtext entry, include that text.		«Thu, Dec 12, 1996 at 6:49:42 AM by DW		«Change notes:			«Respects file suffix settings of different pages.			«Friday, January 02, 1998 at 11:49:24 PM by PBS	local (adrPageTable = html.getPageTableAddress ());	local (flResponder = html.inResponder (adrPageTable));		if tableadr == nil {		tableadr = adrPageTable^.adrSiteRootTable};	local (subtextfonttag, headfonttag, defaultname);	bundle { «set subtextfonttag, headfonttag, defaultname		if defined (adrPageTable^.siteOutlineSubtextFont) {			subtextfonttag = adrPageTable^.siteOutlineSubtextFont}		else {			subtextfonttag = "<font face=\"geneva,arial\" size=-2>"};		if defined (adrPageTable^.siteOutlineHeadFont) {			headfonttag = adrPageTable^.siteOutlineHeadFont}		else {			headfonttag = "<font face=\"helvetica,arial\" size=+0>"};		if defined (adrPageTable^.siteDefaultName) {			defaultname = adrPageTable^.siteDefaultName}		else {			defaultname = html.getPref ("defaultFileName", adrPageTable)}};	local (fldebug = false);	local (localoutline, outlineAdr = @localoutline);	local (level = 0);	local (oldtarget);	oldtarget = target.get ();	new (outlineType, outlineAdr);	target.set (outlineAdr);	op.setDisplay (false);	if fldebug {		editMenu.setFont ("geneva");		editMenu.setFontSize (9)};	«edit (outlineadr)	op.setLineText ("Outline of " + tableAdr + " table");	local (dir = right); «first headline inserted to the right	on traverse (adr, url) {		local (adrsubitem, i, name);		if op.countsubs (1) > 0 {			op.expand (1);			op.go (right, 1);			op.go (down, infinity);			dir = down};		for i = 1 to sizeof (adr^) {			adrsubitem = @adr^ [i];			fltable = typeOf (adrsubitem^) == tableType;			name = nameof (adrsubitem^);			bundle { «we ignore some objects...				if name beginswith "#" {					continue};				case name {					defaultname;					"tools";					"data";					"testing";					"images";					"glossary" {						continue}};				if adrsubitem == adrPageTable^.adrObject { «don't include the page being rendered					continue}};			bundle { «insert the head				local (head, title = name, indent = level * indentpixels, adrtext);				local (link, plaintitle);				head = "<table>";				if level > 0 {					head = head + "<td width=" + indent + "></td>"};				head = head + "<td width=" + (maxwidth - indent) + ">";				if fltable {					adrtext = @adrsubitem^.[defaultname];					link = "";					if defined (adrtext^) {						local (fileExtension);						if flResponder {							fileExtension = ".wsf"}						else {							fileExtension = html.getPagePref ("fileExtension", @adrSubItem^.[defaultName], adrPageTable)};						link = "<a href=\"" + url + name + "/" + defaultname + fileExtension + "\">"}}				else {					adrtext = adrsubitem;					local (fileExtension);					if flResponder {						fileExtension = ".wsf"}					else {						fileExtension = html.getPagePref ("fileExtension", adrSubItem, adrPageTable)};					link = "<a href=\"" + url + name + fileExtension + "\">"};				local (s="", ix, subtext="");				if defined (adrtext^) {					s = string (adrtext^);					title = html.getonedirective ("#title", s);					if title == "" {						title = name};					subtext = html.getonedirective ("#subtext", s)};				plaintitle = title;				if level == 0 {					title = "<b>" + title + "</b>"};				if link == "" {					head = head + title}				else {					head = head + link + title + "</a>"};				head = head + "</td></table>";				op.insert ("<!--9" + plaintitle + "-->", dir);				bundle { «insert the link for this line					local (nextdir = right);					op.insert ("<!--1--><table>", right);					op.insert ("<tr>", right);					if level > 0 {						op.insert ("<td width=" + indent + ">", right);						op.insert ("&nbsp;", right);						op.insert ("</td>", down);						op.go (left, 1);						nextdir = down};					op.insert ("<td width=" + (maxwidth - indent) + ">", nextdir);					op.insert (headfonttag, right);					op.insert (link + title + "</a>", right);					op.insert ("</font>", down);					op.go (left, 1);					op.insert ("</td>", down);					op.go (left, 1);					op.insert ("</tr>", down);					op.go (left, 1);					op.insert ("</table>", down);					op.go (left, 1)};				if subtext != "" {					op.insert ("<!--2--><table>", down);					op.insert ("<tr>", right);					op.insert ("<td width=" + (level + 1) * indentpixels + ">", right);					op.insert ("&nbsp;", right);					op.insert ("</td>", down);					op.go (left, 1);					op.insert ("<td width=" + (maxwidth - indent) + ">", down);					op.insert (subtextfonttag, right);					op.insert (subtext, right);					op.insert ("</font>", down);					op.go (left, 1);					op.insert ("</td>", down);					op.go (left, 1);					op.insert ("</tr>", down);					op.go (left, 1);					op.insert ("</table>", down);					op.go (left, 1)};				op.go (left, 1)};			if fltable {				dir = right;				level++;				traverse (adrsubitem, url + name + "/"); «recurse				level--;				if dir != right { «at least one item added from the table					op.sort ();					op.go (left, 1)}};			dir = down;			rollBeachBall ()}};	traverse (tableAdr, "");	op.sort ();	op.firstSummit ();	op.promote ();	op.deleteline ();	if fldebug {		user.websites.midas.xxx = localoutline;		edit (@user.websites.midas.xxx)};	bundle { «convert to string, clean up, return		local (s = string (localoutline));		s = string.replaceAll (s, "<!--1-->", "");		s = string.replaceAll (s, "<!--2-->", "");		s = string.replaceAll (s, "<!--9", "<!--");		try {			target.set (oldtarget)};		scratchpad.xxx = localoutline;		return (s)}}
+on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { Â«4.2
+	Â«return HTML that represents an outline of the site
+		Â«For each page, if it has a #subtext entry, include that text.
+		Â«Thu, Dec 12, 1996 at 6:49:42 AM by DW
+		Â«Change notes:
+			Â«Respects file suffix settings of different pages.
+			Â«Friday, January 02, 1998 at 11:49:24 PM by PBS
+	local (adrPageTable = html.getPageTableAddress ());
+	local (flResponder = html.inResponder (adrPageTable));
+	
+	if tableadr == nil {
+		tableadr = adrPageTable^.adrSiteRootTable};
+	local (subtextfonttag, headfonttag, defaultname);
+	bundle { Â«set subtextfonttag, headfonttag, defaultname
+		if defined (adrPageTable^.siteOutlineSubtextFont) {
+			subtextfonttag = adrPageTable^.siteOutlineSubtextFont}
+		else {
+			subtextfonttag = "<font face=\"geneva,arial\" size=-2>"};
+		if defined (adrPageTable^.siteOutlineHeadFont) {
+			headfonttag = adrPageTable^.siteOutlineHeadFont}
+		else {
+			headfonttag = "<font face=\"helvetica,arial\" size=+0>"};
+		if defined (adrPageTable^.siteDefaultName) {
+			defaultname = adrPageTable^.siteDefaultName}
+		else {
+			defaultname = html.getPref ("defaultFileName", adrPageTable)}};
+	local (fldebug = false);
+	local (localoutline, outlineAdr = @localoutline);
+	local (level = 0);
+	local (oldtarget);
+	oldtarget = target.get ();
+	new (outlineType, outlineAdr);
+	target.set (outlineAdr);
+	op.setDisplay (false);
+	if fldebug {
+		editMenu.setFont ("geneva");
+		editMenu.setFontSize (9)};
+	Â«edit (outlineadr)
+	op.setLineText ("Outline of " + tableAdr + " table");
+	local (dir = right); Â«first headline inserted to the right
+	on traverse (adr, url) {
+		local (adrsubitem, i, name);
+		if op.countsubs (1) > 0 {
+			op.expand (1);
+			op.go (right, 1);
+			op.go (down, infinity);
+			dir = down};
+		for i = 1 to sizeof (adr^) {
+			adrsubitem = @adr^ [i];
+			fltable = typeOf (adrsubitem^) == tableType;
+			name = nameof (adrsubitem^);
+			bundle { Â«we ignore some objects...
+				if name beginswith "#" {
+					continue};
+				case name {
+					defaultname;
+					"tools";
+					"data";
+					"testing";
+					"images";
+					"glossary" {
+						continue}};
+				if adrsubitem == adrPageTable^.adrObject { Â«don't include the page being rendered
+					continue}};
+			bundle { Â«insert the head
+				local (head, title = name, indent = level * indentpixels, adrtext);
+				local (link, plaintitle);
+				head = "<table>";
+				if level > 0 {
+					head = head + "<td width=" + indent + "></td>"};
+				head = head + "<td width=" + (maxwidth - indent) + ">";
+				if fltable {
+					adrtext = @adrsubitem^.[defaultname];
+					link = "";
+					if defined (adrtext^) {
+						local (fileExtension);
+						if flResponder {
+							fileExtension = ".wsf"}
+						else {
+							fileExtension = html.getPagePref ("fileExtension", @adrSubItem^.[defaultName], adrPageTable)};
+						link = "<a href=\"" + url + name + "/" + defaultname + fileExtension + "\">"}}
+				else {
+					adrtext = adrsubitem;
+					local (fileExtension);
+					if flResponder {
+						fileExtension = ".wsf"}
+					else {
+						fileExtension = html.getPagePref ("fileExtension", adrSubItem, adrPageTable)};
+					link = "<a href=\"" + url + name + fileExtension + "\">"};
+				local (s="", ix, subtext="");
+				if defined (adrtext^) {
+					s = string (adrtext^);
+					title = html.getonedirective ("#title", s);
+					if title == "" {
+						title = name};
+					subtext = html.getonedirective ("#subtext", s)};
+				plaintitle = title;
+				if level == 0 {
+					title = "<b>" + title + "</b>"};
+				if link == "" {
+					head = head + title}
+				else {
+					head = head + link + title + "</a>"};
+				head = head + "</td></table>";
+				op.insert ("<!--9" + plaintitle + "-->", dir);
+				bundle { Â«insert the link for this line
+					local (nextdir = right);
+					op.insert ("<!--1--><table>", right);
+					op.insert ("<tr>", right);
+					if level > 0 {
+						op.insert ("<td width=" + indent + ">", right);
+						op.insert ("&nbsp;", right);
+						op.insert ("</td>", down);
+						op.go (left, 1);
+						nextdir = down};
+					op.insert ("<td width=" + (maxwidth - indent) + ">", nextdir);
+					op.insert (headfonttag, right);
+					op.insert (link + title + "</a>", right);
+					op.insert ("</font>", down);
+					op.go (left, 1);
+					op.insert ("</td>", down);
+					op.go (left, 1);
+					op.insert ("</tr>", down);
+					op.go (left, 1);
+					op.insert ("</table>", down);
+					op.go (left, 1)};
+				if subtext != "" {
+					op.insert ("<!--2--><table>", down);
+					op.insert ("<tr>", right);
+					op.insert ("<td width=" + (level + 1) * indentpixels + ">", right);
+					op.insert ("&nbsp;", right);
+					op.insert ("</td>", down);
+					op.go (left, 1);
+					op.insert ("<td width=" + (maxwidth - indent) + ">", down);
+					op.insert (subtextfonttag, right);
+					op.insert (subtext, right);
+					op.insert ("</font>", down);
+					op.go (left, 1);
+					op.insert ("</td>", down);
+					op.go (left, 1);
+					op.insert ("</tr>", down);
+					op.go (left, 1);
+					op.insert ("</table>", down);
+					op.go (left, 1)};
+				op.go (left, 1)};
+			if fltable {
+				dir = right;
+				level++;
+				traverse (adrsubitem, url + name + "/"); Â«recurse
+				level--;
+				if dir != right { Â«at least one item added from the table
+					op.sort ();
+					op.go (left, 1)}};
+			dir = down;
+			rollBeachBall ()}};
+	traverse (tableAdr, "");
+	op.sort ();
+	op.firstSummit ();
+	op.promote ();
+	op.deleteline ();
+	if fldebug {
+		user.websites.midas.xxx = localoutline;
+		edit (@user.websites.midas.xxx)};
+	bundle { Â«convert to string, clean up, return
+		local (s = string (localoutline));
+		s = string.replaceAll (s, "<!--1-->", "");
+		s = string.replaceAll (s, "<!--2-->", "");
+		s = string.replaceAll (s, "<!--9", "<!--");
+		try {
+			target.set (oldtarget)};
+		scratchpad.xxx = localoutline;
+		return (s)}}

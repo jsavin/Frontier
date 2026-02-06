@@ -1,1 +1,66 @@
-«New: Sat, Nov 23, 1996 at 12:28:00 PM by DW	«Changes:		«10/12/99; 2:22:13 PM by PBS			«Create user.html.prefs.addToChangedPages. If true, then automatic adding to changed pages occurs. If false, then changed pages are not automatically added to the changed pages outline.if not defined (user.html) {	new (tabletype, @user.html)};if not defined (user.html.glossary) {	new (tabletype, @user.html.glossary)};if not defined (user.html.macros) {	new (tabletype, @user.html.macros)};if not defined (user.html.sites) {	new (tabletype, @user.html.sites)};if not defined (user.html.prefs.fullTimeNetConnection) {	user.html.prefs.fullTimeNetConnection = false};if not defined (user.html.prefs.serverNetAddress) {	user.html.prefs.serverNetAddress = "255.255.255.255"};if not defined (user.html.prefs.webServerAppID) {	user.html.prefs.webServerAppID = string4 ("WWW" + char (189))};if not defined (user.html.prefs.mainSiteFolder) {	local(theOS = sys.os());	if theOS == "MacOS" || theOS == "MacCn" {		user.html.prefs.mainSiteFolder = file.folderFromPath (file.findApplication (user.html.prefs.webServerAppID))}	else {		user.html.prefs.mainSiteFolder = ""}};if not defined (user.html.prefs.mainSiteURL) {	user.html.prefs.mainSiteURL = user.html.prefs.serverNetAddress + "/"};if not defined (user.html.prefs.imgFileCreator) {	user.html.prefs.imgFileCreator = 'MOSS'};if not defined (user.html.prefs.textFileCreator) {	user.html.prefs.textFileCreator = 'MOSS'};if not defined (user.html.images) { «Tue, Dec 10, 1996 at 5:58:58 AM by DW	new (tabletype, @user.html.images)};if not defined (user.html.prefs.defaultFileName) { «Sun, Dec 15, 1996 at 6:28:18 AM by DW	user.html.prefs.defaultFileName = "index";	};«Index is far more common than default. PBS 1/27/97if not defined (user.html.prefs.charset) { «Mon, Dec 30, 1996 at 2:34:03 PM by DW	user.html.prefs.charset = "iso-8859-1"};if not defined (user.html.prefs.addLineFeeds) { //Tuesday, January 27, 1998 at 10:53:13 AM by PBS	case sys.os () {		"Win95";		"WinNT" {			user.html.prefs.addLineFeeds = true};		"MacOS" {			user.html.prefs.addLineFeeds = false}}};if not defined (user.html.prefs.isoFilter) { //Tuesday, January 27, 1998 at 10:53:11 AM by PBS	user.html.prefs.isoFilter = true};if not defined (user.html.prefs.imageFolderName) { //Fri, May 15, 1998 at 11:56:15 AM by PBS	user.html.prefs.imageFolderName = "images"};if not defined (user.html.prefs.imageFolderSubtables) {	user.html.prefs.imageFolderSubtables = false};if not defined (user.html.prefs.includeMetaCharset) { «Wed, Feb 26, 1997 at 7:40:31 AM by DW	user.html.prefs.includeMetaCharset = false};if not defined (user.html.prefs.useImageCache) { //Sunday, January 18, 1998 at 12:02:59 AM by PBS	user.html.prefs.useImageCache = false};if not defined (user.html.prefs.useKernelCode) { //Fri, May 15, 1998 at 12:53:41 PM by PBS	user.html.prefs.useKernelCode = true};if not defined (user.html.prefs.addToChangedPages) { //PBS 10/12/99	user.html.prefs.addToChangedPages = false}; //default is false for 6.1if not defined (user.html.changedPages) {	new (outlinetype, @user.html.changedPages)};if not defined (user.callbacks.closeWindow.addToChangedPages) {	user.callbacks.closeWindow.addToChangedPages = html.data.closeWindowHook};bundle { //PBS 03/27/00: initialize pikeRenderer, part of Pike support	pikeRenderer.init ()}
+Â«New: Sat, Nov 23, 1996 at 12:28:00 PM by DW
+	Â«Changes:
+		Â«10/12/99; 2:22:13 PM by PBS
+			Â«Create user.html.prefs.addToChangedPages. If true, then automatic adding to changed pages occurs. If false, then changed pages are not automatically added to the changed pages outline.
+
+if not defined (user.html) {
+	new (tabletype, @user.html)};
+if not defined (user.html.glossary) {
+	new (tabletype, @user.html.glossary)};
+if not defined (user.html.macros) {
+	new (tabletype, @user.html.macros)};
+if not defined (user.html.sites) {
+	new (tabletype, @user.html.sites)};
+if not defined (user.html.prefs.fullTimeNetConnection) {
+	user.html.prefs.fullTimeNetConnection = false};
+if not defined (user.html.prefs.serverNetAddress) {
+	user.html.prefs.serverNetAddress = "255.255.255.255"};
+if not defined (user.html.prefs.webServerAppID) {
+	user.html.prefs.webServerAppID = string4 ("WWW" + char (189))};
+if not defined (user.html.prefs.mainSiteFolder) {
+	local(theOS = sys.os());
+	if theOS == "MacOS" || theOS == "MacCn" {
+		user.html.prefs.mainSiteFolder = file.folderFromPath (file.findApplication (user.html.prefs.webServerAppID))}
+	else {
+		user.html.prefs.mainSiteFolder = ""}};
+if not defined (user.html.prefs.mainSiteURL) {
+	user.html.prefs.mainSiteURL = user.html.prefs.serverNetAddress + "/"};
+if not defined (user.html.prefs.imgFileCreator) {
+	user.html.prefs.imgFileCreator = 'MOSS'};
+if not defined (user.html.prefs.textFileCreator) {
+	user.html.prefs.textFileCreator = 'MOSS'};
+if not defined (user.html.images) { Â«Tue, Dec 10, 1996 at 5:58:58 AM by DW
+	new (tabletype, @user.html.images)};
+if not defined (user.html.prefs.defaultFileName) { Â«Sun, Dec 15, 1996 at 6:28:18 AM by DW
+	user.html.prefs.defaultFileName = "index";
+	};Â«Index is far more common than default. PBS 1/27/97
+if not defined (user.html.prefs.charset) { Â«Mon, Dec 30, 1996 at 2:34:03 PM by DW
+	user.html.prefs.charset = "iso-8859-1"};
+if not defined (user.html.prefs.addLineFeeds) { //Tuesday, January 27, 1998 at 10:53:13 AM by PBS
+	case sys.os () {
+		"Win95";
+		"WinNT" {
+			user.html.prefs.addLineFeeds = true};
+		"MacOS" {
+			user.html.prefs.addLineFeeds = false}}};
+if not defined (user.html.prefs.isoFilter) { //Tuesday, January 27, 1998 at 10:53:11 AM by PBS
+	user.html.prefs.isoFilter = true};
+if not defined (user.html.prefs.imageFolderName) { //Fri, May 15, 1998 at 11:56:15 AM by PBS
+	user.html.prefs.imageFolderName = "images"};
+if not defined (user.html.prefs.imageFolderSubtables) {
+	user.html.prefs.imageFolderSubtables = false};
+if not defined (user.html.prefs.includeMetaCharset) { Â«Wed, Feb 26, 1997 at 7:40:31 AM by DW
+	user.html.prefs.includeMetaCharset = false};
+if not defined (user.html.prefs.useImageCache) { //Sunday, January 18, 1998 at 12:02:59 AM by PBS
+	user.html.prefs.useImageCache = false};
+if not defined (user.html.prefs.useKernelCode) { //Fri, May 15, 1998 at 12:53:41 PM by PBS
+	user.html.prefs.useKernelCode = true};
+if not defined (user.html.prefs.addToChangedPages) { //PBS 10/12/99
+	user.html.prefs.addToChangedPages = false}; //default is false for 6.1
+if not defined (user.html.changedPages) {
+	new (outlinetype, @user.html.changedPages)};
+if not defined (user.callbacks.closeWindow.addToChangedPages) {
+	user.callbacks.closeWindow.addToChangedPages = html.data.closeWindowHook};
+
+bundle { //PBS 03/27/00: initialize pikeRenderer, part of Pike support
+	pikeRenderer.init ()}

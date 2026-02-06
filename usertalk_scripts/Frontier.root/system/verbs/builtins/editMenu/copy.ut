@@ -1,1 +1,2 @@
-on copy () {	kernel (editmenu.copy)}
+on copy () {
+	kernel (editmenu.copy)}

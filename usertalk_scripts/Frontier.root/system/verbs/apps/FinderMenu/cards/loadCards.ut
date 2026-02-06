@@ -1,1 +1,4 @@
-local (folder = "Macintosh HD:New Releases:FinderMenu:Cards:", f);fileloop (f in folder) {	if (file.type (f) == 'CARD') and (file.creator (f) == 'IOWA') {		findermenu.cards.[file.filefrompath (f) - ".card"] = cardeditor.readpackedcard (f)}}
+local (folder = "Macintosh HD:New Releases:FinderMenu:Cards:", f);
+fileloop (f in folder) {
+	if (file.type (f) == 'CARD') and (file.creator (f) == 'IOWA') {
+		findermenu.cards.[file.filefrompath (f) - ".card"] = cardeditor.readpackedcard (f)}}

@@ -1,1 +1,17 @@
-on unsubscribeErrantServices (adrdata=nil) {	«Changes		«12/27/01; 1:30:31 PM by PBS			«Added optional parameter, adrdata. If nil, get it from xml.aggregator.init. This allows adrdata to be passed from xml.aggregator.readAllServices.			«Pass adrdata to xml.aggregator.unsubscribeService.		«12/3/01; 5:56:18 PM by DW			«Created. Automatically unsubscribe from channels with too many consecutive errors.		if adrdata == nil { //PBS 12/27/01: it's now an optional parameter		adrdata = xml.aggregator.init ()};	local (adrservices = @adrdata^.services, i, adrservice, url);	for i = sizeof (adrservices^) downto 1 {		adrservice = @adrservices^ [i];		url = nameof (adrservice^);		xml.rss.initService (url, adrservices);		if adrservice^.ctConsecutiveErrors >= adrdata^.prefs.maxErrorsBeforeAutoUnsubscribe {			xml.aggregator.unsubscribeService (url, adrdata)}}} //PBS 12/27/01: pass adrdata
+on unsubscribeErrantServices (adrdata=nil) {
+	Â«Changes
+		Â«12/27/01; 1:30:31 PM by PBS
+			Â«Added optional parameter, adrdata. If nil, get it from xml.aggregator.init. This allows adrdata to be passed from xml.aggregator.readAllServices.
+			Â«Pass adrdata to xml.aggregator.unsubscribeService.
+		Â«12/3/01; 5:56:18 PM by DW
+			Â«Created. Automatically unsubscribe from channels with too many consecutive errors.
+	
+	if adrdata == nil { //PBS 12/27/01: it's now an optional parameter
+		adrdata = xml.aggregator.init ()};
+	local (adrservices = @adrdata^.services, i, adrservice, url);
+	for i = sizeof (adrservices^) downto 1 {
+		adrservice = @adrservices^ [i];
+		url = nameof (adrservice^);
+		xml.rss.initService (url, adrservices);
+		if adrservice^.ctConsecutiveErrors >= adrdata^.prefs.maxErrorsBeforeAutoUnsubscribe {
+			xml.aggregator.unsubscribeService (url, adrdata)}}} //PBS 12/27/01: pass adrdata

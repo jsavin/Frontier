@@ -1,1 +1,8 @@
-«Put this at suites.webBrowser.protocols.activeHandlers.ftp	« to have ftpClient handle ftp urls from your webBrowseron ftp (url) {	if ftpClient.launch () {		ftpClient.bringToFront ();		ftpClient.getURL (url)}	else {		return (false)}}
+Â«Put this at suites.webBrowser.protocols.activeHandlers.ftp
+	Â« to have ftpClient handle ftp urls from your webBrowser
+on ftp (url) {
+	if ftpClient.launch () {
+		ftpClient.bringToFront ();
+		ftpClient.getURL (url)}
+	else {
+		return (false)}}

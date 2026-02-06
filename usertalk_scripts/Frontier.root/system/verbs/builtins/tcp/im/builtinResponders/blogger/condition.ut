@@ -1,1 +1,6 @@
-on condition (screenname, message) {	if user.im.responders.blogger.prefs.allowedScreenNames contains screenName {		local (firstWord = string.nthField (searchEngine.stripMarkup (message), " ", 1));		return (string.lower (firstWord) == "blogger")}	else {		return (false)}}
+on condition (screenname, message) {
+	if user.im.responders.blogger.prefs.allowedScreenNames contains screenName {
+		local (firstWord = string.nthField (searchEngine.stripMarkup (message), " ", 1));
+		return (string.lower (firstWord) == "blogger")}
+	else {
+		return (false)}}

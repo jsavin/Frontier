@@ -1,1 +1,29 @@
-on getCurrentServer (adrObject=nil) {	«Changes:		«8/30/05; 5:14:15 PM by JES			«If no object is passed in, call webEdit.getSelectObject. Needed in order to display the current server in the WebEdit menu.		«PBS 1/12/99			«If a #webEditServer directive is found, this over-rides the current server setting.		if adrObject == nil {		adrObject = webEdit.getSelectedObject ()};	if adrObject != nil { //look for a #webEditServer directive. PBS 1/12/99		local (nomad = adrObject);				if not (user.webEdit.prefs.overrideWebEditServerDirective) {			loop {				nomad = parentOf (nomad^);				if nomad == nil {					break};								if defined (nomad^.["#webEditServer"]) {					return (nomad^.["#webEditServer"])};				if defined (nomad^.["#prefs"].webEditServer) {					return (nomad^.["#prefs"].webEditServer)};				if defined (nomad^.["#prefs"].["#webEditServer"]) {					return (nomad^.["#prefs"].["#webEditServer"])}}}};		«No #webEditServer directive, return the current server.	return (user.webEdit.prefs.currentServer)};«bundle //test code	«getCurrentServer ()
+on getCurrentServer (adrObject=nil) {
+	Â«Changes:
+		Â«8/30/05; 5:14:15 PM by JES
+			Â«If no object is passed in, call webEdit.getSelectObject. Needed in order to display the current server in the WebEdit menu.
+		Â«PBS 1/12/99
+			Â«If a #webEditServer directive is found, this over-rides the current server setting.
+	
+	if adrObject == nil {
+		adrObject = webEdit.getSelectedObject ()};
+	if adrObject != nil { //look for a #webEditServer directive. PBS 1/12/99
+		local (nomad = adrObject);
+		
+		if not (user.webEdit.prefs.overrideWebEditServerDirective) {
+			loop {
+				nomad = parentOf (nomad^);
+				if nomad == nil {
+					break};
+				
+				if defined (nomad^.["#webEditServer"]) {
+					return (nomad^.["#webEditServer"])};
+				if defined (nomad^.["#prefs"].webEditServer) {
+					return (nomad^.["#prefs"].webEditServer)};
+				if defined (nomad^.["#prefs"].["#webEditServer"]) {
+					return (nomad^.["#prefs"].["#webEditServer"])}}}};
+	
+	Â«No #webEditServer directive, return the current server.
+	return (user.webEdit.prefs.currentServer)};
+Â«bundle //test code
+	Â«getCurrentServer ()

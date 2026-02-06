@@ -1,1 +1,16 @@
-on mySubscriptions (adrelement, adrservice) {	«Changes		«9/29/02; 7:03:58 PM by JES			«Created.			«This sample namespace driver implements the aggregator-side of the blogChannel module for RSS 2.0.			«Docs for the module are here: http://backend.userland.com/blogChannelModule			«This driver script handles the blogChannel:mySubscriptions sub-element of channel.			«The driver is very simple -- it creates a sub-table of adrservice named blogChannel, and if defined, it adds the blogRoll URL, the URL of mySubscriptions.opml and the "blink" URL, as sub-items of the blogChannel table.	local (adrdata = @adrservice^.compilation.blogChannel);	if not defined (adrdata^) {		new (tableType, adrdata)};	if typeOf (adrelement^) == stringType {		adrdata^.mySubscriptions = adrelement^}	else {		adrdata^.mySubscriptions = adrelement^.["/pcdata"]};	return}
+on mySubscriptions (adrelement, adrservice) {
+	Â«Changes
+		Â«9/29/02; 7:03:58 PM by JES
+			Â«Created.
+			Â«This sample namespace driver implements the aggregator-side of the blogChannel module for RSS 2.0.
+			Â«Docs for the module are here: http://backend.userland.com/blogChannelModule
+			Â«This driver script handles the blogChannel:mySubscriptions sub-element of channel.
+			Â«The driver is very simple -- it creates a sub-table of adrservice named blogChannel, and if defined, it adds the blogRoll URL, the URL of mySubscriptions.opml and the "blink" URL, as sub-items of the blogChannel table.
+	local (adrdata = @adrservice^.compilation.blogChannel);
+	if not defined (adrdata^) {
+		new (tableType, adrdata)};
+	if typeOf (adrelement^) == stringType {
+		adrdata^.mySubscriptions = adrelement^}
+	else {
+		adrdata^.mySubscriptions = adrelement^.["/pcdata"]};
+	return}

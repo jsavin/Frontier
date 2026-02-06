@@ -1,1 +1,2 @@
-on nthWord (s, n) {	kernel (string.nthword)}
+on nthWord (s, n) {
+	kernel (string.nthword)}

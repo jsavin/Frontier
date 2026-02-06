@@ -1,1 +1,15 @@
-on attachServiceToGroup () {	local (groupName, serviceName);		bundle { //get args		local (args = html.getPageTableAddress ()^.tools^.getArgs ());		local (argTable);		new (tableType, @argTable);		webserver.parseArgs (args, @argTable);		groupName = string.urlDecode (argTable.groupName);		serviceName = string.urlDecode (argTable.serviceName)};		if not (people.attachServiceToGroup (groupName, serviceName)) {		return ("Can't attach the \"" + serviceName + "\" service to " + groupName + "because one or the other doesn't exist.")};		return ("The \"" + serviceName + "\" service has been attached to " + groupName + ".")}
+on attachServiceToGroup () {
+	local (groupName, serviceName);
+	
+	bundle { //get args
+		local (args = html.getPageTableAddress ()^.tools^.getArgs ());
+		local (argTable);
+		new (tableType, @argTable);
+		webserver.parseArgs (args, @argTable);
+		groupName = string.urlDecode (argTable.groupName);
+		serviceName = string.urlDecode (argTable.serviceName)};
+	
+	if not (people.attachServiceToGroup (groupName, serviceName)) {
+		return ("Can't attach the \"" + serviceName + "\" service to " + groupName + "because one or the other doesn't exist.")};
+	
+	return ("The \"" + serviceName + "\" service has been attached to " + groupName + ".")}

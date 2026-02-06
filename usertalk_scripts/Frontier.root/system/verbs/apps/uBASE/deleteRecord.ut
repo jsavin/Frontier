@@ -1,1 +1,2 @@
-on deleteRecord (fnum, key) {	return (systemEvent ('ubas', 'dele', 'fref', short (fnum), 'key ', string (key)))}
+on deleteRecord (fnum, key) {
+	return (systemEvent ('ubas', 'dele', 'fref', short (fnum), 'key ', string (key)))}

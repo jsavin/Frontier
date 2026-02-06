@@ -1,1 +1,14 @@
-«open the Nightly Tasks dialogwebstar.commands.init ();on startCard () {	card.setObjectFlag ("startNewLogFile", user.webstar.nightlyLogRoll);	card.setObjectFlag ("restartWebstar", user.webstar.nightlyRestart);	card.setObjectFlag ("mirrorContent", user.webstar.nightlyMirror);	card.setObjectFlag ("logDigest", user.webstar.nightlyLogDigest)};on ok () {	user.webstar.nightlyLogRoll = card.getObjectFlag ("startNewLogFile");	user.webstar.nightlyRestart = card.getObjectFlag ("restartWebstar");	user.webstar.nightlyMirror = card.getObjectFlag ("mirrorContent");	user.webstar.nightlyLogDigest = card.getObjectFlag ("logDigest");	WebSTAR.appinfo.path = sys.getAppPath (WebSTAR.id)};card.run (@WebSTAR.commands.cards.nightlyTasks)
+Â«open the Nightly Tasks dialog
+webstar.commands.init ();
+on startCard () {
+	card.setObjectFlag ("startNewLogFile", user.webstar.nightlyLogRoll);
+	card.setObjectFlag ("restartWebstar", user.webstar.nightlyRestart);
+	card.setObjectFlag ("mirrorContent", user.webstar.nightlyMirror);
+	card.setObjectFlag ("logDigest", user.webstar.nightlyLogDigest)};
+on ok () {
+	user.webstar.nightlyLogRoll = card.getObjectFlag ("startNewLogFile");
+	user.webstar.nightlyRestart = card.getObjectFlag ("restartWebstar");
+	user.webstar.nightlyMirror = card.getObjectFlag ("mirrorContent");
+	user.webstar.nightlyLogDigest = card.getObjectFlag ("logDigest");
+	WebSTAR.appinfo.path = sys.getAppPath (WebSTAR.id)};
+card.run (@WebSTAR.commands.cards.nightlyTasks)

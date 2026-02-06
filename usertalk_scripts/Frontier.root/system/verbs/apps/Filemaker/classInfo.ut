@@ -1,1 +1,2 @@
-on classInfo (x, wrCode = nil) { «Get information about an object class	return (appleEvent (Filemaker.id, 'core', 'qobj', '----', string4 (x), 'wrcd', wrCode))}
+on classInfo (x, wrCode = nil) { Â«Get information about an object class
+	return (appleEvent (Filemaker.id, 'core', 'qobj', '----', string4 (x), 'wrcd', wrCode))}

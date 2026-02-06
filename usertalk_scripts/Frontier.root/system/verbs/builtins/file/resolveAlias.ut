@@ -1,1 +1,6 @@
-on resolveAlias (f) {	«10/31/97 at 1:03:19 PM by DW -- moved from toys.resolveFolder	if sys.os () == "MacOS" {		if file.isAlias (f) {			f = file.followAlias (f)}};	return (f)}
+on resolveAlias (f) {
+	Â«10/31/97 at 1:03:19 PM by DW -- moved from toys.resolveFolder
+	if sys.os () == "MacOS" {
+		if file.isAlias (f) {
+			f = file.followAlias (f)}};
+	return (f)}

@@ -1,1 +1,24 @@
-on cleanMailAddress (email) {	«10/31/97 at 6:53:16 AM by DW -- moved from toys.cleanMailAddress		local (len = sizeof (email), ix, mailpart = "", commentpart = "", ch);	if email beginswith "\"" {		ix = string.patternmatch ("<", email);		if ix > 0 {			mailpart = string.mid (email, ix + 1, len - ix- 1)};		for i = 2 to len {			ch = email [i];			if ch == "\"" {				break};			commentpart = commentpart + ch};		return (mailpart + " (" + commentpart + ")")};	if email contains "<" {		ix = string.patternmatch ("<", email);		mailpart = string.mid (email, ix + 1, len - ix - 1);		commentpart = string.mid (email, 1, ix - 2);		return (mailpart + " (" + commentpart + ")")};	return (email)}; «no change, not a recognized format«bundle «test code	«dialog.alert (cleanMailAddress ("\"Avraham Tzur\" <tzur@interval.com>"))	«dialog.alert (cleanMailAddress ("Carl Stork <carls@microsoft.com>"))
+on cleanMailAddress (email) {
+	Â«10/31/97 at 6:53:16 AM by DW -- moved from toys.cleanMailAddress
+	
+	local (len = sizeof (email), ix, mailpart = "", commentpart = "", ch);
+	if email beginswith "\"" {
+		ix = string.patternmatch ("<", email);
+		if ix > 0 {
+			mailpart = string.mid (email, ix + 1, len - ix- 1)};
+		for i = 2 to len {
+			ch = email [i];
+			if ch == "\"" {
+				break};
+			commentpart = commentpart + ch};
+		return (mailpart + " (" + commentpart + ")")};
+	if email contains "<" {
+		ix = string.patternmatch ("<", email);
+		mailpart = string.mid (email, ix + 1, len - ix - 1);
+		commentpart = string.mid (email, 1, ix - 2);
+		return (mailpart + " (" + commentpart + ")")};
+	return (email)}; Â«no change, not a recognized format
+
+Â«bundle Â«test code
+	Â«dialog.alert (cleanMailAddress ("\"Avraham Tzur\" <tzur@interval.com>"))
+	Â«dialog.alert (cleanMailAddress ("Carl Stork <carls@microsoft.com>"))

@@ -1,1 +1,43 @@
-on defaultFilter (mailerappname, whatEvent, theList) {	«this is the default mail filter script		«it just displays the message counter in Frontier's main window		«we'll leave it to later (and others) to provide cool mail filters	«whatEvent can take on the following values:		«wHCn - hasConnected		«wArv - mailArrives		«wSnt - mailSent		«wFil - opensFilters		«wWcn - willConnect		local (directionstring);	case whatEvent { «we only handle in and out events		'wHCn';		'wFil';		'wWcn' {			return (true)};		'wArv' {			directionstring = "in"};		'wSnt' {			directionstring = "out"}};	if sizeof (thelist) > 0 { «for debugging, if there's a problem we can repeat it in debugger		scratchpad.enotlist = theList};	local (i, mailmsg);	mail.otherRoot.open ();	for i = 1 to sizeOf (theList) {		new (tabletype, @mailmsg);		mailmsg.event = whatEvent;		mailmsg.direction = directionstring;		mailmsg.subject = "";		mailmsg.date = "";		mailmsg.recipient = "";		mailmsg.cc = "";		mailmsg.bcc = "";		mailmsg.sender = "";		mailmsg.text = "";		mailmsg.msgnum = ++user.mail.prefs.msgcount;		mail.drivers.[mailerappname].getmessagetable (theList [i], @mailmsg);		if mailmsg.date == "" {			mailmsg.date = clock.now ()};		msg (mailmsg.msgnum + " messages have passed thru user.mail.agents.")};	mail.otherRoot.close ();	return (true)}
+on defaultFilter (mailerappname, whatEvent, theList) {
+	Â«this is the default mail filter script
+		Â«it just displays the message counter in Frontier's main window
+		Â«we'll leave it to later (and others) to provide cool mail filters
+	Â«whatEvent can take on the following values:
+		Â«wHCn - hasConnected
+		Â«wArv - mailArrives
+		Â«wSnt - mailSent
+		Â«wFil - opensFilters
+		Â«wWcn - willConnect
+	
+	local (directionstring);
+	case whatEvent { Â«we only handle in and out events
+		'wHCn';
+		'wFil';
+		'wWcn' {
+			return (true)};
+		'wArv' {
+			directionstring = "in"};
+		'wSnt' {
+			directionstring = "out"}};
+	if sizeof (thelist) > 0 { Â«for debugging, if there's a problem we can repeat it in debugger
+		scratchpad.enotlist = theList};
+	local (i, mailmsg);
+	mail.otherRoot.open ();
+	for i = 1 to sizeOf (theList) {
+		new (tabletype, @mailmsg);
+		mailmsg.event = whatEvent;
+		mailmsg.direction = directionstring;
+		mailmsg.subject = "";
+		mailmsg.date = "";
+		mailmsg.recipient = "";
+		mailmsg.cc = "";
+		mailmsg.bcc = "";
+		mailmsg.sender = "";
+		mailmsg.text = "";
+		mailmsg.msgnum = ++user.mail.prefs.msgcount;
+		mail.drivers.[mailerappname].getmessagetable (theList [i], @mailmsg);
+		if mailmsg.date == "" {
+			mailmsg.date = clock.now ()};
+		msg (mailmsg.msgnum + " messages have passed thru user.mail.agents.")};
+	mail.otherRoot.close ();
+	return (true)}

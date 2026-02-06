@@ -1,1 +1,3 @@
-on msg (s) {	msg(s);	return}
+on msg (s) {
+	msg(s);
+	return}

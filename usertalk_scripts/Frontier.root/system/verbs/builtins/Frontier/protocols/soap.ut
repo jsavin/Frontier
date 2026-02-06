@@ -1,1 +1,47 @@
-on soap (rpcServer, procedureName, paramRecord) {	«Changes		«4/13/06; 4:11:12 AM by JES			«Pass flEnforceSimpleTypes as false, and flDuplicatesToArrays as true, to soap.rpc.client. Increases SCNS-Soap compatibility, especially with servers that use the 2001 Soap encoding conventions.		«7/14/04; 4:27:52 PM by JES			«Added ability to change charset declaration, using ?charset=xxx in the rpcServer URI.		«2/6/02; 4:48:41 PM by JES			«Created.	local (fldebug = false);	if defined (user.soap.prefs.flDebug) {		fldebug = user.soap.prefs.flDebug};	local (urlList = string.urlSplit (rpcServer));	local (server = urlList [2], port = 80, path = urlList [3]);	local (username = "", password = "");	local (methodNamespace = nil, methodNamespaceUri = nil);	local (charset = soap.constants.charsetUsAscii);	if server contains "@" { //parse out username and password		local (userAndPass = string.nthField (server, "@", 1));		server = string.nthField (server, "@", 2);		if userAndPass contains ":" {			username = string.nthField (userAndPass, ":", 1);			password = string.nthField (userAndPass, ":", 2)}		else {			username = userAndPass}};	if server contains ":" { //get the port		port = string.nthField (server, ':', string.countFields (server, ':'));		server = string.popSuffix (server, ':')};	if path contains "?" { //get the method namespace URI from the path-args		local (t); new (tableType, @t);		local (args = string.nthField (path, "?", 2));		path = string.nthField (path, "?", 1);		webserver.parseArgs (args, @t);		if defined (t.ns) {			methodNamespace = "m";			methodNamespaceUri = t.ns};		if defined (t.charset) {			charset = t.charset}};		local (soapAction = string.popSuffix (procedureName, "."));	procedureName = string.delete (procedureName, 1, sizeOf (soapAction) + 1);	if sizeOf (procedureName) == 0 { //SOAPAction is the empty string, and method is after the first dot		procedureName = soapAction;		soapAction = ""};	if not (soapAction contains ":") { //no protocol specified -- convert dots to slashes		soapAction = string.replaceAll (soapAction, ".", "/")};		return (soap.rpc.client (path, procedureName, @paramRecord, server, port, username, password, soapAction:soapAction, methodNamespace:methodNamespace, methodNamespaceUri:methodNamespaceUri, fldebug:fldebug, charset:charset, flEnforceSimpleTypes:false, flDuplicatesToArrays:true))}
+on soap (rpcServer, procedureName, paramRecord) {
+	Â«Changes
+		Â«4/13/06; 4:11:12 AM by JES
+			Â«Pass flEnforceSimpleTypes as false, and flDuplicatesToArrays as true, to soap.rpc.client. Increases SCNS-Soap compatibility, especially with servers that use the 2001 Soap encoding conventions.
+		Â«7/14/04; 4:27:52 PM by JES
+			Â«Added ability to change charset declaration, using ?charset=xxx in the rpcServer URI.
+		Â«2/6/02; 4:48:41 PM by JES
+			Â«Created.
+	local (fldebug = false);
+	if defined (user.soap.prefs.flDebug) {
+		fldebug = user.soap.prefs.flDebug};
+	local (urlList = string.urlSplit (rpcServer));
+	local (server = urlList [2], port = 80, path = urlList [3]);
+	local (username = "", password = "");
+	local (methodNamespace = nil, methodNamespaceUri = nil);
+	local (charset = soap.constants.charsetUsAscii);
+	if server contains "@" { //parse out username and password
+		local (userAndPass = string.nthField (server, "@", 1));
+		server = string.nthField (server, "@", 2);
+		if userAndPass contains ":" {
+			username = string.nthField (userAndPass, ":", 1);
+			password = string.nthField (userAndPass, ":", 2)}
+		else {
+			username = userAndPass}};
+	if server contains ":" { //get the port
+		port = string.nthField (server, ':', string.countFields (server, ':'));
+		server = string.popSuffix (server, ':')};
+	if path contains "?" { //get the method namespace URI from the path-args
+		local (t); new (tableType, @t);
+		local (args = string.nthField (path, "?", 2));
+		path = string.nthField (path, "?", 1);
+		webserver.parseArgs (args, @t);
+		if defined (t.ns) {
+			methodNamespace = "m";
+			methodNamespaceUri = t.ns};
+		if defined (t.charset) {
+			charset = t.charset}};
+	
+	local (soapAction = string.popSuffix (procedureName, "."));
+	procedureName = string.delete (procedureName, 1, sizeOf (soapAction) + 1);
+	if sizeOf (procedureName) == 0 { //SOAPAction is the empty string, and method is after the first dot
+		procedureName = soapAction;
+		soapAction = ""};
+	if not (soapAction contains ":") { //no protocol specified -- convert dots to slashes
+		soapAction = string.replaceAll (soapAction, ".", "/")};
+	
+	return (soap.rpc.client (path, procedureName, @paramRecord, server, port, username, password, soapAction:soapAction, methodNamespace:methodNamespace, methodNamespaceUri:methodNamespaceUri, fldebug:fldebug, charset:charset, flEnforceSimpleTypes:false, flDuplicatesToArrays:true))}

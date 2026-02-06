@@ -1,1 +1,2 @@
-on machine () {	kernel (sys.machine)}
+on machine () {
+	kernel (sys.machine)}

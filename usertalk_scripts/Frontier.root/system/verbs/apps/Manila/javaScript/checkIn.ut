@@ -1,1 +1,11 @@
-on checkIn (adrSitePrefs) {	«Release custody of the JavaScript.		«02/11/00; 11:38:52 AM by PBS	«Changes		«9/6/01; 8:12:17 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		local (methodName = "manila.javaScript.checkIn");	with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":siteName});		return (manila.callHandler (host, port, methodName, @params, rpcPath:rpcPath))}}
+on checkIn (adrSitePrefs) {
+	Â«Release custody of the JavaScript.
+		Â«02/11/00; 11:38:52 AM by PBS
+	Â«Changes
+		Â«9/6/01; 8:12:17 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	local (methodName = "manila.javaScript.checkIn");
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":siteName});
+		return (manila.callHandler (host, port, methodName, @params, rpcPath:rpcPath))}}

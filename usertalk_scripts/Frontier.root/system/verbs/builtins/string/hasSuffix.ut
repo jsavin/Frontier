@@ -1,1 +1,7 @@
-on hasSuffix (suffix, s) {	«Thursday, November 11, 1999 at 2:54:55 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on hasSuffix (suffix, s)				«return (s endsWith suffix)	kernel (string.hassuffix)}
+on hasSuffix (suffix, s) {
+	Â«Thursday, November 11, 1999 at 2:54:55 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on hasSuffix (suffix, s)
+				Â«return (s endsWith suffix)
+	kernel (string.hassuffix)}

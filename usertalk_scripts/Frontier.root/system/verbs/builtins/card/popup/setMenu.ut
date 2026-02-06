@@ -1,1 +1,5 @@
-on setMenu (objectname, menustring) {	local (atts);	new (tabletype, @atts);	atts.mens = string (menustring);	return (card.setObjectAttributes (objectname, @atts))}
+on setMenu (objectname, menustring) {
+	local (atts);
+	new (tabletype, @atts);
+	atts.mens = string (menustring);
+	return (card.setObjectAttributes (objectname, @atts))}

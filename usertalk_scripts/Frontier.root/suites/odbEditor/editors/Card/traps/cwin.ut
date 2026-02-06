@@ -1,1 +1,2 @@
-on cwin (fsFileBeingClosed) {	return (true)}
+on cwin (fsFileBeingClosed) {
+	return (true)}

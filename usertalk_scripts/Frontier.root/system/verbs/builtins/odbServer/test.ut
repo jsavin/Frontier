@@ -1,1 +1,9 @@
-odbServer.init ();local (atts);for i = 1 to 5 {	new (tableType, @atts);	atts.msgText = string (clock.now ());	atts.i = i;	local (command = odbServer.commandEncode ("sampleCommand", @atts));	odbServer.commandDecode (odbServer.commandSend (command), @scratchpad.atts);	edit (@scratchpad.atts)}
+odbServer.init ();
+local (atts);
+for i = 1 to 5 {
+	new (tableType, @atts);
+	atts.msgText = string (clock.now ());
+	atts.i = i;
+	local (command = odbServer.commandEncode ("sampleCommand", @atts));
+	odbServer.commandDecode (odbServer.commandSend (command), @scratchpad.atts);
+	edit (@scratchpad.atts)}

@@ -1,1 +1,126 @@
-on startWithDocument (appTable, docPath) { «start talking with the application, might launch it	«adr is the address of an application's glue table, usually in system.verbs.apps		«if the application isn't running, try to launch it			«if the path isn't the program, use file.getFileDialog				«keep the path updated		«returns true if the application is launched and ready to talk		«v2.0 dmb: added document support		«v3.0 dmb: handle difference between nil and the empty string for docPath			«zero means normal launch w/out a specific document			«"" means inhibit default document or open file dialog		«Changes:			«1/7/02; 11:44:10 PM by PBS				«On OS X apps may be folders. If so, then the path to the app is okay, don't prompt for it again.		appTable = address (appTable);		bundle { «body of app.start		local (infoTable); «the application's appInfo table		local (name, id, path, app1Supported, sharedMenus);				on copyFromInfoTable () { «copy infoTable values into this script's locals			name = infoTable^.name;			id = infoTable^.id;			path = infoTable^.path;			app1Supported = infoTable^.app1Supported;			sharedMenus = infoTable^.sharedMenus};				on appRunning () { «return true if the application is running			if defined (app.idnetworkapp) { «registration already taken care of				id = app.idnetworkapp;				return (true)};			if sys.appIsRunning (id) {				if string.length (infoTable^.path) == 0 { «hasn't been set yet					infoTable^.path = sys.getAppPath (id)};				return (true)};			return (false)};				on fileIsApp () { «return true if the path points to our application			if sizeof (path) == 0 {				return (false)};			if not file.exists (path) {				return (false)};			if file.type (path) != 'APPL' {				if not (system.environment.isCarbon and file.isFolder (path)) { //PBS 01/07/02: OS X apps may be folders					return (false)}};			if file.creator (path) != id {				return (false)};			return (true)};				on searchForApp () { «returns empty string if we failed, full path if we won			local (folder);			folder = file.folderFromPath (Frontier.getFilePath ()) + "UserLand Utilities:";			if file.exists (folder) {				local (f);				fileloop (f in folder, infinity) {					if (file.type (f) == 'APPL')  and (file.creator (f) == id) {						return (f)}}};			return ("")};				on promptForPath () { «get the application's path from the user			local (newpath);						newpath = searchForApp ();			if newpath == "" { «our very limited search strategy failed				Frontier.bringToFront (); «be sure Frontier is the frontmost app				newpath = file.findApplication (infoTable^.id);				if not file.getFileDialog ("Where is " + name + "?", @newpath, 'APPL') {					return (false)}};			infoTable^.path = newpath;			infoTable^.id = file.creator (newpath);			if sizeof (infoTable^.name) == 0 { «hasn't been set yet				infoTable^.name = file.fileFromPath (path)};			copyFromInfoTable ();			return (true)};				on launchApp () { «return true if we're able to launch the application			msg ("Launching " + name + "...");			if typeof (docPath) == unknowntype {				if not launch.application (path) {					return (false)}}			else {				if not launch.appWithDocument (path, docPath) {					return (false)}};			docPath = ""; «clear path so we'll know not to open it again			return (true)};				bundle { «be sure the app's appInfo table is set up properly			if not defined (appTable^) { «passing in a bogus address				scriptError ("The application doesn't have a Frontier \"glue\" table.")};			infoTable = @appTable^.appInfo;			if not defined (infoTable^) { «no appInfo table, create one with initial values				new (tableType, infoTable);				infoTable^.name = nameOf (appTable^);				infoTable^.id = '????';				infoTable^.path = "";				infoTable^.app1Supported  = false;				infoTable^.sharedMenus = false};			copyFromInfoTable ();			appTable^.id = id}; «side-effect -- makes life easier for glue scripts				while (not appRunning ()) {			if not fileIsApp () {				if not promptForPath () { «user clicked on Cancel					return (false)}};			if launchApp () {				break};			path = ""}; «next time try for a different file				bundle { «set up the app table in the object database for this application			app.id = id; «all app verbs are sent to this application			appTable^.id = id; «make life easy for the app's glue scripts			app.adrAppTable = appTable; «the app verbs can refer to current app's info table			«bundle «fuss with the paths table				«local (adr = @system.misc.paths.app1path)				«if app1Supported «app verbs are global					«adr^ = @system.verbs.builtins.app				«else «app verbs are undefined, or require a full path					«if defined (adr^)						«delete (adr)};				if docPath != "" { «tell app to open the document			required.openDocument (id, docPath)};				msg (""); «release message area				return (true)}}
+on startWithDocument (appTable, docPath) { Â«start talking with the application, might launch it
+	Â«adr is the address of an application's glue table, usually in system.verbs.apps
+		Â«if the application isn't running, try to launch it
+			Â«if the path isn't the program, use file.getFileDialog
+				Â«keep the path updated
+		Â«returns true if the application is launched and ready to talk
+		Â«v2.0 dmb: added document support
+		Â«v3.0 dmb: handle difference between nil and the empty string for docPath
+			Â«zero means normal launch w/out a specific document
+			Â«"" means inhibit default document or open file dialog
+		Â«Changes:
+			Â«1/7/02; 11:44:10 PM by PBS
+				Â«On OS X apps may be folders. If so, then the path to the app is okay, don't prompt for it again.
+	
+	appTable = address (appTable);
+	
+	bundle { Â«body of app.start
+		local (infoTable); Â«the application's appInfo table
+		local (name, id, path, app1Supported, sharedMenus);
+		
+		on copyFromInfoTable () { Â«copy infoTable values into this script's locals
+			name = infoTable^.name;
+			id = infoTable^.id;
+			path = infoTable^.path;
+			app1Supported = infoTable^.app1Supported;
+			sharedMenus = infoTable^.sharedMenus};
+		
+		on appRunning () { Â«return true if the application is running
+			if defined (app.idnetworkapp) { Â«registration already taken care of
+				id = app.idnetworkapp;
+				return (true)};
+			if sys.appIsRunning (id) {
+				if string.length (infoTable^.path) == 0 { Â«hasn't been set yet
+					infoTable^.path = sys.getAppPath (id)};
+				return (true)};
+			return (false)};
+		
+		on fileIsApp () { Â«return true if the path points to our application
+			if sizeof (path) == 0 {
+				return (false)};
+			if not file.exists (path) {
+				return (false)};
+			if file.type (path) != 'APPL' {
+				if not (system.environment.isCarbon and file.isFolder (path)) { //PBS 01/07/02: OS X apps may be folders
+					return (false)}};
+			if file.creator (path) != id {
+				return (false)};
+			return (true)};
+		
+		on searchForApp () { Â«returns empty string if we failed, full path if we won
+			local (folder);
+			folder = file.folderFromPath (Frontier.getFilePath ()) + "UserLand Utilities:";
+			if file.exists (folder) {
+				local (f);
+				fileloop (f in folder, infinity) {
+					if (file.type (f) == 'APPL')  and (file.creator (f) == id) {
+						return (f)}}};
+			return ("")};
+		
+		on promptForPath () { Â«get the application's path from the user
+			local (newpath);
+			
+			newpath = searchForApp ();
+			if newpath == "" { Â«our very limited search strategy failed
+				Frontier.bringToFront (); Â«be sure Frontier is the frontmost app
+				newpath = file.findApplication (infoTable^.id);
+				if not file.getFileDialog ("Where is " + name + "?", @newpath, 'APPL') {
+					return (false)}};
+			infoTable^.path = newpath;
+			infoTable^.id = file.creator (newpath);
+			if sizeof (infoTable^.name) == 0 { Â«hasn't been set yet
+				infoTable^.name = file.fileFromPath (path)};
+			copyFromInfoTable ();
+			return (true)};
+		
+		on launchApp () { Â«return true if we're able to launch the application
+			msg ("Launching " + name + "...");
+			if typeof (docPath) == unknowntype {
+				if not launch.application (path) {
+					return (false)}}
+			else {
+				if not launch.appWithDocument (path, docPath) {
+					return (false)}};
+			docPath = ""; Â«clear path so we'll know not to open it again
+			return (true)};
+		
+		bundle { Â«be sure the app's appInfo table is set up properly
+			if not defined (appTable^) { Â«passing in a bogus address
+				scriptError ("The application doesn't have a Frontier \"glue\" table.")};
+			infoTable = @appTable^.appInfo;
+			if not defined (infoTable^) { Â«no appInfo table, create one with initial values
+				new (tableType, infoTable);
+				infoTable^.name = nameOf (appTable^);
+				infoTable^.id = '????';
+				infoTable^.path = "";
+				infoTable^.app1Supported  = false;
+				infoTable^.sharedMenus = false};
+			copyFromInfoTable ();
+			appTable^.id = id}; Â«side-effect -- makes life easier for glue scripts
+		
+		while (not appRunning ()) {
+			if not fileIsApp () {
+				if not promptForPath () { Â«user clicked on Cancel
+					return (false)}};
+			if launchApp () {
+				break};
+			path = ""}; Â«next time try for a different file
+		
+		bundle { Â«set up the app table in the object database for this application
+			app.id = id; Â«all app verbs are sent to this application
+			appTable^.id = id; Â«make life easy for the app's glue scripts
+			app.adrAppTable = appTable; Â«the app verbs can refer to current app's info table
+			Â«bundle Â«fuss with the paths table
+				Â«local (adr = @system.misc.paths.app1path)
+				Â«if app1Supported Â«app verbs are global
+					Â«adr^ = @system.verbs.builtins.app
+				Â«else Â«app verbs are undefined, or require a full path
+					Â«if defined (adr^)
+						Â«delete (adr)};
+		
+		if docPath != "" { Â«tell app to open the document
+			required.openDocument (id, docPath)};
+		
+		msg (""); Â«release message area
+		
+		return (true)}}

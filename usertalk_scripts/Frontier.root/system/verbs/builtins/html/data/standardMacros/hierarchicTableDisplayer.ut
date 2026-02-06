@@ -1,1 +1,28 @@
-on hierarchicTableDisplayer (adrtable) { //a recursive table display in HTML	local (indentlevel = 0);	local (htmltext = "");	on add (s) {		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r"};	on renderOneTable (adrtable) {		local (i, adritem);		for i = 1 to sizeof (adrtable^) {			adritem = @adrtable^ [i];			case typeof (adritem^) {				tabletype {					add (nameof (adritem^));					indentlevel++;					renderOneTable (adritem);					indentlevel--};				binarytype {					add ("(binary, type = " + getbinarytype (adritem^) +  ", size = " + sizeof (adritem^) + ")")}}			else {				local (s = string (adritem^));				s = string.replaceall (s, "<", "&lt;");				if sizeof (s) == 0 {					s = "&nbsp;"};				if s contains "\r" {					s = "<pre>" + s + "</pre>";					s = string.replaceall (s, "\r\n", "\r")};				add (nameof (adritem^) + " = " + s)}};		return (htmltext)};	return ("<pre>" + string.trimwhitespace (renderOneTable (adrtable)) + "</pre>")}
+on hierarchicTableDisplayer (adrtable) { //a recursive table display in HTML
+	local (indentlevel = 0);
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r"};
+	on renderOneTable (adrtable) {
+		local (i, adritem);
+		for i = 1 to sizeof (adrtable^) {
+			adritem = @adrtable^ [i];
+			case typeof (adritem^) {
+				tabletype {
+					add (nameof (adritem^));
+					indentlevel++;
+					renderOneTable (adritem);
+					indentlevel--};
+				binarytype {
+					add ("(binary, type = " + getbinarytype (adritem^) +  ", size = " + sizeof (adritem^) + ")")}}
+			else {
+				local (s = string (adritem^));
+				s = string.replaceall (s, "<", "&lt;");
+				if sizeof (s) == 0 {
+					s = "&nbsp;"};
+				if s contains "\r" {
+					s = "<pre>" + s + "</pre>";
+					s = string.replaceall (s, "\r\n", "\r")};
+				add (nameof (adritem^) + " = " + s)}};
+		return (htmltext)};
+	return ("<pre>" + string.trimwhitespace (renderOneTable (adrtable)) + "</pre>")}

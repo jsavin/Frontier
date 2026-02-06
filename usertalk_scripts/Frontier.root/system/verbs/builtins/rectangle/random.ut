@@ -1,1 +1,6 @@
-on random (t, l, b, r) {	t = random (t, b);	b = t + random (0, b - t);	l = random (l, r);	r = l + random (0, r - l);	return (rectangle.set (t, l, b, r))}
+on random (t, l, b, r) {
+	t = random (t, b);
+	b = t + random (0, b - t);
+	l = random (l, r);
+	r = l + random (0, r - l);
+	return (rectangle.set (t, l, b, r))}

@@ -1,1 +1,38 @@
-on copyToSystemFolder (path) {	on copytofolder (foldername) {		destfolder = file.getSpecialFolderPath ("", foldername, true);		msg ("Copying to " + destfolder);		file.copy (path, destfolder + file.fileFromPath (path));		return (true)};		type = file.type (path);	creator = file.creator (path);	case type {		'LWFN';		'INIT';		'PRES';		'PRER';		'RDEV';		'thng';		'ddev' {			return (copytofolder ("Extensions"))};		'cdev' {			return (copytofolder ("Control Panels"))};		'dfil' {			return (copytofolder ("Apple Menu Items"))};		'fact' {			if creator == 'MACS' {				return (copytofolder ("Apple Menu Items"))}};		'fext' {			if creator == 'user' { «special case for Network Extension				return (copytofolder ("Extensions"))}};		'ADRS' {			if creator == 'GEOL' { «special case for AppleLink Addresses				return (copytofolder ("AppleLink Out Basket"))}};		'help' {			if creator == 'MACS' { «special case for Finder Help				return (copytofolder ("Extensions"))}};		'APPL' {			if creator == 'prmt' { «special case for PrintMonitor				return (copytofolder ("Extensions"))}}};	return (copytofolder ("System"))} «not a special type, copy it to the top level of the System Folder
+on copyToSystemFolder (path) {
+	on copytofolder (foldername) {
+		destfolder = file.getSpecialFolderPath ("", foldername, true);
+		msg ("Copying to " + destfolder);
+		file.copy (path, destfolder + file.fileFromPath (path));
+		return (true)};
+	
+	type = file.type (path);
+	creator = file.creator (path);
+	case type {
+		'LWFN';
+		'INIT';
+		'PRES';
+		'PRER';
+		'RDEV';
+		'thng';
+		'ddev' {
+			return (copytofolder ("Extensions"))};
+		'cdev' {
+			return (copytofolder ("Control Panels"))};
+		'dfil' {
+			return (copytofolder ("Apple Menu Items"))};
+		'fact' {
+			if creator == 'MACS' {
+				return (copytofolder ("Apple Menu Items"))}};
+		'fext' {
+			if creator == 'user' { Â«special case for Network Extension
+				return (copytofolder ("Extensions"))}};
+		'ADRS' {
+			if creator == 'GEOL' { Â«special case for AppleLink Addresses
+				return (copytofolder ("AppleLink Out Basket"))}};
+		'help' {
+			if creator == 'MACS' { Â«special case for Finder Help
+				return (copytofolder ("Extensions"))}};
+		'APPL' {
+			if creator == 'prmt' { Â«special case for PrintMonitor
+				return (copytofolder ("Extensions"))}}};
+	return (copytofolder ("System"))} Â«not a special type, copy it to the top level of the System Folder

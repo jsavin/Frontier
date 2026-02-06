@@ -1,1 +1,3 @@
-on typeFTsc (path) {	«open or run a file of type FTsc, containing "fat page" data	return (Frontier.clickers.typeFATP (path))}
+on typeFTsc (path) {
+	Â«open or run a file of type FTsc, containing "fat page" data
+	return (Frontier.clickers.typeFATP (path))}

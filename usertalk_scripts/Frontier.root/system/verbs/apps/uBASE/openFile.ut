@@ -1,1 +1,3 @@
-on openFile (path) {	local (windowtitle = file.fileFromPath (path));	return (appleEvent (ubase.id, 'UBAS', 'opnf', '----', filespec (path), 'wtit', windowtitle))}
+on openFile (path) {
+	local (windowtitle = file.fileFromPath (path));
+	return (appleEvent (ubase.id, 'UBAS', 'opnf', '----', filespec (path), 'wtit', windowtitle))}

@@ -1,1 +1,2 @@
-on close (obj, saving = 'no  ', savingIn = nil) { «Close an object	return (core.close (Fetch.id, obj, saving, savingIn))}
+on close (obj, saving = 'no  ', savingIn = nil) { Â«Close an object
+	return (core.close (Fetch.id, obj, saving, savingIn))}

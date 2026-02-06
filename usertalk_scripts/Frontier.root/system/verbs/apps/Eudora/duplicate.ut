@@ -1,1 +1,2 @@
-on duplicate (obj, duplicateTo) { «Make a duplicate object	return (appleEvent (Eudora.id, 'core', 'clon', '----', objspec (obj), 'insh', duplicateTo))}
+on duplicate (obj, duplicateTo) { Â«Make a duplicate object
+	return (appleEvent (Eudora.id, 'core', 'clon', '----', objspec (obj), 'insh', duplicateTo))}

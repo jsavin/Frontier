@@ -1,1 +1,23 @@
-on initReplyText (status = "200 OK", mimeOrLoc = "text/html") {	«This script produces standard HTTP Headers using this syntax:		«initReplyText ([status], [mimeOrLoc])		«the parameters are:			«type: default = "200 OK", This is the standard HTTP status code			«mimeOrLoc : default = "text/html", This is either the content type of the data				«returned.  In the case of a 302 FOUND header this parameter is the location (URL)				«to redirect the request.		«initReplyText () will return the most commonly used header for cgi's.		local (s);	case status {		"401 UNAUTHORIZED" {			s = "HTTP/1.0 " + status + "\r\nWWW-Authenticate: Basic realm=\"" + mimeOrLoc + "\"\r\n";			s = s + "Server: WebSTAR/1.2 ID/CGI\r\n\r\n"};		"302 FOUND" {			s = "HTTP/1.0 302 FOUND\r\nLocation: " + mimeOrLoc + "\r\n"; « old redirect standard			s = s + "URI: " + mimeOrLoc + "\r\n"; « new redirect standard			s = s + "Server: WebSTAR/1.2 ID/CGI\r\n\r\n"}}	else {		s = "HTTP/1.0 " + status + "\r\nServer: WebSTAR/1.2 ID/CGI\r\n";		s = s + "MIME-Version: 1.0\r\nContent-type: " + mimeOrLoc + "\r\n\r\n"};	return (s)}
+on initReplyText (status = "200 OK", mimeOrLoc = "text/html") {
+	Â«This script produces standard HTTP Headers using this syntax:
+		Â«initReplyText ([status], [mimeOrLoc])
+		Â«the parameters are:
+			Â«type: default = "200 OK", This is the standard HTTP status code
+			Â«mimeOrLoc : default = "text/html", This is either the content type of the data
+				Â«returned.  In the case of a 302 FOUND header this parameter is the location (URL)
+				Â«to redirect the request.
+		Â«initReplyText () will return the most commonly used header for cgi's.
+	
+	local (s);
+	case status {
+		"401 UNAUTHORIZED" {
+			s = "HTTP/1.0 " + status + "\r\nWWW-Authenticate: Basic realm=\"" + mimeOrLoc + "\"\r\n";
+			s = s + "Server: WebSTAR/1.2 ID/CGI\r\n\r\n"};
+		"302 FOUND" {
+			s = "HTTP/1.0 302 FOUND\r\nLocation: " + mimeOrLoc + "\r\n"; Â« old redirect standard
+			s = s + "URI: " + mimeOrLoc + "\r\n"; Â« new redirect standard
+			s = s + "Server: WebSTAR/1.2 ID/CGI\r\n\r\n"}}
+	else {
+		s = "HTTP/1.0 " + status + "\r\nServer: WebSTAR/1.2 ID/CGI\r\n";
+		s = s + "MIME-Version: 1.0\r\nContent-type: " + mimeOrLoc + "\r\n\r\n"};
+	return (s)}

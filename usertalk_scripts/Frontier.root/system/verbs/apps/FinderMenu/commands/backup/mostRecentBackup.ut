@@ -1,1 +1,9 @@
-on mostRecentBackup (path) {	local (lastbackup = 0);	fileloop (f in path) { «find the most recent backup		if file.isFolder (f) {			local (x = FinderMenu.commands.backup.getBackupNumber (f));			if x > 0 { «it's one of our backup folders				if x > lastbackup {					lastbackup = x}}}};	return (lastbackup)}
+on mostRecentBackup (path) {
+	local (lastbackup = 0);
+	fileloop (f in path) { Â«find the most recent backup
+		if file.isFolder (f) {
+			local (x = FinderMenu.commands.backup.getBackupNumber (f));
+			if x > 0 { Â«it's one of our backup folders
+				if x > lastbackup {
+					lastbackup = x}}}};
+	return (lastbackup)}

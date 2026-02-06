@@ -1,1 +1,2 @@
-on flatCursorKeys (setting) {	kernel (op.flatcursorkeys)}
+on flatCursorKeys (setting) {
+	kernel (op.flatcursorkeys)}

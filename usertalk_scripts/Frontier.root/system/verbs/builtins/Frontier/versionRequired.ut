@@ -1,1 +1,9 @@
-on versionRequired (minVersionString) {	if date.versionLessThan (Frontier.version (), minVersionString) {		scriptError ("This feature requires Frontier " + minVersionString + " and this is version " + Frontier.version () + ".")}};«bundle //test code -- I ran this in Frontier 5.0a20	«versionRequired ("4.2.3")	«versionRequired ("5.0")	«versionRequired ("5.0a20")	«versionRequired ("5.0a21")
+on versionRequired (minVersionString) {
+	if date.versionLessThan (Frontier.version (), minVersionString) {
+		scriptError ("This feature requires Frontier " + minVersionString + " and this is version " + Frontier.version () + ".")}};
+
+Â«bundle //test code -- I ran this in Frontier 5.0a20
+	Â«versionRequired ("4.2.3")
+	Â«versionRequired ("5.0")
+	Â«versionRequired ("5.0a20")
+	Â«versionRequired ("5.0a21")

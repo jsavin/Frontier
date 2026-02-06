@@ -1,1 +1,2 @@
-on selectWord () {	kernel (wp.selectword)}
+on selectWord () {
+	kernel (wp.selectword)}

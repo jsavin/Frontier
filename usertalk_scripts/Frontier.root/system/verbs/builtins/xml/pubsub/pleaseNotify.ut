@@ -1,1 +1,20 @@
-on pleaseNotify (notifyProcedure, port, path, protocol, urllist, client, adrTable, timeExpires=nil) {	«Process a please notify request. Store the information in a notification requests table.		«1/15/02; 5:04:51 PM by PBS	xml.pubsub.initTable (adrTable); //make sure the notifications data structure is set up	if timeExpires == nil {		timeExpires = clock.now () + (25 * 60 * 60)}; //default is good for 25 hours	local (url);	for url in urllist {		local (adrurl, adrsub);		adrurl = @adrTable^.notify.[url]; //the address of the table for this resource		if not defined (adrurl^) { //create if needed			new (tableType, adrurl)};		adrsub = @adrurl^.[client]; //a sub-table for this particular client		new (tabletype, adrsub);		adrsub^.procedure = notifyProcedure;		adrsub^.port = port;		adrsub^.path = path;		adrsub^.protocol = protocol;		adrsub^.timeExpires = timeExpires};	return (true)}
+on pleaseNotify (notifyProcedure, port, path, protocol, urllist, client, adrTable, timeExpires=nil) {
+	Â«Process a please notify request. Store the information in a notification requests table.
+		Â«1/15/02; 5:04:51 PM by PBS
+	xml.pubsub.initTable (adrTable); //make sure the notifications data structure is set up
+	if timeExpires == nil {
+		timeExpires = clock.now () + (25 * 60 * 60)}; //default is good for 25 hours
+	local (url);
+	for url in urllist {
+		local (adrurl, adrsub);
+		adrurl = @adrTable^.notify.[url]; //the address of the table for this resource
+		if not defined (adrurl^) { //create if needed
+			new (tableType, adrurl)};
+		adrsub = @adrurl^.[client]; //a sub-table for this particular client
+		new (tabletype, adrsub);
+		adrsub^.procedure = notifyProcedure;
+		adrsub^.port = port;
+		adrsub^.path = path;
+		adrsub^.protocol = protocol;
+		adrsub^.timeExpires = timeExpires};
+	return (true)}

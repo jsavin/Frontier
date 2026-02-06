@@ -1,1 +1,2 @@
-on hideItem (itemnumber) {	kernel (dialog.hideitem)}
+on hideItem (itemnumber) {
+	kernel (dialog.hideitem)}

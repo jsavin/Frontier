@@ -1,1 +1,11 @@
-on getRecordByID (db, recordID, theLayout = 0, reportError = false) {	on doIt () {		with objectModel, filemaker {			return( get (database[db].layout[theLayout].record[id2:recordID]))}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on getRecordByID (db, recordID, theLayout = 0, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			return( get (database[db].layout[theLayout].record[id2:recordID]))}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

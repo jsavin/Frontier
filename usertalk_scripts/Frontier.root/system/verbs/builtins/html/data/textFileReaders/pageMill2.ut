@@ -1,1 +1,19 @@
-on pageMill2 (f, adrTable) {	«Return true if the file is a PageMill 2.0 file and it was successfully loaded into the table.		«Info that's stored in the table:			«title -- a string, the title of the document			«pageText -- a string that contains the cleaned up text		«Fri, Nov 29, 1996 at 12:13:39 PM by DW	local (magicstring = "<META NAME=\"GENERATOR\" CONTENT=\"Adobe PageMill 2.0 Mac\">");	if not (defined (adrTable^.pageText)) {		adrTable^.pageText = ""};	if not (defined (adrTable^.title)) {		adrTable^.title = ""};	with adrTable^ {		if pageText == "" {			pageText = string (file.readWholeFile (f))};		if not (pagetext contains magicstring) {			return (false)};		title = html.getOneTagValue (pagetext, "title");		pagetext = html.getOneTagValue (pagetext, "body")};	return (true)}
+on pageMill2 (f, adrTable) {
+	Â«Return true if the file is a PageMill 2.0 file and it was successfully loaded into the table.
+		Â«Info that's stored in the table:
+			Â«title -- a string, the title of the document
+			Â«pageText -- a string that contains the cleaned up text
+		Â«Fri, Nov 29, 1996 at 12:13:39 PM by DW
+	local (magicstring = "<META NAME=\"GENERATOR\" CONTENT=\"Adobe PageMill 2.0 Mac\">");
+	if not (defined (adrTable^.pageText)) {
+		adrTable^.pageText = ""};
+	if not (defined (adrTable^.title)) {
+		adrTable^.title = ""};
+	with adrTable^ {
+		if pageText == "" {
+			pageText = string (file.readWholeFile (f))};
+		if not (pagetext contains magicstring) {
+			return (false)};
+		title = html.getOneTagValue (pagetext, "title");
+		pagetext = html.getOneTagValue (pagetext, "body")};
+	return (true)}

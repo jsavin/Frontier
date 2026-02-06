@@ -1,1 +1,2 @@
-on revert (obj) { «Restore the object to its last saved state	return (appleEvent (BBEdit.id, 'misc', 'rvrt', '----', objspec (obj)))}
+on revert (obj) { Â«Restore the object to its last saved state
+	return (appleEvent (BBEdit.id, 'misc', 'rvrt', '----', objspec (obj)))}

@@ -1,1 +1,30 @@
-on loadImageFile (f, adrtable, name=nil) {	«load a file of any type as a cell in the indicated table		«It can be a GIF, JPEG, Shockwave movie, whatever type you like.		«It's loaded into user.html.images. You can move it anywhere you like.		«The gifRef macro will understand if the 1st param is an address.		«12/30/98 Added name as an optional parameter for custom naming	«local (name = file.fileFromPath (f))	if name == nil {		name = file.fileFromPath (f);		name = string.popSuffix (name)};	if name contains " " { //only convert to innercase if there are spaces		name = string.innerCaseName (name)};	if not defined (adrtable^) {		new (tabletype, adrtable)};	local (type = file.type (f));	local (flTextFile);	bundle { //cross-platform way of determining if it's a text file		case sys.os () {			"MacOS" {				flTextFile = type == 'TEXT'}}		else {			flTextFile = {"html", "htm", "txt"} contains string.lower (type)}};	if flTextFile {		wp.newTextObject (file.readWholeFile (f), @adrtable^.[name])}	else {		adrtable^.[name] = file.readWholeFile (f);		setBinaryType (@adrtable^.[name], type)};	return (@adrtable^.[name])};«bundle «test code	«dialog.alert (loadimagefile ("Macintosh HD:Desktop Folder:WINDOWS.GIF", @user.html.images))
+on loadImageFile (f, adrtable, name=nil) {
+	Â«load a file of any type as a cell in the indicated table
+		Â«It can be a GIF, JPEG, Shockwave movie, whatever type you like.
+		Â«It's loaded into user.html.images. You can move it anywhere you like.
+		Â«The gifRef macro will understand if the 1st param is an address.
+		Â«12/30/98 Added name as an optional parameter for custom naming
+	Â«local (name = file.fileFromPath (f))
+	if name == nil {
+		name = file.fileFromPath (f);
+		name = string.popSuffix (name)};
+	if name contains " " { //only convert to innercase if there are spaces
+		name = string.innerCaseName (name)};
+	if not defined (adrtable^) {
+		new (tabletype, adrtable)};
+	local (type = file.type (f));
+	local (flTextFile);
+	bundle { //cross-platform way of determining if it's a text file
+		case sys.os () {
+			"MacOS" {
+				flTextFile = type == 'TEXT'}}
+		else {
+			flTextFile = {"html", "htm", "txt"} contains string.lower (type)}};
+	if flTextFile {
+		wp.newTextObject (file.readWholeFile (f), @adrtable^.[name])}
+	else {
+		adrtable^.[name] = file.readWholeFile (f);
+		setBinaryType (@adrtable^.[name], type)};
+	return (@adrtable^.[name])};
+Â«bundle Â«test code
+	Â«dialog.alert (loadimagefile ("Macintosh HD:Desktop Folder:WINDOWS.GIF", @user.html.images))

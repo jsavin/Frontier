@@ -1,1 +1,2 @@
-on setValue (itemnumber, val) {	kernel (dialog.setvalue)}
+on setValue (itemnumber, val) {
+	kernel (dialog.setvalue)}

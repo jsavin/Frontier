@@ -1,1 +1,2 @@
-on delete (s, ix, ct) {	kernel (string.delete)}
+on delete (s, ix, ct) {
+	kernel (string.delete)}

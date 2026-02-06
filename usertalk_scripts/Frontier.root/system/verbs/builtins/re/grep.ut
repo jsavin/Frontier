@@ -1,1 +1,2 @@
-on grep (cp, s, flIncludeMatches = true) {	kernel (re.grep)}
+on grep (cp, s, flIncludeMatches = true) {
+	kernel (re.grep)}

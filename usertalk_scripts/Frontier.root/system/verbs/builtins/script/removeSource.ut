@@ -1,1 +1,4 @@
-on removeSource (adrScript) {	on kernelcall (adrScript, adrCode) {		kernel (script.getCode)};	return (kernelcall (adrScript, adrScript))}
+on removeSource (adrScript) {
+	on kernelcall (adrScript, adrCode) {
+		kernel (script.getCode)};
+	return (kernelcall (adrScript, adrScript))}

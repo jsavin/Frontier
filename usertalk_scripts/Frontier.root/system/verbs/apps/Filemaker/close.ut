@@ -1,1 +1,2 @@
-on close (obj) { «Close an object	return (appleEvent (Filemaker.id, 'core', 'clos', '----', objspec (obj)))}
+on close (obj) { Â«Close an object
+	return (appleEvent (Filemaker.id, 'core', 'clos', '----', objspec (obj)))}

@@ -1,1 +1,4 @@
-on oneThread (domain, path, adrresult) {	local (s = netevents.examples.httpGet (domain, path, 80));	wp.newtextobject (s, adrresult);	return (true)}
+on oneThread (domain, path, adrresult) {
+	local (s = netevents.examples.httpGet (domain, path, 80));
+	wp.newtextobject (s, adrresult);
+	return (true)}

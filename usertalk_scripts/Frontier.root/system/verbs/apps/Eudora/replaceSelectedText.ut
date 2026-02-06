@@ -1,1 +1,9 @@
-on replaceSelectedText (newtext) {	with objectModel, Eudora, eventInfo {		try {			core.set (id, selectedText, newtext)}		else {			if tryError == "ìEudoraî reported the following error:  ìThe specified object wasn’t found.î." {				return (true)}			else {				scriptError (tryError)}}}}
+on replaceSelectedText (newtext) {
+	with objectModel, Eudora, eventInfo {
+		try {
+			core.set (id, selectedText, newtext)}
+		else {
+			if tryError == "‚ÄúEudora‚Äù reported the following error:  ‚ÄúThe specified object wasn√ït found.‚Äù." {
+				return (true)}
+			else {
+				scriptError (tryError)}}}}

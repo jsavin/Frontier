@@ -1,1 +1,2 @@
-on setFontSize (size) {	kernel (editmenu.setfontsize)}
+on setFontSize (size) {
+	kernel (editmenu.setfontsize)}

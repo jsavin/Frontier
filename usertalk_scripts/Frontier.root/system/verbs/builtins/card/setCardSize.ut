@@ -1,1 +1,6 @@
-on setCardSize (width, height) {	local (atts);	new (tableType, @atts);	atts.rbor = width;	atts.bbor = height;	return (card.setCardAttributes (@atts))}
+on setCardSize (width, height) {
+	local (atts);
+	new (tableType, @atts);
+	atts.rbor = width;
+	atts.bbor = height;
+	return (card.setCardAttributes (@atts))}

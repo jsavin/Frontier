@@ -1,1 +1,2 @@
-on quit () {	kernel (filemenu.quit)}
+on quit () {
+	kernel (filemenu.quit)}

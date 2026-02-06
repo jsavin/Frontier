@@ -1,1 +1,2 @@
-on install (adr) {	kernel (menu.install)}
+on install (adr) {
+	kernel (menu.install)}

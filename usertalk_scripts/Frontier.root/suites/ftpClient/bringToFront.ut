@@ -1,1 +1,4 @@
-on bringToFront () {	if not ftpClient.launch () {		return (false)};	return (sys.bringAppToFront (ftpClient.data.currentid))}
+on bringToFront () {
+	if not ftpClient.launch () {
+		return (false)};
+	return (sys.bringAppToFront (ftpClient.data.currentid))}

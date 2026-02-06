@@ -1,1 +1,2 @@
-on getSelectedSubOutlines (adrDest) {	kernel (op.getselectedsuboutlines)}
+on getSelectedSubOutlines (adrDest) {
+	kernel (op.getselectedsuboutlines)}

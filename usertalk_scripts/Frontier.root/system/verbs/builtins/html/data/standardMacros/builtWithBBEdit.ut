@@ -1,1 +1,4 @@
-local (s = "<a href=\"http://www.barebones.com/builtwith.html\">");s = s + "<img src=\"http://www.barebones.com/bbedit_badge1.gif\" ";s = s + "alt=\"Built With BBEdit\" border=0></a>";return (s)
+local (s = "<a href=\"http://www.barebones.com/builtwith.html\">");
+s = s + "<img src=\"http://www.barebones.com/bbedit_badge1.gif\" ";
+s = s + "alt=\"Built With BBEdit\" border=0></a>";
+return (s)

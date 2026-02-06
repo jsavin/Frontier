@@ -1,1 +1,3 @@
-try { «remove html menu	html.menu.init ();	menu.remove (@html.menu.theMenu)}
+try { Â«remove html menu
+	html.menu.init ();
+	menu.remove (@html.menu.theMenu)}

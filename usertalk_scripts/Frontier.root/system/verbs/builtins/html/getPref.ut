@@ -1,1 +1,46 @@
-on getPref (prefName, adrPageTable=nil) { «new in 4.1	«Look for a preference directive, a global pref, or return a default.		«New: Mon, Sep 9, 1996 at 9:45:08 AM by PH		«Tweaked performance: Wed, Dec 11, 1996 at 6:37:21 PM by DW			«Using an address and simplifying logic reduced 100 loops from 65 ticks to 21			«(double (21) / 100) / 60				«0.0035		«Tuesday, May 04, 1998  -- kernelized by dmb.	«old code:		«local (val)		«try «try to get it from pagedata			«val = adrpagedata^.[prefName]			«case val				«"yes"				«"true"					«return (true)				«"no"				«"false"					«return (false)			«else				«return (val)		«		«try «try to get it from user.html.prefs			«return (user.html.prefs.[prefName])		«		«case string.lower (prefName) «return a default value			«"fileextension"				«return (".html")			«"maxfilenamelength"				«return (31)			«"defaulttemplate"				«return ("normal")			«"defaultFileName"				«"default"		«else «unknown or default prefs are true			«return (true)	local (pageTable);	if adrPageTable == nil {		try {			adrPageTable = html.getPageTableAddress ()}		else {			new (tableType, @pageTable);			adrPageTable = @pageTable}};	on kernelCall (prefName, adrPageTable) {		kernel (html.getpref)};	return (kernelCall (prefName, adrPageTable))}
+on getPref (prefName, adrPageTable=nil) { Â«new in 4.1
+	Â«Look for a preference directive, a global pref, or return a default.
+		Â«New: Mon, Sep 9, 1996 at 9:45:08 AM by PH
+		Â«Tweaked performance: Wed, Dec 11, 1996 at 6:37:21 PM by DW
+			Â«Using an address and simplifying logic reduced 100 loops from 65 ticks to 21
+			Â«(double (21) / 100) / 60
+				Â«0.0035
+		Â«Tuesday, May 04, 1998  -- kernelized by dmb.
+	Â«old code:
+		Â«local (val)
+		Â«try Â«try to get it from pagedata
+			Â«val = adrpagedata^.[prefName]
+			Â«case val
+				Â«"yes"
+				Â«"true"
+					Â«return (true)
+				Â«"no"
+				Â«"false"
+					Â«return (false)
+			Â«else
+				Â«return (val)
+		Â«
+		Â«try Â«try to get it from user.html.prefs
+			Â«return (user.html.prefs.[prefName])
+		Â«
+		Â«case string.lower (prefName) Â«return a default value
+			Â«"fileextension"
+				Â«return (".html")
+			Â«"maxfilenamelength"
+				Â«return (31)
+			Â«"defaulttemplate"
+				Â«return ("normal")
+			Â«"defaultFileName"
+				Â«"default"
+		Â«else Â«unknown or default prefs are true
+			Â«return (true)
+	local (pageTable);
+	if adrPageTable == nil {
+		try {
+			adrPageTable = html.getPageTableAddress ()}
+		else {
+			new (tableType, @pageTable);
+			adrPageTable = @pageTable}};
+	on kernelCall (prefName, adrPageTable) {
+		kernel (html.getpref)};
+	return (kernelCall (prefName, adrPageTable))}

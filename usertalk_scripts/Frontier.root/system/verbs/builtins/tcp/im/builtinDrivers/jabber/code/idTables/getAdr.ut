@@ -1,1 +1,11 @@
-on getAdr ( id ) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«If the id points to a valid id table, return the address of the table, otherwise, return "".	if typeOf ( id ) == addressType {		return id};	if defined ( system.temp.jabber.idTables[id] ) {		return @system.temp.jabber.idTables[id]}	else {		return ""}}
+on getAdr ( id ) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«If the id points to a valid id table, return the address of the table, otherwise, return "".
+	if typeOf ( id ) == addressType {
+		return id};
+	if defined ( system.temp.jabber.idTables[id] ) {
+		return @system.temp.jabber.idTables[id]}
+	else {
+		return ""}}

@@ -1,1 +1,2 @@
-on logicalAnd (n1, n2) {	kernel (bit.logicalAnd)}
+on logicalAnd (n1, n2) {
+	kernel (bit.logicalAnd)}

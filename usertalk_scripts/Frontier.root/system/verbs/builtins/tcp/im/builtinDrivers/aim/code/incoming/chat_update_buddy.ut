@@ -1,1 +1,10 @@
-on CHAT_UPDATE_BUDDY(adrSelf, data) {	local {		roomId = string.nthField(data,':',1);		flEnter=(string.nthField(data,':',2) equals 'T');		ctNames = string.countFields(data, ':') - 2;		i;		screenNameList = {}};	for i = 1 to ctNames {		screenNameList = screenNameList + string.nthField(data, ':',i+2)};	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "CHAT_IN", {adrSelf, roomId, flEnter, screenNameList}, adrSelf^._adrSubCallbacks ))}
+on CHAT_UPDATE_BUDDY(adrSelf, data) {
+	local {
+		roomId = string.nthField(data,':',1);
+		flEnter=(string.nthField(data,':',2) equals 'T');
+		ctNames = string.countFields(data, ':') - 2;
+		i;
+		screenNameList = {}};
+	for i = 1 to ctNames {
+		screenNameList = screenNameList + string.nthField(data, ':',i+2)};
+	return(tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, "CHAT_IN", {adrSelf, roomId, flEnter, screenNameList}, adrSelf^._adrSubCallbacks ))}

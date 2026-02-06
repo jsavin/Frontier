@@ -1,1 +1,8 @@
-on grow (folderpath, h, v) { « set the size of the indicated folder's window	«For compatibility.  Given the Scriptable Finder, suggest writing new scripts		«to set the bounds property (or position, or size) of the window in question	local (fwindow);	if not Finder.makeWindow (folderpath, 0, @fwindow) {		return (false)};	newsize = long (point.set (h, v));	return (finderEvent (Finder.id, Finder.class, 'grow', '----', fwindow, 'fmsc', newsize))}
+on grow (folderpath, h, v) { Â« set the size of the indicated folder's window
+	Â«For compatibility.  Given the Scriptable Finder, suggest writing new scripts
+		Â«to set the bounds property (or position, or size) of the window in question
+	local (fwindow);
+	if not Finder.makeWindow (folderpath, 0, @fwindow) {
+		return (false)};
+	newsize = long (point.set (h, v));
+	return (finderEvent (Finder.id, Finder.class, 'grow', '----', fwindow, 'fmsc', newsize))}

@@ -1,1 +1,4 @@
-on bringToFront () {	if not app.start ("Eudora") {		return (false)};	return (sys.bringAppToFront (Eudora.id))}
+on bringToFront () {
+	if not app.start ("Eudora") {
+		return (false)};
+	return (sys.bringAppToFront (Eudora.id))}

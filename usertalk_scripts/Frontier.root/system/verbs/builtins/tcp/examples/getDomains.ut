@@ -1,1 +1,23 @@
-local (iplist = {});target.set (@tcp.examples.ips);op.firstSummit ();loop {	iplist = iplist + op.getLineText ();	if not op.go (down, 1) {		break}};target.clear ();local (i, adrdomains = @tcp.examples.domains, num, firstline = true, s);new (outlinetype, adrdomains);edit (adrdomains);target.set (adrdomains);for i = 1 to sizeof (iplist) {	num = tcp.addressEncode (iplist [i]);	s = tcp.addressToName (num);	if firstline {		op.setLineText (s);		firstline = false}	else {		op.insert (s, down)}};op.firstSummit ();target.clear ()
+local (iplist = {});
+target.set (@tcp.examples.ips);
+op.firstSummit ();
+loop {
+	iplist = iplist + op.getLineText ();
+	if not op.go (down, 1) {
+		break}};
+target.clear ();
+
+local (i, adrdomains = @tcp.examples.domains, num, firstline = true, s);
+new (outlinetype, adrdomains);
+edit (adrdomains);
+target.set (adrdomains);
+for i = 1 to sizeof (iplist) {
+	num = tcp.addressEncode (iplist [i]);
+	s = tcp.addressToName (num);
+	if firstline {
+		op.setLineText (s);
+		firstline = false}
+	else {
+		op.insert (s, down)}};
+op.firstSummit ();
+target.clear ()

@@ -1,1 +1,44 @@
-on displayServiceUsers (serviceName) {	local (usersList = {}, htmlText, i);		on callback (userName) {		usersList = usersList + userName};		people.visitServiceUsers (serviceName, @callback);		if usersList == {} {		return (serviceName + " has no users.")};		on add (s) {		htmlText = htmlText + s};	on tr () {		add ("\r\t<tr>")};	on td () {		local (bgcolor = "FFFFFF");		if mod (i, 2) != 0 {			bgcolor = rowBgColor}		else {			if i != 0 {				bgcolor = altRowBgColor}};		return (add ("\r\t\t<td align=left valign=top bgcolor=\"#" + bgcolor + "\">"))};	on closetr () {		add ("\r\t</tr>")};	on closetd () {		add ("\r\t\t</td>")};		local (encodedServiceName = string.urlEncode (serviceName));		add ("<table border=0 cellpadding=8 cellspacing=0>");	for i = 1 to sizeOf (usersList) {		local (userName = usersList [i]);		local (encodedUserName = string.urlEncode (userName));		tr ();		td ();		add ("<a href=\"viewUser.wsf?" + encodedUserName + "\">" + userName + "</a>");		closetd ();		td ();		add ("<a href=\"removeUserFromService.wsf?userName=" + encodedUserName + "&serviceName=" + encodedServiceName + "\">Remove from service</a>");		closetd ();		closetr ()};	add ("</table>");	return (htmlText)}
+on displayServiceUsers (serviceName) {
+	local (usersList = {}, htmlText, i);
+	
+	on callback (userName) {
+		usersList = usersList + userName};
+	
+	people.visitServiceUsers (serviceName, @callback);
+	
+	if usersList == {} {
+		return (serviceName + " has no users.")};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	on tr () {
+		add ("\r\t<tr>")};
+	on td () {
+		local (bgcolor = "FFFFFF");
+		if mod (i, 2) != 0 {
+			bgcolor = rowBgColor}
+		else {
+			if i != 0 {
+				bgcolor = altRowBgColor}};
+		return (add ("\r\t\t<td align=left valign=top bgcolor=\"#" + bgcolor + "\">"))};
+	on closetr () {
+		add ("\r\t</tr>")};
+	on closetd () {
+		add ("\r\t\t</td>")};
+	
+	local (encodedServiceName = string.urlEncode (serviceName));
+	
+	add ("<table border=0 cellpadding=8 cellspacing=0>");
+	for i = 1 to sizeOf (usersList) {
+		local (userName = usersList [i]);
+		local (encodedUserName = string.urlEncode (userName));
+		tr ();
+		td ();
+		add ("<a href=\"viewUser.wsf?" + encodedUserName + "\">" + userName + "</a>");
+		closetd ();
+		td ();
+		add ("<a href=\"removeUserFromService.wsf?userName=" + encodedUserName + "&serviceName=" + encodedServiceName + "\">Remove from service</a>");
+		closetd ();
+		closetr ()};
+	add ("</table>");
+	return (htmlText)}

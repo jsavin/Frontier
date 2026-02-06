@@ -1,1 +1,2 @@
-on enum (x) {	kernel (lang.enum)}
+on enum (x) {
+	kernel (lang.enum)}

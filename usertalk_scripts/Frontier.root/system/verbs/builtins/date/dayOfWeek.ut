@@ -1,1 +1,2 @@
-on dayOfWeek (param1) {	kernel (date.dayOfWeek)}
+on dayOfWeek (param1) {
+	kernel (date.dayOfWeek)}

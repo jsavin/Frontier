@@ -1,1 +1,2 @@
-on frontmostApp () {	kernel (sys.frontmostapp)}
+on frontmostApp () {
+	kernel (sys.frontmostapp)}

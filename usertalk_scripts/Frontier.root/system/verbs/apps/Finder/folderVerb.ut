@@ -1,1 +1,11 @@
-on folderVerb (verbid, path) {	«handle one of the finder's basic verbs that operates on an item in a folder	«Only for compatibility with old Finder verbs	local (folder, filelist);	if file.isVolume (path) {		folder = file.getSpecialFolderPath ("", "Desktop Folder", false)}	else {		folder = file.folderFromPath (path)};	folder = alias (folder);	filelist = Finder.makeAliasList (path);	return (finderEvent (Finder.id, Finder.class, verbid, '----', folder, 'fsel', filelist))}
+on folderVerb (verbid, path) {
+	Â«handle one of the finder's basic verbs that operates on an item in a folder
+	Â«Only for compatibility with old Finder verbs
+	local (folder, filelist);
+	if file.isVolume (path) {
+		folder = file.getSpecialFolderPath ("", "Desktop Folder", false)}
+	else {
+		folder = file.folderFromPath (path)};
+	folder = alias (folder);
+	filelist = Finder.makeAliasList (path);
+	return (finderEvent (Finder.id, Finder.class, verbid, '----', folder, 'fsel', filelist))}

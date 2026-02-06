@@ -1,1 +1,5 @@
-local (emptytable, data);new (tabletype, @emptytable);pack (emptytable, @data);op.setrefcon (data);return (true)
+local (emptytable, data);
+new (tabletype, @emptytable);
+pack (emptytable, @data);
+op.setrefcon (data);
+return (true)

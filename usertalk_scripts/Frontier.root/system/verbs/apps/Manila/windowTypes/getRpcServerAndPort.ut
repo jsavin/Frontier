@@ -1,1 +1,15 @@
-on getRpcServerAndPort (siteUrl, adrServer, adrPort) {	«Given a site URL, get the RPC server domain and port. Assume the siteUrl has already been normalized.		«Sun, Aug 20, 2000 at 3:30:58 PM by PBS		local (urlParts = string.urlSplit (siteUrl));	local (server = urlParts [2]);	local (port = 80);	if server contains ":" { //get port from server name		port = string.nthField (server, ':', string.countFields (server, ':'));		server = string.popSuffix (server, ':')};		adrServer^ = server;	adrPort^ = port;		return (true)}
+on getRpcServerAndPort (siteUrl, adrServer, adrPort) {
+	Â«Given a site URL, get the RPC server domain and port. Assume the siteUrl has already been normalized.
+		Â«Sun, Aug 20, 2000 at 3:30:58 PM by PBS
+	
+	local (urlParts = string.urlSplit (siteUrl));
+	local (server = urlParts [2]);
+	local (port = 80);
+	if server contains ":" { //get port from server name
+		port = string.nthField (server, ':', string.countFields (server, ':'));
+		server = string.popSuffix (server, ':')};
+	
+	adrServer^ = server;
+	adrPort^ = port;
+	
+	return (true)}

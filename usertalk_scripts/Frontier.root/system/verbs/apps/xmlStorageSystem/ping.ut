@@ -1,1 +1,29 @@
-on ping (email, password, status, adruserinfo=nil, adrdata=@xmlStorageSystem.data, adrclouddata=nil) {	«Changes:		«11/22/01; 6:14:11 PM by DW			«New optional param, adrclouddata. If it's not nil, we copy the cloudData out of the response into adrclouddata. This table contains information that the cloud is maintaining for the user, such as the IP address, when they last upstreamed and whether or not the user is behind a firewall.		«10/15/01; 8:58:57 PM by DW			«Created.			«http://www.soapware.org/xmlStorageSystem#ping	local (info);	xmlStorageSystem.init ();	if adruserinfo == nil {		new (tabletype, @info);		adruserinfo = @info};	local (params = {"email":email, "password":string.hashmd5 (password), "status":status, "clientPort":user.inetd.config.http.port, "userinfo":adruserinfo^});	local (rpcPath);	if defined (adrdata^.xmlRpcPath) {		rpcPath = adrdata^.xmlRpcPath};	if defined (adrdata^.rpcPath) {		rpcPath = adrdata^.rpcPath};	with adrdata^ {		local (result = xml.rpc (server, port, "xmlStorageSystem.ping", @params, rpcPath:rpcPath, fldebug:fldebug, protocol:protocol, soapAction:soapAction));		if result.flerror {			return (false)};		if adrclouddata != nil {			adrclouddata^ = result.clouddata};		«scratchpad.result = result		return (not result.flerror)}};«bundle //test code	«local (info); new (tabletype, @info); info.flBehindFirewall = false	«ping (user.radio.prefs.usernum, user.radio.prefs.passwords.default, 0, @info, adrclouddata:@scratchpad.clouddata)
+on ping (email, password, status, adruserinfo=nil, adrdata=@xmlStorageSystem.data, adrclouddata=nil) {
+	Â«Changes:
+		Â«11/22/01; 6:14:11 PM by DW
+			Â«New optional param, adrclouddata. If it's not nil, we copy the cloudData out of the response into adrclouddata. This table contains information that the cloud is maintaining for the user, such as the IP address, when they last upstreamed and whether or not the user is behind a firewall.
+		Â«10/15/01; 8:58:57 PM by DW
+			Â«Created.
+			Â«http://www.soapware.org/xmlStorageSystem#ping
+	local (info);
+	xmlStorageSystem.init ();
+	if adruserinfo == nil {
+		new (tabletype, @info);
+		adruserinfo = @info};
+	local (params = {"email":email, "password":string.hashmd5 (password), "status":status, "clientPort":user.inetd.config.http.port, "userinfo":adruserinfo^});
+	local (rpcPath);
+	if defined (adrdata^.xmlRpcPath) {
+		rpcPath = adrdata^.xmlRpcPath};
+	if defined (adrdata^.rpcPath) {
+		rpcPath = adrdata^.rpcPath};
+	with adrdata^ {
+		local (result = xml.rpc (server, port, "xmlStorageSystem.ping", @params, rpcPath:rpcPath, fldebug:fldebug, protocol:protocol, soapAction:soapAction));
+		if result.flerror {
+			return (false)};
+		if adrclouddata != nil {
+			adrclouddata^ = result.clouddata};
+		Â«scratchpad.result = result
+		return (not result.flerror)}};
+Â«bundle //test code
+	Â«local (info); new (tabletype, @info); info.flBehindFirewall = false
+	Â«ping (user.radio.prefs.usernum, user.radio.prefs.passwords.default, 0, @info, adrclouddata:@scratchpad.clouddata)

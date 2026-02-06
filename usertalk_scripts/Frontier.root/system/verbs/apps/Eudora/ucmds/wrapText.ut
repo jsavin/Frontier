@@ -1,1 +1,2 @@
-on wrapText (text) {	return (appleEvent (@Eudora.ucmds.wrappercmd, 'wrap', 'wrap', 'text', string (text)))}
+on wrapText (text) {
+	return (appleEvent (@Eudora.ucmds.wrappercmd, 'wrap', 'wrap', 'text', string (text)))}

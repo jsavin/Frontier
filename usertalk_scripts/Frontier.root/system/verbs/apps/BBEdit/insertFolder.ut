@@ -1,1 +1,2 @@
-on insertFolder (file) { «Insert the file names of the contents of the designated folder.	return (appleEvent (BBEdit.id, 'R*ch', 'Nsfl', '----', filespec (file)))}
+on insertFolder (file) { Â«Insert the file names of the contents of the designated folder.
+	return (appleEvent (BBEdit.id, 'R*ch', 'Nsfl', '----', filespec (file)))}

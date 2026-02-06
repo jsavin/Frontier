@@ -1,1 +1,2 @@
-on getEventInfo (x, eventInfoIn = nil) { «Get information about the Apple events in a suite	return (appleEvent (Filemaker.id, 'core', 'gtei', '----', string4 (x), 'wrcd', eventInfoIn))}
+on getEventInfo (x, eventInfoIn = nil) { Â«Get information about the Apple events in a suite
+	return (appleEvent (Filemaker.id, 'core', 'gtei', '----', string4 (x), 'wrcd', eventInfoIn))}

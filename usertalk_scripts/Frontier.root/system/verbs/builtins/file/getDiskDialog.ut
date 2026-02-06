@@ -1,1 +1,2 @@
-on getDiskDialog (prompt, adr) {	kernel (file.getdiskdialog)}
+on getDiskDialog (prompt, adr) {
+	kernel (file.getdiskdialog)}

@@ -1,1 +1,14 @@
-on deleteAllRecords (db, foundSet = true, reportError = false) {	on doIt () {		with objectModel, filemaker {			if foundSet {				delete (window [db].record [all])}			else {				delete (database [db].record [all])}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on deleteAllRecords (db, foundSet = true, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			if foundSet {
+				delete (window [db].record [all])}
+			else {
+				delete (database [db].record [all])}}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

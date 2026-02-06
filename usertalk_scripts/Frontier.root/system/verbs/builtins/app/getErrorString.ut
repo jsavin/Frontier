@@ -1,1 +1,2 @@
-on getErrorString () {	return (appleEvent (app.id, 'app1', 'gers'))}
+on getErrorString () {
+	return (appleEvent (app.id, 'app1', 'gers'))}

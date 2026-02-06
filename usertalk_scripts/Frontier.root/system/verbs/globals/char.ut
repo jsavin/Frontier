@@ -1,1 +1,2 @@
-on char (val) {	kernel (lang.char)}
+on char (val) {
+	kernel (lang.char)}

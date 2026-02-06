@@ -1,1 +1,2 @@
-on setLabel (path, label) {	kernel (file.setLabel)}
+on setLabel (path, label) {
+	kernel (file.setLabel)}

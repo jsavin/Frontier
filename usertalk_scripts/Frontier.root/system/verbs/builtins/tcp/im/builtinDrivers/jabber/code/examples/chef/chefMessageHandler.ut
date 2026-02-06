@@ -1,1 +1,10 @@
-on chefMessageHandler (from, type, body, subject, thread, connection) {	«Changes:		«5/13/02; 11:09:31 PM by JB			«Changelog created.	«A sample message handler. To install it, "run" the script. This works because of what I wrote below the script; it is not a feature of handlers. This will spit back everything you write to it, with a small modification. You should do this through tcp.im normally, but this shows how to do it in Jabber directly, which you may want to do if you want to affect things (like subject or threading) out of the scope of tcp.im.		«The "chef" script in this subtable does the real work... ;-)	subject =parentOf(this^)^.chef(subject, false);	body = parentOf(this^)^.chef(body);	tcp.im.builtinDrivers.jabber.code.messages.message(from, body, subject: subject, type: type, thread:thread, connection: connection )};tcp.im.builtinDrivers.jabber.code.registerHandler ( "message", this )
+on chefMessageHandler (from, type, body, subject, thread, connection) {
+	Â«Changes:
+		Â«5/13/02; 11:09:31 PM by JB
+			Â«Changelog created.
+	Â«A sample message handler. To install it, "run" the script. This works because of what I wrote below the script; it is not a feature of handlers. This will spit back everything you write to it, with a small modification. You should do this through tcp.im normally, but this shows how to do it in Jabber directly, which you may want to do if you want to affect things (like subject or threading) out of the scope of tcp.im.
+		Â«The "chef" script in this subtable does the real work... ;-)
+	subject =parentOf(this^)^.chef(subject, false);
+	body = parentOf(this^)^.chef(body);
+	tcp.im.builtinDrivers.jabber.code.messages.message(from, body, subject: subject, type: type, thread:thread, connection: connection )};
+tcp.im.builtinDrivers.jabber.code.registerHandler ( "message", this )

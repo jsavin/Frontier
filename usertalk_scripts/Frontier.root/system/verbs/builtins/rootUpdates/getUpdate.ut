@@ -1,1 +1,122 @@
-on getUpdate (serverName) {	«This script is now obsolete: use rootUpdates.update instead.		«Mon, Feb 22, 1999 at 5:44:28 PM by PBS	local (frontierVersion = Frontier.version ());	local (platform = string.mid (sys.os (), 1, 3));	local (ctnewparts = 0, adrPrefs);	local (flDialogs = true);		rootUpdates.init ();		adrPrefs = @user.rootUpdates.servers.[serverName];		if defined (adrPrefs^.dialogs) and not adrPrefs^.dialogs {		flDialogs = false};		if not defined (user.prefs.serialNumber) {		user.prefs.serialNumber = ""};		try { //try to get the root update from the server		if flDialogs {			if not dialog.confirm ("Connect with " + adrPrefs^.server + " to get latest update?") {				return (false)}};		window.about ();		local (paramlist = {adrPrefs^.lastupdate, platform, user.prefs.serialNumber, user.prefs.name, user.prefs.mailAddress, frontierVersion});		local (newpartstable);		local (i);		msg ("Connecting to " + adrPrefs^.server + " to get " + serverName + " update...");		newpartstable = betty.rpc.client (adrPrefs^.server, adrPrefs^.port, adrPrefs^.method, @paramlist, false);		if not defined (newPartsTable.parts) {			if newPartsTable beginsWith "There are no new or changed parts available." or newPartsTable beginsWith "Your root is already updated" {				msg ("");				if flDialogs {					dialog.notify (newPartsTable)}				else {					msg (newPartsTable)};				return (true)}};		if adrPrefs^.autobackup {			backups.backuproot ()};		for i = 1 to sizeof (newpartstable.parts) {			local (adrnewpart = @newpartstable.parts [i]);			local (bytes = binary (base64.decode (adrnewpart^)));			local (flpartinstalled = true);			setBinaryType (@bytes, tableType);			unpack (@bytes, adrnewpart);			on installPart (adrpart) {				on cleanNote (s) {					s = string.replaceAll (s, "\r\n", "\r");					s = string.replace (s, ": ", ":\r");					s = string.replaceAll (s, ". ", ".\r");					s = string.replaceAll (s, "-- ", "--\r");					s = "Changed " + s;					s = string.replaceAll (s, "\r\r\r\r", "\r\r");					s = string.replaceAll (s, "\r\r\r", "\r\r");					s = string.popTrailing (s, "\r");					return (s)};				if defined (user.rootUpdates.protected) { //Don't import into these places.					local (j);					for j = 1 to sizeOf (user.rootUpdates.protected) {						local (oneItem = address (user.rootUpdates.protected [j]));						if table.tableContains (oneItem, adrpart^.adr) { //Don't install.							flpartinstalled = false;							return (true)}}};				if defined (adrpart^.platform) {					if string.lower (adrpart^.platform) != "both" { // Only install parts for this platform.						if string.lower (adrpart^.platform) != string.lower (platform) {							return (true)}}};				try {					msg ("Importing " + adrpart^.adr + ".");					adrpart^.adr^ = adrpart^.data}				else {					flpartinstalled = false;					if flDialogs {						if not dialog.yesNo ("Installation of \"" + adrpart^.adr + "\" failed. Continue installation?") {							return (false)}}};				export.addToLog (adrpart^.adr, adrPrefs^.url, cleanNote (string (adrpart^.changes)));				return (true)};			if not installPart (adrnewpart) {				break};			if flpartinstalled {				ctnewparts++}};		adrPrefs^.lastUpdate = date.netStandardString (clock.now ());		adrPrefs^.serialNum = newPartsTable.serialNum;		menu.installMainMenu ();		system.menus.buildSuitesSubMenu (); //re-build in case any new suites were imported.		msg ("Saving Frontier.root...");		fileMenu.save ();		msg ("");		thread.sleepFor (0);		if ctnewparts == 1 {			if flDialogs {				dialog.alert ("1 new part loaded from \"" + adrPrefs^.server + "\".")}			else {				msg ("1 new part loaded from \"" + adrPrefs^.server + "\".")}}		else {			if flDialogs {				dialog.alert (ctnewparts + " new parts loaded from \"" + adrPrefs^.server + "\".")}			else {				msg (ctnewparts + " new parts loaded from \"" + adrPrefs^.server + "\".")}};		if adrPrefs^.openLog {			if not defined (user.prefs.frontierIsServer) {				user.prefs.frontierIsServer = false};			if not (user.prefs.frontierIsServer) {				edit (@user.export.importLog)}}}	else { //handle errors		on alert (message) {			if flDialogs {				return (dialog.alert (message))};			scriptError (message)};		local (lowerError = string.lower (tryerror));		local (errmsg = "Can't update the root because ");		case true {			lowerError contains "socket is not connected" {				alert (errmsg + "the server is not responding.")};			lowerError contains "can't get the address of";			lowerError contains "poorly formed xml text";			lowerError contains "missing tag" {				alert (errmsg + "the server timed out.")}}		else {			alert (errmsg + "\"" + tryError + ".\"")};		return (false)};		return (true)}
+on getUpdate (serverName) {
+	Â«This script is now obsolete: use rootUpdates.update instead.
+		Â«Mon, Feb 22, 1999 at 5:44:28 PM by PBS
+	local (frontierVersion = Frontier.version ());
+	local (platform = string.mid (sys.os (), 1, 3));
+	local (ctnewparts = 0, adrPrefs);
+	local (flDialogs = true);
+	
+	rootUpdates.init ();
+	
+	adrPrefs = @user.rootUpdates.servers.[serverName];
+	
+	if defined (adrPrefs^.dialogs) and not adrPrefs^.dialogs {
+		flDialogs = false};
+	
+	if not defined (user.prefs.serialNumber) {
+		user.prefs.serialNumber = ""};
+	
+	try { //try to get the root update from the server
+		if flDialogs {
+			if not dialog.confirm ("Connect with " + adrPrefs^.server + " to get latest update?") {
+				return (false)}};
+		window.about ();
+		local (paramlist = {adrPrefs^.lastupdate, platform, user.prefs.serialNumber, user.prefs.name, user.prefs.mailAddress, frontierVersion});
+		local (newpartstable);
+		local (i);
+		msg ("Connecting to " + adrPrefs^.server + " to get " + serverName + " update...");
+		newpartstable = betty.rpc.client (adrPrefs^.server, adrPrefs^.port, adrPrefs^.method, @paramlist, false);
+		if not defined (newPartsTable.parts) {
+			if newPartsTable beginsWith "There are no new or changed parts available." or newPartsTable beginsWith "Your root is already updated" {
+				msg ("");
+				if flDialogs {
+					dialog.notify (newPartsTable)}
+				else {
+					msg (newPartsTable)};
+				return (true)}};
+		if adrPrefs^.autobackup {
+			backups.backuproot ()};
+		for i = 1 to sizeof (newpartstable.parts) {
+			local (adrnewpart = @newpartstable.parts [i]);
+			local (bytes = binary (base64.decode (adrnewpart^)));
+			local (flpartinstalled = true);
+			setBinaryType (@bytes, tableType);
+			unpack (@bytes, adrnewpart);
+			on installPart (adrpart) {
+				on cleanNote (s) {
+					s = string.replaceAll (s, "\r\n", "\r");
+					s = string.replace (s, ": ", ":\r");
+					s = string.replaceAll (s, ". ", ".\r");
+					s = string.replaceAll (s, "-- ", "--\r");
+					s = "Changed " + s;
+					s = string.replaceAll (s, "\r\r\r\r", "\r\r");
+					s = string.replaceAll (s, "\r\r\r", "\r\r");
+					s = string.popTrailing (s, "\r");
+					return (s)};
+				if defined (user.rootUpdates.protected) { //Don't import into these places.
+					local (j);
+					for j = 1 to sizeOf (user.rootUpdates.protected) {
+						local (oneItem = address (user.rootUpdates.protected [j]));
+						if table.tableContains (oneItem, adrpart^.adr) { //Don't install.
+							flpartinstalled = false;
+							return (true)}}};
+				if defined (adrpart^.platform) {
+					if string.lower (adrpart^.platform) != "both" { // Only install parts for this platform.
+						if string.lower (adrpart^.platform) != string.lower (platform) {
+							return (true)}}};
+				try {
+					msg ("Importing " + adrpart^.adr + ".");
+					adrpart^.adr^ = adrpart^.data}
+				else {
+					flpartinstalled = false;
+					if flDialogs {
+						if not dialog.yesNo ("Installation of \"" + adrpart^.adr + "\" failed. Continue installation?") {
+							return (false)}}};
+				export.addToLog (adrpart^.adr, adrPrefs^.url, cleanNote (string (adrpart^.changes)));
+				return (true)};
+			if not installPart (adrnewpart) {
+				break};
+			if flpartinstalled {
+				ctnewparts++}};
+		adrPrefs^.lastUpdate = date.netStandardString (clock.now ());
+		adrPrefs^.serialNum = newPartsTable.serialNum;
+		menu.installMainMenu ();
+		system.menus.buildSuitesSubMenu (); //re-build in case any new suites were imported.
+		msg ("Saving Frontier.root...");
+		fileMenu.save ();
+		msg ("");
+		thread.sleepFor (0);
+		if ctnewparts == 1 {
+			if flDialogs {
+				dialog.alert ("1 new part loaded from \"" + adrPrefs^.server + "\".")}
+			else {
+				msg ("1 new part loaded from \"" + adrPrefs^.server + "\".")}}
+		else {
+			if flDialogs {
+				dialog.alert (ctnewparts + " new parts loaded from \"" + adrPrefs^.server + "\".")}
+			else {
+				msg (ctnewparts + " new parts loaded from \"" + adrPrefs^.server + "\".")}};
+		if adrPrefs^.openLog {
+			if not defined (user.prefs.frontierIsServer) {
+				user.prefs.frontierIsServer = false};
+			if not (user.prefs.frontierIsServer) {
+				edit (@user.export.importLog)}}}
+	else { //handle errors
+		on alert (message) {
+			if flDialogs {
+				return (dialog.alert (message))};
+			scriptError (message)};
+		local (lowerError = string.lower (tryerror));
+		local (errmsg = "Can't update the root because ");
+		case true {
+			lowerError contains "socket is not connected" {
+				alert (errmsg + "the server is not responding.")};
+			lowerError contains "can't get the address of";
+			lowerError contains "poorly formed xml text";
+			lowerError contains "missing tag" {
+				alert (errmsg + "the server timed out.")}}
+		else {
+			alert (errmsg + "\"" + tryError + ".\"")};
+		return (false)};
+	
+	return (true)}

@@ -1,1 +1,2 @@
-on setResourceAttributes (path, resourcetype, id, attrs) {	kernel (rez.setResourceAttributes)}
+on setResourceAttributes (path, resourcetype, id, attrs) {
+	kernel (rez.setResourceAttributes)}

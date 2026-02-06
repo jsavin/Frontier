@@ -1,1 +1,17 @@
-on deletePageTableAddress () {	«Delete the page table address for the current thread.		«Return true if the page table address was found and deleted; return false otherwise.		«Page table addresses are stored in the system.temp.pageTableAddresses table.		«Each entry's name is a number, the thread id.		«The value is the address of the page table.		«html.getPageTableAddress, which retrieves the current page table address, simply gets the current thread id and looks it up in the system.temp.pageTableAddresses table.		«The reason for this verb is that there's no reason to keep an entry in that table when once it's no longer needed.		«But even when those entries don't get deleted (when this script doesn't get called), since they're in the temp table they never get saved to disk, they're gone when you quit Frontier. Which is good.		local (id = thread.getCurrentID ()); //page table addresses are stored by thread id		if defined (system.temp.pageTableAddresses.[id]) { //check if it exists		delete (@system.temp.pageTableAddresses.[id]); //if it exists, delete it		return (true)}; //it was deleted; return true		return (false)} //the page table address wasn't there to be deleted; return false
+on deletePageTableAddress () {
+	Â«Delete the page table address for the current thread.
+		Â«Return true if the page table address was found and deleted; return false otherwise.
+		Â«Page table addresses are stored in the system.temp.pageTableAddresses table.
+		Â«Each entry's name is a number, the thread id.
+		Â«The value is the address of the page table.
+		Â«html.getPageTableAddress, which retrieves the current page table address, simply gets the current thread id and looks it up in the system.temp.pageTableAddresses table.
+		Â«The reason for this verb is that there's no reason to keep an entry in that table when once it's no longer needed.
+		Â«But even when those entries don't get deleted (when this script doesn't get called), since they're in the temp table they never get saved to disk, they're gone when you quit Frontier. Which is good.
+	
+	local (id = thread.getCurrentID ()); //page table addresses are stored by thread id
+	
+	if defined (system.temp.pageTableAddresses.[id]) { //check if it exists
+		delete (@system.temp.pageTableAddresses.[id]); //if it exists, delete it
+		return (true)}; //it was deleted; return true
+	
+	return (false)} //the page table address wasn't there to be deleted; return false

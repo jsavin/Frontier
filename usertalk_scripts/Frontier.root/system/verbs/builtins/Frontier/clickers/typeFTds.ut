@@ -1,1 +1,3 @@
-on typeFTds (path) {	«Run a desktop script.	return (Frontier.clickers.typeFATP (path))}
+on typeFTds (path) {
+	Â«Run a desktop script.
+	return (Frontier.clickers.typeFATP (path))}

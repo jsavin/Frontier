@@ -1,1 +1,6 @@
-on showClipboard () {	«For compatibility.  With Scriptable Finder, suggest		«with objectModel, Finder {open (clipboard)}	if not finderEvent (Finder.id, Finder.class, 'shcl') {		return (false)};	return (Finder.bringToFront ())}
+on showClipboard () {
+	Â«For compatibility.  With Scriptable Finder, suggest
+		Â«with objectModel, Finder {open (clipboard)}
+	if not finderEvent (Finder.id, Finder.class, 'shcl') {
+		return (false)};
+	return (Finder.bringToFront ())}

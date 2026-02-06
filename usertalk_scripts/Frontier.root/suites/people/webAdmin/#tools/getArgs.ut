@@ -1,1 +1,2 @@
-on getArgs () {	return (html.getPageTableAddress ()^.searchArgs)}
+on getArgs () {
+	return (html.getPageTableAddress ()^.searchArgs)}

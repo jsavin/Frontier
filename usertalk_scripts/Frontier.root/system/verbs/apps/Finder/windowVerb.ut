@@ -1,1 +1,6 @@
-on windowVerb (verbid, windowpath) { «common code for FinderWindow verbs	«Not used directly by many scripts.  For compatibility	local (fwindow);	if not Finder.makeWindow (windowpath, 0, @fwindow) {		return (false)};	return (finderEvent (Finder.id, Finder.class, verbid, '----', fwindow))}
+on windowVerb (verbid, windowpath) { Â«common code for FinderWindow verbs
+	Â«Not used directly by many scripts.  For compatibility
+	local (fwindow);
+	if not Finder.makeWindow (windowpath, 0, @fwindow) {
+		return (false)};
+	return (finderEvent (Finder.id, Finder.class, verbid, '----', fwindow))}

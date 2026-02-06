@@ -1,1 +1,7 @@
-on openManilaTemplate (siteurl, type, adradrwindow) {		local (adrtype);	if Frontier.tools.windowTypes.findWindowType ("manilaTemplate", @adrtype) {		return (adrtype^.openTemplate (siteurl, type, adradrwindow:adradrwindow))};		return (false)}
+on openManilaTemplate (siteurl, type, adradrwindow) {
+	
+	local (adrtype);
+	if Frontier.tools.windowTypes.findWindowType ("manilaTemplate", @adrtype) {
+		return (adrtype^.openTemplate (siteurl, type, adradrwindow:adradrwindow))};
+	
+	return (false)}

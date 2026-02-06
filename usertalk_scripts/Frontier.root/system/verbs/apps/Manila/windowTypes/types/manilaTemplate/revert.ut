@@ -1,1 +1,30 @@
-on revert (adr, adradrwindow=nil) {		local (atts);	window.attributes.getAll (@atts, adr);		local (x, y, height, width);	window.getPosition (adr, @x, @y);	window.getSize (adr, @width, @height);	delete (parentOf (adr^));		local (adrType = parentOf (this^));	adrType^.openTemplate (nameOf (atts.adrSiteInfo^), atts.manilaType, true, adradrwindow);		local (t); new (tableType, @t);	t.type = nameOf (adrtype^);	t.adrSiteInfo = atts.adrSiteInfo;	t.manilaType = atts.manilaType;	if Frontier.tools.windowTypes.findWindowWithMatchingAtts (@t, @adr) {		edit (adr, atts.title, atts.flReadOnly);		window.setSize (adr, width, height);		window.setPosition (adr, x, y);		return (true)};		if adradrwindow != nil {		adradrwindow^ = adr};		return (false)};bundle { //debugging	revert (window.frontmost ())}
+on revert (adr, adradrwindow=nil) {
+	
+	local (atts);
+	window.attributes.getAll (@atts, adr);
+	
+	local (x, y, height, width);
+	window.getPosition (adr, @x, @y);
+	window.getSize (adr, @width, @height);
+	delete (parentOf (adr^));
+	
+	local (adrType = parentOf (this^));
+	adrType^.openTemplate (nameOf (atts.adrSiteInfo^), atts.manilaType, true, adradrwindow);
+	
+	local (t); new (tableType, @t);
+	t.type = nameOf (adrtype^);
+	t.adrSiteInfo = atts.adrSiteInfo;
+	t.manilaType = atts.manilaType;
+	if Frontier.tools.windowTypes.findWindowWithMatchingAtts (@t, @adr) {
+		edit (adr, atts.title, atts.flReadOnly);
+		window.setSize (adr, width, height);
+		window.setPosition (adr, x, y);
+		return (true)};
+	
+	if adradrwindow != nil {
+		adradrwindow^ = adr};
+	
+	return (false)};
+
+bundle { //debugging
+	revert (window.frontmost ())}

@@ -1,1 +1,38 @@
-on urlSplit (url) {	«Thursday, November 11, 1999 at 3:00:08 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on urlSplit (url)				« 10/31/97 at 1:35:47 PM by DW -- moved from toys.urlSplit				«assume a valid complete URL, split it into three parts, return as a list:					«list [1]: the protocol, e.g. http://					«list [2]: the domain, e.g. www.yourserver.com					«list [3]: the path, e.g. essays/97/04/myLife.html				«on urlError ()					«scriptError ("The URL must be of the form 'http://www.server.com/hello.html'.")				«local (ix)				«ix = string.patternMatch (":", url)				«if ix == 0					«urlError ()				«local (ixend, i)				«i = ix				«loop					«if i++ > sizeof (url)						«urlError ()					«if url [i] != '/'						«ixend = i - 1						«break				«protocol = string.mid (url, 1, ixend)				«url = string.delete (url, 1, sizeof (protocol))				«				«ix = string.patternMatch ("/", url)				«if ix == 0					«urlError ()				«domain = string.mid (url, 1, ix - 1)				«path = string.delete (url, 1, ix)				«				«return ({protocol, domain, path})	kernel (string.urlsplit)};«bundle «test code	«dialog.alert (urlsplit ("http://www.yourserver.com/"))	«dialog.alert (urlsplit ("http://www.yourserver.com/essays/97/04/myLife.html"))
+on urlSplit (url) {
+	Â«Thursday, November 11, 1999 at 3:00:08 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on urlSplit (url)
+				Â« 10/31/97 at 1:35:47 PM by DW -- moved from toys.urlSplit
+				Â«assume a valid complete URL, split it into three parts, return as a list:
+					Â«list [1]: the protocol, e.g. http://
+					Â«list [2]: the domain, e.g. www.yourserver.com
+					Â«list [3]: the path, e.g. essays/97/04/myLife.html
+				Â«on urlError ()
+					Â«scriptError ("The URL must be of the form 'http://www.server.com/hello.html'.")
+				Â«local (ix)
+				Â«ix = string.patternMatch (":", url)
+				Â«if ix == 0
+					Â«urlError ()
+				Â«local (ixend, i)
+				Â«i = ix
+				Â«loop
+					Â«if i++ > sizeof (url)
+						Â«urlError ()
+					Â«if url [i] != '/'
+						Â«ixend = i - 1
+						Â«break
+				Â«protocol = string.mid (url, 1, ixend)
+				Â«url = string.delete (url, 1, sizeof (protocol))
+				Â«
+				Â«ix = string.patternMatch ("/", url)
+				Â«if ix == 0
+					Â«urlError ()
+				Â«domain = string.mid (url, 1, ix - 1)
+				Â«path = string.delete (url, 1, ix)
+				Â«
+				Â«return ({protocol, domain, path})
+	kernel (string.urlsplit)};
+Â«bundle Â«test code
+	Â«dialog.alert (urlsplit ("http://www.yourserver.com/"))
+	Â«dialog.alert (urlsplit ("http://www.yourserver.com/essays/97/04/myLife.html"))

@@ -1,1 +1,506 @@
-on compile (adrservice, flSaveData, adrStoryArrivedCallback) {	«Changes		«2/22/07; 9:50:33 PM by LL			«Support for atom 1.0 feeds.			«Specification: http://www.ietf.org/rfc/rfc4287.txt		«8/13/04; 3:44:16 PM by JES			«Created. Format driver for atom 0.3 feeds.				«Based on original by DW, 7/11/03					«7/11/03; 3:19:52 PM by DW						«Created.						«Comments here:							«http://scriptingnews.userland.com/2003/07/11				«ATOM 0.3 specification:					«http://www.intertwingly.net/wiki/pie/FrontPage		on addToHistory (adritem, categorylist={}) {		bundle { //if the item has a permalink, use that			if defined (adritem^.permalink) or defined (adritem^.guid) {				local (guidval);				if defined (adritem^.guid) {					guidval = adritem^.guid}				else { //use permalink for guidval					guidval = adritem^.permalink};				local (adrinhistory = @adrhistory^.[guidval]);				if not defined (adrinhistory^) { //it's a new story					local (flskipnew = false);					if sizeof (adritem^.title) > 0 {						try {flskipnew = defined (adrhistory^.[adritem^.title])}}; //a newly 2.0'd feed					if not flskipnew {						if adrStoryArrivedCallback != nil {							adrStoryArrivedCallback^ (adrservice, adritem)}}};				adrinhistory^ = true; //it's current				return}};				local (title = adritem^.title);		if sizeOf (title) > 0 {			local (adrinhistory = @adrhistory^.[title]);			if not defined (adrinhistory^) { //it's a new story				if adrStoryArrivedCallback != nil {					adrStoryArrivedCallback^ (adrservice, adritem)}};			adrinhistory^ = true}}; //it's current		local (xstructcopy = adrservice^.xmlstruct, adrxstruct = @xstructcopy);	local (adrcomp = @adrservice^.compilation);	local (adrhistory = @adrcomp^.itemHistory);	local (adrfeed = xml.getAddress (adrxstruct, "feed"));		if defined (adrfeed^.["/atts"].version ) {		if adrfeed^.["/atts"].version == "0.3" {			version = "0.3"}}	else {		version = "1.0"};		new (tabletype, @adrcomp^.items);		on encodeHtmlCharacters (s) { //encode &, < and > for literal display in browser		s = string.replaceAll (s, "&", "&amp;");		s = string.replaceAll (s, "<", "&lt;");		s = string.replaceAll (s, ">", "&gt;");		return (s)};	on patchUrl (adrurl, baseurl) { //patch relative URL to absolute URL		if sizeOf (baseurl) > 0 {			if not (adrurl^ contains ":") {				if adrurl^ beginsWith "/" {					local (urlparts = string.urlSplit (baseurl));					baseurl = urlparts[1] + urlparts[2]}				else {					while adrurl^ beginswith "../" {						local (urlparts = string.urlSplit (baseurl));						urlparts[3] = "/" + urlparts[3];						if urlparts[3] endswith "/" {							urlparts[3] = string.popTrailing (urlparts[3], "/")};						baseurl = urlparts[1] + urlparts[2] + string.popSuffix (urlparts[3], "/") + "/";						adrurl^ = string.delete (adrurl^, 1, 3)}};				adrurl^ = string.popTrailing (baseurl, "/") + "/" + string.popLeading (adrurl^, "/")}};		return};	on getElementValue (adrelement) { //get the value of an atom:element, decoding as specified		local (s = "", type = "text/plain", mode = "xml");		if typeOf (adrelement^) == tableType { //pcdata, cdata, or embedded xhtml			bundle { //set type and mode, and get element content				if defined (adrelement^.["/atts"].type) {					type = adrelement^.["/atts"].type};				if defined (adrelement^.["/atts"].mode) {					mode = adrelement^.["/atts"].mode};				if defined (adrelement^.["/pcdata"]) {					s = adrelement^.["/pcdata"]};				if defined (adrelement^.["/cdata"]) {					s = adrelement^.["/cdata"]}};			case mode {				"xml" {					local (xfrag = adrelement^);					on visitproc (adr) {						if nameOf (adr^) beginswith "/" {							if nameOf (adr^) == "/pcdata" {								adr^ = string.replace (adr^, "&", "&amp;");								adr^ = string.replace (adr^, "<", "&lt;");								adr^ = string.replace (adr^, ">", "&gt;")}};						return (true)};					table.visit (@xfrag, @visitproc);					local (adrsub);					for adrsub in @xfrag {						if not (nameOf (adrsub^) beginswith "/") {							local (frag = xml.decompile (adrsub));							frag = string.delete (frag, 1, string.patternMatch (">", frag) );							if type == "application/xhtml+xml" { //decode &amp;'s encoded by xml.decompile								frag = string.replaceAll (frag, "&amp;", "&")};							s = s + string.trimWhiteSpace (frag)}}};				"base64" {					s = base64.decode (s)};				"escaped" {					try {						s = xml.entityDecode (s, false, true, true)}					else { //old version of xml.entityDecode?						s = string.replaceAll (s, "&lt;", "<");						s = string.replaceAll (s, "&gt;", ">");						s = string.replaceAll (s, "&quot;", "\"");						s = xml.entityDecode (s, false, true);						s = string.replaceAll (s, "&amp;", "&")}}}}		else { //plain-text string			try {				s = xml.entityDecode (adrelement^, false, true, true)}			else { //old version of xml.entityDecode?				s = xml.entityDecode (adrelement^, false, true)}};		case type {			"text/plain" { //encode HTML with entities, for correct display in browser				s = string.replaceAll (s, "&", "&amp;");				s = string.replaceAll (s, "<", "&lt;");				s = string.replaceAll (s, ">", "&gt;");				s = string.replaceAll (s, "\"", "&quot;")};			"text/html" {				}};//do nothing -- this is what we need out the other end anyway		return (s)};	on getSubElementValue (adr, name) {		local (adrsub = xml.getAddress (adr, name));		return (getElementValue (adrsub))};	on getAuthorValue (adr) {		local (name="", url="", email="");		case version {			"0.3" {				try {name = getSubElementValue (adr, "name")};				try {email = getSubElementValue (adr, "email")};				try {url = getSubElementValue (adr, "url")};				local (baseUrl = base);				try {baseUrl = adr^.["/atts"].["xml:base"]};				if sizeOf (url) > 0 {					patchUrl (@url, baseUrl)};				if name == "" {					if email == "" {						if url == "" {							return ("")}						else {							return (url)}}					else {						if url == "" {							return (email)}						else {							return (url + " (" + email + ")")}}}				else {					if url == "" {						if email == "" {							return (name)}						else {							return (name + " (" + email + ")")}}					else {						if email == "" {							return (html.getLink (name, url))}						else {							return (html.getLink (name, url) + " (" + email + ")")}}}};			"1.0" {				try {name = getSubElementValue (adr, "name")};				try {email = getSubElementValue (adr, "email")};				try {url = getSubElementValue (adr, "uri")};				local (baseUrl = base);				try {baseUrl = adr^.["/atts"].["xml:base"]};				if sizeOf (url) > 0 {					patchUrl (@url, baseUrl)};				if name == "" {					if email == "" {						if url == "" {							return ("")}						else {							return (url)}}					else {						if url == "" {							return (email)}						else {							return (url + " (" + email + ")")}}}				else {					if url == "" {						if email == "" {							return (name)}						else {							return (name + " (" + email + ")")}}					else {						if email == "" {							return (html.getLink (name, url))}						else {							return (html.getLink (name, url) + " (" + email + ")")}}}}}};		local (months);	bundle { //set months -- used for shortcut to converting UTC time via date.netStandardString		months = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}};	local (encoding = "", base = "", author = "", pubdate = clock.now ());		case version {		"0.3" {			bundle { //set feed globals for character-encoding and base url				local (adrxml = xml.getAddress (adrxstruct, "?xml"));				if defined (adrxml^.encoding) {					encoding = string.lower (adrxml^.encoding);					case encoding { //recompile XML with correct character encoding						"utf-8" {							xml.compile (string.utf8ToAnsi (adrservice^.xmltext), @xstructcopy);							adrxml = xml.getAddress (adrxstruct, "?xml");							adrfeed = xml.getAddress (adrxstruct, "feed")};						"utf-16" {							scriptError ("Can't read this item because UTF-16 encoding is not supported.")}}};				if defined (adrfeed^.["/atts"].["xml:base"]) {					base = adrfeed^.["/atts"].["xml:base"]};				try { //get feed-level author					local (adrauthor = xml.getAddress (adrfeed, "author"));					author = getAuthorValue (adrauthor)}};						bundle { //set feed-level items				adrcomp^.channeltitle = getSubElementValue (adrfeed, "title");				bundle { //set adrcomp^.channellink					adrcomp^.channellink = ""; //it's possible that there's only one <link rel...> which we don't understand					«Loop over <link rel="..." ...> tags, and use the first rel="alternate" whose type="text/html" or "application/xhtml+xml"					local (adrlinks = xml.getAddressList (adrfeed, "link") );					local (adr);					for adr in adrlinks {						if adr^.["/atts"].rel == "alternate" {							case string.lower (adr^.["/atts"].type) {								"text/html";								"application/xhtml+xml" {									adrcomp^.channellink = adr^.["/atts"].href;									patchUrl (@adrcomp^.channellink, base);									break}}}}};				adrcomp^.channeldescription = "";				try {adrcomp^.channeldescription = getSubElementValue (adrfeed, "tagline")}}; //tagline is optional						bundle { //loop over entries				local (adr, ct = 1);				local (sfeed = sizeOf (adrfeed^), i);				for i = sfeed downto 1 {					adr = @adrfeed^[i];					if nameof (adr^) endswith "\tentry" {						local (adritem = @adrcomp^.items.[string.padwithzeros (ct++, 5)]);						new (tabletype, adritem);												local (entryAuthor = "", entryTitle = "", content = "");						bundle { //author							try { //item-level author								local (adrauthor = xml.getAddress (adr, "author"));								entryAuthor = getAuthorValue (adrauthor)}							else { //feed-level author								if author != "" {									entryAuthor = author}}};						bundle { //title							try {								entryTitle = getSubElementValue (adr, "title")}};						bundle { //guid							try {								adritem^.guid = getSubElementValue (adr, "id")}};						bundle { //pubdate							local (d = getSubElementValue (adr, "issued"));							local (y = string.mid (d, 1, 4));							local (m = string.mid (d, 6, 2));							local (dy = string.mid (d, 9, 2));							local (hr = string.mid (d, 12, 2));							local (min = string.mid (d, 15, 2));							local (sec = string.mid (d, 18, 2));							local (zone = string.mid (d, 20, infinity));							local (zonemin = 0);							if string.lower (zone) == "z" { //UTC								pubdate = date (dy + " " + months[number(m)] + " " + y + " " + hr + ":" + min + ":" + sec + " GMT")}							else { //have to convert time								y = number (y);								m = number (m);								dy = number (dy);								hr = number (hr);								min = number (min);								sec = number (sec);								zonemin = ( (60*number(string.mid(zone,2,2))) + number(string.mid(zone,5,2)));								if zone[1] == "-" {									zonemin = 0-zonemin};								pubdate = date.set (dy, m, y, hr, min, sec) + (60*zonemin)}};						bundle { //permalink, link, sourceChannelTitle, sourceChannelUrl							local (adrlink, adrlinks = xml.getAddressList (adr, "link") );							for adrlink in adrlinks {								if defined (adrlink^.["/atts"].rel) {									local (baseUrl = base);									if defined (adrlink^.["/atts"].["xml:base"]) {										baseUrl = adrlink^.["/atts"].["xml:base"]};									case string.lower (adrlink^.["/atts"].rel) {										"alternate" { //permalink											if defined (adrlink^.["/atts"].type) {												case string.lower (adrlink^.["/atts"].type) {													"text/plain";													"text/html";													"application/xhtml+xml" {														adritem^.permalink = adrlink^.["/atts"].href;														patchUrl (@adritem^.permalink, baseUrl)}}}};										"related" { //external link											if defined (adrlink^.["/atts"].type) {												case string.lower (adrlink^.["/atts"].type) {													"text/plain";													"text/html";													"application/xhtml+xml" {														adritem^.link = adrlink^.["/atts"].href;														patchUrl (@adritem^.link, baseUrl)}}}};										"source" {											adritem^.sourceChannelTitle = adrlink^.["/atts"].title;											adritem^.sourceChannelUrl = adrlink^.["/atts"].href;											patchUrl (@adritem^.sourceChannelUrl, baseUrl)}}}};							if not defined (adritem^.guid) { //use permalink for guid, for item history								adritem^.guid = adritem^.permalink}};						«bundle //comments							«//Not supported as of the 0.3 version of the spec. As best I can tell, all you get is a link to a feed for comments, or a set of links to atom entries for individual comments, and not a link to the HTML page that displays comments for this entry.						bundle { //content (a.k.a. description), and top-level title string (mashed data)							try { //prefer full content								content = getSubElementValue (adr, "content")}							else { //use summary instead								try { //summary is optional									content = getSubElementValue (adr, "summary")}};							local (linkUrl = "", linkHtml = "");							if defined (adritem^.permalink) { //prefer permalink over link								linkUrl = adritem^.permalink}							else { //no permalink -- use link if present								if defined (adritem^.link) {									linkUrl = adritem^.link}};							if entryTitle == "" { //empty title -- use the # mark for the link text								entryTitle = "#"};							if sizeOf (linkUrl) > 0 { //we have a link -- generate the HTML for display								linkHtml = html.getLink (entryTitle, linkUrl)}							else { //no link -- do we have a title?								if entryTitle == "#" { //no link or title									linkHtml = ""}								else { //no link -- just use the title									linkHtml = entryTitle}};							if sizeOf (entryAuthor) > 0 {								adritem^.title = linkHtml + " " + content + " - " + entryAuthor}							else {								adritem^.title = linkHtml + " " + content}};						bundle { //data sub-table of item							if flSaveData {								local (adrdata = @adritem^.data);								new (tabletype, adrdata);								adrdata^.author = entryAuthor;								adrdata^.description = content;								adrdata^.link = adritem^.permalink;								adrdata^.pubdate = date.netStandardString (pubdate);								adrdata^.title = entryTitle}};						addToHistory (adritem)}}}};		"1.0" {			bundle { //set feed globals for character-encoding and base url				local (adrxml = xml.getAddress (adrxstruct, "?xml"));				if defined (adrxml^.encoding) {					encoding = string.lower (adrxml^.encoding);					case encoding { //recompile XML with correct character encoding						"utf-8" {							xml.compile (string.utf8ToAnsi (adrservice^.xmltext), @xstructcopy);							adrxml = xml.getAddress (adrxstruct, "?xml");							adrfeed = xml.getAddress (adrxstruct, "feed")};						"utf-16" {							scriptError ("Can't read this item because UTF-16 encoding is not supported.")}}};				if defined (adrfeed^.["/atts"].["xml:base"]) {					base = adrfeed^.["/atts"].["xml:base"]};				try { //get feed-level author					local (adrauthor = xml.getAddress (adrfeed, "author"));					author = getAuthorValue (adrauthor)}};						bundle { //set feed-level items				adrcomp^.channeltitle = getSubElementValue (adrfeed, "title");				bundle { //set adrcomp^.channellink					adrcomp^.channellink = ""; //it's possible that there's only one <link rel...> which we don't understand					«Loop over <link rel="..." ...> tags, and use the first rel="alternate" whose type="text/html" or "application/xhtml+xml"					local (adrlinks = xml.getAddressList (adrfeed, "link") );					local (adr);					for adr in adrlinks {						if adr^.["/atts"].rel == "alternate" {							case string.lower (adr^.["/atts"].type) {								"text/html";								"application/xhtml+xml" {									adrcomp^.channellink = adr^.["/atts"].href;									patchUrl (@adrcomp^.channellink, base);									break}}}}};				adrcomp^.channeldescription = "";				try {adrcomp^.channeldescription = getSubElementValue (adrfeed, "subtitle")}}; //subtitle is optional						bundle { //loop over entries				local (adr, ct = 1);				local (sfeed = sizeOf (adrfeed^), i);				for i = sfeed downto 1 {					adr = @adrfeed^[i];					if nameof (adr^) endswith "\tentry" {						local (adritem = @adrcomp^.items.[string.padwithzeros (ct++, 5)]);						new (tabletype, adritem);												local (entryAuthor = "", entryTitle = "", content = "");						bundle { //author							try { //item-level author								local (adrauthor = xml.getAddress (adr, "author"));								entryAuthor = getAuthorValue (adrauthor)}							else { //feed-level author								if author != "" {									entryAuthor = author}}};						bundle { //title							try {								entryTitle = getSubElementValue (adr, "title")}};						bundle { //guid							try {								adritem^.guid = getSubElementValue (adr, "id")}};						bundle { //pubdate							try {								local (d = getSubElementValue (adr, "published"));								local (y = string.mid (d, 1, 4));								local (m = string.mid (d, 6, 2));								local (dy = string.mid (d, 9, 2));								local (hr = string.mid (d, 12, 2));								local (min = string.mid (d, 15, 2));								local (sec = string.mid (d, 18, 2));								local (zone = string.mid (d, 20, infinity));								local (zonemin = 0);								if string.lower (zone) == "z" { //UTC									pubdate = date (dy + " " + months[number(m)] + " " + y + " " + hr + ":" + min + ":" + sec + " GMT")}								else { //have to convert time									y = number (y);									m = number (m);									dy = number (dy);									hr = number (hr);									min = number (min);									sec = number (sec);									zonemin = ( (60*number(string.mid(zone,2,2))) + number(string.mid(zone,5,2)));									if zone[1] == "-" {										zonemin = 0-zonemin};									pubdate = date.set (dy, m, y, hr, min, sec) + (60*zonemin)}}};						bundle { //permalink, link, sourceChannelTitle, sourceChannelUrl							local (adrlink, adrlinks = xml.getAddressList (adr, "link") );							for adrlink in adrlinks {								if defined (adrlink^.["/atts"].rel) {									local (baseUrl = base);									if defined (adrlink^.["/atts"].["xml:base"]) {										baseUrl = adrlink^.["/atts"].["xml:base"]};									case string.lower (adrlink^.["/atts"].rel) {										"alternate" { //permalink											if defined (adrlink^.["/atts"].type) {												case string.lower (adrlink^.["/atts"].type) {													"text/plain";													"text/html";													"application/xhtml+xml" {														adritem^.permalink = adrlink^.["/atts"].href;														patchUrl (@adritem^.permalink, baseUrl)}}}};										"related" { //external link											if defined (adrlink^.["/atts"].type) {												case string.lower (adrlink^.["/atts"].type) {													"text/plain";													"text/html";													"application/xhtml+xml" {														adritem^.link = adrlink^.["/atts"].href;														patchUrl (@adritem^.link, baseUrl)}}}};										"source" {											adritem^.sourceChannelTitle = adrlink^.["/atts"].title;											adritem^.sourceChannelUrl = adrlink^.["/atts"].href;											patchUrl (@adritem^.sourceChannelUrl, baseUrl)}}}};							if not defined (adritem^.guid) { //use permalink for guid, for item history								adritem^.guid = adritem^.permalink}};						«bundle //comments							«//Not supported as of the 0.3 version of the spec. As best I can tell, all you get is a link to a feed for comments, or a set of links to atom entries for individual comments, and not a link to the HTML page that displays comments for this entry.						bundle { //content (a.k.a. description), and top-level title string (mashed data)							try { //prefer full content								content = getSubElementValue (adr, "content")}							else { //use summary instead								try { //summary is optional									content = getSubElementValue (adr, "summary")}};							local (linkUrl = "", linkHtml = "");							if defined (adritem^.permalink) { //prefer permalink over link								linkUrl = adritem^.permalink}							else { //no permalink -- use link if present								if defined (adritem^.link) {									linkUrl = adritem^.link}};							if entryTitle == "" { //empty title -- use the # mark for the link text								entryTitle = "#"};							if sizeOf (linkUrl) > 0 { //we have a link -- generate the HTML for display								linkHtml = html.getLink (entryTitle, linkUrl)}							else { //no link -- do we have a title?								if entryTitle == "#" { //no link or title									linkHtml = ""}								else { //no link -- just use the title									linkHtml = entryTitle}};							if sizeOf (entryAuthor) > 0 {								adritem^.title = linkHtml + " " + content + " - " + entryAuthor}							else {								adritem^.title = linkHtml + " " + content}};						bundle { //data sub-table of item							if flSaveData {								local (adrdata = @adritem^.data);								new (tabletype, adrdata);								adrdata^.author = entryAuthor;								adrdata^.description = content;								adrdata^.link = adritem^.permalink;								adrdata^.pubdate = date.netStandardString (pubdate);								adrdata^.title = entryTitle}};						addToHistory (adritem)}}}}};		return (true)}
+on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
+	Â«Changes
+		Â«2/22/07; 9:50:33 PM by LL
+			Â«Support for atom 1.0 feeds.
+			Â«Specification: http://www.ietf.org/rfc/rfc4287.txt
+		Â«8/13/04; 3:44:16 PM by JES
+			Â«Created. Format driver for atom 0.3 feeds.
+				Â«Based on original by DW, 7/11/03
+					Â«7/11/03; 3:19:52 PM by DW
+						Â«Created.
+						Â«Comments here:
+							Â«http://scriptingnews.userland.com/2003/07/11
+				Â«ATOM 0.3 specification:
+					Â«http://www.intertwingly.net/wiki/pie/FrontPage
+	
+	on addToHistory (adritem, categorylist={}) {
+		bundle { //if the item has a permalink, use that
+			if defined (adritem^.permalink) or defined (adritem^.guid) {
+				local (guidval);
+				if defined (adritem^.guid) {
+					guidval = adritem^.guid}
+				else { //use permalink for guidval
+					guidval = adritem^.permalink};
+				local (adrinhistory = @adrhistory^.[guidval]);
+				if not defined (adrinhistory^) { //it's a new story
+					local (flskipnew = false);
+					if sizeof (adritem^.title) > 0 {
+						try {flskipnew = defined (adrhistory^.[adritem^.title])}}; //a newly 2.0'd feed
+					if not flskipnew {
+						if adrStoryArrivedCallback != nil {
+							adrStoryArrivedCallback^ (adrservice, adritem)}}};
+				adrinhistory^ = true; //it's current
+				return}};
+		
+		local (title = adritem^.title);
+		if sizeOf (title) > 0 {
+			local (adrinhistory = @adrhistory^.[title]);
+			if not defined (adrinhistory^) { //it's a new story
+				if adrStoryArrivedCallback != nil {
+					adrStoryArrivedCallback^ (adrservice, adritem)}};
+			adrinhistory^ = true}}; //it's current
+	
+	local (xstructcopy = adrservice^.xmlstruct, adrxstruct = @xstructcopy);
+	local (adrcomp = @adrservice^.compilation);
+	local (adrhistory = @adrcomp^.itemHistory);
+	local (adrfeed = xml.getAddress (adrxstruct, "feed"));
+	
+	if defined (adrfeed^.["/atts"].version ) {
+		if adrfeed^.["/atts"].version == "0.3" {
+			version = "0.3"}}
+	else {
+		version = "1.0"};
+	
+	new (tabletype, @adrcomp^.items);
+	
+	on encodeHtmlCharacters (s) { //encode &, < and > for literal display in browser
+		s = string.replaceAll (s, "&", "&amp;");
+		s = string.replaceAll (s, "<", "&lt;");
+		s = string.replaceAll (s, ">", "&gt;");
+		return (s)};
+	on patchUrl (adrurl, baseurl) { //patch relative URL to absolute URL
+		if sizeOf (baseurl) > 0 {
+			if not (adrurl^ contains ":") {
+				if adrurl^ beginsWith "/" {
+					local (urlparts = string.urlSplit (baseurl));
+					baseurl = urlparts[1] + urlparts[2]}
+				else {
+					while adrurl^ beginswith "../" {
+						local (urlparts = string.urlSplit (baseurl));
+						urlparts[3] = "/" + urlparts[3];
+						if urlparts[3] endswith "/" {
+							urlparts[3] = string.popTrailing (urlparts[3], "/")};
+						baseurl = urlparts[1] + urlparts[2] + string.popSuffix (urlparts[3], "/") + "/";
+						adrurl^ = string.delete (adrurl^, 1, 3)}};
+				adrurl^ = string.popTrailing (baseurl, "/") + "/" + string.popLeading (adrurl^, "/")}};
+		return};
+	on getElementValue (adrelement) { //get the value of an atom:element, decoding as specified
+		local (s = "", type = "text/plain", mode = "xml");
+		if typeOf (adrelement^) == tableType { //pcdata, cdata, or embedded xhtml
+			bundle { //set type and mode, and get element content
+				if defined (adrelement^.["/atts"].type) {
+					type = adrelement^.["/atts"].type};
+				if defined (adrelement^.["/atts"].mode) {
+					mode = adrelement^.["/atts"].mode};
+				if defined (adrelement^.["/pcdata"]) {
+					s = adrelement^.["/pcdata"]};
+				if defined (adrelement^.["/cdata"]) {
+					s = adrelement^.["/cdata"]}};
+			case mode {
+				"xml" {
+					local (xfrag = adrelement^);
+					on visitproc (adr) {
+						if nameOf (adr^) beginswith "/" {
+							if nameOf (adr^) == "/pcdata" {
+								adr^ = string.replace (adr^, "&", "&amp;");
+								adr^ = string.replace (adr^, "<", "&lt;");
+								adr^ = string.replace (adr^, ">", "&gt;")}};
+						return (true)};
+					table.visit (@xfrag, @visitproc);
+					local (adrsub);
+					for adrsub in @xfrag {
+						if not (nameOf (adrsub^) beginswith "/") {
+							local (frag = xml.decompile (adrsub));
+							frag = string.delete (frag, 1, string.patternMatch (">", frag) );
+							if type == "application/xhtml+xml" { //decode &amp;'s encoded by xml.decompile
+								frag = string.replaceAll (frag, "&amp;", "&")};
+							s = s + string.trimWhiteSpace (frag)}}};
+				"base64" {
+					s = base64.decode (s)};
+				"escaped" {
+					try {
+						s = xml.entityDecode (s, false, true, true)}
+					else { //old version of xml.entityDecode?
+						s = string.replaceAll (s, "&lt;", "<");
+						s = string.replaceAll (s, "&gt;", ">");
+						s = string.replaceAll (s, "&quot;", "\"");
+						s = xml.entityDecode (s, false, true);
+						s = string.replaceAll (s, "&amp;", "&")}}}}
+		else { //plain-text string
+			try {
+				s = xml.entityDecode (adrelement^, false, true, true)}
+			else { //old version of xml.entityDecode?
+				s = xml.entityDecode (adrelement^, false, true)}};
+		case type {
+			"text/plain" { //encode HTML with entities, for correct display in browser
+				s = string.replaceAll (s, "&", "&amp;");
+				s = string.replaceAll (s, "<", "&lt;");
+				s = string.replaceAll (s, ">", "&gt;");
+				s = string.replaceAll (s, "\"", "&quot;")};
+			"text/html" {
+				}};//do nothing -- this is what we need out the other end anyway
+		return (s)};
+	on getSubElementValue (adr, name) {
+		local (adrsub = xml.getAddress (adr, name));
+		return (getElementValue (adrsub))};
+	on getAuthorValue (adr) {
+		local (name="", url="", email="");
+		case version {
+			"0.3" {
+				try {name = getSubElementValue (adr, "name")};
+				try {email = getSubElementValue (adr, "email")};
+				try {url = getSubElementValue (adr, "url")};
+				local (baseUrl = base);
+				try {baseUrl = adr^.["/atts"].["xml:base"]};
+				if sizeOf (url) > 0 {
+					patchUrl (@url, baseUrl)};
+				if name == "" {
+					if email == "" {
+						if url == "" {
+							return ("")}
+						else {
+							return (url)}}
+					else {
+						if url == "" {
+							return (email)}
+						else {
+							return (url + " (" + email + ")")}}}
+				else {
+					if url == "" {
+						if email == "" {
+							return (name)}
+						else {
+							return (name + " (" + email + ")")}}
+					else {
+						if email == "" {
+							return (html.getLink (name, url))}
+						else {
+							return (html.getLink (name, url) + " (" + email + ")")}}}};
+			"1.0" {
+				try {name = getSubElementValue (adr, "name")};
+				try {email = getSubElementValue (adr, "email")};
+				try {url = getSubElementValue (adr, "uri")};
+				local (baseUrl = base);
+				try {baseUrl = adr^.["/atts"].["xml:base"]};
+				if sizeOf (url) > 0 {
+					patchUrl (@url, baseUrl)};
+				if name == "" {
+					if email == "" {
+						if url == "" {
+							return ("")}
+						else {
+							return (url)}}
+					else {
+						if url == "" {
+							return (email)}
+						else {
+							return (url + " (" + email + ")")}}}
+				else {
+					if url == "" {
+						if email == "" {
+							return (name)}
+						else {
+							return (name + " (" + email + ")")}}
+					else {
+						if email == "" {
+							return (html.getLink (name, url))}
+						else {
+							return (html.getLink (name, url) + " (" + email + ")")}}}}}};
+	
+	local (months);
+	bundle { //set months -- used for shortcut to converting UTC time via date.netStandardString
+		months = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}};
+	local (encoding = "", base = "", author = "", pubdate = clock.now ());
+	
+	case version {
+		"0.3" {
+			bundle { //set feed globals for character-encoding and base url
+				local (adrxml = xml.getAddress (adrxstruct, "?xml"));
+				if defined (adrxml^.encoding) {
+					encoding = string.lower (adrxml^.encoding);
+					case encoding { //recompile XML with correct character encoding
+						"utf-8" {
+							xml.compile (string.utf8ToAnsi (adrservice^.xmltext), @xstructcopy);
+							adrxml = xml.getAddress (adrxstruct, "?xml");
+							adrfeed = xml.getAddress (adrxstruct, "feed")};
+						"utf-16" {
+							scriptError ("Can't read this item because UTF-16 encoding is not supported.")}}};
+				if defined (adrfeed^.["/atts"].["xml:base"]) {
+					base = adrfeed^.["/atts"].["xml:base"]};
+				try { //get feed-level author
+					local (adrauthor = xml.getAddress (adrfeed, "author"));
+					author = getAuthorValue (adrauthor)}};
+			
+			bundle { //set feed-level items
+				adrcomp^.channeltitle = getSubElementValue (adrfeed, "title");
+				bundle { //set adrcomp^.channellink
+					adrcomp^.channellink = ""; //it's possible that there's only one <link rel...> which we don't understand
+					Â«Loop over <link rel="..." ...> tags, and use the first rel="alternate" whose type="text/html" or "application/xhtml+xml"
+					local (adrlinks = xml.getAddressList (adrfeed, "link") );
+					local (adr);
+					for adr in adrlinks {
+						if adr^.["/atts"].rel == "alternate" {
+							case string.lower (adr^.["/atts"].type) {
+								"text/html";
+								"application/xhtml+xml" {
+									adrcomp^.channellink = adr^.["/atts"].href;
+									patchUrl (@adrcomp^.channellink, base);
+									break}}}}};
+				adrcomp^.channeldescription = "";
+				try {adrcomp^.channeldescription = getSubElementValue (adrfeed, "tagline")}}; //tagline is optional
+			
+			bundle { //loop over entries
+				local (adr, ct = 1);
+				local (sfeed = sizeOf (adrfeed^), i);
+				for i = sfeed downto 1 {
+					adr = @adrfeed^[i];
+					if nameof (adr^) endswith "\tentry" {
+						local (adritem = @adrcomp^.items.[string.padwithzeros (ct++, 5)]);
+						new (tabletype, adritem);
+						
+						local (entryAuthor = "", entryTitle = "", content = "");
+						bundle { //author
+							try { //item-level author
+								local (adrauthor = xml.getAddress (adr, "author"));
+								entryAuthor = getAuthorValue (adrauthor)}
+							else { //feed-level author
+								if author != "" {
+									entryAuthor = author}}};
+						bundle { //title
+							try {
+								entryTitle = getSubElementValue (adr, "title")}};
+						bundle { //guid
+							try {
+								adritem^.guid = getSubElementValue (adr, "id")}};
+						bundle { //pubdate
+							local (d = getSubElementValue (adr, "issued"));
+							local (y = string.mid (d, 1, 4));
+							local (m = string.mid (d, 6, 2));
+							local (dy = string.mid (d, 9, 2));
+							local (hr = string.mid (d, 12, 2));
+							local (min = string.mid (d, 15, 2));
+							local (sec = string.mid (d, 18, 2));
+							local (zone = string.mid (d, 20, infinity));
+							local (zonemin = 0);
+							if string.lower (zone) == "z" { //UTC
+								pubdate = date (dy + " " + months[number(m)] + " " + y + " " + hr + ":" + min + ":" + sec + " GMT")}
+							else { //have to convert time
+								y = number (y);
+								m = number (m);
+								dy = number (dy);
+								hr = number (hr);
+								min = number (min);
+								sec = number (sec);
+								zonemin = ( (60*number(string.mid(zone,2,2))) + number(string.mid(zone,5,2)));
+								if zone[1] == "-" {
+									zonemin = 0-zonemin};
+								pubdate = date.set (dy, m, y, hr, min, sec) + (60*zonemin)}};
+						bundle { //permalink, link, sourceChannelTitle, sourceChannelUrl
+							local (adrlink, adrlinks = xml.getAddressList (adr, "link") );
+							for adrlink in adrlinks {
+								if defined (adrlink^.["/atts"].rel) {
+									local (baseUrl = base);
+									if defined (adrlink^.["/atts"].["xml:base"]) {
+										baseUrl = adrlink^.["/atts"].["xml:base"]};
+									case string.lower (adrlink^.["/atts"].rel) {
+										"alternate" { //permalink
+											if defined (adrlink^.["/atts"].type) {
+												case string.lower (adrlink^.["/atts"].type) {
+													"text/plain";
+													"text/html";
+													"application/xhtml+xml" {
+														adritem^.permalink = adrlink^.["/atts"].href;
+														patchUrl (@adritem^.permalink, baseUrl)}}}};
+										"related" { //external link
+											if defined (adrlink^.["/atts"].type) {
+												case string.lower (adrlink^.["/atts"].type) {
+													"text/plain";
+													"text/html";
+													"application/xhtml+xml" {
+														adritem^.link = adrlink^.["/atts"].href;
+														patchUrl (@adritem^.link, baseUrl)}}}};
+										"source" {
+											adritem^.sourceChannelTitle = adrlink^.["/atts"].title;
+											adritem^.sourceChannelUrl = adrlink^.["/atts"].href;
+											patchUrl (@adritem^.sourceChannelUrl, baseUrl)}}}};
+							if not defined (adritem^.guid) { //use permalink for guid, for item history
+								adritem^.guid = adritem^.permalink}};
+						Â«bundle //comments
+							Â«//Not supported as of the 0.3 version of the spec. As best I can tell, all you get is a link to a feed for comments, or a set of links to atom entries for individual comments, and not a link to the HTML page that displays comments for this entry.
+						bundle { //content (a.k.a. description), and top-level title string (mashed data)
+							try { //prefer full content
+								content = getSubElementValue (adr, "content")}
+							else { //use summary instead
+								try { //summary is optional
+									content = getSubElementValue (adr, "summary")}};
+							local (linkUrl = "", linkHtml = "");
+							if defined (adritem^.permalink) { //prefer permalink over link
+								linkUrl = adritem^.permalink}
+							else { //no permalink -- use link if present
+								if defined (adritem^.link) {
+									linkUrl = adritem^.link}};
+							if entryTitle == "" { //empty title -- use the # mark for the link text
+								entryTitle = "#"};
+							if sizeOf (linkUrl) > 0 { //we have a link -- generate the HTML for display
+								linkHtml = html.getLink (entryTitle, linkUrl)}
+							else { //no link -- do we have a title?
+								if entryTitle == "#" { //no link or title
+									linkHtml = ""}
+								else { //no link -- just use the title
+									linkHtml = entryTitle}};
+							if sizeOf (entryAuthor) > 0 {
+								adritem^.title = linkHtml + " " + content + " - " + entryAuthor}
+							else {
+								adritem^.title = linkHtml + " " + content}};
+						bundle { //data sub-table of item
+							if flSaveData {
+								local (adrdata = @adritem^.data);
+								new (tabletype, adrdata);
+								adrdata^.author = entryAuthor;
+								adrdata^.description = content;
+								adrdata^.link = adritem^.permalink;
+								adrdata^.pubdate = date.netStandardString (pubdate);
+								adrdata^.title = entryTitle}};
+						addToHistory (adritem)}}}};
+		"1.0" {
+			bundle { //set feed globals for character-encoding and base url
+				local (adrxml = xml.getAddress (adrxstruct, "?xml"));
+				if defined (adrxml^.encoding) {
+					encoding = string.lower (adrxml^.encoding);
+					case encoding { //recompile XML with correct character encoding
+						"utf-8" {
+							xml.compile (string.utf8ToAnsi (adrservice^.xmltext), @xstructcopy);
+							adrxml = xml.getAddress (adrxstruct, "?xml");
+							adrfeed = xml.getAddress (adrxstruct, "feed")};
+						"utf-16" {
+							scriptError ("Can't read this item because UTF-16 encoding is not supported.")}}};
+				if defined (adrfeed^.["/atts"].["xml:base"]) {
+					base = adrfeed^.["/atts"].["xml:base"]};
+				try { //get feed-level author
+					local (adrauthor = xml.getAddress (adrfeed, "author"));
+					author = getAuthorValue (adrauthor)}};
+			
+			bundle { //set feed-level items
+				adrcomp^.channeltitle = getSubElementValue (adrfeed, "title");
+				bundle { //set adrcomp^.channellink
+					adrcomp^.channellink = ""; //it's possible that there's only one <link rel...> which we don't understand
+					Â«Loop over <link rel="..." ...> tags, and use the first rel="alternate" whose type="text/html" or "application/xhtml+xml"
+					local (adrlinks = xml.getAddressList (adrfeed, "link") );
+					local (adr);
+					for adr in adrlinks {
+						if adr^.["/atts"].rel == "alternate" {
+							case string.lower (adr^.["/atts"].type) {
+								"text/html";
+								"application/xhtml+xml" {
+									adrcomp^.channellink = adr^.["/atts"].href;
+									patchUrl (@adrcomp^.channellink, base);
+									break}}}}};
+				adrcomp^.channeldescription = "";
+				try {adrcomp^.channeldescription = getSubElementValue (adrfeed, "subtitle")}}; //subtitle is optional
+			
+			bundle { //loop over entries
+				local (adr, ct = 1);
+				local (sfeed = sizeOf (adrfeed^), i);
+				for i = sfeed downto 1 {
+					adr = @adrfeed^[i];
+					if nameof (adr^) endswith "\tentry" {
+						local (adritem = @adrcomp^.items.[string.padwithzeros (ct++, 5)]);
+						new (tabletype, adritem);
+						
+						local (entryAuthor = "", entryTitle = "", content = "");
+						bundle { //author
+							try { //item-level author
+								local (adrauthor = xml.getAddress (adr, "author"));
+								entryAuthor = getAuthorValue (adrauthor)}
+							else { //feed-level author
+								if author != "" {
+									entryAuthor = author}}};
+						bundle { //title
+							try {
+								entryTitle = getSubElementValue (adr, "title")}};
+						bundle { //guid
+							try {
+								adritem^.guid = getSubElementValue (adr, "id")}};
+						bundle { //pubdate
+							try {
+								local (d = getSubElementValue (adr, "published"));
+								local (y = string.mid (d, 1, 4));
+								local (m = string.mid (d, 6, 2));
+								local (dy = string.mid (d, 9, 2));
+								local (hr = string.mid (d, 12, 2));
+								local (min = string.mid (d, 15, 2));
+								local (sec = string.mid (d, 18, 2));
+								local (zone = string.mid (d, 20, infinity));
+								local (zonemin = 0);
+								if string.lower (zone) == "z" { //UTC
+									pubdate = date (dy + " " + months[number(m)] + " " + y + " " + hr + ":" + min + ":" + sec + " GMT")}
+								else { //have to convert time
+									y = number (y);
+									m = number (m);
+									dy = number (dy);
+									hr = number (hr);
+									min = number (min);
+									sec = number (sec);
+									zonemin = ( (60*number(string.mid(zone,2,2))) + number(string.mid(zone,5,2)));
+									if zone[1] == "-" {
+										zonemin = 0-zonemin};
+									pubdate = date.set (dy, m, y, hr, min, sec) + (60*zonemin)}}};
+						bundle { //permalink, link, sourceChannelTitle, sourceChannelUrl
+							local (adrlink, adrlinks = xml.getAddressList (adr, "link") );
+							for adrlink in adrlinks {
+								if defined (adrlink^.["/atts"].rel) {
+									local (baseUrl = base);
+									if defined (adrlink^.["/atts"].["xml:base"]) {
+										baseUrl = adrlink^.["/atts"].["xml:base"]};
+									case string.lower (adrlink^.["/atts"].rel) {
+										"alternate" { //permalink
+											if defined (adrlink^.["/atts"].type) {
+												case string.lower (adrlink^.["/atts"].type) {
+													"text/plain";
+													"text/html";
+													"application/xhtml+xml" {
+														adritem^.permalink = adrlink^.["/atts"].href;
+														patchUrl (@adritem^.permalink, baseUrl)}}}};
+										"related" { //external link
+											if defined (adrlink^.["/atts"].type) {
+												case string.lower (adrlink^.["/atts"].type) {
+													"text/plain";
+													"text/html";
+													"application/xhtml+xml" {
+														adritem^.link = adrlink^.["/atts"].href;
+														patchUrl (@adritem^.link, baseUrl)}}}};
+										"source" {
+											adritem^.sourceChannelTitle = adrlink^.["/atts"].title;
+											adritem^.sourceChannelUrl = adrlink^.["/atts"].href;
+											patchUrl (@adritem^.sourceChannelUrl, baseUrl)}}}};
+							if not defined (adritem^.guid) { //use permalink for guid, for item history
+								adritem^.guid = adritem^.permalink}};
+						Â«bundle //comments
+							Â«//Not supported as of the 0.3 version of the spec. As best I can tell, all you get is a link to a feed for comments, or a set of links to atom entries for individual comments, and not a link to the HTML page that displays comments for this entry.
+						bundle { //content (a.k.a. description), and top-level title string (mashed data)
+							try { //prefer full content
+								content = getSubElementValue (adr, "content")}
+							else { //use summary instead
+								try { //summary is optional
+									content = getSubElementValue (adr, "summary")}};
+							local (linkUrl = "", linkHtml = "");
+							if defined (adritem^.permalink) { //prefer permalink over link
+								linkUrl = adritem^.permalink}
+							else { //no permalink -- use link if present
+								if defined (adritem^.link) {
+									linkUrl = adritem^.link}};
+							if entryTitle == "" { //empty title -- use the # mark for the link text
+								entryTitle = "#"};
+							if sizeOf (linkUrl) > 0 { //we have a link -- generate the HTML for display
+								linkHtml = html.getLink (entryTitle, linkUrl)}
+							else { //no link -- do we have a title?
+								if entryTitle == "#" { //no link or title
+									linkHtml = ""}
+								else { //no link -- just use the title
+									linkHtml = entryTitle}};
+							if sizeOf (entryAuthor) > 0 {
+								adritem^.title = linkHtml + " " + content + " - " + entryAuthor}
+							else {
+								adritem^.title = linkHtml + " " + content}};
+						bundle { //data sub-table of item
+							if flSaveData {
+								local (adrdata = @adritem^.data);
+								new (tabletype, adrdata);
+								adrdata^.author = entryAuthor;
+								adrdata^.description = content;
+								adrdata^.link = adritem^.permalink;
+								adrdata^.pubdate = date.netStandardString (pubdate);
+								adrdata^.title = entryTitle}};
+						addToHistory (adritem)}}}}};
+	
+	return (true)}

@@ -1,1 +1,26 @@
-on getFromServer (adrObject) {	local (username, password, server, port, paramList = {});	local (debug = false);		local (procedureName = "webEdit.getFromServer");		bundle { //get username, password, server, and port		local (infoList = webEdit.getUserInfo (adrObject));		if infoList == false {			return (false)};		userName = infoList [1];		password = infoList [2];		server = infoList [3];		port = infoList [4]};		bundle { //build parameters list		paramList [1] = username;		paramList [2] = password;		paramList [3] = webEdit.fixGuestDbAdr (string (adrObject))};		local (s);	s = webEdit.sendCommand (server, port, procedureName, @paramList, debug);		webEdit.unpackResponse (s, adrObject);		return (s)}
+on getFromServer (adrObject) {
+	local (username, password, server, port, paramList = {});
+	local (debug = false);
+	
+	local (procedureName = "webEdit.getFromServer");
+	
+	bundle { //get username, password, server, and port
+		local (infoList = webEdit.getUserInfo (adrObject));
+		if infoList == false {
+			return (false)};
+		userName = infoList [1];
+		password = infoList [2];
+		server = infoList [3];
+		port = infoList [4]};
+	
+	bundle { //build parameters list
+		paramList [1] = username;
+		paramList [2] = password;
+		paramList [3] = webEdit.fixGuestDbAdr (string (adrObject))};
+	
+	local (s);
+	s = webEdit.sendCommand (server, port, procedureName, @paramList, debug);
+	
+	webEdit.unpackResponse (s, adrObject);
+	
+	return (s)}

@@ -1,1 +1,2 @@
-on wake (id) {	kernel (thread.wake)}
+on wake (id) {
+	kernel (thread.wake)}

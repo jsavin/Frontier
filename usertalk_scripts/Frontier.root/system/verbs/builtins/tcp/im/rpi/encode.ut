@@ -1,1 +1,45 @@
-on encode (procedureName, paramlist) {	«Changes		«8/27/02; 5:07:06 PM by JES			«Base64-encode strings which are struct members, in addition to string-parameters.		«5/6/02; 7:56:01 PM by DW			«Created. Cribbed from betty.rpc.client.	local (xmltext = "");	on add (s) {		xmltext = xmltext + s};	add ("<?xml version=\"1.0\"?>");	add ("<methodCall>");	add ("<methodName>" + procedureName + "</methodName>");	local (item);	add ("<params>");	on addOneParam (item, tagname="param", name="", flAddName=false) {		case (typeOf (item)) {			tableType {				add ("<" + tagname + ">");				if flAddName {					add ("<name>" + name + "</name>")};				add ("<value><struct>");				local (adrsub);				for adrsub in @item {					addOneParam (adrsub^, "member", nameOf (adrsub^), true)};				add ("</struct></value></" + tagname + ">")};			stringType { // JB 5/24/02 - override string values to base64 encode them				if flAddName {					add("<" + tagname + "><name>" + name + "</name><value><string>" + base64.encode(item, infinity) + "</string></value></" + tagname + ">")}				else {					add("<" + tagname + "><value><string>" + base64.encode(item, infinity) + "</string></value></" + tagname + ">")}}}		else { // normal processing			if flAddName {				add ("<" + tagname + "><name>" + name + "</name><value>" + xml.coercions.frontierValueToTaggedText (@item, 0) + "</value></" + tagname + ">")}			else {				add ("<" + tagname + "><value>" + xml.coercions.frontierValueToTaggedText (@item, 0) + "</value></" + tagname + ">")}};		return (true)};	for item in paramlist {		addOneParam (item)};	add ("</params>");	add ("</methodCall>");	return (xmltext)};«bundle //test code	«wp.newtextobject (encode ("test.noOp", {user.prefs.commonStyles}), @scratchpad.rpctext)	«local (xstruct); xml.compile (string (scratchpad.rpctext), @xstruct); wp.newtextobject (xml.decompile (@xstruct), @scratchpad.rpctext)	«edit (@scratchpad.rpctext)
+on encode (procedureName, paramlist) {
+	Â«Changes
+		Â«8/27/02; 5:07:06 PM by JES
+			Â«Base64-encode strings which are struct members, in addition to string-parameters.
+		Â«5/6/02; 7:56:01 PM by DW
+			Â«Created. Cribbed from betty.rpc.client.
+	local (xmltext = "");
+	on add (s) {
+		xmltext = xmltext + s};
+	add ("<?xml version=\"1.0\"?>");
+	add ("<methodCall>");
+	add ("<methodName>" + procedureName + "</methodName>");
+	local (item);
+	add ("<params>");
+	on addOneParam (item, tagname="param", name="", flAddName=false) {
+		case (typeOf (item)) {
+			tableType {
+				add ("<" + tagname + ">");
+				if flAddName {
+					add ("<name>" + name + "</name>")};
+				add ("<value><struct>");
+				local (adrsub);
+				for adrsub in @item {
+					addOneParam (adrsub^, "member", nameOf (adrsub^), true)};
+				add ("</struct></value></" + tagname + ">")};
+			stringType { // JB 5/24/02 - override string values to base64 encode them
+				if flAddName {
+					add("<" + tagname + "><name>" + name + "</name><value><string>" + base64.encode(item, infinity) + "</string></value></" + tagname + ">")}
+				else {
+					add("<" + tagname + "><value><string>" + base64.encode(item, infinity) + "</string></value></" + tagname + ">")}}}
+		else { // normal processing
+			if flAddName {
+				add ("<" + tagname + "><name>" + name + "</name><value>" + xml.coercions.frontierValueToTaggedText (@item, 0) + "</value></" + tagname + ">")}
+			else {
+				add ("<" + tagname + "><value>" + xml.coercions.frontierValueToTaggedText (@item, 0) + "</value></" + tagname + ">")}};
+		return (true)};
+	for item in paramlist {
+		addOneParam (item)};
+	add ("</params>");
+	add ("</methodCall>");
+	return (xmltext)};
+Â«bundle //test code
+	Â«wp.newtextobject (encode ("test.noOp", {user.prefs.commonStyles}), @scratchpad.rpctext)
+	Â«local (xstruct); xml.compile (string (scratchpad.rpctext), @xstruct); wp.newtextobject (xml.decompile (@xstruct), @scratchpad.rpctext)
+	Â«edit (@scratchpad.rpctext)

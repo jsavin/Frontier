@@ -1,1 +1,27 @@
-«Script: system.verbs.builtins.webserver.util.readUntil; Version 1; Date: Fri, 15 May 1998 07:55:53 GMT; ID: RABon readUntil (stream, pattern, timeoutSecs=10) {	«March 19, 1998 at 5:02:05 PM by WMF		«This script reads data from a TCP stream until the pattern is encountered		«It returns the data that was read, including the pattern		«Extra data after the pattern may be returned		«An error will be thrown if no data arrives before the timeout expires	local (bytes = 0, data = "", timeout);		timeout = clock.ticks () + 60 * timeoutSecs; // convert to ticks		while (string.patternmatch (pattern, data) == 0) {		«we haven't read in enough data yet		if (clock.ticks () > timeout) { // the client timed out			scriptError ("The connection timed out before the pattern was found.")};		case tcp.statusStream (stream, @bytes) {			"DATA" {				data = data + tcp.readStream (stream, bytes);				timeout = clock.ticks () + 60 * timeoutSecs}; // extend the timeout			"OPEN" {				sys.systemTask(); //yield a little within this thread for the system				thread.sleepfor (1)}; //yield this thread for a second to allow normal frontier processing			"INACTIVE";			"CLOSING";			"CLOSED" {				scriptError ("The connection broke before the pattern was found.")}}};	return (data)}
+Â«Script: system.verbs.builtins.webserver.util.readUntil; Version 1; Date: Fri, 15 May 1998 07:55:53 GMT; ID: RAB
+on readUntil (stream, pattern, timeoutSecs=10) {
+	Â«March 19, 1998 at 5:02:05 PM by WMF
+		Â«This script reads data from a TCP stream until the pattern is encountered
+		Â«It returns the data that was read, including the pattern
+		Â«Extra data after the pattern may be returned
+		Â«An error will be thrown if no data arrives before the timeout expires
+	local (bytes = 0, data = "", timeout);
+	
+	timeout = clock.ticks () + 60 * timeoutSecs; // convert to ticks
+	
+	while (string.patternmatch (pattern, data) == 0) {
+		Â«we haven't read in enough data yet
+		if (clock.ticks () > timeout) { // the client timed out
+			scriptError ("The connection timed out before the pattern was found.")};
+		case tcp.statusStream (stream, @bytes) {
+			"DATA" {
+				data = data + tcp.readStream (stream, bytes);
+				timeout = clock.ticks () + 60 * timeoutSecs}; // extend the timeout
+			"OPEN" {
+				sys.systemTask(); //yield a little within this thread for the system
+				thread.sleepfor (1)}; //yield this thread for a second to allow normal frontier processing
+			"INACTIVE";
+			"CLOSING";
+			"CLOSED" {
+				scriptError ("The connection broke before the pattern was found.")}}};
+	return (data)}

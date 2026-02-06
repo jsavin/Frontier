@@ -1,1 +1,17 @@
-on valToString (val, indentLevel=0) {	«Thursday, November 11, 1999 at 3:10:43 AM by AR		«See http://frontier.userland.com/titleSearch$XMLRPCSpecification for background information.		«Added support for binary values to the Frontier 6.1 kernel.		«Old code			«on valToString (val, indentLevel=0)				«See http://frontier.userland.com/titleSearch$XMLRPCSpecification for background information.				«Thu, 27 May 1999 22:13:33 GMT by AR					«Work around the fact that the Frontier kernel doesn't yet support conversion of binary objects.				«case typeOf (val)					«binaryType						«return (string.filledString ("\t", indentLevel) + "<base64>" + base64.encode (val, 0) + "</base64>")				«else					«on kernelCall (val, indentLevel) 						«kernel (xml.valToString)					«return (kernelCall (val, indentLevel))	kernel (xml.valToString)}
+on valToString (val, indentLevel=0) {
+	Â«Thursday, November 11, 1999 at 3:10:43 AM by AR
+		Â«See http://frontier.userland.com/titleSearch$XMLRPCSpecification for background information.
+		Â«Added support for binary values to the Frontier 6.1 kernel.
+		Â«Old code
+			Â«on valToString (val, indentLevel=0)
+				Â«See http://frontier.userland.com/titleSearch$XMLRPCSpecification for background information.
+				Â«Thu, 27 May 1999 22:13:33 GMT by AR
+					Â«Work around the fact that the Frontier kernel doesn't yet support conversion of binary objects.
+				Â«case typeOf (val)
+					Â«binaryType
+						Â«return (string.filledString ("\t", indentLevel) + "<base64>" + base64.encode (val, 0) + "</base64>")
+				Â«else
+					Â«on kernelCall (val, indentLevel) 
+						Â«kernel (xml.valToString)
+					Â«return (kernelCall (val, indentLevel))
+	kernel (xml.valToString)}

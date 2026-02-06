@@ -1,1 +1,30 @@
-on normalizeName (name, adrPageTable=nil, adrObject=nil) {	local (flDropNonAlphas, flLowerCaseFileNames);	local (maxLength);	local (extension = "");	local (pageTable);		if adrPageTable == nil {		try {			adrPageTable = html.getPageTableAddress ()}		else {			new (tableType, @pageTable);			adrPageTable = @pageTable}};		flDropNonAlphas = html.getPref ("dropNonAlphas", adrPageTable);	flLowerCaseFileNames = html.getPref ("lowerCaseFileNames", adrPageTable);	maxLength = number (html.getPref ("maxFileNameLength", adrPageTable));	extension = html.getPref ("fileExtension", adrPageTable);		if adrObject != nil { //this may be a page other than the one being rendered		if adrObject != adrPageTable^.adrObject {			extension = html.getPagePref ("fileExtension", adrObject, adrPageTable)}};		if flDropNonAlphas {		name = string.dropNonAlphas (name)};	if flLowerCaseFileNames {		name = string.lower (name)};	maxLength = maxLength - sizeOf (extension);	if sizeof (name) > maxLength {		name = string.mid (name, 1, maxLength)};	return (name)}
+on normalizeName (name, adrPageTable=nil, adrObject=nil) {
+	local (flDropNonAlphas, flLowerCaseFileNames);
+	local (maxLength);
+	local (extension = "");
+	local (pageTable);
+	
+	if adrPageTable == nil {
+		try {
+			adrPageTable = html.getPageTableAddress ()}
+		else {
+			new (tableType, @pageTable);
+			adrPageTable = @pageTable}};
+	
+	flDropNonAlphas = html.getPref ("dropNonAlphas", adrPageTable);
+	flLowerCaseFileNames = html.getPref ("lowerCaseFileNames", adrPageTable);
+	maxLength = number (html.getPref ("maxFileNameLength", adrPageTable));
+	extension = html.getPref ("fileExtension", adrPageTable);
+	
+	if adrObject != nil { //this may be a page other than the one being rendered
+		if adrObject != adrPageTable^.adrObject {
+			extension = html.getPagePref ("fileExtension", adrObject, adrPageTable)}};
+	
+	if flDropNonAlphas {
+		name = string.dropNonAlphas (name)};
+	if flLowerCaseFileNames {
+		name = string.lower (name)};
+	maxLength = maxLength - sizeOf (extension);
+	if sizeof (name) > maxLength {
+		name = string.mid (name, 1, maxLength)};
+	return (name)}

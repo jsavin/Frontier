@@ -1,1 +1,24 @@
-«copies selected fields from the stress database to a new database	«be sure you run the stressBase script firstlocal (sourcefnum, destfnum);bundle { «start up uBASE, open the stress base, create a new file	ubase.launch ();	local (ubasefolder = file.folderFromPath (ubase.appinfo.path));	sourcefnum = ubase.openFile (ubasefolder + "Stress Database");	destfnum = ubase.newFile (ubasefolder + "Stress Database Subset");	ubase.bringToFront (); «so we can watch the records being added	ubase.addField (destfnum, 'long', longType);	ubase.addField (destfnum, 'date', dateType);	ubase.addField (destfnum, 'stri', stringType)};local (key = ubase.getFirstRecord (sourcefnum));local (count = ubase.countRecords (sourcefnum));local (i, x);for i = 1 to count {	ubase.lookupRecord (sourcefnum, key, @x);	ubase.addRecord (destfnum, key, @x);	key = ubase.getNextRecord (sourcefnum, key)};ubase.closeFile (sourcefnum);ubase.closeFile (destfnum)
+Â«copies selected fields from the stress database to a new database
+	Â«be sure you run the stressBase script first
+
+local (sourcefnum, destfnum);
+bundle { Â«start up uBASE, open the stress base, create a new file
+	ubase.launch ();
+	local (ubasefolder = file.folderFromPath (ubase.appinfo.path));
+	sourcefnum = ubase.openFile (ubasefolder + "Stress Database");
+	destfnum = ubase.newFile (ubasefolder + "Stress Database Subset");
+	ubase.bringToFront (); Â«so we can watch the records being added
+	ubase.addField (destfnum, 'long', longType);
+	ubase.addField (destfnum, 'date', dateType);
+	ubase.addField (destfnum, 'stri', stringType)};
+
+local (key = ubase.getFirstRecord (sourcefnum));
+local (count = ubase.countRecords (sourcefnum));
+local (i, x);
+for i = 1 to count {
+	ubase.lookupRecord (sourcefnum, key, @x);
+	ubase.addRecord (destfnum, key, @x);
+	key = ubase.getNextRecord (sourcefnum, key)};
+
+ubase.closeFile (sourcefnum);
+ubase.closeFile (destfnum)

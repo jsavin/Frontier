@@ -1,1 +1,9 @@
-on zoomWindow (windowpath, zoomIn) { « zoom the indicated folder's window in or out	local (zoomcode, fwindow);	if not Finder.makeWindow (windowpath, 0, @fwindow) {		return (false)};	if (zoomIn) {		zoomcode = 8}	else {		zoomcode = 7};	return (finderEvent (Finder.id, Finder.class, 'zoom', '----', fwindow, 'fmsc', zoomcode))}
+on zoomWindow (windowpath, zoomIn) { Â« zoom the indicated folder's window in or out
+	local (zoomcode, fwindow);
+	if not Finder.makeWindow (windowpath, 0, @fwindow) {
+		return (false)};
+	if (zoomIn) {
+		zoomcode = 8}
+	else {
+		zoomcode = 7};
+	return (finderEvent (Finder.id, Finder.class, 'zoom', '----', fwindow, 'fmsc', zoomcode))}

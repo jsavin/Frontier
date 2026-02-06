@@ -1,1 +1,21 @@
-if card.runsCards () {	export.card.run ()}else {	local (s, adr = window.frontmost ());	local (adrParent);	if window.isMenuScript (adr) {		scriptError ("Can't export menu scripts.")};	if typeOf (adr^) == tableType {		adr =  table.getCursor ()};		local (suffix = Frontier.getFileSuffix (typeOf (adr^)));	if suffix != "" {		suffix = "." + suffix};	s = nameof (adr^);	adrParent = parentOf (adr^);	if adrParent != nil {		s = nameOf (adrParent^) + '.' + s};	local (f = user.export.lastfolder + s + suffix);	if file.putFileDialog ("Export To:", @f) {		export.sendObject (adr, f);		user.export.lastFolder = file.folderFromPath (f)}}
+if card.runsCards () {
+	export.card.run ()}
+else {
+	local (s, adr = window.frontmost ());
+	local (adrParent);
+	if window.isMenuScript (adr) {
+		scriptError ("Can't export menu scripts.")};
+	if typeOf (adr^) == tableType {
+		adr =  table.getCursor ()};
+	
+	local (suffix = Frontier.getFileSuffix (typeOf (adr^)));
+	if suffix != "" {
+		suffix = "." + suffix};
+	s = nameof (adr^);
+	adrParent = parentOf (adr^);
+	if adrParent != nil {
+		s = nameOf (adrParent^) + '.' + s};
+	local (f = user.export.lastfolder + s + suffix);
+	if file.putFileDialog ("Export To:", @f) {
+		export.sendObject (adr, f);
+		user.export.lastFolder = file.folderFromPath (f)}}

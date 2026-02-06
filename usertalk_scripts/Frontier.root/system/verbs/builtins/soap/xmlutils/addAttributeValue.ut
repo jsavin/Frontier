@@ -1,1 +1,11 @@
-on addAttributeValue (adrelement, attributename, attributevalue) {	if defined (adrelement^.["/atts"].[attributename]) { //check for uniqueness		scripterror ("Can't add an attribute named \"" + attributename + "\" to the element because an attribute with that name already exists.")};	if typeOf (adrelement^) != tableType { //convert to table		local (val = string (adrelement^));		new (tableType, adrelement);		xml.addTable (adrelement, "/pcdata")^ = val};	if not defined (adrelement^.["/atts"]) {		new (tableType, @adrelement^.["/atts"])};	adrelement^.["/atts"].[attributename] = string (attributevalue);	return (true)}
+on addAttributeValue (adrelement, attributename, attributevalue) {
+	if defined (adrelement^.["/atts"].[attributename]) { //check for uniqueness
+		scripterror ("Can't add an attribute named \"" + attributename + "\" to the element because an attribute with that name already exists.")};
+	if typeOf (adrelement^) != tableType { //convert to table
+		local (val = string (adrelement^));
+		new (tableType, adrelement);
+		xml.addTable (adrelement, "/pcdata")^ = val};
+	if not defined (adrelement^.["/atts"]) {
+		new (tableType, @adrelement^.["/atts"])};
+	adrelement^.["/atts"].[attributename] = string (attributevalue);
+	return (true)}

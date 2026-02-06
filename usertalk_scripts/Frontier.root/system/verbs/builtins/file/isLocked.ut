@@ -1,1 +1,2 @@
-on isLocked (path) {	kernel (file.islocked)}
+on isLocked (path) {
+	kernel (file.islocked)}

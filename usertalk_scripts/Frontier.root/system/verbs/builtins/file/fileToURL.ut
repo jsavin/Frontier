@@ -1,1 +1,18 @@
-on fileToURL (f) {	local (s = "file://");	local (pc = file.getPathChar ());	local (i, field, ctfields = string.countFields (f, pc));	for i = 1 to ctfields {		field = string.nthField (f, pc, i);		«if sys.os () beginsWith "Win"			«if i == 1				«field = field - ":"		s = s + "/" + field};	if file.exists (f) {		if file.isFolder (f) {			s = s + "/"}};	return (s)};«bundle «test code	«dialog.alert (fileToURL (websites.["#data"].f))	«dialog.alert (fileToURL (frontier.getprogrampath ()))
+on fileToURL (f) {
+	local (s = "file://");
+	local (pc = file.getPathChar ());
+	local (i, field, ctfields = string.countFields (f, pc));
+	for i = 1 to ctfields {
+		field = string.nthField (f, pc, i);
+		Â«if sys.os () beginsWith "Win"
+			Â«if i == 1
+				Â«field = field - ":"
+		s = s + "/" + field};
+	if file.exists (f) {
+		if file.isFolder (f) {
+			s = s + "/"}};
+	return (s)};
+
+Â«bundle Â«test code
+	Â«dialog.alert (fileToURL (websites.["#data"].f))
+	Â«dialog.alert (fileToURL (frontier.getprogrampath ()))

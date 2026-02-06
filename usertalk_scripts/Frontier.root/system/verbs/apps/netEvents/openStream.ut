@@ -1,1 +1,4 @@
-on openStream (adr, port) { «Create a new stream	if typeOf (adr) != longType {		adr = appleEvent (netEvents.id, 'WAPI', 'N2AD', '----', string (adr))};	return (appleEvent (netEvents.id, 'WAPI', 'OPEN', '----', long (adr), 'PORT', short (port)))}
+on openStream (adr, port) { Â«Create a new stream
+	if typeOf (adr) != longType {
+		adr = appleEvent (netEvents.id, 'WAPI', 'N2AD', '----', string (adr))};
+	return (appleEvent (netEvents.id, 'WAPI', 'OPEN', '----', long (adr), 'PORT', short (port)))}

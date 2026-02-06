@@ -1,1 +1,2 @@
-with xml.examples.myComputer3 {	xml.compile (string (taggedText), @tableStructure)}
+with xml.examples.myComputer3 {
+	xml.compile (string (taggedText), @tableStructure)}

@@ -1,1 +1,2 @@
-on new (type, adr) {	kernel (lang.new)}
+on new (type, adr) {
+	kernel (lang.new)}

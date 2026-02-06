@@ -1,1 +1,2 @@
-on selectAll () {	kernel (editmenu.selectall)}
+on selectAll () {
+	kernel (editmenu.selectall)}

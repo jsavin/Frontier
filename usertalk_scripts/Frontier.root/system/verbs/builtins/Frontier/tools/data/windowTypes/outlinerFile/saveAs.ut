@@ -1,1 +1,91 @@
-on saveAs (adr, adradrwindow=nil) {	«Handle the Save As command for outliner files.	«Changes:		«8/14/01; 8:36:22 PM by JES			«Don't doubly append the .opml extension onto the default filename.		on getFilePathFromUser (adrPath, defaultExtension) {		local (f, folder, fname);		folder = file.folderFromPath (adrPath^);		fname = file.fileFromPath (adrPath^);		bundle { //fix the default path			if (fname contains '.') and ((string.lower (fname) endsWith defaultExtension)) {				fname = string.popSuffix (fname)};			if system.environment.isMac {				local (maxchars = 31 - sizeOf (defaultExtension));				if sizeOf (fname) > maxchars {					fname = string.mid (fname, 1, maxchars)}};			fname = fname + defaultExtension};		f = folder + fname;		if not (file.putFileDialog ("Save as", @f)) { //get a place to save this document			return (false)};		if not (string.lower (f) endsWith defaultExtension) {			f = f + defaultExtension};		adrPath^ = f;		return (true)};	on setPosition (adrOrigWindow, adrNewWindow) {		local (horiz, vert, width, height);		window.getPosition (adrOrigWindow, @horiz, @vert);		window.getSize (adrOrigWindow, @width, @height);		window.setSize (adrNewWindow, width, height);		window.setPosition (adrNewWindow, horiz + 15, vert + 15)};		local (type, adrNewWindow, flHaveWindow = false);	if window.attributes.getOne ("type", @type, adr) { //if it's a file-based outline file, clone it as a new outlinerFile		if type == "outlinerFile" {			local (adrtype = parentOf (this^));			local (f);			if not window.attributes.getOne ("f", @f, adr) { //call the save script				return (adrtype^.save (adr, adradrwindow))};						local (atts);			window.attributes.getAll (@atts, adr);						local (defaultExtension = ".opml");			if defined (atts.flOutlineDocument) { //it might be raw XML -- use .xml suffix				if not atts.flOutlineDocument {					defaultExtension = ".xml";					if defined (atts.f) {						local (fname = file.fileFromPath (atts.f));						if fname contains '.' {							defaultExtension = "." + string.nthField (fname, '.', string.countFields (fname, '.'))}}}};			if not (getFilePathFromUser (@atts.f, ".opml")) {				return (false)};			atts.title = file.fileFromPath (atts.f);			Frontier.tools.windowTypes.commands.new (true, atts.title, @adrNewWindow);			adrNewWindow^ = adr^;			window.attributes.addGroup (@atts, adrNewWindow);			edit (adrNewWindow, atts.title);			setPosition (adr, adrNewWindow);			flHaveWindow = true}};		if not flHaveWindow { //maybe it's an odb outline		if typeOf (adr^) == outlineType { //it's an odb outline, so create a new opml file based on its contents			local (f = window.getTitle (adr));			bundle { //if the title is an odb address, use the name of the object				if string.lower (f) == string.lower (string.popFileFromAddress (adr)) {					f = nameOf (adr^)}};			if not (getFilePathFromUser (@f, ".opml")) {				return (false)};						bundle { //create a new outline document with data and a file path				local (title = file.fileFromPath (f));				Frontier.tools.windowTypes.commands.new (true, title, @adrNewWindow);				window.attributes.setOne ("f", f, adrNewWindow);				adrNewWindow^ = adr^;				edit (adrNewWindow, title);				setPosition (adr, adrNewWindow)}}};		if not flHaveWindow { //couldn't create the new file -- return false: command not handled		return (false)};		if not Frontier.tools.windowTypes.commands.save (adrNewWindow) { //save the file		return (false)};		if adradrwindow != nil { //tell the caller how to find the window		adradrwindow^ = adrNewWindow};		return (true)}; //command handledbundle { //testing	saveAs (window.frontmost ())}
+on saveAs (adr, adradrwindow=nil) {
+	Â«Handle the Save As command for outliner files.
+	Â«Changes:
+		Â«8/14/01; 8:36:22 PM by JES
+			Â«Don't doubly append the .opml extension onto the default filename.
+	
+	on getFilePathFromUser (adrPath, defaultExtension) {
+		local (f, folder, fname);
+		folder = file.folderFromPath (adrPath^);
+		fname = file.fileFromPath (adrPath^);
+		bundle { //fix the default path
+			if (fname contains '.') and ((string.lower (fname) endsWith defaultExtension)) {
+				fname = string.popSuffix (fname)};
+			if system.environment.isMac {
+				local (maxchars = 31 - sizeOf (defaultExtension));
+				if sizeOf (fname) > maxchars {
+					fname = string.mid (fname, 1, maxchars)}};
+			fname = fname + defaultExtension};
+		f = folder + fname;
+		if not (file.putFileDialog ("Save as", @f)) { //get a place to save this document
+			return (false)};
+		if not (string.lower (f) endsWith defaultExtension) {
+			f = f + defaultExtension};
+		adrPath^ = f;
+		return (true)};
+	on setPosition (adrOrigWindow, adrNewWindow) {
+		local (horiz, vert, width, height);
+		window.getPosition (adrOrigWindow, @horiz, @vert);
+		window.getSize (adrOrigWindow, @width, @height);
+		window.setSize (adrNewWindow, width, height);
+		window.setPosition (adrNewWindow, horiz + 15, vert + 15)};
+	
+	local (type, adrNewWindow, flHaveWindow = false);
+	if window.attributes.getOne ("type", @type, adr) { //if it's a file-based outline file, clone it as a new outlinerFile
+		if type == "outlinerFile" {
+			local (adrtype = parentOf (this^));
+			local (f);
+			if not window.attributes.getOne ("f", @f, adr) { //call the save script
+				return (adrtype^.save (adr, adradrwindow))};
+			
+			local (atts);
+			window.attributes.getAll (@atts, adr);
+			
+			local (defaultExtension = ".opml");
+			if defined (atts.flOutlineDocument) { //it might be raw XML -- use .xml suffix
+				if not atts.flOutlineDocument {
+					defaultExtension = ".xml";
+					if defined (atts.f) {
+						local (fname = file.fileFromPath (atts.f));
+						if fname contains '.' {
+							defaultExtension = "." + string.nthField (fname, '.', string.countFields (fname, '.'))}}}};
+			if not (getFilePathFromUser (@atts.f, ".opml")) {
+				return (false)};
+			atts.title = file.fileFromPath (atts.f);
+			Frontier.tools.windowTypes.commands.new (true, atts.title, @adrNewWindow);
+			adrNewWindow^ = adr^;
+			window.attributes.addGroup (@atts, adrNewWindow);
+			edit (adrNewWindow, atts.title);
+			setPosition (adr, adrNewWindow);
+			flHaveWindow = true}};
+	
+	if not flHaveWindow { //maybe it's an odb outline
+		if typeOf (adr^) == outlineType { //it's an odb outline, so create a new opml file based on its contents
+			local (f = window.getTitle (adr));
+			bundle { //if the title is an odb address, use the name of the object
+				if string.lower (f) == string.lower (string.popFileFromAddress (adr)) {
+					f = nameOf (adr^)}};
+			if not (getFilePathFromUser (@f, ".opml")) {
+				return (false)};
+			
+			bundle { //create a new outline document with data and a file path
+				local (title = file.fileFromPath (f));
+				Frontier.tools.windowTypes.commands.new (true, title, @adrNewWindow);
+				window.attributes.setOne ("f", f, adrNewWindow);
+				adrNewWindow^ = adr^;
+				edit (adrNewWindow, title);
+				setPosition (adr, adrNewWindow)}}};
+	
+	if not flHaveWindow { //couldn't create the new file -- return false: command not handled
+		return (false)};
+	
+	if not Frontier.tools.windowTypes.commands.save (adrNewWindow) { //save the file
+		return (false)};
+	
+	if adradrwindow != nil { //tell the caller how to find the window
+		adradrwindow^ = adrNewWindow};
+	
+	return (true)}; //command handled
+
+bundle { //testing
+	saveAs (window.frontmost ())}

@@ -1,1 +1,23 @@
-on getUserBlogs (adrtable, username=nil, password=nil, adrdata=@blogger.data) {	«Changes		«1/24/02; 7:49:01 AM by DW			«Created. This call is supported in the Radio 8 implementation of the Blogger API.			«http://radio.userland.com/emulatingBloggerInRadio#fixes12402Dw	blogger.init ();	bundle { //set defaults		if username == nil {			username = user.blogger.username};		if password == nil {			password = string (user.blogger.password)}};	with adrdata^ {		local (params = {appkey, string (username), string (password)});		local (postlist = xml.rpc (server, port, "blogger.getUserBlogs", @params, rpcPath:rpcPath, protocol:protocol));		bundle { //convert list into table, easier to work with in the odb			local (item, adrsubtable);			new (tabletype, adrtable);			for item in postlist {				adrsubtable = @adrtable^.[item.blogid];				new (tabletype, adrsubtable);				adrsubtable^.url = item.url;				adrsubtable^.blogname = item.blogname}};		return (true)}}
+on getUserBlogs (adrtable, username=nil, password=nil, adrdata=@blogger.data) {
+	Â«Changes
+		Â«1/24/02; 7:49:01 AM by DW
+			Â«Created. This call is supported in the Radio 8 implementation of the Blogger API.
+			Â«http://radio.userland.com/emulatingBloggerInRadio#fixes12402Dw
+	blogger.init ();
+	bundle { //set defaults
+		if username == nil {
+			username = user.blogger.username};
+		if password == nil {
+			password = string (user.blogger.password)}};
+	with adrdata^ {
+		local (params = {appkey, string (username), string (password)});
+		local (postlist = xml.rpc (server, port, "blogger.getUserBlogs", @params, rpcPath:rpcPath, protocol:protocol));
+		bundle { //convert list into table, easier to work with in the odb
+			local (item, adrsubtable);
+			new (tabletype, adrtable);
+			for item in postlist {
+				adrsubtable = @adrtable^.[item.blogid];
+				new (tabletype, adrsubtable);
+				adrsubtable^.url = item.url;
+				adrsubtable^.blogname = item.blogname}};
+		return (true)}}

@@ -1,1 +1,4 @@
-on displayServerName (name) {	if name == user.webEdit.prefs.currentServer {		return ("!" + name)};	return (name)}
+on displayServerName (name) {
+	if name == user.webEdit.prefs.currentServer {
+		return ("!" + name)};
+	return (name)}

@@ -1,1 +1,2 @@
-local (s = html.ucmds.getOutlineHtml (@userland.changes1, "<ul>", "</ul>", "<li>", ""));Netscape.displayText ("<html><body>" + s + "</body></html>")
+local (s = html.ucmds.getOutlineHtml (@userland.changes1, "<ul>", "</ul>", "<li>", ""));
+Netscape.displayText ("<html><body>" + s + "</body></html>")

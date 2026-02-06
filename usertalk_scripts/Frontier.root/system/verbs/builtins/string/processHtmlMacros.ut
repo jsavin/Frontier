@@ -1,1 +1,2 @@
-on processHtmlMacros (s, flaps, activeurls, claycompatibity, osacallback) {	kernel (string.processHtmlMacros)}
+on processHtmlMacros (s, flaps, activeurls, claycompatibity, osacallback) {
+	kernel (string.processHtmlMacros)}

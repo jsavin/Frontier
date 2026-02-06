@@ -1,1 +1,3 @@
-on openUrl (url) {	webbrowser.openUrl (url);	webbrowser.bringToFront ()}
+on openUrl (url) {
+	webbrowser.openUrl (url);
+	webbrowser.bringToFront ()}

@@ -1,1 +1,6 @@
-on pageFooter () {	local (htmltext = "");	on add (s) {		htmltext = htmltext + s};	add ("</body>\r</html>");	return (htmltext)}
+on pageFooter () {
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + s};
+	add ("</body>\r</html>");
+	return (htmltext)}

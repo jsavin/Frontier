@@ -1,1 +1,14 @@
-on nthRecordExists (db, recordNum, foundSet = true, reportError = false) {	on doIt () {		with objectModel, filemaker {			if foundSet {				exists (window [db].record [recordNum])}			else {				exists (database [db].record [recordNum])}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on nthRecordExists (db, recordNum, foundSet = true, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			if foundSet {
+				exists (window [db].record [recordNum])}
+			else {
+				exists (database [db].record [recordNum])}}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

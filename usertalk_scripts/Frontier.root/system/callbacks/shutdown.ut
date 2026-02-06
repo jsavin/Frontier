@@ -1,1 +1,14 @@
-«Call user's shutdown scripts.«Changes:	«Thursday, September 28, 2000 at 6:50:39 PM by JES		«Allow the callback to be an address or the address of an address...local (i);local (adr = @user.callbacks.shutdown);if not defined (adr^) {	new (tabletype, adr)};for i = 1 to sizeof (adr^) {	try {		local (adrScript = @adr^ [i]);		while typeOf (adrScript^) == addressType {			adrScript = adrScript^};		adrScript^ ()}}
+Â«Call user's shutdown scripts.
+Â«Changes:
+	Â«Thursday, September 28, 2000 at 6:50:39 PM by JES
+		Â«Allow the callback to be an address or the address of an address...
+local (i);
+local (adr = @user.callbacks.shutdown);
+if not defined (adr^) {
+	new (tabletype, adr)};
+for i = 1 to sizeof (adr^) {
+	try {
+		local (adrScript = @adr^ [i]);
+		while typeOf (adrScript^) == addressType {
+			adrScript = adrScript^};
+		adrScript^ ()}}

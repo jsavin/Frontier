@@ -1,1 +1,2 @@
-on verboseMessages (flag, appID = WebStar.id) { «Toggle Verbose Messages on or off 	return (appleEvent (appID, 'WWW½', 'fvrb', '----', boolean (flag)))}
+on verboseMessages (flag, appID = WebStar.id) { Â«Toggle Verbose Messages on or off 
+	return (appleEvent (appID, 'WWWÂ½', 'fvrb', '----', boolean (flag)))}

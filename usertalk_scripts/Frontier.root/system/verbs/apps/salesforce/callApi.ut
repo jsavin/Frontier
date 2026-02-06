@@ -1,1 +1,23 @@
-on callApi (adrSession, method, paramRecord={}, structType=nil, adrBeforeDecompileCallback=nil) {	«Changes		«4/19/06; 7:00:29 PM by JES			«Created. General wrapper for making calls to the Salesforce API.		local (SessionHeader); new (tableType, @SessionHeader);	SessionHeader.["h:sessionId"] = adrSession^.sessionId;		local (urlparts = string.urlSplit (adrSession^.serverUrl));	local (server = urlparts[2], port = 80);	if server contains ":" {		port = number (string.nthField (server, ":", 2));		server = string.popSuffix (server, ":")};		local (structNs=nil, structNsURI=nil);	if structType != nil {		structNs = "ns3";		structNsURI = adrSession^.objectNamespaceURI};	local (retval = soap.rpc.client (urlparts[3], method, @paramRecord, server, port, soapAction:"", methodNamespace:"m", methodNamespaceURI:adrSession^.namespaceUri, customStructType:structType, customNamespace:structNs, customNamespaceURI:structNsURI, adrHeaderData:@SessionHeader, headerNamespaceUri:adrSession^.namespaceUri, flDuplicatesToArrays:true, adrBeforeDecompileCallback:adrBeforeDecompileCallback));		system.verbs.apps.salesforce.utilities.cleanReturnStruct (@retval);		return (retval)}
+on callApi (adrSession, method, paramRecord={}, structType=nil, adrBeforeDecompileCallback=nil) {
+	Â«Changes
+		Â«4/19/06; 7:00:29 PM by JES
+			Â«Created. General wrapper for making calls to the Salesforce API.
+	
+	local (SessionHeader); new (tableType, @SessionHeader);
+	SessionHeader.["h:sessionId"] = adrSession^.sessionId;
+	
+	local (urlparts = string.urlSplit (adrSession^.serverUrl));
+	local (server = urlparts[2], port = 80);
+	if server contains ":" {
+		port = number (string.nthField (server, ":", 2));
+		server = string.popSuffix (server, ":")};
+	
+	local (structNs=nil, structNsURI=nil);
+	if structType != nil {
+		structNs = "ns3";
+		structNsURI = adrSession^.objectNamespaceURI};
+	local (retval = soap.rpc.client (urlparts[3], method, @paramRecord, server, port, soapAction:"", methodNamespace:"m", methodNamespaceURI:adrSession^.namespaceUri, customStructType:structType, customNamespace:structNs, customNamespaceURI:structNsURI, adrHeaderData:@SessionHeader, headerNamespaceUri:adrSession^.namespaceUri, flDuplicatesToArrays:true, adrBeforeDecompileCallback:adrBeforeDecompileCallback));
+	
+	system.verbs.apps.salesforce.utilities.cleanReturnStruct (@retval);
+	
+	return (retval)}

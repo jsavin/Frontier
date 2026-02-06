@@ -1,1 +1,2 @@
-on nthChar (s, n) {	kernel (string.nthChar)}
+on nthChar (s, n) {
+	kernel (string.nthChar)}

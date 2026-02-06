@@ -1,1 +1,25 @@
-on openWindow (adr) {	«Changes:		«8/2/01; 3:13:33 PM by JES			«Don't set the title of window attribute table windows (/atts windows).	if not defined (adr^) { //not an addressible window -- fixes a freeze on the close box, for the Find & Replace dialog		return (true)}; //allow the rest of the closeWindow callbacks to run, or allow the window to open if no more callbacks	local (windowType);	if window.attributes.getOne ("type", @windowType, adr) {		local (adrWindowType);		if Frontier.tools.windowTypes.findWindowType (windowType, @adrWindowType, adr) {			adrscript = @adrWindowType^.openWindow;			if defined (adrscript^) {				return (adrscript^ (adr))}};		local (title);		if nameOf (adr^) != "/atts" { //don't set the title of window attribute table windows			if window.attributes.getOne ("title", @title, adr) {				window.setTitle (adr, title)}}};	return (true)}; //default behavior«bundle //bunch of b.s.	«on openWindow (adr)		«if not Frontier.tools.windowTypes.callWindowType (nameOf (this^), adr)			«local (title)			«if window.attributes.getOne ("title", @title, adr)				«window.setTitle (adr, title)		«return (true)
+on openWindow (adr) {
+	Â«Changes:
+		Â«8/2/01; 3:13:33 PM by JES
+			Â«Don't set the title of window attribute table windows (/atts windows).
+	if not defined (adr^) { //not an addressible window -- fixes a freeze on the close box, for the Find & Replace dialog
+		return (true)}; //allow the rest of the closeWindow callbacks to run, or allow the window to open if no more callbacks
+	local (windowType);
+	if window.attributes.getOne ("type", @windowType, adr) {
+		local (adrWindowType);
+		if Frontier.tools.windowTypes.findWindowType (windowType, @adrWindowType, adr) {
+			adrscript = @adrWindowType^.openWindow;
+			if defined (adrscript^) {
+				return (adrscript^ (adr))}};
+		local (title);
+		if nameOf (adr^) != "/atts" { //don't set the title of window attribute table windows
+			if window.attributes.getOne ("title", @title, adr) {
+				window.setTitle (adr, title)}}};
+	return (true)}; //default behavior
+Â«bundle //bunch of b.s.
+	Â«on openWindow (adr)
+		Â«if not Frontier.tools.windowTypes.callWindowType (nameOf (this^), adr)
+			Â«local (title)
+			Â«if window.attributes.getOne ("title", @title, adr)
+				Â«window.setTitle (adr, title)
+		Â«return (true)

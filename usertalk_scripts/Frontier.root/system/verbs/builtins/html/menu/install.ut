@@ -1,1 +1,4 @@
-html.menu.init ();if user.html.menu.enabled {	if defined (html.menu.theMenu) {		menu.install (@html.menu.theMenu)}}
+html.menu.init ();
+if user.html.menu.enabled {
+	if defined (html.menu.theMenu) {
+		menu.install (@html.menu.theMenu)}}

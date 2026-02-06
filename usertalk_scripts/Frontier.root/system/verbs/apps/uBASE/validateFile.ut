@@ -1,1 +1,2 @@
-on validateFile (fnum) {	return (appleEvent (ubase.id, 'UBAS', 'vald', 'fref', short (fnum)))}
+on validateFile (fnum) {
+	return (appleEvent (ubase.id, 'UBAS', 'vald', 'fref', short (fnum)))}

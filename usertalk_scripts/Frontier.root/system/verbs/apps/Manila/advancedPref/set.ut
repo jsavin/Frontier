@@ -1,1 +1,12 @@
-on set (adrSitePrefs, itemName, s, windowInfoTable) {	«Set the text of a template on the server.		«Monday, November 20, 2000 at 5:00:27 PM by PBS	«Changes		«9/6/01; 7:50:47 PM by JES			«Changed params from a list to a record of named parameters, for SOAP compatibility.		itemName = string.dropNonAlphas (itemName);		with adrSitePrefs^ {		local (params = {"username":username, "password":string (password), "siteName":siteName, "itemName":itemName, "s":string (s), "windowInfoTable":windowInfoTable});		return (betty.rpc.client (host, port, "manila.advancedPref.set", @params, rpcPath:rpcPath, flShowMessages:false))}}
+on set (adrSitePrefs, itemName, s, windowInfoTable) {
+	Â«Set the text of a template on the server.
+		Â«Monday, November 20, 2000 at 5:00:27 PM by PBS
+	Â«Changes
+		Â«9/6/01; 7:50:47 PM by JES
+			Â«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	
+	itemName = string.dropNonAlphas (itemName);
+	
+	with adrSitePrefs^ {
+		local (params = {"username":username, "password":string (password), "siteName":siteName, "itemName":itemName, "s":string (s), "windowInfoTable":windowInfoTable});
+		return (betty.rpc.client (host, port, "manila.advancedPref.set", @params, rpcPath:rpcPath, flShowMessages:false))}}

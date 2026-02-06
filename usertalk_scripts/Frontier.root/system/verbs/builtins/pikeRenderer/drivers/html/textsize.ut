@@ -1,1 +1,16 @@
-on textsize (textsize, adrprestring, adrpoststring) {	local (fontsizestring = "");	case string.lower (textsize) {		"smallest" {			fontsizestring = "-2"};		"smaller" {			fontsizestring = "-1"};		"medium" {			fontsizestring = ""}; //don't bother generating the font tag		"larger" {			fontsizestring = "+1"};		"largest" {			fontsizestring = "+2"}};	if sizeof (fontsizestring) > 0 {		adrprestring^ = adrprestring^ + "<font size=\"" + fontsizestring + "\">";		adrpoststring^ = adrpoststring^ + "</font>"}}
+on textsize (textsize, adrprestring, adrpoststring) {
+	local (fontsizestring = "");
+	case string.lower (textsize) {
+		"smallest" {
+			fontsizestring = "-2"};
+		"smaller" {
+			fontsizestring = "-1"};
+		"medium" {
+			fontsizestring = ""}; //don't bother generating the font tag
+		"larger" {
+			fontsizestring = "+1"};
+		"largest" {
+			fontsizestring = "+2"}};
+	if sizeof (fontsizestring) > 0 {
+		adrprestring^ = adrprestring^ + "<font size=\"" + fontsizestring + "\">";
+		adrpoststring^ = adrpoststring^ + "</font>"}}

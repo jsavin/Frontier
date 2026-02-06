@@ -1,1 +1,2 @@
-on newClone (script) {	return (cardEditor.newObject (card.types.cloneType, "", "", script))}
+on newClone (script) {
+	return (cardEditor.newObject (card.types.cloneType, "", "", script))}

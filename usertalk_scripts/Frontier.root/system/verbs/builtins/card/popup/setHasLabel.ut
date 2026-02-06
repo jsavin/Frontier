@@ -1,1 +1,5 @@
-on setHasLabel (objectname, haslabel) {	local (atts);	new (tabletype, @atts);	atts.hlbl = boolean (haslabel);	return (card.setObjectAttributes (objectname, @atts))}
+on setHasLabel (objectname, haslabel) {
+	local (atts);
+	new (tabletype, @atts);
+	atts.hlbl = boolean (haslabel);
+	return (card.setObjectAttributes (objectname, @atts))}

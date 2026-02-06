@@ -1,1 +1,24 @@
-on list (domain, path, account, password) {	« Returns a list of the files in path (which must exist and be a directory).	local (flist = {});	if path == nil {		path = ""};	case ftpClient.data.currentid {		Anarchie.id {			local (f = file.getSpecialFolderPath ("", "Temporary Items", true) + "ftp list", listResult);			listResult = Anarchie.nlist (f, domain, path, nil, account, password);			if listResult == 0 {				flist = Anarchie.utilities.fileToList (f);				file.delete (f)}			else {				Anarchie.close ();				if listResult != -550 {					scriptError ("FTP Error: " + result + ".")}}};		Fetch.id {			Fetch.list (nil, domain, path, account, password);			with Fetch, eventInfo, objectModel {				for i = 1 to count (transferWindow[1], remoteItem) {					flist[i] = get(transferWindow[1].remoteItem[i].name)}}}}	else {		scriptError ("The app whose ID is '" + ftpclient.data.currentid + "' is not a supported FTP client.")};	return (flist)}
+on list (domain, path, account, password) {
+	Â« Returns a list of the files in path (which must exist and be a directory).
+	local (flist = {});
+	if path == nil {
+		path = ""};
+	case ftpClient.data.currentid {
+		Anarchie.id {
+			local (f = file.getSpecialFolderPath ("", "Temporary Items", true) + "ftp list", listResult);
+			listResult = Anarchie.nlist (f, domain, path, nil, account, password);
+			if listResult == 0 {
+				flist = Anarchie.utilities.fileToList (f);
+				file.delete (f)}
+			else {
+				Anarchie.close ();
+				if listResult != -550 {
+					scriptError ("FTP Error: " + result + ".")}}};
+		Fetch.id {
+			Fetch.list (nil, domain, path, account, password);
+			with Fetch, eventInfo, objectModel {
+				for i = 1 to count (transferWindow[1], remoteItem) {
+					flist[i] = get(transferWindow[1].remoteItem[i].name)}}}}
+	else {
+		scriptError ("The app whose ID is '" + ftpclient.data.currentid + "' is not a supported FTP client.")};
+	return (flist)}

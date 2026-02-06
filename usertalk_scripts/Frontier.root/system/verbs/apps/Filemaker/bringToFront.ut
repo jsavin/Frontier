@@ -1,1 +1,4 @@
-on bringToFront () {	if not app.start ("Filemaker") {		return (false)};	return (sys.bringAppToFront (Filemaker.id))}
+on bringToFront () {
+	if not app.start ("Filemaker") {
+		return (false)};
+	return (sys.bringAppToFront (Filemaker.id))}

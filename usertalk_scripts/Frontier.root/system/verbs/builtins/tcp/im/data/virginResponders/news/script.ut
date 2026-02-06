@@ -1,1 +1,2 @@
-on script (driverName, screenname, message) {	return (tcp.im.builtinResponders.news.script (driverName, screenname, message))}
+on script (driverName, screenname, message) {
+	return (tcp.im.builtinResponders.news.script (driverName, screenname, message))}

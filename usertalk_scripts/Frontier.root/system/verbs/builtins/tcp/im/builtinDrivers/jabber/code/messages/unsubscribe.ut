@@ -1,1 +1,6 @@
-on unsubscribe (dest, connection = @system.temp.jabber.connection) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«A convenience wrapper around presence, because I believe it's importent to be able to read code as easily as possible	tcp.im.builtinDrivers.jabber.code.presence (dest: dest, type: "unsubscribe", connection: connection)}
+on unsubscribe (dest, connection = @system.temp.jabber.connection) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«A convenience wrapper around presence, because I believe it's importent to be able to read code as easily as possible
+	tcp.im.builtinDrivers.jabber.code.presence (dest: dest, type: "unsubscribe", connection: connection)}

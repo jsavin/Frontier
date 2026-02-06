@@ -1,1 +1,2 @@
-on getNthObject (param1) {	return (appleEvent (cardEditor.id, 'IOWA', 'gnob', 'prm1', long (param1)))}
+on getNthObject (param1) {
+	return (appleEvent (cardEditor.id, 'IOWA', 'gnob', 'prm1', long (param1)))}

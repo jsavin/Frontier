@@ -1,1 +1,2 @@
-on set (t, l, b, r) {	kernel (rectangle.set)}
+on set (t, l, b, r) {
+	kernel (rectangle.set)}

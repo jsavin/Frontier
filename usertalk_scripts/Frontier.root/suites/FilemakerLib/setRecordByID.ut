@@ -1,1 +1,12 @@
-on setRecordByID (db, recordID, dataList, theLayout = 0, reportError = false) {	on doIt () {		with objectModel, filemaker {			set (database [db].layout [theLayout].record [id2:recordID], dataList)};		return (true)};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on setRecordByID (db, recordID, dataList, theLayout = 0, reportError = false) {
+	on doIt () {
+		with objectModel, filemaker {
+			set (database [db].layout [theLayout].record [id2:recordID], dataList)};
+		return (true)};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

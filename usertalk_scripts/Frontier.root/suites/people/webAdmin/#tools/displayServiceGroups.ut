@@ -1,1 +1,44 @@
-on displayServiceGroups (serviceName) {	local (groupsList = {}, htmlText, i);		on callback (groupName) {		groupsList = groupsList + groupName};		people.visitServiceGroups (serviceName, @callback);		if groupsList == {} {		return (serviceName + " has no groups.")};		on add (s) {		htmlText = htmlText + s};	on tr () {		add ("\r\t<tr>")};	on td () {		local (bgcolor = "FFFFFF");		if mod (i, 2) != 0 {			bgcolor = rowBgColor}		else {			if i != 0 {				bgcolor = altRowBgColor}};		return (add ("\r\t\t<td align=left valign=top bgcolor=\"#" + bgcolor + "\">"))};	on closetr () {		add ("\r\t</tr>")};	on closetd () {		add ("\r\t\t</td>")};		local (encodedServiceName = string.urlEncode (serviceName));		add ("<table border=0 cellpadding=8 cellspacing=0>");	for i = 1 to sizeOf (groupsList) {		local (groupName = groupsList [i]);		local (encodedGroupName = string.urlEncode (groupName));		tr ();		td ();		add ("<a href=\"viewGroup.wsf?" + encodedGroupName + "\">" + groupName + "</a>");		closetd ();		td ();		add ("<a href=\"removeServiceFromGroup.wsf?groupName=" + encodedGroupName + "&serviceName=" + encodedServiceName + "\">Remove from service</a>");		closetd ();		closetr ()};	add ("</table>");	return (htmlText)}
+on displayServiceGroups (serviceName) {
+	local (groupsList = {}, htmlText, i);
+	
+	on callback (groupName) {
+		groupsList = groupsList + groupName};
+	
+	people.visitServiceGroups (serviceName, @callback);
+	
+	if groupsList == {} {
+		return (serviceName + " has no groups.")};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	on tr () {
+		add ("\r\t<tr>")};
+	on td () {
+		local (bgcolor = "FFFFFF");
+		if mod (i, 2) != 0 {
+			bgcolor = rowBgColor}
+		else {
+			if i != 0 {
+				bgcolor = altRowBgColor}};
+		return (add ("\r\t\t<td align=left valign=top bgcolor=\"#" + bgcolor + "\">"))};
+	on closetr () {
+		add ("\r\t</tr>")};
+	on closetd () {
+		add ("\r\t\t</td>")};
+	
+	local (encodedServiceName = string.urlEncode (serviceName));
+	
+	add ("<table border=0 cellpadding=8 cellspacing=0>");
+	for i = 1 to sizeOf (groupsList) {
+		local (groupName = groupsList [i]);
+		local (encodedGroupName = string.urlEncode (groupName));
+		tr ();
+		td ();
+		add ("<a href=\"viewGroup.wsf?" + encodedGroupName + "\">" + groupName + "</a>");
+		closetd ();
+		td ();
+		add ("<a href=\"removeServiceFromGroup.wsf?groupName=" + encodedGroupName + "&serviceName=" + encodedServiceName + "\">Remove from service</a>");
+		closetd ();
+		closetr ()};
+	add ("</table>");
+	return (htmlText)}

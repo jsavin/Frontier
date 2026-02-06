@@ -1,1 +1,8 @@
-on getGroupServiceTable (groupName, serviceName) {	«Get the address of a group's attached service table.	local (adrGroup = people.getGroupTable (groupName));	if not (people.groupExists (groupName, adrGroup)) {		return (false)};	if not (people.serviceExists (serviceName)) {		return (false)};	return (@adrGroup^.services.[serviceName].data)}
+on getGroupServiceTable (groupName, serviceName) {
+	Â«Get the address of a group's attached service table.
+	local (adrGroup = people.getGroupTable (groupName));
+	if not (people.groupExists (groupName, adrGroup)) {
+		return (false)};
+	if not (people.serviceExists (serviceName)) {
+		return (false)};
+	return (@adrGroup^.services.[serviceName].data)}

@@ -1,1 +1,16 @@
-on traversalSkip (adr) {	«Thursday, November 11, 1999 at 2:37:15 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on traversalSkip (adr) //old code				«return true if this object should be omitted from a traversal				«local (name = nameof (adr^))				«if name beginsWith '#' «4.0.1					«return (true)				«case string.lower (name)					«"glossary"					«"images" «4.2					«"tools"						«return (true)				«return (false)	kernel (html.traversalskip)}
+on traversalSkip (adr) {
+	Â«Thursday, November 11, 1999 at 2:37:15 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on traversalSkip (adr) //old code
+				Â«return true if this object should be omitted from a traversal
+				Â«local (name = nameof (adr^))
+				Â«if name beginsWith '#' Â«4.0.1
+					Â«return (true)
+				Â«case string.lower (name)
+					Â«"glossary"
+					Â«"images" Â«4.2
+					Â«"tools"
+						Â«return (true)
+				Â«return (false)
+	kernel (html.traversalskip)}

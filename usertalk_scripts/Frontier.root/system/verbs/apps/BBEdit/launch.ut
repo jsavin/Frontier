@@ -1,1 +1,2 @@
-on launch () {	return (app.startWithDocument ("BBEdit", ""))}
+on launch () {
+	return (app.startWithDocument ("BBEdit", ""))}

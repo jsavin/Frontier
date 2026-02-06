@@ -1,1 +1,3 @@
-on typeFTtb (path) {	«open or run a file of type FTtb, containing "fat page" data	return (Frontier.clickers.typeFATP (path))}
+on typeFTtb (path) {
+	Â«open or run a file of type FTtb, containing "fat page" data
+	return (Frontier.clickers.typeFATP (path))}

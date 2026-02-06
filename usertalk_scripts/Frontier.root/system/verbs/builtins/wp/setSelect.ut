@@ -1,1 +1,2 @@
-on setSelect (start, end) {	kernel (wp.setselect)}
+on setSelect (start, end) {
+	kernel (wp.setselect)}

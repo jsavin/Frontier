@@ -1,1 +1,2 @@
-on getCommandKey () {	kernel (menu.getCommandKey)}
+on getCommandKey () {
+	kernel (menu.getCommandKey)}

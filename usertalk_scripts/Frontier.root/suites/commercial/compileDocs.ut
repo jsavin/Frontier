@@ -1,1 +1,68 @@
-on compileDocs (adrOutline) {	« version 1.1; 8/21/92, dmb		«use '» 'character for example results, and only in examples section			«also checks to see if the character is already there			«and makes sure that it's the only heading at that level		«write each verb out to the file we go, reducing memory requirements	local (s); «holds the text to be written to the file		destfile = "DocServer Source Text";	if not file.putFileDialog ("DocServer text file to create:", @destfile) {		return};		bundle { «create the file		file.new (destfile);		file.setType (destfile, 'TEXT');		file.setCreator (destfile, 'DOCS')};		bundle { «traverse the outline, writing one verb to the file at a time		target.set (adrOutline);		op.firstsummit ();		op.fullcollapse ();		loop {			s = cr + "Verb" + tab + op.getLineText () + cr;			op.expand (1);			op.go (right, 1);			loop {				local (section);				section = op.getLineText ();				s = s + section + tab;				op.expand (1);				op.go (right, 1);				loop {					s = s + op.getLineText () + cr;					ctSubs = op.countsubs (1);					if ctSubs > 0 {						op.expand (1);						op.go (right, 1);						if (ctSubs == 1) and (section == "Examples") { «an example							local (line);							line = op.getLineText ();							if string.nthChar (line, 1) != '»' {								line = "» " + line};							s = s + tab + line + cr}						else {							loop {								s = s + tab + op.getLineText () + cr;								if not op.go (down, 1) {									break}}};						op.go (left, 1);						op.collapse ()};					if not op.go (down, 1) {						break}};				op.go (left, 1);				op.collapse ();				if not op.go (down, 1) {					break}};			op.go (left, 1);			op.collapse ();			msg (sizeof (s) + " chars.");			file.write (destfile, s);			if not op.go (down, 1) {				break}};		op.firstsummit ();		target.clear ()}; «done with the outline		Finder.reveal (destfile); «show the exported file	Frontier.finderToFront = false;	return (true)}
+on compileDocs (adrOutline) {
+	Â« version 1.1; 8/21/92, dmb
+		Â«use 'Â» 'character for example results, and only in examples section
+			Â«also checks to see if the character is already there
+			Â«and makes sure that it's the only heading at that level
+		Â«write each verb out to the file we go, reducing memory requirements
+	local (s); Â«holds the text to be written to the file
+	
+	destfile = "DocServer Source Text";
+	if not file.putFileDialog ("DocServer text file to create:", @destfile) {
+		return};
+	
+	bundle { Â«create the file
+		file.new (destfile);
+		file.setType (destfile, 'TEXT');
+		file.setCreator (destfile, 'DOCS')};
+	
+	bundle { Â«traverse the outline, writing one verb to the file at a time
+		target.set (adrOutline);
+		op.firstsummit ();
+		op.fullcollapse ();
+		loop {
+			s = cr + "Verb" + tab + op.getLineText () + cr;
+			op.expand (1);
+			op.go (right, 1);
+			loop {
+				local (section);
+				section = op.getLineText ();
+				s = s + section + tab;
+				op.expand (1);
+				op.go (right, 1);
+				loop {
+					s = s + op.getLineText () + cr;
+					ctSubs = op.countsubs (1);
+					if ctSubs > 0 {
+						op.expand (1);
+						op.go (right, 1);
+						if (ctSubs == 1) and (section == "Examples") { Â«an example
+							local (line);
+							line = op.getLineText ();
+							if string.nthChar (line, 1) != 'Â»' {
+								line = "Â» " + line};
+							s = s + tab + line + cr}
+						else {
+							loop {
+								s = s + tab + op.getLineText () + cr;
+								if not op.go (down, 1) {
+									break}}};
+						op.go (left, 1);
+						op.collapse ()};
+					if not op.go (down, 1) {
+						break}};
+				op.go (left, 1);
+				op.collapse ();
+				if not op.go (down, 1) {
+					break}};
+			op.go (left, 1);
+			op.collapse ();
+			msg (sizeof (s) + " chars.");
+			file.write (destfile, s);
+			if not op.go (down, 1) {
+				break}};
+		op.firstsummit ();
+		target.clear ()}; Â«done with the outline
+	
+	Finder.reveal (destfile); Â«show the exported file
+	Frontier.finderToFront = false;
+	return (true)}

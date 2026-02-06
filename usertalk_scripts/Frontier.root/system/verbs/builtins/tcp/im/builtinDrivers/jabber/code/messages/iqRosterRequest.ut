@@ -1,1 +1,25 @@
-on iqRosterRequest (connection = @system.temp.jabber.connection, idTbl = nil) {	«Changes		«5/14/02; 1:51:34 PM by JB			«Changelog created.	«iqRosterRequest requests the roster from the server; it's part of the login sequence. See http://docs.jabber.org/jpg/html/main.html#REFIQROSTER.		on addAtt ( XMLadr, name, value ) {		if not defined ( XMLadr^.["/atts"] ) {			new ( tableType, @XMLadr^.["/atts"] )};		XMLadr^.["/atts"].[name] = value};	local ( result, iqTag, queryTag);	if idTbl == nil {		idTbl = tcp.im.builtinDrivers.jabber.code.idTables.create()};	connection^.state = "LOGGING IN";	new ( tableType, @result );	bundle { // <iq type="set" id="someid">		iqTag = xml.addTable ( @result, "iq" );		addAtt (iqTag, "type", "set");		idTbl^.type = "Roster Request";		addAtt (iqTag, "id", nameOf(idTbl^) )};	bundle { // <query xmlns="jabber:iq:roster">		queryTag = xml.addTable(iqTag, "query" );		addAtt (queryTag, "xmlns", "jabber:iq:roster")};	tcp.im.builtinDrivers.jabber.code.writeXML(iqTag, connection: connection)};iqRosterRequest(@system.temp.jabber.connection)
+on iqRosterRequest (connection = @system.temp.jabber.connection, idTbl = nil) {
+	Â«Changes
+		Â«5/14/02; 1:51:34 PM by JB
+			Â«Changelog created.
+	Â«iqRosterRequest requests the roster from the server; it's part of the login sequence. See http://docs.jabber.org/jpg/html/main.html#REFIQROSTER.
+	
+	on addAtt ( XMLadr, name, value ) {
+		if not defined ( XMLadr^.["/atts"] ) {
+			new ( tableType, @XMLadr^.["/atts"] )};
+		XMLadr^.["/atts"].[name] = value};
+	local ( result, iqTag, queryTag);
+	if idTbl == nil {
+		idTbl = tcp.im.builtinDrivers.jabber.code.idTables.create()};
+	connection^.state = "LOGGING IN";
+	new ( tableType, @result );
+	bundle { // <iq type="set" id="someid">
+		iqTag = xml.addTable ( @result, "iq" );
+		addAtt (iqTag, "type", "set");
+		idTbl^.type = "Roster Request";
+		addAtt (iqTag, "id", nameOf(idTbl^) )};
+	bundle { // <query xmlns="jabber:iq:roster">
+		queryTag = xml.addTable(iqTag, "query" );
+		addAtt (queryTag, "xmlns", "jabber:iq:roster")};
+	tcp.im.builtinDrivers.jabber.code.writeXML(iqTag, connection: connection)};
+iqRosterRequest(@system.temp.jabber.connection)

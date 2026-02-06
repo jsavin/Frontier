@@ -1,1 +1,11 @@
-webBrowser.tours.flrecording = true;webBrowser.tours.tourname = "Tour #" + user.webBrowser.tours.nexttournumber++;try { «ignore any errors reported by the browser	webBrowser.registerURLecho (Frontier.id)};webBrowser.tours.openMenu ();op.firstsummit ();if op.go (right, 1) {	op.go (down, infinity);	op.insert (webBrowser.tours.tourname, down)}else {	op.insert (webBrowser.tours.tourname, right)}
+webBrowser.tours.flrecording = true;
+webBrowser.tours.tourname = "Tour #" + user.webBrowser.tours.nexttournumber++;
+try { Â«ignore any errors reported by the browser
+	webBrowser.registerURLecho (Frontier.id)};
+webBrowser.tours.openMenu ();
+op.firstsummit ();
+if op.go (right, 1) {
+	op.go (down, infinity);
+	op.insert (webBrowser.tours.tourname, down)}
+else {
+	op.insert (webBrowser.tours.tourname, right)}

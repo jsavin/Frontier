@@ -1,1 +1,22 @@
-on version () { //return the version string for the Frontier application	«Thursday, November 11, 1999 at 2:34:19 AM by AR		«Implemented as a kernel verb in Frontier 6.1.		«Old code			«on version ()				«9/25/98; 7:39:14 PM by DW					«Frontier.version (), from now on, means the version of the Frontier app.					«Including this script in the updates process has become fairly meaningless.					«The root updates process chugs along at its own rate, independent from the app.				«if not defined (system.temp.frontierVersionString)					«local (version = file.getVersion (Frontier.getProgramPath ()))					«if string.lower (version) beginsWith "trial " //PBS 1/20/99: remove "Trial " from version string						«version = string.delete (version, 1, 6)					«system.temp.frontierVersionString = version				«return (system.temp.frontierVersionString)	kernel (Frontier.version)};«bundle //test code	«local (i, s, ticks)	«ticks = clock.ticks ()	«for i = 1 to 10000		«s = frontier.version ()	«clipboard.putvalue (string (double (clock.ticks () - ticks) / 60000))
+on version () { //return the version string for the Frontier application
+	Â«Thursday, November 11, 1999 at 2:34:19 AM by AR
+		Â«Implemented as a kernel verb in Frontier 6.1.
+		Â«Old code
+			Â«on version ()
+				Â«9/25/98; 7:39:14 PM by DW
+					Â«Frontier.version (), from now on, means the version of the Frontier app.
+					Â«Including this script in the updates process has become fairly meaningless.
+					Â«The root updates process chugs along at its own rate, independent from the app.
+				Â«if not defined (system.temp.frontierVersionString)
+					Â«local (version = file.getVersion (Frontier.getProgramPath ()))
+					Â«if string.lower (version) beginsWith "trial " //PBS 1/20/99: remove "Trial " from version string
+						Â«version = string.delete (version, 1, 6)
+					Â«system.temp.frontierVersionString = version
+				Â«return (system.temp.frontierVersionString)
+	kernel (Frontier.version)};
+Â«bundle //test code
+	Â«local (i, s, ticks)
+	Â«ticks = clock.ticks ()
+	Â«for i = 1 to 10000
+		Â«s = frontier.version ()
+	Â«clipboard.putvalue (string (double (clock.ticks () - ticks) / 60000))

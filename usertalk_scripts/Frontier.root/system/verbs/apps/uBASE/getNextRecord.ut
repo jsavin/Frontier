@@ -1,1 +1,2 @@
-on getNextRecord (fnum, key) {	return (systemEvent ('ubas', 'recn', 'fref', short (fnum), 'key ', string (key)))}
+on getNextRecord (fnum, key) {
+	return (systemEvent ('ubas', 'recn', 'fref', short (fnum), 'key ', string (key)))}

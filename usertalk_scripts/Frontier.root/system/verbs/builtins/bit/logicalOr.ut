@@ -1,1 +1,2 @@
-on logicalOr (n1, n2) {	kernel (bit.logicalOr)}
+on logicalOr (n1, n2) {
+	kernel (bit.logicalOr)}

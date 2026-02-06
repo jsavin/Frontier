@@ -1,1 +1,2 @@
-on launch () {	return (app.startWithDocument ("WebStar", ""))}
+on launch () {
+	return (app.startWithDocument ("WebStar", ""))}

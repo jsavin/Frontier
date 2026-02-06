@@ -1,1 +1,14 @@
-on usingID (appid) { «launch the app if possible, bring to front	«returns true if it worked, false otherwise		local (path = file.findApplication (appid));	if path == "" {		scriptError ("Couldn't locate an application whose id is '" + appid + "'.")};		if not sys.appIsRunning (appid) {		if not launch.anything (path) {			return (false)};		while not sys.appIsRunning (appid) {			sys.systemTask ()}}; «surrender the processor		return (sys.bringAppToFront (file.fileFromPath (path)))}
+on usingID (appid) { Â«launch the app if possible, bring to front
+	Â«returns true if it worked, false otherwise
+	
+	local (path = file.findApplication (appid));
+	if path == "" {
+		scriptError ("Couldn't locate an application whose id is '" + appid + "'.")};
+	
+	if not sys.appIsRunning (appid) {
+		if not launch.anything (path) {
+			return (false)};
+		while not sys.appIsRunning (appid) {
+			sys.systemTask ()}}; Â«surrender the processor
+	
+	return (sys.bringAppToFront (file.fileFromPath (path)))}

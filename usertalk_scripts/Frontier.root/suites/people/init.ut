@@ -1,1 +1,8 @@
-if not defined (user.people) {	new (tableType, @user.people)};if not defined (user.people.users) {	new (tableType, @user.people.users)};if not defined (user.people.groups) {	new (tableType, @user.people.groups)};if not defined (user.people.services) {	new (tableType, @user.people.services)}
+if not defined (user.people) {
+	new (tableType, @user.people)};
+if not defined (user.people.users) {
+	new (tableType, @user.people.users)};
+if not defined (user.people.groups) {
+	new (tableType, @user.people.groups)};
+if not defined (user.people.services) {
+	new (tableType, @user.people.services)}

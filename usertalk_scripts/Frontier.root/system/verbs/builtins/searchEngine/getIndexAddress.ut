@@ -1,1 +1,30 @@
-on getIndexAddress (indexName) {	«Return the path to the guest database for this index.		«Make sure the database exists and is open.	local (f = user.searchEngine.indexesFolder);	local (fname = indexName);	local (flWasOpen = false);		if sizeOf (fname) > 21 {		fname = string.mid (fname, 1, 21)};	fname = fname + " Index.root";	f = f + fname;	file.sureFilePath (f);		if defined ([f]) {		flWasOpen = true};		try {		table.sureDatabaseOpen (@[f])}	else {		fileMenu.new (f);		fileMenu.save (f)};		if not flWasOpen {		window.hide (@[f])};		local (adrIndex = @[f].index);	if not defined (adrIndex^) {		new (tableType, adrIndex)};		return (adrIndex)}
+on getIndexAddress (indexName) {
+	Â«Return the path to the guest database for this index.
+		Â«Make sure the database exists and is open.
+	local (f = user.searchEngine.indexesFolder);
+	local (fname = indexName);
+	local (flWasOpen = false);
+	
+	if sizeOf (fname) > 21 {
+		fname = string.mid (fname, 1, 21)};
+	fname = fname + " Index.root";
+	f = f + fname;
+	file.sureFilePath (f);
+	
+	if defined ([f]) {
+		flWasOpen = true};
+	
+	try {
+		table.sureDatabaseOpen (@[f])}
+	else {
+		fileMenu.new (f);
+		fileMenu.save (f)};
+	
+	if not flWasOpen {
+		window.hide (@[f])};
+	
+	local (adrIndex = @[f].index);
+	if not defined (adrIndex^) {
+		new (tableType, adrIndex)};
+	
+	return (adrIndex)}

@@ -1,1 +1,20 @@
-on logMacroError (macro, errorString) {	«Change notes:		«10/4/04; 6:59:51 PM by JES			«Log additional info. Do logging in a try block so the server will still respond if there's an error doing the logging. Change suggested by DAB.		«12/14/98; 7:55:03 PM by DW			«Funnel it thru log.add		«Tue, Jun 16, 1998 at 7:33:16 PM by PBS			«Log to file if Frontier is a server.	local (s = "");	try { //DAB		local (pta = html.getPageTableAddress ());		s = s + "Error rendering \"" + pta^.adrobject + "\".\r";		if defined (pta^.host) { //DAB added			s = s + "Host: \"" + pta^.host + "\"\r"};		if defined (pta^.firstLine) { // a browser request   //DAB added			s = s + "Browser Request: \"" + pta^.firstLine + "\"\r"}};	s = s + "\t" + errorString + "\r";	s = s + "\tMacro string: {" + macro + "}\r";	log.add (s, "htmlMacroErrors", flwptext:true);	return (true)}
+on logMacroError (macro, errorString) {
+	Â«Change notes:
+		Â«10/4/04; 6:59:51 PM by JES
+			Â«Log additional info. Do logging in a try block so the server will still respond if there's an error doing the logging. Change suggested by DAB.
+		Â«12/14/98; 7:55:03 PM by DW
+			Â«Funnel it thru log.add
+		Â«Tue, Jun 16, 1998 at 7:33:16 PM by PBS
+			Â«Log to file if Frontier is a server.
+	local (s = "");
+	try { //DAB
+		local (pta = html.getPageTableAddress ());
+		s = s + "Error rendering \"" + pta^.adrobject + "\".\r";
+		if defined (pta^.host) { //DAB added
+			s = s + "Host: \"" + pta^.host + "\"\r"};
+		if defined (pta^.firstLine) { // a browser request   //DAB added
+			s = s + "Browser Request: \"" + pta^.firstLine + "\"\r"}};
+	s = s + "\t" + errorString + "\r";
+	s = s + "\tMacro string: {" + macro + "}\r";
+	log.add (s, "htmlMacroErrors", flwptext:true);
+	return (true)}

@@ -1,1 +1,16 @@
-on getCellNRecords (db, theCell, firstRecord, numRecordsToGet, theLayout = 0, foundSet = true, reportError = false) {	local {		lastRecord = (firstRecord + numRecordsToGet) - 1};	on doIt () {		with objectModel, filemaker {			if foundSet {				return (get (window [db].layout [theLayout].record [firstRecord to lastRecord].cell [theCell]))}			else {				return (get (database [db].layout [theLayout].record [firstRecord to lastRecord].cell [theCell]))}}};	if reportError {		return (doIt ())}	else {		try {			return (doIt ())}		else {			return (false)}}}
+on getCellNRecords (db, theCell, firstRecord, numRecordsToGet, theLayout = 0, foundSet = true, reportError = false) {
+	local {
+		lastRecord = (firstRecord + numRecordsToGet) - 1};
+	on doIt () {
+		with objectModel, filemaker {
+			if foundSet {
+				return (get (window [db].layout [theLayout].record [firstRecord to lastRecord].cell [theCell]))}
+			else {
+				return (get (database [db].layout [theLayout].record [firstRecord to lastRecord].cell [theCell]))}}};
+	if reportError {
+		return (doIt ())}
+	else {
+		try {
+			return (doIt ())}
+		else {
+			return (false)}}}

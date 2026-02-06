@@ -1,1 +1,34 @@
-on notify (url, adrTable) {	«Notify a client that a resource has changed.		«1/15/02; 5:14:56 PM by PBS	xml.pubsub.initTable (adrTable);	bundle { //don't do notification more often than once per 15 seconds		local (adrmostrecent = @adrTable^.mostRecentNotify);		local (adrurl = @adrmostrecent^.[url]);		if defined (adrurl^) {			if string.lower (url) endswith ".opml" {				if (clock.now () - adrurl^) < (15) { //one update per 15 seconds, not minutes.					return}}			else {				if (clock.now () - adrurl^) < (60 * 15) {					return}}};		adrurl^ = clock.now ()};	local (adrurl = @adrTable^.notify.[url]);	if defined (adrurl^) {		local (adrsub, params = {url});		for adrsub in adrurl {			local (flnotify = true);			bundle { //set flnotify				if defined (adrsub^.cterrors) {					local (now = clock.now ());					if not defined (adrsub^.whenLastError) {						adrsub^.whenLastError = now};					if (now - adrsub^.whenLastError) < (60 * 10) { //ten minutes						flnotify = false}}};			if flnotify {				with adrsub^ {					case protocol {						"xml-rpc" {							thread.callscript (@xml.pubsub.xmlRpcNotify, {adrsub, url})};						"soap" {							thread.easyCall ("xml.pubsub.soapNotify",  {path, procedure, params, nameof (adrsub^), port})}}}}}}}
+on notify (url, adrTable) {
+	Â«Notify a client that a resource has changed.
+		Â«1/15/02; 5:14:56 PM by PBS
+	xml.pubsub.initTable (adrTable);
+	bundle { //don't do notification more often than once per 15 seconds
+		local (adrmostrecent = @adrTable^.mostRecentNotify);
+		local (adrurl = @adrmostrecent^.[url]);
+		if defined (adrurl^) {
+			if string.lower (url) endswith ".opml" {
+				if (clock.now () - adrurl^) < (15) { //one update per 15 seconds, not minutes.
+					return}}
+			else {
+				if (clock.now () - adrurl^) < (60 * 15) {
+					return}}};
+		adrurl^ = clock.now ()};
+	local (adrurl = @adrTable^.notify.[url]);
+	if defined (adrurl^) {
+		local (adrsub, params = {url});
+		for adrsub in adrurl {
+			local (flnotify = true);
+			bundle { //set flnotify
+				if defined (adrsub^.cterrors) {
+					local (now = clock.now ());
+					if not defined (adrsub^.whenLastError) {
+						adrsub^.whenLastError = now};
+					if (now - adrsub^.whenLastError) < (60 * 10) { //ten minutes
+						flnotify = false}}};
+			if flnotify {
+				with adrsub^ {
+					case protocol {
+						"xml-rpc" {
+							thread.callscript (@xml.pubsub.xmlRpcNotify, {adrsub, url})};
+						"soap" {
+							thread.easyCall ("xml.pubsub.soapNotify",  {path, procedure, params, nameof (adrsub^), port})}}}}}}}

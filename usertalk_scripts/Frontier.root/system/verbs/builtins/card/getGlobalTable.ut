@@ -1,1 +1,2 @@
-on getGlobalTable () {	return (system.misc.paths.cardPath)}
+on getGlobalTable () {
+	return (system.misc.paths.cardPath)}

@@ -1,1 +1,2 @@
-on update () { «refresh the target window	return (appleEvent (BarChart.id, 'BARC', 'updt'))}
+on update () { Â«refresh the target window
+	return (appleEvent (BarChart.id, 'BARC', 'updt'))}

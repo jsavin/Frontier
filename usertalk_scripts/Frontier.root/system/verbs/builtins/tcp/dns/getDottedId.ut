@@ -1,1 +1,18 @@
-on getDottedId (domainName) { //turn a domain name into a dotted id	«9/24/98; 1:20:33 PM by DW		«we cache the domain names in system.temp		«sub-items of system.temp don't survive a restart	local (adrcache = @system.temp.reverseIpCache);	if not defined (adrcache^) {		new (tabletype, adrcache)};	local (adritem = @adrcache^.[domainName]);	if defined (adritem^) {		return (adritem^)}	else {		local (s = tcp.addressDecode (tcp.nameToAddress (domainName)));		adritem^ = s;		return (s)}};«bundle //test code	«for i = 1 to 100		«s = getDomainName ("www.scripting.com")	«dialog.alert (s)
+on getDottedId (domainName) { //turn a domain name into a dotted id
+	Â«9/24/98; 1:20:33 PM by DW
+		Â«we cache the domain names in system.temp
+		Â«sub-items of system.temp don't survive a restart
+	local (adrcache = @system.temp.reverseIpCache);
+	if not defined (adrcache^) {
+		new (tabletype, adrcache)};
+	local (adritem = @adrcache^.[domainName]);
+	if defined (adritem^) {
+		return (adritem^)}
+	else {
+		local (s = tcp.addressDecode (tcp.nameToAddress (domainName)));
+		adritem^ = s;
+		return (s)}};
+Â«bundle //test code
+	Â«for i = 1 to 100
+		Â«s = getDomainName ("www.scripting.com")
+	Â«dialog.alert (s)

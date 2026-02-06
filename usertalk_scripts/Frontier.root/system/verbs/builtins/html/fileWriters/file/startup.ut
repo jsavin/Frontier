@@ -1,1 +1,14 @@
-on startup (adrObject, adrStorage) {	«The startup script is called when a rendering session is starting up.		«A rendering session is usually one of two things:			«1) A single page is being rendered.				«In this case this script is called before that page has been rendered.			«2) An entire table is being rendered.				«In this case this script is called after before any of the pages in the table have been rendered.			«Other types of rendering sessions may exist in the future,				«but the pattern will remain the same.		«adrObject is the address of the object being rendered.			«It might be a page or it might be a table.		«adrStorage is the address of private storage for this file writer for this session.	«This particular script doesn't do anything at startup.	return (true)}
+on startup (adrObject, adrStorage) {
+	Â«The startup script is called when a rendering session is starting up.
+		Â«A rendering session is usually one of two things:
+			Â«1) A single page is being rendered.
+				Â«In this case this script is called before that page has been rendered.
+			Â«2) An entire table is being rendered.
+				Â«In this case this script is called after before any of the pages in the table have been rendered.
+			Â«Other types of rendering sessions may exist in the future,
+				Â«but the pattern will remain the same.
+		Â«adrObject is the address of the object being rendered.
+			Â«It might be a page or it might be a table.
+		Â«adrStorage is the address of private storage for this file writer for this session.
+	Â«This particular script doesn't do anything at startup.
+	return (true)}

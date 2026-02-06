@@ -1,1 +1,11 @@
-on unpackResponse (s, adrObject) {	«Given an object from the server, unpack it in the right location.		«It's up to the caller to call edit.		«Return the address of the object.	local (objectType = string4 (s [1]));	local (data = s [2]);	data = fatPages.decode (@data);	setBinaryType (@data, objectType);	unpack (@data, adrObject);	delete (@data);	return (adrObject)}
+on unpackResponse (s, adrObject) {
+	Â«Given an object from the server, unpack it in the right location.
+		Â«It's up to the caller to call edit.
+		Â«Return the address of the object.
+	local (objectType = string4 (s [1]));
+	local (data = s [2]);
+	data = fatPages.decode (@data);
+	setBinaryType (@data, objectType);
+	unpack (@data, adrObject);
+	delete (@data);
+	return (adrObject)}

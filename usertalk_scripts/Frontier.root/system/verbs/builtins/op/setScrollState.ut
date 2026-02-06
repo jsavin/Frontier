@@ -1,1 +1,2 @@
-on setScrollState (lnum) {	kernel (op.setscrollstate)}
+on setScrollState (lnum) {
+	kernel (op.setscrollstate)}
