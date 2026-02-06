@@ -12,12 +12,14 @@ Status: In Progress (Updated 2026-02-05)
 - Enables daemon-mode workflows
 
 ### Menu System Stabilization - ✅ MERGED (Feb 2-5)
-**Resolution**: PRs #383, #384, #385, #387, #388 merged
+**Resolution**: PRs #383, #384, #385, #387, #388, #390 merged
 - Proper `menubarType` data access for headless mode
 - Comprehensive menu integration tests added
 - V6 menu loading fixed during migration (byte-swap linkage)
 - Disk struct fields fixed to `int32_t` for 64-bit safety
 - `op.outlineToXml` fixed for headless mode via window verb stubs
+- Mbar value copying fixed — added `menuverbcopyvalue()` with proper v6/v7 format detection
+- `langexternalcopyvalue()` now dispatches `idmenuprocessor` to dedicated copy path
 - Static assertions added; disk struct anti-pattern documented
 
 ### Compiler Warning Elimination - ✅ COMPLETE (Feb 1)
@@ -96,9 +98,9 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,777 total (up from 1,698)
-- 151 skipped
-- New tests for menus, path resolution, startup scripts
+### Integration Tests: 1,802 total (up from 1,777)
+- 152 skipped
+- New tests for menus, mbar value copy, path resolution, startup scripts
 
 ---
 
@@ -216,6 +218,7 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 ## Recently Completed (Feb 1-5, 2026)
 
 ### Startup Scripts & Menus
+- **PR #390**: Fix menubar (mbar) value copying for headless mode
 - **PR #389**: Fix startup warnings #2 and #3 (menupack and startup script)
 - **PR #388**: Fix op.outlineToXml for headless mode
 - **PR #387**: Fix int32_t for disk struct fields on 64-bit
@@ -308,13 +311,13 @@ See planning/_STATUS_ARCHIVE.md for:
 - **Current focus**: GUI application prototype, startup script hardening
 - **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: 1,777 integration tests (151 skipped)
+- **Test health**: 1,802 integration tests (152 skipped)
 - **Latest release**: v1.0.0-alpha.4 (January 31, 2026)
 - **Compiler warnings**: Zero (fully eliminated)
 
 ### Workstream Status
 - **Startup Scripts**: ✅ WORKING - Boot-time execution in headless mode
-- **Menu System**: ✅ STABILIZED - Migration, headless access, integration tests
+- **Menu System**: ✅ STABILIZED - Migration, headless access, value copying, integration tests
 - **GUI Planning**: ✅ COMPLETE - Full specs ready for implementation
 - **Webserver**: ✅ WORKING - Full web application layer functional
 - **REPL**: ✅ TRANSFORMED - Persistent variables, navigation, event loop

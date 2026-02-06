@@ -25,7 +25,9 @@ Last Updated: 2026-02-05
 - **PR #385**: Fix V6 menu loading during migration and byte-swap linkage
 - **PR #387**: Fix `int32_t` for disk struct fields to ensure 4-byte size on 64-bit
 - **PR #388**: Fix `op.outlineToXml` for headless mode via window verb stubs
+- **PR #390**: Fix menubar (mbar) value copying for headless mode
 - Static assertions added for disk struct sizes (anti-pattern documented)
+- Mbar value copy now uses dedicated path with proper v6/v7 format detection
 
 ### Compiler Warning Elimination - ✅ COMPLETE
 - **PR #372**: Reduce compiler warnings from 154 to 24 (84% reduction)
@@ -76,9 +78,9 @@ Last Updated: 2026-02-05
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: 1,777 tests total (up from 1,698)
-- **Skipped**: 151
-- New tests added for menus, path resolution, and startup scripts
+- **Current**: 1,802 tests total (up from 1,777)
+- **Skipped**: 152
+- New tests added for menus, mbar value copy, path resolution, and startup scripts
 
 All tests running via:
 - `./tools/run_headless_tests.sh` - C unit tests
@@ -166,7 +168,7 @@ Before resuming major infrastructure work, need decisions on:
 - **ADR-013**: REPL Event Loop Architecture
 
 ### Progress Reports
-- **Latest**: reports/progress/2026-01-31-webserver-and-repl-transformation.md
+- **Latest**: reports/progress/2026-02-05-startup-scripts-menus-and-gui-planning.md
 - **Previous**: reports/progress/2026-01-25-networking-foundation-and-thread-safety.md
 
 ### Historical Context
