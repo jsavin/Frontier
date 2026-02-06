@@ -234,7 +234,7 @@ boolean langerrormessage (bigstring bs) {
 	if (langerrorlogenabled ()) {
 		char cs[256]; /* bigstring max length is 255 */
 		copyptocstring(bs, cs);
-		log_error(LOG_COMP_LANG, "%s", cs);
+		log_error(LOG_COMP_LANG, "line %lu: %s", ctscanlines, cs);
 	}
 
 	fllangerror = true; /*only display once for each script*/
