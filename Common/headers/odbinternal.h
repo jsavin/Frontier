@@ -45,6 +45,8 @@ typedef struct tyodblistrecord {
 _Static_assert(sizeof(tyodbrecord) == 614,
 	"tyodbrecord size changed — pack(2) layout must match dbverbs.c expectations");
 
+extern hdlodbrecord hodblist;
+
 typedef enum odbValueType  {
 	
 	unknownT = '\?\?\?\?',

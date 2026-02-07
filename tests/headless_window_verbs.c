@@ -24,6 +24,7 @@
 #include "frontier.h"
 #include "standard.h"
 
+#include <limits.h>
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
@@ -34,8 +35,6 @@
 /* From file_portable.c */
 extern const char *headless_fnum_path(hdlfilenum);
 extern boolean filespectopath(const ptrfilespec, bigstring);
-
-extern hdlodbrecord hodblist;
 
 /* Token enum for all verbs in the window processor */
 enum {
@@ -108,18 +107,19 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
 
                     if (getaddressvalue(addrval, &htable, bsname)) {
                         /* htable is the parent table of the addressed node.
-                         * If parent is roottable, it's a top-level entry in the
-                         * system root (like @system or @root children) — "open".
-                         * If parent is filewindowtable, it's a guest DB root — "open".
-                         * If parent is nil, this is the root table itself — "open". */
-                        if (htable == nil || htable == roottable)
+                         * Only the root table of an opened database is considered
+                         * "open" in headless mode — sub-tables like @system are not.
+                         *
+                         * htable == nil: address IS the root table (@root)
+                         * htable == filewindowtable: address is a guest DB root */
+                        if (htable == nil)
                             return setbooleanvalue(true, vreturned);
 
                         if (filewindowtable != nil && htable == filewindowtable)
                             return setbooleanvalue(true, vreturned);
                     }
 
-                    /* Address resolved but not a root-level table — no editor window */
+                    /* Address resolved but not a database root — no editor window */
                     return setbooleanvalue(false, vreturned);
                 }
             }
@@ -132,9 +132,9 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                     return false;
 
                 /* Convert pascal string to C string for realpath() */
-                char inputpath[256];
+                char inputpath[PATH_MAX];
                 short len = stringlength(bspath);
-                if (len > 255) len = 255;
+                if (len >= PATH_MAX) len = PATH_MAX - 1;
                 memcpy(inputpath, stringbaseaddress(bspath), len);
                 inputpath[len] = '\0';
 
@@ -170,9 +170,9 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                         /* Convert guest DB filespec to C string for realpath() */
                         bigstring bsguest;
                         if (filespectopath(&(**hodb).fs, bsguest)) {
-                            char guestpath[256];
+                            char guestpath[PATH_MAX];
                             short glen = stringlength(bsguest);
-                            if (glen > 255) glen = 255;
+                            if (glen >= PATH_MAX) glen = PATH_MAX - 1;
                             memcpy(guestpath, stringbaseaddress(bsguest), glen);
                             guestpath[glen] = '\0';
 
