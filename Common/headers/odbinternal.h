@@ -27,6 +27,19 @@
 
 typedef struct odb_ * odbref;
 
+/* ODB list record — tracks open guest databases.
+ * MUST use pack(2) to match legacy Frontier struct layout.
+ * Shared between dbverbs.c and headless_filemenu_verbs.c. */
+#pragma pack(2)
+typedef struct tyodblistrecord {
+	struct tyodblistrecord **hnext;
+	tyfilespec fs;
+	hdlfilenum fref;
+	boolean flreadonly;
+	odbref odb;
+} tyodbrecord, *ptrodbrecord, **hdlodbrecord;
+#pragma options align=reset
+
 typedef enum odbValueType  {
 	
 	unknownT = '\?\?\?\?',

@@ -18,21 +18,13 @@
 #include "langinternal.h"
 #include "tablestructure.h"
 #include "logging.h"
-#include "odbinternal.h"
 #include "file.h"
+#include "odbinternal.h"
 
 /* Forward declarations from dbverbs.c */
 extern boolean dbfunctionvalue(short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror);
 
-/* ODB list structure and global from dbverbs.c */
-typedef struct tyodblistrecord {
-    struct tyodblistrecord **hnext;
-    tyfilespec fs;
-    hdlfilenum fref;
-    boolean flreadonly;
-    odbref odb;
-} tyodbrecord, *ptrodbrecord, **hdlodbrecord;
-
+/* tyodbrecord/hdlodbrecord defined in odbinternal.h (shared with dbverbs.c) */
 extern hdlodbrecord hodblist;
 
 /* Token enum for all verbs in the db processor

@@ -366,26 +366,11 @@ swapping, and doesn't require thread infrastructure initialization.
 
 #endif
 
-#pragma pack(2)
-typedef struct tyodblistrecord {
-	
-	struct tyodblistrecord **hnext;
-	
-	tyfilespec fs;
-	
-	hdlfilenum fref;
-	
-	boolean flreadonly;
-	
-	odbref odb;
-	
-	} tyodbrecord, *ptrodbrecord, **hdlodbrecord;
-#pragma options align=reset
-
 /* Global ODB list - used by both GUI and headless dbinitverbs()
  * Uses sentinel pattern to prevent UAF when closing last database.
  * The sentinel is a permanent allocated handle that's never freed,
- * preventing hodblist from becoming a dangling pointer. */
+ * preventing hodblist from becoming a dangling pointer.
+ * tyodbrecord/hdlodbrecord defined in odbinternal.h */
 hdlodbrecord hodblist = nil;  /* Initialized to sentinel handle on first use */
 
 

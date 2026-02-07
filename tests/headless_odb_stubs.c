@@ -3,6 +3,7 @@
 #include "frontier.h"
 #include "standard.h"
 #include "dialogs.h"
+#include "file.h"
 #include "odbinternal.h"
 #include "tablestructure.h"
 #include "db_format.h"

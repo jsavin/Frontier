@@ -840,7 +840,7 @@ static boolean mepackmenustructure_v7(tysavedmenuinfo *legacy, Handle *hpacked) 
 	modern.adroutline = host_to_disk_uint64((uint64_t) legacy->adroutline);
 	modern.lnumcursor = host_to_disk_uint64((uint64_t) legacy->lnumcursor);
 	modern.flags = host_to_disk_uint32((uint32_t) legacy->flags);
-	modern.menuactiveitem = host_to_disk_uint32((uint32_t) legacy->menuactivelayer);
+	modern.menuactiveitem = host_to_disk_uint32((uint32_t) legacy->menuactivelayer); /* menuactivelayer in tysavedmenuinfo maps to menuactiveitem in v7 */
 
 	Handle hpackedmenu = nil;
 	Handle hpackedoutline = nil;

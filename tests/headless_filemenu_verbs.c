@@ -30,20 +30,8 @@
 #include "cancoon.h"
 #include "ops.h"
 
-/* ODB list structure and global from dbverbs.c - for guest database lookup.
- * MUST use #pragma pack(2) to match dbverbs.c layout, otherwise odb field
- * offset differs and db.setvalue/getvalue dereferences a corrupted handle. */
-#pragma pack(2)
-typedef struct tyodblistrecord {
-    struct tyodblistrecord **hnext;
-    tyfilespec fs;
-    hdlfilenum fref;
-    boolean flreadonly;
-    odbref odb;
-} tyodbrecord_local, *ptrodbrecord_local, **hdlodbrecord_local;
-#pragma options align=reset
-
-extern hdlodbrecord_local hodblist;
+/* tyodbrecord/hdlodbrecord defined in odbinternal.h (shared with dbverbs.c) */
+extern hdlodbrecord hodblist;
 
 /* From tablestructure.c - the system.compiler.files table */
 extern hdlhashtable filewindowtable;
@@ -133,7 +121,7 @@ static boolean filemenu_save_systemroot(void) {
     /* Flush to disk - required for changes to persist */
     if (!dbclose()) {
         log_error(LOG_COMP_DB, "filemenu_save_systemroot: dbclose failed");
-        langerrormessage(BIGSTRING("\x1b" "Can't save: disk flush failed"));
+        langerrormessage(BIGSTRING("\x1d" "Can't save: disk flush failed"));
         return false;
     }
 
@@ -168,7 +156,7 @@ static boolean filemenu_save_systemroot(void) {
  */
 static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     tyfilespec fs;
-    hdlodbrecord_local hodb;
+    hdlodbrecord hodb;
     bigstring bspath;
 
     /* Get the file path parameter */
@@ -245,8 +233,8 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
  * Returns: true on success, false on failure
  */
 static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
-    tyodbrecord_local odbrec;
-    hdlodbrecord_local hodb;
+    tyodbrecord odbrec;
+    hdlodbrecord hodb;
     bigstring bspath;
     short ctparams;
     boolean flhidden = false;
@@ -280,7 +268,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Check if already open in hodblist */
     if (hodblist != nil) {
-        hdlodbrecord_local h;
+        hdlodbrecord h;
         for (h = (**hodblist).hnext; h != nil; h = (**h).hnext) {
             if (equalfilespecs(&(**h).fs, &odbrec.fs)) {
                 log_debug(LOG_COMP_DB, "filemenu_open: database already open");
@@ -292,7 +280,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Open the OS file */
     if (!openfile(&odbrec.fs, &odbrec.fref, odbrec.flreadonly)) {
         log_error(LOG_COMP_DB, "filemenu_open: openfile failed for %s", stringbaseaddress(bspath));
-        langerrormessage(BIGSTRING("\x1e" "Can't open: file does not exist"));
+        langerrormessage(BIGSTRING("\x1f" "Can't open: file does not exist"));
         return false;
     }
 
@@ -383,20 +371,13 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
  *
  * Returns: true on success
  */
-static boolean filemenu_close_guestdb(hdlodbrecord_local hodb) {
+static boolean filemenu_close_guestdb(hdlodbrecord hodb) {
     bigstring bspath;
 
     filespectopath(&(**hodb).fs, bspath);
     log_debug(LOG_COMP_DB, "filemenu_close_guestdb: closing %s", stringbaseaddress(bspath));
 
-    /* Remove from system.compiler.files first (before handle is disposed) */
-    if (filewindowtable != nil) {
-        pushhashtable(filewindowtable);
-        hashdelete(bspath, false, false);
-        pophashtable();
-    }
-
-    /* Close the ODB file — use context guard to protect system root globals */
+    /* Close the ODB file first — use context guard to protect system root globals */
     {
         odb_context_guard guard;
 
@@ -411,6 +392,13 @@ static boolean filemenu_close_guestdb(hdlodbrecord_local hodb) {
 
         cancoonglobals = nil;
         odb_guard_exit(&guard);
+    }
+
+    /* Remove from system.compiler.files (after successful close) */
+    if (filewindowtable != nil) {
+        pushhashtable(filewindowtable);
+        hashdelete(bspath, false, false);
+        pophashtable();
     }
 
     /* Close the OS file */
@@ -435,7 +423,7 @@ static boolean filemenu_close_guestdb(hdlodbrecord_local hodb) {
 static boolean filemenu_close(tyvaluerecord *vreturned) {
     hdlhashtable htargettable;
     bigstring bstargetname;
-    hdlodbrecord_local hodb;
+    hdlodbrecord hodb;
 
     setbooleanvalue(true, vreturned);
 
@@ -480,7 +468,7 @@ static boolean filemenu_close(tyvaluerecord *vreturned) {
  * Returns: true on success
  */
 static boolean filemenu_closeall(tyvaluerecord *vreturned) {
-    hdlodbrecord_local hodb, hnext;
+    hdlodbrecord hodb, hnext;
 
     setbooleanvalue(true, vreturned);
 
