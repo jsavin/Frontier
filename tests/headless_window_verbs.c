@@ -25,6 +25,7 @@
 #include "standard.h"
 
 #include <limits.h>
+#include <string.h>
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
@@ -139,7 +140,7 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 inputpath[len] = '\0';
 
                 /* Resolve to absolute path for reliable comparison */
-                char resolvedinput[1024];
+                char resolvedinput[PATH_MAX];
                 if (realpath(inputpath, resolvedinput) == NULL)
                     return setbooleanvalue(false, vreturned);
 
@@ -149,7 +150,7 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                         (hdlfilenum)(**databasedata).fnumdatabase);
 
                     if (sysroot != nil) {
-                        char resolvedsys[1024];
+                        char resolvedsys[PATH_MAX];
                         if (realpath(sysroot, resolvedsys) != NULL
                             && strcmp(resolvedinput, resolvedsys) == 0)
                             return setbooleanvalue(true, vreturned);
@@ -164,9 +165,6 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                          hodb != nil && hodb != hodblist;
                          hodb = (**hodb).hnext) {
 
-                        if (*hodb == nil)
-                            continue;
-
                         /* Convert guest DB filespec to C string for realpath() */
                         bigstring bsguest;
                         if (filespectopath(&(**hodb).fs, bsguest)) {
@@ -176,7 +174,7 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                             memcpy(guestpath, stringbaseaddress(bsguest), glen);
                             guestpath[glen] = '\0';
 
-                            char resolvedguest[1024];
+                            char resolvedguest[PATH_MAX];
                             if (realpath(guestpath, resolvedguest) != NULL
                                 && strcmp(resolvedinput, resolvedguest) == 0)
                                 return setbooleanvalue(true, vreturned);

@@ -53,10 +53,10 @@ tests:
   - name: "window.isOpen - opened guest database returns true"
     description: "After opening a guest DB, its path should return true"
     script: |
-      local (base = Frontier.getSubFolder("") + "apps/manila");
-      local (guestpath = base + ".root7");
+      local (sysdir = file.folderfrompath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/manila.root7");
       if not file.exists(guestpath) {
-        guestpath = base + ".root"};
+        guestpath = sysdir + "Guest Databases/apps/manila.root"};
       if not file.exists(guestpath) {
         return "skip"};
       fileMenu.open(guestpath);
@@ -69,10 +69,10 @@ tests:
   - name: "window.isOpen - closed guest database returns false"
     description: "After closing a guest DB, its path should return false"
     script: |
-      local (base = Frontier.getSubFolder("") + "apps/manila");
-      local (guestpath = base + ".root7");
+      local (sysdir = file.folderfrompath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/manila.root7");
       if not file.exists(guestpath) {
-        guestpath = base + ".root"};
+        guestpath = sysdir + "Guest Databases/apps/manila.root"};
       if not file.exists(guestpath) {
         return "skip"};
       fileMenu.open(guestpath);
