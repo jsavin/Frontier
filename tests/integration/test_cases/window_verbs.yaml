@@ -81,6 +81,17 @@ tests:
     expected_success: true
     expected_result: "false"
 
+  - name: "window.isOpen - relative path returns true"
+    description: "A relative path to the system root resolves via realpath and matches"
+    script: |
+      local (p = Frontier.getFilePath());
+      local (dir = file.folderfrompath(p));
+      local (fname = file.filefrompath(p));
+      local (relpath = dir + "./" + fname);
+      return window.isOpen(relpath)
+    expected_success: true
+    expected_result: "true"
+
   # ========================================================================
   # Other window verbs (existing stubs/implementations)
   # ========================================================================

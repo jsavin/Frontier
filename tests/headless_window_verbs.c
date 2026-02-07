@@ -33,9 +33,20 @@
 #include "tablestructure.h"
 #include "odbinternal.h"
 
-/* From file_portable.c */
+/* From file_portable.c — declared locally because #include "file.h"
+ * pulls in definitions that cause startup crashes in headless mode.
+ * These functions are linked from file_portable.o. */
 extern const char *headless_fnum_path(hdlfilenum);
 extern boolean filespectopath(const ptrfilespec, bigstring);
+
+/* Convert a pascal bigstring to a null-terminated C string.
+ * Truncates to destsize-1 if the string is longer. */
+static void pstrtocstr(bigstring bs, char *dest, size_t destsize) {
+    short len = stringlength(bs);
+    if (len >= (short)destsize) len = (short)destsize - 1;
+    memcpy(dest, stringbaseaddress(bs), len);
+    dest[len] = '\0';
+}
 
 /* Token enum for all verbs in the window processor */
 enum {
@@ -132,12 +143,8 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 if (!getstringvalue(hparam1, 1, bspath))
                     return false;
 
-                /* Convert pascal string to C string for realpath() */
                 char inputpath[PATH_MAX];
-                short len = stringlength(bspath);
-                if (len >= PATH_MAX) len = PATH_MAX - 1;
-                memcpy(inputpath, stringbaseaddress(bspath), len);
-                inputpath[len] = '\0';
+                pstrtocstr(bspath, inputpath, sizeof(inputpath));
 
                 /* Resolve to absolute path for reliable comparison */
                 char resolvedinput[PATH_MAX];
@@ -169,10 +176,7 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                         bigstring bsguest;
                         if (filespectopath(&(**hodb).fs, bsguest)) {
                             char guestpath[PATH_MAX];
-                            short glen = stringlength(bsguest);
-                            if (glen >= PATH_MAX) glen = PATH_MAX - 1;
-                            memcpy(guestpath, stringbaseaddress(bsguest), glen);
-                            guestpath[glen] = '\0';
+                            pstrtocstr(bsguest, guestpath, sizeof(guestpath));
 
                             char resolvedguest[PATH_MAX];
                             if (realpath(guestpath, resolvedguest) != NULL
