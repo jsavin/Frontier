@@ -600,8 +600,15 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	assert(ctx != NULL && "Issue #347: NULL context passed to opverbinmemory - use db_context_init()");
 #endif
 
-	if ((**hv).flinmemory) /*nothing to do, it's already in memory*/
+	if ((**hv).flinmemory) { /*already in memory, but ensure callbacks are initialized*/
+
+		ho = (hdloutlinerecord) (**hv).variabledata;
+
+		if (ho != nil && ((**ho).preexpandcallback == NULL || (**ho).caneditcallback == NULL))
+			opinitcallbacks (ho); /*opinitcallbacks is NOT idempotent — only call when callbacks are uninitialized*/
+
 		return (true);
+	}
 
 	adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
 
@@ -707,6 +714,8 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	(**hv).oldaddress = adr; /*last place this outline was stored*/
 
 	opverbsetupoutline (ho, hv);
+
+	opinitcallbacks (ho); /*ensure callbacks are set for headless mode (no window system to set them)*/
 
 	return (true);
 	} /*opverbinmemory*/

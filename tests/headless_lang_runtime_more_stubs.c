@@ -64,12 +64,7 @@ boolean isosascriptnode (hdltreenode h, tyvaluerecord *v) { (void)h; (void)v; re
 boolean evaluateosascript (const tyvaluerecord *vscript, hdltreenode hnode, bigstring bs, tyvaluerecord *vreturned) {
     (void)vscript; (void)hnode; (void)bs; (void)vreturned; return false; }
 
-// File loop utilities (no iteration in headless tests)
-boolean fileinitloop (const ptrfilespec fs, tyfileloopcallback cb, Handle *hstate) {
-    (void)fs; (void)cb; if (hstate) *hstate = nil; return false; }
-void fileendloop (Handle hstate) { (void)hstate; }
-boolean filenextloop (Handle hstate, ptrfilespec outfs, boolean *flfolder) {
-    (void)hstate; if (outfs) memset(outfs, 0, sizeof(*outfs)); if (flfolder) *flfolder = false; return false; }
+// File loop utilities are now provided by portable/fileloop_portable.c
 
 // Error/system messaging shims
 OSErr getoserror (void) { return noErr; }

@@ -181,7 +181,7 @@ OSStatus pathtofsref (bigstring bs, FSRef *ref) { (void)bs; if (ref) memset(ref,
 boolean equalfilespecs ( const ptrfilespec fs1, const ptrfilespec fs2 ) { (void)fs1; (void)fs2; return false; }
 #endif
 boolean equalrects (Rect r1, Rect r2) { return r1.top==r2.top && r1.left==r2.left && r1.bottom==r2.bottom && r1.right==r2.right; }
-void diskinitloop (void) { }
+/* diskinitloop is now provided by portable/fileloop_portable.c */
 
 // Shell scrap and events
 EventRecord shellevent;
@@ -560,8 +560,15 @@ OSStatus TECFlushText(TECObjectRef converter, TextPtr outputBuf, ByteCount outpu
 #endif /* !FRONTIER_PORTABLE_STRINGS */
 
 Boolean macfilespecisvalid(const ptrfilespec fs) {
-    (void)fs;
-    return false;
+    if (!fs)
+        return false;
+    /*
+     * Portable equivalent of the Mac implementation in fileops.m:2647 which
+     * calls FSGetCatalogInfo + checks fsnamelength. In portable mode, the FSRef
+     * is unused (dummy struct), so we check name length only. This is sufficient
+     * because portable filespecs store the full POSIX path in the name field.
+     */
+    return fs->name.length > 0;
 }
 
 #if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE)

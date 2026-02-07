@@ -165,9 +165,9 @@ static int run_cli_command_ex(const char *args, char *output, size_t output_size
     char command[PATH_MAX * 2];
     // Optionally suppress stderr to avoid debug logging from filling the output buffer
     const char *stderr_redirect = capture_stderr ? "2>&1" : "2>/dev/null";
-    // Skip startup scripts to avoid segfaults during system root initialization
+    // Skip startup scripts to speed up tests (use --skip-startup CLI flag)
     if (snprintf(command, sizeof command,
-                 "cd \"%s\" && FRONTIER_HEADLESS_SKIP_STARTUP=1 ./frontier-cli/frontier-cli %s %s",
+                 "cd \"%s\" && ./frontier-cli/frontier-cli --skip-startup %s %s",
                  root, args, stderr_redirect) >= (int)sizeof command) {
         fprintf(stderr, "command buffer too small\n");
         return -1;

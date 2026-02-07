@@ -45,7 +45,7 @@ run_test() {
 
     # Run the CLI with the UserTalk code
     local actual_output
-    actual_output=$(FRONTIER_HEADLESS_SKIP_STARTUP=1 "$CLI_BIN" -e "$usertalk_code" 2>&1 | tail -1)
+    actual_output=$("$CLI_BIN" --skip-startup -e "$usertalk_code" 2>&1 | tail -1)
 
     if [ "$actual_output" = "$expected_output" ]; then
         echo -e "${GREEN}PASSED${NC}"
@@ -69,7 +69,7 @@ run_error_test() {
 
     # Run the CLI and capture both stdout and stderr
     local output
-    output=$(FRONTIER_HEADLESS_SKIP_STARTUP=1 "$CLI_BIN" -e "$usertalk_code" 2>&1 || true)
+    output=$("$CLI_BIN" --skip-startup -e "$usertalk_code" 2>&1 || true)
 
     if echo "$output" | grep -qi "$expected_error_substring"; then
         echo -e "${GREEN}PASSED${NC}"

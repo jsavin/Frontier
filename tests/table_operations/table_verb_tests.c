@@ -84,7 +84,7 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
     snprintf(cli_path, sizeof(cli_path), "%s/frontier-cli/frontier-cli", root);
 
     char cmd[4096];
-    snprintf(cmd, sizeof(cmd), "FRONTIER_HEADLESS_SKIP_STARTUP=1 %s --system-root \"%s\" -e \"%s\" 2>/dev/null", cli_path, db_path, script);
+    snprintf(cmd, sizeof(cmd), "%s --skip-startup --system-root \"%s\" -e \"%s\" 2>/dev/null", cli_path, db_path, script);
 
     FILE *fp = popen(cmd, "r");
     assert(fp != NULL);
@@ -142,7 +142,7 @@ static bool check_new_verb_available(void) {
     snprintf(cli_path, sizeof(cli_path), "%s/frontier-cli/frontier-cli", root);
 
     char cmd[4096];
-    snprintf(cmd, sizeof(cmd), "FRONTIER_HEADLESS_SKIP_STARTUP=1 %s --system-root \"%s\" -e \"try { local (t); new (tableType, @t); return (\\\"available\\\") } catch { return (\\\"unavailable\\\") }\" 2>/dev/null", cli_path, db_path);
+    snprintf(cmd, sizeof(cmd), "%s --skip-startup --system-root \"%s\" -e \"try { local (t); new (tableType, @t); return (\\\"available\\\") } catch { return (\\\"unavailable\\\") }\" 2>/dev/null", cli_path, db_path);
 
     FILE *fp = popen(cmd, "r");
     if (fp == NULL) {

@@ -84,17 +84,28 @@ static boolean flvisiforiconclick = false; /*makes it possible for 2clicking on 
 static boolean opcantedittext (hdlheadrecord hnode) {
 	
 	register hdloutlinerecord ho = op_get_outlinedata();
-	
+
+	if (ho == NULL)
+		return (false); /*no outline, nothing to prevent editing*/
+
 	if ((**ho).flreadonly)
 		return (true);
-	
+
+	if ((**ho).caneditcallback == NULL)
+		return (false); /*no callback set (headless mode), allow editing*/
+
 	return (!(*(**ho).caneditcallback) (hnode));
 	} /*opcantedittext*/
 	
 
 static boolean opcanteditcursor (void) {	
 	
-	return (opcantedittext ((**op_get_outlinedata()).hbarcursor));
+	register hdloutlinerecord ho = op_get_outlinedata();
+
+	if (ho == NULL)
+		return (false);
+
+	return (opcantedittext ((**ho).hbarcursor));
 	} /*opcanteditcursor*/
 	
 
