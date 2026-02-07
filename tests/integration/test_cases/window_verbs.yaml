@@ -43,12 +43,20 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "window.isOpen - non-existent path returns false"
-    description: "A path to a file that doesn't exist returns false"
+  - name: "window.isOpen - non-existent path raises error"
+    description: "A path to a file that doesn't exist triggers a script error"
     script: |
       return window.isOpen("/tmp/nonexistent_database_12345.root")
+    expected_success: false
+
+  - name: "window.isOpen - non-existent path caught by try"
+    description: "The error from a non-existent path can be caught with try"
+    script: |
+      try {
+        window.isOpen("/tmp/nonexistent_database_12345.root")};
+      return "caught"
     expected_success: true
-    expected_result: "false"
+    expected_result: "caught"
 
   - name: "window.isOpen - opened guest database returns true"
     description: "After opening a guest DB, its path should return true"

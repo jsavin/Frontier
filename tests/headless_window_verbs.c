@@ -24,6 +24,7 @@
 #include "frontier.h"
 #include "standard.h"
 
+#include <errno.h>
 #include <limits.h>
 #include <string.h>
 #include "memory.h"
@@ -146,10 +147,19 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 char inputpath[PATH_MAX];
                 pstrtocstr(bspath, inputpath, sizeof(inputpath));
 
-                /* Resolve to absolute path for reliable comparison */
+                /* Resolve to absolute path for reliable comparison.
+                 * If the path doesn't exist or is inaccessible, raise a
+                 * script-level error rather than silently returning false. */
                 char resolvedinput[PATH_MAX];
-                if (realpath(inputpath, resolvedinput) == NULL)
-                    return setbooleanvalue(false, vreturned);
+                if (realpath(inputpath, resolvedinput) == NULL) {
+                    if (errno == ENOENT)
+                        langerrormessage(BIGSTRING("\x27" "Can't check window: file does not exist"));
+                    else if (errno == EACCES)
+                        langerrormessage(BIGSTRING("\x25" "Can't check window: permission denied"));
+                    else
+                        langerrormessage(BIGSTRING("\x25" "Can't check window: invalid file path"));
+                    return false;
+                }
 
                 /* Check system root database file path */
                 if (databasedata != nil) {
