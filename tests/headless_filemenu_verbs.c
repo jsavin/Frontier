@@ -5,10 +5,13 @@
  * but now contains real implementations for critical verbs.
  *
  * Implemented:
- *   - fileMenu.save() - Saves system root or guest database
+ *   - fileMenu.open(path, hidden=false) - Opens guest database, mounts into system.compiler.files
+ *   - fileMenu.close() - Closes current target guest database
+ *   - fileMenu.closeall() - Closes all guest databases
+ *   - fileMenu.save([f]) - Saves system root or guest database
  *
  * Stub implementations (return "not implemented"):
- *   - fileMenu.new, open, close, closeall, savecopy, revert, print, quit, saveas
+ *   - fileMenu.new, savecopy, revert, print, quit, saveas
  */
 
 #include "frontier.h"
@@ -24,17 +27,14 @@
 #include "logging.h"
 #include "odbinternal.h"
 #include "db_format.h"
+#include "cancoon.h"
+#include "ops.h"
 
-/* ODB list structure and global from dbverbs.c - for guest database lookup */
-typedef struct tyodblistrecord {
-    struct tyodblistrecord **hnext;
-    tyfilespec fs;
-    hdlfilenum fref;
-    boolean flreadonly;
-    odbref odb;
-} tyodbrecord_local, *ptrodbrecord_local, **hdlodbrecord_local;
+/* tyodbrecord/hdlodbrecord defined in odbinternal.h (shared with dbverbs.c) */
+extern hdlodbrecord hodblist;
 
-extern hdlodbrecord_local hodblist;
+/* From tablestructure.c - the system.compiler.files table */
+extern hdlhashtable filewindowtable;
 
 /* Token enum for all verbs in the filemenu processor */
 enum {
@@ -94,7 +94,7 @@ static boolean filemenu_save_systemroot(void) {
     /* Save the root table using v7 format */
     {
         boolean repack_scope = false;
-        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, false, false};  /* 64-bit, no adapter_repack, no drop_cancoon */
         db_format_mode_push(&mode);
         repack_scope = true;
 
@@ -121,7 +121,7 @@ static boolean filemenu_save_systemroot(void) {
     /* Flush to disk - required for changes to persist */
     if (!dbclose()) {
         log_error(LOG_COMP_DB, "filemenu_save_systemroot: dbclose failed");
-        langerrormessage(BIGSTRING("\x1b" "Can't save: disk flush failed"));
+        langerrormessage(BIGSTRING("\x1d" "Can't save: disk flush failed"));
         return false;
     }
 
@@ -156,7 +156,7 @@ static boolean filemenu_save_systemroot(void) {
  */
 static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     tyfilespec fs;
-    hdlodbrecord_local hodb;
+    hdlodbrecord hodb;
     bigstring bspath;
 
     /* Get the file path parameter */
@@ -191,11 +191,21 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
                 return false;
             }
 
-            /* Save the database */
-            log_debug(LOG_COMP_DB, "filemenu_save_guestdb: saving database");
-            if (!odbSaveFile((**hodb).odb)) {
-                log_error(LOG_COMP_DB, "filemenu_save_guestdb: odbSaveFile failed");
-                return false;
+            /* Save the database — guard globals since odbSaveFile calls
+             * setcancoonglobals which overwrites currenthashtable et al. */
+            {
+                odb_context_guard guard;
+                boolean fl;
+
+                log_debug(LOG_COMP_DB, "filemenu_save_guestdb: saving database");
+                odb_guard_enter(&guard);
+                fl = odbSaveFile((**hodb).odb);
+                odb_guard_exit(&guard);
+
+                if (!fl) {
+                    log_error(LOG_COMP_DB, "filemenu_save_guestdb: odbSaveFile failed");
+                    return false;
+                }
             }
 
             log_debug(LOG_COMP_DB, "filemenu_save_guestdb: saved successfully");
@@ -209,6 +219,287 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     return false;
 }
 
+/*
+ * filemenu_open - Open a guest database and mount into system.compiler.files
+ *
+ * This is the headless equivalent of File > Open in the GUI. It:
+ *   1. Opens the ODB file (openfile + odbopenfile)
+ *   2. Adds to hodblist (for db.* verb access)
+ *   3. Mounts the root table into system.compiler.files (for bracket syntax access)
+ *
+ * Parameters:
+ *   hparam1 - Tree node: param 1 = file path, param 2 = hidden (optional, ignored)
+ *
+ * Returns: true on success, false on failure
+ */
+static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
+    tyodbrecord odbrec;
+    hdlodbrecord hodb;
+    bigstring bspath;
+    short ctparams;
+    boolean flhidden = false;
+
+    setbooleanvalue(false, vreturned);
+
+    odbrec.fref = 0;
+    odbrec.flreadonly = false;
+
+    ctparams = langgetparamcount(hparam1);
+
+    if (ctparams < 1 || ctparams > 2) {
+        langerrormessage(BIGSTRING("\x2f" "fileMenu.open requires 1 or 2 parameters (path, hidden)"));
+        return false;
+    }
+
+    /* Get the file path (param 1) */
+    if (ctparams == 1)
+        flnextparamislast = true;
+
+    if (!getfilespecvalue(hparam1, 1, &odbrec.fs)) {
+        log_error(LOG_COMP_DB, "filemenu_open: getfilespecvalue failed");
+        return false;
+    }
+
+    /* Consume optional 'hidden' param (ignored in headless mode) */
+    if (ctparams > 1) {
+        flnextparamislast = true;
+
+        if (!getbooleanvalue(hparam1, 2, &flhidden))
+            return false;
+    }
+
+    filespectopath(&odbrec.fs, bspath);
+    log_debug(LOG_COMP_DB, "filemenu_open: opening %s", stringbaseaddress(bspath));
+
+    /* Check if already open in hodblist */
+    if (hodblist != nil) {
+        hdlodbrecord h;
+        for (h = (**hodblist).hnext; h != nil; h = (**h).hnext) {
+            if (equalfilespecs(&(**h).fs, &odbrec.fs)) {
+                log_debug(LOG_COMP_DB, "filemenu_open: database already open");
+                return setbooleanvalue(true, vreturned);
+            }
+        }
+    }
+
+    /* Open the OS file */
+    if (!openfile(&odbrec.fs, &odbrec.fref, odbrec.flreadonly)) {
+        log_error(LOG_COMP_DB, "filemenu_open: openfile failed for %s", stringbaseaddress(bspath));
+        langerrormessage(BIGSTRING("\x1f" "Can't open: file does not exist"));
+        return false;
+    }
+
+    /* Open the ODB — use context guard to save/restore system root globals */
+    {
+        odb_context_guard guard;
+
+        odb_guard_enter(&guard);
+
+        if (!odbOpenFile(odbrec.fref, &odbrec.odb, odbrec.flreadonly)) {
+            odb_guard_exit(&guard);
+            log_error(LOG_COMP_DB, "filemenu_open: odbOpenFile failed");
+            closefile(odbrec.fref);
+            langerrormessage(BIGSTRING("\x22" "Can't open: invalid database file"));
+            return false;
+        }
+
+        odb_guard_exit(&guard);
+    }
+
+    log_debug(LOG_COMP_DB, "filemenu_open: odbOpenFile succeeded, odb=%p", odbrec.odb);
+
+    /* Create handle for the odb record and add to hodblist */
+    if (!newfilledhandle(&odbrec, sizeof(odbrec), (Handle *) &hodb)) {
+        odb_context_guard guard;
+        log_error(LOG_COMP_DB, "filemenu_open: newfilledhandle failed");
+        odb_guard_enter(&guard);
+        odbCloseFile(odbrec.odb);
+        odb_guard_exit(&guard);
+        closefile(odbrec.fref);
+        return false;
+    }
+
+    /* Add to hodblist after sentinel */
+    if (hodblist == nil) {
+        log_error(LOG_COMP_DB, "filemenu_open: hodblist not initialized");
+        odb_context_guard guard;
+        odb_guard_enter(&guard);
+        odbCloseFile(odbrec.odb);
+        odb_guard_exit(&guard);
+        closefile(odbrec.fref);
+        disposehandle((Handle) hodb);
+        return false;
+    }
+
+    if ((**hodblist).hnext == nil) {
+        (**hodblist).hnext = hodb;
+        (**hodb).hnext = nil;
+    }
+    else {
+        listlink((hdllinkedlist) (**hodblist).hnext, (hdllinkedlist) hodb);
+    }
+
+    /* Mount into system.compiler.files for bracket syntax access */
+    if (filewindowtable != nil) {
+        Handle hrootvar = odbGetRootVariable(odbrec.odb);
+
+        if (hrootvar == nil) {
+            log_debug(LOG_COMP_DB, "filemenu_open: odbGetRootVariable returned nil for %s", stringbaseaddress(bspath));
+        }
+
+        if (hrootvar != nil) {
+            tyvaluerecord val;
+
+            setexternalvalue(hrootvar, &val);
+
+            if (!hashtableassign(filewindowtable, bspath, val)) {
+                log_warn(LOG_COMP_DB, "filemenu_open: failed to mount in system.compiler.files");
+                /* Non-fatal: database is still open in hodblist */
+            }
+            else {
+                log_debug(LOG_COMP_DB, "filemenu_open: mounted in system.compiler.files as '%s'",
+                          stringbaseaddress(bspath));
+            }
+        }
+    }
+
+    return setbooleanvalue(true, vreturned);
+}
+
+
+/*
+ * filemenu_close_guestdb - Close a specific guest database by its hodblist handle
+ *
+ * Closes the ODB file, removes from hodblist, and unmounts from system.compiler.files.
+ *
+ * Parameters:
+ *   hodb - Handle to the odb record in hodblist
+ *
+ * Returns: true on success
+ */
+static boolean filemenu_close_guestdb(hdlodbrecord hodb) {
+    bigstring bspath;
+
+    filespectopath(&(**hodb).fs, bspath);
+    log_debug(LOG_COMP_DB, "filemenu_close_guestdb: closing %s", stringbaseaddress(bspath));
+
+    /* Close the ODB file first — use context guard to protect system root globals */
+    {
+        odb_context_guard guard;
+
+        odb_guard_enter(&guard);
+
+        if (!odbCloseFile((**hodb).odb)) {
+            odb_guard_exit(&guard);
+            log_error(LOG_COMP_DB, "filemenu_close_guestdb: odbCloseFile failed");
+            return false;
+        }
+
+        odb_guard_exit(&guard);
+    }
+
+    /* Remove from system.compiler.files (after successful close) */
+    if (filewindowtable != nil) {
+        pushhashtable(filewindowtable);
+        hashdelete(bspath, false, false);
+        pophashtable();
+    }
+
+    /* Close the OS file */
+    closefile((**hodb).fref);
+
+    /* Unlink from hodblist and dispose */
+    listunlink((hdllinkedlist) hodblist, (hdllinkedlist) hodb);
+    disposehandle((Handle) hodb);
+
+    return true;
+}
+
+
+/*
+ * filemenu_close - Close the current target guest database
+ *
+ * In headless mode, operates on the current target (set via target.set).
+ * If no target is set, or target is not a guest database root table, no-op.
+ *
+ * Returns: true on success (including no-op cases)
+ */
+static boolean filemenu_close(tyvaluerecord *vreturned) {
+    hdlhashtable htargettable;
+    bigstring bstargetname;
+    hdlodbrecord hodb;
+
+    setbooleanvalue(true, vreturned);
+
+    /* Get current target */
+    if (!langgettarget(&htargettable, bstargetname)) {
+        log_debug(LOG_COMP_DB, "filemenu_close: no target set, no-op");
+        return true;  /* No target set - nothing to close */
+    }
+
+    log_debug(LOG_COMP_DB, "filemenu_close: target='%s'", stringbaseaddress(bstargetname));
+
+    /* Check if target is in system.compiler.files (i.e., it's a guest database) */
+    if (filewindowtable == nil || htargettable != filewindowtable) {
+        log_debug(LOG_COMP_DB, "filemenu_close: target is not a guest database, no-op");
+        return true;
+    }
+
+    /* Target name is the file path - find it in hodblist */
+    if (hodblist == nil)
+        return true;
+
+    for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
+        bigstring bsodbpath;
+        filespectopath(&(**hodb).fs, bsodbpath);
+
+        if (equalstrings(bstargetname, bsodbpath)) {
+            return filemenu_close_guestdb(hodb) ? true : false;
+        }
+    }
+
+    log_debug(LOG_COMP_DB, "filemenu_close: target not found in hodblist, no-op");
+    return true;
+}
+
+
+/*
+ * filemenu_closeall - Close all guest databases
+ *
+ * Walks hodblist and closes each guest database, removing them from
+ * system.compiler.files as well.
+ *
+ * Returns: true on success
+ */
+static boolean filemenu_closeall(tyvaluerecord *vreturned) {
+    hdlodbrecord hodb, hnext;
+
+    setbooleanvalue(true, vreturned);
+
+    if (hodblist == nil)
+        return true;
+
+    log_debug(LOG_COMP_DB, "filemenu_closeall: closing all guest databases");
+
+    /* Walk the list, closing each database */
+    hodb = (**hodblist).hnext;
+
+    while (hodb != nil) {
+        hnext = (**hodb).hnext;  /* Save next before we dispose current */
+
+        if (!filemenu_close_guestdb(hodb)) {
+            log_error(LOG_COMP_DB, "filemenu_closeall: failed to close a database");
+            /* Continue closing others */
+        }
+
+        hodb = hnext;
+    }
+
+    log_debug(LOG_COMP_DB, "filemenu_closeall: done");
+    return true;
+}
+
+
 static boolean filemenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
@@ -218,18 +509,15 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
             /* Verb #0: filemenu.new - not yet implemented */
             langerrormessage(BIGSTRING("\x0fnot implemented"));
             return false;
+
         case filv_open:
-            /* Verb #1: filemenu.open - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
-            return false;
+            return filemenu_open(hparam1, vreturned);
+
         case filv_close:
-            /* Verb #2: filemenu.close - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
-            return false;
+            return filemenu_close(vreturned);
+
         case filv_closeall:
-            /* Verb #3: filemenu.closeall - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
-            return false;
+            return filemenu_closeall(vreturned);
 
         case filv_save:
             /*
@@ -242,9 +530,15 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
              */
             {
                 boolean fl;
+                short ctparams = langgetparamcount(hparam1);
+
+                if (ctparams > 1) {
+                    langerrormessage(BIGSTRING("\x2c" "fileMenu.save requires 0 or 1 parameters (path)"));
+                    return false;
+                }
 
                 /* Check if we have parameters */
-                if (hparam1 == nil || (**hparam1).param1 == nil) {
+                if (ctparams == 0) {
                     /* No params - save system root */
                     fl = filemenu_save_systemroot();
                 } else {

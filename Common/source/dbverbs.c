@@ -59,6 +59,7 @@
 #include "processinternal.h"
 #include "odbinternal.h"
 #include "db_format.h" /* migration helpers */
+#include "db.h" /* odb_context_guard */
 
 /* Path buffer size - macOS typically supports up to 1024 byte paths */
 #ifndef DB_PATH_MAX
@@ -365,26 +366,11 @@ swapping, and doesn't require thread infrastructure initialization.
 
 #endif
 
-#pragma pack(2)
-typedef struct tyodblistrecord {
-	
-	struct tyodblistrecord **hnext;
-	
-	tyfilespec fs;
-	
-	hdlfilenum fref;
-	
-	boolean flreadonly;
-	
-	odbref odb;
-	
-	} tyodbrecord, *ptrodbrecord, **hdlodbrecord;
-#pragma options align=reset
-
 /* Global ODB list - used by both GUI and headless dbinitverbs()
  * Uses sentinel pattern to prevent UAF when closing last database.
  * The sentinel is a permanent allocated handle that's never freed,
- * preventing hodblist from becoming a dangling pointer. */
+ * preventing hodblist from becoming a dangling pointer.
+ * tyodbrecord/hdlodbrecord defined in odbinternal.h */
 hdlodbrecord hodblist = nil;  /* Initialized to sentinel handle on first use */
 
 
@@ -724,9 +710,21 @@ static boolean dbnewverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	if (!fl)
 		return (false);
 
-	fl = odbnewfile (odbrec.fref);
+	{
+		/*
+		 * 2026-02-06: odb_context_guard protects databasedata, rootvariable,
+		 * roottable, currenthashtable, and hashtablestack from being stomped
+		 * by dbnew() / dbdispose() inside odbnewfile().
+		 */
+		odb_context_guard guard;
+		odb_guard_enter (&guard);
 
-	closefile (odbrec.fref);
+		fl = odbnewfile (odbrec.fref);
+
+		closefile (odbrec.fref);
+
+		odb_guard_exit (&guard);
+	}
 
 	if (odberror (fl)) {
 

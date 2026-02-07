@@ -10,7 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNNER="$PROJECT_ROOT/tests/integration/runner.py"
 CLI_PATH="$PROJECT_ROOT/frontier-cli/frontier-cli"
-SYSTEM_ROOT="$PROJECT_ROOT/databases/Frontier.root7"
+SYSTEM_ROOT="$PROJECT_ROOT/databases/Frontier.root"
+SYSTEM_ROOT7="$PROJECT_ROOT/databases/Frontier.root7"
 TEST_CASES_DIR="$PROJECT_ROOT/tests/integration/test_cases"
 
 # Colors for output
@@ -114,8 +115,21 @@ fi
 echo "Running ${#TEST_FILES[@]} test file(s)..."
 echo
 
-# Run the tests
-"$RUNNER" $VERBOSE --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${TEST_FILES[@]}"
+# Remove stale .root7 and force fresh migration from v6 root on each run.
+# This prevents tests from being bitten by stale migrated data.
+if [ -f "$SYSTEM_ROOT7" ]; then
+    echo "Removing stale $SYSTEM_ROOT7 to force fresh migration..."
+    rm -f "$SYSTEM_ROOT7"
+fi
+echo "Migrating $SYSTEM_ROOT -> $SYSTEM_ROOT7 ..."
+"$CLI_PATH" --system-root "$SYSTEM_ROOT" -e "1" > /dev/null 2>&1
+if [ ! -f "$SYSTEM_ROOT7" ]; then
+    echo -e "${RED}Error: Migration failed - $SYSTEM_ROOT7 not created${NC}"
+    exit 1
+fi
+
+# Run the tests (using the freshly migrated .root7)
+"$RUNNER" $VERBOSE --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT7" "${TEST_FILES[@]}"
 EXIT_CODE=$?
 
 echo

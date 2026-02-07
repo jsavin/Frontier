@@ -1022,8 +1022,14 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 		log_trace(LOG_COMP_EXTERNAL, "langexternalpack: using v7 write context flinmemory=%d (no global mode set)",
 		        (int)(**hv).flinmemory);
 	} else {
-		log_debug(LOG_COMP_EXTERNAL, "langexternalpack_internal: NOT adapter_repack - skipping load! id=%d flinmemory=%d",
-		        (int)(**hv).id, (int)(**hv).flinmemory);
+		/* Normal save: load from current database if not already in memory */
+		if (!(**hv).flinmemory) {
+			if (!ensure_external_in_memory (&working_context, hv)) {
+				log_error(LOG_COMP_EXTERNAL, "langexternalpack_internal: ensure_external_in_memory FAILED (normal save) id=%d",
+				        (int)(**hv).id);
+				return (false);
+			}
+		}
 	}
 
 	/* ================================================================

@@ -352,41 +352,127 @@ static boolean mepackscriptvisit (hdlheadrecord hnode, ptrvoid refcon) {
 	} /*mepackscriptvisit*/
 
 
-static boolean mesavemenustructure (tysavedmenuinfo *info, dbaddress *adr) {
-	
+typedef struct tysavedmenuinfo_v7 {
+	uint16_t versionnumber;      /* 2 bytes */
+	uint8_t  _pad0[6];           /* 6 bytes padding to 8-byte boundary */
+	uint64_t adroutline;         /* 8 bytes, big-endian on disk */
+	int64_t  lnumcursor;         /* 8 bytes, big-endian on disk */
+	uint32_t flags;              /* 4 bytes, big-endian on disk */
+	uint32_t menuactiveitem;     /* 4 bytes, big-endian on disk */
+	uint8_t  _reserved[1024];    /* 1024 bytes reserved for future use */
+} tysavedmenuinfo_v7;
+
+_Static_assert(sizeof(tysavedmenuinfo_v7) == 1056, "v7 menu struct must be exactly 1056 bytes");
+
+
+static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
+
 	/*
-	everything has already been set up:  everything pushed and dehoisted.  
-	save all of the data associated with the menubar, by visiting every 
-	node in the menu structure, saving off all linked scripts, and then 
+	Legacy (v6) save path: save the menu structure with 32-bit BE addresses.
+
+	everything has already been set up:  everything pushed and dehoisted.
+	save all of the data associated with the menubar, by visiting every
+	node in the menu structure, saving off all linked scripts, and then
 	saving the menubar outline itself
-	
+
 	after a script is saved, we dispose of the in-memory structure, unless it
 	is the active script, or we're doing a Save As.
 	*/
-	
+
 	hdlheadrecord hsummit;
 	register boolean fl;
-	
+	tysavedmenuinfo info;
+
 	opoutermostsummit (&hsummit);
-	
+
 	if (fldatabasesaveas)
 		fl = opsiblingvisiter (hsummit, false, &mesaveasscriptvisit, nil);
 	else
 		fl = opsiblingvisiter (hsummit, false, &mesavescriptvisit, nil);
-	
+
 	assert (opvalidate (op_get_outlinedata()));
-	
+
 	if (!fl)
 		return (false);
 
-	disktomemlong ((*info).adroutline);
-	
-	if (!mesaveoutline (op_get_outlinedata(), &(*info).adroutline))
+	dbaddress new_outline_adr;
+
+	clearbytes (&info, sizeof (info));
+
+	info.versionnumber = conditionalshortswap (1);
+
+	info.adroutline = (**hm).adroutline;
+
+	if (!mesaveoutline (op_get_outlinedata(), &info.adroutline))
 		return (false);
-	
-	db_format_write_be32(&(*info).adroutline, (uint32_t) (*info).adroutline);
-	
-	return (dbassign (adr, sizeof (tysavedmenuinfo), info));
+
+	/* Capture the updated host-order address before BE32 conversion */
+	new_outline_adr = info.adroutline;
+
+	db_format_write_be32(&info.adroutline, (uint32_t) info.adroutline);
+
+	fl = dbassign (adr, sizeof (tysavedmenuinfo), &info);
+
+	/* Update in-memory address with new outline address */
+	if (fl)
+		(**hm).adroutline = new_outline_adr;
+
+	return (fl);
+	} /*mesavemenustructure_legacy*/
+
+
+static boolean mesavemenustructure_v7 (hdlmenurecord hm, dbaddress *adr) {
+
+	/*
+	V7 save path: save the menu structure with 64-bit BE addresses.
+	Uses tysavedmenuinfo_v7 disk format.
+	*/
+
+	hdlheadrecord hsummit;
+	register boolean fl;
+	tysavedmenuinfo_v7 v7info;
+	dbaddress outline_adr;
+
+	opoutermostsummit (&hsummit);
+
+	if (fldatabasesaveas)
+		fl = opsiblingvisiter (hsummit, false, &mesaveasscriptvisit, nil);
+	else
+		fl = opsiblingvisiter (hsummit, false, &mesavescriptvisit, nil);
+
+	assert (opvalidate (op_get_outlinedata()));
+
+	if (!fl)
+		return (false);
+
+	outline_adr = (**hm).adroutline;
+
+	if (!mesaveoutline (op_get_outlinedata(), &outline_adr))
+		return (false);
+
+	clearbytes (&v7info, sizeof (v7info));
+
+	v7info.versionnumber = host_to_disk_uint16 (2);
+	v7info.adroutline = host_to_disk_uint64 ((uint64_t) outline_adr);
+	v7info.lnumcursor = host_to_disk_uint64 (0); /* cursor position saved with outline */
+	v7info.flags = host_to_disk_uint32 ((uint32_t) ((**hm).flautosmash ? flautosmash_mask : 0));
+	v7info.menuactiveitem = host_to_disk_uint32 ((uint32_t) (**hm).menuactiveitem);
+
+	fl = dbassign (adr, sizeof (tysavedmenuinfo_v7), &v7info);
+
+	if (fl)
+		(**hm).adroutline = outline_adr;
+
+	return (fl);
+	} /*mesavemenustructure_v7*/
+
+
+static boolean mesavemenustructure (hdlmenurecord hm, dbaddress *adr) {
+
+	if (db_format_mode_current().use_64bit_format)
+		return mesavemenustructure_v7 (hm, adr);
+	else
+		return mesavemenustructure_legacy (hm, adr);
 	} /*mesavemenustructure*/
 
 
@@ -467,7 +553,7 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 	
 	info.versionnumber = conditionalshortswap (1);
 	
-	info.adroutline = conditionallongswap ((**hm).adroutline);
+	info.adroutline = (**hm).adroutline;
 	
 	info.vertmin = conditionalshortswap ((**ho).vertscrollinfo.min);
 	
@@ -549,10 +635,7 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 			fl = mepackmenustructure (&info, hpacked);
 			}
 		else {
-			fl = mesavemenustructure (&info, adr);
-
-			if (fl && (!fldatabasesaveas))
-				(**hm).adroutline = conditionallongswap(info.adroutline);
+			fl = mesavemenustructure (hm, adr);
 			}
 		}
 	
@@ -605,7 +688,7 @@ boolean mesetupmenurecord (tysavedmenuinfo *info, hdloutlinerecord houtline, hdl
 	
 	(**ho).outlinerefcon = (long) hm; /*pointing is mutual*/
 	
-	(**hm).adroutline = conditionallongswap((*lpi).adroutline); /*keep address around for save*/
+	(**hm).adroutline = (*lpi).adroutline; /*keep address around for save*/
 	
 	diskrecttorect (&(*lpi).scriptwindowrect, &(**hm).scriptwindowrect);
 	
@@ -749,18 +832,6 @@ typedef struct tysavedmenuinfo_disk_legacy {
 /* Verify the legacy struct size matches v6 format expectations (112 bytes) */
 _Static_assert(sizeof(tysavedmenuinfo_disk_legacy) == 112, "v6 menu struct must be exactly 112 bytes");
 
-typedef struct tysavedmenuinfo_v7 {
-	uint16_t versionnumber;     /* v7+ marker */
-	uint16_t _pad;              /* align to 64-bit */
-	uint64_t adroutline;        /* BE64 address of menubar outline */
-	uint64_t lnumcursor;        /* BE64 line number of current selection */
-	uint32_t flags;             /* preserve autosmash/menuactive flags (expanded) */
-	uint32_t menuactiveitem;    /* active item enum */
-	uint8_t  reserved[1024];    /* 1KB future padding */
-} tysavedmenuinfo_v7;
-
-_Static_assert(sizeof(tysavedmenuinfo_v7) == 1056, "v7 menu struct must be exactly 1056 bytes");
-
 static boolean mepackmenustructure_v7(tysavedmenuinfo *legacy, Handle *hpacked) {
 	tysavedmenuinfo_v7 modern;
 	clearbytes(&modern, sizeof(modern));
@@ -769,7 +840,7 @@ static boolean mepackmenustructure_v7(tysavedmenuinfo *legacy, Handle *hpacked) 
 	modern.adroutline = host_to_disk_uint64((uint64_t) legacy->adroutline);
 	modern.lnumcursor = host_to_disk_uint64((uint64_t) legacy->lnumcursor);
 	modern.flags = host_to_disk_uint32((uint32_t) legacy->flags);
-	modern.menuactiveitem = host_to_disk_uint32((uint32_t) legacy->menuactivelayer);
+	modern.menuactiveitem = host_to_disk_uint32((uint32_t) legacy->menuactivelayer); /* menuactivelayer in tysavedmenuinfo maps to menuactiveitem in v7 */
 
 	Handle hpackedmenu = nil;
 	Handle hpackedoutline = nil;
