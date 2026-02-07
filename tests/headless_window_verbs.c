@@ -29,6 +29,13 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "odbinternal.h"
+
+/* From file_portable.c */
+extern const char *headless_fnum_path(hdlfilenum);
+extern boolean filespectopath(const ptrfilespec, bigstring);
+
+extern hdlodbrecord hodblist;
 
 /* Token enum for all verbs in the window processor */
 enum {
@@ -71,10 +78,116 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
     (void)hparam1;
     (void)vreturned;
     switch(token) {
-        case winv_isopen:
-            /* Verb: window.isopen - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case winv_isopen: {
+            /* window.isOpen(x) — check if a database "window" is open.
+             *
+             * Legacy Frontier tries two resolution paths:
+             *   Path A: Treat param as an address. If it resolves to the root
+             *           table of any opened database, return true.
+             *   Path B: If address resolution fails, treat as a string file path.
+             *           Check if it matches the file path of the system root
+             *           or any opened guest database.
+             *
+             * In headless mode there are no actual windows, but root tables of
+             * opened databases are considered "always-open hidden windows."
+             * This allows Frontier.openDataFile() to detect already-opened DBs. */
+
+            flnextparamislast = true;
+
+            /* Path A: try address resolution */
+            {
+                tyvaluerecord addrval;
+
+                disablelangerror();
+                boolean fladdrparam = getaddressparam(hparam1, 1, &addrval);
+                enablelangerror();
+
+                if (fladdrparam) {
+                    hdlhashtable htable;
+                    bigstring bsname;
+
+                    if (getaddressvalue(addrval, &htable, bsname)) {
+                        /* htable is the parent table of the addressed node.
+                         * If parent is roottable, it's a top-level entry in the
+                         * system root (like @system or @root children) — "open".
+                         * If parent is filewindowtable, it's a guest DB root — "open".
+                         * If parent is nil, this is the root table itself — "open". */
+                        if (htable == nil || htable == roottable)
+                            return setbooleanvalue(true, vreturned);
+
+                        if (filewindowtable != nil && htable == filewindowtable)
+                            return setbooleanvalue(true, vreturned);
+                    }
+
+                    /* Address resolved but not a root-level table — no editor window */
+                    return setbooleanvalue(false, vreturned);
+                }
+            }
+
+            /* Path B: fall back to string (file path) */
+            {
+                bigstring bspath;
+
+                if (!getstringvalue(hparam1, 1, bspath))
+                    return false;
+
+                /* Convert pascal string to C string for realpath() */
+                char inputpath[256];
+                short len = stringlength(bspath);
+                if (len > 255) len = 255;
+                memcpy(inputpath, stringbaseaddress(bspath), len);
+                inputpath[len] = '\0';
+
+                /* Resolve to absolute path for reliable comparison */
+                char resolvedinput[1024];
+                if (realpath(inputpath, resolvedinput) == NULL)
+                    return setbooleanvalue(false, vreturned);
+
+                /* Check system root database file path */
+                if (databasedata != nil) {
+                    const char *sysroot = headless_fnum_path(
+                        (hdlfilenum)(**databasedata).fnumdatabase);
+
+                    if (sysroot != nil) {
+                        char resolvedsys[1024];
+                        if (realpath(sysroot, resolvedsys) != NULL
+                            && strcmp(resolvedinput, resolvedsys) == 0)
+                            return setbooleanvalue(true, vreturned);
+                    }
+                }
+
+                /* Check guest database file paths */
+                if (hodblist != nil) {
+                    hdlodbrecord hodb;
+
+                    for (hodb = (**hodblist).hnext;
+                         hodb != nil && hodb != hodblist;
+                         hodb = (**hodb).hnext) {
+
+                        if (*hodb == nil)
+                            continue;
+
+                        /* Convert guest DB filespec to C string for realpath() */
+                        bigstring bsguest;
+                        if (filespectopath(&(**hodb).fs, bsguest)) {
+                            char guestpath[256];
+                            short glen = stringlength(bsguest);
+                            if (glen > 255) glen = 255;
+                            memcpy(guestpath, stringbaseaddress(bsguest), glen);
+                            guestpath[glen] = '\0';
+
+                            char resolvedguest[1024];
+                            if (realpath(guestpath, resolvedguest) != NULL
+                                && strcmp(resolvedinput, resolvedguest) == 0)
+                                return setbooleanvalue(true, vreturned);
+                        }
+                    }
+                }
+
+                /* No match — not open */
+                return setbooleanvalue(false, vreturned);
+            }
+        }
         case winv_open:
             /* Verb: window.open - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
