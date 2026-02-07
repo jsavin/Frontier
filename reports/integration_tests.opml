@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 1830 tests: 1658 pass (90%) 172 skip (9%)</title>
-    <dateCreated>Sat, 07 Feb 2026 05:27:07 GMT</dateCreated>
+    <title>Frontier Integration Tests - 1838 tests: 1666 pass (90%) 172 skip (9%)</title>
+    <dateCreated>Sat, 07 Feb 2026 18:47:21 GMT</dateCreated>
   </head>
   <body>
     <outline text="Builtins Priority (builtins_priority) - 25 tests: 25 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
@@ -50,6 +50,7 @@
     <outline text="Tcp Verbs Network (tcp_verbs_network) - 20 tests: 20 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/tcp_verbs_network.opml"/>
     <outline text="Thread Verbs Foundation (thread_verbs_foundation) - 10 tests: 10 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/thread_verbs_foundation.opml"/>
     <outline text="Webserver Hello World (webserver_hello_world) - 11 tests: 10 pass (90%) 1 skip (9%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/webserver_hello_world.opml"/>
+    <outline text="Window Verbs (window_verbs) - 8 tests: 8 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/window_verbs.opml"/>
     <outline text="Xml Verbs (xml_verbs) - 93 tests: 93 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/xml_verbs.opml"/>
   </body>
 </opml>

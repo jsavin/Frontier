@@ -1,0 +1,95 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Window Verbs (window_verbs) - 8 tests: 8 pass (100%)</title>
+    <dateCreated>Sat, 07 Feb 2026 20:22:23 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="window.isOpen - @root returns true - The system root address is always 'open' in headless mode">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return window.isOpen(@root)"/>
+      </outline>
+    </outline>
+    <outline text="window.isOpen - sub-object address returns false - Sub-objects don't have editor windows in headless mode">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return window.isOpen(@system.verbs)"/>
+      </outline>
+    </outline>
+    <outline text="window.isOpen - system root path returns true - The system root file path should match as 'open'">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (p = Frontier.getFilePath())"/>
+        <outline text="return window.isOpen(p)"/>
+      </outline>
+    </outline>
+    <outline text="window.isOpen - non-existent path returns false - A path to a file that doesn't exist returns false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return window.isOpen(&quot;/tmp/nonexistent_database_12345.root&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="window.isOpen - opened guest database returns true - After opening a guest DB, its path should return true">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderfrompath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;Guest Databases/apps/manila.root7&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="guestpath = sysdir + &quot;Guest Databases/apps/manila.root&quot;}"/>
+        </outline>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath)"/>
+        <outline text="local (result = window.isOpen(guestpath))"/>
+        <outline text="fileMenu.closeAll()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="window.isOpen - closed guest database returns false - After closing a guest DB, its path should return false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderfrompath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;Guest Databases/apps/manila.root7&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="guestpath = sysdir + &quot;Guest Databases/apps/manila.root&quot;}"/>
+        </outline>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath)"/>
+        <outline text="fileMenu.closeAll()"/>
+        <outline text="return window.isOpen(guestpath)"/>
+      </outline>
+    </outline>
+    <outline text="window.msg - no-op returns true - window.msg is a no-op in headless mode but returns true">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return window.msg(&quot;test message&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="window.update - no-op returns true - window.update is a no-op in headless mode but returns true">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return window.update()"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

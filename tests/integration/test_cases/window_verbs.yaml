@@ -1,0 +1,111 @@
+# Integration tests for window.isOpen() in headless mode
+#
+# window.isOpen(x) checks if a database "window" is open. In headless mode,
+# root tables of opened databases are considered "always-open hidden windows."
+#
+# Two resolution paths (following legacy Frontier behavior):
+#   Path A: Address parameter — checks if address resolves to root table of
+#           any opened database (system root or guest DB)
+#   Path B: String parameter — checks if file path matches system root or
+#           any opened guest database (with realpath normalization)
+#
+# This verb is critical for Frontier.openDataFile() which checks whether
+# a database file is already opened before opening it.
+
+tests:
+  # ========================================================================
+  # Path A: Address parameter
+  # ========================================================================
+
+  - name: "window.isOpen - @root returns true"
+    description: "The system root address is always 'open' in headless mode"
+    script: |
+      return window.isOpen(@root)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.isOpen - sub-object address returns false"
+    description: "Sub-objects don't have editor windows in headless mode"
+    script: |
+      return window.isOpen(@system.verbs)
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Path B: String (file path) parameter
+  # ========================================================================
+
+  - name: "window.isOpen - system root path returns true"
+    description: "The system root file path should match as 'open'"
+    script: |
+      local (p = Frontier.getFilePath());
+      return window.isOpen(p)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.isOpen - non-existent path returns false"
+    description: "A path to a file that doesn't exist returns false"
+    script: |
+      return window.isOpen("/tmp/nonexistent_database_12345.root")
+    expected_success: true
+    expected_result: "false"
+
+  - name: "window.isOpen - opened guest database returns true"
+    description: "After opening a guest DB, its path should return true"
+    script: |
+      local (sysdir = file.folderfrompath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/manila.root7");
+      if not file.exists(guestpath) {
+        guestpath = sysdir + "Guest Databases/apps/manila.root"};
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath);
+      local (result = window.isOpen(guestpath));
+      fileMenu.closeAll();
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.isOpen - closed guest database returns false"
+    description: "After closing a guest DB, its path should return false"
+    script: |
+      local (sysdir = file.folderfrompath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/manila.root7");
+      if not file.exists(guestpath) {
+        guestpath = sysdir + "Guest Databases/apps/manila.root"};
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath);
+      fileMenu.closeAll();
+      return window.isOpen(guestpath)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "window.isOpen - relative path returns true"
+    description: "A relative path to the system root resolves via realpath and matches"
+    script: |
+      local (p = Frontier.getFilePath());
+      local (dir = file.folderfrompath(p));
+      local (fname = file.filefrompath(p));
+      local (relpath = dir + "./" + fname);
+      return window.isOpen(relpath)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Other window verbs (existing stubs/implementations)
+  # ========================================================================
+
+  - name: "window.msg - no-op returns true"
+    description: "window.msg is a no-op in headless mode but returns true"
+    script: |
+      return window.msg("test message")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.update - no-op returns true"
+    description: "window.update is a no-op in headless mode but returns true"
+    script: |
+      return window.update()
+    expected_success: true
+    expected_result: "true"
