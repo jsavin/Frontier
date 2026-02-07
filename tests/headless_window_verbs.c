@@ -33,6 +33,7 @@
 #include "langinternal.h"
 #include "tablestructure.h"
 #include "odbinternal.h"
+#include "logging.h"
 
 /* From file_portable.c — declared locally because #include "file.h"
  * pulls in definitions that cause startup crashes in headless mode.
@@ -152,12 +153,32 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                  * script-level error rather than silently returning false. */
                 char resolvedinput[PATH_MAX];
                 if (realpath(inputpath, resolvedinput) == NULL) {
-                    if (errno == ENOENT)
-                        langerrormessage(BIGSTRING("\x27" "Can't check window: file does not exist"));
-                    else if (errno == EACCES)
-                        langerrormessage(BIGSTRING("\x25" "Can't check window: permission denied"));
-                    else
-                        langerrormessage(BIGSTRING("\x25" "Can't check window: invalid file path"));
+                    int saved_errno = errno;
+
+                    log_debug(LOG_COMP_LANG, "window.isOpen: realpath failed for \"%s\": %s",
+                              inputpath, strerror(saved_errno));
+
+                    bigstring bserrmsg;
+                    bigstring bsinputpath;
+                    copyctopstring(inputpath, bsinputpath);
+
+                    if (saved_errno == ENOENT) {
+                        copystring(BIGSTRING("\x14" "Can't check window \""), bserrmsg);
+                        pushstring(bsinputpath, bserrmsg);
+                        pushstring(BIGSTRING("\x16" "\": file does not exist"), bserrmsg);
+                    }
+                    else if (saved_errno == EACCES) {
+                        copystring(BIGSTRING("\x14" "Can't check window \""), bserrmsg);
+                        pushstring(bsinputpath, bserrmsg);
+                        pushstring(BIGSTRING("\x14" "\": permission denied"), bserrmsg);
+                    }
+                    else {
+                        copystring(BIGSTRING("\x14" "Can't check window \""), bserrmsg);
+                        pushstring(bsinputpath, bserrmsg);
+                        pushstring(BIGSTRING("\x19" "\": path resolution failed"), bserrmsg);
+                    }
+
+                    langerrormessage(bserrmsg);
                     return false;
                 }
 
