@@ -87,7 +87,7 @@ class FrontierCLI:
             with os.fdopen(script_fd, 'w') as f:
                 f.write(script)
 
-            cmd = [self.cli_path, '--output-json', script_path]
+            cmd = [self.cli_path, '--output-json', '--skip-startup', script_path]
 
             if self.system_root:
                 cmd.extend(['--system-root', self.system_root])
@@ -178,7 +178,7 @@ class FrontierCLI:
             CompletedProcess with stdout, stderr, and returncode
         """
         # Build command for REPL mode (no --output-json, no -e)
-        cmd = [self.cli_path]
+        cmd = [self.cli_path, '--skip-startup']
 
         if self.system_root:
             cmd.extend(['--system-root', self.system_root])

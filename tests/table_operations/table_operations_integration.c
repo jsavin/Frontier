@@ -112,7 +112,7 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	escaped_script[dst_idx] = '\0';
 
 	char cmd[16384];
-	snprintf(cmd, sizeof(cmd), "cd \"%s\" && FRONTIER_HEADLESS_SKIP_STARTUP=1 %s --system-root \"%s/databases/Frontier.root7\" -e \"%s\" 2>&1", root, cli_path, root, escaped_script);
+	snprintf(cmd, sizeof(cmd), "cd \"%s\" && %s --skip-startup --system-root \"%s/databases/Frontier.root7\" -e \"%s\" 2>&1", root, cli_path, root, escaped_script);
 
 	FILE *fp = popen(cmd, "r");
 	if (!fp) {

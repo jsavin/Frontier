@@ -185,6 +185,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/shell_api.c \
     ../Common/source/headless_stubs.c \
     ../portable/file_portable.c \
+    ../portable/fileloop_portable.c \
     headless_lang_runtime_more_stubs.c \
     headless_shellhooks.c \
     headless_table_stubs.c \

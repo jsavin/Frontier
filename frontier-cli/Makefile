@@ -173,6 +173,7 @@ HEADLESS_STUBS = \
     ../portable/file_portable.c \
     ../portable/file_working_dir.c \
     ../portable/fileverbs_portable.c \
+    ../portable/fileloop_portable.c \
     ../Common/source/file_portable_posix.c \
     ../Common/source/headless_stubs.c \
     ../portable/appleevent_portable.c \
