@@ -194,6 +194,10 @@ error:
 }
 
 void fileendloop (Handle hfileloop) {
+
+	if (hfileloop == nil)
+		return;
+
 	register hdlfilelooprecord h = (hdlfilelooprecord) hfileloop;
 
 	opdisposelist((**h).hfilelist);
@@ -326,7 +330,7 @@ boolean folderloop (const ptrfilespec pfs, boolean flreverse, tyfileloopcallback
 
 			if (stat(fullpath, &st) == 0) {
 				entries[ctentries].finfo.flfolder = S_ISDIR(st.st_mode);
-				entries[ctentries].finfo.timecreated = (unsigned long)st.st_ctime;
+				entries[ctentries].finfo.timecreated = (unsigned long)st.st_ctime; /* st_ctime is inode change time, not creation time; best-effort portable approximation */
 				entries[ctentries].finfo.timemodified = (unsigned long)st.st_mtime;
 				entries[ctentries].finfo.sizedatafork = (unsigned long long)st.st_size;
 			}
@@ -377,7 +381,7 @@ boolean folderloop (const ptrfilespec pfs, boolean flreverse, tyfileloopcallback
 
 		if (stat(fullpath, &st) == 0) {
 			finfo.flfolder = S_ISDIR(st.st_mode);
-			finfo.timecreated = (unsigned long)st.st_ctime;
+			finfo.timecreated = (unsigned long)st.st_ctime; /* st_ctime is inode change time, not creation time; best-effort portable approximation */
 			finfo.timemodified = (unsigned long)st.st_mtime;
 			finfo.sizedatafork = (unsigned long long)st.st_size;
 		}
