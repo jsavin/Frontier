@@ -413,8 +413,9 @@ static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
 
 	fl = dbassign (adr, sizeof (tysavedmenuinfo), &info);
 
-	/* Update in-memory address with new outline address */
-	if (fl)
+	/* Update in-memory address with new outline address.
+	   During Save As, preserve the original address so the source DB stays valid. */
+	if (fl && !fldatabasesaveas)
 		(**hm).adroutline = new_outline_adr;
 
 	return (fl);
@@ -460,7 +461,8 @@ static boolean mesavemenustructure_v7 (hdlmenurecord hm, dbaddress *adr) {
 
 	fl = dbassign (adr, sizeof (tysavedmenuinfo_v7), &v7info);
 
-	if (fl)
+	/* During Save As, preserve the original address so the source DB stays valid. */
+	if (fl && !fldatabasesaveas)
 		(**hm).adroutline = outline_adr;
 
 	return (fl);

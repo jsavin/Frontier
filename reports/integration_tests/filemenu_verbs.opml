@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Filemenu Verbs (filemenu_verbs) - 22 tests: 22 pass (100%)</title>
-    <dateCreated>Sat, 07 Feb 2026 00:45:22 GMT</dateCreated>
+    <title>Filemenu Verbs (filemenu_verbs) - 28 tests: 28 pass (100%)</title>
+    <dateCreated>Sat, 07 Feb 2026 05:27:06 GMT</dateCreated>
   </head>
   <body>
     <outline text="fileMenu.new - returns not implemented - fileMenu.new is a stub verb that returns 'not implemented' error">
@@ -19,13 +19,13 @@
         </outline>
       </outline>
     </outline>
-    <outline text="fileMenu.savecopy - returns not implemented - fileMenu.savecopy is a stub verb that returns 'not implemented' error">
+    <outline text="fileMenu.savecopy - error with no params - fileMenu.savecopy requires exactly 1 parameter">
       <outline text="Metadata">
         <outline text="expected_result: error_caught"/>
       </outline>
       <outline text="Script">
         <outline text="try">
-          <outline text="fileMenu.savecopy(&quot;test&quot;)"/>
+          <outline text="fileMenu.savecopy()"/>
           <outline text="return &quot;should_have_failed&quot;"/>
         </outline>
         <outline text="} else">
@@ -47,14 +47,13 @@
         </outline>
       </outline>
     </outline>
-    <outline text="fileMenu stub verbs - multiple stubs return not implemented - Verify that new, savecopy, and revert all return errors">
+    <outline text="fileMenu stub verbs - multiple stubs return not implemented - Verify that new and revert return errors">
       <outline text="Metadata">
-        <outline text="expected_result: 3"/>
+        <outline text="expected_result: 2"/>
       </outline>
       <outline text="Script">
         <outline text="local(caught = 0)"/>
         <outline text="try { fileMenu.new(&quot;test&quot;) } else { caught = caught + 1 }"/>
-        <outline text="try { fileMenu.savecopy(&quot;test&quot;) } else { caught = caught + 1 }"/>
         <outline text="try { fileMenu.revert() } else { caught = caught + 1 }"/>
         <outline text="return caught"/>
       </outline>
@@ -300,6 +299,88 @@
         <outline text="local(notExists = db.defined(dbPath, &quot;doesNotExist&quot;))"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="return exists and (not notExists)"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.saveCopy - save system root to new file - saveCopy creates a copy of the system root database">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_sysroot.root7&quot;)"/>
+        <outline text="fileMenu.saveCopy(destPath)"/>
+        <outline text="return file.exists(destPath)"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.saveCopy - original database unchanged after copy - After saveCopy, the system root is still fully usable">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_unchanged.root7&quot;)"/>
+        <outline text="fileMenu.saveCopy(destPath)"/>
+        <outline text="return defined(system.compiler)"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.saveCopy - new file is independently openable - The copied database can be opened and contains system table">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_openable.root7&quot;)"/>
+        <outline text="fileMenu.saveCopy(destPath)"/>
+        <outline text="fileMenu.open(destPath)"/>
+        <outline text="local(hasSys = db.defined(destPath, &quot;system&quot;))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return hasSys"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.saveAs - aliases to same behavior as saveCopy - saveAs and saveCopy are interchangeable">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;saveas_alias.root7&quot;)"/>
+        <outline text="fileMenu.saveAs(destPath)"/>
+        <outline text="return file.exists(destPath)"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.saveCopy - save guest database to new file - saveCopy can copy a guest database when targeted via target.set">
+      <outline text="Metadata">
+        <outline text="expected_result: hello_savecopy"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(srcPath = tmpDir + &quot;/&quot; + &quot;savecopy_guest_src.root7&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_guest_dest.root7&quot;)"/>
+        <outline text="db.new(srcPath)"/>
+        <outline text="fileMenu.open(srcPath)"/>
+        <outline text="db.setvalue(srcPath, &quot;testData&quot;, &quot;hello_savecopy&quot;)"/>
+        <outline text="fileMenu.save(srcPath)"/>
+        <outline text="target.set(@[srcPath])"/>
+        <outline text="fileMenu.saveCopy(destPath)"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="fileMenu.open(destPath)"/>
+        <outline text="local(val = db.getvalue(destPath, &quot;testData&quot;))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return val"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.saveCopy - error with too many params - saveCopy with 2+ params returns an error">
+      <outline text="Metadata">
+        <outline text="expected_result: error_caught"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="fileMenu.saveCopy(&quot;/tmp/a&quot;, &quot;/tmp/b&quot;)"/>
+          <outline text="return &quot;should_have_failed&quot;"/>
+        </outline>
+        <outline text="} else">
+          <outline text="return &quot;error_caught&quot;"/>
+        </outline>
       </outline>
     </outline>
   </body>
