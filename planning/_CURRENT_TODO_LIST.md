@@ -1,8 +1,18 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-02-05)
+Status: In Progress (Updated 2026-02-07)
 
 ## Recently Completed Milestones
+
+### Guest Database Lifecycle (fileMenu Verbs) - ✅ MERGED (Feb 5-7)
+**Resolution**: PR #391 merged
+- `fileMenu.open/close/closeall/save` implemented for headless mode
+- v7 64-bit menu structure save format added
+- Four database corruption bugs fixed (tmpstack, db.new globals, struct alignment, save globals)
+- `odb_context_guard` enhanced to save/restore `cancoonglobals`
+- 22 integration tests (all passing)
+- New documentation: `docs/GUEST_DATABASE_ARCHITECTURE.md`
+- Follow-up issues filed: #392 (fldatabasesaveas guard), #393 (remaining fileMenu stubs)
 
 ### Startup Scripts & Path-Based File Verbs - ✅ MERGED (Feb 1-5)
 **Resolution**: PRs #378, #382, #389 merged
@@ -91,16 +101,19 @@ These require design/planning before implementation can proceed.
 - thread: 64% (11/17) - Phase 1 foundation complete
 - searchengine: 20% (1/5)
 
+**Partial Processors** (continued):
+- filemenu: 40% (4/10) - open, close, closeall, save implemented; 6 stubs remain (Issue #393)
+
 **Not Started** (0%):
-- bit, clipboard, dll, editmenu, filemenu, frontier, htmlcontrol
+- bit, clipboard, dll, editmenu, frontier, htmlcontrol
 - menu, mouse, mrcalendar, mysql, opattributes, osa, pict
 - python, re, rez, speaker, sqlite, statusbar, window
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,802 total (up from 1,777)
-- 152 skipped
-- New tests for menus, mbar value copy, path resolution, startup scripts
+### Integration Tests: 1,804 total (up from 1,802)
+- 1,592 passed, 172 skipped, 40 failed (pre-existing)
+- New tests for fileMenu verbs (22 tests, all passing)
 
 ---
 
@@ -201,6 +214,10 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - **Issue #307** (P1): Audit ostypevaluetype coercion and arithmetic operations
 - **Issue #305** (P1): Complete hashtablestack macro migration after bootstrap refactoring
 
+### Guest Database / fileMenu
+- **Issue #392** (P1): Restore fldatabasesaveas guard in menu save address update
+- **Issue #393** (P1): Implement remaining fileMenu stub verbs for headless mode (new, savecopy, revert, print, quit, saveas)
+
 ### Feature Implementations
 - **Issue #323** (P1): File portable: Add thread-safe FD table initialization
 - **Issue #322** (P2): Thread test harness: Add mutex protection for race conditions
@@ -215,9 +232,12 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ---
 
-## Recently Completed (Feb 1-5, 2026)
+## Recently Completed (Feb 1-7, 2026)
 
-### Startup Scripts & Menus
+### Guest Database Lifecycle (Feb 5-7)
+- **PR #391**: Implement fileMenu verbs with v7 save format and db corruption fixes
+
+### Startup Scripts & Menus (Feb 1-5)
 - **PR #390**: Fix menubar (mbar) value copying for headless mode
 - **PR #389**: Fix startup warnings #2 and #3 (menupack and startup script)
 - **PR #388**: Fix op.outlineToXml for headless mode

@@ -1,16 +1,35 @@
 # Current Status
 
-Last Updated: 2026-02-05
+Last Updated: 2026-02-07
 
-## Current Focus: Startup Scripts, Menu System & GUI Planning
+## Current Focus: Guest Database Lifecycle, Menu System & GUI Planning
 
-**Status**: Startup script execution working in headless mode. Menu system stabilized with migration fixes. GUI application planning complete with full protocol and editor specifications. Compiler warnings eliminated.
+**Status**: Guest database lifecycle (fileMenu verbs) fully operational in headless mode. Four database corruption bugs fixed. Startup scripts working. Menu system stabilized. GUI application planning complete. Compiler warnings eliminated.
 
 **Latest Release**: **v1.0.0-alpha.4** (January 31, 2026)
 
-**Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete.
+**Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete. fileMenu verbs now operational.
 
-## Recent Achievements (February 1-5, 2026)
+## Recent Achievements (February 5-7, 2026)
+
+### Guest Database Lifecycle (fileMenu Verbs) - ✅ MERGED
+- **PR #391**: Implement fileMenu verbs with v7 save format and db corruption fixes
+- `fileMenu.open(path)` — opens guest database, mounts into `system.compiler.files`
+- `fileMenu.close()` — closes current target guest database
+- `fileMenu.closeall()` — closes all guest databases
+- `fileMenu.save([path])` — saves system root or guest database
+- v7 64-bit menu structure save format (`tysavedmenuinfo_v7`, 1056 bytes)
+- Menu verbs converted to safe no-ops for headless mode
+- **Four corruption bugs fixed**: tmpstack contamination, db.new() global state leak, struct alignment mismatch, guest DB save global leak
+- `odb_context_guard` now saves/restores `cancoonglobals`
+- `odbGetRootVariable()` public API added (encapsulates cancoon cast)
+- Parameter count validation on open/save verbs
+- `_Static_assert` for `tyodbrecord` pack(2) layout (614 bytes)
+- New documentation: `docs/GUEST_DATABASE_ARCHITECTURE.md`
+- 22 integration tests (all passing, 0 skipped)
+- Filed issues: #392 (fldatabasesaveas guard), #393 (remaining fileMenu stubs)
+
+## Earlier Achievements (February 1-5, 2026)
 
 ### Startup Scripts & Path-Based File Verbs - ✅ MERGED
 - **PR #378**: Enable `system.startup.startupScript` execution in headless mode
@@ -72,15 +91,18 @@ Last Updated: 2026-02-05
 - Date verbs: 100% (30/30) ✅
 - DB verbs: 100% (13/13) ✅
 - **TCP verbs: 100% (23/23)** ✅ - COMPLETE
+- **fileMenu verbs**: 4/10 implemented (open, close, closeall, save) + 6 stubs
 - Thread verbs: 64% (11/17) - Phase 1 foundation complete
 - Many other processors complete (dialog, html, xml, sys, webserver, inetd, etc.)
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: 1,802 tests total (up from 1,777)
-- **Skipped**: 152
-- New tests added for menus, mbar value copy, path resolution, and startup scripts
+- **Current**: 1,804 tests total (up from 1,802)
+- **Passed**: 1,592
+- **Skipped**: 172
+- **Failed**: 40 (all pre-existing)
+- New tests added for fileMenu verbs (22 tests, all passing)
 
 All tests running via:
 - `./tools/run_headless_tests.sh` - C unit tests
