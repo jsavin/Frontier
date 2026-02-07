@@ -23,6 +23,7 @@
 
 #include <dirent.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -163,8 +164,10 @@ boolean fileinitloop (const ptrfilespec fst, tyfileloopcallback filefilter, Hand
 			namelen++;
 		}
 
-		if (namelen > 255)
-			namelen = 255;
+		if (namelen > 255) {
+			log_warn(LOG_COMP_GENERAL, "fileinitloop: path exceeds 255 bytes, skipping: %s", fullpath);
+			continue;
+		}
 
 		bsname[0] = (unsigned char)namelen;
 		memcpy(bsname + 1, fullpath, namelen);
@@ -236,6 +239,10 @@ boolean folderloop (const ptrfilespec pfs, boolean flreverse, tyfileloopcallback
 	/*
 	 * Iterate through all files in a folder, calling filecallback for each.
 	 * This is used by various parts of the runtime (not just the fileloop keyword).
+	 *
+	 * If flreverse is true, iterate backwards through the file list. This is
+	 * used for safe deletion during iteration (the original Carbon implementation
+	 * iterated from ctfiles down to 1 when flreverse was set).
 	 */
 
 	char dirpath[4096];
@@ -261,10 +268,71 @@ boolean folderloop (const ptrfilespec pfs, boolean flreverse, tyfileloopcallback
 		dirpath[pathlen + 1] = '\0';
 	}
 
-	/* Collect entries first if flreverse, otherwise iterate forward */
-	/* For simplicity, always iterate forward (reverse is rarely used) */
-	(void)flreverse;
+	if (flreverse) {
 
+		/* Collect all entries into an array, then iterate backwards.
+		 * This matches the original Carbon behavior of iterating from
+		 * ctfiles down to 1, which allows safe deletion during iteration. */
+
+		#define FOLDERLOOP_MAX_ENTRIES 4096
+
+		typedef struct {
+			bigstring bsname;
+			tyfileinfo finfo;
+		} folderentry;
+
+		folderentry *entries = (folderentry *)malloc(FOLDERLOOP_MAX_ENTRIES * sizeof(folderentry));
+		if (entries == NULL) {
+			closedir(dp);
+			return false;
+		}
+
+		long ctentries = 0;
+
+		while ((entry = readdir(dp)) != NULL && ctentries < FOLDERLOOP_MAX_ENTRIES) {
+			char fullpath[4096];
+			struct stat st;
+
+			if (entry->d_name[0] == '.' &&
+				(entry->d_name[1] == '\0' ||
+				 (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
+				continue;
+
+			snprintf(fullpath, sizeof(fullpath), "%s%s", dirpath, entry->d_name);
+
+			size_t namelen = strlen(entry->d_name);
+			if (namelen > 255) namelen = 255;
+
+			entries[ctentries].bsname[0] = (unsigned char)namelen;
+			memcpy(entries[ctentries].bsname + 1, entry->d_name, namelen);
+
+			clearbytes(&entries[ctentries].finfo, sizeof(tyfileinfo));
+
+			if (stat(fullpath, &st) == 0) {
+				entries[ctentries].finfo.flfolder = S_ISDIR(st.st_mode);
+				entries[ctentries].finfo.timecreated = (unsigned long)st.st_ctime;
+				entries[ctentries].finfo.timemodified = (unsigned long)st.st_mtime;
+				entries[ctentries].finfo.sizedatafork = (unsigned long long)st.st_size;
+			}
+
+			ctentries++;
+		}
+
+		closedir(dp);
+
+		/* Iterate backwards */
+		for (long ix = ctentries - 1; ix >= 0; ix--) {
+			if (!(*filecallback)(entries[ix].bsname, &entries[ix].finfo, refcon)) {
+				free(entries);
+				return true; /* callback returned false = stop iteration */
+			}
+		}
+
+		free(entries);
+		return true;
+	}
+
+	/* Forward iteration */
 	while ((entry = readdir(dp)) != NULL) {
 		bigstring bsname;
 		tyfileinfo finfo;
