@@ -10,8 +10,11 @@
  *   - fileMenu.closeall() - Closes all guest databases
  *   - fileMenu.save([f]) - Saves system root or guest database
  *
+ * Implemented (Save As / Save Copy):
+ *   - fileMenu.saveAs(path) / fileMenu.saveCopy(path) - Saves copy of current target database
+ *
  * Stub implementations (return "not implemented"):
- *   - fileMenu.new, savecopy, revert, print, quit, saveas
+ *   - fileMenu.new, revert, print, quit
  */
 
 #include "frontier.h"
@@ -201,6 +204,11 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
                 odb_guard_enter(&guard);
                 fl = odbSaveFile((**hodb).odb);
                 odb_guard_exit(&guard);
+
+                /* Manually restore cancoonglobals since odb_guard_exit doesn't
+                 * auto-restore it. odbSaveFile calls setcancoonglobals which
+                 * changes it to the guest DB's cancoon. */
+                cancoonglobals = (hdlcancoonrecord) guard.saved_cancoonglobals;
 
                 if (!fl) {
                     log_error(LOG_COMP_DB, "filemenu_save_guestdb: odbSaveFile failed");
@@ -500,6 +508,194 @@ static boolean filemenu_closeall(tyvaluerecord *vreturned) {
 }
 
 
+/*
+ * filemenu_saveas - Save a copy of the current target database to a new file
+ *
+ * This is the headless equivalent of File > Save As / Save A Copy.
+ * Both fileMenu.saveAs(path) and fileMenu.saveCopy(path) call this function.
+ *
+ * Precondition: The database being copied must already be open.
+ *
+ * Implementation: Save-then-copy approach.
+ *   1. Save the source database to flush all dirty data to disk
+ *   2. Copy the on-disk file to the destination path
+ *
+ * This avoids the dbstartsaveas/dbendsaveas machinery which modifies in-memory
+ * data structures (address pointers) during save, corrupting the source for
+ * subsequent use. The file copy approach gives a perfect, consistent copy
+ * while leaving the source completely untouched.
+ *
+ * Parameters:
+ *   hparam1 - Tree node: param 1 = destination file path (required)
+ *   vreturned - Return value (boolean)
+ *
+ * Returns: true on success
+ */
+static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
+
+    tyfilespec fsdest, fssource;
+    bigstring bsdest;
+    boolean fl = false;
+    short ctparams;
+
+    /* Validate param count: exactly 1 */
+    ctparams = langgetparamcount(hparam1);
+
+    if (ctparams != 1) {
+        langerrormessage(BIGSTRING("\x31" "fileMenu.saveAs requires exactly 1 parameter (path)"));
+        return false;
+    }
+
+    /* Get destination file path */
+    flnextparamislast = true;
+
+    if (!getfilespecvalue(hparam1, 1, &fsdest))
+        return false;
+
+    filespectopath(&fsdest, bsdest);
+    log_debug(LOG_COMP_DB, "filemenu_saveas: destination=%s", stringbaseaddress(bsdest));
+
+    /* Determine source database: check current target */
+    {
+        hdlhashtable htargettable;
+        bigstring bstargetname;
+        boolean fl_is_guest = false;
+        hdlodbrecord hodb_source = nil;
+
+        if (langgettarget(&htargettable, bstargetname) &&
+            filewindowtable != nil &&
+            htargettable == filewindowtable) {
+
+            /* Target is in system.compiler.files → guest database */
+            log_debug(LOG_COMP_DB, "filemenu_saveas: target is guest db '%s'", stringbaseaddress(bstargetname));
+
+            /* Find the guest DB in hodblist */
+            if (hodblist == nil) {
+                langerrormessage(BIGSTRING("\x1d" "Can't save: no databases open"));
+                return false;
+            }
+
+            for (hodb_source = (**hodblist).hnext; hodb_source != nil; hodb_source = (**hodb_source).hnext) {
+                bigstring bsodbpath;
+                filespectopath(&(**hodb_source).fs, bsodbpath);
+
+                if (equalstrings(bstargetname, bsodbpath)) {
+                    fl_is_guest = true;
+                    break;
+                }
+            }
+
+            if (!fl_is_guest) {
+                langerrormessage(BIGSTRING("\x28" "Can't save: target database not found"));
+                return false;
+            }
+        }
+
+        if (fl_is_guest) {
+            /* Guest database: save it first, then copy the file.
+             * Use odb_guard to protect system root globals since odbSaveFile
+             * sets cancoonglobals to the guest's cancoon. */
+            {
+                odb_context_guard guard;
+
+                odb_guard_enter(&guard);
+                fl = odbSaveFile((**hodb_source).odb);
+                odb_guard_exit(&guard);
+
+                /* Manually restore cancoonglobals since odb_guard_exit doesn't auto-restore it.
+                 * odbSaveFile calls setcancoonglobals which changes it to the guest DB. */
+                cancoonglobals = (hdlcancoonrecord) guard.saved_cancoonglobals;
+
+                if (!fl) {
+                    log_error(LOG_COMP_DB, "filemenu_saveas: failed to save guest db before copy");
+                    return false;
+                }
+            }
+
+            /* Get source file path from the odb record */
+            fssource = (**hodb_source).fs;
+        } else {
+            /* System root: save it first, then copy the file */
+            if (!filemenu_save_systemroot()) {
+                log_error(LOG_COMP_DB, "filemenu_saveas: failed to save system root before copy");
+                return false;
+            }
+
+            /* Get source file path from the database file number */
+            if (databasedata == nil) {
+                langerrormessage(BIGSTRING("\x1c" "Can't save: no database open"));
+                return false;
+            }
+
+            {
+                const char *srcpath = headless_fnum_path((hdlfilenum) (**databasedata).fnumdatabase);
+                bigstring bssrcpath;
+
+                if (srcpath == nil) {
+                    log_error(LOG_COMP_DB, "filemenu_saveas: can't resolve system root file path");
+                    langerrormessage(BIGSTRING("\x27" "Can't save: can't find source file path"));
+                    return false;
+                }
+
+                /* Convert C string to bigstring, then to filespec */
+                copyctopstring(srcpath, bssrcpath);
+                pathtofilespec(bssrcpath, &fssource);
+            }
+        }
+    }
+
+    /* Copy the source file to the destination.
+     * We do a simple byte-for-byte copy at the OS level. This gives a perfect,
+     * consistent copy without modifying any in-memory state. */
+    {
+        bigstring bssource;
+        FILE *fin, *fout;
+        char buf[8192];
+        size_t n;
+
+        filespectopath(&fssource, bssource);
+
+        /* Use nullterminate to get C strings from Pascal strings */
+        nullterminate(bssource);
+        nullterminate(bsdest);
+
+        fin = fopen(stringbaseaddress(bssource), "rb");
+
+        if (fin == NULL) {
+            log_error(LOG_COMP_DB, "filemenu_saveas: can't open source %s", stringbaseaddress(bssource));
+            langerrormessage(BIGSTRING("\x23" "Can't save: can't read source file"));
+            return false;
+        }
+
+        fout = fopen(stringbaseaddress(bsdest), "wb");
+
+        if (fout == NULL) {
+            fclose(fin);
+            log_error(LOG_COMP_DB, "filemenu_saveas: can't create destination %s", stringbaseaddress(bsdest));
+            langerrormessage(BIGSTRING("\x22" "Can't save: can't create new file"));
+            return false;
+        }
+
+        while ((n = fread(buf, 1, sizeof(buf), fin)) > 0) {
+            if (fwrite(buf, 1, n, fout) != n) {
+                fclose(fin);
+                fclose(fout);
+                log_error(LOG_COMP_DB, "filemenu_saveas: write error");
+                langerrormessage(BIGSTRING("\x1c" "Can't save: file write error"));
+                return false;
+            }
+        }
+
+        fclose(fin);
+        fclose(fout);
+    }
+
+    log_debug(LOG_COMP_DB, "filemenu_saveas: successfully copied to %s", stringbaseaddress(bsdest));
+
+    return setbooleanvalue(true, vreturned);
+}
+
+
 static boolean filemenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
@@ -554,9 +750,7 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
             }
 
         case filv_savecopy:
-            /* Verb #5: filemenu.savecopy - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
-            return false;
+            return filemenu_saveas(hparam1, vreturned);
         case filv_revert:
             /* Verb #6: filemenu.revert - not yet implemented */
             langerrormessage(BIGSTRING("\x0fnot implemented"));
@@ -570,9 +764,7 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
             langerrormessage(BIGSTRING("\x0fnot implemented"));
             return false;
         case filv_saveas:
-            /* Verb #9: filemenu.saveas - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
-            return false;
+            return filemenu_saveas(hparam1, vreturned);
         default:
             return false;
     }

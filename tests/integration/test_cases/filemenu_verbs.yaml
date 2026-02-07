@@ -42,11 +42,11 @@ tests:
     expected_success: true
     expected_result: "error_caught"
 
-  - name: "fileMenu.savecopy - returns not implemented"
-    description: "fileMenu.savecopy is a stub verb that returns 'not implemented' error"
+  - name: "fileMenu.savecopy - error with no params"
+    description: "fileMenu.savecopy requires exactly 1 parameter"
     script: |
       try {
-        fileMenu.savecopy("test");
+        fileMenu.savecopy();
         return "should_have_failed"
       } else {
         return "error_caught"
@@ -67,15 +67,14 @@ tests:
     expected_result: "error_caught"
 
   - name: "fileMenu stub verbs - multiple stubs return not implemented"
-    description: "Verify that new, savecopy, and revert all return errors"
+    description: "Verify that new and revert return errors"
     script: |
       local(caught = 0);
       try { fileMenu.new("test") } else { caught = caught + 1 };
-      try { fileMenu.savecopy("test") } else { caught = caught + 1 };
       try { fileMenu.revert() } else { caught = caught + 1 };
       return caught
     expected_success: true
-    expected_result: "3"
+    expected_result: "2"
 
   # ========================================================================
   # fileMenu.closeall - Empty/No-Op Cases
@@ -339,3 +338,82 @@ tests:
       return exists and (not notExists)
     expected_success: true
     expected_result: "true"
+
+  # ========================================================================
+  # fileMenu.saveCopy / fileMenu.saveAs
+  # ========================================================================
+
+  - name: "fileMenu.saveCopy - save system root to new file"
+    description: "saveCopy creates a copy of the system root database"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(destPath = tmpDir + "/" + "savecopy_sysroot.root7");
+      fileMenu.saveCopy(destPath);
+      return file.exists(destPath)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.saveCopy - original database unchanged after copy"
+    description: "After saveCopy, the system root is still fully usable"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(destPath = tmpDir + "/" + "savecopy_unchanged.root7");
+      fileMenu.saveCopy(destPath);
+      return defined(system.compiler)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.saveCopy - new file is independently openable"
+    description: "The copied database can be opened and contains system table"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(destPath = tmpDir + "/" + "savecopy_openable.root7");
+      fileMenu.saveCopy(destPath);
+      fileMenu.open(destPath);
+      local(hasSys = db.defined(destPath, "system"));
+      fileMenu.closeall();
+      return hasSys
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.saveAs - aliases to same behavior as saveCopy"
+    description: "saveAs and saveCopy are interchangeable"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(destPath = tmpDir + "/" + "saveas_alias.root7");
+      fileMenu.saveAs(destPath);
+      return file.exists(destPath)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.saveCopy - save guest database to new file"
+    description: "saveCopy can copy a guest database when targeted via target.set"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "savecopy_guest_src.root7");
+      local(destPath = tmpDir + "/" + "savecopy_guest_dest.root7");
+      db.new(srcPath);
+      fileMenu.open(srcPath);
+      db.setvalue(srcPath, "testData", "hello_savecopy");
+      fileMenu.save(srcPath);
+      target.set(@[srcPath]);
+      fileMenu.saveCopy(destPath);
+      fileMenu.closeall();
+      fileMenu.open(destPath);
+      local(val = db.getvalue(destPath, "testData"));
+      fileMenu.closeall();
+      return val
+    expected_success: true
+    expected_result: "hello_savecopy"
+
+  - name: "fileMenu.saveCopy - error with too many params"
+    description: "saveCopy with 2+ params returns an error"
+    script: |
+      try {
+        fileMenu.saveCopy("/tmp/a", "/tmp/b");
+        return "should_have_failed"
+      } else {
+        return "error_caught"
+      }
+    expected_success: true
+    expected_result: "error_caught"
