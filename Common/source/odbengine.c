@@ -697,6 +697,9 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 
 pascal Handle odbGetRootVariable (odbref odb) {
 
+	if (odb == nil)
+		return (nil);
+
 	hdlcancoonrecord hc = (hdlcancoonrecord) odb;
 
 	return ((Handle) (**hc).hrootvariable);

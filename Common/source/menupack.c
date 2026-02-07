@@ -395,8 +395,7 @@ static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
 	if (!fl)
 		return (false);
 
-	/* Save host-order adroutline before the BE32 write cycle */
-	dbaddress saved_adr = (**hm).adroutline;
+	dbaddress new_outline_adr;
 
 	clearbytes (&info, sizeof (info));
 
@@ -407,12 +406,16 @@ static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
 	if (!mesaveoutline (op_get_outlinedata(), &info.adroutline))
 		return (false);
 
+	/* Capture the updated host-order address before BE32 conversion */
+	new_outline_adr = info.adroutline;
+
 	db_format_write_be32(&info.adroutline, (uint32_t) info.adroutline);
 
 	fl = dbassign (adr, sizeof (tysavedmenuinfo), &info);
 
-	/* Restore host-order address so caller sees the updated outline address */
-	(**hm).adroutline = saved_adr;
+	/* Update in-memory address with new outline address */
+	if (fl)
+		(**hm).adroutline = new_outline_adr;
 
 	return (fl);
 	} /*mesavemenustructure_legacy*/

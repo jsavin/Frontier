@@ -329,6 +329,18 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     }
 
     /* Add to hodblist after sentinel */
+    if (hodblist == nil) {
+        log_error(LOG_COMP_DB, "filemenu_open: hodblist not initialized");
+        odb_context_guard guard;
+        odb_guard_enter(&guard);
+        odbCloseFile(odbrec.odb);
+        cancoonglobals = nil;
+        odb_guard_exit(&guard);
+        closefile(odbrec.fref);
+        disposehandle((Handle) hodb);
+        return false;
+    }
+
     if ((**hodblist).hnext == nil) {
         (**hodblist).hnext = hodb;
         (**hodb).hnext = nil;
@@ -339,8 +351,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Mount into system.compiler.files for bracket syntax access */
     if (filewindowtable != nil) {
-        hdlcancoonrecord hc = (hdlcancoonrecord) odbrec.odb;
-        Handle hrootvar = (**hc).hrootvariable;
+        Handle hrootvar = odbGetRootVariable(odbrec.odb);
 
         if (hrootvar != nil) {
             tyvaluerecord val;
