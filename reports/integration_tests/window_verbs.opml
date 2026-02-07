@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Window Verbs (window_verbs) - 8 tests: 8 pass (100%)</title>
-    <dateCreated>Sat, 07 Feb 2026 18:47:21 GMT</dateCreated>
+    <dateCreated>Sat, 07 Feb 2026 20:15:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="window.isOpen - @root returns true - The system root address is always 'open' in headless mode">
@@ -43,7 +43,11 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="local (guestpath = Frontier.getSubFolder(&quot;&quot;) + &quot;apps/manila.root7&quot;)"/>
+        <outline text="local (base = Frontier.getSubFolder(&quot;&quot;) + &quot;apps/manila&quot;)"/>
+        <outline text="local (guestpath = base + &quot;.root7&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="guestpath = base + &quot;.root&quot;}"/>
+        </outline>
         <outline text="if not file.exists(guestpath)">
           <outline text="return &quot;skip&quot;}"/>
         </outline>
@@ -58,7 +62,11 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="local (guestpath = Frontier.getSubFolder(&quot;&quot;) + &quot;apps/manila.root7&quot;)"/>
+        <outline text="local (base = Frontier.getSubFolder(&quot;&quot;) + &quot;apps/manila&quot;)"/>
+        <outline text="local (guestpath = base + &quot;.root7&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="guestpath = base + &quot;.root&quot;}"/>
+        </outline>
         <outline text="if not file.exists(guestpath)">
           <outline text="return &quot;skip&quot;}"/>
         </outline>
