@@ -32,14 +32,14 @@
  * The original uses vnum/dirid for Mac volume/directory IDs;
  * we repurpose the structure but only use hfilelist and ixdirectory.
  */
-#pragma pack(2)
+#pragma pack(push, 2)
 typedef struct tyfilelooprecord {
 	short vnum;
 	long dirid;
 	short ixdirectory;
 	hdllistrecord hfilelist;
 } tyfilelooprecord, *ptrfilelooprecord, **hdlfilelooprecord;
-#pragma options align=reset
+#pragma pack(pop)
 
 /* Helper: convert filespec to C string path using public filespectopath API */
 static boolean filespec_to_cpath(const ptrfilespec fs, char *out, size_t outsz) {
@@ -144,7 +144,10 @@ boolean fileinitloop (const ptrfilespec fst, tyfileloopcallback filefilter, Hand
 			continue;
 
 		/* Build full path for stat */
-		snprintf(fullpath, sizeof(fullpath), "%s%s", dirpath, entry->d_name);
+		if (snprintf(fullpath, sizeof(fullpath), "%s%s", dirpath, entry->d_name) >= (int)sizeof(fullpath)) {
+			log_warn(LOG_COMP_GENERAL, "fileinitloop: combined path too long, skipping: %s%s", dirpath, entry->d_name);
+			continue;
+		}
 
 		/* Build Pascal string with the full path.
 		 * For directories, append '/' to match the original behavior
@@ -258,8 +261,10 @@ boolean folderloop (const ptrfilespec pfs, boolean flreverse, tyfileloopcallback
 		dirpath[pathlen - 1] = '\0';
 
 	dp = opendir(dirpath);
-	if (!dp)
+	if (!dp) {
+		log_warn(LOG_COMP_GENERAL, "folderloop: opendir failed for %s", dirpath);
 		return false;
+	}
 
 	/* Restore trailing slash */
 	pathlen = strlen(dirpath);
@@ -274,7 +279,7 @@ boolean folderloop (const ptrfilespec pfs, boolean flreverse, tyfileloopcallback
 		 * This matches the original Carbon behavior of iterating from
 		 * ctfiles down to 1, which allows safe deletion during iteration. */
 
-		#define FOLDERLOOP_MAX_ENTRIES 4096
+		#define FOLDERLOOP_MAX_ENTRIES 16384
 
 		typedef struct {
 			bigstring bsname;
@@ -289,19 +294,30 @@ boolean folderloop (const ptrfilespec pfs, boolean flreverse, tyfileloopcallback
 
 		long ctentries = 0;
 
-		while ((entry = readdir(dp)) != NULL && ctentries < FOLDERLOOP_MAX_ENTRIES) {
+		while ((entry = readdir(dp)) != NULL) {
 			char fullpath[4096];
 			struct stat st;
+
+			if (ctentries >= FOLDERLOOP_MAX_ENTRIES) {
+				log_warn(LOG_COMP_GENERAL, "folderloop: directory exceeds %d entries, remaining files skipped", FOLDERLOOP_MAX_ENTRIES);
+				break;
+			}
 
 			if (entry->d_name[0] == '.' &&
 				(entry->d_name[1] == '\0' ||
 				 (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
 				continue;
 
-			snprintf(fullpath, sizeof(fullpath), "%s%s", dirpath, entry->d_name);
+			if (snprintf(fullpath, sizeof(fullpath), "%s%s", dirpath, entry->d_name) >= (int)sizeof(fullpath)) {
+				log_warn(LOG_COMP_GENERAL, "folderloop: combined path too long, skipping: %s%s", dirpath, entry->d_name);
+				continue;
+			}
 
 			size_t namelen = strlen(entry->d_name);
-			if (namelen > 255) namelen = 255;
+			if (namelen > 255) {
+				log_warn(LOG_COMP_GENERAL, "folderloop: name exceeds 255 bytes, skipping: %s", entry->d_name);
+				continue;
+			}
 
 			entries[ctentries].bsname[0] = (unsigned char)namelen;
 			memcpy(entries[ctentries].bsname + 1, entry->d_name, namelen);
@@ -344,10 +360,16 @@ boolean folderloop (const ptrfilespec pfs, boolean flreverse, tyfileloopcallback
 			 (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
 			continue;
 
-		snprintf(fullpath, sizeof(fullpath), "%s%s", dirpath, entry->d_name);
+		if (snprintf(fullpath, sizeof(fullpath), "%s%s", dirpath, entry->d_name) >= (int)sizeof(fullpath)) {
+			log_warn(LOG_COMP_GENERAL, "folderloop: combined path too long, skipping: %s%s", dirpath, entry->d_name);
+			continue;
+		}
 
 		size_t namelen = strlen(entry->d_name);
-		if (namelen > 255) namelen = 255;
+		if (namelen > 255) {
+			log_warn(LOG_COMP_GENERAL, "folderloop: name exceeds 255 bytes, skipping: %s", entry->d_name);
+			continue;
+		}
 		bsname[0] = (unsigned char)namelen;
 		memcpy(bsname + 1, entry->d_name, namelen);
 
