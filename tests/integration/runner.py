@@ -581,6 +581,9 @@ def main():
     # Initialize test runner
     runner = TestRunner(cli, verbose=args.verbose, test_root_dir=test_root_dir)
 
+    # Clean up any leftover test artifacts from previous runs
+    runner.cleanup_test_artifacts()
+
     # Run all test files
     for test_file in args.test_files:
         if not os.path.exists(test_file):

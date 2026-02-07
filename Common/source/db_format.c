@@ -164,9 +164,18 @@ void odb_guard_enter(odb_context_guard *guard) {
 	guard->saved_hashtablestack = (void *) hashtablestack;
 	guard->saved_rootvariable = (void *) rootvariable;
 	guard->saved_roottable = (void *) roottable;
+
+	/* Nil out currenthashtable to prevent tmpstack contamination.
+	 * Without this, copyvaluerecord during migration pushes handles onto
+	 * the caller's local scope tmpstack via pushtmpstackvalue. When those
+	 * handles are later freed by the guest database, cleartmpstack tries
+	 * to double-free them — heap corruption. Setting nil makes
+	 * pushtmpstackvalue return early (langtmpstack.c line 103). */
+	currenthashtable = nil;
+
 #if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "odb_guard_enter: saved db=%p root=%p currenttable=%p",
-	          (void *) databasedata, (void *) rootvariable, (void *) currenthashtable);
+	log_trace(LOG_COMP_DB, "odb_guard_enter: saved db=%p root=%p currenttable=%p (now nil)",
+	          (void *) databasedata, (void *) rootvariable, (void *) guard->saved_currenthashtable);
 #endif
 }
 

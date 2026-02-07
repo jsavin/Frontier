@@ -171,6 +171,8 @@ extern pascal boolean odbOpenFile (hdlfilenum, odbref *odb, boolean flreadonly);
 
 extern pascal boolean odbSaveFile (odbref odb);
 
+extern pascal Handle odbGetRootVariable (odbref odb);
+
 extern pascal boolean odbCloseFile (odbref odb);
 
 extern pascal boolean odbDefined (odbref odb, bigstring bspath);

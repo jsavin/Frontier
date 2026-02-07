@@ -30,7 +30,10 @@
 #include "cancoon.h"
 #include "ops.h"
 
-/* ODB list structure and global from dbverbs.c - for guest database lookup */
+/* ODB list structure and global from dbverbs.c - for guest database lookup.
+ * MUST use #pragma pack(2) to match dbverbs.c layout, otherwise odb field
+ * offset differs and db.setvalue/getvalue dereferences a corrupted handle. */
+#pragma pack(2)
 typedef struct tyodblistrecord {
     struct tyodblistrecord **hnext;
     tyfilespec fs;
@@ -38,6 +41,7 @@ typedef struct tyodblistrecord {
     boolean flreadonly;
     odbref odb;
 } tyodbrecord_local, *ptrodbrecord_local, **hdlodbrecord_local;
+#pragma options align=reset
 
 extern hdlodbrecord_local hodblist;
 
@@ -102,7 +106,7 @@ static boolean filemenu_save_systemroot(void) {
     /* Save the root table using v7 format */
     {
         boolean repack_scope = false;
-        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, false, false};  /* 64-bit, no adapter_repack, no drop_cancoon */
         db_format_mode_push(&mode);
         repack_scope = true;
 
@@ -199,11 +203,21 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
                 return false;
             }
 
-            /* Save the database */
-            log_debug(LOG_COMP_DB, "filemenu_save_guestdb: saving database");
-            if (!odbSaveFile((**hodb).odb)) {
-                log_error(LOG_COMP_DB, "filemenu_save_guestdb: odbSaveFile failed");
-                return false;
+            /* Save the database — guard globals since odbSaveFile calls
+             * setcancoonglobals which overwrites currenthashtable et al. */
+            {
+                odb_context_guard guard;
+                boolean fl;
+
+                log_debug(LOG_COMP_DB, "filemenu_save_guestdb: saving database");
+                odb_guard_enter(&guard);
+                fl = odbSaveFile((**hodb).odb);
+                odb_guard_exit(&guard);
+
+                if (!fl) {
+                    log_error(LOG_COMP_DB, "filemenu_save_guestdb: odbSaveFile failed");
+                    return false;
+                }
             }
 
             log_debug(LOG_COMP_DB, "filemenu_save_guestdb: saved successfully");
@@ -515,7 +529,7 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
                 boolean fl;
 
                 /* Check if we have parameters */
-                if (hparam1 == nil || (**hparam1).param1 == nil) {
+                if (langgetparamcount(hparam1) == 0) {
                     /* No params - save system root */
                     fl = filemenu_save_systemroot();
                 } else {

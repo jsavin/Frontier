@@ -59,6 +59,7 @@
 #include "processinternal.h"
 #include "odbinternal.h"
 #include "db_format.h" /* migration helpers */
+#include "db.h" /* odb_context_guard */
 
 /* Path buffer size - macOS typically supports up to 1024 byte paths */
 #ifndef DB_PATH_MAX
@@ -724,9 +725,21 @@ static boolean dbnewverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	if (!fl)
 		return (false);
 
-	fl = odbnewfile (odbrec.fref);
+	{
+		/*
+		 * 2026-02-06: odb_context_guard protects databasedata, rootvariable,
+		 * roottable, currenthashtable, and hashtablestack from being stomped
+		 * by dbnew() / dbdispose() inside odbnewfile().
+		 */
+		odb_context_guard guard;
+		odb_guard_enter (&guard);
 
-	closefile (odbrec.fref);
+		fl = odbnewfile (odbrec.fref);
+
+		closefile (odbrec.fref);
+
+		odb_guard_exit (&guard);
+	}
 
 	if (odberror (fl)) {
 

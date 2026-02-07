@@ -174,7 +174,6 @@ tests:
 
   - name: "fileMenu.close - close targeted guest database"
     description: "Open a guest database, set it as target, then close it"
-    skip: "fileMenu.close requires target to be in system.compiler.files; target.set uses workspace addresses"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "filemenu_close_target.root7");
@@ -237,8 +236,6 @@ tests:
 
   - name: "fileMenu.save - save system root (no params)"
     description: "Calling fileMenu.save() with no parameters saves the system root database"
-    skip: true
-    skip_reason: "Pre-existing issue: examples.cleanupWindows entry cannot be packed, blocking system root save"
     script: |
       return fileMenu.save()
     expected_success: true
@@ -250,8 +247,6 @@ tests:
 
   - name: "fileMenu.save - save guest database by path"
     description: "Open a guest database, write a value, then save it by path"
-    skip: true
-    skip_reason: "Requires fileMenu.save guest db path matching to work - db.setvalue/fileMenu.save path interop needs verification"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "filemenu_save_guest.root7");
@@ -282,8 +277,6 @@ tests:
 
   - name: "fileMenu lifecycle - open, write, save, closeall, reopen, verify"
     description: "Full lifecycle test: create database, open with fileMenu, write data, save, close all, reopen with db.open, and verify persisted data"
-    skip: true
-    skip_reason: "Depends on fileMenu.save guest db working - requires path matching and save interop verification"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "filemenu_lifecycle.root7");
@@ -305,8 +298,6 @@ tests:
 
   - name: "fileMenu.open + db.setvalue/getvalue - database interop"
     description: "Guest database opened via fileMenu.open is accessible via db.* verbs"
-    skip: true
-    skip_reason: "db.setvalue path lookup may not match fileMenu.open filespec - needs path resolution investigation"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "filemenu_db_interop.root7");
@@ -321,8 +312,6 @@ tests:
 
   - name: "fileMenu.open + db.newtable - create table in guest db"
     description: "Can create tables in guest database opened via fileMenu.open"
-    skip: true
-    skip_reason: "db.newtable path lookup may not match fileMenu.open filespec - needs path resolution investigation"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "filemenu_db_table.root7");
@@ -338,8 +327,6 @@ tests:
 
   - name: "fileMenu.open + db.defined - check existence in guest db"
     description: "db.defined works on guest database opened via fileMenu.open"
-    skip: true
-    skip_reason: "db.defined path lookup may not match fileMenu.open filespec - needs path resolution investigation"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "filemenu_db_defined.root7");
