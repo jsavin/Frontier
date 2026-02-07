@@ -193,12 +193,7 @@ void odb_guard_exit(odb_context_guard *guard) {
 	hashtablestack = (hdltablestack) guard->saved_hashtablestack;
 	rootvariable = (Handle) guard->saved_rootvariable;
 	roottable = (hdlhashtable) guard->saved_roottable;
-	/* NOTE: cancoonglobals is intentionally NOT restored here. Most callers
-	 * (filemenu_open, filemenu_close, filemenu_save) call functions like
-	 * odbOpenFile/odbCloseFile/odbSaveFile that legitimately set cancoonglobals
-	 * as a side effect. Auto-restoring it would undo these valid changes.
-	 * Callers that need cancoonglobals restored (e.g., filemenu_saveas) should
-	 * do so explicitly using guard->saved_cancoonglobals. */
+	cancoonglobals = (hdlcancoonrecord) guard->saved_cancoonglobals;
 }
 
 #if defined(_WIN32)

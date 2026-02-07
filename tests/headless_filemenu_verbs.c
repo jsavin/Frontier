@@ -205,11 +205,6 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
                 fl = odbSaveFile((**hodb).odb);
                 odb_guard_exit(&guard);
 
-                /* Manually restore cancoonglobals since odb_guard_exit doesn't
-                 * auto-restore it. odbSaveFile calls setcancoonglobals which
-                 * changes it to the guest DB's cancoon. */
-                cancoonglobals = (hdlcancoonrecord) guard.saved_cancoonglobals;
-
                 if (!fl) {
                     log_error(LOG_COMP_DB, "filemenu_save_guestdb: odbSaveFile failed");
                     return false;
@@ -542,7 +537,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
     ctparams = langgetparamcount(hparam1);
 
     if (ctparams != 1) {
-        langerrormessage(BIGSTRING("\x31" "fileMenu.saveAs requires exactly 1 parameter (path)"));
+        langerrormessage(BIGSTRING("\x33" "fileMenu.saveAs requires exactly 1 parameter (path)"));
         return false;
     }
 
@@ -586,7 +581,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
             }
 
             if (!fl_is_guest) {
-                langerrormessage(BIGSTRING("\x28" "Can't save: target database not found"));
+                langerrormessage(BIGSTRING("\x25" "Can't save: target database not found"));
                 return false;
             }
         }
@@ -601,10 +596,6 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
                 odb_guard_enter(&guard);
                 fl = odbSaveFile((**hodb_source).odb);
                 odb_guard_exit(&guard);
-
-                /* Manually restore cancoonglobals since odb_guard_exit doesn't auto-restore it.
-                 * odbSaveFile calls setcancoonglobals which changes it to the guest DB. */
-                cancoonglobals = (hdlcancoonrecord) guard.saved_cancoonglobals;
 
                 if (!fl) {
                     log_error(LOG_COMP_DB, "filemenu_saveas: failed to save guest db before copy");
@@ -663,7 +654,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
         if (fin == NULL) {
             log_error(LOG_COMP_DB, "filemenu_saveas: can't open source %s", stringbaseaddress(bssource));
-            langerrormessage(BIGSTRING("\x23" "Can't save: can't read source file"));
+            langerrormessage(BIGSTRING("\x22" "Can't save: can't read source file"));
             return false;
         }
 
@@ -672,7 +663,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
         if (fout == NULL) {
             fclose(fin);
             log_error(LOG_COMP_DB, "filemenu_saveas: can't create destination %s", stringbaseaddress(bsdest));
-            langerrormessage(BIGSTRING("\x22" "Can't save: can't create new file"));
+            langerrormessage(BIGSTRING("\x21" "Can't save: can't create new file"));
             return false;
         }
 
@@ -680,10 +671,20 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
             if (fwrite(buf, 1, n, fout) != n) {
                 fclose(fin);
                 fclose(fout);
+                remove(stringbaseaddress(bsdest));
                 log_error(LOG_COMP_DB, "filemenu_saveas: write error");
                 langerrormessage(BIGSTRING("\x1c" "Can't save: file write error"));
                 return false;
             }
+        }
+
+        if (ferror(fin)) {
+            fclose(fin);
+            fclose(fout);
+            remove(stringbaseaddress(bsdest));
+            log_error(LOG_COMP_DB, "filemenu_saveas: read error");
+            langerrormessage(BIGSTRING("\x1b" "Can't save: file read error"));
+            return false;
         }
 
         fclose(fin);
