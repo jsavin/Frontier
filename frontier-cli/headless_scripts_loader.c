@@ -116,14 +116,17 @@ static boolean headless_run_startup_script (void) {
             log_debug(LOG_COMP_STARTUP, "run_startup_script: result = %s", result_cstr);
         }
     } else {
-        /* Errors here are typically from try/catch blocks that properly handle
-         * errors internally. The script still completes successfully even when
-         * bserror is populated (it captures the last caught error, not a failure).
-         * Logging removed per user request - these warnings were cosmetic noise. */
+        char error_cstr[256];
+
+        if (stringlength(bserror) > 0) {
+            copyptocstring(bserror, error_cstr);
+            log_error(LOG_COMP_STARTUP, "run_startup_script: FAILED with error: %s", error_cstr);
+        } else {
+            log_error(LOG_COMP_STARTUP, "run_startup_script: FAILED (no error message)");
+        }
     }
 
-    /* Return true to allow startup to continue - errors are logged but not fatal */
-    return true;
+    return ok;
 }
 
 /* External accessor for CLI --skip-startup flag */
