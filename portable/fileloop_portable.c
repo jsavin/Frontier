@@ -81,7 +81,7 @@ boolean fileinitloop (const ptrfilespec fst, tyfileloopcallback filefilter, Hand
 
 	*hfileloop = nil;
 
-	log_debug(LOG_COMP_GENERAL, "fileinitloop: called");
+	log_trace(LOG_COMP_GENERAL, "fileinitloop: called");
 
 	if (!filespec_to_cpath(fst, dirpath, sizeof(dirpath))) {
 		langerrormessage(BIGSTRING("\x1e" "Can't do fileloop: bad path"));

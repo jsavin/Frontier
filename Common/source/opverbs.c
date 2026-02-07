@@ -605,7 +605,7 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 		ho = (hdloutlinerecord) (**hv).variabledata;
 
 		if (ho != nil && ((**ho).preexpandcallback == NULL || (**ho).caneditcallback == NULL))
-			opinitcallbacks (ho); /*only if callbacks are uninitialized; NOT idempotent*/
+			opinitcallbacks (ho); /*opinitcallbacks is NOT idempotent — only call when callbacks are uninitialized*/
 
 		return (true);
 	}

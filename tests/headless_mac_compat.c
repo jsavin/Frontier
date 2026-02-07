@@ -562,7 +562,12 @@ OSStatus TECFlushText(TECObjectRef converter, TextPtr outputBuf, ByteCount outpu
 Boolean macfilespecisvalid(const ptrfilespec fs) {
     if (!fs)
         return false;
-    /* In portable mode, a filespec is valid if it has a non-empty name (path) */
+    /*
+     * Portable equivalent of the Mac implementation in fileops.m:2647 which
+     * calls FSGetCatalogInfo + checks fsnamelength. In portable mode, the FSRef
+     * is unused (dummy struct), so we check name length only. This is sufficient
+     * because portable filespecs store the full POSIX path in the name field.
+     */
     return fs->name.length > 0;
 }
 
