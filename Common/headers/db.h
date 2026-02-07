@@ -260,6 +260,7 @@ typedef struct odb_context_guard {
 	void *saved_hashtablestack;    /* hdltablestack */
 	void *saved_rootvariable;      /* Handle */
 	void *saved_roottable;         /* hdlhashtable */
+	void *saved_cancoonglobals;    /* hdlcancoonrecord */
 } odb_context_guard;
 
 extern void odb_guard_enter(odb_context_guard *guard);

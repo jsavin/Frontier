@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 1824 tests: 1645 pass (90%) 179 skip (9%)</title>
-    <dateCreated>Fri, 06 Feb 2026 08:23:43 GMT</dateCreated>
+    <title>Frontier Integration Tests - 1824 tests: 1652 pass (90%) 172 skip (9%)</title>
+    <dateCreated>Sat, 07 Feb 2026 00:45:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="Builtins Priority (builtins_priority) - 25 tests: 25 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
@@ -14,7 +14,7 @@
     <outline text="Efp Introspection (efp_introspection) - 14 tests: 14 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/efp_introspection.opml"/>
     <outline text="File Dialog Verbs (file_dialog_verbs) - 26 tests: 26 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/file_dialog_verbs.opml"/>
     <outline text="File Verbs (file_verbs) - 81 tests: 78 pass (96%) 3 skip (3%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/file_verbs.opml"/>
-    <outline text="Filemenu Verbs (filemenu_verbs) - 22 tests: 15 pass (68%) 7 skip (31%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/filemenu_verbs.opml"/>
+    <outline text="Filemenu Verbs (filemenu_verbs) - 22 tests: 22 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/filemenu_verbs.opml"/>
     <outline text="Frontier Verbs (frontier_verbs) - 12 tests: 12 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/frontier_verbs.opml"/>
     <outline text="Html Core Tests (html_core_tests) - 60 tests: 60 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/html_core_tests.opml"/>
     <outline text="Html Framework Tests (html_framework_tests) - 47 tests: 45 pass (95%) 2 skip (4%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/html_framework_tests.opml"/>

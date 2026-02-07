@@ -27,8 +27,10 @@
 
 typedef struct odb_ * odbref;
 
-/* ODB list record — tracks open guest databases.
- * MUST use pack(2) to match legacy Frontier struct layout.
+/* ODB list record — tracks open guest databases (in-memory only, not a disk format).
+ * MUST use pack(2) to match legacy Frontier struct layout. Without pack(2), natural
+ * alignment shifts the odb field by 6 bytes, causing corrupted handle dereferences
+ * when db.setvalue/getvalue follow fileMenu.open in the same script.
  * Shared between dbverbs.c and headless_filemenu_verbs.c. */
 #pragma pack(2)
 typedef struct tyodblistrecord {
@@ -39,6 +41,9 @@ typedef struct tyodblistrecord {
 	odbref odb;
 } tyodbrecord, *ptrodbrecord, **hdlodbrecord;
 #pragma options align=reset
+
+_Static_assert(sizeof(tyodbrecord) == 614,
+	"tyodbrecord size changed — pack(2) layout must match dbverbs.c expectations");
 
 typedef enum odbValueType  {
 	

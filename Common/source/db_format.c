@@ -164,6 +164,7 @@ void odb_guard_enter(odb_context_guard *guard) {
 	guard->saved_hashtablestack = (void *) hashtablestack;
 	guard->saved_rootvariable = (void *) rootvariable;
 	guard->saved_roottable = (void *) roottable;
+	guard->saved_cancoonglobals = (void *) cancoonglobals;
 
 	/* Nil out currenthashtable to prevent tmpstack contamination.
 	 * Without this, copyvaluerecord during migration pushes handles onto
@@ -192,6 +193,7 @@ void odb_guard_exit(odb_context_guard *guard) {
 	hashtablestack = (hdltablestack) guard->saved_hashtablestack;
 	rootvariable = (Handle) guard->saved_rootvariable;
 	roottable = (hdlhashtable) guard->saved_roottable;
+	cancoonglobals = (hdlcancoonrecord) guard->saved_cancoonglobals;
 }
 
 #if defined(_WIN32)

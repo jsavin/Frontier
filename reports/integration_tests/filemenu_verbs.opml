@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Filemenu Verbs (filemenu_verbs) - 22 tests: 15 pass (68%) 7 skip (31%)</title>
-    <dateCreated>Fri, 06 Feb 2026 08:23:43 GMT</dateCreated>
+    <title>Filemenu Verbs (filemenu_verbs) - 22 tests: 22 pass (100%)</title>
+    <dateCreated>Sat, 07 Feb 2026 00:45:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="fileMenu.new - returns not implemented - fileMenu.new is a stub verb that returns 'not implemented' error">
@@ -144,7 +144,6 @@
     </outline>
     <outline text="fileMenu.close - close targeted guest database - Open a guest database, set it as target, then close it">
       <outline text="Metadata">
-        <outline text="skip: fileMenu.close requires target to be in system.compiler.files; target.set uses workspace addresses"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -203,8 +202,6 @@
     </outline>
     <outline text="fileMenu.save - save system root (no params) - Calling fileMenu.save() with no parameters saves the system root database">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: Pre-existing issue: examples.cleanupWindows entry cannot be packed, blocking system root save"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -213,8 +210,6 @@
     </outline>
     <outline text="fileMenu.save - save guest database by path - Open a guest database, write a value, then save it by path">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: Requires fileMenu.save guest db path matching to work - db.setvalue/fileMenu.save path interop needs verification"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -244,8 +239,6 @@
     </outline>
     <outline text="fileMenu lifecycle - open, write, save, closeall, reopen, verify - Full lifecycle test: create database, open with fileMenu, write data, save, close all, reopen with db.open, and verify persisted data">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: Depends on fileMenu.save guest db working - requires path matching and save interop verification"/>
         <outline text="expected_result: lifecycleValue"/>
       </outline>
       <outline text="Script">
@@ -264,8 +257,6 @@
     </outline>
     <outline text="fileMenu.open + db.setvalue/getvalue - database interop - Guest database opened via fileMenu.open is accessible via db.* verbs">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: db.setvalue path lookup may not match fileMenu.open filespec - needs path resolution investigation"/>
         <outline text="expected_result: 42"/>
       </outline>
       <outline text="Script">
@@ -281,8 +272,6 @@
     </outline>
     <outline text="fileMenu.open + db.newtable - create table in guest db - Can create tables in guest database opened via fileMenu.open">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: db.newtable path lookup may not match fileMenu.open filespec - needs path resolution investigation"/>
         <outline text="expected_result: 1"/>
       </outline>
       <outline text="Script">
@@ -299,8 +288,6 @@
     </outline>
     <outline text="fileMenu.open + db.defined - check existence in guest db - db.defined works on guest database opened via fileMenu.open">
       <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: db.defined path lookup may not match fileMenu.open filespec - needs path resolution investigation"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">

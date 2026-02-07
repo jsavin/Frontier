@@ -246,6 +246,11 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     ctparams = langgetparamcount(hparam1);
 
+    if (ctparams < 1 || ctparams > 2) {
+        langerrormessage(BIGSTRING("\x2f" "fileMenu.open requires 1 or 2 parameters (path, hidden)"));
+        return false;
+    }
+
     /* Get the file path (param 1) */
     if (ctparams == 1)
         flnextparamislast = true;
@@ -298,7 +303,6 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
             return false;
         }
 
-        cancoonglobals = nil;
         odb_guard_exit(&guard);
     }
 
@@ -310,7 +314,6 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
         log_error(LOG_COMP_DB, "filemenu_open: newfilledhandle failed");
         odb_guard_enter(&guard);
         odbCloseFile(odbrec.odb);
-        cancoonglobals = nil;
         odb_guard_exit(&guard);
         closefile(odbrec.fref);
         return false;
@@ -322,7 +325,6 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
         odb_context_guard guard;
         odb_guard_enter(&guard);
         odbCloseFile(odbrec.odb);
-        cancoonglobals = nil;
         odb_guard_exit(&guard);
         closefile(odbrec.fref);
         disposehandle((Handle) hodb);
@@ -340,6 +342,10 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Mount into system.compiler.files for bracket syntax access */
     if (filewindowtable != nil) {
         Handle hrootvar = odbGetRootVariable(odbrec.odb);
+
+        if (hrootvar == nil) {
+            log_debug(LOG_COMP_DB, "filemenu_open: odbGetRootVariable returned nil for %s", stringbaseaddress(bspath));
+        }
 
         if (hrootvar != nil) {
             tyvaluerecord val;
@@ -384,13 +390,11 @@ static boolean filemenu_close_guestdb(hdlodbrecord hodb) {
         odb_guard_enter(&guard);
 
         if (!odbCloseFile((**hodb).odb)) {
-            cancoonglobals = nil;
             odb_guard_exit(&guard);
             log_error(LOG_COMP_DB, "filemenu_close_guestdb: odbCloseFile failed");
             return false;
         }
 
-        cancoonglobals = nil;
         odb_guard_exit(&guard);
     }
 
@@ -526,9 +530,15 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
              */
             {
                 boolean fl;
+                short ctparams = langgetparamcount(hparam1);
+
+                if (ctparams > 1) {
+                    langerrormessage(BIGSTRING("\x2c" "fileMenu.save requires 0 or 1 parameters (path)"));
+                    return false;
+                }
 
                 /* Check if we have parameters */
-                if (langgetparamcount(hparam1) == 0) {
+                if (ctparams == 0) {
                     /* No params - save system root */
                     fl = filemenu_save_systemroot();
                 } else {
