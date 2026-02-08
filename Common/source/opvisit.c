@@ -48,9 +48,12 @@ boolean oplistvisit (hdlheadrecord hnode, opvisitcallback visit, ptrvoid refcon)
 		if (!(*visit) (nomad, refcon))
 			return (false);
 			
-		if (nextnomad == nomad) 
+		if (nextnomad == nomad)
 			return (true);
-			
+
+		if (nextnomad == nil) /*nil down ptr - treat as end of list*/
+			return (true);
+
 		nomad = nextnomad;
 		} /*while*/
 	} /*oplistvisit*/
@@ -69,7 +72,10 @@ boolean opsummitvisit (opvisitcallback visit, ptrvoid refcon) {
 		
 		if (nextnomad == nomad)
 			return (true);
-			
+
+		if (nextnomad == nil) /*nil down ptr - treat as end of list*/
+			return (true);
+
 		nomad = nextnomad;
 		} /*while*/
 	} /*opsummitvisit*/
@@ -85,7 +91,10 @@ boolean opparentvisit (hdlheadrecord nomad, boolean flincludenode, opvisitcallba
 		
 		if (nextnomad == nomad)
 			return (true);
-		 
+
+		if (nextnomad == nil) /*nil left ptr - treat as top of parents*/
+			return (true);
+
 		nomad = nextnomad;
 		}
 		
@@ -98,7 +107,10 @@ boolean opparentvisit (hdlheadrecord nomad, boolean flincludenode, opvisitcallba
 		
 		if (nextnomad == nomad)
 			return (true);
-			
+
+		if (nextnomad == nil) /*nil left ptr - treat as top of parents*/
+			return (true);
+
 		nomad = nextnomad;
 		} /*while*/
 	} /*opparentvisit*/
@@ -112,17 +124,20 @@ boolean oprecursivelyvisit (hdlheadrecord h, short lev, opvisitcallback visit, p
 		return (true);
 	
 	nomad = (**h).headlinkright;
-	
+
 	if (nomad == h) /*nothing to the right*/
 		return (true);
-	
+
+	if (nomad == nil) /*nil right ptr - treat as no children*/
+		return (true);
+
 	while (true) {
-		
+
 		nextnomad = (**nomad).headlinkdown;
-		
+
 		if (!(*visit) (nomad, refcon))
 			return (false);
-			
+
 		if (lev > 1) {
 		
 			if (!oprecursivelyvisit (nomad, lev - 1, visit, refcon))
@@ -131,7 +146,10 @@ boolean oprecursivelyvisit (hdlheadrecord h, short lev, opvisitcallback visit, p
 			
 		if (nextnomad == nomad) /*just processed last subhead*/
 			return (true);
-			
+
+		if (nextnomad == nil) /*nil down ptr - treat as end of list*/
+			return (true);
+
 		nomad = nextnomad;
 		} /*while*/
 	} /*oprecursivelyvisit*/
@@ -157,10 +175,13 @@ boolean opvisiteverything (opvisitcallback visit, ptrvoid refcon) {
 		
 		if (nextnomad == nomad)
 			return (true);
-			
+
+		if (nextnomad == nil) /*nil down ptr - treat as end of list*/
+			return (true);
+
 		nomad = nextnomad;
 		} /*while*/
-	
+
 	} /*opvisiteverything*/
 	
 	
@@ -172,12 +193,15 @@ boolean oprecursivelyvisitkidsfirst (hdlheadrecord h, short lev, opvisitcallback
 		return (true);
 		
 	nomad = (**h).headlinkright;
-	
+
 	if (nomad == h) /*nothing to the right*/
 		return (true);
-		
+
+	if (nomad == nil) /*nil right ptr - treat as no children*/
+		return (true);
+
 	while (true) {
-		
+
 		if (lev > 1)
 			if (!oprecursivelyvisitkidsfirst (nomad, lev - 1, visit, refcon))
 				return (false);
@@ -189,7 +213,10 @@ boolean oprecursivelyvisitkidsfirst (hdlheadrecord h, short lev, opvisitcallback
 			
 		if (nextnomad == nomad) /*just processed last subhead*/
 			return (true);
-			
+
+		if (nextnomad == nil) /*nil down ptr - treat as end of list*/
+			return (true);
+
 		nomad = nextnomad;
 		} /*while*/
 	} /*oprecursivelyvisitkidsfirst*/
@@ -288,7 +315,10 @@ static boolean oprecursivelyvisitmarked (hdlheadrecord h, tydirection dir, opvis
 		
 		if (hnext == nomad) /*just processed last subhead*/
 			return (true);
-		
+
+		if (hnext == nil) /*nil link ptr - treat as end of list*/
+			return (true);
+
 		nomad = hnext;
 		} /*while*/
 	} /*oprecursivelyvisitmarked*/
@@ -341,7 +371,10 @@ boolean opbumpvisit (hdlheadrecord hstart, tydirection dir, opvisitcallback visi
 		
 		if (hnext == nomad)
 			return (true);
-		
+
+		if (hnext == nil) /*nil link ptr - treat as end of list*/
+			return (true);
+
 		nomad = hnext;
 		}
 	} /*opbumpvisit*/
