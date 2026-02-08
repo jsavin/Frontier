@@ -44,21 +44,21 @@ print_info "Packaging Frontier CLI $VERSION"
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$REPO_ROOT"
 
-# Create dist directory
+# Build dist directory
 DIST_DIR="$REPO_ROOT/dist"
-mkdir -p "$DIST_DIR"
-
-# Create staging directory for package contents
-STAGE_DIR="$DIST_DIR/frontier-cli-${VERSION_CLEAN}-macos"
-rm -rf "$STAGE_DIR"
-mkdir -p "$STAGE_DIR"
 
 print_info "Building universal binary..."
 
 # Build universal binary (arm64 + x86_64)
+# This also runs 'make dist' which creates and populates DIST_DIR
 cd "$REPO_ROOT/frontier-cli"
 make clean > /dev/null 2>&1
 ARCHES="arm64 x86_64" VERSION="$VERSION" make
+
+# Create staging directory AFTER build (make dist clears dist/ contents)
+STAGE_DIR="$DIST_DIR/frontier-cli-${VERSION_CLEAN}-macos"
+rm -rf "$STAGE_DIR"
+mkdir -p "$STAGE_DIR"
 
 if [ ! -f "frontier-cli" ]; then
     print_error "Build failed - frontier-cli binary not found"
