@@ -68,8 +68,8 @@ jobs:
           files: |
             dist/frontier-cli-${{ steps.version.outputs.version_clean }}-macos.zip
             dist/frontier-cli-${{ steps.version.outputs.version_clean }}-macos.zip.sha256
-            dist/Frontier.root7.gz
-            dist/Frontier.root7.gz.sha256
+            dist/Frontier.root.gz
+            dist/Frontier.root.gz.sha256
           body: |
             # Frontier CLI ${{ steps.version.outputs.version }}
 
@@ -100,7 +100,7 @@ jobs:
             ### Files in this release
 
             - `frontier-cli-${{ steps.version.outputs.version_clean }}-macos.zip` - Complete package with binary, database, and installer
-            - `Frontier.root7.gz` - Compressed system root database (optional separate download)
+            - `Frontier.root.gz` - Compressed system root database (optional separate download)
             - `.sha256` files - SHA-256 checksums for verification
 
             ### Documentation
@@ -126,6 +126,6 @@ jobs:
           path: |
             dist/frontier-cli-*-macos.zip
             dist/frontier-cli-*-macos.zip.sha256
-            dist/Frontier.root7.gz
-            dist/Frontier.root7.gz.sha256
+            dist/Frontier.root.gz
+            dist/Frontier.root.gz.sha256
           retention-days: 90
