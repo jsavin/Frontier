@@ -1028,11 +1028,9 @@ static boolean process_line(const char *line, boolean *running) {
         return true;
     }
 
-    // Add to history (skip commands starting with /)
-    if (line[0] != '/') {
-        linenoiseHistoryAdd(line);
-        track_session_command(line);  // Track for merge-before-save
-    }
+    // Add to history
+    linenoiseHistoryAdd(line);
+    track_session_command(line);  // Track for merge-before-save
 
     // Process command
     if (line[0] == '/') {
