@@ -229,10 +229,15 @@ static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
     if (!newtexthandle(bssource, &hsourcetext))
         return false;
 
-    /* Ensure script is in memory */
+    /* Ensure script is in memory - use variable's own database and format mode */
     {
         db_context ctx;
-        db_context_init(&ctx);
+        if (db_format_is_legacy_db((**hv).hdatabase)) {
+            db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+        } else {
+            db_context_init(&ctx);
+            ctx.database = (**hv).hdatabase;
+        }
 
         if (!opverbinmemory(&ctx, hv)) {
             disposehandle(hsourcetext);

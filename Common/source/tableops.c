@@ -446,8 +446,6 @@ boolean findvariablesearch (hdlhashtable intable, hdlexternalvariable forvariabl
 	register hdlexternalvariable hv = nil;
 	db_context ctx;
 
-	db_context_init(&ctx);
-
 	for (i = 0; i < ctbuckets; i++) {
 
 		x = (**ht).hashbucket [i];
@@ -482,6 +480,14 @@ boolean findvariablesearch (hdlhashtable intable, hdlexternalvariable forvariabl
 
 				if (flonlyinmemory)
 					goto nextx;
+
+				/* Use variable's own database and format mode */
+				if (db_format_is_legacy_db((**hv).hdatabase)) {
+					db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+				} else {
+					db_context_init(&ctx);
+					ctx.database = (**hv).hdatabase;
+				}
 
 				if (!tableverbinmemory (&ctx, hv, x))
 					return (false);
@@ -723,8 +729,6 @@ static boolean parentsearch (hdlhashtable intable, hdlhashtable fortable, boolea
 	register hdlexternalvariable hv = nil;
 	db_context ctx;
 
-	db_context_init(&ctx);
-
 	if (intable == fortable) {	/*special case for root*/
 
 		*hparent = nil;
@@ -760,6 +764,14 @@ static boolean parentsearch (hdlhashtable intable, hdlhashtable fortable, boolea
 
 				if (flonlyinmemory)	/*can't find it if it isn't in memory*/
 					goto nextx;
+
+				/* Use variable's own database and format mode */
+				if (db_format_is_legacy_db((**hv).hdatabase)) {
+					db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+				} else {
+					db_context_init(&ctx);
+					ctx.database = (**hv).hdatabase;
+				}
 
 				if (!tableverbinmemory (&ctx, hv, x))
 					return (false);
