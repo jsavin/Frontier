@@ -7,6 +7,7 @@
  */
 
 #include "cli_executor.h"
+#include "repl_output.h"  /* For kMacRomanHighToUnicode, putc_utf8 */
 
 /* 2025-12-08 Codex: Route long inline CLI scripts through langrunhandle so compiled evals return results without bogus empty verb names. */
 
@@ -257,13 +258,25 @@ boolean cli_has_execution_error(const usertalk_execution_t* execution) {
     return execution != NULL && execution->error_message != NULL;
 }
 
-/* Prints the execution result to stdout as plain text. */
+/* Prints the execution result to stdout as plain text.
+ * Converts Mac Roman encoding to UTF-8 and CR to LF for terminal display. */
 void cli_print_execution_result(const usertalk_execution_t* execution) {
     if (execution == NULL || execution->result == NULL) {
         printf("(no result)\n");
         return;
     }
-    printf("%s\n", execution->result);
+    const char *s = execution->result;
+    for (; *s != '\0'; s++) {
+        unsigned char ch = (unsigned char)*s;
+        if (ch == '\r') {
+            putc('\n', stdout);
+        } else if (ch < 0x80) {
+            putc(ch, stdout);
+        } else {
+            putc_utf8(kMacRomanHighToUnicode[ch - 0x80], stdout);
+        }
+    }
+    putc('\n', stdout);
 }
 
 // Helper function to escape JSON strings

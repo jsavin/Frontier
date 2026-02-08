@@ -11,8 +11,17 @@
 #ifndef REPL_OUTPUT_H
 #define REPL_OUTPUT_H
 
+#include <stdint.h>
+#include <stdio.h>
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/lang.h"
+
+/* Mac Roman to Unicode lookup table for bytes 0x80-0xFF.
+ * Index with (byte - 0x80) to get the Unicode code point. */
+extern const uint16_t kMacRomanHighToUnicode[128];
+
+/* Write a Unicode code point as UTF-8 to a stream. */
+void putc_utf8(uint16_t cp, FILE *stream);
 
 /* Forward declaration for linenoise state */
 struct linenoiseState;
