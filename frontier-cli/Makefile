@@ -303,8 +303,8 @@ DATABASES_DIR = ../databases
 
 dist: $(TARGET)
 	@echo "Creating distribution in $(DIST_DIR)..."
-	@rm -rf $(DIST_DIR)
 	@mkdir -p $(DIST_DIR)
+	@rm -rf $(DIST_DIR)/*
 	@# Copy executable
 	cp $(TARGET) $(DIST_DIR)/
 	@# Copy static files
