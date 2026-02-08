@@ -2687,7 +2687,13 @@ static boolean apptablevisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord
 	
 	{
 	db_context ctx;
-	db_context_init(&ctx);
+	/* Use variable's own database and format mode */
+	if (db_format_is_legacy_db((**hv).hdatabase)) {
+		db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+	} else {
+		db_context_init(&ctx);
+		ctx.database = (**hv).hdatabase;
+	}
 
 	if (!tableverbinmemory (&ctx, (hdlexternalvariable) hv, hnode))
 		return (false);

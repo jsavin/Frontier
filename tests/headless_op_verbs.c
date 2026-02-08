@@ -144,11 +144,16 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
     /* Ensure outline is in memory.
      * We must use the variable's own database handle, not the global databasedata,
      * because the outline may belong to a guest database (e.g. mainResponder.root)
-     * while the global points to the system root. */
+     * while the global points to the system root. We also must set the correct
+     * format mode — a v6 guest DB needs v6 header sizes for dbrefhandle_context. */
     {
         db_context ctx;
-        db_context_init(&ctx);
-        ctx.database = (**hv).hdatabase;
+        if (db_format_is_legacy_db((**hv).hdatabase)) {
+            db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+        } else {
+            db_context_init(&ctx);
+            ctx.database = (**hv).hdatabase;
+        }
 
         if (!opverbinmemory(&ctx, hv)) {
             seterrorstring("could not load outline", bserror);
@@ -1502,11 +1507,15 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
-            /* Ensure outline is in memory - use variable's own database */
+            /* Ensure outline is in memory - use variable's own database and format mode */
             {
                 db_context ctx;
-                db_context_init(&ctx);
-                ctx.database = (**hv).hdatabase;
+                if (db_format_is_legacy_db((**hv).hdatabase)) {
+                    db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+                } else {
+                    db_context_init(&ctx);
+                    ctx.database = (**hv).hdatabase;
+                }
 
                 if (!opverbinmemory(&ctx, hv))
                     return false;

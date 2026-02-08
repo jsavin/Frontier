@@ -373,7 +373,13 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 			}
 			{
 			db_context ctx;
-			db_context_init(&ctx);
+			/* Use variable's own database and format mode */
+			if (db_format_is_legacy_db((**hv).hdatabase)) {
+				db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+			} else {
+				db_context_init(&ctx);
+				ctx.database = (**hv).hdatabase;
+			}
 
 			if (!tableverbinmemory(&ctx, hv, HNoNode)) {
 				log_error(LOG_COMP_HASH, "materialize external table load failed path=%s",
@@ -3124,7 +3130,13 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
                 Handle htmp = nil;
                 boolean okref = false;
                 db_context context;
-                db_context_init(&context);
+                /* Use variable's own database and format mode */
+                if (db_format_is_legacy_db((**hv).hdatabase)) {
+                    db_context_init_legacy_read(&context, (**hv).hdatabase);
+                } else {
+                    db_context_init(&context);
+                    context.database = (**hv).hdatabase;
+                }
 
                 if (adr != nildbaddress && adr != 0)
                     okref = dbrefhandle_context(&context, adr, &htmp);
@@ -3504,7 +3516,13 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 					Handle htmp = nil;
 					boolean okref = false;
 					db_context context;
-					db_context_init(&context);
+					/* Use variable's own database and format mode */
+					if (db_format_is_legacy_db((**hv).hdatabase)) {
+						db_context_init_legacy_read(&context, (**hv).hdatabase);
+					} else {
+						db_context_init(&context);
+						context.database = (**hv).hdatabase;
+					}
 
 					if (adr != nildbaddress && adr != 0)
 						okref = dbrefhandle_context(&context, adr, &htmp);
