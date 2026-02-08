@@ -1502,10 +1502,11 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
-            /* Ensure outline is in memory */
+            /* Ensure outline is in memory - use variable's own database */
             {
                 db_context ctx;
                 db_context_init(&ctx);
+                ctx.database = (**hv).hdatabase;
 
                 if (!opverbinmemory(&ctx, hv))
                     return false;
