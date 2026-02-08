@@ -290,30 +290,41 @@ boolean repl_jump_path(const char *path) {
     hdlhashtable target = nil;
     char resolved_path[REPL_PATH_MAX_LEN] = "";
 
-    if (is_single_component) {
-        /* Single component - try roottable first, then system.paths */
+    /* Try resolving relative to the focused table first (if not at root) */
+    hdlhashtable current = repl_get_current_table();
+    if (current != nil && current != roottable && g_repl_current_path[0] != '\0') {
+        /* Build absolute path: current_path.user_input */
+        char abs_path[REPL_PATH_MAX_LEN];
+        snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
+
+        target = completion_navigate_path(abs_path);
+        if (target != nil) {
+            strncpy(resolved_path, abs_path, REPL_PATH_MAX_LEN - 1);
+            resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+        }
+    }
+
+    if (target == nil && is_single_component) {
+        /* Single component - try roottable, then system.paths */
         bigstring bs;
         copyctopstring(path_buf, bs);
         tyvaluerecord val;
         hdlhashnode node;
 
         if (roottable != nil && hashtablelookup(roottable, bs, &val, &node)) {
-            /* Found in roottable - use direct navigation */
             if (!langexternalvaltotable(val, &target, node)) {
                 target = nil;
             } else {
-                /* Path is just the name since it's at root level */
                 strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);
                 resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
             }
         }
 
         if (target == nil) {
-            /* Try system.paths - this gives us both table and resolved path */
             target = completion_search_paths_ex(path_buf, resolved_path, sizeof(resolved_path));
         }
-    } else {
-        /* Multi-component path - use standard navigation */
+    } else if (target == nil) {
+        /* Multi-component path - try absolute navigation from root */
         target = completion_navigate_path(path_buf);
         if (target != nil) {
             strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);

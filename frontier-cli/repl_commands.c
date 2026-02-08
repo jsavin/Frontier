@@ -7,8 +7,10 @@
  */
 
 #include "repl_commands.h"
-#include "repl.h"         /* For repl_jump_path(), repl_get_current_path() */
-#include "repl_output.h"  /* For repl_output_help(), repl_output_vars() */
+#include "repl.h"           /* For repl_jump_path(), repl_get_current_path() */
+#include "repl_output.h"    /* For repl_output_help(), repl_output_vars() */
+#include "repl_variables.h" /* For repl_get_variables_table() */
+#include "../Common/headers/lang.h" /* For emptyhashtable() */
 #include "../third_party/linenoise/linenoise.h"  /* For linenoisePrintKeyCodes() */
 #include <stdio.h>
 #include <string.h>
@@ -106,9 +108,18 @@ repl_command_result repl_process_command(const char *input) {
         return REPL_CMD_CONTINUE;
     }
 
-    /* Note: /vars and /clear removed - QuickScript model has no workspace
-     * Users can use 'sizeOf(system.temp)' or similar to inspect database tables
-     */
+    /* ======================================================================
+     * /clear - Reset REPL state: clear variables and return focus to root
+     * ====================================================================== */
+    if (strcmp(cmd_buf, "clear") == 0) {
+        hdlhashtable vars = repl_get_variables_table();
+        if (vars != nil) {
+            emptyhashtable(vars, true);
+        }
+        repl_jump_path("");
+        printf("Variables cleared, focus reset to root.\n");
+        return REPL_CMD_CONTINUE;
+    }
 
     /* ======================================================================
      * /keycodes - Debug key sequences (for testing terminal keybindings)

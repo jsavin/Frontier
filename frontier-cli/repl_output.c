@@ -214,6 +214,7 @@ void repl_output_error(const char *error_msg) {
 /* Displays the /help command output with available commands and persistence info. */
 void repl_output_help(void) {
 	fputs("Available commands:\n", stdout);
+	fputs("  /clear             Clear variables and reset focus to root\n", stdout);
 	fputs("  /exit              Exit the REPL\n", stdout);
 	fputs("  /help              Show this help message\n", stdout);
 	fputs("  /jump [path]       Navigate to a table (like cd)\n", stdout);
