@@ -3571,3 +3571,20 @@ tests:
       return afterCount >= beforeCount
     expected_success: true
     expected_result: "true"
+
+  # ====================================================================
+  # Guest Database Context - op verbs on outlines in guest databases
+  # ====================================================================
+  # Regression test: op verbs on guest DB outlines must use the correct
+  # database context when loading from disk (not the system root).
+
+  - name: "op.expand - on existing script uses correct db context"
+    description: "Target a script in the system root, collapse and re-expand. Verifies getoutlinefromtarget uses the variable's database context (not just the global)."
+    script: |
+      target.set(@system.verbs.builtins.Frontier.version);
+      op.firstSummit();
+      op.collapse();
+      local (result = op.expand(1));
+      return result
+    expected_success: true
+    expected_result: "true"

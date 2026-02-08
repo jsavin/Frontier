@@ -141,10 +141,14 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
             return false;
     }
 
-    /* Ensure outline is in memory */
+    /* Ensure outline is in memory.
+     * We must use the variable's own database handle, not the global databasedata,
+     * because the outline may belong to a guest database (e.g. mainResponder.root)
+     * while the global points to the system root. */
     {
         db_context ctx;
         db_context_init(&ctx);
+        ctx.database = (**hv).hdatabase;
 
         if (!opverbinmemory(&ctx, hv)) {
             seterrorstring("could not load outline", bserror);
