@@ -123,5 +123,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
-          path: dist/*
+          path: |
+            dist/frontier-cli-*-macos.zip
+            dist/frontier-cli-*-macos.zip.sha256
+            dist/Frontier.root7.gz
+            dist/Frontier.root7.gz.sha256
           retention-days: 90
