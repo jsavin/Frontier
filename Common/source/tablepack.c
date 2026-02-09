@@ -460,7 +460,7 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 		db_format_write_be64(adrbuffer, (uint64_t) adr);
 		adrsize = (long) sizeof (dbaddress);
 		if (adr >= 0x900000) {
-			log_error(LOG_COMP_TABLE, "tableverbpack WRITING 64-BIT adr=0x%llx mode64=%d ctx.use_64bit=%d current_mode.use_64bit=%d",
+			log_trace(LOG_COMP_TABLE, "tableverbpack WRITING 64-BIT adr=0x%llx mode64=%d ctx.use_64bit=%d current_mode.use_64bit=%d",
 			        (unsigned long long) adr, (int)mode64_for_save,
 			        (ctx != NULL) ? (int)ctx->mode.use_64bit_format : -1,
 			        (int)current_mode.use_64bit_format);
@@ -469,7 +469,7 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 		db_format_write_be32(adrbuffer, (uint32_t) adr);
 		adrsize = (long) sizeof (uint32_t);
 		if (adr >= 0x900000) {
-			log_error(LOG_COMP_TABLE, "tableverbpack WRITING 32-BIT adr=0x%x mode64=%d ctx.use_64bit=%d current_mode.use_64bit=%d",
+			log_trace(LOG_COMP_TABLE, "tableverbpack WRITING 32-BIT adr=0x%x mode64=%d ctx.use_64bit=%d current_mode.use_64bit=%d",
 			        (uint32_t) adr, (int)mode64_for_save,
 			        (ctx != NULL) ? (int)ctx->mode.use_64bit_format : -1,
 			        (int)current_mode.use_64bit_format);
