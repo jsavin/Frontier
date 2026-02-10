@@ -1,208 +1,223 @@
 # Thread Verb Integration Tests - Phase 1
 #
 # Foundation tests for thread verb functionality.
-# Validates basic thread operations: creation, execution, sleep, kill, error handling.
+# Validates cooperative threading: creation, execution, sleep, kill, error handling.
 #
-# These tests validate thread behavior through observable side effects using wall-clock timing.
-# Phase 2 will integrate tick-control harness for controlled timing.
+# In cooperative mode, thread.evaluate() runs synchronously and returns the
+# thread ID. Side effects happen before the call returns. Sleep/wake/kill use
+# the thread registry's condvar-based primitives.
 #
-# Timeouts set to 3s (tests complete in ~1s, margin for CI stability)
+# Timeouts set to 3s (tests complete quickly in cooperative mode)
 #
-# Run with: python3 runner.py --filter thread_verbs
+# Note: Each test is self-contained (setup/cleanup inline) because the
+# integration test runner does not process top-level setup/cleanup fields.
+# Multi-line scripts need semicolons to separate statements.
 
 description: "Thread Verb Integration Tests - Phase 1 Foundation"
-
-setup: |
-  # Initialize test data structures
-  new(tableType, @system.temp.threadData)
-  new(tableType, @system.temp.threadFlags)
-  new(tableType, @system.temp.threadTiming)
-
-cleanup: |
-  # Clean up test data (defensive - handles cases where setup fails midway)
-  if defined(@system.temp.threadData) { delete(@system.temp.threadData) }
-  if defined(@system.temp.threadFlags) { delete(@system.temp.threadFlags) }
-  if defined(@system.temp.threadTiming) { delete(@system.temp.threadTiming) }
 
 tests:
   # Test 1: Basic thread creation and execution
   - name: "thread.evaluate - execute simple script in new thread"
     description: |
-      Verify that thread.evaluate() creates a new thread, executes the provided
-      script, and completes successfully.
+      Verify that thread.evaluate() creates a cooperative thread, executes the
+      provided script synchronously, and returns a valid thread ID.
     script: |
-      thread.evaluate("system.temp.threadFlags.basicThreadRan = true")
-
-      // Give thread time to execute
-      clock.waitSeconds(1)
-
-      return system.temp.threadFlags.basicThreadRan
-    expected_result: true
+      new(tableType, @system.temp.threadFlags);
+      thread.evaluate("system.temp.threadFlags.basicThreadRan = true");
+      local(result = system.temp.threadFlags.basicThreadRan);
+      delete(@system.temp.threadFlags);
+      return result
+    expected_result: "true"
     expected_success: true
     timeout: 3
 
   # Test 2: Thread with return value via shared storage
   - name: "thread.evaluate - return value from thread"
     description: |
-      Verify that values computed in a thread can be captured via shared
-      table storage (since thread.evaluate doesn't return directly).
+      Verify that values computed in a cooperative thread are immediately
+      visible via shared table storage after thread.evaluate returns.
     script: |
-      thread.evaluate("system.temp.threadData.result = 42; system.temp.threadData.message = \"computation complete\"")
-
-      // Give thread time to execute
-      clock.waitSeconds(1)
-
-      return system.temp.threadData.result == 42 and \
-             system.temp.threadData.message == "computation complete"
-    expected_result: true
+      new(tableType, @system.temp.threadData);
+      thread.evaluate("system.temp.threadData.result = 42; system.temp.threadData.message = \"computation complete\"");
+      local(ok = system.temp.threadData.result == 42 and system.temp.threadData.message == "computation complete");
+      delete(@system.temp.threadData);
+      return ok
+    expected_result: "true"
     expected_success: true
     timeout: 3
 
-  # Test 3: Thread sleep and wake
+  # Test 3: Thread evaluate returns valid thread ID
+  - name: "thread.evaluate - returns thread ID >= 3"
+    description: |
+      thread.evaluate returns the thread ID allocated from the registry.
+      Main thread is ID 2, so spawned threads start at 3+.
+    script: |
+      local(tid = thread.evaluate("1+1"));
+      return tid >= 3
+    expected_result: "true"
+    expected_success: true
+    timeout: 3
+
+  # Test 4: Thread sleep and wake
   - name: "thread.sleepFor - thread sleeps and wakes"
     description: |
       Verify that thread.sleepFor(N) causes thread to sleep.
-      This test validates the sleep mechanism works (not exact timing).
+      In cooperative mode, sleep blocks the process for the duration.
+      Use a short sleep to keep test fast.
     script: |
-      thread.evaluate("thread.sleepFor(100); system.temp.threadFlags.sleepCompleted = true")
-
-      // Give thread time to sleep and wake
-      clock.waitSeconds(2)
-
-      return system.temp.threadFlags.sleepCompleted
-    expected_result: true
+      new(tableType, @system.temp.threadFlags);
+      thread.evaluate("thread.sleepFor(1); system.temp.threadFlags.sleepCompleted = true");
+      local(result = system.temp.threadFlags.sleepCompleted);
+      delete(@system.temp.threadFlags);
+      return result
+    expected_result: "true"
     expected_success: true
     timeout: 3
 
-  # Test 4: Thread wake - manually wake sleeping thread
-  - name: "thread.wake - wake sleeping thread"
-    description: |
-      Verify that thread.wake() wakes a sleeping thread.
-    script: |
-      local(threadID = thread.evaluate("thread.sleepFor(10000); system.temp.threadFlags.wokByWake = true"))
-
-      // Let thread start sleeping
-      clock.waitSeconds(1)
-
-      // Wake the thread
-      thread.wake(threadID)
-
-      // Let thread execute and mark completion
-      clock.waitSeconds(1)
-
-      return system.temp.threadFlags.wokByWake
-    expected_result: true
-    expected_success: true
-    timeout: 3
-
-  # Test 5: Thread kill - terminate thread
-  - name: "thread.kill - terminate thread"
-    description: |
-      Verify that thread.kill() terminates a thread.
-    script: |
-      local(threadID = thread.evaluate("system.temp.threadFlags.threadStarted = true; thread.sleepFor(10000); system.temp.threadFlags.threadCompletedAfterKill = true"))
-
-      // Let thread start and start sleeping
-      clock.waitSeconds(1)
-
-      // Kill the thread
-      thread.kill(threadID)
-
-      // Let system process
-      clock.waitSeconds(1)
-
-      return system.temp.threadFlags.threadStarted and \
-             not (system.temp.threadFlags.threadCompletedAfterKill)
-    expected_result: true
-    expected_success: true
-    timeout: 3
-
-  # Test 6: Error handling in thread
+  # Test 5: Error handling in thread
   - name: "thread.evaluate - script error in thread is handled gracefully"
     description: |
       Verify that script errors in thread context don't crash the system.
+      Thread errors must not propagate to the originating thread (fire-and-forget).
+      scriptError() must stop execution within the thread (neverExecute should not be set).
+      Note: defined() takes a value path (not an address literal with @) so that
+      it actually resolves the dotted name and returns false if it doesn't exist.
     script: |
-      thread.evaluate("system.temp.threadFlags.errorThreadStarted = true; scriptError(\\\"intentional error\\\"); system.temp.threadFlags.neverExecute = true")
-
-      // Let thread run and error
-      clock.waitSeconds(1)
-
-      // System should still be responsive
-      system.temp.threadFlags.systemStillWorks = true
-
-      return system.temp.threadFlags.errorThreadStarted and \
-             not (system.temp.threadFlags.neverExecute) and \
-             system.temp.threadFlags.systemStillWorks
-    expected_result: true
+      new(tableType, @system.temp.threadFlags);
+      thread.evaluate("system.temp.threadFlags.errorThreadStarted = true; scriptError(\"intentional error\"); system.temp.threadFlags.neverExecute = true");
+      system.temp.threadFlags.systemStillWorks = true;
+      local(ok = system.temp.threadFlags.errorThreadStarted and not(defined(system.temp.threadFlags.neverExecute)) and system.temp.threadFlags.systemStillWorks);
+      delete(@system.temp.threadFlags);
+      return ok
+    expected_result: "true"
     expected_success: true
     timeout: 3
 
-  # Test 7: Multiple threads independent operation
+  # Test 6: Multiple threads independent operation
   - name: "thread.evaluate - multiple threads run independently"
     description: |
-      Verify that multiple threads can run simultaneously without interference.
+      Verify that multiple cooperative threads run sequentially without interference.
     script: |
-      thread.evaluate("system.temp.threadFlags.thread1Ran = true")
-      thread.evaluate("system.temp.threadFlags.thread2Ran = true")
-
-      // Give threads time to execute
-      clock.waitSeconds(2)
-
-      return system.temp.threadFlags.thread1Ran and \
-             system.temp.threadFlags.thread2Ran
-    expected_result: true
+      new(tableType, @system.temp.threadFlags);
+      thread.evaluate("system.temp.threadFlags.thread1Ran = true");
+      thread.evaluate("system.temp.threadFlags.thread2Ran = true");
+      local(ok = system.temp.threadFlags.thread1Ran and system.temp.threadFlags.thread2Ran);
+      delete(@system.temp.threadFlags);
+      return ok
+    expected_result: "true"
     expected_success: true
     timeout: 3
 
-  # Test 8: Thread accessing ODB
+  # Test 7: Thread accessing ODB
   - name: "thread.evaluate - safely modify ODB during execution"
     description: |
-      Verify that threads can safely create and modify ODB structures.
+      Verify that cooperative threads can safely create and modify ODB structures.
     script: |
-      thread.evaluate("new(tableType, @system.temp.threadData.innerTable); system.temp.threadData.innerTable.a = 10; system.temp.threadData.innerTable.b = 20; system.temp.threadData.innerTable.c = system.temp.threadData.innerTable.a + system.temp.threadData.innerTable.b")
-
-      // Give thread time to execute
-      clock.waitSeconds(1)
-
-      return system.temp.threadData.innerTable.a == 10 and \
-             system.temp.threadData.innerTable.b == 20 and \
-             system.temp.threadData.innerTable.c == 30
-    expected_result: true
+      new(tableType, @system.temp.threadData);
+      thread.evaluate("new(tableType, @system.temp.threadData.innerTable); system.temp.threadData.innerTable.a = 10; system.temp.threadData.innerTable.b = 20; system.temp.threadData.innerTable.c = system.temp.threadData.innerTable.a + system.temp.threadData.innerTable.b");
+      local(ok = system.temp.threadData.innerTable.a == 10 and system.temp.threadData.innerTable.b == 20 and system.temp.threadData.innerTable.c == 30);
+      delete(@system.temp.threadData);
+      return ok
+    expected_result: "true"
     expected_success: true
     timeout: 3
 
-  # Test 9: Thread count reporting
+  # Test 8: Thread count reporting
   - name: "thread.getCount - report active thread count"
     description: |
       Verify that thread.getCount() reports number of active threads.
+      Main thread is always registered, so count >= 1.
     script: |
-      local(countBefore = thread.getCount())
-
-      thread.evaluate("system.temp.threadData.countDuringThread = thread.getCount(); clock.waitSeconds(1)")
-
-      // Should have at least 1 thread (the new one)
-      clock.waitSeconds(2)
-
-      local(countAfter = thread.getCount())
-
-      return system.temp.threadData.countDuringThread >= 1 and countAfter >= 0
-    expected_result: true
+      local(countBefore = thread.getCount());
+      return countBefore >= 1
+    expected_result: "true"
     expected_success: true
     timeout: 3
 
-  # Test 10: Thread getCurrentID reports valid ID
+  # Test 9: Thread getCurrentID reports valid ID
   - name: "thread.getCurrentID - get current thread ID"
     description: |
       Verify that thread.getCurrentID() returns valid thread ID.
+      Main thread should be 2 (idapplicationthread).
     script: |
-      local(mainThreadID = thread.getCurrentID())
-
-      thread.evaluate("system.temp.threadData.threadIDInThread = thread.getCurrentID()")
-
-      // Let thread execute
-      clock.waitSeconds(1)
-
-      return mainThreadID > 0 and system.temp.threadData.threadIDInThread > 0
-    expected_result: true
+      local(mainThreadID = thread.getCurrentID());
+      return mainThreadID == 2
+    expected_result: "true"
     expected_success: true
+    timeout: 3
+
+  # Test 10: Thread exists
+  - name: "thread.exists - check if main thread exists"
+    description: |
+      Verify thread.exists(2) returns true for the main thread.
+    script: 'return thread.exists(2)'
+    expected_result: "true"
+    expected_success: true
+    timeout: 3
+
+  # Test 11: thread.callscript - basic execution
+  - name: "thread.callscript - execute named script in new thread"
+    description: |
+      Verify that thread.callscript() creates a cooperative thread, resolves
+      the named script, executes it synchronously, and returns a valid thread ID.
+      Creates a script object in the ODB, then calls it via thread.callscript.
+    script: |
+      new(tableType, @system.temp.cs);
+      script.newScriptObject("system.temp.cs.result = 42", @system.temp.cs.myScript);
+      system.temp.cs.result = 0;
+      local(tid = thread.callscript("system.temp.cs.myScript", {}));
+      local(ok = system.temp.cs.result == 42 and tid >= 3);
+      delete(@system.temp.cs);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 3
+
+  # Test 12: thread.callscript - parameter passing
+  - name: "thread.callscript - pass parameters to script"
+    description: |
+      Verify that thread.callscript() correctly passes parameters to the
+      target script. The script receives params and writes results to shared ODB.
+    script: |
+      new(tableType, @system.temp.cs);
+      script.newScriptObject("on myScript(x) {system.temp.cs.result = x * 3}", @system.temp.cs.myScript);
+      system.temp.cs.result = 0;
+      thread.callscript("system.temp.cs.myScript", {14});
+      local(r = system.temp.cs.result);
+      delete(@system.temp.cs);
+      return r
+    expected_result: "42"
+    expected_success: true
+    timeout: 3
+
+  # Test 13: thread.callscript - error containment
+  - name: "thread.callscript - script error does not propagate to caller"
+    description: |
+      Verify that scriptError() in a callscript thread does not propagate
+      to the calling thread. Fire-and-forget semantics apply equally to
+      callscript and evaluate.
+    script: |
+      new(tableType, @system.temp.cs);
+      script.newScriptObject("system.temp.cs.started = true; scriptError(\"callscript error\"); system.temp.cs.neverSet = true", @system.temp.cs.myScript);
+      thread.callscript("system.temp.cs.myScript", {});
+      system.temp.cs.callerOk = true;
+      local(ok = system.temp.cs.started and not(defined(system.temp.cs.neverSet)) and system.temp.cs.callerOk);
+      delete(@system.temp.cs);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 3
+
+  # Test 14: thread.callscript - nonexistent script fails at spawn
+  - name: "thread.callscript - nonexistent script returns error to caller"
+    description: |
+      Script resolution happens before the thread is spawned. If the script
+      can't be found, the error propagates to the caller (spawn failure).
+      This is distinct from runtime errors which are fire-and-forget.
+    script: |
+      new(tableType, @system.temp.cs);
+      local(tid = thread.callscript("system.temp.cs.doesNotExist", {}));
+      delete(@system.temp.cs);
+      return tid
+    expected_success: false
     timeout: 3

@@ -20,7 +20,10 @@ boolean shellsave (WindowPtr w) { (void)w; return true; }
 /* ADR-005: Forward declare for thread globals - real definition elsewhere */
 typedef struct tythreadglobals tythreadglobals, *ptrthreadglobals, **hdlthreadglobals;
 
-hdlthreadglobals getcurrentthreadglobals (void) { return (hdlthreadglobals)0; }
+/* hthreadglobals is the global pointer to current thread's globals (headless_threadglobals.c) */
+extern hdlthreadglobals hthreadglobals;
+
+hdlthreadglobals getcurrentthreadglobals (void) { return hthreadglobals; }
 
 void copythreadglobals (hdlthreadglobals ht) { (void)ht; }
 
