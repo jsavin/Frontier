@@ -419,7 +419,22 @@ void langexternalsetdatabase (hdlexternalvariable hv, hdldatabaserecord hdb) {
 
 	The nil guards above (hv==nil, hdb==nil) protect thread-locals: local tables have
 	no database, so tablegetdatabase() returns nil, and we return without modification.
+
+	2026-02-10: Only set hdatabase for new in-memory objects that have never been saved
+	(oldaddress == nildbaddress). For disk-loaded objects (oldaddress != nildbaddress),
+	changing hdatabase without resetting oldaddress would cause the packer to interpret
+	the old disk address in the context of the wrong database, corrupting the target DB.
+	Disk-loaded objects that move between databases should go through a deep copy instead.
 	*/
+
+	if ((**hv).oldaddress != nildbaddress) {
+
+		log_debug(LOG_COMP_EXTERNAL,
+			"langexternalsetdatabase: SKIPPED for disk-loaded hv=%p (oldaddress=0x%llx, current_db=%p, requested_db=%p)",
+			(void*)hv, (unsigned long long)(**hv).oldaddress, (void*)(**hv).hdatabase, (void*)hdb);
+
+		return;
+		}
 
 	(**hv).hdatabase = hdb;
 	} /*langexternalsetdatabase*/
@@ -2886,10 +2901,11 @@ boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexter
 	        (void *)databasedata);
 
 	/* New in-memory objects should have hdatabase=nil at creation time;
-	   hdatabase gets set later via langexternalsetdatabase() when assigned to a table. */
+	   hdatabase gets set later via langexternalsetdatabase() when assigned to a table.
+	   If this fires, something bypassed the flinmemory guard above. */
 	if (flinmemory && item.hdatabase != nil) {
-		log_trace(LOG_COMP_EXTERNAL,
-			"langnewexternalvariable: in-memory object has non-nil hdatabase=%p at creation",
+		log_debug(LOG_COMP_EXTERNAL,
+			"langnewexternalvariable: unexpected non-nil hdatabase=%p for in-memory object",
 			(void *)item.hdatabase);
 	}
 

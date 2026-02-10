@@ -32,6 +32,21 @@
 #include "opinternal.h"
 
 
+/*
+	2026-02-08: NULL link pointer safety.
+
+	Outline nodes use a self-referencing sentinel pattern: the last node in a list
+	has headlinkdown == self. Traversal detects end-of-list via nextnomad == nomad.
+
+	However, databases saved from partial or corrupt states (e.g. after a failed
+	startup, or when menu externals are packed with wrong format) can produce outlines
+	with NULL link pointers instead of the expected sentinel. Without NULL checks,
+	the sentinel test fails (NULL != nomad), and the next dereference crashes.
+
+	opsiblingvisiter has checked for this since 1988 ("houtlinescrap sometimes has
+	a nil down ptr"). The same guard is now applied to all traversal functions.
+*/
+
 
 boolean oplistvisit (hdlheadrecord hnode, opvisitcallback visit, ptrvoid refcon) {
 	
