@@ -9,6 +9,7 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "file_working_dir.h"
 
 /*
  * Headless thread globals setup
@@ -140,6 +141,9 @@ hdlthreadglobals headless_new_threadglobals(void) {
 
 	/* Allocate a new table stack for this thread */
 	pdata->htablestack = nil; /* Will be set during save/restore */
+
+	/* Initialize cwd from process default (matches process.c:1426) */
+	get_process_default_cwd(pdata->current_working_directory);
 
 	/* Outline context starts empty */
 	pdata->outlinedata = nil;

@@ -314,6 +314,12 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     headless_dispose_threadglobals(new_hglobals);
     free_thread_record(rec);
 
+    /* Propagate script resolution/execution failures to the caller.
+     * If langrunscript failed (bad script name, parameter binding, etc.),
+     * return false so thread.callscript reports the error. */
+    if (!fl)
+        return false;
+
     /* Return thread ID to caller */
     return setlongvalue(threadid, vreturned);
 }
