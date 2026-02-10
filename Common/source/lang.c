@@ -1337,10 +1337,9 @@ boolean langruncallbackwithparams (
 	Based on legacy regexp callback pattern (langregexp.c:1591-1672):
 	  1. Create local variable table for parameters
 	  2. Assign parameters to local table with names (param1, param2, ...)
-	  3. Build parameter list using langpushlistaddress()
-	  4. Execute callback with langrunscriptcode()
-	  5. Clean up local scope
-	  6. Wrap in thread-safety pattern (grabthreadglobals/oppushoutline)
+	  3. Execute callback with langrunscriptcode()
+	  4. Clean up local scope
+	  5. Wrap in thread-safety pattern (grabthreadglobals/oppushoutline)
 
 	Parameters:
 	  htable        - Hash table containing the callback script
@@ -1356,14 +1355,12 @@ boolean langruncallbackwithparams (
 	*/
 
 	hdlhashtable htlocals = nil;
-	hdllistrecord hparams = nil;
-	tyvaluerecord vparams, vresult;
+	tyvaluerecord vresult;
 	hdltreenode hcode = nil;
 	boolean fl = false;
 	short i;
 
 	/* Initialize value records to safe state for cleanup */
-	initvalue(&vparams, novaluetype);
 	initvalue(&vresult, novaluetype);
 
 	/* Thread-safety wrapper - ENTRY */
@@ -1391,14 +1388,6 @@ boolean langruncallbackwithparams (
 		goto cleanup;
 	}
 
-	/* Debug logging */
-	log_info(LOG_COMP_LANG, "langruncallbackwithparams: callback='%.*s' param_count=%d",
-	          (int)callback_name[0], callback_name + 1, param_count);
-	for (i = 0; i < param_count; i++) {
-		log_info(LOG_COMP_LANG, "langruncallbackwithparams: param[%d] valuetype=%d longvalue=%ld",
-		         i, (int)params[i].valuetype, params[i].data.longvalue);
-	}
-
 	/* Create local variable table for parameters */
 	if (!langpushlocalchain(&htlocals)) {
 		goto cleanup;
@@ -1407,58 +1396,35 @@ boolean langruncallbackwithparams (
 	/* Assign parameters to local table with names (param1, param2, ...) */
 	for (i = 0; i < param_count; i++) {
 		bigstring param_name;
+		tyvaluerecord vcopy;
 
 		buildparamname(i, param_name);
 
-		/* Assign parameter value to local table */
-		if (!hashtableassign(htlocals, param_name, params[i])) {
+		/* Deep-copy the value so the local table owns its own handle.
+		   Without this, handle-based values (strings, lists, etc.) would be
+		   double-freed when both langpoplocalchain and the caller dispose. */
+		if (!copyvaluerecord(params[i], &vcopy)) {
 			goto cleanup;
 		}
-	}
 
-	/* Build parameter list for langrunscriptcode */
-	if (!opnewlist(&hparams, false)) {
-		goto cleanup;
-	}
+		/* Exempt from tmpstack so cleartmpstack during script execution
+		   won't free the handle — langpoplocalchain owns disposal. */
+		exemptfromtmpstack(&vcopy);
 
-	if (!setheapvalue((Handle)hparams, listvaluetype, &vparams)) {
-		goto cleanup;
-	}
-
-	/*
-	 * 2026-01-30 jsavin: CRITICAL FIX - Exempt vparams from tmpstack before calling script.
-	 *
-	 * setheapvalue() pushes vparams to htlocals's tmpstack. But langrunscriptcode->evaluatelist
-	 * may NOT create its own local table (if the callback script has no local vars). In that case,
-	 * evaluatelist's cleartmpstack() will clear htlocals's tmpstack, disposing vparams!
-	 *
-	 * Then our cleanup code tries to dispose vparams again = use-after-free/double-free.
-	 *
-	 * Solution: Exempt vparams from tmpstack immediately. We own it and will dispose it in cleanup.
-	 */
-	exemptfromtmpstack(&vparams);
-
-	/* Add parameter values to the list (not addresses)
-	 * The callback script receives actual values, not addresses to local variables.
-	 * This matches how handler parameters work in UserTalk - the called script
-	 * receives the values directly as its own local variables.
-	 */
-	for (i = 0; i < param_count; i++) {
-		if (!langpushlistval(hparams, nil, &params[i])) {
+		if (!hashtableassign(htlocals, param_name, vcopy)) {
+			disposevaluerecord(vcopy, false);
 			goto cleanup;
 		}
 	}
 
 	/* Get code tree for callback script */
-	log_debug(LOG_COMP_LANG, "langruncallbackwithparams: about to call getcodetreefromscriptaddress");
 	if (!getcodetreefromscriptaddress(htable, callback_name, &hcode)) {
-		log_error(LOG_COMP_LANG, "langruncallbackwithparams: getcodetreefromscriptaddress FAILED");
 		goto cleanup;
 	}
-	log_debug(LOG_COMP_LANG, "langruncallbackwithparams: got code tree hcode=%p", (void*)hcode);
 
-	/* Execute callback with parameter list */
-	if (!langrunscriptcode(htable, callback_name, hcode, &vparams, nil, &vresult)) {
+	/* Execute callback with nil vparams — parameters are accessible
+	   as local variables (param1, param2, ...) via the local chain. */
+	if (!langrunscriptcode(htable, callback_name, hcode, nil, nil, &vresult)) {
 		goto cleanup;
 	}
 
@@ -1469,6 +1435,10 @@ boolean langruncallbackwithparams (
 			vresult.valuetype = novaluetype;  /* Prevent double-dispose in cleanup */
 			goto cleanup;
 		}
+
+		/* Exempt result from tmpstack so langpoplocalchain's cleanup
+		   doesn't free it — the caller now owns this value. */
+		exemptfromtmpstack(result);
 	}
 
 	disposevaluerecord(vresult, false);
@@ -1478,14 +1448,6 @@ boolean langruncallbackwithparams (
 	fl = true;
 
 cleanup:
-	/* Clean up parameter list - dispose vparams if allocated */
-	if (vparams.valuetype == listvaluetype) {
-		disposevaluerecord(vparams, false);
-	} else if (hparams != nil) {
-		/* hparams allocated but ownership never transferred - must dispose manually */
-		opdisposelist(hparams);
-	}
-
 	/* Clean up result value */
 	if (vresult.valuetype != novaluetype) {
 		disposevaluerecord(vresult, false);
