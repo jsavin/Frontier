@@ -167,11 +167,15 @@ void opdisposelist (hdllistrecord hlist) {
 	if (hlist == nil) /*defensive driving*/
 		return;
 
+	if (*hlist == nil) /*handle data already disposed, bail out*/
+		return;
+
 	hcurrentlist = hlist; /*for our callback routines*/
 
 	ho = (hdloutlinerecord) (**hlist).houtline;
 
-	opdisposeoutline (ho, false);
+	if (ho != nil)
+		opdisposeoutline (ho, false);
 
 	hcurrentlist = nil;
 
