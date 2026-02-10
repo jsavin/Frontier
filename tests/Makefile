@@ -586,12 +586,17 @@ results:
 	  bash ./run_all_tests.sh | tee "tmp/results/all_tests.$$ts.log"; \
 	  cp "tmp/results/all_tests.$$ts.log" "tmp/results/all_tests.latest.log"
 
+# Validate BIGSTRING length prefixes across the codebase
+validate-bigstrings:
+	@echo "Validating BIGSTRING length prefixes..."
+	@python3 ../tools/validate_bigstring_lengths.py ..
+
 # Verify error message coverage
 verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated verify-errors
+.PHONY: all test test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated verify-errors validate-bigstrings
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

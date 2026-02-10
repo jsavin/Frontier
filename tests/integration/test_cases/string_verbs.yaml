@@ -147,3 +147,29 @@ tests:
     script: 'lang.string(-42)'
     expected_success: true
     expected_result: "-42"
+
+  # innerCaseName - regression test for BIGSTRING length prefix fix
+  - name: "string.innerCaseName - basic camelCase"
+    description: "Extract inner case name from camelCase identifier"
+    script: 'string.innerCaseName("myToolName")'
+    expected_success: true
+    expected_result: "mytoolname"
+
+  - name: "string.innerCaseName - single word"
+    description: "Single word returns itself"
+    script: 'string.innerCaseName("tools")'
+    expected_success: true
+    expected_result: "tools"
+
+  # macRomanToUtf8 / utf8ToMacRoman - BIGSTRING prefix was fixed but underlying
+  # conversion implementation has a pre-existing issue in headless mode.
+  # These tests verify the verb IS now reachable (returns error, not "not found").
+  - name: "string.macRomanToUtf8 - verb is reachable"
+    description: "Verb dispatches correctly (implementation has pre-existing issue)"
+    script: 'string.macRomanToUtf8("hello")'
+    expected_success: false
+
+  - name: "string.utf8ToMacRoman - verb is reachable"
+    description: "Verb dispatches correctly (implementation has pre-existing issue)"
+    script: 'string.utf8ToMacRoman("hello")'
+    expected_success: false

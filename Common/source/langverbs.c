@@ -2286,8 +2286,26 @@ boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 			}
 		}
 
-	/* Simple lock: just store a boolean value (headless implementation) */
-	setbooleanvalue (true, &val);
+	/* Store a record with thread ownership so langreleasesemaphores can
+	 * identify and release semaphores belonging to a specific thread.
+	 * The record contains a "who" field with the current thread ID. */
+	{
+		hdllistrecord hlist;
+		tyvaluerecord vwho;
+
+		if (!opnewlist (&hlist, true)) /* true = record */
+			return (false);
+
+		setlongvalue ((long) (**getcurrentthreadglobals ()).idthread, &vwho);
+
+		if (!langpushlistval (hlist, semaphorewho, &vwho)) {
+			opdisposelist (hlist);
+			return (false);
+		}
+
+		if (!setheapvalue ((Handle) hlist, recordvaluetype, &val))
+			return (false);
+	}
 
 	if (!hashtableassign (semaphoretable, bssemaphorename, val))
 		return (false);
@@ -2355,14 +2373,25 @@ langreleasesemaphores (hdlprocessrecord xxxhp)
 {
 #pragma unused(xxxhp)
 
+	hdlthreadglobals htg;
+
+	if (semaphoretable == nil)
+		return (true);
+
+	htg = getcurrentthreadglobals ();
+
+	if (htg == nil)
+		return (true); /* no thread context — nothing to match against */
+
 	pushhashtable (semaphoretable); // for visit's hashdelete
 
-	hashtablevisit (semaphoretable, &releasesemaphorevisit, (ptrvoid) (**getcurrentthreadglobals()).idthread);
-	
+	hashtablevisit (semaphoretable, &releasesemaphorevisit, (ptrvoid) (**htg).idthread);
+
 	pophashtable ();
-	
+
 	return (true);
 	} /*langreleasesemaphores*/
+
 
 
 boolean langdisplaystringfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {

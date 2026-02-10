@@ -108,6 +108,12 @@ static boolean headless_run_startup_script (void) {
      */
     ok = langrunhandletraperror(htext, bsresult, bserror);
 
+    /* Release semaphores owned by the current thread after script execution.
+     * Any semaphore still locked after the script finishes is an orphan.
+     * This prevents deadlocks when a script errors out between
+     * semaphore.lock() and semaphore.unlock(). */
+    langreleasesemaphores(nil);
+
     if (ok) {
         log_debug(LOG_COMP_STARTUP, "run_startup_script: completed successfully");
         if (stringlength(bsresult) > 0) {

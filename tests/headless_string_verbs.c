@@ -222,7 +222,7 @@ boolean stringinitverbs(void) {
 	ADD_VERB(BIGSTRING("\015dropnonalphas"), dropnonalphasfunc);
 	ADD_VERB(BIGSTRING("\014padwithzeros"), padwithzerosfunc);
 	ADD_VERB(BIGSTRING("\011ellipsize"), ellipsizefunc);
-	ADD_VERB(BIGSTRING("\014innercasename"), innercasefunc);
+	ADD_VERB(BIGSTRING("\015innercasename"), innercasefunc);
 	ADD_VERB(BIGSTRING("\010urlsplit"), urlsplitfunc);
 	ADD_VERB(BIGSTRING("\007hashmd5"), hashmd5func);
 	ADD_VERB(BIGSTRING("\012latintomac"), latintomacfunc);
@@ -232,8 +232,8 @@ boolean stringinitverbs(void) {
 	ADD_VERB(BIGSTRING("\012ansitoutf8"), ansitoutf8func);
 	ADD_VERB(BIGSTRING("\013ansitoutf16"), ansitoutf16func);
 	ADD_VERB(BIGSTRING("\021multiplereplaceall"), multiplereplaceallfunc);
-	ADD_VERB(BIGSTRING("\017macromantoutf8"), macromantoutf8func);
-	ADD_VERB(BIGSTRING("\017utf8tomacroman"), utf8tomacromanfunc);
+	ADD_VERB(BIGSTRING("\016macromantoutf8"), macromantoutf8func);
+	ADD_VERB(BIGSTRING("\016utf8tomacroman"), utf8tomacromanfunc);
 	ADD_VERB(BIGSTRING("\016convertcharset"), convertcharsetfunc);
 	ADD_VERB(BIGSTRING("\022ischarsetavailable"), ischarsetavailablefunc);
 
