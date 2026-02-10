@@ -2365,6 +2365,43 @@ langreleasesemaphores (hdlprocessrecord xxxhp)
 	} /*langreleasesemaphores*/
 
 
+static boolean releaseallsemaphorevisit (hdlhashnode hnode, ptrvoid refcon) {
+#pragma unused(refcon)
+
+	hashdelete ((**hnode).hashkey, true, false);
+
+	return (true); // continue traversal
+} /*releaseallsemaphorevisit*/
+
+
+boolean
+langreleaseallsemaphores (void)
+{
+	/*
+	Release ALL semaphores regardless of thread ownership.
+
+	For headless/single-threaded mode: any semaphore still locked after a
+	script completes (or errors out) is an orphan. In GUI Frontier, threads
+	could release each other's semaphores, but in headless mode there's only
+	one thread, so an orphaned semaphore means permanent deadlock.
+
+	Called after startup script execution to prevent semaphore-related hangs
+	when a script errors out between semaphore.lock and semaphore.unlock.
+	*/
+
+	if (semaphoretable == nil)
+		return (true);
+
+	pushhashtable (semaphoretable);
+
+	hashtablevisit (semaphoretable, &releaseallsemaphorevisit, nil);
+
+	pophashtable ();
+
+	return (true);
+} /*langreleaseallsemaphores*/
+
+
 boolean langdisplaystringfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
 	Returns the "display string" representation of a value.

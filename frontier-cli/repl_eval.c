@@ -10,6 +10,7 @@
 
 #include "repl_eval.h"
 #include "../Common/headers/lang.h"
+#include "../Common/headers/langinternal.h"
 #include "../Common/headers/strings.h"
 #include "../Common/headers/memory.h"
 #include "../Common/headers/logging.h"
@@ -115,6 +116,11 @@ boolean repl_eval_script(
     log_debug(LOG_COMP_GENERAL, "Evaluating script (QuickScript model - thread-local execution)");
 
     boolean ok = langrunhandletraperror(htext, result, error_msg);
+
+    /* Release orphaned semaphores after each REPL command.
+     * In headless single-threaded mode, any semaphore still locked after
+     * a command finishes cannot be released by another thread. */
+    langreleaseallsemaphores();
 
     log_debug(LOG_COMP_GENERAL, "Script evaluation %s", ok ? "succeeded" : "failed");
 

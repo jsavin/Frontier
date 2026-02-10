@@ -108,6 +108,13 @@ static boolean headless_run_startup_script (void) {
      */
     ok = langrunhandletraperror(htext, bsresult, bserror);
 
+    /* Release any semaphores that were locked during script execution.
+     * In headless single-threaded mode, any semaphore still locked after
+     * the script finishes is an orphan — no other thread can release it.
+     * This prevents deadlocks when a script errors out between
+     * semaphore.lock() and semaphore.unlock(). */
+    langreleaseallsemaphores();
+
     if (ok) {
         log_debug(LOG_COMP_STARTUP, "run_startup_script: completed successfully");
         if (stringlength(bsresult) > 0) {
