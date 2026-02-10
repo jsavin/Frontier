@@ -1,154 +1,184 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Thread Verbs Foundation (thread_verbs_foundation) - 10 tests: 10 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Thread Verbs Foundation (thread_verbs_foundation) - 14 tests: 14 pass (100%)</title>
+    <dateCreated>Tue, 10 Feb 2026 19:00:31 GMT</dateCreated>
   </head>
   <body>
-    <outline text="thread.evaluate - execute simple script in new thread - Verify that thread.evaluate() creates a new thread, executes the provided&#10;script, and completes successfully.&#10;">
+    <outline text="thread.evaluate - execute simple script in new thread - Verify that thread.evaluate() creates a cooperative thread, executes the&#10;provided script synchronously, and returns a valid thread ID.&#10;">
       <outline text="Metadata">
-        <outline text="expected_result: True"/>
+        <outline text="expected_result: true"/>
         <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
+        <outline text="new(tableType, @system.temp.threadFlags)"/>
         <outline text="thread.evaluate(&quot;system.temp.threadFlags.basicThreadRan = true&quot;)"/>
-        <outline text="// Give thread time to execute"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="return system.temp.threadFlags.basicThreadRan"/>
+        <outline text="local(result = system.temp.threadFlags.basicThreadRan)"/>
+        <outline text="delete(@system.temp.threadFlags)"/>
+        <outline text="return result"/>
       </outline>
     </outline>
-    <outline text="thread.evaluate - return value from thread - Verify that values computed in a thread can be captured via shared&#10;table storage (since thread.evaluate doesn't return directly).&#10;">
+    <outline text="thread.evaluate - return value from thread - Verify that values computed in a cooperative thread are immediately&#10;visible via shared table storage after thread.evaluate returns.&#10;">
       <outline text="Metadata">
-        <outline text="expected_result: True"/>
+        <outline text="expected_result: true"/>
         <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
+        <outline text="new(tableType, @system.temp.threadData)"/>
         <outline text="thread.evaluate(&quot;system.temp.threadData.result = 42; system.temp.threadData.message = \&quot;computation complete\&quot;&quot;)"/>
-        <outline text="// Give thread time to execute"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="return system.temp.threadData.result == 42 and \">
-          <outline text="system.temp.threadData.message == &quot;computation complete&quot;"/>
-        </outline>
+        <outline text="local(ok = system.temp.threadData.result == 42 and system.temp.threadData.message == &quot;computation complete&quot;)"/>
+        <outline text="delete(@system.temp.threadData)"/>
+        <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="thread.sleepFor - thread sleeps and wakes - Verify that thread.sleepFor(N) causes thread to sleep.&#10;This test validates the sleep mechanism works (not exact timing).&#10;">
+    <outline text="thread.evaluate - returns thread ID &gt;= 3 - thread.evaluate returns the thread ID allocated from the registry.&#10;Main thread is ID 2, so spawned threads start at 3+.&#10;">
       <outline text="Metadata">
-        <outline text="expected_result: True"/>
+        <outline text="expected_result: true"/>
         <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
-        <outline text="thread.evaluate(&quot;thread.sleepFor(100); system.temp.threadFlags.sleepCompleted = true&quot;)"/>
-        <outline text="// Give thread time to sleep and wake"/>
-        <outline text="clock.waitSeconds(2)"/>
-        <outline text="return system.temp.threadFlags.sleepCompleted"/>
+        <outline text="local(tid = thread.evaluate(&quot;1+1&quot;))"/>
+        <outline text="return tid &gt;= 3"/>
       </outline>
     </outline>
-    <outline text="thread.wake - wake sleeping thread - Verify that thread.wake() wakes a sleeping thread.&#10;">
+    <outline text="thread.sleepFor - thread sleeps and wakes - Verify that thread.sleepFor(N) causes thread to sleep.&#10;In cooperative mode, sleep blocks the process for the duration.&#10;Use a short sleep to keep test fast.&#10;">
       <outline text="Metadata">
-        <outline text="expected_result: True"/>
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.threadFlags)"/>
+        <outline text="thread.evaluate(&quot;thread.sleepFor(1); system.temp.threadFlags.sleepCompleted = true&quot;)"/>
+        <outline text="local(result = system.temp.threadFlags.sleepCompleted)"/>
+        <outline text="delete(@system.temp.threadFlags)"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="thread.evaluate - script error in thread is handled gracefully - Verify that script errors in thread context don't crash the system.&#10;Thread errors must not propagate to the originating thread (fire-and-forget).&#10;scriptError() must stop execution within the thread (neverExecute should not be set).&#10;Note: defined() takes a value path (not an address literal with @) so that&#10;it actually resolves the dotted name and returns false if it doesn't exist.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
         <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
-        <outline text="local(threadID = thread.evaluate(&quot;thread.sleepFor(10000); system.temp.threadFlags.wokByWake = true&quot;))"/>
-        <outline text="// Let thread start sleeping"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="// Wake the thread"/>
-        <outline text="thread.wake(threadID)"/>
-        <outline text="// Let thread execute and mark completion"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="return system.temp.threadFlags.wokByWake"/>
-      </outline>
-    </outline>
-    <outline text="thread.kill - terminate thread - Verify that thread.kill() terminates a thread.&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: True"/>
-        <outline text="timeout: 3"/>
-      </outline>
-      <outline text="Script">
-        <outline text="local(threadID = thread.evaluate(&quot;system.temp.threadFlags.threadStarted = true; thread.sleepFor(10000); system.temp.threadFlags.threadCompletedAfterKill = true&quot;))"/>
-        <outline text="// Let thread start and start sleeping"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="// Kill the thread"/>
-        <outline text="thread.kill(threadID)"/>
-        <outline text="// Let system process"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="return system.temp.threadFlags.threadStarted and \">
-          <outline text="not (system.temp.threadFlags.threadCompletedAfterKill)"/>
-        </outline>
-      </outline>
-    </outline>
-    <outline text="thread.evaluate - script error in thread is handled gracefully - Verify that script errors in thread context don't crash the system.&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: True"/>
-        <outline text="timeout: 3"/>
-      </outline>
-      <outline text="Script">
-        <outline text="thread.evaluate(&quot;system.temp.threadFlags.errorThreadStarted = true; scriptError(\\\&quot;intentional error\\\&quot;); system.temp.threadFlags.neverExecute = true&quot;)"/>
-        <outline text="// Let thread run and error"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="// System should still be responsive"/>
+        <outline text="new(tableType, @system.temp.threadFlags)"/>
+        <outline text="thread.evaluate(&quot;system.temp.threadFlags.errorThreadStarted = true; scriptError(\&quot;intentional error\&quot;); system.temp.threadFlags.neverExecute = true&quot;)"/>
         <outline text="system.temp.threadFlags.systemStillWorks = true"/>
-        <outline text="return system.temp.threadFlags.errorThreadStarted and \">
-          <outline text="not (system.temp.threadFlags.neverExecute) and \"/>
-          <outline text="system.temp.threadFlags.systemStillWorks"/>
-        </outline>
+        <outline text="local(ok = system.temp.threadFlags.errorThreadStarted and not(defined(system.temp.threadFlags.neverExecute)) and system.temp.threadFlags.systemStillWorks)"/>
+        <outline text="delete(@system.temp.threadFlags)"/>
+        <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="thread.evaluate - multiple threads run independently - Verify that multiple threads can run simultaneously without interference.&#10;">
+    <outline text="thread.evaluate - multiple threads run independently - Verify that multiple cooperative threads run sequentially without interference.&#10;">
       <outline text="Metadata">
-        <outline text="expected_result: True"/>
+        <outline text="expected_result: true"/>
         <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
+        <outline text="new(tableType, @system.temp.threadFlags)"/>
         <outline text="thread.evaluate(&quot;system.temp.threadFlags.thread1Ran = true&quot;)"/>
         <outline text="thread.evaluate(&quot;system.temp.threadFlags.thread2Ran = true&quot;)"/>
-        <outline text="// Give threads time to execute"/>
-        <outline text="clock.waitSeconds(2)"/>
-        <outline text="return system.temp.threadFlags.thread1Ran and \">
-          <outline text="system.temp.threadFlags.thread2Ran"/>
-        </outline>
+        <outline text="local(ok = system.temp.threadFlags.thread1Ran and system.temp.threadFlags.thread2Ran)"/>
+        <outline text="delete(@system.temp.threadFlags)"/>
+        <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="thread.evaluate - safely modify ODB during execution - Verify that threads can safely create and modify ODB structures.&#10;">
+    <outline text="thread.evaluate - safely modify ODB during execution - Verify that cooperative threads can safely create and modify ODB structures.&#10;">
       <outline text="Metadata">
-        <outline text="expected_result: True"/>
+        <outline text="expected_result: true"/>
         <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
+        <outline text="new(tableType, @system.temp.threadData)"/>
         <outline text="thread.evaluate(&quot;new(tableType, @system.temp.threadData.innerTable); system.temp.threadData.innerTable.a = 10; system.temp.threadData.innerTable.b = 20; system.temp.threadData.innerTable.c = system.temp.threadData.innerTable.a + system.temp.threadData.innerTable.b&quot;)"/>
-        <outline text="// Give thread time to execute"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="return system.temp.threadData.innerTable.a == 10 and \">
-          <outline text="system.temp.threadData.innerTable.b == 20 and \"/>
-          <outline text="system.temp.threadData.innerTable.c == 30"/>
-        </outline>
+        <outline text="local(ok = system.temp.threadData.innerTable.a == 10 and system.temp.threadData.innerTable.b == 20 and system.temp.threadData.innerTable.c == 30)"/>
+        <outline text="delete(@system.temp.threadData)"/>
+        <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="thread.getCount - report active thread count - Verify that thread.getCount() reports number of active threads.&#10;">
+    <outline text="thread.getCount - report active thread count - Verify that thread.getCount() reports number of active threads.&#10;Main thread is always registered, so count &gt;= 1.&#10;">
       <outline text="Metadata">
-        <outline text="expected_result: True"/>
+        <outline text="expected_result: true"/>
         <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
         <outline text="local(countBefore = thread.getCount())"/>
-        <outline text="thread.evaluate(&quot;system.temp.threadData.countDuringThread = thread.getCount(); clock.waitSeconds(1)&quot;)"/>
-        <outline text="// Should have at least 1 thread (the new one)"/>
-        <outline text="clock.waitSeconds(2)"/>
-        <outline text="local(countAfter = thread.getCount())"/>
-        <outline text="return system.temp.threadData.countDuringThread &gt;= 1 and countAfter &gt;= 0"/>
+        <outline text="return countBefore &gt;= 1"/>
       </outline>
     </outline>
-    <outline text="thread.getCurrentID - get current thread ID - Verify that thread.getCurrentID() returns valid thread ID.&#10;">
+    <outline text="thread.getCurrentID - get current thread ID - Verify that thread.getCurrentID() returns valid thread ID.&#10;Main thread should be 2 (idapplicationthread).&#10;">
       <outline text="Metadata">
-        <outline text="expected_result: True"/>
+        <outline text="expected_result: true"/>
         <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
         <outline text="local(mainThreadID = thread.getCurrentID())"/>
-        <outline text="thread.evaluate(&quot;system.temp.threadData.threadIDInThread = thread.getCurrentID()&quot;)"/>
-        <outline text="// Let thread execute"/>
-        <outline text="clock.waitSeconds(1)"/>
-        <outline text="return mainThreadID &gt; 0 and system.temp.threadData.threadIDInThread &gt; 0"/>
+        <outline text="return mainThreadID == 2"/>
+      </outline>
+    </outline>
+    <outline text="thread.exists - check if main thread exists - Verify thread.exists(2) returns true for the main thread.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return thread.exists(2)"/>
+      </outline>
+    </outline>
+    <outline text="thread.callscript - execute named script in new thread - Verify that thread.callscript() creates a cooperative thread, resolves&#10;the named script, executes it synchronously, and returns a valid thread ID.&#10;Creates a script object in the ODB, then calls it via thread.callscript.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.cs)"/>
+        <outline text="script.newScriptObject(&quot;system.temp.cs.result = 42&quot;, @system.temp.cs.myScript)"/>
+        <outline text="system.temp.cs.result = 0"/>
+        <outline text="local(tid = thread.callscript(&quot;system.temp.cs.myScript&quot;, {}))"/>
+        <outline text="local(ok = system.temp.cs.result == 42 and tid &gt;= 3)"/>
+        <outline text="delete(@system.temp.cs)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="thread.callscript - pass parameters to script - Verify that thread.callscript() correctly passes parameters to the&#10;target script. The script receives params and writes results to shared ODB.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 42"/>
+        <outline text="timeout: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.cs)"/>
+        <outline text="script.newScriptObject(&quot;on myScript(x) {system.temp.cs.result = x * 3}&quot;, @system.temp.cs.myScript)"/>
+        <outline text="system.temp.cs.result = 0"/>
+        <outline text="thread.callscript(&quot;system.temp.cs.myScript&quot;, {14})"/>
+        <outline text="local(r = system.temp.cs.result)"/>
+        <outline text="delete(@system.temp.cs)"/>
+        <outline text="return r"/>
+      </outline>
+    </outline>
+    <outline text="thread.callscript - script error does not propagate to caller - Verify that scriptError() in a callscript thread does not propagate&#10;to the calling thread. Fire-and-forget semantics apply equally to&#10;callscript and evaluate.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.cs)"/>
+        <outline text="script.newScriptObject(&quot;system.temp.cs.started = true; scriptError(\&quot;callscript error\&quot;); system.temp.cs.neverSet = true&quot;, @system.temp.cs.myScript)"/>
+        <outline text="thread.callscript(&quot;system.temp.cs.myScript&quot;, {})"/>
+        <outline text="system.temp.cs.callerOk = true"/>
+        <outline text="local(ok = system.temp.cs.started and not(defined(system.temp.cs.neverSet)) and system.temp.cs.callerOk)"/>
+        <outline text="delete(@system.temp.cs)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="thread.callscript - nonexistent script returns error to caller - Script resolution happens before the thread is spawned. If the script&#10;can't be found, the error propagates to the caller (spawn failure).&#10;This is distinct from runtime errors which are fire-and-forget.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+        <outline text="timeout: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.cs)"/>
+        <outline text="local(tid = thread.callscript(&quot;system.temp.cs.doesNotExist&quot;, {}))"/>
+        <outline text="delete(@system.temp.cs)"/>
+        <outline text="return tid"/>
       </outline>
     </outline>
   </body>

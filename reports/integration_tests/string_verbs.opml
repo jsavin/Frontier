@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>String Verbs (string_verbs) - 25 tests: 25 pass (100%)</title>
-    <dateCreated>Tue, 10 Feb 2026 05:47:11 GMT</dateCreated>
+    <dateCreated>Tue, 10 Feb 2026 09:06:57 GMT</dateCreated>
   </head>
   <body>
     <outline text="string.length - simple string - Get length of a simple string">
@@ -177,11 +177,17 @@
       </outline>
     </outline>
     <outline text="string.innerCaseName - basic camelCase - Extract inner case name from camelCase identifier">
+      <outline text="Metadata">
+        <outline text="expected_result: mytoolname"/>
+      </outline>
       <outline text="Script">
         <outline text="string.innerCaseName(&quot;myToolName&quot;)"/>
       </outline>
     </outline>
     <outline text="string.innerCaseName - single word - Single word returns itself">
+      <outline text="Metadata">
+        <outline text="expected_result: tools"/>
+      </outline>
       <outline text="Script">
         <outline text="string.innerCaseName(&quot;tools&quot;)"/>
       </outline>

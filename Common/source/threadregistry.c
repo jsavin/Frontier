@@ -397,7 +397,7 @@ long get_nth_thread_id(long n) {
     int i;
     long count = 0;
 
-    if (n <= 0) {
+    if (n <= 0 || n > MAX_THREADS) {
         return 0;
     }
 

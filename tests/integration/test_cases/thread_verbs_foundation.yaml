@@ -72,7 +72,7 @@ tests:
       return result
     expected_result: "true"
     expected_success: true
-    timeout: 5
+    timeout: 3
 
   # Test 5: Error handling in thread
   - name: "thread.evaluate - script error in thread is handled gracefully"

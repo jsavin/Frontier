@@ -229,6 +229,9 @@ void headless_save_threadglobals(hdlthreadglobals hg) {
 	dest->flbreak = flbreak;
 	dest->flcontinue = flcontinue;
 	dest->fllangerror = fllangerror;
+	dest->langerrordisable = langerrordisable;
+	dest->tryerror = tryerror;
+	dest->tryerrorstack = tryerrorstack;
 	dest->herrornode = herrornode;
 	dest->flscriptrunning = flscriptrunning;
 	/* flthreadkilled: accessed through struct only (C global not linked in headless) */
@@ -285,6 +288,9 @@ void headless_restore_threadglobals(hdlthreadglobals hg) {
 	flbreak = src->flbreak;
 	flcontinue = src->flcontinue;
 	fllangerror = src->fllangerror;
+	langerrordisable = src->langerrordisable;
+	tryerror = src->tryerror;
+	tryerrorstack = src->tryerrorstack;
 	herrornode = src->herrornode;
 	flscriptrunning = src->flscriptrunning;
 	/* flthreadkilled: NOT a C global in headless (process.c not linked).

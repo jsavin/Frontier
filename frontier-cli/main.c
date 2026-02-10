@@ -53,6 +53,7 @@
 #include "../Common/headers/dbinternal.h"
 #include "../Common/headers/byteorder.h"
 #include "../Common/headers/threadregistry.h"
+#include "../Common/headers/threads.h"
 
 // Portable headers
 #include "../portable/file_working_dir.h"
@@ -671,7 +672,7 @@ static boolean initialize_frontier_runtime(void) {
     }
 
     {
-        frontier_pthread_record *main_rec = register_main_thread(2);
+        frontier_pthread_record *main_rec = register_main_thread((long)idapplicationthread);
         if (main_rec == NULL) {
             log_error(LOG_COMP_GENERAL, "Error: Failed to register main thread in registry");
             cleanup_thread_registry();

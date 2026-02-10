@@ -29,6 +29,7 @@
 #include "threadregistry.h"
 #include "processinternal.h"
 #include "script_portable.h"
+#include <errno.h>
 
 /* Constant for tick-to-second conversion (classic Mac ticks = 60/sec) */
 #define TICKS_PER_SECOND 60
@@ -151,7 +152,14 @@ static boolean headless_unregister_thread(long idthread) {
  * 7. Restore main globals
  * 8. Cleanup
  *
- * Returns thread ID to caller.
+ * Returns thread ID to caller (as long value in vreturned).
+ *
+ * Return semantics:
+ * - Compilation failure (bad syntax) → returns false (error propagates to caller)
+ * - Resource allocation failure → returns false
+ * - Successful spawn → returns true with thread ID, regardless of whether the
+ *   code executed successfully. Runtime errors (scriptError, divide-by-zero) are
+ *   fire-and-forget — they don't affect the calling thread.
  */
 static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturned) {
     hdltreenode hcode = nil;
@@ -201,10 +209,9 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
     /* Link globals to registry record */
     rec->hglobals = new_hglobals;
 
-    /* TODO: Register in system.compiler.threads — deferred due to hash table
-     * context issues when called during cooperative thread setup. The table
-     * registration needs proper push/pop context that doesn't interfere with
-     * the globals swap. Will be addressed in a follow-up. */
+    /* Register in system.compiler.threads (main thread context, before globals swap) */
+    copystring(BIGSTRING("\panonymous"), bsanon);
+    headless_register_thread(bsanon, threadid);
 
     /* Save main thread globals */
     headless_save_threadglobals(main_hglobals);
@@ -232,8 +239,8 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
      * through g_headless_error (which is process-global, not per-thread) */
     headless_clear_last_lang_error();
 
-    /* Unregister from system.compiler.threads (deferred — debug) */
-    /* headless_unregister_thread(threadid); */
+    /* Unregister from system.compiler.threads (main thread context restored) */
+    headless_unregister_thread(threadid);
 
     /* Cleanup */
     langdisposetree(hcode);
@@ -254,6 +261,12 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
  *
  * Resolution (steps 1-3 of langrunscript) happens before the globals swap.
  * Execution (langrunscriptcode) happens inside the cooperative thread.
+ *
+ * Return semantics:
+ * - Resolution failure (script not found, not a script, compile error) → returns
+ *   false (error propagates to caller, thread was never spawned)
+ * - Successful spawn → returns true with thread ID, regardless of runtime errors.
+ *   Runtime errors (scriptError, divide-by-zero) are fire-and-forget.
  */
 static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord vparams,
                                           hdlhashtable hcontext, tyvaluerecord *vreturned) {
@@ -334,6 +347,9 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     (**new_hglobals).idthread = (hdlthread) threadid;
     rec->hglobals = new_hglobals;
 
+    /* Register in system.compiler.threads (main thread context, before globals swap) */
+    headless_register_thread(bsverb, threadid);
+
     /* Save main thread globals */
     headless_save_threadglobals(main_hglobals);
 
@@ -356,6 +372,9 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
 
     /* Clear global error buffer (fire-and-forget) */
     headless_clear_last_lang_error();
+
+    /* Unregister from system.compiler.threads (main thread context restored) */
+    headless_unregister_thread(threadid);
 
     /* Cleanup */
     disposevaluerecord(result, false);
@@ -394,8 +413,14 @@ static boolean headless_thread_sleep(long ticks) {
         ts.tv_nsec -= 1000000000L;
     }
 
-    /* Wait until timeout or wake signal */
-    pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &ts);
+    /* Wait until timeout or wake signal.
+     * Returns 0 (signaled), ETIMEDOUT (normal expiry), or error (EINVAL etc.) */
+    {
+        int wait_rc = pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &ts);
+
+        if (wait_rc != 0 && wait_rc != ETIMEDOUT)
+            log_error(LOG_COMP_THREAD, "pthread_cond_timedwait failed: %d", wait_rc);
+    }
 
     rec->is_sleeping = false;
     boolean was_killed = rec->is_killed;
@@ -584,7 +609,21 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(true, vreturned);
         }
         case thrv_kill: {
-            /* Verb #11: thread.kill - Set is_killed in registry + flthreadkilled */
+            /* Verb #11: thread.kill - Set is_killed in registry + flthreadkilled
+             *
+             * Cooperative mode limitation: kill() can only interrupt threads that
+             * are sleeping (blocked on pthread_cond_timedwait). It cannot interrupt
+             * a "running" thread because our cooperative model runs the spawned
+             * thread to completion synchronously — there's no yield point where
+             * the killing thread could execute.
+             *
+             * Legacy Frontier's cooperative model had time-sliced yielding: threads
+             * voluntarily yielded at loop boundaries and I/O points, allowing the
+             * scheduler to swap in other threads. kill() worked because the target
+             * thread would check flthreadkilled at its next yield point.
+             *
+             * Future: Adding yield points to langruncode would enable kill() on
+             * running threads in cooperative mode. */
             long id;
             frontier_pthread_record *rec;
 
