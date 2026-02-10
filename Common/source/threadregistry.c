@@ -354,16 +354,18 @@ frontier_pthread_record *register_main_thread(long fixed_id) {
                 next_thread_id = fixed_id + 1;
             }
 
-            /* Initialize synchronization primitives */
+            /* Initialize synchronization primitives.
+             * On failure, memset the slot to pristine state so it can be
+             * safely reused (user_thread_id, in_use, etc. all zeroed). */
             if (pthread_mutex_init(&rec->refcount_mutex, NULL) != 0) {
-                rec->in_use = false;
+                memset(rec, 0, sizeof(*rec));
                 pthread_mutex_unlock(&registry_mutex);
                 return NULL;
             }
 
             if (pthread_mutex_init(&rec->state_mutex, NULL) != 0) {
                 pthread_mutex_destroy(&rec->refcount_mutex);
-                rec->in_use = false;
+                memset(rec, 0, sizeof(*rec));
                 pthread_mutex_unlock(&registry_mutex);
                 return NULL;
             }
@@ -371,7 +373,7 @@ frontier_pthread_record *register_main_thread(long fixed_id) {
             if (pthread_cond_init(&rec->wake_cond, NULL) != 0) {
                 pthread_mutex_destroy(&rec->state_mutex);
                 pthread_mutex_destroy(&rec->refcount_mutex);
-                rec->in_use = false;
+                memset(rec, 0, sizeof(*rec));
                 pthread_mutex_unlock(&registry_mutex);
                 return NULL;
             }

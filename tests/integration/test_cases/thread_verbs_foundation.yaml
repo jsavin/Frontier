@@ -154,3 +154,70 @@ tests:
     expected_result: "true"
     expected_success: true
     timeout: 3
+
+  # Test 11: thread.callscript - basic execution
+  - name: "thread.callscript - execute named script in new thread"
+    description: |
+      Verify that thread.callscript() creates a cooperative thread, resolves
+      the named script, executes it synchronously, and returns a valid thread ID.
+      Creates a script object in the ODB, then calls it via thread.callscript.
+    script: |
+      new(tableType, @system.temp.cs);
+      script.newScriptObject("system.temp.cs.result = 42", @system.temp.cs.myScript);
+      system.temp.cs.result = 0;
+      local(tid = thread.callscript("system.temp.cs.myScript", {}));
+      local(ok = system.temp.cs.result == 42 and tid >= 3);
+      delete(@system.temp.cs);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 3
+
+  # Test 12: thread.callscript - parameter passing
+  - name: "thread.callscript - pass parameters to script"
+    description: |
+      Verify that thread.callscript() correctly passes parameters to the
+      target script. The script receives params and writes results to shared ODB.
+    script: |
+      new(tableType, @system.temp.cs);
+      script.newScriptObject("on myScript(x) {system.temp.cs.result = x * 3}", @system.temp.cs.myScript);
+      system.temp.cs.result = 0;
+      thread.callscript("system.temp.cs.myScript", {14});
+      local(r = system.temp.cs.result);
+      delete(@system.temp.cs);
+      return r
+    expected_result: "42"
+    expected_success: true
+    timeout: 3
+
+  # Test 13: thread.callscript - error containment
+  - name: "thread.callscript - script error does not propagate to caller"
+    description: |
+      Verify that scriptError() in a callscript thread does not propagate
+      to the calling thread. Fire-and-forget semantics apply equally to
+      callscript and evaluate.
+    script: |
+      new(tableType, @system.temp.cs);
+      script.newScriptObject("system.temp.cs.started = true; scriptError(\"callscript error\"); system.temp.cs.neverSet = true", @system.temp.cs.myScript);
+      thread.callscript("system.temp.cs.myScript", {});
+      system.temp.cs.callerOk = true;
+      local(ok = system.temp.cs.started and not(defined(system.temp.cs.neverSet)) and system.temp.cs.callerOk);
+      delete(@system.temp.cs);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 3
+
+  # Test 14: thread.callscript - nonexistent script fails at spawn
+  - name: "thread.callscript - nonexistent script returns error to caller"
+    description: |
+      Script resolution happens before the thread is spawned. If the script
+      can't be found, the error propagates to the caller (spawn failure).
+      This is distinct from runtime errors which are fire-and-forget.
+    script: |
+      new(tableType, @system.temp.cs);
+      local(tid = thread.callscript("system.temp.cs.doesNotExist", {}));
+      delete(@system.temp.cs);
+      return tid
+    expected_success: false
+    timeout: 3

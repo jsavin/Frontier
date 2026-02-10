@@ -672,10 +672,14 @@ static boolean initialize_frontier_runtime(void) {
 
     {
         frontier_pthread_record *main_rec = register_main_thread(2);
-        if (main_rec) {
-            main_rec->hglobals = hthreadglobals;
-            main_rec->pthread_id = pthread_self();
+        if (main_rec == NULL) {
+            log_error(LOG_COMP_GENERAL, "Error: Failed to register main thread in registry");
+            cleanup_thread_registry();
+            cli_cleanup_logging();
+            return false;
         }
+        main_rec->hglobals = hthreadglobals;
+        main_rec->pthread_id = pthread_self();
     }
 
     if (g_cli_options.system_root != NULL) {

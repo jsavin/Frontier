@@ -20,6 +20,7 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "langexternal.h"
 #include "tablestructure.h"
 #include "tableverbs.h"
 #include "process.h"
@@ -247,8 +248,12 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
 /*
  * headless_thread_callscript - Cooperative thread.callscript implementation
  *
- * Same cooperative pattern as evaluate, but uses langrunscript() to resolve
- * and execute a named script with parameters.
+ * Resolves the script name in the MAIN thread context (so resolution failures
+ * propagate to the caller), then swaps to a new thread context for execution
+ * (so runtime errors are fire-and-forget).
+ *
+ * Resolution (steps 1-3 of langrunscript) happens before the globals swap.
+ * Execution (langrunscriptcode) happens inside the cooperative thread.
  */
 static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord vparams,
                                           hdlhashtable hcontext, tyvaluerecord *vreturned) {
@@ -259,7 +264,59 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     boolean fl;
     long threadid;
 
-    /* Allocate thread record from registry */
+    /* --- Phase 1: Resolve script in MAIN thread context --- */
+    /* Failures here (bad name, not a script, compile error) propagate to caller */
+
+    bigstring bsverb;
+    hdltreenode hcode;
+    hdlhashtable htable;
+    tyvaluerecord vhandler;
+    hdlhashnode handlernode;
+
+    /* Resolve script path to table + verb name (matches langrunscript lines 1794-1807) */
+    pushhashtable(roottable);
+
+    fl = langexpandtodotparams(bsscriptname, &htable, bsverb);
+
+    if (fl) {
+        if (htable == nil)
+            langsearchpathlookup(bsverb, &htable);
+    }
+
+    pophashtable();
+
+    if (!fl)
+        return false;
+
+    /* Look up the handler node (matches langrunscript lines 1809-1813) */
+    if (!hashtablelookupnode(htable, bsverb, &handlernode)) {
+        langparamerror(unknownfunctionerror, bsverb);
+        return false;
+    }
+
+    vhandler = (**handlernode).val;
+
+    /* Get or compile the code tree (matches langrunscript lines 1822-1846) */
+    hcode = nil;
+
+    if (vhandler.valuetype == codevaluetype) {
+        hcode = vhandler.data.codevalue;
+    }
+    else if ((**htable).valueroutine == nil) { /* not a kernel table */
+        if (!langexternalvaltocode(vhandler, &hcode)) {
+            langparamerror(notfunctionerror, bsverb);
+            return false;
+        }
+
+        if (hcode == nil) { /* needs compilation */
+            if (!langcompilescript(handlernode, &hcode))
+                return false;
+        }
+    }
+
+    /* --- Phase 2: Execute in cooperative thread context --- */
+    /* Runtime errors from here on are fire-and-forget */
+
     rec = allocate_thread_record();
 
     if (rec == NULL)
@@ -267,7 +324,6 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
 
     threadid = rec->user_thread_id;
 
-    /* Allocate new thread globals */
     new_hglobals = headless_new_threadglobals();
 
     if (new_hglobals == nil) {
@@ -275,13 +331,8 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
         return false;
     }
 
-    /* Set thread ID in the new globals */
     (**new_hglobals).idthread = (hdlthread) threadid;
-
-    /* Link globals to registry record */
     rec->hglobals = new_hglobals;
-
-    /* TODO: Register in system.compiler.threads — deferred (see evaluate) */
 
     /* Save main thread globals */
     headless_save_threadglobals(main_hglobals);
@@ -292,10 +343,10 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     /* Swap in new thread globals */
     headless_restore_threadglobals(new_hglobals);
 
-    /* Execute script synchronously via langrunscript */
+    /* Execute script code synchronously */
     initvalue(&result, novaluetype);
 
-    fl = langrunscript(bsscriptname, &vparams, hcontext, &result);
+    fl = langrunscriptcode(htable, bsverb, hcode, &vparams, hcontext, &result);
 
     /* Save new thread globals */
     headless_save_threadglobals(new_hglobals);
@@ -306,21 +357,12 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     /* Clear global error buffer (fire-and-forget) */
     headless_clear_last_lang_error();
 
-    /* Unregister from system.compiler.threads (deferred — debug) */
-    /* headless_unregister_thread(threadid); */
-
     /* Cleanup */
     disposevaluerecord(result, false);
     headless_dispose_threadglobals(new_hglobals);
     free_thread_record(rec);
 
-    /* Propagate script resolution/execution failures to the caller.
-     * If langrunscript failed (bad script name, parameter binding, etc.),
-     * return false so thread.callscript reports the error. */
-    if (!fl)
-        return false;
-
-    /* Return thread ID to caller */
+    /* Return thread ID — runtime errors are fire-and-forget */
     return setlongvalue(threadid, vreturned);
 }
 
