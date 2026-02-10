@@ -895,17 +895,13 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	ho = (hdloutlinerecord) (**hv).variabledata;
 
 #if defined(FRONTIER_HEADLESS)
-	log_debug(LOG_COMP_OP, "opverbpack: flinmemory=%d ho=%p oldaddress=0x%llx",
+	log_trace(LOG_COMP_OP, "opverbpack: flinmemory=%d ho=%p oldaddress=0x%llx",
 	        (int) (**hv).flinmemory, (void *) ho, (unsigned long long) (**hv).oldaddress);
 #endif
 
 	opverbcheckwindowrect (ho);
 
 	adr = (**hv).oldaddress; /*place where this outline used to be stored*/
-
-#if defined(FRONTIER_HEADLESS)
-	log_error(LOG_COMP_OP, "PACK START: oldaddress=0x%llx adapter_repack=%d", (unsigned long long) adr, (int) adapter_repack);
-#endif
 
 	if (adapter_repack) {
 		(**ho).fldirty = true;
@@ -915,6 +911,12 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 	if (!fldatabasesaveas && !(**ho).fldirty && !(**ho).fldirtyview) /*don't need to update the db version of the outline*/
 		goto pushaddress;
+
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_OP, "PACK: oldaddress=0x%llx fldirty=%d fldirtyview=%d saveas=%d adapter_repack=%d",
+	          (unsigned long long) adr, (int) (**ho).fldirty, (int) (**ho).fldirtyview,
+	          fldatabasesaveas ? 1 : 0, (int) adapter_repack);
+#endif
 
 	if (!opverbpackoutline (ho, &hpackedoutline)) {
 #if defined(FRONTIER_HEADLESS)
@@ -929,7 +931,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode check_mode = db_format_mode_current();
-	log_debug(LOG_COMP_OP, "opverbpack: dbassignhandle oldadr=0x%llx -> newadr=0x%llx (use_64bit=%d)",
+	log_trace(LOG_COMP_OP, "opverbpack: dbassignhandle oldadr=0x%llx -> newadr=0x%llx (use_64bit=%d)",
 	        (unsigned long long) (**hv).oldaddress, (unsigned long long) adr, (int) check_mode.use_64bit_format);
 #endif
 
@@ -972,15 +974,6 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		}
 	else
 		*flnewdbaddress = true;
-
-#if defined(FRONTIER_HEADLESS)
-	db_format_mode mode_before_push = db_format_mode_current();
-	log_error(LOG_COMP_OP, "PACK SCRIPT/OUTLINE: pushing adr=0x%llx mode.use_64bit=%d adapter=%d saveas=%d",
-	          (unsigned long long) adr,
-	          mode_before_push.use_64bit_format ? 1 : 0,
-	          mode_before_push.adapter_repack ? 1 : 0,
-	          fldatabasesaveas ? 1 : 0);
-#endif
 
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*opverbpack_internal*/

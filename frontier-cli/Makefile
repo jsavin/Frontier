@@ -329,9 +329,12 @@ dist: $(TARGET)
 	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/serverMonitor.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/serverMonitor.root7" || exit 1
 	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root7" || exit 1
 	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/www/prefs.root" --output "$(DIST_DIR)/Guest Databases/www/prefs.root7" || exit 1
+	@# Rename .root7 to .root so UserTalk bootstrapping code can find them
+	@echo "Renaming v7 databases to .root extension..."
+	@find $(DIST_DIR) -name '*.root7' -exec sh -c 'mv "$$1" "$${1%.root7}.root"' _ {} \;
 	@echo ""
 	@echo "Distribution created in $(DIST_DIR)/"
-	@echo "Run with: ./dist/frontier-cli --system-root dist/Frontier.root7"
+	@echo "Run with: ./dist/frontier-cli --system-root dist/Frontier.root"
 
 dist-clean:
 	rm -rf $(DIST_DIR)

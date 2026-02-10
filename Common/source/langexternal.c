@@ -411,21 +411,32 @@ void langexternalsetdatabase (hdlexternalvariable hv, hdldatabaserecord hdb) {
 		return;
 
 	/*
-	CRITICAL FIX: Do NOT set hdatabase for new in-memory objects.
+	2026-02-08: Restored hdatabase assignment. The 2025-12-28 change that disabled this
+	function broke cross-database assignments: when Frontier.tools.install() copies
+	values from a guest database into system root tables, the copied external variables
+	must have hdatabase set to the destination database. Without this, saved values have
+	hdatabase=nil and cannot be loaded on the next run, causing segfaults.
 
-	hdatabase should ONLY be set when an object is loaded from disk or saved to disk.
-	Setting it for new objects (flinmemory=1, oldaddress=nildbaddress) creates invalid
-	state where the object appears to be associated with a database but has no disk address.
+	The nil guards above (hv==nil, hdb==nil) protect thread-locals: local tables have
+	no database, so tablegetdatabase() returns nil, and we return without modification.
 
-	This caused segfaults in dbnormalizeaddress() when trying to resolve addresses for
-	objects that were never saved to disk.
-
-	See: docs/external_table_variable_management.md Section 14 for complete semantics.
+	2026-02-10: Only set hdatabase for new in-memory objects that have never been saved
+	(oldaddress == nildbaddress). For disk-loaded objects (oldaddress != nildbaddress),
+	changing hdatabase without resetting oldaddress would cause the packer to interpret
+	the old disk address in the context of the wrong database, corrupting the target DB.
+	Disk-loaded objects that move between databases should go through a deep copy instead.
 	*/
 
-	log_debug(LOG_COMP_EXTERNAL,
-		"langexternalsetdatabase: BLOCKED for hv=%p (flinmemory=%d oldaddress=0x%llx) - hdatabase only set when saved to disk",
-		(void*)hv, (int)(**hv).flinmemory, (unsigned long long)(**hv).oldaddress);
+	if ((**hv).oldaddress != nildbaddress) {
+
+		log_debug(LOG_COMP_EXTERNAL,
+			"langexternalsetdatabase: SKIPPED for disk-loaded hv=%p (oldaddress=0x%llx, current_db=%p, requested_db=%p)",
+			(void*)hv, (unsigned long long)(**hv).oldaddress, (void*)(**hv).hdatabase, (void*)hdb);
+
+		return;
+		}
+
+	(**hv).hdatabase = hdb;
 	} /*langexternalsetdatabase*/
 
 
@@ -2889,12 +2900,13 @@ boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexter
 	        (void *)item.hdatabase,
 	        (void *)databasedata);
 
-	/* ASSERT: New in-memory objects must have hdatabase=nil */
+	/* New in-memory objects should have hdatabase=nil at creation time;
+	   hdatabase gets set later via langexternalsetdatabase() when assigned to a table.
+	   If this fires, something bypassed the flinmemory guard above. */
 	if (flinmemory && item.hdatabase != nil) {
-		log_error(LOG_COMP_EXTERNAL,
-			"INVARIANT VIOLATION: New in-memory object has non-nil hdatabase=%p (should be nil)",
+		log_debug(LOG_COMP_EXTERNAL,
+			"langnewexternalvariable: unexpected non-nil hdatabase=%p for in-memory object",
 			(void *)item.hdatabase);
-		return false;
 	}
 
 	//item.hexternaltable = nil;

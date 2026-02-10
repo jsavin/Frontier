@@ -61,6 +61,7 @@
 #include "opinternal.h"
 #include "oplist.h"
 #include "opxml.h"
+#include "menuverbs.h"  /* includes menueditor.h for hdlmenurecord */
 #include "search.h"
 #include "logging.h"
 
@@ -155,9 +156,24 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
             ctx.database = (**hv).hdatabase;
         }
 
-        if (!opverbinmemory(&ctx, hv)) {
-            seterrorstring("could not load outline", bserror);
-            return false;
+        if ((**hv).id == idmenuprocessor) {
+            /*
+             * Menu externals store a tysavedmenuinfo record on disk, NOT a packed
+             * outline. We must use menuverbinmemory_context to properly load the
+             * menu record, then extract the outline from it. Using opverbinmemory
+             * on a menu external would try to opunpack the menu info bytes as an
+             * outline, producing a corrupt outline structure that crashes when
+             * traversed (e.g., during op.expand).
+             */
+            if (!menuverbinmemory_context(&ctx, hv)) {
+                seterrorstring("could not load menu outline", bserror);
+                return false;
+            }
+        } else {
+            if (!opverbinmemory(&ctx, hv)) {
+                seterrorstring("could not load outline", bserror);
+                return false;
+            }
         }
     }
 
@@ -167,7 +183,24 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
         return false;
     }
 
-    *ho = (hdloutlinerecord)(**hv).variabledata;
+    if ((**hv).id == idmenuprocessor) {
+        /*
+         * For menu externals, variabledata holds an hdlmenurecord (after
+         * menuverbinmemory_context loaded it). The outline is the menuoutline
+         * field of the menu record — the first field of tymenurecord.
+         */
+        hdlmenurecord hmenurecord = (hdlmenurecord)(**hv).variabledata;
+
+        if (hmenurecord == nil || (**hmenurecord).menuoutline == nil) {
+            seterrorstring("menu has no outline", bserror);
+            return false;
+        }
+
+        *ho = (**hmenurecord).menuoutline;
+    } else {
+        *ho = (hdloutlinerecord)(**hv).variabledata;
+    }
+
     return true;
 }
 

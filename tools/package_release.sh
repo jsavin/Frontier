@@ -77,24 +77,20 @@ print_success "Universal binary built (arm64 + x86_64)"
 cp frontier-cli "$STAGE_DIR/"
 print_success "Binary copied to staging"
 
-# Migrate database to v7 if needed
+# Migrate database to v7 format with .root extension
+# (v7 databases use .root extension so UserTalk bootstrapping code can find them)
 cd "$REPO_ROOT"
-if [ -f "databases/Frontier.root7" ]; then
-    print_info "Using existing v7 database"
-    cp databases/Frontier.root7 "$STAGE_DIR/"
-elif [ -f "databases/Frontier.root" ]; then
-    print_info "Migrating v6 database to v7..."
-    # Run migration
-    ./frontier-cli/frontier-cli --migrate databases/Frontier.root
-    if [ -f "databases/Frontier.root7" ]; then
-        cp databases/Frontier.root7 "$STAGE_DIR/"
+if [ -f "databases/Frontier.root" ]; then
+    print_info "Migrating database to v7 format..."
+    ./frontier-cli/frontier-cli --migrate databases/Frontier.root --output "$STAGE_DIR/Frontier.root"
+    if [ -f "$STAGE_DIR/Frontier.root" ]; then
         print_success "Database migrated and copied"
     else
-        print_error "Migration failed - Frontier.root7 not created"
+        print_error "Migration failed - Frontier.root not created"
         exit 1
     fi
 else
-    print_error "No system root database found (databases/Frontier.root or Frontier.root7)"
+    print_error "No system root database found (databases/Frontier.root)"
     exit 1
 fi
 
@@ -110,7 +106,7 @@ Frontier CLI - Pre-Release Distribution
 
 This package contains:
   - frontier-cli      Universal binary (arm64 + x86_64)
-  - Frontier.root7    System root database
+  - Frontier.root     System root database (v7 format)
   - install.sh        Installation script
 
 QUICK START
@@ -125,7 +121,7 @@ QUICK START
 
    This will:
    - Copy frontier-cli to /usr/local/bin (or ~/.local/bin)
-   - Copy Frontier.root7 to ~/Library/Application Support/Frontier/
+   - Copy Frontier.root to ~/Library/Application Support/Frontier/
    - Optionally add to your PATH
 
 3. Verify installation:
@@ -178,14 +174,14 @@ print_success "Created $ZIP_NAME"
 
 # Create separate compressed database for optional download
 print_info "Creating compressed database archive..."
-gzip -c "$STAGE_DIR/Frontier.root7" > "$DIST_DIR/Frontier.root7.gz"
-print_success "Created Frontier.root7.gz"
+gzip -c "$STAGE_DIR/Frontier.root" > "$DIST_DIR/Frontier.root.gz"
+print_success "Created Frontier.root.gz"
 
 # Generate checksums
 print_info "Generating checksums..."
 cd "$DIST_DIR"
 shasum -a 256 "$ZIP_NAME" > "${ZIP_NAME}.sha256"
-shasum -a 256 "Frontier.root7.gz" > "Frontier.root7.gz.sha256"
+shasum -a 256 "Frontier.root.gz" > "Frontier.root.gz.sha256"
 print_success "Checksums generated"
 
 # Print summary
@@ -195,13 +191,13 @@ echo ""
 echo "Distribution files:"
 echo "  $DIST_DIR/$ZIP_NAME"
 echo "  $DIST_DIR/$ZIP_NAME.sha256"
-echo "  $DIST_DIR/Frontier.root7.gz"
-echo "  $DIST_DIR/Frontier.root7.gz.sha256"
+echo "  $DIST_DIR/Frontier.root.gz"
+echo "  $DIST_DIR/Frontier.root.gz.sha256"
 echo ""
 
 # Get file sizes
 ZIP_SIZE=$(du -h "$ZIP_NAME" | cut -f1)
-DB_SIZE=$(du -h "Frontier.root7.gz" | cut -f1)
+DB_SIZE=$(du -h "Frontier.root.gz" | cut -f1)
 
 echo "Package size: $ZIP_SIZE"
 echo "Database size: $DB_SIZE (compressed)"
