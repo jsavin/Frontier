@@ -266,6 +266,11 @@ test-verb-bindings:
 	@cd $$(dirname $(KERNELVERBS_CLI)) && python3 -m unittest test_analyzer -v
 	@echo "✓ All verb binding tests passed"
 
+# Validate BIGSTRING length prefixes across the codebase
+validate-bigstrings:
+	@echo "Validating BIGSTRING length prefixes..."
+	@python3 ../tools/validate_bigstring_lengths.py ..
+
 clean:
 	rm -f $(TARGET)
 
@@ -339,4 +344,4 @@ dist: $(TARGET)
 dist-clean:
 	rm -rf $(DIST_DIR)
 
-.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean
+.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean validate-bigstrings

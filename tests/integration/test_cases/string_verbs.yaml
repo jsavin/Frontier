@@ -153,11 +153,13 @@ tests:
     description: "Extract inner case name from camelCase identifier"
     script: 'string.innerCaseName("myToolName")'
     expected_success: true
+    expected_result: "mytoolname"
 
   - name: "string.innerCaseName - single word"
     description: "Single word returns itself"
     script: 'string.innerCaseName("tools")'
     expected_success: true
+    expected_result: "tools"
 
   # macRomanToUtf8 / utf8ToMacRoman - BIGSTRING prefix was fixed but underlying
   # conversion implementation has a pre-existing issue in headless mode.

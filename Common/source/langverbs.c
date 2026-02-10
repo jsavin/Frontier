@@ -2286,8 +2286,26 @@ boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 			}
 		}
 
-	/* Simple lock: just store a boolean value (headless implementation) */
-	setbooleanvalue (true, &val);
+	/* Store a record with thread ownership so langreleasesemaphores can
+	 * identify and release semaphores belonging to a specific thread.
+	 * The record contains a "who" field with the current thread ID. */
+	{
+		hdllistrecord hlist;
+		tyvaluerecord vwho;
+
+		if (!opnewlist (&hlist, true)) /* true = record */
+			return (false);
+
+		setlongvalue ((long) (**getcurrentthreadglobals ()).idthread, &vwho);
+
+		if (!langpushlistval (hlist, semaphorewho, &vwho)) {
+			opdisposelist (hlist);
+			return (false);
+		}
+
+		if (!setheapvalue ((Handle) hlist, recordvaluetype, &val))
+			return (false);
+	}
 
 	if (!hashtableassign (semaphoretable, bssemaphorename, val))
 		return (false);
@@ -2355,51 +2373,25 @@ langreleasesemaphores (hdlprocessrecord xxxhp)
 {
 #pragma unused(xxxhp)
 
-	pushhashtable (semaphoretable); // for visit's hashdelete
-
-	hashtablevisit (semaphoretable, &releasesemaphorevisit, (ptrvoid) (**getcurrentthreadglobals()).idthread);
-	
-	pophashtable ();
-	
-	return (true);
-	} /*langreleasesemaphores*/
-
-
-static boolean releaseallsemaphorevisit (hdlhashnode hnode, ptrvoid refcon) {
-#pragma unused(refcon)
-
-	hashdelete ((**hnode).hashkey, true, false);
-
-	return (true); // continue traversal
-} /*releaseallsemaphorevisit*/
-
-
-boolean
-langreleaseallsemaphores (void)
-{
-	/*
-	Release ALL semaphores regardless of thread ownership.
-
-	For headless/single-threaded mode: any semaphore still locked after a
-	script completes (or errors out) is an orphan. In GUI Frontier, threads
-	could release each other's semaphores, but in headless mode there's only
-	one thread, so an orphaned semaphore means permanent deadlock.
-
-	Called after startup script execution to prevent semaphore-related hangs
-	when a script errors out between semaphore.lock and semaphore.unlock.
-	*/
+	hdlthreadglobals htg;
 
 	if (semaphoretable == nil)
 		return (true);
 
-	pushhashtable (semaphoretable);
+	htg = getcurrentthreadglobals ();
 
-	hashtablevisit (semaphoretable, &releaseallsemaphorevisit, nil);
+	if (htg == nil)
+		return (true); /* no thread context — nothing to match against */
+
+	pushhashtable (semaphoretable); // for visit's hashdelete
+
+	hashtablevisit (semaphoretable, &releasesemaphorevisit, (ptrvoid) (**htg).idthread);
 
 	pophashtable ();
 
 	return (true);
-} /*langreleaseallsemaphores*/
+	} /*langreleasesemaphores*/
+
 
 
 boolean langdisplaystringfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {

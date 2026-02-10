@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Op Verbs (op_verbs) - 265 tests: 253 pass (95%) 12 skip (4%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Op Verbs (op_verbs) - 266 tests: 254 pass (95%) 12 skip (4%)</title>
+    <dateCreated>Tue, 10 Feb 2026 05:47:11 GMT</dateCreated>
   </head>
   <body>
     <outline text="outline creation - lang.new with outlineType - Create new outline object using lang.new(outlineType, @addr)">
@@ -3624,6 +3624,18 @@
         <outline text="target.set(@workspace.dest)"/>
         <outline text="local(afterCount = op.countSummits())"/>
         <outline text="return afterCount &gt;= beforeCount"/>
+      </outline>
+    </outline>
+    <outline text="op.expand - on existing script uses correct db context - Target a script in the system root, collapse and re-expand. Verifies getoutlinefromtarget uses the variable's database context (not just the global).">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="target.set(@system.verbs.builtins.Frontier.version)"/>
+        <outline text="op.firstSummit()"/>
+        <outline text="op.collapse()"/>
+        <outline text="local (result = op.expand(1))"/>
+        <outline text="return result"/>
       </outline>
     </outline>
   </body>

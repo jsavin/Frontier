@@ -117,10 +117,10 @@ boolean repl_eval_script(
 
     boolean ok = langrunhandletraperror(htext, result, error_msg);
 
-    /* Release orphaned semaphores after each REPL command.
-     * In headless single-threaded mode, any semaphore still locked after
-     * a command finishes cannot be released by another thread. */
-    langreleaseallsemaphores();
+    /* Release semaphores owned by the current thread after each REPL command.
+     * Any semaphore still locked after a command finishes cannot be released
+     * by another thread. */
+    langreleasesemaphores(nil);
 
     log_debug(LOG_COMP_GENERAL, "Script evaluation %s", ok ? "succeeded" : "failed");
 
