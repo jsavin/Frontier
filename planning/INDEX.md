@@ -81,10 +81,13 @@ Change Log
 
 ### Phase 5: Parser & Tooling
 
+**Text Modernization** - `planning/phase5/text_modernization/`
+- UTF-8 adoption, Pascal string elimination, hashtable algorithm rework, database format v8
+- 7-phase roadmap from bridging helpers through full rollout
+- [Text Modernization Roadmap](phase5/text_modernization/README.md) — **master document**
+
 **Future Modernization** - `planning/phase5/`
 - Bison 3 migration planning
-- UTF-8 transition roadmap
-- String/text modernization
 - [Phase 5 Overview](phase5/PHASES.md)
 
 ## Archive

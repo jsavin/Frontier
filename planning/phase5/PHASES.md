@@ -5,6 +5,23 @@ Status
 - Depends On: Phase 2 (UI Abstraction), Phase 3 (Hash Table Modernization)
 - Owner: Core Runtime Team
 
+## Consolidated Roadmap
+
+**The detailed, multi-phase plan for text modernization is at:**
+
+**[text_modernization/README.md](text_modernization/README.md)**
+
+This covers:
+- UTF-8 adoption (7 phases from bridging helpers through full rollout)
+- Pascal string elimination
+- Hashtable algorithm rework (FNV-1a, dynamic buckets)
+- Database format v8 (combined string encoding + hash modernization)
+- UserTalk breaking change policy and migration path
+
+---
+
+## Original Scope (Retained for Context)
+
 Objectives
 - Retire Classic Mac OS string concepts (Pascal `bigstring`) from modern internals.
 - Migrate WPText and related rich-text paths away from Paige/legacy implementations to UTF-based text handling.

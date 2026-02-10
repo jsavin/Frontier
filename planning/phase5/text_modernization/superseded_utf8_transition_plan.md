@@ -1,3 +1,7 @@
+> **SUPERSEDED** — This document has been absorbed into the consolidated
+> [Text Modernization Roadmap](README.md). Retained for historical reference.
+> Originally at `planning/phase5/utf8_transition_plan.md`.
+
 # UTF-8 Transition Plan
 
 Status
@@ -8,7 +12,7 @@ Status
 - Notes: Blueprint for migrating Frontier to UTF-8; update as phases start.
 
 ## Context and Goals
-- Frontier’s core still treats every string as Pascal `bigstring` (1-byte characters) or raw byte handles. MacRoman/ANSI assumptions leak into kernel APIs, database packs, and script verbs.
+- Frontier's core still treats every string as Pascal `bigstring` (1-byte characters) or raw byte handles. MacRoman/ANSI assumptions leak into kernel APIs, database packs, and script verbs.
 - Modern UX (portable runtime, headless tests, CLI) would benefit from a canonical UTF-8 internal representation that aligns with contemporary platforms.
 - We accept that moving to UTF-8 is a breaking change for some UserTalk scripts; compatibility tooling will mitigate the impact.
 
@@ -21,7 +25,7 @@ Status
 - Parsers rely on `isalpha/isdigit` (`Common/source/langscan.c:44-115`), so tokenisation is byte-oriented.
 
 ### Encoding Helpers
-- Conversion verbs still call Carbon’s Text Encoding Converter (`Common/source/strings.c:2269-2338`).
+- Conversion verbs still call Carbon's Text Encoding Converter (`Common/source/strings.c:2269-2338`).
 - UserTalk exposes `string.macRomanToUtf8`, `string.utf8ToMacRoman`, and ANSI counterparts (`Common/source/stringverbs.c:2250-2278`).
 
 ## Platform-Specific Hotspots

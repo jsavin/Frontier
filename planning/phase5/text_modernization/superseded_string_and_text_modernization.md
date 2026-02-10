@@ -1,3 +1,7 @@
+> **SUPERSEDED** — This document has been absorbed into the consolidated
+> [Text Modernization Roadmap](README.md). Retained for historical reference.
+> Originally at `planning/phase5/string_and_text_modernization.md`.
+
 # String and Text Modernization (Phase 4)
 
 Status
@@ -44,4 +48,3 @@ Deliverables
 - ADR for Pascal string deprecation and UTF adoption.
 - Updated APIs and adapters for UI and headless text flows.
 - Migration guide for contributors.
-

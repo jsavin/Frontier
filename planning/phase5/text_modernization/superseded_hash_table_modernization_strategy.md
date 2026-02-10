@@ -1,7 +1,11 @@
+> **SUPERSEDED** — This document has been absorbed into the consolidated
+> [Text Modernization Roadmap](README.md). Retained for historical reference.
+> Originally at `planning/phase2/0.5.16_hash_table_modernization_strategy.md`.
+
 # Hash Table Modernization Strategy
 
 Status
-- State: 📋 Planned/Deferred
+- State: Planned/Deferred
 - Phase: Future (Post-Phase 3)
 - Last Updated: 2025-09-29
 - Notes: Scheduled after Phase 2 UI/runtime separation. **NOT ACTIVE** - See active phase 3 work in kernel_verb_porting/ and carbon_migration/.
@@ -22,14 +26,14 @@ Change Log
 short hashfunction (const bigstring bs) {
     register unsigned short len;
     register unsigned short val;
-    
+
     len = stringlength (bs);
     if (len == 0)
         return (0);
-    
+
     val = getlower(getstringcharacter(bs,0));  // First character
     val += getlower(getstringcharacter(bs,len-1));  // Last character
-    
+
     return (val % ctbuckets);  // 11 buckets
 }
 ```
@@ -74,13 +78,13 @@ typedef struct tyhashtable {
 uint64_t fnv1a_hash(const bigstring bs) {
     uint64_t hash = 0xcbf29ce484222325ULL;  // FNV offset basis
     uint64_t fnv_prime = 0x100000001b3ULL;   // FNV prime
-    
+
     register unsigned short len = stringlength(bs);
     for (register unsigned short i = 0; i < len; i++) {
         hash ^= (uint8_t)getstringcharacter(bs, i);
         hash *= fnv_prime;
     }
-    
+
     return hash;
 }
 ```
@@ -103,15 +107,15 @@ typedef struct tyhashtable_modern {
     unsigned short bucket_count;        // Current bucket count
     unsigned short max_bucket_count;    // Maximum buckets allowed
     unsigned long item_count;           // Number of items in table
-    
+
     // Sorted list (unchanged)
     hdlhashnode hfirstsort;
-    
+
     // Table hierarchy (unchanged)
     struct tyhashtable_modern **prevhashtable;
     struct tyhashtable_modern **parenthashtable;
     hdlhashnode thistableshashnode;
-    
+
     // Additional fields...
 } tyhashtable_modern;
 ```
@@ -121,13 +125,13 @@ typedef struct tyhashtable_modern {
 // Resize buckets when load factor exceeds threshold
 boolean resize_hash_buckets(hdlhashtable_modern htable) {
     float load_factor = (float)htable->item_count / htable->bucket_count;
-    
+
     if (load_factor > 0.75) {  // Expand when 75% full
         return expand_buckets(htable);
     } else if (load_factor < 0.25 && htable->bucket_count > 11) {  // Shrink when 25% full
         return shrink_buckets(htable);
     }
-    
+
     return true;
 }
 ```
@@ -148,7 +152,7 @@ typedef struct tyhashbucket_modern {
 // Optimize bucket when chain gets too long
 boolean optimize_bucket(hdlhashnode bucket_head) {
     if (bucket_head == nil) return true;
-    
+
     // Count nodes in chain
     unsigned short count = 0;
     hdlhashnode current = bucket_head;
@@ -156,12 +160,12 @@ boolean optimize_bucket(hdlhashnode bucket_head) {
         count++;
         current = (**current).hashlink;
     }
-    
+
     // If chain is too long, consider it for optimization
     if (count > 8) {
         return implement_bucket_optimization(bucket_head);
     }
-    
+
     return true;
 }
 ```
@@ -230,23 +234,23 @@ if ((**hdb).versionnumber <= 6) {
 boolean migrate_hash_table(hdlhashtable old_table, hdlhashtable_modern new_table) {
     // 1. Create new table with modern structure
     if (!newhashtable_modern(&new_table)) return false;
-    
+
     // 2. Copy all items from old table to new table
     return hashtablevisit(old_table, migrate_item_visit, new_table);
 }
 
 static boolean migrate_item_visit(hdlhashtable htable, langtablevisitcallback visit, ptrvoid refcon) {
     hdlhashtable_modern new_table = (hdlhashtable_modern)refcon;
-    
+
     // For each item in old table
     bigstring item_name;
     tyvaluerecord item_value;
-    
+
     if (hashgetiteminfo(htable, current_item, item_name, &item_value)) {
         // Insert into new table with modern hash
         return hashtableassign_modern(new_table, item_name, item_value);
     }
-    
+
     return true;
 }
 ```
@@ -375,7 +379,7 @@ boolean offer_hash_migration_dialog(const char* db_path) {
 **Before (Legacy):**
 ```
 "001" → hash(0 + 1) % 11 = 1
-"002" → hash(0 + 2) % 11 = 2  
+"002" → hash(0 + 2) % 11 = 2
 "003" → hash(0 + 3) % 11 = 3
 "101" → hash(1 + 1) % 11 = 2  // Collision!
 "201" → hash(2 + 1) % 11 = 3  // Collision!
