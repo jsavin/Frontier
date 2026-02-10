@@ -424,12 +424,16 @@ void langexternalsetdatabase (hdlexternalvariable hv, hdldatabaserecord hdb) {
 	(oldaddress == nildbaddress). For disk-loaded objects (oldaddress != nildbaddress),
 	changing hdatabase without resetting oldaddress would cause the packer to interpret
 	the old disk address in the context of the wrong database, corrupting the target DB.
-	Disk-loaded objects that move between databases should go through a deep copy instead.
+
+	Callers that need to move a disk-loaded object to a different database should use
+	a deep copy (e.g. copyvaluerecord + copyvaluedata) rather than re-assigning the
+	original handle. The deep copy creates a fresh in-memory object with
+	oldaddress == nildbaddress, which will then accept the new hdatabase normally.
 	*/
 
 	if ((**hv).oldaddress != nildbaddress) {
 
-		log_debug(LOG_COMP_EXTERNAL,
+		log_warn(LOG_COMP_EXTERNAL,
 			"langexternalsetdatabase: SKIPPED for disk-loaded hv=%p (oldaddress=0x%llx, current_db=%p, requested_db=%p)",
 			(void*)hv, (unsigned long long)(**hv).oldaddress, (void*)(**hv).hdatabase, (void*)hdb);
 

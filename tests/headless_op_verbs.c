@@ -81,6 +81,61 @@ static void seterrorstring(const char *msg, bigstring bserror) {
 }
 
 /*
+ * Helper: Load an external variable into memory and extract its outline.
+ *
+ * Handles the type dispatch between outline/script externals (which use
+ * opverbinmemory and store the outline directly in variabledata) and menu
+ * externals (which use menuverbinmemory_context and store a tysavedmenuinfo
+ * record — the outline is inside the menu record at menuoutline).
+ *
+ * Uses the variable's own hdatabase for the db_context so guest-database
+ * externals are loaded with the correct format mode and disk addresses.
+ */
+static boolean loadoutlinefromexternal(hdlexternalvariable hv, hdloutlinerecord *ho, bigstring bserror) {
+
+    db_context ctx;
+
+    if (db_format_is_legacy_db((**hv).hdatabase)) {
+        db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+    } else {
+        db_context_init(&ctx);
+        ctx.database = (**hv).hdatabase;
+    }
+
+    if ((**hv).id == idmenuprocessor) {
+        if (!menuverbinmemory_context(&ctx, hv)) {
+            seterrorstring("could not load menu outline", bserror);
+            return false;
+        }
+    } else {
+        if (!opverbinmemory(&ctx, hv)) {
+            seterrorstring("could not load outline", bserror);
+            return false;
+        }
+    }
+
+    if ((**hv).variabledata == 0) {
+        seterrorstring("target has no outline data", bserror);
+        return false;
+    }
+
+    if ((**hv).id == idmenuprocessor) {
+        hdlmenurecord hmenurecord = (hdlmenurecord)(**hv).variabledata;
+
+        if (hmenurecord == nil || (**hmenurecord).menuoutline == nil) {
+            seterrorstring("menu has no outline", bserror);
+            return false;
+        }
+
+        *ho = (**hmenurecord).menuoutline;
+    } else {
+        *ho = (hdloutlinerecord)(**hv).variabledata;
+    }
+
+    return true;
+}
+
+/*
  * Helper function: Get outline from target system (headless mode)
  *
  * In GUI mode, op verbs get the outline from the frontmost window.
@@ -142,64 +197,9 @@ static boolean getoutlinefromtarget(hdloutlinerecord *ho, bigstring bserror) {
             return false;
     }
 
-    /* Ensure outline is in memory.
-     * We must use the variable's own database handle, not the global databasedata,
-     * because the outline may belong to a guest database (e.g. mainResponder.root)
-     * while the global points to the system root. We also must set the correct
-     * format mode — a v6 guest DB needs v6 header sizes for dbrefhandle_context. */
-    {
-        db_context ctx;
-        if (db_format_is_legacy_db((**hv).hdatabase)) {
-            db_context_init_legacy_read(&ctx, (**hv).hdatabase);
-        } else {
-            db_context_init(&ctx);
-            ctx.database = (**hv).hdatabase;
-        }
-
-        if ((**hv).id == idmenuprocessor) {
-            /*
-             * Menu externals store a tysavedmenuinfo record on disk, NOT a packed
-             * outline. We must use menuverbinmemory_context to properly load the
-             * menu record, then extract the outline from it. Using opverbinmemory
-             * on a menu external would try to opunpack the menu info bytes as an
-             * outline, producing a corrupt outline structure that crashes when
-             * traversed (e.g., during op.expand).
-             */
-            if (!menuverbinmemory_context(&ctx, hv)) {
-                seterrorstring("could not load menu outline", bserror);
-                return false;
-            }
-        } else {
-            if (!opverbinmemory(&ctx, hv)) {
-                seterrorstring("could not load outline", bserror);
-                return false;
-            }
-        }
-    }
-
-    /* Get the outline record */
-    if ((**hv).variabledata == 0) {
-        seterrorstring("target is not an outline", bserror);
+    /* Load external into memory and extract its outline record */
+    if (!loadoutlinefromexternal(hv, ho, bserror))
         return false;
-    }
-
-    if ((**hv).id == idmenuprocessor) {
-        /*
-         * For menu externals, variabledata holds an hdlmenurecord (after
-         * menuverbinmemory_context loaded it). The outline is the menuoutline
-         * field of the menu record — the first field of tymenurecord.
-         */
-        hdlmenurecord hmenurecord = (hdlmenurecord)(**hv).variabledata;
-
-        if (hmenurecord == nil || (**hmenurecord).menuoutline == nil) {
-            seterrorstring("menu has no outline", bserror);
-            return false;
-        }
-
-        *ho = (**hmenurecord).menuoutline;
-    } else {
-        *ho = (hdloutlinerecord)(**hv).variabledata;
-    }
 
     return true;
 }

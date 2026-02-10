@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Critical: Fix dist startup crashes** - Second run from dist directory no longer segfaults. Three independent root causes fixed:
+  - Restored `langexternalsetdatabase()` for cross-database assignment (disabled by commit 23b893dd)
+  - Fixed menu external handling in `getoutlinefromtarget()` — uses `menuverbinmemory_context()` instead of `opverbinmemory()` for `idmenuprocessor` types
+  - Added NULL `param1` guard in `langfunctioncall()` for corrupt/partial code trees
+- **NULL safety in outline traversal** - All 8 traversal functions in `opvisit.c` now check for NULL link pointers, matching the existing `opsiblingvisiter` guard from 1988
+- **Pack logging noise** - Moved PACK diagnostics after dirty check and downgraded to trace level, eliminating ~6,800 log lines per save
+
+### Changed
+
+- **Database file extension**: Distribution builds now use `.root` extension instead of `.root7`. The v7 format is detected by header magic, not file extension. Users upgrading from earlier pre-releases who have `.root7` files can simply rename them to `.root` — the contents are identical.
+
 ## [1.0.0-alpha.2] - 2026-01-15
 
 ### Fixed
