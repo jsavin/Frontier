@@ -478,6 +478,109 @@ TEST(max_threads_boundary) {
 }
 
 /*
+ * Test 16: register_main_thread allocates with fixed ID and adjusts next_thread_id
+ */
+TEST(register_main_thread_basic) {
+    init_thread_registry();
+
+    frontier_pthread_record *rec = register_main_thread(2);
+    ASSERT_NOT_NULL(rec);
+    ASSERT_EQ(rec->user_thread_id, 2);
+    ASSERT_EQ(rec->in_use, true);
+    ASSERT_EQ(rec->is_sleeping, false);
+    ASSERT_EQ(rec->is_killed, false);
+    ASSERT_EQ(get_thread_count(), 1);
+
+    /* Subsequent allocations should start at 3+ */
+    frontier_pthread_record *rec2 = allocate_thread_record();
+    ASSERT_NOT_NULL(rec2);
+    ASSERT(rec2->user_thread_id >= 3);
+
+    free_thread_record(rec2);
+    free_thread_record(rec);
+    cleanup_thread_registry();
+}
+
+/*
+ * Test 17: register_main_thread with different fixed IDs
+ */
+TEST(register_main_thread_custom_id) {
+    init_thread_registry();
+
+    frontier_pthread_record *rec = register_main_thread(10);
+    ASSERT_NOT_NULL(rec);
+    ASSERT_EQ(rec->user_thread_id, 10);
+
+    /* Next allocated thread should be 11+ */
+    frontier_pthread_record *rec2 = allocate_thread_record();
+    ASSERT_NOT_NULL(rec2);
+    ASSERT(rec2->user_thread_id >= 11);
+
+    free_thread_record(rec2);
+    free_thread_record(rec);
+    cleanup_thread_registry();
+}
+
+/*
+ * Test 18: get_nth_thread_id returns IDs in slot order
+ */
+TEST(get_nth_thread_id_basic) {
+    init_thread_registry();
+
+    frontier_pthread_record *rec1 = allocate_thread_record();
+    frontier_pthread_record *rec2 = allocate_thread_record();
+    frontier_pthread_record *rec3 = allocate_thread_record();
+    ASSERT_NOT_NULL(rec1);
+    ASSERT_NOT_NULL(rec2);
+    ASSERT_NOT_NULL(rec3);
+
+    /* 1-based indexing: nth=1 is first in-use slot */
+    long id1 = get_nth_thread_id(1);
+    long id2 = get_nth_thread_id(2);
+    long id3 = get_nth_thread_id(3);
+
+    ASSERT_EQ(id1, rec1->user_thread_id);
+    ASSERT_EQ(id2, rec2->user_thread_id);
+    ASSERT_EQ(id3, rec3->user_thread_id);
+
+    /* Out of range returns 0 */
+    ASSERT_EQ(get_nth_thread_id(0), 0);
+    ASSERT_EQ(get_nth_thread_id(4), 0);
+    ASSERT_EQ(get_nth_thread_id(-1), 0);
+
+    free_thread_record(rec1);
+    free_thread_record(rec2);
+    free_thread_record(rec3);
+    cleanup_thread_registry();
+}
+
+/*
+ * Test 19: get_nth_thread_id skips freed slots
+ */
+TEST(get_nth_thread_id_after_free) {
+    init_thread_registry();
+
+    frontier_pthread_record *rec1 = allocate_thread_record();
+    frontier_pthread_record *rec2 = allocate_thread_record();
+    frontier_pthread_record *rec3 = allocate_thread_record();
+
+    long id2 = rec2->user_thread_id;
+    long id3 = rec3->user_thread_id;
+
+    /* Free the first record */
+    free_thread_record(rec1);
+
+    /* Now nth=1 should be rec2, nth=2 should be rec3 */
+    ASSERT_EQ(get_nth_thread_id(1), id2);
+    ASSERT_EQ(get_nth_thread_id(2), id3);
+    ASSERT_EQ(get_nth_thread_id(3), 0);
+
+    free_thread_record(rec2);
+    free_thread_record(rec3);
+    cleanup_thread_registry();
+}
+
+/*
  * Main test runner
  */
 int main(void) {
@@ -502,6 +605,10 @@ int main(void) {
     RUN_TEST(pre_init_safety);
     RUN_TEST(lookup_after_free);
     RUN_TEST(max_threads_boundary);
+    RUN_TEST(register_main_thread_basic);
+    RUN_TEST(register_main_thread_custom_id);
+    RUN_TEST(get_nth_thread_id_basic);
+    RUN_TEST(get_nth_thread_id_after_free);
 
     printf("\n=====================================\n");
     printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);

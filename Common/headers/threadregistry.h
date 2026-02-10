@@ -230,6 +230,36 @@ int get_thread_count(void);
 void acquire_thread_record(frontier_pthread_record *rec);
 
 /*
+ * register_main_thread - Register the main thread with a fixed ID
+ *
+ * Allocates a slot with the given fixed_id and sets next_thread_id so that
+ * subsequently spawned threads get IDs starting at fixed_id + 1.
+ *
+ * Parameters:
+ *   fixed_id - The thread ID to assign (typically 2, idapplicationthread)
+ *
+ * Returns: Pointer to allocated record, or NULL on failure
+ *
+ * Thread Safety: NOT thread-safe - call from main thread at startup only
+ */
+frontier_pthread_record *register_main_thread(long fixed_id);
+
+/*
+ * get_nth_thread_id - Get the thread ID of the Nth active thread
+ *
+ * Returns the user_thread_id of the Nth in-use thread record (1-based).
+ * Returns 0 if n is out of range or no such thread exists.
+ *
+ * Parameters:
+ *   n - 1-based index into in-use thread records
+ *
+ * Returns: Thread ID, or 0 if not found
+ *
+ * Thread Safety: Thread-safe
+ */
+long get_nth_thread_id(long n);
+
+/*
  * release_thread_record - Decrement refcount for a thread record
  *
  * Must be called when done with a thread record. When refcount reaches zero,

@@ -1914,27 +1914,28 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 		hlocals = currenthashtable;
 	
 	while (true) { /*visit each statement in the statement list*/
-		
-		if (fllangerror) /*a language error dialog has appeared, unwind*/
+
+		if (fllangerror) { /*a language error dialog has appeared, unwind*/
 			break;
-		
+		}
+
 		if (programcounter == nil) { /*reached the end of the list*/
-			
+
 			fl = true; /*don't halt the interpreter*/
-			
+
 			break;
 			}
-		
+
 		cleartmpstack (); /*dealloc all outstanding temporary values*/
-		
+
 		langseterrorline (programcounter); /*set globals for error reporting*/
-		
+
 		if (languserescaped (false)) /*user killed the script*/
 			break;
-		
+
 		if (!langdebuggercall (programcounter)) /*user killed the script*/
 			break;
-		
+
 		if (!evaluatetree (programcounter, val))
 			break;
 		

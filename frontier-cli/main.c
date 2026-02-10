@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <stdint.h>
+#include <pthread.h>
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>  /* for _NSGetExecutablePath */
@@ -51,6 +52,7 @@
 #include "../Common/headers/db_format.h"
 #include "../Common/headers/dbinternal.h"
 #include "../Common/headers/byteorder.h"
+#include "../Common/headers/threadregistry.h"
 
 // Portable headers
 #include "../portable/file_working_dir.h"
@@ -64,6 +66,10 @@
 
 extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
+
+/* hthreadglobals is defined in headless_threadglobals.c, declared in processinternal.h.
+ * We use the hdlthreadglobals typedef from threadregistry.h to avoid header conflicts. */
+extern hdlthreadglobals hthreadglobals;
 
 // Version information
 // FRONTIER_CLI_VERSION_STRING is defined at compile time from git tags via Makefile
@@ -657,6 +663,21 @@ static boolean initialize_frontier_runtime(void) {
         return false;
     }
 
+    /* Initialize thread registry and register main thread with idapplicationthread (2) */
+    if (!init_thread_registry()) {
+        log_error(LOG_COMP_GENERAL, "Error: Failed to initialize thread registry");
+        cli_cleanup_logging();
+        return false;
+    }
+
+    {
+        frontier_pthread_record *main_rec = register_main_thread(2);
+        if (main_rec) {
+            main_rec->hglobals = hthreadglobals;
+            main_rec->pthread_id = pthread_self();
+        }
+    }
+
     if (g_cli_options.system_root != NULL) {
         if (!load_system_root_database(g_cli_options.system_root)) {
             cli_log_error("Failed to load system root database: %s", g_cli_options.system_root);
@@ -683,7 +704,17 @@ static void cleanup_frontier_runtime(void) {
     if (g_system_root_loaded) {
         unload_system_root_database();
     }
-    
+
+    /* Release main thread registry record before cleanup */
+    {
+        frontier_pthread_record *main_rec = get_thread_by_id(2);
+        if (main_rec) {
+            release_thread_record(main_rec);  /* release lookup ref */
+            free_thread_record(main_rec);     /* release initial ref */
+        }
+    }
+    cleanup_thread_registry();
+
     // Cleanup Frontier runtime
     releasethreadglobals();
 

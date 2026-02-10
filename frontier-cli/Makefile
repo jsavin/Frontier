@@ -153,7 +153,8 @@ RUNTIME_SOURCES = \
     ../Common/source/shell_api_headless.c \
     ../Common/source/sysshellcall.c \
     ../Common/source/menupack.c \
-    ../Common/source/menuverbs.c
+    ../Common/source/menuverbs.c \
+    ../Common/source/threadregistry.c
 
 # Headless adapters mirrored from tests/
 HEADLESS_STUBS = \

@@ -318,6 +318,109 @@ static long allocate_thread_id_locked(void) {
 }
 
 /*
+ * register_main_thread - Register the main thread with a fixed ID
+ *
+ * Allocates a slot with the given fixed_id and adjusts next_thread_id so
+ * that spawned threads start at fixed_id + 1.
+ */
+frontier_pthread_record *register_main_thread(long fixed_id) {
+    frontier_pthread_record *result = NULL;
+    int i;
+
+    pthread_mutex_lock(&registry_mutex);
+
+    if (!registry_initialized) {
+        pthread_mutex_unlock(&registry_mutex);
+        return NULL;
+    }
+
+    /* Find a free slot */
+    for (i = 0; i < MAX_THREADS; i++) {
+        if (!thread_records[i].in_use) {
+            frontier_pthread_record *rec = &thread_records[i];
+
+            /* Initialize the record with the fixed ID */
+            memset(rec, 0, sizeof(*rec));
+            rec->user_thread_id = fixed_id;
+            rec->in_use = true;
+            rec->is_sleeping = false;
+            rec->is_killed = false;
+            rec->wakeup_ticks = 0;
+            rec->hglobals = nil;
+            rec->refcount = 1;
+
+            /* Adjust next_thread_id so spawned threads start after this ID */
+            if (fixed_id >= next_thread_id) {
+                next_thread_id = fixed_id + 1;
+            }
+
+            /* Initialize synchronization primitives */
+            if (pthread_mutex_init(&rec->refcount_mutex, NULL) != 0) {
+                rec->in_use = false;
+                pthread_mutex_unlock(&registry_mutex);
+                return NULL;
+            }
+
+            if (pthread_mutex_init(&rec->state_mutex, NULL) != 0) {
+                pthread_mutex_destroy(&rec->refcount_mutex);
+                rec->in_use = false;
+                pthread_mutex_unlock(&registry_mutex);
+                return NULL;
+            }
+
+            if (pthread_cond_init(&rec->wake_cond, NULL) != 0) {
+                pthread_mutex_destroy(&rec->state_mutex);
+                pthread_mutex_destroy(&rec->refcount_mutex);
+                rec->in_use = false;
+                pthread_mutex_unlock(&registry_mutex);
+                return NULL;
+            }
+
+            result = rec;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&registry_mutex);
+    return result;
+}
+
+/*
+ * get_nth_thread_id - Get the thread ID of the Nth active thread (1-based)
+ *
+ * Returns 0 if n is out of range.
+ */
+long get_nth_thread_id(long n) {
+    long result = 0;
+    int i;
+    long count = 0;
+
+    if (n <= 0) {
+        return 0;
+    }
+
+    pthread_mutex_lock(&registry_mutex);
+
+    if (!registry_initialized) {
+        pthread_mutex_unlock(&registry_mutex);
+        return 0;
+    }
+
+    for (i = 0; i < MAX_THREADS; i++) {
+        if (thread_records[i].in_use) {
+            count++;
+            if (count == n) {
+                result = thread_records[i].user_thread_id;
+                break;
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&registry_mutex);
+    return result;
+}
+
+/*
  * get_thread_count - Get the number of active threads
  */
 int get_thread_count(void) {
