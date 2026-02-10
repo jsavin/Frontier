@@ -8310,6 +8310,12 @@ boolean langfunctioncall (hdltreenode hcallernode, hdlhashtable htable, hdlhashn
             return (kernelfunctionvalue (htable, bsname, hparam1, vreturned));
             }
 		
+		if ((**hcode).param1 == nil) { /*corrupt or uninitialized code tree*/
+			log_error(LOG_COMP_LANG, "langfunctioncall: hcode has nil param1 for %s", PSTR(bsname));
+			langerror(notfunctionerror);
+			return (false);
+			}
+
 		if ((**(**hcode).param1).nodetype == kernelop)
 			return (kernelcall (hcode, hparam1, vreturned));
 		
