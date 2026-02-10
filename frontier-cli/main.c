@@ -710,9 +710,14 @@ static void cleanup_frontier_runtime(void) {
         unload_system_root_database();
     }
 
-    /* Release main thread registry record before cleanup */
+    /* Release main thread registry record before cleanup.
+     * ASSUMPTION: Shutdown is single-threaded — all cooperative threads have
+     * completed before we reach this point. In cooperative mode this is guaranteed
+     * because spawned threads run synchronously to completion. If we ever support
+     * concurrent threads that outlive the main thread, we'll need a "wait for all
+     * threads" step before cleanup (cleanup_thread_registry asserts refcount==0). */
     {
-        frontier_pthread_record *main_rec = get_thread_by_id(2);
+        frontier_pthread_record *main_rec = get_thread_by_id((long)idapplicationthread);
         if (main_rec) {
             release_thread_record(main_rec);  /* release lookup ref */
             free_thread_record(main_rec);     /* release initial ref */

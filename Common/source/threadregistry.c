@@ -130,6 +130,7 @@ frontier_pthread_record *allocate_thread_record(void) {
     pthread_mutex_lock(&registry_mutex);
 
     if (!registry_initialized) {
+        log_error(LOG_COMP_THREAD, "allocate_thread_record: registry not initialized");
         pthread_mutex_unlock(&registry_mutex);
         return NULL;
     }
@@ -145,7 +146,7 @@ frontier_pthread_record *allocate_thread_record(void) {
             if (thread_id < 0) {
                 /* Failed to allocate ID (all slots in use after wraparound) */
                 pthread_mutex_unlock(&registry_mutex);
-                return NULL;
+                return NULL;  /* allocate_thread_id_locked already logged */
             }
 
             /* Initialize the record */
@@ -160,12 +161,14 @@ frontier_pthread_record *allocate_thread_record(void) {
 
             /* Initialize synchronization primitives */
             if (pthread_mutex_init(&rec->refcount_mutex, NULL) != 0) {
+                log_error(LOG_COMP_THREAD, "allocate_thread_record: refcount_mutex init failed");
                 rec->in_use = false;
                 pthread_mutex_unlock(&registry_mutex);
                 return NULL;
             }
 
             if (pthread_mutex_init(&rec->state_mutex, NULL) != 0) {
+                log_error(LOG_COMP_THREAD, "allocate_thread_record: state_mutex init failed");
                 pthread_mutex_destroy(&rec->refcount_mutex);
                 rec->in_use = false;
                 pthread_mutex_unlock(&registry_mutex);
@@ -173,6 +176,7 @@ frontier_pthread_record *allocate_thread_record(void) {
             }
 
             if (pthread_cond_init(&rec->wake_cond, NULL) != 0) {
+                log_error(LOG_COMP_THREAD, "allocate_thread_record: wake_cond init failed");
                 pthread_mutex_destroy(&rec->state_mutex);
                 pthread_mutex_destroy(&rec->refcount_mutex);
                 rec->in_use = false;
@@ -184,6 +188,9 @@ frontier_pthread_record *allocate_thread_record(void) {
             break;
         }
     }
+
+    if (result == NULL)
+        log_error(LOG_COMP_THREAD, "allocate_thread_record: no free slots (MAX_THREADS=%d)", MAX_THREADS);
 
     pthread_mutex_unlock(&registry_mutex);
     return result;

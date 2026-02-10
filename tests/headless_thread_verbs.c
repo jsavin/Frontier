@@ -181,8 +181,11 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
 
     fl = langbuildtree(htext, true, &hcode); /* langbuildtree disposes htext */
 
-    if (!fl || hcode == nil)
+    if (!fl || hcode == nil) {
+        if (hcode != nil)
+            langdisposetree(hcode);
         return false;
+    }
 
     /* Allocate thread record from registry */
     rec = allocate_thread_record();
