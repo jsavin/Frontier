@@ -38,6 +38,9 @@
 #include "shell.h"
 #include "op.h"
 
+/* External: language error flag - must be cleared between tests */
+extern boolean fllangerror;
+
 /* Test counters */
 static int tests_run = 0;
 static int tests_passed = 0;
@@ -46,6 +49,7 @@ static int tests_failed = 0;
 /* Test macros */
 #define TEST(name) \
     do { \
+        fllangerror = false; \
         tests_run++; \
         printf("Testing: %s ... ", name); \
         fflush(stdout); \
@@ -109,6 +113,12 @@ boolean test_setup(void) {
 
     if (!langinitverbs()) {
         printf("ERROR: langinitverbs() failed\n");
+        return false;
+    }
+
+    /* Initialize keyword table (not, and, or) and constant table (true, false) */
+    if (!langinitresources_headless()) {
+        printf("ERROR: langinitresources_headless() failed\n");
         return false;
     }
 
@@ -551,7 +561,8 @@ void test_callback_address_param(void) {
     boolean fl;
 
     /* Create a test table to pass as address */
-    fl = langnewtable(nil, &hparamtable);
+    tyvaluerecord tableval;
+    fl = tablenewtablevalue(&hparamtable, &tableval);
     ASSERT(fl);
 
     /* Add value to test table: test.value = 123 */
@@ -561,7 +572,7 @@ void test_callback_address_param(void) {
     fl = hashtableassign(hparamtable, bs_table_name, val);
     ASSERT(fl);
 
-    /* Create callback script: on test(t) { return t.value } */
+    /* Create callback script: on test(t) { return defined(t) } */
     /* Note: This would require address parameter support in UserTalk */
     copyctopstring("testAddress", bs_name);
     fl = add_test_script(bs_name, "defined(param1)");
