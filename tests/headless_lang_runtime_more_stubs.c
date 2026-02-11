@@ -98,6 +98,9 @@ boolean getstringlist (short listid, short index, bigstring bs) {
         case langmiscstringlist:  // 158 from langinternal.h
             table_name = "langmiscstringlist";
             break;
+        case 263:  // stringerrorlist - text encoding error strings
+            table_name = "stringerrorlist";
+            break;
         default:
             // Unknown list ID
             setemptystring(bs);

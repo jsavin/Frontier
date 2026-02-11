@@ -588,6 +588,29 @@ langmiscstringlist:
     index: 13
     text: "nil"
 
+stringerrorlist:
+  - id: stringerror_internal
+    index: 1
+    text: "Internal error running 'string.^0'."
+  - id: stringerror_unknown
+    index: 2
+    text: "Can't convert character set because of an unknown error."
+  - id: stringerror_unsupported
+    index: 3
+    text: "Can't convert character set because '^0' is not supported."
+  - id: stringerror_illegal_sequence
+    index: 4
+    text: "Can't convert character set because the text contains a sequence that is not legal in the specified character set (^0)."
+  - id: stringerror_undefined_codepoint
+    index: 5
+    text: "Can't convert character set because the text contains a code point that is undefined in the specified character set (^0)."
+  - id: stringerror_no_conversion
+    index: 6
+    text: "Can't convert character set because there is no way to convert from '^0' to '^1'."
+  - id: stringerror_truncated
+    index: 7
+    text: "Can't convert character set because the text ends in the middle of a multibyte character."
+
 directionlist:
   - id: up
     index: 1
