@@ -167,7 +167,7 @@ void opdisposelist (hdllistrecord hlist) {
 	if (hlist == nil) /*defensive driving*/
 		return;
 
-	if (*hlist == nil) /*handle data already disposed, bail out*/
+	if (*hlist == nil) /*handle data already disposed (e.g., from tmp stack cleanup), bail out*/
 		return;
 
 	hcurrentlist = hlist; /*for our callback routines*/
