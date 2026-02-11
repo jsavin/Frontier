@@ -1,8 +1,20 @@
 # Current Status
 
-Last Updated: 2026-02-07
+Last Updated: 2026-02-10
 
 ## Current Focus: Guest Database Lifecycle, Menu System & GUI Planning
+
+## Session Update (2026-02-10)
+
+- Created `docs/AI_SHARED_GUIDELINES.md` as the shared policy baseline for Codex/Claude and automation.
+- Updated `AGENTS.md` and `CLAUDE.md` to reference the shared file as cross-agent source of truth.
+- Trimmed duplicated cross-agent policy in `.claude/agents/frontier-sdet.md` and `.claude/agents/issue-writer.md`.
+- Added `tools/check_ai_guidelines_refs.sh` to verify both top-level agent files reference shared guidelines.
+
+### Explicit Next Steps
+1. Run `tools/check_ai_guidelines_refs.sh` in CI or pre-PR validation to prevent drift.
+2. Audit remaining `.claude/agents/*.md` files and replace any duplicated global policy blocks with shared-file references.
+3. Keep branch/worktree, testing, logging, UserTalk constraints, and issue-hygiene updates centralized in `docs/AI_SHARED_GUIDELINES.md`.
 
 **Status**: Guest database lifecycle (fileMenu verbs) fully operational in headless mode. Four database corruption bugs fixed. Startup scripts working. Menu system stabilized. GUI application planning complete. Compiler warnings eliminated.
 
