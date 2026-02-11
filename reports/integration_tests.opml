@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 1856 tests: 1684 pass (90%) 172 skip (9%)</title>
-    <dateCreated>Tue, 10 Feb 2026 19:00:31 GMT</dateCreated>
+    <title>Frontier Integration Tests - 1872 tests: 1700 pass (90%) 172 skip (9%)</title>
+    <dateCreated>Wed, 11 Feb 2026 06:31:52 GMT</dateCreated>
   </head>
   <body>
     <outline text="Builtins Priority (builtins_priority) - 25 tests: 25 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
@@ -32,8 +32,8 @@
     <outline text="Path Resolution (path_resolution) - 39 tests: 39 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/path_resolution.opml"/>
     <outline text="Post Hydration Database State (post_hydration_database_state) - 34 tests: 30 pass (88%) 4 skip (11%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/post_hydration_database_state.opml"/>
     <outline text="Repl Basic (repl_basic) - 58 tests: 58 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/repl_basic.opml"/>
-    <outline text="Repl Commands (repl_commands) - 59 tests: 41 pass (69%) 18 skip (30%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/repl_commands.opml"/>
-    <outline text="Repl Sessions (repl_sessions) - 52 tests: 47 pass (90%) 5 skip (9%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/repl_sessions.opml"/>
+    <outline text="Repl Commands (repl_commands) - 71 tests: 53 pass (74%) 18 skip (25%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/repl_commands.opml"/>
+    <outline text="Repl Sessions (repl_sessions) - 56 tests: 51 pass (91%) 5 skip (8%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/repl_sessions.opml"/>
     <outline text="Runtime Error Halting (runtime_error_halting) - 16 tests: 16 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/runtime_error_halting.opml"/>
     <outline text="Runtime Parameter State (runtime_parameter_state) - 17 tests: 17 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/runtime_parameter_state.opml"/>
     <outline text="Script Processor Verbs (script_processor_verbs) - 43 tests: 7 pass (16%) 36 skip (83%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/script_processor_verbs.opml"/>
