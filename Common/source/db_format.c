@@ -165,6 +165,19 @@ void odb_guard_enter(odb_context_guard *guard) {
 	guard->saved_rootvariable = (void *) rootvariable;
 	guard->saved_roottable = (void *) roottable;
 	guard->saved_cancoonglobals = (void *) cancoonglobals;
+	/* Save table structure globals that cleartablestructureglobals() clears.
+	 * Without this, opening a guest database via odbOpenFile destroys the
+	 * system root's pathstable, systemtable, builtinstable, etc. */
+	guard->saved_systemtable = (void *) systemtable;
+	guard->saved_builtinstable = (void *) builtinstable;
+	guard->saved_pathstable = (void *) pathstable;
+	guard->saved_verbstable = (void *) verbstable;
+	guard->saved_iacgluetable = (void *) iacgluetable;
+	guard->saved_iachandlertable = (void *) iachandlertable;
+	guard->saved_resourcestable = (void *) resourcestable;
+	guard->saved_agentstable = (void *) agentstable;
+	guard->saved_menubartable = (void *) menubartable;
+	guard->saved_objectmodeltable = (void *) objectmodeltable;
 
 	/* Nil out currenthashtable to prevent tmpstack contamination.
 	 * Without this, copyvaluerecord during migration pushes handles onto
@@ -194,6 +207,17 @@ void odb_guard_exit(odb_context_guard *guard) {
 	rootvariable = (Handle) guard->saved_rootvariable;
 	roottable = (hdlhashtable) guard->saved_roottable;
 	cancoonglobals = (hdlcancoonrecord) guard->saved_cancoonglobals;
+	/* Restore table structure globals */
+	systemtable = (hdlhashtable) guard->saved_systemtable;
+	builtinstable = (hdlhashtable) guard->saved_builtinstable;
+	pathstable = (hdlhashtable) guard->saved_pathstable;
+	verbstable = (hdlhashtable) guard->saved_verbstable;
+	iacgluetable = (hdlhashtable) guard->saved_iacgluetable;
+	iachandlertable = (hdlhashtable) guard->saved_iachandlertable;
+	resourcestable = (hdlhashtable) guard->saved_resourcestable;
+	agentstable = (hdlhashtable) guard->saved_agentstable;
+	menubartable = (hdlhashtable) guard->saved_menubartable;
+	objectmodeltable = (hdlhashtable) guard->saved_objectmodeltable;
 }
 
 #if defined(_WIN32)
