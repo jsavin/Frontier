@@ -84,16 +84,24 @@ static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long 
     boolean is_legacy = (databasedata != nil && db_format_is_legacy_db(databasedata));
     const long header_size = is_legacy ? sizeheader_v6 : sizeheader;
 
+    /* Use the actual database's headerLength instead of the compile-time constant.
+     * v6 databases have headerLength=88 (0x58), but firstphysicaladdress=118 (sizeof struct).
+     * Addresses between 88-117 are valid on-disk but rejected by the constant. */
+    long min_address = firstphysicaladdress;
+    if (databasedata != nil && (**databasedata).headerLength > 0) {
+        min_address = (**databasedata).headerLength;
+    }
+
 	if (adr == nildbaddress)
 		return false;
 
 	if (!dbgeteof(&eof))
 		return false;
 
-	if (adr < firstphysicaladdress || adr >= (dbaddress) eof)
+	if (adr < min_address || adr >= (dbaddress) eof)
 		return false;
 
-	for (dbaddress candidate = adr; candidate >= firstphysicaladdress && (adr - candidate) <= 0x100000; --candidate) {
+	for (dbaddress candidate = adr; candidate >= min_address && (adr - candidate) <= 0x100000; --candidate) {
 		boolean freeflag = false;
 		long node_size = 0;
 		tyvariance node_variance = 0;
@@ -1724,7 +1732,10 @@ boolean dbrefhandle (dbaddress adr, Handle *h) {
 		return (false);
 
 #if defined(FRONTIER_HEADLESS)
-    (void) dbnormalizeaddress(&a);
+    if (!dbnormalizeaddress(&a)) {
+        log_trace(LOG_COMP_DB, "dbrefhandle: normalization returned false for 0x%llx (may be legacy address)",
+                (unsigned long long) adr);
+    }
 #endif
 
     if (!dbreadheader (a, &flfree, &ctbytes, &variance))
