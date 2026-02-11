@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Repl Commands (repl_commands) - 59 tests: 41 pass (69%) 18 skip (30%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Repl Commands (repl_commands) - 71 tests: 53 pass (74%) 18 skip (25%)</title>
+    <dateCreated>Wed, 11 Feb 2026 06:31:52 GMT</dateCreated>
   </head>
   <body>
     <outline text="REPL /help - displays available commands - /help should list all available commands">
@@ -192,7 +192,7 @@
       <outline text="Metadata">
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: /list nonexistent.path&#10;/exit&#10;"/>
-        <outline text="expected_output_contains: ['Error', 'not a valid table path']"/>
+        <outline text="expected_output_contains: ['Error', 'not found']"/>
       </outline>
     </outline>
     <outline text="REPL /list - empty path argument lists current - /list with just whitespace lists current table">
@@ -452,6 +452,92 @@
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: /help&#10;/exit&#10;"/>
         <outline text="expected_output_contains: ['/clear', 'Clear']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - with index syntax on table - /list with [n] should show the nth item (1-based)">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system[1]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: [':']"/>
+        <outline text="expected_output_not_contains: ['Error']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - index zero error - /list with [0] should error (1-based indexing)">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system[0]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'index must be &gt;= 1']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - index out of range error - /list with index beyond table size should error">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system[999]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'out of range']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - index syntax with dot-path - /list with dot-path and [n] index">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system.verbs[1]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: [':']"/>
+        <outline text="expected_output_not_contains: ['Error']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - invalid index syntax - /list with malformed index should error">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system[abc]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'invalid index syntax']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - relative path after /jump - /list with relative path should resolve from current table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/list verbs&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['system.verbs:', 'builtins']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - relative single name after /jump - /list single name resolves relative to jumped table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system.verbs&#10;/list builtins&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['system.verbs.builtins:']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - with index syntax - /jump with [n] should navigate to the nth item if it's a table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system[1]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system.']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - index zero error - /jump with [0] should error (1-based indexing)">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system[0]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'index must be &gt;= 1']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - index out of range - /jump with index beyond table size should error">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system[999]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'out of range']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /help - documents index syntax - /help should mention index [n] syntax">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[1]', '1-based']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /help - documents relative paths - /help should mention relative path support">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /help&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Relative']"/>
       </outline>
     </outline>
   </body>

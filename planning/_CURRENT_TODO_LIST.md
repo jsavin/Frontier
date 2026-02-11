@@ -1,60 +1,69 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-02-07)
+Status: In Progress (Updated 2026-02-10)
 
 ## Recently Completed Milestones
+
+### Cooperative Threading Infrastructure - ✅ MERGED (Feb 10)
+**Resolution**: PR #404 merged
+- Thread registry with main thread registration and iteration
+- Cooperative globals save/restore isolates C globals per-thread
+- Fire-and-forget semantics: scriptError in spawned thread stays contained
+- `thread.evaluate()`, `callscript()`, `getCurrentID()`, `getCount()`, `exists()`, `kill()`, `sleep()`, `wake()`, `getNthID()` all operational
+- 10 integration tests + 19 unit tests (all passing)
+- Filed issue #406 (increase MAX_THREADS beyond 64)
+
+### Startup Hang & BIGSTRING Fix - ✅ MERGED (Feb 10)
+**Resolution**: PR #403 merged
+- Fixed 3 wrong BIGSTRING length prefixes making `string.innerCaseName`, `macRomanToUtf8`, `utf8ToMacRoman` unreachable
+- Root cause chain: unreachable verb → error → semaphore not unlocked → 2-hour busy-wait
+- Added defensive `langreleaseallsemaphores` auto-cleanup after startup/REPL execution
+
+### Callback Infrastructure Fix - ✅ MERGED (Feb 10)
+**Resolution**: PR #402 merged
+- Fixed segfault (undefined `langnewtable` symbol), double-free crashes, "too many parameters" errors
+- All 14 callback tests now pass (was: 1 pass + segfault + 12 failures)
+
+### Dist Startup Stability - ✅ MERGED (Feb 10)
+**Resolution**: PR #401 merged
+- Restored `langexternalsetdatabase()` (was no-op, breaking cross-database hdatabase assignment)
+- Fixed `getoutlinefromtarget()` for menu externals (was interpreting menu record as packed outline)
+- NULL guards for `param1` in `langfunctioncall()` and 8 outline traversal functions
+- Eliminated 6,800+ lines of PACK diagnostic noise per save
+
+### Guest Database Context Fix - ✅ MERGED (Feb 8)
+**Resolution**: PR #400 merged
+- Op verbs now use variable database context instead of system root for guest DB operations
+
+### window.isOpen() - ✅ MERGED (Feb 7-8)
+**Resolution**: PRs #398, #399 merged
+- Address path and file path resolution against system root and guest DBs
+- Unblocks `Frontier.openDataFile()`; raises script errors for path failures
+
+### Portable fileloop & Outline Callbacks - ✅ MERGED (Feb 7)
+**Resolution**: PR #396 merged
+- POSIX fileloop implementation, fixed `macfilespecisvalid` stub, NULL callback safety
+- Startup script now completes successfully
+
+### fileMenu.saveAs/saveCopy - ✅ MERGED (Feb 7)
+**Resolution**: PR #394 merged
+- Save-then-copy approach for both system root and guest databases
+- Restored `fldatabasesaveas` guard in menu persistence
+- 28 filemenu integration tests total; closes issues #392 and #395
 
 ### Guest Database Lifecycle (fileMenu Verbs) - ✅ MERGED (Feb 5-7)
 **Resolution**: PR #391 merged
 - `fileMenu.open/close/closeall/save` implemented for headless mode
-- v7 64-bit menu structure save format added
-- Four database corruption bugs fixed (tmpstack, db.new globals, struct alignment, save globals)
-- `odb_context_guard` enhanced to save/restore `cancoonglobals`
+- Four database corruption bugs fixed
 - 22 integration tests (all passing)
-- New documentation: `docs/GUEST_DATABASE_ARCHITECTURE.md`
-- Follow-up issues filed: #392 (fldatabasesaveas guard), #393 (remaining fileMenu stubs)
 
-### Startup Scripts & Path-Based File Verbs - ✅ MERGED (Feb 1-5)
-**Resolution**: PRs #378, #382, #389 merged
-- `system.startup.startupScript` execution enabled in headless mode
-- Path-based file verbs operational
-- Startup warnings #2 and #3 fixed (menupack and startup script)
-- Enables daemon-mode workflows
-
-### Menu System Stabilization - ✅ MERGED (Feb 2-5)
-**Resolution**: PRs #383, #384, #385, #387, #388, #390 merged
-- Proper `menubarType` data access for headless mode
-- Comprehensive menu integration tests added
-- V6 menu loading fixed during migration (byte-swap linkage)
-- Disk struct fields fixed to `int32_t` for 64-bit safety
-- `op.outlineToXml` fixed for headless mode via window verb stubs
-- Mbar value copying fixed — added `menuverbcopyvalue()` with proper v6/v7 format detection
-- `langexternalcopyvalue()` now dispatches `idmenuprocessor` to dedicated copy path
-- Static assertions added; disk struct anti-pattern documented
-
-### Compiler Warning Elimination - ✅ COMPLETE (Feb 1)
-**Resolution**: PRs #372, #373 merged
-- Phase 1: 154 → 24 warnings (84% reduction)
-- Phase 2: 24 → 0 warnings (100% elimination)
-- Zero compiler warnings achieved
-
-### Build & Distribution - ✅ MERGED (Feb 1)
-**Resolution**: PRs #377, #381 merged
-- `make dist` target for legacy-compatible distribution
-- `--migrate` flag for standalone database migration
-- Default Makefile target now builds `all` (with dist)
-
-### GUI Application Planning - ✅ DOCUMENTED (Feb 2-5)
-**Resolution**: 8 specification documents in `planning/gui/`
-- Architecture, protocol, and all editor specifications complete
-- Table browser, script editor, outline editor, menu editor, wptext editor, console
-- External types and editor mapping documented
-
-### Quality Improvements - ✅ MERGED (Feb 1-5)
-- Removed 255-byte result truncation in CLI and REPL output
-- Demoted noisy logging (system table snapshots, menu loading, caught try errors)
-- OPML test export with pass/skip/fail statistics
-- Window verb stub documentation improved
+### Earlier Completions (Feb 1-5)
+- **Startup Scripts & Path-Based File Verbs**: PRs #378, #382, #389
+- **Menu System Stabilization**: PRs #383-385, #387-388, #390
+- **Compiler Warning Elimination**: PRs #372, #373 (zero warnings)
+- **Build & Distribution**: PRs #377, #381 (`make dist`, `--migrate`)
+- **GUI Application Planning**: 8 specification docs in `planning/gui/`
+- **Quality Improvements**: Logging demotions, result truncation removal, OPML export
 
 ---
 
@@ -85,6 +94,10 @@ These require design/planning before implementation can proceed.
 **Timeline**: Before broad CLI distribution
 **Note**: TCP layer is already secure; this is about HTTP-level policies
 
+### Issue #367 (P0): Cleanup project directory structure
+**Status**: Open
+**Scope**: Medium - move CLI stubs out of tests/
+
 ---
 
 ## Current Work Status
@@ -98,11 +111,9 @@ These require design/planning before implementation can proceed.
 - **tcp**, webserver, xml
 
 **Partial Processors**:
-- thread: 64% (11/17) - Phase 1 foundation complete
+- thread: Cooperative threading operational — `evaluate`, `callscript`, `getCurrentID`, `getCount`, `exists`, `kill`, `sleep`, `wake`, `getNthID` all working
 - searchengine: 20% (1/5)
-
-**Partial Processors** (continued):
-- filemenu: 40% (4/10) - open, close, closeall, save implemented; 6 stubs remain (Issue #393)
+- filemenu: 60% (6/10) - open, close, closeall, save, saveAs, saveCopy implemented; 4 stubs remain (Issue #393: new, revert, print, quit)
 
 **Not Started** (0%):
 - bit, clipboard, dll, editmenu, frontier, htmlcontrol
@@ -111,15 +122,24 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,804 total (up from 1,802)
-- 1,592 passed, 172 skipped, 40 failed (pre-existing)
-- New tests for fileMenu verbs (22 tests, all passing)
+### Integration Tests: ~1,830+ total (up from 1,804)
+- ~1,617+ passed (non-skip), ~172 skipped, ~39 failed (pre-existing)
+- New tests: cooperative threading (10), fileMenu saveAs/saveCopy (7), window.isOpen (10+), string verb reachability, callback infrastructure (14 unit tests fixed)
 
 ---
 
 ## Next Milestones
 
-### 1. GUI Application Prototype
+### 1. Startup Script Hardening / Dist Stability
+**Status**: Startup completes, dist mode stable across multiple runs
+**Goal**: Validate all critical-path kernel verbs for daemon mode
+**Recent progress**: Startup hang fixed (PR #403), dist crashes fixed (PR #401), fileloop working (PR #396)
+**What remains**:
+- Long-running HTTP process testing
+- Identify and fix any remaining unreachable kernel verbs (BIGSTRING audit)
+- Validate daemon-mode workflows end-to-end
+
+### 2. GUI Application Prototype
 **Status**: Planning complete - ready for implementation
 **Goal**: Native macOS application communicating with frontier-cli
 **What's Ready**:
@@ -134,16 +154,16 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 3. Add script editor with debugging
 4. Iterate on remaining editors
 
-### 2. Startup Script Hardening
-**Status**: Startup scripts working, needs validation
-**Goal**: Ensure all critical-path kernel verbs for daemon mode are available
-**Prerequisites for**: Long-running HTTP process, daemon mode
-**What it validates**:
-- Bootstrap sequence is understood
-- All verbs in startup critical path are identified
-- Gaps in kernel verb coverage are surfaced
+### 3. Threading Phase 2
+**Status**: Cooperative foundation in place (PR #404)
+**Goal**: Real POSIX concurrency with proper thread safety
+**Depends on**: Phase 4 P0a (global state elimination), Issue #86 (runtime context)
+**Next steps**:
+- Increase MAX_THREADS beyond 64 (Issue #406)
+- Move from cooperative to real concurrent execution
+- Thread-safe FD table initialization (Issue #323)
 
-### 3. REPL Function Persistence
+### 4. REPL Function Persistence
 **Status**: Known limitation, future work
 **Goal**: Allow function definitions to persist across evaluations
 **Challenge**: Code values (codevaluetype) require special handling for tree copying
@@ -153,24 +173,30 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ## Recommended Work Priority
 
-### Tier 1: GUI Application (User-Facing Value)
-1. **GUI Prototype Implementation**
+### Tier 1: Stability & Distribution (Immediate Value)
+1. **Startup Script Hardening**
+   - Validate daemon-mode workflows
+   - Long-running HTTP process testing
+   - BIGSTRING audit for other unreachable verbs
+
+### Tier 2: GUI Application (User-Facing Value)
+2. **GUI Prototype Implementation**
    - Protocol layer in frontier-cli
    - Table browser as first editor
    - Specs ready in `planning/gui/`
 
-### Tier 2: Strategic Decisions (Gate Major Features)
-2. **Resolve Issue #86** (Runtime context architecture)
+### Tier 3: Strategic Decisions (Gate Major Features)
+3. **Resolve Issue #86** (Runtime context architecture)
    - Unblocks concurrency model, remote runtime, EFP parity
    - Required for Phase 4 P0a (global state elimination)
    - Major architectural decision
 
-3. **Resolve Issue #88** (HTTP security model)
+4. **Resolve Issue #88** (HTTP security model)
    - Required before broad CLI distribution
    - TCP is secure; need HTTP-level policies
 
-### Tier 3: Major Feature Work (After Decisions)
-4. **Phase 4 P0a** (Global State Elimination)
+### Tier 4: Major Feature Work (After Decisions)
+5. **Phase 4 P0a** (Global State Elimination)
    - Launch blocking
    - Hash table context migration
    - Parser state migration
@@ -178,16 +204,16 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
    - Depends on: Issue #86 resolution
    - Reference: planning/phase4/p0a-critical-thread-safety/README.md
 
-### Tier 4: Quality & Stability
-5. **P1 Bug Fixes** (As discovered)
+### Tier 5: Quality & Stability
+6. **P1 Bug Fixes** (As discovered)
    - Issue #339: Pascal string logging garbage
    - Issue #323: Thread-safe FD table initialization
    - Issue #332: ODB reference counting (foundational for threading)
    - See "P1 Issues" section below
 
-### Tier 5: Ongoing Improvements
-6. **Verb Coverage Expansion** (Ongoing)
-   - Complete remaining thread verbs (6 remaining)
+### Tier 6: Ongoing Improvements
+7. **Verb Coverage Expansion** (Ongoing)
+   - Complete remaining fileMenu stubs (4 remaining: new, revert, print, quit)
    - Implement processors at 0%: bit, clipboard, mysql, sqlite, etc.
 
 ---
@@ -201,12 +227,15 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - **Issue #333** (P2): Investigate integration test timing issue (TCP echo test)
 
 ### Runtime Correctness
+- **Issue #397** (P1): opinitcallbacks is not idempotent — unconditional calls cause segfaults
 - **Issue #355** (P2): Memory leak in evaluatereadonlyparam dereferenceop case
 - **Issue #332** (P1): Implement ODB reference counting for hash tables across threads
   - Scope: Large, status: decision needed
   - Related to Phase 4 threading work
 
 ### Code Quality & Refactoring
+- **Issue #380** (P1): Expand bigstring max length beyond 255 characters
+- **Issue #379** (P1): Standardize error reporting pattern to use langerrormessage() everywhere
 - **Issue #334** (P2): Optimize defined() and metadata verbs to avoid loading external tables
 - **Issue #331** (P1): Implement UserTalk linter to validate syntax and enforce style
 - **Issue #308** (P1): Systematic type handling cleanup for Phase 2.0
@@ -215,8 +244,10 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - **Issue #305** (P1): Complete hashtablestack macro migration after bootstrap refactoring
 
 ### Guest Database / fileMenu
-- **Issue #392** (P1): Restore fldatabasesaveas guard in menu save address update
-- **Issue #393** (P1): Implement remaining fileMenu stub verbs for headless mode (new, savecopy, revert, print, quit, saveas)
+- **Issue #393** (P1): Implement remaining fileMenu stub verbs for headless mode (new, revert, print, quit)
+
+### Threading
+- **Issue #406**: Increase MAX_THREADS beyond legacy 64-thread limit
 
 ### Feature Implementations
 - **Issue #323** (P1): File portable: Add thread-safe FD table initialization
@@ -226,13 +257,28 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - **Issue #312** (P2): Implement cross-platform file locking support
 - **Issue #299** (P2): Implement proper process management verbs for headless mode
 
+### Build & Infrastructure
+- **Issue #376**: Worktree setup requires manual copy of third_party/Paige/build-headless
+- **Issue #374**: Enable stricter compiler warning flags (-Wconversion, -Wsign-conversion, -Wcast-qual)
+
 ### User Experience
 - **Issue #316** (P2): Consider directing REPL prompt to stderr for cleaner stdout piping
   - Status: Deferred
 
 ---
 
-## Recently Completed (Feb 1-7, 2026)
+## Recently Completed (Feb 7-10, 2026)
+
+### Cooperative Threading & Stability (Feb 7-10)
+- **PR #404**: Add cooperative threading with thread registry for headless mode
+- **PR #403**: Fix startup hang caused by wrong BIGSTRING length prefixes
+- **PR #402**: Fix callback infrastructure segfault and test failures
+- **PR #401**: Fix dist startup crashes (second run segfault and log spew)
+- **PR #400**: Use variable database context in getoutlinefromtarget()
+- **PR #399**: Raise script errors for realpath failures in window.isOpen
+- **PR #398**: Implement window.isOpen() for headless mode
+- **PR #396**: Implement portable fileloop and fix outline callback crashes
+- **PR #394**: Implement fileMenu.saveAs/saveCopy and restore fldatabasesaveas guard
 
 ### Guest Database Lifecycle (Feb 5-7)
 - **PR #391**: Implement fileMenu verbs with v7 save format and db corruption fixes
@@ -328,15 +374,17 @@ See planning/_STATUS_ARCHIVE.md for:
 ## Notes
 
 ### Strategic Context
-- **Current focus**: GUI application prototype, startup script hardening
+- **Current focus**: Startup hardening, dist stability, GUI prototype, threading Phase 2
 - **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: 1,802 integration tests (152 skipped)
+- **Test health**: ~1,830+ integration tests (~39 pre-existing failures)
 - **Latest release**: v1.0.0-alpha.4 (January 31, 2026)
 - **Compiler warnings**: Zero (fully eliminated)
 
 ### Workstream Status
-- **Startup Scripts**: ✅ WORKING - Boot-time execution in headless mode
+- **Cooperative Threading**: ✅ OPERATIONAL - Registry, globals isolation, fire-and-forget semantics
+- **Startup Scripts**: ✅ WORKING - Full startup completes, hang fixed, semaphore cleanup added
+- **Dist Mode**: ✅ STABLE - Multi-run stability, cross-database assignment fixed
 - **Menu System**: ✅ STABILIZED - Migration, headless access, value copying, integration tests
 - **GUI Planning**: ✅ COMPLETE - Full specs ready for implementation
 - **Webserver**: ✅ WORKING - Full web application layer functional
@@ -344,6 +392,6 @@ See planning/_STATUS_ARCHIVE.md for:
 - **TCP Networking**: ✅ 100% COMPLETE (23/23 verbs)
 - **Compiler Warnings**: ✅ ELIMINATED - Zero warnings
 - **Build/Dist**: ✅ IMPROVED - make dist, --migrate flag
-- **Threading**: Phase 1 foundation complete (11 verbs), P0a queued
+- **Callback Infrastructure**: ✅ FIXED - All 14 tests passing (was segfaulting)
 - **GUI Implementation**: Ready to begin - planning complete
 - **Documentation**: Strong - comprehensive guides and GUI specs in place

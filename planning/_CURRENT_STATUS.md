@@ -2,98 +2,97 @@
 
 Last Updated: 2026-02-10
 
-## Current Focus: Guest Database Lifecycle, Menu System & GUI Planning
+## Current Focus: Cooperative Threading, Dist Stability & Startup Hardening
 
-## Session Update (2026-02-10)
-
-- Created `docs/AI_SHARED_GUIDELINES.md` as the shared policy baseline for Codex/Claude and automation.
-- Updated `AGENTS.md` and `CLAUDE.md` to reference the shared file as cross-agent source of truth.
-- Trimmed duplicated cross-agent policy in `.claude/agents/frontier-sdet.md` and `.claude/agents/issue-writer.md`.
-- Added `tools/check_ai_guidelines_refs.sh` to verify both top-level agent files reference shared guidelines.
-
-### Explicit Next Steps
-1. Run `tools/check_ai_guidelines_refs.sh` in CI or pre-PR validation to prevent drift.
-2. Audit remaining `.claude/agents/*.md` files and replace any duplicated global policy blocks with shared-file references.
-3. Keep branch/worktree, testing, logging, UserTalk constraints, and issue-hygiene updates centralized in `docs/AI_SHARED_GUIDELINES.md`.
-
-### Follow-up (2026-02-10, bot review response)
-- Generalized the shared guideline worktree example to avoid hardcoded local absolute paths.
-- Made `tools/check_ai_guidelines_refs.sh` portable by falling back to `grep` when `rg` is unavailable.
-
-**Status**: Guest database lifecycle (fileMenu verbs) fully operational in headless mode. Four database corruption bugs fixed. Startup scripts working. Menu system stabilized. GUI application planning complete. Compiler warnings eliminated.
+**Status**: Cooperative threading infrastructure operational with thread registry and globals save/restore. Distribution mode fully stable (multi-run). Startup script completes without hang. fileMenu verbs complete (including saveAs/saveCopy). GUI application planning complete.
 
 **Latest Release**: **v1.0.0-alpha.4** (January 31, 2026)
 
-**Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete. fileMenu verbs now operational.
+**Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete. fileMenu verbs: 6/10 implemented (open, close, closeall, save, saveAs, saveCopy).
 
-## Recent Achievements (February 5-7, 2026)
+## Recent Achievements (February 7-10, 2026)
+
+### Cooperative Threading Infrastructure - ✅ MERGED
+- **PR #404**: Add cooperative threading with thread registry for headless mode
+- Thread registry with `register_main_thread()`, `get_nth_thread_id()` for iterating active threads
+- Cooperative globals save/restore (`headless_save_threadglobals`/`headless_restore_threadglobals`) isolates C globals (fllangerror, flreturn, flbreak, flcontinue, flscriptrunning, etc.)
+- Main thread gets ID 2 (`idapplicationthread`), spawned threads start at 3+
+- `scriptError()` in spawned thread stops that thread only — fire-and-forget semantics
+- `thread.evaluate()`, `thread.callscript()`, `thread.getCurrentID()`, `getCount()`, `exists()`, `kill()`, `sleep()`, `wake()`, `getNthID()` all operational
+- 10 integration tests + 19 unit tests (all passing)
+- Filed issue #406 (increase MAX_THREADS beyond 64)
+
+### Startup Hang Fix - ✅ MERGED
+- **PR #403**: Fix startup hang caused by wrong BIGSTRING length prefixes
+- Fixed 3 wrong BIGSTRING prefixes in `headless_string_verbs.c` making `string.innerCaseName`, `string.macRomanToUtf8`, `string.utf8ToMacRoman` unreachable
+- Root cause: `uninstallSubMenu.ut` called unreachable verb → error → semaphore not unlocked → `installSubMenu` busy-wait for 2 hours
+- Added defensive `langreleaseallsemaphores` auto-cleanup after startup script and REPL execution
+- Verified with macOS `sample` command (832/832 samples in `locksemaphoreverb` busy-wait)
+
+### Callback Infrastructure Fix - ✅ MERGED
+- **PR #402**: Fix callback infrastructure segfault and test failures
+- Replaced undefined `langnewtable` symbol (NULL crash) with `tablenewtablevalue`
+- Fixed double-free crashes: deep-copy parameter values with `exemptfromtmpstack`
+- Fixed "too many parameters" errors in callback param passing
+- Added `fllangerror = false` reset in TEST macro to prevent error cascade
+- All 14 callback tests now pass (was: 1 pass, segfault, 12 failures)
+
+### Dist Startup Stability - ✅ MERGED
+- **PR #401**: Fix dist startup crashes (second run segfault and log spew)
+- Restored `langexternalsetdatabase()` (was turned into a no-op, breaking cross-database hdatabase assignment)
+- Fixed `getoutlinefromtarget()` for menu externals — was interpreting `tysavedmenuinfo` as packed outline
+- Added NULL guard for `param1` in `langfunctioncall()` for corrupt/uninitialized code trees
+- Added NULL safety to 8 outline traversal functions in `opvisit.c`
+- Downgraded PACK diagnostic logging (eliminated 6,800+ lines of noise per save)
+
+### Guest Database Context Fix - ✅ MERGED
+- **PR #400**: Use variable database context in `getoutlinefromtarget()`
+- Fixed op verbs reading from system root instead of guest DB — caused segfault in `oprecursivelyvisit()`
+
+### window.isOpen() Implementation - ✅ MERGED
+- **PR #398**: Implement `window.isOpen()` for headless mode
+- Path A (address): checks if address resolves to root table of any opened database
+- Path B (string/file path): compares paths using `realpath()` normalization
+- **PR #399**: Follow-up — raise script errors for `realpath()` failures instead of silent false
+- 10 integration tests (all passing)
+
+### Portable fileloop & Outline Callback Fixes - ✅ MERGED
+- **PR #396**: Implement portable fileloop and fix outline callback crashes
+- POSIX `opendir`/`readdir`/`closedir` fileloop implementation replacing stubs
+- Fixed `macfilespecisvalid` stub, NULL callback pointer crashes in outline operations
+- Startup script now completes successfully
+
+### fileMenu.saveAs/saveCopy - ✅ MERGED
+- **PR #394**: Implement `fileMenu.saveAs(path)` and `fileMenu.saveCopy(path)`, restore `fldatabasesaveas` guard
+- Save-then-copy approach for both system root and guest databases
+- 28 filemenu integration tests total; closes issues #392 and #395
+
+### opdisposelist Handle Safety - ✅ MERGED
+- Guard against disposed handles in `opdisposelist` to prevent startup segfault
+
+## Earlier Achievements (February 1-7, 2026)
 
 ### Guest Database Lifecycle (fileMenu Verbs) - ✅ MERGED
 - **PR #391**: Implement fileMenu verbs with v7 save format and db corruption fixes
-- `fileMenu.open(path)` — opens guest database, mounts into `system.compiler.files`
-- `fileMenu.close()` — closes current target guest database
-- `fileMenu.closeall()` — closes all guest databases
-- `fileMenu.save([path])` — saves system root or guest database
-- v7 64-bit menu structure save format (`tysavedmenuinfo_v7`, 1056 bytes)
-- Menu verbs converted to safe no-ops for headless mode
-- **Four corruption bugs fixed**: tmpstack contamination, db.new() global state leak, struct alignment mismatch, guest DB save global leak
-- `odb_context_guard` now saves/restores `cancoonglobals`
-- `odbGetRootVariable()` public API added (encapsulates cancoon cast)
-- Parameter count validation on open/save verbs
-- `_Static_assert` for `tyodbrecord` pack(2) layout (614 bytes)
-- New documentation: `docs/GUEST_DATABASE_ARCHITECTURE.md`
-- 22 integration tests (all passing, 0 skipped)
-- Filed issues: #392 (fldatabasesaveas guard), #393 (remaining fileMenu stubs)
+- `fileMenu.open/close/closeall/save` implemented for headless mode
+- Four corruption bugs fixed, 22 integration tests
 
-## Earlier Achievements (February 1-5, 2026)
-
-### Startup Scripts & Path-Based File Verbs - ✅ MERGED
-- **PR #378**: Enable `system.startup.startupScript` execution in headless mode
-- **PR #382**: Startup scripts and path-based file verbs
-- **PR #389**: Fix startup warnings #2 and #3 (menupack and startup script)
-- Startup script now runs at boot, enabling daemon-mode workflows
-- Path-based file verbs operational
-
-### Menu System Stabilization - ✅ MERGED
-- **PR #383**: Add proper `menubarType` data access for headless mode
-- **PR #384**: Comprehensive menu integration tests for headless mode
-- **PR #385**: Fix V6 menu loading during migration and byte-swap linkage
-- **PR #387**: Fix `int32_t` for disk struct fields to ensure 4-byte size on 64-bit
-- **PR #388**: Fix `op.outlineToXml` for headless mode via window verb stubs
-- **PR #390**: Fix menubar (mbar) value copying for headless mode
-- Static assertions added for disk struct sizes (anti-pattern documented)
-- Mbar value copy now uses dedicated path with proper v6/v7 format detection
+### Startup Scripts & Menu System - ✅ MERGED
+- **PRs #378, #382, #383-385, #387-390**: Startup scripts, path-based file verbs, menu system stabilization
+- Full startup sequence operational in headless mode
 
 ### Compiler Warning Elimination - ✅ COMPLETE
-- **PR #372**: Reduce compiler warnings from 154 to 24 (84% reduction)
-- **PR #373**: Eliminate remaining 24 warnings (Phase 2)
-- Zero compiler warnings achieved
+- **PRs #372, #373**: Zero compiler warnings achieved
 
-### Build & Distribution Improvements - ✅ MERGED
-- **PR #381**: Add `make dist` target for legacy-compatible distribution
-- **PR #377**: Add `--migrate` flag for standalone database migration
-- Default Makefile target now builds `all` (with dist)
+### Build & Distribution - ✅ MERGED
+- **PRs #377, #381**: `make dist`, `--migrate` flag
 
 ### GUI Application Planning - ✅ DOCUMENTED
 - Complete planning directory: `planning/gui/`
-- **ARCHITECTURE.md**: Overall GUI architecture, multi-user model, authentication, federation
-- **PROTOCOL.md**: JSON protocol specification for client-server communication
-- **TABLE_BROWSER.md**: Table browser / ODB navigator specification
-- **SCRIPT_EDITOR.md**: Outline-based script editor with debugging
-- **OUTLINE_EDITOR.md**: Outline editor with hoisting, attributes, render modes
-- **MENU_EDITOR.md**: Menu bar and popup menu editor
-- **WPTEXT_EDITOR.md**: Rich text (RTF) editor specification
-- **CONSOLE.md**: Unified REPL and QuickScript console
-- External types documented (table, script, outline, menubar, wptext, etc.)
+- Architecture, protocol, and all editor specifications documented
 
 ### Quality & Documentation - ✅ MERGED
-- Demoted system table snapshot logging from WARN to DEBUG
-- Removed 255-byte result truncation in CLI and REPL output
-- Suppressed error logging for caught try block errors
-- Changed menu loading diagnostics from ERROR to DEBUG level
-- Added disk struct audit findings to anti-patterns guide
-- Window verb stub documentation improved
-- OPML test export with pass/skip/fail statistics
+- Logging demotions, result truncation removal, OPML test export
 
 ## Active Development Status
 
@@ -107,18 +106,18 @@ Last Updated: 2026-02-10
 - Date verbs: 100% (30/30) ✅
 - DB verbs: 100% (13/13) ✅
 - **TCP verbs: 100% (23/23)** ✅ - COMPLETE
-- **fileMenu verbs**: 4/10 implemented (open, close, closeall, save) + 6 stubs
-- Thread verbs: 64% (11/17) - Phase 1 foundation complete
+- **fileMenu verbs**: 6/10 implemented (open, close, closeall, save, saveAs, saveCopy) + 4 stubs
+- Thread verbs: Cooperative threading operational — `evaluate`, `callscript`, `getCurrentID`, `getCount`, `exists`, `kill`, `sleep`, `wake`, `getNthID` all working
 - Many other processors complete (dialog, html, xml, sys, webserver, inetd, etc.)
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: 1,804 tests total (up from 1,802)
-- **Passed**: 1,592
-- **Skipped**: 172
-- **Failed**: 40 (all pre-existing)
-- New tests added for fileMenu verbs (22 tests, all passing)
+- **Current**: ~1,830+ tests total (up from 1,804)
+- **Passed**: ~1,617+ non-skip
+- **Skipped**: ~172
+- **Failed**: ~39 (all pre-existing)
+- New tests: cooperative threading (10), fileMenu saveAs/saveCopy (7), window.isOpen (10+), string verb reachability, callback infrastructure (14 unit tests fixed)
 
 All tests running via:
 - `./tools/run_headless_tests.sh` - C unit tests
@@ -139,6 +138,13 @@ All tests running via:
 - **Issue #88** (P0): Networking architecture & security
   - Status: Design/decision needed before broad CLI distribution
   - Note: TCP layer is secure; this is about HTTP-level security model
+
+- **Issue #367** (P0): Cleanup project directory structure - move CLI stubs out of tests/
+
+### Known Issues (New)
+
+- **Issue #406**: Increase MAX_THREADS beyond legacy 64-thread limit
+- **Issue #397**: opinitcallbacks is not idempotent — unconditional calls cause segfaults
 
 ### Queued Work
 
@@ -163,14 +169,20 @@ All tests running via:
 
 ### Immediate Priorities
 
-1. **GUI Application Prototype**
+1. **Startup Script Hardening / Dist Stability**
+   - Startup script now completes, dist mode runs stably across multiple runs
+   - Continue validating critical-path kernel verbs for daemon mode
+   - Long-running HTTP process testing
+
+2. **GUI Application Prototype**
    - Planning is complete; begin prototype implementation
    - Start with table browser and protocol layer
    - Native macOS app using specs in `planning/gui/`
 
-2. **Startup Script Hardening**
-   - Validate all critical-path kernel verbs for daemon mode
-   - Long-running HTTP process testing
+3. **Threading Phase 2**
+   - Cooperative threading foundation now in place (PR #404)
+   - Next: real POSIX concurrency, increase MAX_THREADS (Issue #406)
+   - Depends on Phase 4 P0a global state work for full thread safety
 
 ### Strategic Decisions Required
 
@@ -206,7 +218,7 @@ Before resuming major infrastructure work, need decisions on:
 - **ADR-013**: REPL Event Loop Architecture
 
 ### Progress Reports
-- **Latest**: reports/progress/2026-02-05-startup-scripts-menus-and-gui-planning.md
+- **Latest**: reports/progress/2026-02-05-startup-scripts-menus-and-gui-planning.md (covers Feb 1-5)
 - **Previous**: reports/progress/2026-01-25-networking-foundation-and-thread-safety.md
 
 ### Historical Context

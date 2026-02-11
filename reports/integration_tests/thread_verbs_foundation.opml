@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Thread Verbs Foundation (thread_verbs_foundation) - 14 tests: 14 pass (100%)</title>
-    <dateCreated>Tue, 10 Feb 2026 19:00:31 GMT</dateCreated>
+    <dateCreated>Wed, 11 Feb 2026 06:31:52 GMT</dateCreated>
   </head>
   <body>
     <outline text="thread.evaluate - execute simple script in new thread - Verify that thread.evaluate() creates a cooperative thread, executes the&#10;provided script synchronously, and returns a valid thread ID.&#10;">
@@ -44,7 +44,7 @@
     <outline text="thread.sleepFor - thread sleeps and wakes - Verify that thread.sleepFor(N) causes thread to sleep.&#10;In cooperative mode, sleep blocks the process for the duration.&#10;Use a short sleep to keep test fast.&#10;">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
-        <outline text="timeout: 5"/>
+        <outline text="timeout: 3"/>
       </outline>
       <outline text="Script">
         <outline text="new(tableType, @system.temp.threadFlags)"/>

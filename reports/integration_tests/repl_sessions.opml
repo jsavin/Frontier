@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Repl Sessions (repl_sessions) - 52 tests: 47 pass (90%) 5 skip (9%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Repl Sessions (repl_sessions) - 56 tests: 51 pass (91%) 5 skip (8%)</title>
+    <dateCreated>Wed, 11 Feb 2026 06:31:52 GMT</dateCreated>
   </head>
   <body>
     <outline text="REPL - system root auto-loaded - System root should be auto-loaded if available">
@@ -380,6 +380,34 @@
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: a = 1&#10;error1&#10;b = 2&#10;error2&#10;c = 3&#10;a + b + c&#10;/exit&#10;"/>
         <outline text="expected_output_contains: ['6']"/>
+      </outline>
+    </outline>
+    <outline text="REPL - /jump then relative /list workflow - After /jump, /list should resolve relative paths">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/list verbs&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system]&gt;', 'system.verbs:', 'builtins']"/>
+      </outline>
+    </outline>
+    <outline text="REPL - /jump then relative /jump then /list - Chaining relative /jump and /list commands">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/jump verbs&#10;/list&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system.verbs]&gt;', 'builtins']"/>
+      </outline>
+    </outline>
+    <outline text="REPL - /jump with index then /list - /jump to indexed table item, then /list shows its contents">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system[1]&#10;/list&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system.']"/>
+      </outline>
+    </outline>
+    <outline text="REPL - relative /list with index syntax - After /jump, /list with relative path + index">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/list verbs[1]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system]&gt;']"/>
       </outline>
     </outline>
   </body>
