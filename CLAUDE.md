@@ -124,6 +124,7 @@ Follow that file before starting non-trivial work.
 - Current "target" is generally a window (database or editor window)
 - Legacy Frontier source: `/Users/jake/dev/tedchoward/Frontier`
 - v7 database format should NOT contain font/style info (except within stored RTF objects)
+- **Threading model**: GIL (Global Interpreter Lock) — real POSIX threads serialized by a single mutex. Only the GIL holder can access C globals. Yield points at `langbackgroundtask()` and `thread.sleepTicks()`. See ADR-014 for details.
 
 **PR Workflow Requirements** ⚠️:
 1. Create feature branch, commit work

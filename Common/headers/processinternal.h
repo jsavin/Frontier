@@ -134,6 +134,10 @@ typedef struct tythreadglobals {
 	/* ADR-009: Hash table stack (thread-local, accessed via macro) */
 	hdltablestack htablestack;
 
+	/* Current hash table — the C global currenthashtable (langhash.c).
+	 * Must be saved/restored on thread context switches alongside htablestack. */
+	hdlhashtable hcurrenthashtable;
+
 	tylangcallbacks langcallbacks;
 	
 	
