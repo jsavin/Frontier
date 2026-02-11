@@ -138,10 +138,13 @@ void headless_threading_shutdown(void) {
     pthread_mutex_unlock(&frontier_gil);
     pthread_cond_broadcast(&gil_available);
 
-    /* Wait for all spawned threads to finish (thread count == 1 means only main) */
+    /* Wait for all spawned threads to finish (thread count == 1 means only main).
+     * We must block here until all workers exit — proceeding to
+     * cleanup_thread_registry() or unload_system_root_database() with active
+     * threads would crash (stale pointers to freed ODB state). */
     {
         int attempts = 0;
-        const int max_attempts = 300; /* 300 * 10ms = 3 seconds max wait */
+        const int max_attempts = 300; /* 300 * 10ms = 3 seconds initial wait */
 
         while (get_thread_count() > 1 && attempts < max_attempts) {
             struct timespec ts = {0, 10000000}; /* 10ms */
@@ -149,9 +152,37 @@ void headless_threading_shutdown(void) {
             attempts++;
         }
 
-        if (get_thread_count() > 1)
-            log_warn(LOG_COMP_THREAD, "Shutdown: %d threads still active after timeout", get_thread_count());
+        if (get_thread_count() > 1) {
+            /* Threads are still active after initial timeout. This is a serious
+             * problem — we cannot safely proceed with cleanup. Log and extend
+             * the wait with a hard upper bound to avoid hanging forever. */
+            int remaining = get_thread_count() - 1;
+
+            log_warn(LOG_COMP_THREAD,
+                "Shutdown: %d thread(s) still active after 3s, extending wait...",
+                remaining);
+
+            /* Extended wait: another 7 seconds (total 10s hard limit) */
+            int ext_attempts = 0;
+            const int ext_max = 700; /* 700 * 10ms = 7 seconds */
+
+            while (get_thread_count() > 1 && ext_attempts < ext_max) {
+                struct timespec ts = {0, 10000000}; /* 10ms */
+                nanosleep(&ts, NULL);
+                ext_attempts++;
+            }
+
+            if (get_thread_count() > 1)
+                log_error(LOG_COMP_THREAD,
+                    "Shutdown: %d thread(s) still active after 10s hard limit — "
+                    "proceeding with cleanup (may crash)",
+                    get_thread_count() - 1);
+        }
     }
+
+    /* Re-acquire the GIL before restoring globals. We released it above to let
+     * spawned threads run; now we need it back for the cleanup path. */
+    pthread_mutex_lock(&frontier_gil);
 
     /* Restore main thread globals — spawned threads may have left C globals
      * pointing to their (now-freed) state. */
@@ -186,6 +217,11 @@ typedef struct {
 static void *thread_entry_point(void *arg) {
     thread_launch_params *params = (thread_launch_params *)arg;
     tyvaluerecord result;
+
+    if (params == NULL) {
+        log_error(LOG_COMP_THREAD, "thread_entry_point: NULL params — aborting thread");
+        return NULL;
+    }
 
     /* Block until we can acquire the GIL */
     pthread_mutex_lock(&frontier_gil);
@@ -376,9 +412,16 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
     /* Link globals to registry record */
     rec->hglobals = new_hglobals;
 
-    /* Deep-copy the calling thread's hashtablestack so the new thread gets
-     * its own table stack (push/pop won't alias the parent's stack data).
-     * The Handle pattern requires allocating a new tytablestack and copying. */
+    /* Deep-copy the calling thread's hashtablestack structure so the new
+     * thread gets its own stack pointer/index state (push/pop won't alias
+     * the parent's stack).
+     *
+     * NOTE: This is a shallow copy of the tytablestack structure — both
+     * threads share pointers to the same underlying hash tables. This is
+     * safe under GIL serialization (only one thread accesses at a time),
+     * but would be a data race if the GIL is ever removed.
+     * TODO(Phase4): When global state elimination removes the GIL, each
+     * thread will need deep-copied or thread-local hash table chains. */
     {
         Handle hcopy;
 
@@ -420,6 +463,11 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
     if (pthread_create(&tid, &attr, thread_entry_point, params) != 0) {
         log_error(LOG_COMP_THREAD, "pthread_create failed for thread.evaluate");
         pthread_attr_destroy(&attr);
+        /* Full cleanup: unregister from system.compiler.threads, dispose
+         * thread globals (frees deep-copied hashtablestack and error stack),
+         * release the registry record (decrements refcount to zero, removing
+         * it from the registry). params->hcode is not freed here because
+         * langdisposetree handles it directly. */
         langdisposetree(hcode);
         headless_unregister_thread(threadid);
         headless_dispose_threadglobals(new_hglobals);
@@ -429,7 +477,7 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
     }
 
     pthread_attr_destroy(&attr);
-    rec->pthread_id = tid;
+    rec->pthread_id = tid;  /* Set AFTER successful create — not read until thread runs */
 
     /* Return thread ID to caller — thread is spawned but blocked on GIL */
     return setlongvalue(threadid, vreturned);
@@ -527,8 +575,8 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     (**new_hglobals).idthread = (hdlthread) threadid;
     rec->hglobals = new_hglobals;
 
-    /* Deep-copy the calling thread's hashtablestack so the new thread gets
-     * its own table stack (push/pop won't alias the parent's stack data). */
+    /* Deep-copy the calling thread's hashtablestack structure. See comment
+     * in headless_thread_evaluate for shallow-copy semantics and Phase 4 TODO. */
     {
         Handle hcopy;
 
@@ -558,6 +606,15 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     params->hcode = hcode;
     params->hglobals = new_hglobals;
     params->rec = rec;
+
+    /* Store resolved script references. These are pointers into the ODB —
+     * htable and hcode are owned by the hash table, not by us. This is safe
+     * under GIL serialization: the caller cannot mutate or delete the script
+     * while we hold the GIL (which we do until pthread_create returns and
+     * the caller yields). The spawned thread acquires the GIL before accessing
+     * these pointers, so no stale-pointer race is possible.
+     * TODO(Phase4): If GIL is removed, callscript must retain/copy these
+     * references or re-resolve the script inside the spawned thread. */
     params->htable = htable;
     copystring(bsverb, params->bsverb);
     params->hcontext = hcontext;
@@ -587,6 +644,10 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     if (pthread_create(&tid, &attr, thread_entry_point, params) != 0) {
         log_error(LOG_COMP_THREAD, "pthread_create failed for thread.callscript");
         pthread_attr_destroy(&attr);
+        /* Full cleanup: unregister, dispose globals (frees deep-copied
+         * hashtablestack and error stack), dispose deep-copied vparams,
+         * release registry record (refcount → 0, removed from registry). */
+        disposevaluerecord(params->vparams, false);
         headless_unregister_thread(threadid);
         headless_dispose_threadglobals(new_hglobals);
         free_thread_record(rec);
@@ -595,7 +656,7 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     }
 
     pthread_attr_destroy(&attr);
-    rec->pthread_id = tid;
+    rec->pthread_id = tid;  /* Set AFTER successful create */
 
     /* Return thread ID — thread is spawned but blocked on GIL */
     return setlongvalue(threadid, vreturned);
@@ -612,9 +673,9 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
  */
 boolean headless_backgroundtask(boolean flresting) {
 #pragma unused(flresting)
-    hdlthreadglobals my_globals = hthreadglobals;
+    hdlthreadglobals my_globals_handle = hthreadglobals;
 
-    headless_save_threadglobals(my_globals);
+    headless_save_threadglobals(my_globals_handle);
 
     /* Release the GIL and let other threads run */
     pthread_mutex_unlock(&frontier_gil);
@@ -625,10 +686,10 @@ boolean headless_backgroundtask(boolean flresting) {
     pthread_mutex_lock(&frontier_gil);
 
     /* Restore our globals (another thread may have changed C globals) */
-    headless_restore_threadglobals(my_globals);
+    headless_restore_threadglobals(my_globals_handle);
 
     /* Check if we've been killed while yielded */
-    if ((**my_globals).flthreadkilled)
+    if ((**my_globals_handle).flthreadkilled)
         return false;
 
     return true;
@@ -644,13 +705,13 @@ boolean headless_backgroundtask(boolean flresting) {
 static boolean headless_thread_sleep(long ticks) {
     long idthread = (long)(**hthreadglobals).idthread;
     frontier_pthread_record *rec = get_thread_by_id(idthread);
-    hdlthreadglobals my_globals = hthreadglobals;
+    hdlthreadglobals my_globals_handle = hthreadglobals;
 
     if (rec == NULL)
         return false;
 
     /* Save globals before releasing the GIL */
-    headless_save_threadglobals(my_globals);
+    headless_save_threadglobals(my_globals_handle);
 
     /* Mark as sleeping and compute wake time */
     pthread_mutex_lock(&rec->state_mutex);
@@ -690,7 +751,7 @@ static boolean headless_thread_sleep(long ticks) {
     pthread_mutex_lock(&frontier_gil);
 
     /* Restore our globals */
-    headless_restore_threadglobals(my_globals);
+    headless_restore_threadglobals(my_globals_handle);
 
     release_thread_record(rec);
 

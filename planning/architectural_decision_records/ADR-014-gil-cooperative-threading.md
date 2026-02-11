@@ -78,7 +78,7 @@ langruncode() running
 
 4. **GIL-aware `thread.sleepTicks()`**: Saves globals, releases the GIL, blocks on `pthread_cond_timedwait()` (only its own OS thread), re-acquires the GIL, restores globals. Other threads can run during the sleep.
 
-5. **Thread globals save/restore**: The existing `headless_save_threadglobals()` / `headless_restore_threadglobals()` functions handle all C globals (`fllangerror`, `flreturn`, `flbreak`, `hashtablestack`, etc.). These are called around every GIL release/reacquire to ensure each thread sees its own state.
+5. **Thread globals save/restore**: The existing `headless_save_threadglobals()` / `headless_restore_threadglobals()` functions handle all C globals (`fllangerror`, `flreturn`, `flbreak`, `hashtablestack`, `currenthashtable`, etc.). These are called around every GIL release/reacquire to ensure each thread sees its own state. Note: `currenthashtable` is a C global that tracks the active hash table for the current scope — it must be saved/restored alongside `hashtablestack` because `langevaluate` asserts `hlocals == currenthashtable` at function entry.
 
 6. **`langcallbacks` inheritance**: `headless_new_threadglobals()` copies `langcallbacks` from the current thread, so spawned threads automatically inherit `headless_backgroundtask` as their yield callback.
 
@@ -111,8 +111,9 @@ These existing call sites provide natural yield points without any changes to th
 
 ### Risks
 
-- **hashtablestack sharing**: The spawned thread gets a pointer copy of the main thread's `hashtablestack` Handle. Safe because only one thread accesses it at a time (GIL), but must be considered if GIL is ever removed.
-- **callscript code tree ownership**: The compiled code tree for `thread.callscript()` belongs to the hash table, not the spawned thread. The thread entry point must not dispose it.
+- **hashtablestack sharing**: The spawned thread gets a deep copy of the `tytablestack` structure (its own push/pop state), but the underlying hash table pointers are shared with the parent thread. Safe because only one thread accesses at a time (GIL), but would be a data race if the GIL is removed. See `TODO(Phase4)` in `headless_thread_evaluate()`.
+- **callscript code tree ownership**: The compiled code tree for `thread.callscript()` belongs to the hash table, not the spawned thread. The thread entry point must not dispose it. The `hcode` and `htable` pointers stored in `thread_launch_params` are safe under GIL (caller cannot mutate ODB while spawned thread holds GIL), but would need retention or re-resolution if the GIL is removed.
+- **currenthashtable**: Added to `tythreadglobals` struct (`hcurrenthashtable` field) and to the save/restore path. This C global must be context-switched alongside `hashtablestack` to satisfy `langevaluate`'s assertion.
 
 ## Debugger Compatibility
 
