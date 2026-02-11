@@ -267,15 +267,12 @@ void repl_output_help(void) {
 	fputs("  /jump ..                  Go to parent table\n", stdout);
 	fputs("  /jump fileMenu            Navigate via system.paths\n", stdout);
 	fputs("  /jump parentOf(@user)     Evaluate expression for address\n", stdout);
-	fputs("  /jump system.verbs[1]     Navigate to 1st item (1-based index)\n", stdout);
 	fputs("\n", stdout);
 	fputs("/list - List contents of a table:\n", stdout);
 	fputs("  /list                     List current table\n", stdout);
 	fputs("  /list system.verbs        List specific table by path\n", stdout);
 	fputs("  /list fileMenu            List via system.paths\n", stdout);
 	fputs("  /list parentOf(fileMenu)  Evaluate expression for table\n", stdout);
-	fputs("  /list system.verbs[1]     List/show 1st item (1-based index)\n", stdout);
-	fputs("  /list files               Relative path (after /jump)\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
@@ -521,52 +518,6 @@ void repl_output_list(hdlhashtable htable, const char *path_label) {
 		nomad = (**nomad).sortedlink;
 	}
 
-	fflush(stdout);
-}
-
-/* Display a single scalar value (for /list with index syntax).
- * Used when /list resolves to a non-table value via [n] indexing.
- * Output format: path = value (type)
- */
-void repl_output_single_value(const char *path_label, tyvaluerecord *val) {
-	if (val == nil) return;
-
-	/* Get type string */
-	bigstring type_str;
-	if (val->valuetype == externalvaluetype) {
-		langexternaltypestring((hdlexternalvariable)val->data.externalvalue, type_str);
-	} else {
-		langgettypestring(val->valuetype, type_str);
-	}
-
-	/* Get value display string */
-	char value_buf[512];
-	tyvaluerecord val_copy = *val;
-
-	if (val_copy.valuetype == externalvaluetype) {
-		bigstring display_str;
-		setemptystring(display_str);
-		langexternalgetdisplaystring((hdlexternalvariable)val_copy.data.externalvalue, display_str);
-		if (stringlength(display_str) > 0) {
-			snprintf(value_buf, sizeof(value_buf), "%.*s",
-				(int)stringlength(display_str), stringbaseaddress(display_str));
-		} else {
-			snprintf(value_buf, sizeof(value_buf), "[external]");
-		}
-	} else if (is_scalar_valuetype(val_copy.valuetype)) {
-		format_value_summary(&val_copy, value_buf, sizeof(value_buf));
-	} else {
-		snprintf(value_buf, sizeof(value_buf), "[type %d]", val_copy.valuetype);
-	}
-
-	/* Print: path = value (type) */
-	if (path_label != NULL && path_label[0] != '\0') {
-		printf("%s = %s (%.*s)\n", path_label, value_buf,
-			(int)stringlength(type_str), stringbaseaddress(type_str));
-	} else {
-		printf("%s (%.*s)\n", value_buf,
-			(int)stringlength(type_str), stringbaseaddress(type_str));
-	}
 	fflush(stdout);
 }
 

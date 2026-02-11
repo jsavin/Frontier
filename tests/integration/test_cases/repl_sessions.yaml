@@ -717,58 +717,6 @@ tests:
       - "6"
     expected_success: true
 
-  # =========================================================================
-  # Index Syntax & Relative Path Workflows
-  # =========================================================================
-
-  - name: "REPL - /jump then relative /list workflow"
-    description: "After /jump, /list should resolve relative paths"
-    repl_mode: true
-    stdin_input: |
-      /jump system
-      /list verbs
-      /exit
-    expected_output_contains:
-      - "[system]>"
-      - "system.verbs:"
-      - "builtins"
-    expected_success: true
-
-  - name: "REPL - /jump then relative /jump then /list"
-    description: "Chaining relative /jump and /list commands"
-    repl_mode: true
-    stdin_input: |
-      /jump system
-      /jump verbs
-      /list
-      /exit
-    expected_output_contains:
-      - "[system.verbs]>"
-      - "builtins"
-    expected_success: true
-
-  - name: "REPL - /jump with index then /list"
-    description: "/jump to indexed table item, then /list shows its contents"
-    repl_mode: true
-    stdin_input: |
-      /jump system[1]
-      /list
-      /exit
-    expected_output_contains:
-      - "[system."
-    expected_success: true
-
-  - name: "REPL - relative /list with index syntax"
-    description: "After /jump, /list with relative path + index"
-    repl_mode: true
-    stdin_input: |
-      /jump system
-      /list verbs[1]
-      /exit
-    expected_output_contains:
-      - "[system]>"
-    expected_success: true
-
 # Test suite notes:
 #
 # 1. Session tests verify REPL lifecycle from startup to shutdown.
