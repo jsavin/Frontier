@@ -683,6 +683,8 @@ static boolean initialize_frontier_runtime(void) {
         main_rec->pthread_id = pthread_self();
     }
 
+    headless_threading_init(); /* Main thread acquires GIL before any scripts run */
+
     if (g_cli_options.system_root != NULL) {
         if (!load_system_root_database(g_cli_options.system_root)) {
             cli_log_error("Failed to load system root database: %s", g_cli_options.system_root);
@@ -706,16 +708,16 @@ static void cleanup_frontier_runtime(void) {
     
     cli_log_info("Cleaning up Frontier runtime");
 
+    /* Wait for all spawned threads to finish BEFORE unloading databases.
+     * Spawned threads may still be running (blocked on GIL) and need roottable
+     * and other database structures to be intact. */
+    headless_threading_shutdown();
+
     if (g_system_root_loaded) {
         unload_system_root_database();
     }
 
-    /* Release main thread registry record before cleanup.
-     * ASSUMPTION: Shutdown is single-threaded — all cooperative threads have
-     * completed before we reach this point. In cooperative mode this is guaranteed
-     * because spawned threads run synchronously to completion. If we ever support
-     * concurrent threads that outlive the main thread, we'll need a "wait for all
-     * threads" step before cleanup (cleanup_thread_registry asserts refcount==0). */
+    /* Release main thread registry record before cleanup. */
     {
         frontier_pthread_record *main_rec = get_thread_by_id((long)idapplicationthread);
         if (main_rec) {

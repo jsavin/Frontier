@@ -1,12 +1,18 @@
 /*
  * headless_thread_verbs.c - Thread processor verb implementations
  *
- * Implements cooperative threading for headless mode using the thread registry
- * and thread globals save/restore pattern from legacy Frontier (process.c).
+ * Implements cooperative threading for headless mode using a Global Interpreter
+ * Lock (GIL) pattern. Threads are real POSIX threads, but only one runs at a
+ * time — the GIL holder. This serializes access to C globals while allowing
+ * threads to yield at sleep points and langbackgroundtask() callbacks.
  *
- * Cooperative model: Only one thread runs at a time. thread.evaluate() and
- * thread.callscript() run synchronously — they save main thread globals,
- * swap in new thread globals, execute the code, then restore main globals.
+ * Execution model:
+ * - thread.evaluate() / thread.callscript() spawn a real pthread that blocks
+ *   on GIL acquisition, then return the thread ID immediately.
+ * - langbackgroundtask() (called at loop boundaries) releases the GIL, yields,
+ *   then reacquires — allowing spawned threads to run.
+ * - thread.sleepTicks() releases the GIL, sleeps on a condvar (only blocking
+ *   the OS thread), then reacquires the GIL.
  *
  * Thread IDs are allocated by the singleton thread registry (threadregistry.c).
  * The main thread is registered with ID 2 (idapplicationthread) at startup.
@@ -30,6 +36,7 @@
 #include "processinternal.h"
 #include "script_portable.h"
 #include <errno.h>
+#include <sched.h>
 
 /* Constant for tick-to-second conversion (classic Mac ticks = 60/sec) */
 #define TICKS_PER_SECOND 60
@@ -64,6 +71,170 @@ extern hdlthreadglobals headless_new_threadglobals(void);
 extern void headless_dispose_threadglobals(hdlthreadglobals hg);
 extern void headless_save_threadglobals(hdlthreadglobals hg);
 extern void headless_restore_threadglobals(hdlthreadglobals hg);
+
+/*
+ * Global Interpreter Lock (GIL)
+ *
+ * Only the thread holding frontier_gil may read/write C globals (fllangerror,
+ * hashtablestack, hthreadglobals, etc.). Every yield point (langbackgroundtask,
+ * thread.sleep) saves globals, releases the GIL, and reacquires before restoring.
+ *
+ * gil_available is broadcast whenever the GIL is released, so threads blocked
+ * on acquisition can wake up and try to lock it.
+ */
+static pthread_mutex_t frontier_gil = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t gil_available = PTHREAD_COND_INITIALIZER;
+
+/*
+ * headless_threading_init - Main thread acquires the GIL at startup
+ *
+ * Must be called after register_main_thread() and before any scripts run.
+ */
+void headless_threading_init(void) {
+    pthread_mutex_lock(&frontier_gil);
+}
+
+/*
+ * headless_threading_shutdown - Kill spawned threads and release the GIL
+ *
+ * Sets flthreadkilled on all non-main threads so they exit at their next
+ * langbackgroundtask() or thread.sleep() yield point. Releases the GIL to
+ * let them run and detect the kill flag, then waits for them to finish.
+ * Must be called before cleanup_thread_registry() and unload_system_root_database().
+ */
+void headless_threading_shutdown(void) {
+    long main_id = (long)(**hthreadglobals).idthread;
+    hdlthreadglobals main_globals = hthreadglobals;
+
+    /* Save main thread globals before releasing the GIL */
+    headless_save_threadglobals(main_globals);
+
+    /* Kill all non-main threads by setting their kill flags */
+    {
+        int count = get_thread_count();
+
+        for (int i = 1; i <= count; i++) {
+            long tid = get_nth_thread_id((long)i);
+
+            if (tid != 0 && tid != main_id) {
+                frontier_pthread_record *rec = get_thread_by_id(tid);
+
+                if (rec != NULL) {
+                    pthread_mutex_lock(&rec->state_mutex);
+                    rec->is_killed = true;
+                    pthread_cond_signal(&rec->wake_cond);
+                    pthread_mutex_unlock(&rec->state_mutex);
+
+                    if (rec->hglobals != nil)
+                        (**rec->hglobals).flthreadkilled = true;
+
+                    release_thread_record(rec);
+                }
+            }
+        }
+    }
+
+    /* Release the GIL so killed threads can wake up and exit */
+    pthread_mutex_unlock(&frontier_gil);
+    pthread_cond_broadcast(&gil_available);
+
+    /* Wait for all spawned threads to finish (thread count == 1 means only main) */
+    {
+        int attempts = 0;
+        const int max_attempts = 300; /* 300 * 10ms = 3 seconds max wait */
+
+        while (get_thread_count() > 1 && attempts < max_attempts) {
+            struct timespec ts = {0, 10000000}; /* 10ms */
+            nanosleep(&ts, NULL);
+            attempts++;
+        }
+
+        if (get_thread_count() > 1)
+            log_warn(LOG_COMP_THREAD, "Shutdown: %d threads still active after timeout", get_thread_count());
+    }
+
+    /* Restore main thread globals — spawned threads may have left C globals
+     * pointing to their (now-freed) state. */
+    headless_restore_threadglobals(main_globals);
+}
+
+/* Forward declarations for static functions used by thread_entry_point */
+static boolean headless_unregister_thread(long idthread);
+
+/*
+ * Thread launch parameters - passed from spawning thread to new POSIX thread
+ */
+typedef struct {
+    hdltreenode hcode;
+    hdlthreadglobals hglobals;
+    frontier_pthread_record *rec;
+    /* For callscript: */
+    hdlhashtable htable;
+    bigstring bsverb;
+    tyvaluerecord vparams;
+    hdlhashtable hcontext;
+    boolean is_callscript;
+} thread_launch_params;
+
+/*
+ * thread_entry_point - POSIX thread entry for spawned threads
+ *
+ * Acquires the GIL, restores this thread's globals, executes the code,
+ * then cleans up. The thread blocks on GIL acquisition until the spawning
+ * thread yields via langbackgroundtask() or thread.sleep().
+ */
+static void *thread_entry_point(void *arg) {
+    thread_launch_params *params = (thread_launch_params *)arg;
+    tyvaluerecord result;
+
+    /* Block until we can acquire the GIL */
+    pthread_mutex_lock(&frontier_gil);
+
+    /* Restore this thread's globals (makes C globals point to our state) */
+    headless_restore_threadglobals(params->hglobals);
+
+    /* Execute the code */
+    initvalue(&result, novaluetype);
+
+    if (params->is_callscript) {
+        langrunscriptcode(params->htable, params->bsverb, params->hcode,
+                          &params->vparams, params->hcontext, &result);
+    }
+    else {
+        langruncode(params->hcode, nil, &result);
+    }
+
+    /* Save our globals before cleanup (while we still hold the GIL) */
+    headless_save_threadglobals(params->hglobals);
+
+    /* Clear global error buffer (fire-and-forget) */
+    headless_clear_last_lang_error();
+
+    /* Unregister from system.compiler.threads */
+    headless_unregister_thread(params->rec->user_thread_id);
+
+    /* Cleanup */
+    if (!params->is_callscript) {
+        /* For evaluate: we compiled hcode, so we own it */
+        langdisposetree(params->hcode);
+    }
+    else {
+        /* For callscript: hcode belongs to the hash table, do NOT dispose.
+         * Dispose the deep-copied vparams (we own it from copyvaluerecord). */
+        disposevaluerecord(params->vparams, false);
+    }
+
+    disposevaluerecord(result, false);
+    headless_dispose_threadglobals(params->hglobals);
+    free_thread_record(params->rec);
+    free(params);
+
+    /* Release the GIL and signal other threads */
+    pthread_mutex_unlock(&frontier_gil);
+    pthread_cond_broadcast(&gil_available);
+
+    return NULL;
+}
 
 /*
  * Thread table registration helpers for system.compiler.threads
@@ -140,38 +311,31 @@ static boolean headless_unregister_thread(long idthread) {
 }
 
 /*
- * headless_thread_evaluate - Cooperative thread.evaluate implementation
+ * headless_thread_evaluate - Spawn a real POSIX thread for thread.evaluate
  *
- * Runs code in a new cooperative thread context:
- * 1. Compile code string
- * 2. Allocate thread record from registry
- * 3. Allocate new thread globals
- * 4. Register in system.compiler.threads
- * 5. Save main globals, swap in new globals
- * 6. Execute code synchronously
- * 7. Restore main globals
- * 8. Cleanup
- *
- * Returns thread ID to caller (as long value in vreturned).
+ * Compiles the code string, allocates thread resources, then spawns a detached
+ * POSIX thread that blocks on the GIL. Returns the thread ID immediately.
+ * The spawned thread will run when the calling thread yields (langbackgroundtask
+ * or thread.sleep).
  *
  * Return semantics:
  * - Compilation failure (bad syntax) → returns false (error propagates to caller)
  * - Resource allocation failure → returns false
- * - Successful spawn → returns true with thread ID, regardless of whether the
- *   code executed successfully. Runtime errors (scriptError, divide-by-zero) are
- *   fire-and-forget — they don't affect the calling thread.
+ * - Successful spawn → returns true with thread ID. Runtime errors in the
+ *   spawned thread are fire-and-forget.
  */
 static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturned) {
     hdltreenode hcode = nil;
     frontier_pthread_record *rec = nil;
     hdlthreadglobals new_hglobals = nil;
-    hdlthreadglobals main_hglobals = hthreadglobals;
-    tyvaluerecord result;
     boolean fl;
     long threadid;
     Handle htext = nil;
     long codelen;
     bigstring bsanon;
+    thread_launch_params *params = nil;
+    pthread_t tid;
+    pthread_attr_t attr;
 
     /* Compile the code string into a tree */
     codelen = stringlength(bscode);
@@ -212,75 +376,88 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
     /* Link globals to registry record */
     rec->hglobals = new_hglobals;
 
-    /* Register in system.compiler.threads (main thread context, before globals swap) */
+    /* Deep-copy the calling thread's hashtablestack so the new thread gets
+     * its own table stack (push/pop won't alias the parent's stack data).
+     * The Handle pattern requires allocating a new tytablestack and copying. */
+    {
+        Handle hcopy;
+
+        if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
+            langdisposetree(hcode);
+            headless_dispose_threadglobals(new_hglobals);
+            free_thread_record(rec);
+            return false;
+        }
+
+        (**new_hglobals).htablestack = (hdltablestack)hcopy;
+    }
+    (**new_hglobals).hcurrenthashtable = currenthashtable;
+
+    /* Register in system.compiler.threads (calling thread context) */
     copystring(BIGSTRING("\panonymous"), bsanon);
     headless_register_thread(bsanon, threadid);
 
-    /* Save main thread globals */
-    headless_save_threadglobals(main_hglobals);
+    /* Package launch parameters */
+    params = (thread_launch_params *)malloc(sizeof(thread_launch_params));
 
-    /* Copy the main thread's hashtablestack for the new thread */
-    (**new_hglobals).htablestack = hashtablestack;
+    if (params == NULL) {
+        langdisposetree(hcode);
+        headless_unregister_thread(threadid);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        return false;
+    }
 
-    /* Swap in new thread globals */
-    headless_restore_threadglobals(new_hglobals);
+    params->hcode = hcode;
+    params->hglobals = new_hglobals;
+    params->rec = rec;
+    params->is_callscript = false;
 
-    /* Execute code synchronously */
-    initvalue(&result, novaluetype);
+    /* Spawn detached POSIX thread — it will block on GIL until we yield */
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-    fl = langruncode(hcode, nil, &result);
+    if (pthread_create(&tid, &attr, thread_entry_point, params) != 0) {
+        log_error(LOG_COMP_THREAD, "pthread_create failed for thread.evaluate");
+        pthread_attr_destroy(&attr);
+        langdisposetree(hcode);
+        headless_unregister_thread(threadid);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        free(params);
+        return false;
+    }
 
-    /* Save new thread globals (captures thread's error state into its struct) */
-    headless_save_threadglobals(new_hglobals);
+    pthread_attr_destroy(&attr);
+    rec->pthread_id = tid;
 
-    /* Restore main thread globals — this restores fllangerror, flreturn, etc.
-     * from the main thread's saved state, ensuring spawned thread errors
-     * don't contaminate the originating thread. Fire-and-forget semantics. */
-    headless_restore_threadglobals(main_hglobals);
-
-    /* Clear the global error buffer so spawned thread errors don't leak
-     * through g_headless_error (which is process-global, not per-thread) */
-    headless_clear_last_lang_error();
-
-    /* Unregister from system.compiler.threads (main thread context restored) */
-    headless_unregister_thread(threadid);
-
-    /* Cleanup */
-    langdisposetree(hcode);
-    disposevaluerecord(result, false);
-    headless_dispose_threadglobals(new_hglobals);
-    free_thread_record(rec);
-
-    /* Return thread ID to caller */
+    /* Return thread ID to caller — thread is spawned but blocked on GIL */
     return setlongvalue(threadid, vreturned);
 }
 
 /*
- * headless_thread_callscript - Cooperative thread.callscript implementation
+ * headless_thread_callscript - Spawn a real POSIX thread for thread.callscript
  *
- * Resolves the script name in the MAIN thread context (so resolution failures
- * propagate to the caller), then swaps to a new thread context for execution
- * (so runtime errors are fire-and-forget).
- *
- * Resolution (steps 1-3 of langrunscript) happens before the globals swap.
- * Execution (langrunscriptcode) happens inside the cooperative thread.
+ * Phase 1 (resolve script) runs in the calling thread context so resolution
+ * failures propagate to the caller. Phase 2 (execute) is handed off to a
+ * new POSIX thread.
  *
  * Return semantics:
- * - Resolution failure (script not found, not a script, compile error) → returns
- *   false (error propagates to caller, thread was never spawned)
- * - Successful spawn → returns true with thread ID, regardless of runtime errors.
- *   Runtime errors (scriptError, divide-by-zero) are fire-and-forget.
+ * - Resolution failure → returns false (error propagates to caller)
+ * - Successful spawn → returns true with thread ID. Runtime errors are
+ *   fire-and-forget.
  */
 static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord vparams,
                                           hdlhashtable hcontext, tyvaluerecord *vreturned) {
     frontier_pthread_record *rec = nil;
     hdlthreadglobals new_hglobals = nil;
-    hdlthreadglobals main_hglobals = hthreadglobals;
-    tyvaluerecord result;
     boolean fl;
     long threadid;
+    thread_launch_params *params = nil;
+    pthread_t tid;
+    pthread_attr_t attr;
 
-    /* --- Phase 1: Resolve script in MAIN thread context --- */
+    /* --- Phase 1: Resolve script in calling thread context --- */
     /* Failures here (bad name, not a script, compile error) propagate to caller */
 
     bigstring bsverb;
@@ -330,7 +507,7 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
         }
     }
 
-    /* --- Phase 2: Execute in cooperative thread context --- */
+    /* --- Phase 2: Spawn POSIX thread for execution --- */
     /* Runtime errors from here on are fire-and-forget */
 
     rec = allocate_thread_record();
@@ -350,57 +527,132 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
     (**new_hglobals).idthread = (hdlthread) threadid;
     rec->hglobals = new_hglobals;
 
-    /* Register in system.compiler.threads (main thread context, before globals swap) */
+    /* Deep-copy the calling thread's hashtablestack so the new thread gets
+     * its own table stack (push/pop won't alias the parent's stack data). */
+    {
+        Handle hcopy;
+
+        if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
+            headless_dispose_threadglobals(new_hglobals);
+            free_thread_record(rec);
+            return false;
+        }
+
+        (**new_hglobals).htablestack = (hdltablestack)hcopy;
+    }
+    (**new_hglobals).hcurrenthashtable = currenthashtable;
+
+    /* Register in system.compiler.threads (calling thread context) */
     headless_register_thread(bsverb, threadid);
 
-    /* Save main thread globals */
-    headless_save_threadglobals(main_hglobals);
+    /* Package launch parameters */
+    params = (thread_launch_params *)malloc(sizeof(thread_launch_params));
 
-    /* Copy the main thread's hashtablestack for the new thread */
-    (**new_hglobals).htablestack = hashtablestack;
+    if (params == NULL) {
+        headless_unregister_thread(threadid);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        return false;
+    }
 
-    /* Swap in new thread globals */
-    headless_restore_threadglobals(new_hglobals);
+    params->hcode = hcode;
+    params->hglobals = new_hglobals;
+    params->rec = rec;
+    params->htable = htable;
+    copystring(bsverb, params->bsverb);
+    params->hcontext = hcontext;
+    params->is_callscript = true;
 
-    /* Execute script code synchronously */
-    initvalue(&result, novaluetype);
+    /* Deep-copy vparams so the spawned thread owns its own list Handle.
+     * A struct copy would alias the calling thread's Handle data, which
+     * becomes invalid after the calling thread's stack frame is unwound
+     * or the tmp stack reclaims it. */
+    if (!copyvaluerecord(vparams, &params->vparams)) {
+        headless_unregister_thread(threadid);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        free(params);
+        return false;
+    }
 
-    fl = langrunscriptcode(htable, bsverb, hcode, &vparams, hcontext, &result);
+    /* Exempt the deep-copied vparams from the calling thread's tmp stack.
+     * Without this, the calling thread's evaluator will dispose the Handle
+     * when it cleans up its tmp stack, invalidating the spawned thread's copy. */
+    exemptfromtmpstack(&params->vparams);
 
-    /* Save new thread globals */
-    headless_save_threadglobals(new_hglobals);
+    /* Spawn detached POSIX thread */
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-    /* Restore main thread globals */
-    headless_restore_threadglobals(main_hglobals);
+    if (pthread_create(&tid, &attr, thread_entry_point, params) != 0) {
+        log_error(LOG_COMP_THREAD, "pthread_create failed for thread.callscript");
+        pthread_attr_destroy(&attr);
+        headless_unregister_thread(threadid);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        free(params);
+        return false;
+    }
 
-    /* Clear global error buffer (fire-and-forget) */
-    headless_clear_last_lang_error();
+    pthread_attr_destroy(&attr);
+    rec->pthread_id = tid;
 
-    /* Unregister from system.compiler.threads (main thread context restored) */
-    headless_unregister_thread(threadid);
-
-    /* Cleanup */
-    disposevaluerecord(result, false);
-    headless_dispose_threadglobals(new_hglobals);
-    free_thread_record(rec);
-
-    /* Return thread ID — runtime errors are fire-and-forget */
+    /* Return thread ID — thread is spawned but blocked on GIL */
     return setlongvalue(threadid, vreturned);
 }
 
 /*
- * headless_thread_sleep - Registry-based sleep with condvar
+ * headless_backgroundtask - GIL yield point for langbackgroundtask callback
+ *
+ * Called at loop boundaries and I/O points by the interpreter. Saves the
+ * current thread's globals, releases the GIL (allowing other threads to run),
+ * yields the CPU, then reacquires the GIL and restores globals.
+ *
+ * Returns false if the thread has been killed (terminates the script).
+ */
+boolean headless_backgroundtask(boolean flresting) {
+#pragma unused(flresting)
+    hdlthreadglobals my_globals = hthreadglobals;
+
+    headless_save_threadglobals(my_globals);
+
+    /* Release the GIL and let other threads run */
+    pthread_mutex_unlock(&frontier_gil);
+    pthread_cond_broadcast(&gil_available);
+    sched_yield();
+
+    /* Reacquire the GIL */
+    pthread_mutex_lock(&frontier_gil);
+
+    /* Restore our globals (another thread may have changed C globals) */
+    headless_restore_threadglobals(my_globals);
+
+    /* Check if we've been killed while yielded */
+    if ((**my_globals).flthreadkilled)
+        return false;
+
+    return true;
+}
+
+/*
+ * headless_thread_sleep - GIL-aware sleep with condvar
  *
  * Sleeps for the specified number of ticks (60 ticks/sec).
+ * Releases the GIL during sleep so other threads can run.
  * Can be interrupted by thread.wake() or thread.kill().
  */
 static boolean headless_thread_sleep(long ticks) {
     long idthread = (long)(**hthreadglobals).idthread;
     frontier_pthread_record *rec = get_thread_by_id(idthread);
+    hdlthreadglobals my_globals = hthreadglobals;
 
     if (rec == NULL)
         return false;
 
+    /* Save globals before releasing the GIL */
+    headless_save_threadglobals(my_globals);
+
+    /* Mark as sleeping and compute wake time */
     pthread_mutex_lock(&rec->state_mutex);
     rec->is_sleeping = true;
 
@@ -416,8 +668,13 @@ static boolean headless_thread_sleep(long ticks) {
         ts.tv_nsec -= 1000000000L;
     }
 
+    /* Release the GIL so other threads can run while we sleep */
+    pthread_mutex_unlock(&frontier_gil);
+    pthread_cond_broadcast(&gil_available);
+
     /* Wait until timeout or wake signal.
-     * Returns 0 (signaled), ETIMEDOUT (normal expiry), or error (EINVAL etc.) */
+     * This blocks only this OS thread — others can acquire the GIL.
+     * Returns 0 (signaled), ETIMEDOUT (normal expiry), or error. */
     {
         int wait_rc = pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &ts);
 
@@ -428,6 +685,12 @@ static boolean headless_thread_sleep(long ticks) {
     rec->is_sleeping = false;
     boolean was_killed = rec->is_killed;
     pthread_mutex_unlock(&rec->state_mutex);
+
+    /* Reacquire the GIL before touching C globals */
+    pthread_mutex_lock(&frontier_gil);
+
+    /* Restore our globals */
+    headless_restore_threadglobals(my_globals);
 
     release_thread_record(rec);
 
@@ -464,7 +727,7 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
             }
         }
         case thrv_evaluate: {
-            /* Verb #1: thread.evaluate - Evaluate code in cooperative thread */
+            /* Verb #1: thread.evaluate - Spawn thread via GIL model */
             bigstring bscode;
 
             if (!langcheckparamcount(hparam1, 1))
@@ -477,7 +740,7 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
             return headless_thread_evaluate(bscode, vreturned);
         }
         case thrv_callscript: {
-            /* Verb #2: thread.callscript - Call script in cooperative thread */
+            /* Verb #2: thread.callscript - Spawn thread via GIL model */
             bigstring bsscriptname;
             tyvaluerecord vparams;
             hdlhashtable hcontext = nil;
@@ -614,19 +877,12 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
         case thrv_kill: {
             /* Verb #11: thread.kill - Set is_killed in registry + flthreadkilled
              *
-             * Cooperative mode limitation: kill() can only interrupt threads that
-             * are sleeping (blocked on pthread_cond_timedwait). It cannot interrupt
-             * a "running" thread because our cooperative model runs the spawned
-             * thread to completion synchronously — there's no yield point where
-             * the killing thread could execute.
-             *
-             * Legacy Frontier's cooperative model had time-sliced yielding: threads
-             * voluntarily yielded at loop boundaries and I/O points, allowing the
-             * scheduler to swap in other threads. kill() worked because the target
-             * thread would check flthreadkilled at its next yield point.
-             *
-             * Future: Adding yield points to langruncode would enable kill() on
-             * running threads in cooperative mode. */
+             * With the GIL model, kill works on running threads too — the target
+             * checks flthreadkilled at every langbackgroundtask() yield point.
+             * If the target is sleeping, cond_signal wakes it immediately.
+             * If the target is blocked on GIL acquisition, it checks the flag
+             * after acquiring. If the target holds the GIL (running), the kill
+             * request is deferred until the target's next yield point. */
             long id;
             frontier_pthread_record *rec;
 

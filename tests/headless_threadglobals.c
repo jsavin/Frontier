@@ -168,8 +168,13 @@ void headless_dispose_threadglobals(hdlthreadglobals hg) {
 		if (pdata->langcallbacks.scripterrorstack != nil)
 			disposehandle((Handle) pdata->langcallbacks.scripterrorstack);
 
-		/* Note: htablestack is NOT freed here. It's a reference to the global
-		 * hashtablestack (copied during save/restore), not something we allocated. */
+		/* Free the thread's htablestack if it was deep-copied for a spawned thread.
+		 * Spawned threads get their own table stack via newfilledhandle in
+		 * headless_thread_evaluate/callscript. The main thread's htablestack is
+		 * NOT allocated by us, so we only free non-nil values (new_threadglobals
+		 * initializes it to nil). */
+		if (pdata->htablestack != nil)
+			disposehandle((Handle) pdata->htablestack);
 
 		free(pdata);
 	}
@@ -199,8 +204,9 @@ void headless_save_threadglobals(hdlthreadglobals hg) {
 	if (dest == NULL)
 		return;
 
-	/* Save the global hashtablestack into the thread's copy */
+	/* Save the global hashtablestack and currenthashtable into the thread's copy */
 	dest->htablestack = hashtablestack;
+	dest->hcurrenthashtable = currenthashtable;
 
 	/* Save langcallbacks (struct copy — includes scripterrorstack Handle) */
 	dest->langcallbacks = langcallbacks;
@@ -275,8 +281,9 @@ void headless_restore_threadglobals(hdlthreadglobals hg) {
 	/* Switch hthreadglobals to point at the new thread's data */
 	hthreadglobals = hg;
 
-	/* Restore the global hashtablestack from this thread's copy */
+	/* Restore the global hashtablestack and currenthashtable from this thread's copy */
 	hashtablestack = src->htablestack;
+	currenthashtable = src->hcurrenthashtable;
 
 	/* Restore langcallbacks (struct copy — includes scripterrorstack Handle) */
 	langcallbacks = src->langcallbacks;

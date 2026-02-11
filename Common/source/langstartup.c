@@ -39,6 +39,7 @@
 #include "tableinternal.h"
 #include "tableverbs.h"
 #include "logging.h"
+#include "threadregistry.h"
 
 // 2025-10-27 Codex: Headless runtime should populate builtins table like classic app.
 #include "tablestructure.h"
@@ -957,7 +958,11 @@ boolean initlang (void) {
 	*/
 	
     langcallbacks.scriptcompilecallback     = &cb_noop_hashnode_treenode;
+#ifdef FRONTIER_HEADLESS
+    langcallbacks.backgroundtaskcallback    = &headless_backgroundtask;
+#else
     langcallbacks.backgroundtaskcallback    = &cb_true_bool;
+#endif
 	
 	langcallbacks.pushtablecallback = (langtablerefcallback) &langdefaultpushtable;
 	

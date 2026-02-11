@@ -274,4 +274,45 @@ long get_nth_thread_id(long n);
  */
 void release_thread_record(frontier_pthread_record *rec);
 
+/*
+ * GIL (Global Interpreter Lock) functions for cooperative threading
+ *
+ * The GIL serializes access to interpreter C globals. Only the thread
+ * holding the GIL may read/write globals. Yield points (langbackgroundtask,
+ * thread.sleep) release and reacquire the GIL.
+ *
+ * Defined in headless_thread_verbs.c.
+ */
+
+/*
+ * headless_threading_init - Acquire the GIL for the main thread at startup
+ *
+ * Must be called after register_main_thread() and before any scripts run.
+ *
+ * Thread Safety: NOT thread-safe - call from main thread at startup only
+ */
+void headless_threading_init(void);
+
+/*
+ * headless_threading_shutdown - Release the GIL at shutdown
+ *
+ * Must be called before cleanup_thread_registry().
+ *
+ * Thread Safety: NOT thread-safe - call from main thread at shutdown only
+ */
+void headless_threading_shutdown(void);
+
+/*
+ * headless_backgroundtask - GIL yield point for langbackgroundtask callback
+ *
+ * Saves current thread globals, releases the GIL (allowing other threads to
+ * run), yields the CPU, then reacquires the GIL and restores globals.
+ * Returns false if the thread has been killed.
+ *
+ * Signature matches langbooleancallback: boolean (*)(boolean).
+ *
+ * Thread Safety: Must be called while holding the GIL
+ */
+boolean headless_backgroundtask(boolean flresting);
+
 #endif /* THREADREGISTRY_H */
