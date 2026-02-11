@@ -21,6 +21,7 @@
 #include <signal.h>
 #include <poll.h>
 #include <errno.h>
+#include <assert.h>
 #include <limits.h>
 
 #include "linenoise.h"
@@ -314,14 +315,9 @@ static boolean resolve_indexed_node(hdlhashnode hnode, long index,
     if (!path_buf_append(name_path, name_path_bufsize, name_path_len, cname, error_msg, error_bufsize))
         return false;
 
-    /* Validate handle dereference - defense in depth.
-     * apply_index_to_table() already checks *out_node == nil, but guard
-     * against any future caller that bypasses that validation. */
-    if (hnode == nil || *hnode == nil) {
-        if (error_msg && error_bufsize > 0)
-            snprintf(error_msg, error_bufsize, "internal error: nil node handle at index %ld", index);
-        return false;
-    }
+    /* apply_index_to_table() guarantees hnode != nil && *hnode != nil on success.
+     * Assert this contract rather than silently handling a violation. */
+    assert(hnode != nil && *hnode != nil);
 
     tyvaluerecord nodeval = (**hnode).val;
 
@@ -417,6 +413,35 @@ static boolean parse_index_component(const char *component,
     return true;
 }
 
+/* Apply index to a table and resolve the resulting node.
+ * Combines apply_index_to_table() + resolve_indexed_node() into one call.
+ * If is_last and the node is resolved, returns true with result populated.
+ * If not is_last, sets *out_table for continued navigation.
+ * Sets *finished to true if caller should return immediately (final component resolved).
+ */
+static boolean apply_and_resolve_index(hdlhashtable htable, long index,
+                                        const char *context_name, boolean is_last,
+                                        typathlookupresult *result, hdlhashtable *out_table,
+                                        char *name_path, size_t name_path_bufsize, size_t *name_path_len,
+                                        char *resolved_name_path, size_t resolved_bufsize,
+                                        char *error_msg, size_t error_bufsize,
+                                        boolean *finished) {
+    *finished = false;
+
+    hdlhashnode hnode = nil;
+    if (!apply_index_to_table(htable, index, context_name, &hnode, error_msg, error_bufsize))
+        return false;
+
+    if (!resolve_indexed_node(hnode, index, context_name, is_last, result, out_table,
+                               name_path, name_path_bufsize, name_path_len,
+                               resolved_name_path, resolved_bufsize,
+                               error_msg, error_bufsize))
+        return false;
+
+    if (is_last) *finished = true;
+    return true;
+}
+
 /* Navigate a dot-path with [n] index syntax support.
  * Tokenizes by '.' and for each component checks for [n] suffix.
  * Indices are 1-based (UserTalk convention); internally converted to 0-based for hashgetnthnode.
@@ -454,16 +479,9 @@ static boolean navigate_path_with_index(const char *path, typathlookupresult *re
     boolean first_component = true;
 
     /* Count total components for depth-cap validation.
-     * Counts dots outside of brackets; n dots = n+1 components.
-     * If brackets are malformed (no closing ']'), we break out of the scan early.
-     * This gives an approximate count, which is fine because parse_index_component()
-     * will reject the malformed bracket syntax before we ever use total_components. */
+     * Simply counts dots; n dots = n+1 components. Brackets can't contain dots
+     * (they hold numeric indices), so no special handling is needed. */
     for (const char *p = path; *p; p++) {
-        if (*p == '[') {
-            while (*p && *p != ']') p++;
-            if (*p == '\0') break;  /* unclosed bracket - stop counting */
-            continue;
-        }
         if (*p == '.') total_components++;
     }
     total_components++; /* n dots = n+1 components */
@@ -484,18 +502,14 @@ static boolean navigate_path_with_index(const char *path, typathlookupresult *re
 
         if (name_part[0] == '\0' && index > 0) {
             /* [n] alone with no name - index directly into current table */
-            hdlhashnode hnode = nil;
-            if (!apply_index_to_table(current, index, NULL, &hnode, error_msg, error_bufsize))
-                return false;
-
             hdlhashtable next_table = nil;
-            if (!resolve_indexed_node(hnode, index, NULL, is_last, result, &next_table,
-                                       name_path, sizeof(name_path), &name_path_len,
-                                       resolved_name_path, resolved_bufsize,
-                                       error_msg, error_bufsize))
+            boolean finished = false;
+            if (!apply_and_resolve_index(current, index, NULL, is_last, result, &next_table,
+                                          name_path, sizeof(name_path), &name_path_len,
+                                          resolved_name_path, resolved_bufsize,
+                                          error_msg, error_bufsize, &finished))
                 return false;
-
-            if (is_last) return true;
+            if (finished) return true;
             current = next_table;
         } else {
             /* Named component - look it up */
@@ -526,18 +540,14 @@ static boolean navigate_path_with_index(const char *path, typathlookupresult *re
 
                         /* If there's an index, apply it to the resolved table */
                         if (index > 0) {
-                            hdlhashnode hnode = nil;
-                            if (!apply_index_to_table(current, index, name_part, &hnode, error_msg, error_bufsize))
-                                return false;
-
                             hdlhashtable next_table = nil;
-                            if (!resolve_indexed_node(hnode, index, name_part, is_last, result, &next_table,
-                                                       name_path, sizeof(name_path), &name_path_len,
-                                                       resolved_name_path, resolved_bufsize,
-                                                       error_msg, error_bufsize))
+                            boolean finished = false;
+                            if (!apply_and_resolve_index(current, index, name_part, is_last, result, &next_table,
+                                                          name_path, sizeof(name_path), &name_path_len,
+                                                          resolved_name_path, resolved_bufsize,
+                                                          error_msg, error_bufsize, &finished))
                                 return false;
-
-                            if (is_last) return true;
+                            if (finished) return true;
                             current = next_table;
                         }
 
@@ -566,18 +576,14 @@ static boolean navigate_path_with_index(const char *path, typathlookupresult *re
                     return false;
                 }
 
-                hdlhashnode hnode = nil;
-                if (!apply_index_to_table(subtable, index, name_part, &hnode, error_msg, error_bufsize))
-                    return false;
-
                 hdlhashtable next_table = nil;
-                if (!resolve_indexed_node(hnode, index, name_part, is_last, result, &next_table,
-                                           name_path, sizeof(name_path), &name_path_len,
-                                           resolved_name_path, resolved_bufsize,
-                                           error_msg, error_bufsize))
+                boolean finished = false;
+                if (!apply_and_resolve_index(subtable, index, name_part, is_last, result, &next_table,
+                                              name_path, sizeof(name_path), &name_path_len,
+                                              resolved_name_path, resolved_bufsize,
+                                              error_msg, error_bufsize, &finished))
                     return false;
-
-                if (is_last) return true;
+                if (finished) return true;
                 current = next_table;
             } else {
                 /* No index - standard path component */
@@ -735,9 +741,9 @@ boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
             found = navigate_path_with_index(abs_path, result, resolved_path, path_bufsize,
                                               local_error, sizeof(local_error));
         }
-        /* If truncated (wrote < 0 or >= sizeof), silently fall through to absolute
-         * resolution. This is intentional: truncated relative paths would never match
-         * anyway, so we try the path as-is (absolute) instead. */
+        if (wrote < 0 || (size_t)wrote >= sizeof(abs_path)) {
+            log_debug(LOG_COMP_GENERAL, "REPL: relative path truncated, trying absolute: %s", path_buf);
+        }
     }
 
     if (!found && is_single_component && !path_has_index_syntax(path_buf)) {
