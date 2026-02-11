@@ -1,5 +1,11 @@
 # Frontier Development Guide
 
+## Shared Guidelines (Cross-Agent Source of Truth)
+
+- Read and follow `docs/AI_SHARED_GUIDELINES.md` before starting work.
+- `docs/AI_SHARED_GUIDELINES.md` is authoritative for cross-agent policy (branch/worktree discipline, test requirements, logging policy, UserTalk test constraints, issue hygiene, and shared priority usage).
+- If this file conflicts with `docs/AI_SHARED_GUIDELINES.md` on a cross-agent rule, follow `docs/AI_SHARED_GUIDELINES.md`.
+
 ## Technical Decision-Making Principles
 
 **Default to proper, maintainable, long-term solutions.** Quick fixes accumulate as technical debt that becomes costly to unwind. Unless the user explicitly requests a quick fix for time constraints, recommend the approach that solves the problem correctly rather than suppressing symptoms.
@@ -79,26 +85,10 @@ Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
 
 ---
 
-## ⚠️ MANDATORY: Pre-Work Location Verification
+## Pre-Work Verification
 
-**STOP AND VERIFY** before starting any work:
-
-```bash
-pwd && git branch --show-current
-```
-
-**Quick Decision**:
-- ✅ **Trivial work** (typo, single-line fix, quick doc update) → OK on develop
-- ❌ **Non-trivial work** (feature, bug fix, multi-file change) → MUST create worktree
-
-**If non-trivial AND on develop**:
-```bash
-cd /Users/jake/dev/jsavin/Frontier
-git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
-cd ../Frontier-<feature-name>
-```
-
-**If committing**: Verify branch is `feature/*` in worktree, never `git push origin develop` directly.
+Cross-agent pre-work checks and branch/worktree policy now live in `docs/AI_SHARED_GUIDELINES.md`.
+Follow that file before starting non-trivial work.
 
 ---
 
@@ -200,34 +190,17 @@ Agents must verify fixes work end-to-end, not just fix one piece. Test the compl
 
 ---
 
-## UserTalk Critical Facts ⚠️
+## UserTalk Critical Facts
 
-**The Big Three Gotchas:**
-
-1. **Double quotes for strings** - `"hello"` not `'hello'` (opposite of JS/Python)
-2. **typeof() returns OSType codes** - `'TEXT'` not `"string"` - **NEVER CHANGE THIS**
-3. **Absolute paths required** - No cwd awareness, all file/db verbs need full paths
-
-**When writing UserTalk code:**
-- Syntax reference → `docs/usertalk/SYNTAX.md`
-- File/DB operations → `docs/usertalk/FILE_AND_DB.md`
-- Test patterns → `docs/TESTING_GUIDE.md`
-
-**Historical landmine:** typeof() was almost changed to return strings in Jan 2026 - would have broken all production code. Full history in `docs/usertalk/TYPEOF.md`.
+Cross-agent UserTalk invariants and integration-test parser constraints now live in `docs/AI_SHARED_GUIDELINES.md`.
+Use those rules as mandatory baseline guidance.
 
 ---
 
-## Critical Testing Constraints ⚠️
+## Critical Testing Constraints
 
-### Verb Testing Requirements
-
-PRs implementing new verbs or modifying verb functionality **MUST include integration tests**.
-
-- Tests in `tests/integration/test_cases/` (YAML format)
-- Cover happy path, edge cases, and error conditions
-- Tests must PASS before merge
-
-**Full details:** See `docs/TESTING_GUIDE.md`
+Cross-agent test requirements (including integration test expectations for verb changes) now live in `docs/AI_SHARED_GUIDELINES.md`.
+For Frontier-specific test patterns and command details, also see `docs/TESTING_GUIDE.md`.
 
 ---
 
@@ -266,15 +239,10 @@ PRs implementing new verbs or modifying verb functionality **MUST include integr
 
 ---
 
-## Logging Standards ⚠️
+## Logging Standards
 
-All debug and diagnostic output must use structured logging macros - **never use `fprintf(stderr, ...)`**.
-
-- ❌ NEVER: `fprintf(stderr, "message\n")`
-- ✅ ALWAYS: `log_trace(LOG_COMP_DB, "message")` or `log_error()`, `log_debug()`, etc.
-- ✅ EXCEPTION: `fputs()` for user-facing terminal output (not diagnostic logging)
-
-**Full details:** See `docs/LOGGING_STANDARDS.md`
+Cross-agent logging policy is defined in `docs/AI_SHARED_GUIDELINES.md`.
+Implementation-level logging details remain in `docs/LOGGING_STANDARDS.md`.
 
 ---
 
