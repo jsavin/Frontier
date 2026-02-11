@@ -212,6 +212,8 @@ For Frontier-specific test patterns and command details, also see `docs/TESTING_
 - **Global mutable state**: Eliminate before launch, use thread-local or explicit context
 - **Address values**: Always use `setexemptaddressvalue()`, never modify handle memory directly
 - **Mode stack**: Use context guards, don't rely on push/pop being restored
+- **Context guard completeness**: Guards must save/restore ALL globals the guarded operation clears
+- **Tmp stack ownership**: Call `exemptfromtmpstack()` after storing heap values in persistent tables
 
 **📖 Read `docs/ARCHITECTURAL_ANTIPATTERNS.md` when:**
 - Debugging crashes in hash table, database, or verb resolution code
@@ -219,6 +221,9 @@ For Frontier-specific test patterns and command details, also see `docs/TESTING_
 - Working on migration code (v6→v7)
 - Encountering "mode stack" or "context guard" patterns
 - Adding or modifying global state
+- Modifying or creating context guards (`odb_context_guard`, `db_context_guard`)
+- Storing heap-allocated values in hash tables (tmp stack ownership)
+- Debugging use-after-free crashes (garbage pointers with ASCII content)
 - Any significant refactor
 - Any time you need to deep-dive on data structures
 

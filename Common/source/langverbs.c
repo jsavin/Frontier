@@ -2310,6 +2310,8 @@ boolean locksemaphoreverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	if (!hashtableassign (semaphoretable, bssemaphorename, val))
 		return (false);
 
+	exemptfromtmpstack (&val); /*value now owned by semaphoretable, not tmp stack*/
+
 	return (setbooleanvalue (true, vreturned));
 	} /*locksemaphoreverb*/
 

@@ -299,9 +299,39 @@ Before implementing a fix:
 3. Architectural bugs often have wide-ranging symptoms
 4. Fix the architecture, not individual symptoms
 
+### Lesson 6: Decode Garbage Pointers as ASCII to Identify Use-After-Free
+
+**Added**: 2026-02-10
+
+**Case Study**: Startup segfault in `opdisposeoutline(houtline=0x98747265736e6906)`
+
+**Initial assumption**: "This is a random garbage pointer from uninitialized memory"
+
+**What decoding revealed**: The bytes `98 74 72 65 73 6e 69 06` contain ASCII text:
+- `0x74`=t, `0x72`=r, `0x65`=e, `0x73`=s, `0x6e`=n, `0x69`=i → "tresni" (reverse of "insert")
+- Non-printable bookend bytes (`0x98`, `0x06`) are heap metadata or string length bytes
+
+**Diagnosis**: This is **use-after-free** — the outline handle was freed, memory was reused for a string allocation (containing "insert"), and the stale handle was later dereferenced. This pointed directly to a double-free/tmp-stack ownership bug in semaphore record disposal.
+
+**Technique**: When you see a garbage pointer in a crash:
+```bash
+# Decode hex bytes to ASCII
+python3 -c "import struct; print([chr(b) if 32 <= b < 127 else f'\\x{b:02x}' for b in struct.pack('>Q', 0x98747265736e6906)])"
+# Output: ['\\x98', 't', 'r', 'e', 's', 'n', 'i', '\\x06']
+```
+
+**What it tells you**:
+- ASCII content in a "pointer" → use-after-free (memory reused for strings)
+- Repeating patterns (e.g., `0xDEADBEEF`) → freed-memory poison fill
+- Small integer values (e.g., `0x0000000000000003`) → type confusion (value treated as pointer)
+- Valid-looking address but wrong data → stale pointer (object moved or mutated)
+
+**Lesson**: Always decode garbage pointers before theorizing about the crash cause. The content of the garbage often reveals the corruption mechanism.
+
 ---
 
 ## Update History
 
 - 2026-01-25: Initial version created during Issue #344 investigation
 - 2026-01-27: Added "Debugging Lessons" section with PR #352 case studies
+- 2026-02-10: Added Lesson 6 (garbage pointer ASCII decoding for use-after-free)

@@ -253,7 +253,11 @@ extern boolean dbstatsmessage (hdldatabaserecord, boolean); /*6.2a8 AR*/
 extern boolean statsstart (void);
 
 /* Database global state guard for nested database operations (migration, etc.)
- * Uses opaque pointers to avoid circular header dependencies with lang.h */
+ * Uses opaque pointers to avoid circular header dependencies with lang.h.
+ *
+ * Must save/restore ALL globals that cleartablestructureglobals() clears,
+ * otherwise opening a guest database via odbOpenFile will destroy the system
+ * root's table structure globals (pathstable, systemtable, etc.). */
 typedef struct odb_context_guard {
 	void *saved_currenthashtable;  /* hdlhashtable */
 	hdldatabaserecord saved_databasedata;
@@ -261,6 +265,17 @@ typedef struct odb_context_guard {
 	void *saved_rootvariable;      /* Handle */
 	void *saved_roottable;         /* hdlhashtable */
 	void *saved_cancoonglobals;    /* hdlcancoonrecord */
+	/* Table structure globals cleared by cleartablestructureglobals() */
+	void *saved_systemtable;       /* hdlhashtable */
+	void *saved_builtinstable;     /* hdlhashtable */
+	void *saved_pathstable;        /* hdlhashtable */
+	void *saved_verbstable;        /* hdlhashtable */
+	void *saved_iacgluetable;      /* hdlhashtable */
+	void *saved_iachandlertable;   /* hdlhashtable */
+	void *saved_resourcestable;    /* hdlhashtable */
+	void *saved_agentstable;       /* hdlhashtable */
+	void *saved_menubartable;      /* hdlhashtable */
+	void *saved_objectmodeltable;  /* hdlhashtable */
 } odb_context_guard;
 
 extern void odb_guard_enter(odb_context_guard *guard);
