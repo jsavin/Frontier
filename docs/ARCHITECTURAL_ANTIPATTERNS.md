@@ -332,6 +332,113 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 
 **Rule**: Any function that temporarily modifies global state MUST restore previous value before returning.
 
+### Context Guard Completeness - Save ALL Affected Globals ⚠️
+
+**Added**: 2026-02-10 (PR #TBD, commit b871a1af)
+
+When a context guard wraps an operation that clears globals (e.g., `cleartablestructureglobals()`), the guard **MUST save/restore every global** that operation touches. Missing even one causes silent corruption.
+
+**The Bug (odb_context_guard)**:
+```c
+// ❌ INCOMPLETE - only saved 6 globals, missed 10 table structure globals
+typedef struct odb_context_guard {
+    void *saved_currenthashtable;
+    hdldatabaserecord saved_databasedata;
+    void *saved_hashtablestack;
+    void *saved_rootvariable;
+    void *saved_roottable;
+    void *saved_cancoonglobals;
+    // MISSING: systemtable, builtinstable, pathstable, verbstable,
+    //          iacgluetable, iachandlertable, resourcestable,
+    //          agentstable, menubartable, objectmodeltable
+} odb_context_guard;
+```
+
+**What happened**: `odbOpenFile` → `cleartablestructureglobals()` wiped ALL table structure globals to nil. After `odb_guard_exit` restored the 6 saved globals, the 10 table structure globals remained nil. This caused `langsearchpathvisit()` to bail out immediately (`pathstable == nil`), breaking all search-path resolution including `defined()` for guest databases.
+
+**The Fix**:
+```c
+// ✅ CORRECT - save/restore ALL globals that cleartablestructureglobals() clears
+typedef struct odb_context_guard {
+    // ... original 6 fields ...
+    void *saved_systemtable;
+    void *saved_builtinstable;
+    void *saved_pathstable;
+    void *saved_verbstable;
+    void *saved_iacgluetable;
+    void *saved_iachandlertable;
+    void *saved_resourcestable;
+    void *saved_agentstable;
+    void *saved_menubartable;
+    void *saved_objectmodeltable;
+} odb_context_guard;
+```
+
+**Rule**: When adding or modifying a context guard, enumerate ALL globals that the guarded operation can modify. Cross-reference against the clear/reset function (e.g., `cleartablestructureglobals()` in `tablestructure.c`) to ensure nothing is missed.
+
+**Files**:
+- `Common/headers/db.h` - `odb_context_guard` struct definition
+- `Common/source/db_format.c` - `odb_guard_enter()` / `odb_guard_exit()`
+- `Common/source/tablestructure.c` - `cleartablestructureglobals()` (the function that clears the 10 globals)
+
+---
+
+## Tmp Stack Ownership Contract - exemptfromtmpstack ⚠️
+
+**Added**: 2026-02-10 (PR #TBD, locksemaphoreverb fix)
+
+Frontier's tmp stack (`(**currenthashtable).tmpstack`) automatically disposes heap-allocated temporaries between statements via `cleartmpstack()`. When a heap value is stored in a persistent location (hash table, external variable, etc.), it **MUST** be removed from the tmp stack first.
+
+**The Design Contract** (documented in `hashassign()` at langhash.c):
+> "caller is responsible for actually removing it"
+
+`hashassign()` clears the `fltmpstack` flag on its local copy but does NOT remove the entry from the tmp stack array. The original value record (with the same handle pointer) remains in the tmp stack and will be disposed by `cleartmpstack()`.
+
+**The Bug Pattern**:
+```c
+// ❌ WRONG - missing exemptfromtmpstack
+if (!setheapvalue ((Handle) hlist, recordvaluetype, &val))
+    return (false);
+
+if (!hashtableassign (semaphoretable, bssemaphorename, val))
+    return (false);
+
+// val is now in semaphoretable AND still in tmp stack
+// cleartmpstack() will free the handle → use-after-free when semaphore is unlocked
+```
+
+**The Correct Pattern**:
+```c
+// ✅ CORRECT - exempt from tmp stack after persistent storage
+if (!setheapvalue ((Handle) hlist, recordvaluetype, &val))
+    return (false);
+
+if (!hashtableassign (semaphoretable, bssemaphorename, val))
+    return (false);
+
+exemptfromtmpstack (&val); // value now owned by semaphoretable, not tmp stack
+```
+
+**Why This Causes Use-After-Free**:
+1. `setheapvalue()` pushes value into tmp stack (copies value record, sets `fltmpstack=true`)
+2. `hashtableassign()` stores value in hash node, clears `fltmpstack=false` on its copy
+3. Tmp stack still has the original entry with the same handle pointer
+4. `cleartmpstack()` disposes the handle (first free)
+5. Later, `hashdelete()` tries to dispose the same handle (second free → crash)
+6. The freed memory may be reused for other allocations, causing garbage pointer values
+
+**Diagnostic Clue**: Garbage pointers containing ASCII text (e.g., `0x98747265736e6906` = "tresni" = reverse of "insert") indicate use-after-free where freed memory was reused for string data.
+
+**How to spot this pattern**:
+- Any code calling `setheapvalue()` (or `setstringvalue()`, `setbinaryvalue()`, etc.) followed by `hashtableassign()` or `hashassign()`
+- Look for the absence of `exemptfromtmpstack()` between creation and persistent storage
+- Crashes in `opdisposelist()` / `opdisposeoutline()` with garbage handle values
+
+**Files**:
+- `Common/source/langtmpstack.c` - `pushtmpstackvalue()`, `cleartmpstack()`, `exemptfromtmpstack()`
+- `Common/source/langhash.c:2008` - Comment documenting the caller's responsibility
+- `Common/source/langverbs.c` - `locksemaphoreverb()` (the fixed instance)
+
 ---
 
 ## Auto-Generated Files Requiring Hand-Edits
