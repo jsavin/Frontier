@@ -18,9 +18,21 @@
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/lang.h"  /* For hdlhashtable */
 
+/* Maximum length for REPL navigation paths */
+#define REPL_PATH_MAX_LEN 512
+
 // Main REPL entry point
 // Returns: exit code (0 for success, 1 for error)
 int repl_main(cli_options_t *options);
+
+/* Result from index-aware path navigation (repl_navigate_path_ex).
+ * Can represent either a table or a scalar value at the end of a path. */
+typedef struct {
+    hdlhashtable htable;    /* non-nil if result is a table */
+    tyvaluerecord val;      /* the value (valid for both table and scalar results) */
+    hdlhashnode hnode;      /* the node containing the value */
+    boolean is_table;       /* true if result is a navigable table */
+} typathlookupresult;
 
 /* REPL Navigation - similar to CWD in a shell */
 
@@ -37,11 +49,44 @@ boolean repl_jump_path(const char *path);
 
 /* Resolve a path to a table without changing current table.
  * Accepts dot-paths, addresses, system.paths names, or script expressions.
+ * Also supports relative paths when focused on a non-root table.
  * If resolved_path is non-NULL, fills it with the actual resolved path
  * (e.g., "system.verbs.builtins" for "parentOf(fileMenu)").
  * Returns the resolved table, or nil if path is invalid.
  */
 hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t path_bufsize);
+
+/* Extended path resolution that returns both tables and scalar values.
+ * Supports [n] index syntax (1-based) and relative paths.
+ *
+ * Resolution precedence (differs from repl_resolve_path for tables-only):
+ *   1. Empty path → current focused table
+ *   2. Script expressions → delegated to repl_resolve_path()
+ *   3. Relative to current focused table (if not at root) — tried FIRST
+ *   4. Single component without index → roottable lookup, then system.paths
+ *   5. Absolute path via navigate_path_with_index()
+ *
+ * Note: repl_resolve_path() uses the same order for multi-component paths
+ * but tries roottable BEFORE system.paths for single components. Both
+ * functions try relative resolution first when focused on a non-root table.
+ *
+ * If result->is_table is true, the path resolved to a table (in result->htable).
+ * If result->is_table is false, the path resolved to a scalar (in result->val).
+ * If resolved_path is non-NULL, fills it with the resolved path string.
+ * Returns true if path resolved successfully, false on error.
+ * On error, sets error_msg (if non-NULL) to describe the problem.
+ *
+ * Thread safety: Uses global roottable and g_repl_current_path. Not thread-safe;
+ * must be called from the REPL thread only.
+ *
+ * Result values are borrowed references to the ODB; they remain valid as long as
+ * the underlying database nodes are not modified or disposed. Callers should
+ * deep-copy (via copyvaluerecord) if the value will be held across any
+ * operations that could mutate the ODB.
+ */
+boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
+                              char *resolved_path, size_t path_bufsize,
+                              char *error_msg, size_t error_bufsize);
 
 /* Check if REPL mode is currently active.
  * Used by msg() to add "msg: " prefix in interactive mode.

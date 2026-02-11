@@ -67,6 +67,12 @@ void repl_output_vars(hdlhashtable workspace);
  */
 void repl_output_list(hdlhashtable htable, const char *path_label);
 
+/* Display a single scalar value (for /list with index syntax).
+ * Used when /list resolves to a non-table value via [n] indexing.
+ * Shows: path = value (type)
+ */
+void repl_output_single_value(const char *path_label, tyvaluerecord *val);
+
 /* --- Event Loop Support (Phase 4) --- */
 
 /* Set the active linenoise state for async output.
