@@ -134,6 +134,7 @@ repl_command_result repl_process_command(const char *input) {
 
     /* ======================================================================
      * /list [path] - List contents of a table (current table if no path)
+     * Supports [n] index syntax (1-based) and relative paths.
      * ====================================================================== */
     if (strncmp(cmd_buf, "list", 4) == 0) {
         const char *path = cmd_buf + 4;
@@ -149,15 +150,26 @@ repl_command_result repl_process_command(const char *input) {
             return REPL_CMD_CONTINUE;
         }
 
-        /* Resolve the path to a table, getting the actual resolved path */
+        /* Use extended resolver for index syntax and relative paths */
+        typathlookupresult result;
         char resolved_path[512];
-        hdlhashtable target = repl_resolve_path(path, resolved_path, sizeof(resolved_path));
-        if (target == nil) {
-            printf("Error: '%s' is not a valid table path\n", path);
+        char error_msg[256] = "";
+        boolean found = repl_resolve_path_ex(path, &result, resolved_path, sizeof(resolved_path),
+                                              error_msg, sizeof(error_msg));
+
+        if (!found) {
+            if (error_msg[0] != '\0')
+                printf("Error: %s\n", error_msg);
+            else
+                printf("Error: '%s' is not a valid table path\n", path);
             return REPL_CMD_CONTINUE;
         }
 
-        repl_output_list(target, resolved_path);
+        if (result.is_table) {
+            repl_output_list(result.htable, resolved_path);
+        } else {
+            repl_output_single_value(resolved_path, &result.val);
+        }
         return REPL_CMD_CONTINUE;
     }
 
