@@ -127,7 +127,16 @@ static boolean langhash_convert_wordprocessor_external(hdlexternalvariable hv, c
 	log_trace(LOG_COMP_HASH, "wp-convert begin hv=%p path=%s", (void *)hv, log_path);
 
 	Handle hplain_utf8 = nil;
-	if (!wp_portable_extract_plaintext(hv, &hplain_utf8)) {
+
+	/* Suppress lang errors during text extraction — conversion failures are
+	 * handled gracefully with a placeholder fallback below, but the encoding
+	 * code calls langerrormessage() which would set fllangerror and kill the
+	 * calling script (e.g. startup.startupScript during migration). */
+	disablelangerror();
+	boolean extracted = wp_portable_extract_plaintext(hv, &hplain_utf8);
+	enablelangerror();
+
+	if (!extracted) {
 		bigstring bsplaceholder;
 		wp_portable_note_drop_logged(hv, log_path);
 		copyctopstring(WP_PLACEHOLDER_TEXT, bsplaceholder);
