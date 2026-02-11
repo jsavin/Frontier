@@ -12,7 +12,7 @@
  */
 
 #include "repl_output.h"
-#include "repl.h"       /* For repl_get_current_table() */
+#include "repl.h"       /* For repl_get_current_table(), REPL_PATH_MAX_LEN */
 #include "linenoise.h"  /* For linenoiseHide/Show */
 #include "../Common/headers/lang.h"
 #include "../Common/headers/langexternal.h"
@@ -267,12 +267,15 @@ void repl_output_help(void) {
 	fputs("  /jump ..                  Go to parent table\n", stdout);
 	fputs("  /jump fileMenu            Navigate via system.paths\n", stdout);
 	fputs("  /jump parentOf(@user)     Evaluate expression for address\n", stdout);
+	fputs("  /jump system.verbs[1]     Navigate to 1st item (1-based index)\n", stdout);
 	fputs("\n", stdout);
 	fputs("/list - List contents of a table:\n", stdout);
 	fputs("  /list                     List current table\n", stdout);
 	fputs("  /list system.verbs        List specific table by path\n", stdout);
 	fputs("  /list fileMenu            List via system.paths\n", stdout);
 	fputs("  /list parentOf(fileMenu)  Evaluate expression for table\n", stdout);
+	fputs("  /list system.verbs[1]     List/show 1st item (1-based index)\n", stdout);
+	fputs("  /list files               Relative path (after /jump)\n", stdout);
 	fputs("\n", stdout);
 	fputs("QuickScript Model - Variable Persistence:\n", stdout);
 	fputs("  Local variables (x = 5) don't persist between evaluations\n", stdout);
@@ -497,7 +500,7 @@ void repl_output_list(hdlhashtable htable, const char *path_label) {
 			}
 		} else if (is_scalar_valuetype(val.valuetype)) {
 			/* Scalar types: show value inline, truncated to fit terminal */
-			char value_buf[512];
+			char value_buf[REPL_PATH_MAX_LEN];
 			format_value_summary(&val, value_buf, sizeof(value_buf));
 
 			/* Calculate available space: terminal - prefix - " : " - "..." margin */
@@ -519,6 +522,67 @@ void repl_output_list(hdlhashtable htable, const char *path_label) {
 	}
 
 	fflush(stdout);
+}
+
+/* Display a single scalar value (for /list with index syntax).
+ * Used when /list resolves to a non-table value via [n] indexing.
+ * Output format: path = value (type)
+ */
+void repl_output_single_value(const char *path_label, tyvaluerecord *val) {
+	if (val == NULL) return;
+
+	/* Get type string (safe to read directly - type info is inline, not a handle) */
+	bigstring type_str;
+	if (val->valuetype == externalvaluetype) {
+		langexternaltypestring((hdlexternalvariable)val->data.externalvalue, type_str);
+	} else {
+		langgettypestring(val->valuetype, type_str);
+	}
+
+	/* Deep-copy the value so we own all handle-based data (strings, etc.).
+	 * The input val is a borrowed reference from the ODB; using a deep copy
+	 * avoids any risk of use-after-free if the ODB mutates during display. */
+	char value_buf[REPL_PATH_MAX_LEN];
+	tyvaluerecord val_copy;
+	boolean owns_copy = copyvaluerecord(*val, &val_copy);
+
+	if (!owns_copy) {
+		/* copyvaluerecord failed (memory allocation) - fall back to shallow read.
+		 * This is safe in practice because no ODB mutations occur between
+		 * resolve and display, but prefer the deep copy when possible. */
+		val_copy = *val;
+	}
+
+	if (val_copy.valuetype == externalvaluetype) {
+		bigstring display_str;
+		setemptystring(display_str);
+		langexternalgetdisplaystring((hdlexternalvariable)val_copy.data.externalvalue, display_str);
+		if (stringlength(display_str) > 0) {
+			snprintf(value_buf, sizeof(value_buf), "%.*s",
+				(int)stringlength(display_str), stringbaseaddress(display_str));
+		} else {
+			snprintf(value_buf, sizeof(value_buf), "[external]");
+		}
+	} else if (is_scalar_valuetype(val_copy.valuetype)) {
+		format_value_summary(&val_copy, value_buf, sizeof(value_buf));
+	} else {
+		snprintf(value_buf, sizeof(value_buf), "[type %d]", val_copy.valuetype);
+	}
+
+	/* Print: path = value (type) */
+	if (path_label != NULL && path_label[0] != '\0') {
+		printf("%s = %s (%.*s)\n", path_label, value_buf,
+			(int)stringlength(type_str), stringbaseaddress(type_str));
+	} else {
+		printf("%s (%.*s)\n", value_buf,
+			(int)stringlength(type_str), stringbaseaddress(type_str));
+	}
+	fflush(stdout);
+
+	/* Dispose the deep copy to avoid leaking handle-based data */
+	if (owns_copy) {
+		disposevaluerecord(val_copy, false);
+	}
 }
 
 /* --- Event Loop Support (Phase 4) --- */

@@ -21,6 +21,7 @@
 #include <signal.h>
 #include <poll.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "linenoise.h"
 
@@ -52,7 +53,7 @@
 
 // REPL prompt settings
 #define g_repl_prompt_MAX_LEN 256
-#define REPL_PATH_MAX_LEN 512
+/* Moved to repl.h so other REPL modules can use it */
 
 // REPL navigation state - tracks current table like CWD in a shell
 static hdlhashtable g_repl_current_table = nil;
@@ -211,12 +212,587 @@ static boolean repl_jump_script(const char *script) {
     return true;
 }
 
+/* ======================================================================
+ * Index-aware path navigation helpers
+ *
+ * Resolution order (for navigate_path_with_index):
+ *   1. For each dot-component, try hashtablelookup() in current table
+ *   2. If first component fails lookup, try system.paths fallback
+ *   3. If component has [n] suffix, resolve name first then index into result
+ *
+ * All indices are 1-based (UserTalk convention). Internally converted
+ * to 0-based for hashgetnthnode().
+ * ====================================================================== */
+
+#define INDEX_NODE_NAME_MAX  COMPLETION_MAX_NAME_LEN  /* max length for node names */
+
+/* Safely append a path component to a tracked-length buffer.
+ * Returns false if the buffer would overflow (sets error_msg).
+ */
+static boolean path_buf_append(char *buf, size_t bufsize, size_t *len,
+                                const char *component,
+                                char *error_msg, size_t error_bufsize) {
+    size_t comp_len = strlen(component);
+    size_t need = *len + ((*len > 0) ? 1 : 0) + comp_len;
+
+    if (need >= bufsize) {
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "path too long (limit %zu)", bufsize);
+        return false;
+    }
+
+    if (*len > 0) {
+        buf[*len] = '.';
+        (*len)++;
+    }
+
+    memcpy(buf + *len, component, comp_len);
+    *len += comp_len;
+    buf[*len] = '\0';
+
+    return true;
+}
+
+/* Get the C-string name of a hash node.
+ * Writes into caller-provided buffer. Returns the string length.
+ */
+static size_t get_node_cname(hdlhashnode hnode, char *cname, size_t bufsize) {
+    bigstring bsname;
+    gethashkey(hnode, bsname);
+    size_t nlen = stringlength(bsname);
+    if (nlen > bufsize - 1) nlen = bufsize - 1;
+    memcpy(cname, stringbaseaddress(bsname), nlen);
+    cname[nlen] = '\0';
+    return nlen;
+}
+
+/* Apply a 1-based index to a hash table, returning the indexed node.
+ * On failure, sets error_msg with context (using context_name for the table name).
+ * Returns true on success, with *out_node set.
+ */
+static boolean apply_index_to_table(hdlhashtable htable, long index,
+                                     const char *context_name,
+                                     hdlhashnode *out_node,
+                                     char *error_msg, size_t error_bufsize) {
+    *out_node = nil;
+
+    if (!hashgetnthnode(htable, index - 1, out_node) || *out_node == nil) {
+        if (error_msg && error_bufsize > 0) {
+            if (context_name && context_name[0] != '\0')
+                snprintf(error_msg, error_bufsize, "index %ld out of range in '%s'", index, context_name);
+            else
+                snprintf(error_msg, error_bufsize, "index %ld out of range", index);
+        }
+        return false;
+    }
+
+    return true;
+}
+
+/* Resolve an indexed node as a final or intermediate result.
+ * If is_last, fills result with the node's value (table or scalar).
+ * If not is_last, extracts a table for continued navigation into *out_table.
+ *
+ * IMPORTANT: result->val and result->hnode are borrowed references from the ODB.
+ * They remain valid only while the underlying hash table nodes are not modified
+ * or disposed. Caller must not hold these across ODB mutation operations.
+ *
+ * Returns true on success.
+ */
+static boolean resolve_indexed_node(hdlhashnode hnode, long index,
+                                     const char *context_name,
+                                     boolean is_last,
+                                     typathlookupresult *result,
+                                     hdlhashtable *out_table,
+                                     char *name_path, size_t name_path_bufsize, size_t *name_path_len,
+                                     char *resolved_name_path, size_t resolved_bufsize,
+                                     char *error_msg, size_t error_bufsize) {
+    /* Get the actual name of the indexed node and append to path */
+    char cname[INDEX_NODE_NAME_MAX];
+    get_node_cname(hnode, cname, sizeof(cname));
+
+    if (!path_buf_append(name_path, name_path_bufsize, name_path_len, cname, error_msg, error_bufsize))
+        return false;
+
+    /* Validate handle dereference - defense in depth.
+     * apply_index_to_table() already checks *out_node == nil, but guard
+     * against any future caller that bypasses that validation. */
+    if (hnode == nil || *hnode == nil) {
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "internal error: nil node handle at index %ld", index);
+        return false;
+    }
+
+    tyvaluerecord nodeval = (**hnode).val;
+
+    if (is_last) {
+        hdlhashtable subtable = nil;
+        if (langexternalvaltotable(nodeval, &subtable, hnode) && subtable != nil) {
+            result->htable = subtable;
+            result->is_table = true;
+        } else {
+            result->is_table = false;
+        }
+        result->val = nodeval;
+        result->hnode = hnode;
+        if (resolved_name_path && resolved_bufsize > 0) {
+            strncpy(resolved_name_path, name_path, resolved_bufsize - 1);
+            resolved_name_path[resolved_bufsize - 1] = '\0';
+        }
+        return true;
+    }
+
+    /* Not last - must be a table to continue */
+    hdlhashtable subtable = nil;
+    if (!langexternalvaltotable(nodeval, &subtable, hnode) || subtable == nil) {
+        if (error_msg && error_bufsize > 0) {
+            if (context_name && context_name[0] != '\0')
+                snprintf(error_msg, error_bufsize, "item at index %ld in '%s' is not a table", index, context_name);
+            else
+                snprintf(error_msg, error_bufsize, "item at index %ld is not a table", index);
+        }
+        return false;
+    }
+
+    *out_table = subtable;
+    return true;
+}
+
+/* Parse a component for [n] index syntax.
+ * Splits "name[n]" into name_part and *out_index (1-based, or -1 if no index).
+ * Validates: brackets match, no trailing chars after ], index >= 1.
+ * Returns true if parsing succeeded.
+ */
+static boolean parse_index_component(const char *component,
+                                      char *name_part, size_t name_part_size,
+                                      long *out_index,
+                                      char *error_msg, size_t error_bufsize) {
+    *out_index = -1;
+
+    char *bracket = strchr(component, '[');
+    if (bracket == NULL) {
+        strncpy(name_part, component, name_part_size - 1);
+        name_part[name_part_size - 1] = '\0';
+        return true;
+    }
+
+    /* Extract name part before bracket */
+    size_t name_len = (size_t)(bracket - component);
+    if (name_len >= name_part_size) name_len = name_part_size - 1;
+    memcpy(name_part, component, name_len);
+    name_part[name_len] = '\0';
+
+    /* Parse index from [n] */
+    char *endptr = NULL;
+    long parsed = strtol(bracket + 1, &endptr, 10);
+    if (endptr == NULL || *endptr != ']') {
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "invalid index syntax in '%s'", component);
+        return false;
+    }
+
+    /* Reject trailing characters after closing bracket (e.g. "system[1]foo") */
+    if (*(endptr + 1) != '\0') {
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "invalid index syntax in '%s' (unexpected characters after ']')", component);
+        return false;
+    }
+
+    if (parsed < 1) {
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "index must be >= 1 (got %ld)", parsed);
+        return false;
+    }
+
+    /* Sanity-check upper bound. hashgetnthnode() takes long, but no hash table
+     * will realistically have more than INT_MAX entries. Reject obviously
+     * out-of-range values early to avoid potential overflow in downstream code. */
+    if (parsed > INT_MAX) {
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "index %ld exceeds maximum (%d)", parsed, INT_MAX);
+        return false;
+    }
+
+    *out_index = parsed;
+    return true;
+}
+
+/* Navigate a dot-path with [n] index syntax support.
+ * Tokenizes by '.' and for each component checks for [n] suffix.
+ * Indices are 1-based (UserTalk convention); internally converted to 0-based for hashgetnthnode.
+ *
+ * Returns true if path resolved successfully.
+ * On success, result contains either a table or scalar value.
+ * On failure, error_msg describes the problem (if non-NULL).
+ */
+static boolean navigate_path_with_index(const char *path, typathlookupresult *result,
+                                         char *resolved_name_path, size_t resolved_bufsize,
+                                         char *error_msg, size_t error_bufsize) {
+    if (path == NULL || path[0] == '\0' || result == NULL) {
+        return false;
+    }
+
+    /* Initialize result */
+    result->htable = nil;
+    result->hnode = nil;
+    result->is_table = false;
+    clearbytes(&result->val, sizeof(result->val));
+
+    /* Make a mutable copy for tokenization */
+    char path_copy[REPL_PATH_MAX_LEN];
+    strncpy(path_copy, path, REPL_PATH_MAX_LEN - 1);
+    path_copy[REPL_PATH_MAX_LEN - 1] = '\0';
+
+    /* Build a resolved name path (using actual names, not indices) */
+    char name_path[REPL_PATH_MAX_LEN] = "";
+    size_t name_path_len = 0;
+
+    hdlhashtable current = roottable;
+    size_t depth = 0;
+    size_t components_consumed = 0;
+    size_t total_components = 0;
+    boolean first_component = true;
+
+    /* Count total components for depth-cap validation.
+     * Counts dots outside of brackets; n dots = n+1 components.
+     * If brackets are malformed (no closing ']'), we break out of the scan early.
+     * This gives an approximate count, which is fine because parse_index_component()
+     * will reject the malformed bracket syntax before we ever use total_components. */
+    for (const char *p = path; *p; p++) {
+        if (*p == '[') {
+            while (*p && *p != ']') p++;
+            if (*p == '\0') break;  /* unclosed bracket - stop counting */
+            continue;
+        }
+        if (*p == '.') total_components++;
+    }
+    total_components++; /* n dots = n+1 components */
+
+    char *saveptr = NULL;
+    char *component = strtok_r(path_copy, ".", &saveptr);
+
+    while (component != NULL && current != nil && depth < (size_t)COMPLETION_MAX_PATH_DEPTH) {
+        /* Parse [n] index suffix */
+        long index = -1;
+        char name_part[INDEX_NODE_NAME_MAX];
+
+        if (!parse_index_component(component, name_part, sizeof(name_part), &index, error_msg, error_bufsize))
+            return false;
+
+        char *next_component = strtok_r(NULL, ".", &saveptr);
+        boolean is_last = (next_component == NULL);
+
+        if (name_part[0] == '\0' && index > 0) {
+            /* [n] alone with no name - index directly into current table */
+            hdlhashnode hnode = nil;
+            if (!apply_index_to_table(current, index, NULL, &hnode, error_msg, error_bufsize))
+                return false;
+
+            hdlhashtable next_table = nil;
+            if (!resolve_indexed_node(hnode, index, NULL, is_last, result, &next_table,
+                                       name_path, sizeof(name_path), &name_path_len,
+                                       resolved_name_path, resolved_bufsize,
+                                       error_msg, error_bufsize))
+                return false;
+
+            if (is_last) return true;
+            current = next_table;
+        } else {
+            /* Named component - look it up */
+            bigstring bs;
+            copyctopstring(name_part, bs);
+
+            tyvaluerecord val;
+            hdlhashnode node;
+            if (!hashtablelookup(current, bs, &val, &node)) {
+                /* Try system.paths fallback for first component */
+                if (first_component) {
+                    hdlhashtable path_result = completion_search_paths(name_part);
+                    if (path_result != nil) {
+                        current = path_result;
+
+                        /* Use the actual resolved path from system.paths */
+                        char paths_resolved[REPL_PATH_MAX_LEN];
+                        hdlhashtable check = completion_search_paths_ex(name_part, paths_resolved, sizeof(paths_resolved));
+                        if (check != nil && paths_resolved[0] != '\0') {
+                            strncpy(name_path, paths_resolved, sizeof(name_path) - 1);
+                            name_path[sizeof(name_path) - 1] = '\0';
+                            name_path_len = strlen(name_path);
+                        } else {
+                            strncpy(name_path, name_part, sizeof(name_path) - 1);
+                            name_path[sizeof(name_path) - 1] = '\0';
+                            name_path_len = strlen(name_path);
+                        }
+
+                        /* If there's an index, apply it to the resolved table */
+                        if (index > 0) {
+                            hdlhashnode hnode = nil;
+                            if (!apply_index_to_table(current, index, name_part, &hnode, error_msg, error_bufsize))
+                                return false;
+
+                            hdlhashtable next_table = nil;
+                            if (!resolve_indexed_node(hnode, index, name_part, is_last, result, &next_table,
+                                                       name_path, sizeof(name_path), &name_path_len,
+                                                       resolved_name_path, resolved_bufsize,
+                                                       error_msg, error_bufsize))
+                                return false;
+
+                            if (is_last) return true;
+                            current = next_table;
+                        }
+
+                        component = next_component;
+                        depth++;
+                        components_consumed++;
+                        first_component = false;
+                        continue;
+                    }
+                }
+                if (error_msg && error_bufsize > 0)
+                    snprintf(error_msg, error_bufsize, "'%s' not found", name_part);
+                return false;
+            }
+
+            /* Append name to path (with bounds checking) */
+            if (!path_buf_append(name_path, sizeof(name_path), &name_path_len, name_part, error_msg, error_bufsize))
+                return false;
+
+            if (index > 0) {
+                /* Has index - the named part must be a table, then index into it */
+                hdlhashtable subtable = nil;
+                if (!langexternalvaltotable(val, &subtable, node) || subtable == nil) {
+                    if (error_msg && error_bufsize > 0)
+                        snprintf(error_msg, error_bufsize, "'%s' is not a table (cannot index)", name_part);
+                    return false;
+                }
+
+                hdlhashnode hnode = nil;
+                if (!apply_index_to_table(subtable, index, name_part, &hnode, error_msg, error_bufsize))
+                    return false;
+
+                hdlhashtable next_table = nil;
+                if (!resolve_indexed_node(hnode, index, name_part, is_last, result, &next_table,
+                                           name_path, sizeof(name_path), &name_path_len,
+                                           resolved_name_path, resolved_bufsize,
+                                           error_msg, error_bufsize))
+                    return false;
+
+                if (is_last) return true;
+                current = next_table;
+            } else {
+                /* No index - standard path component */
+                if (is_last) {
+                    /* Final component - could be table or scalar */
+                    hdlhashtable subtable = nil;
+                    if (langexternalvaltotable(val, &subtable, node) && subtable != nil) {
+                        result->htable = subtable;
+                        result->is_table = true;
+                    } else {
+                        result->is_table = false;
+                    }
+                    result->val = val;
+                    result->hnode = node;
+                    if (resolved_name_path && resolved_bufsize > 0) {
+                        strncpy(resolved_name_path, name_path, resolved_bufsize - 1);
+                        resolved_name_path[resolved_bufsize - 1] = '\0';
+                    }
+                    return true;
+                }
+
+                /* Not last - must be a table to continue */
+                if (!langexternalvaltotable(val, &current, node) || current == nil) {
+                    if (error_msg && error_bufsize > 0)
+                        snprintf(error_msg, error_bufsize, "'%s' is not a table", name_part);
+                    return false;
+                }
+            }
+        }
+
+        component = next_component;
+        depth++;
+        components_consumed++;
+        first_component = false;
+    }
+
+    /* Check for depth cap: if we stopped because of depth limit but still have
+     * unconsumed components, reject as error rather than returning partial result */
+    if (depth >= (size_t)COMPLETION_MAX_PATH_DEPTH && components_consumed + 1 < total_components) {
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "path too deep (limit %d components)", COMPLETION_MAX_PATH_DEPTH);
+        return false;
+    }
+
+    /* Reached the end - return current table */
+    result->htable = current;
+    result->is_table = true;
+    result->hnode = nil;
+    clearbytes(&result->val, sizeof(result->val));
+    if (resolved_name_path && resolved_bufsize > 0) {
+        strncpy(resolved_name_path, name_path, resolved_bufsize - 1);
+        resolved_name_path[resolved_bufsize - 1] = '\0';
+    }
+    return true;
+}
+
+/* Check if a path contains [n] index syntax */
+static boolean path_has_index_syntax(const char *path) {
+    if (path == NULL) return false;
+    return strchr(path, '[') != NULL;
+}
+
+/* Extended path resolution supporting [n] index syntax and relative paths.
+ *
+ * Resolution order:
+ *   1. Empty path → return current focused table
+ *   2. Script expressions → delegate to repl_resolve_path()
+ *   3. Relative to current table (if focused on non-root table)
+ *   4. Single component without index → roottable lookup, then system.paths
+ *   5. Absolute path with navigate_path_with_index()
+ *
+ * Returns true if the path resolved successfully.
+ */
+boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
+                              char *resolved_path, size_t path_bufsize,
+                              char *error_msg, size_t error_bufsize) {
+    if (result == NULL) return false;
+
+    /* Initialize result */
+    result->htable = nil;
+    result->hnode = nil;
+    result->is_table = false;
+    clearbytes(&result->val, sizeof(result->val));
+
+    /* Handle empty path - return current table */
+    if (path == NULL || path[0] == '\0') {
+        hdlhashtable current = repl_get_current_table();
+        result->htable = current;
+        result->is_table = true;
+        if (resolved_path != NULL && path_bufsize > 0) {
+            const char *cp = repl_get_current_path();
+            if (cp != NULL && cp[0] != '\0') {
+                strncpy(resolved_path, cp, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            } else {
+                resolved_path[0] = '\0';
+            }
+        }
+        return true;
+    }
+
+    /* Script expressions are not supported with index syntax */
+    if (path_is_script_expression(path)) {
+        /* Delegate to existing repl_resolve_path for script expressions */
+        hdlhashtable htable = repl_resolve_path(path, resolved_path, path_bufsize);
+        if (htable != nil) {
+            result->htable = htable;
+            result->is_table = true;
+            return true;
+        }
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "script expression did not resolve to a table");
+        return false;
+    }
+
+    /* Skip leading @ if present */
+    const char *clean_path = path;
+    if (path[0] == '@') {
+        clean_path = path + 1;
+    }
+
+    /* Make a mutable copy */
+    char path_buf[REPL_PATH_MAX_LEN];
+    strncpy(path_buf, clean_path, REPL_PATH_MAX_LEN - 1);
+    path_buf[REPL_PATH_MAX_LEN - 1] = '\0';
+
+    /* Strip trailing dot (from tab completion) */
+    size_t len = strlen(path_buf);
+    if (len > 0 && path_buf[len - 1] == '.') {
+        path_buf[len - 1] = '\0';
+    }
+
+    /* Check if single-component (no dots, skipping bracketed sections) */
+    boolean is_single_component = true;
+    for (const char *p = path_buf; *p; p++) {
+        if (*p == '[') {
+            while (*p && *p != ']') p++;
+            if (*p == '\0') break;  /* malformed brackets; caught later by parser */
+            continue;  /* p points to ']'; outer for will advance past it */
+        }
+        if (*p == '.') { is_single_component = false; break; }
+    }
+
+    boolean found = false;
+
+    /* Try resolving relative to the focused table first (if not at root) */
+    hdlhashtable current = repl_get_current_table();
+    if (current != nil && current != roottable && g_repl_current_path[0] != '\0') {
+        char abs_path[REPL_PATH_MAX_LEN];
+        int wrote = snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
+
+        if (wrote > 0 && (size_t)wrote < sizeof(abs_path)) {
+            /* Only try relative resolution if the combined path fits in the buffer */
+            char local_error[256] = "";
+            found = navigate_path_with_index(abs_path, result, resolved_path, path_bufsize,
+                                              local_error, sizeof(local_error));
+        }
+        /* If truncated (wrote < 0 or >= sizeof), silently fall through to absolute
+         * resolution. This is intentional: truncated relative paths would never match
+         * anyway, so we try the path as-is (absolute) instead. */
+    }
+
+    if (!found && is_single_component && !path_has_index_syntax(path_buf)) {
+        /* Single component without index - try roottable, then system.paths */
+        bigstring bs;
+        copyctopstring(path_buf, bs);
+        tyvaluerecord val;
+        hdlhashnode node;
+
+        if (roottable != nil && hashtablelookup(roottable, bs, &val, &node)) {
+            hdlhashtable target = nil;
+            if (langexternalvaltotable(val, &target, node) && target != nil) {
+                result->htable = target;
+                result->is_table = true;
+                result->val = val;
+                result->hnode = node;
+                if (resolved_path != NULL && path_bufsize > 0) {
+                    strncpy(resolved_path, path_buf, path_bufsize - 1);
+                    resolved_path[path_bufsize - 1] = '\0';
+                }
+                found = true;
+            }
+        }
+
+        if (!found) {
+            char rp[REPL_PATH_MAX_LEN] = "";
+            hdlhashtable target = completion_search_paths_ex(path_buf, rp, sizeof(rp));
+            if (target != nil) {
+                result->htable = target;
+                result->is_table = true;
+                if (resolved_path != NULL && path_bufsize > 0) {
+                    strncpy(resolved_path, rp, path_bufsize - 1);
+                    resolved_path[path_bufsize - 1] = '\0';
+                }
+                found = true;
+            }
+        }
+    }
+
+    if (!found) {
+        /* Try as absolute path (with or without index syntax) */
+        found = navigate_path_with_index(path_buf, result, resolved_path, path_bufsize,
+                                          error_msg, error_bufsize);
+    }
+
+    return found;
+}
+
 /* Set the current REPL table by navigating to a path.
  * Returns true on success, false if path is invalid.
  * Supports:
  *   - Empty path or "@" to go to root
  *   - ".." to go to parent
  *   - Dot-paths like "system.verbs"
+ *   - [n] index syntax like "system.verbs[1]" (1-based)
  *   - Script expressions like "parentOf(@user.inetd)" if path contains ( ) or +
  *   - Trailing dots are stripped (from tab completion)
  */
@@ -282,6 +858,33 @@ boolean repl_jump_path(const char *path) {
     size_t len = strlen(path_buf);
     if (len > 0 && path_buf[len - 1] == '.') {
         path_buf[len - 1] = '\0';
+    }
+
+    /* If path has index syntax, delegate to repl_resolve_path_ex()
+     * which handles relative paths, system.paths, and index navigation */
+    if (path_has_index_syntax(path_buf)) {
+        typathlookupresult result;
+        char resolved_path[REPL_PATH_MAX_LEN] = "";
+        char error_msg[256] = "";
+
+        if (!repl_resolve_path_ex(path_buf, &result, resolved_path, sizeof(resolved_path),
+                                   error_msg, sizeof(error_msg))) {
+            if (error_msg[0] != '\0')
+                printf("Error: %s\n", error_msg);
+            return false;
+        }
+
+        if (!result.is_table) {
+            printf("Error: cannot jump to a non-table value\n");
+            return false;
+        }
+
+        g_repl_current_table = result.htable;
+        strncpy(g_repl_current_path, resolved_path, REPL_PATH_MAX_LEN - 1);
+        g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
+        update_prompt();
+        repl_set_focus(result.htable);
+        return true;
     }
 
     /* Check if this is a single-component path (no dots) */
@@ -481,7 +1084,20 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
 
     hdlhashtable target = nil;
 
-    if (is_single_component) {
+    /* Try resolving relative to the focused table first (if not at root) */
+    hdlhashtable current_table = repl_get_current_table();
+    if (current_table != nil && current_table != roottable && g_repl_current_path[0] != '\0') {
+        char abs_path[REPL_PATH_MAX_LEN];
+        snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
+
+        target = completion_navigate_path(abs_path);
+        if (target != nil && resolved_path != NULL && path_bufsize > 0) {
+            strncpy(resolved_path, abs_path, path_bufsize - 1);
+            resolved_path[path_bufsize - 1] = '\0';
+        }
+    }
+
+    if (target == nil && is_single_component) {
         /* Single component - try roottable first, then system.paths */
         bigstring bs;
         copyctopstring(path_buf, bs);
@@ -500,7 +1116,7 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
             /* Try system.paths - this gives us the resolved path */
             target = completion_search_paths_ex(path_buf, resolved_path, path_bufsize);
         }
-    } else {
+    } else if (target == nil) {
         /* Multi-component path - use standard navigation */
         target = completion_navigate_path(path_buf);
         if (target != nil && resolved_path != NULL && path_bufsize > 0) {
