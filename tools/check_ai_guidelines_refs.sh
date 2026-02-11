@@ -6,9 +6,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SHARED_REF="docs/AI_SHARED_GUIDELINES.md"
 
+has_ref() {
+    local pattern="$1"
+    local file="$2"
+    if command -v rg >/dev/null 2>&1; then
+        rg -q "${pattern}" "${file}"
+    else
+        grep -qF "${pattern}" "${file}"
+    fi
+}
+
 missing=0
 for file in "${ROOT_DIR}/AGENTS.md" "${ROOT_DIR}/CLAUDE.md"; do
-    if ! rg -q "${SHARED_REF}" "${file}"; then
+    if ! has_ref "${SHARED_REF}" "${file}"; then
         echo "missing shared-guidelines reference: ${file}" >&2
         missing=1
     fi

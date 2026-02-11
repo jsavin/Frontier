@@ -16,6 +16,10 @@ Last Updated: 2026-02-10
 2. Audit remaining `.claude/agents/*.md` files and replace any duplicated global policy blocks with shared-file references.
 3. Keep branch/worktree, testing, logging, UserTalk constraints, and issue-hygiene updates centralized in `docs/AI_SHARED_GUIDELINES.md`.
 
+### Follow-up (2026-02-10, bot review response)
+- Generalized the shared guideline worktree example to avoid hardcoded local absolute paths.
+- Made `tools/check_ai_guidelines_refs.sh` portable by falling back to `grep` when `rg` is unavailable.
+
 **Status**: Guest database lifecycle (fileMenu verbs) fully operational in headless mode. Four database corruption bugs fixed. Startup scripts working. Menu system stabilized. GUI application planning complete. Compiler warnings eliminated.
 
 **Latest Release**: **v1.0.0-alpha.4** (January 31, 2026)

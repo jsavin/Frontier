@@ -26,7 +26,8 @@ pwd && git branch --show-current && git status --short
 Recommended setup:
 
 ```bash
-cd /Users/jake/dev/jsavin/Frontier
+# Example (adjust to your local clone root):
+cd "${PROJECT_ROOT:-/path/to/Frontier}"
 git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
 cd ../Frontier-<feature-name>
 ```
