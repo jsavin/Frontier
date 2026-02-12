@@ -912,7 +912,7 @@ boolean langexternalsetdirty (hdlexternalhandle h, boolean fldirty) {
 	} /*langexternalsetdirty*/
 
 
-static boolean ensure_external_in_memory (const db_context *ctx, hdlexternalvariable hv) {
+boolean ensure_external_in_memory (const db_context *ctx, hdlexternalvariable hv) {
 
 	/*
 	2025-12-20: Type-specific external loading dispatcher with explicit context

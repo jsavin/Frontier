@@ -232,6 +232,8 @@ extern boolean langexternalunpack (Handle, hdlexternalhandle *);
 struct db_context; /* forward declaration */
 extern boolean langexternalpack_internal (const struct db_context *, hdlexternalhandle, Handle *, boolean *);
 
+extern boolean ensure_external_in_memory (const struct db_context *, hdlexternalvariable);
+
 /* Legacy (32-bit) pack/unpack shims used during migration. */
 extern boolean langexternalpack_legacy (hdlexternalhandle, Handle *, boolean *);
 extern boolean langexternalunpack_legacy (Handle, hdlexternalhandle *);
