@@ -77,21 +77,25 @@ print_success "Universal binary built (arm64 + x86_64)"
 cp frontier-cli "$STAGE_DIR/"
 print_success "Binary copied to staging"
 
-# Migrate database to v7 format with .root extension
-# (v7 databases use .root extension so UserTalk bootstrapping code can find them)
+# Copy pre-built databases from dist/ (already migrated to v7 with .root extension)
 cd "$REPO_ROOT"
-if [ -f "databases/Frontier.root" ]; then
-    print_info "Migrating database to v7 format..."
-    ./frontier-cli/frontier-cli --migrate databases/Frontier.root --output "$STAGE_DIR/Frontier.root"
-    if [ -f "$STAGE_DIR/Frontier.root" ]; then
-        print_success "Database migrated and copied"
-    else
-        print_error "Migration failed - Frontier.root not created"
-        exit 1
-    fi
+if [ -f "dist/Frontier.root" ]; then
+    print_info "Copying system root database..."
+    cp dist/Frontier.root "$STAGE_DIR/Frontier.root"
+    print_success "System root database copied"
 else
-    print_error "No system root database found (databases/Frontier.root)"
+    print_error "dist/Frontier.root not found - run 'make -C frontier-cli' first"
     exit 1
+fi
+
+# Copy guest databases (preserving directory structure)
+if [ -d "dist/Guest Databases" ]; then
+    print_info "Copying guest databases..."
+    rsync -a --exclude='.DS_Store' "dist/Guest Databases" "$STAGE_DIR/"
+    GUEST_COUNT=$(find "$STAGE_DIR/Guest Databases" -name "*.root" | wc -l | tr -d ' ')
+    print_success "Guest databases copied ($GUEST_COUNT databases)"
+else
+    print_info "No guest databases found in dist/ (skipping)"
 fi
 
 # Copy installation script
@@ -105,9 +109,10 @@ Frontier CLI - Pre-Release Distribution
 ========================================
 
 This package contains:
-  - frontier-cli      Universal binary (arm64 + x86_64)
-  - Frontier.root     System root database (v7 format)
-  - install.sh        Installation script
+  - frontier-cli        Universal binary (arm64 + x86_64)
+  - Frontier.root       System root database (v7 format)
+  - Guest Databases/    Guest databases (mainResponder, Manila, etc.)
+  - install.sh          Installation script
 
 QUICK START
 -----------

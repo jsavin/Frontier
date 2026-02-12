@@ -80,6 +80,10 @@ echo ""
 echo "This will install:"
 echo "  - frontier-cli binary to: $INSTALL_DIR/frontier-cli"
 echo "  - System root database to: $DATA_DIR/$DATABASE"
+if [ -d "Guest Databases" ]; then
+    GUEST_COUNT=$(find "Guest Databases" -name "*.root" | wc -l | tr -d ' ')
+    echo "  - Guest databases ($GUEST_COUNT) to: $DATA_DIR/Guest Databases/"
+fi
 echo ""
 
 read -p "Continue with installation? [Y/n] " -n 1 -r
@@ -122,6 +126,28 @@ else
     cp "$DATABASE" "$DATA_DIR/$DATABASE"
     chmod 644 "$DATA_DIR/$DATABASE"
     print_success "Database installed to $DATA_DIR/$DATABASE"
+fi
+
+# Install guest databases
+if [ -d "Guest Databases" ]; then
+    GUEST_DIR="$DATA_DIR/Guest Databases"
+    if [ -d "$GUEST_DIR" ]; then
+        print_info "Guest databases directory already exists at $GUEST_DIR"
+        echo ""
+        read -p "Overwrite existing guest databases? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rsync -a --exclude='.DS_Store' "Guest Databases/" "$GUEST_DIR/"
+            print_success "Guest databases replaced"
+        else
+            print_info "Keeping existing guest databases"
+        fi
+    else
+        print_info "Installing guest databases..."
+        mkdir -p "$GUEST_DIR"
+        rsync -a --exclude='.DS_Store' "Guest Databases/" "$GUEST_DIR/"
+        print_success "Guest databases installed to $GUEST_DIR"
+    fi
 fi
 
 # Check if install directory is in PATH
