@@ -128,11 +128,11 @@ static void update_prompt(void) {
     /* Validate guest DB is still open before rendering prompt */
     validate_guest_db_state();
 
-    if (g_repl_current_path[0] == '\0') {
-        snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[root]> ");
-    } else if (g_repl_in_guest_db) {
+    if (g_repl_in_guest_db) {
         snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[%s::%s]> ",
                  g_repl_guest_db_name, g_repl_current_path);
+    } else if (g_repl_current_path[0] == '\0') {
+        snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[root]> ");
     } else {
         snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[%s]> ", g_repl_current_path);
     }
@@ -737,7 +737,13 @@ static boolean try_resolve_relative(const char *path_buf,
 
     hdlhashtable current = repl_get_current_table();
 
-    if (current == nil || current == roottable || g_repl_current_path[0] == '\0')
+    if (current == nil || current == roottable)
+        return false;
+
+    /* For system tables, empty path means root — skip relative resolution.
+     * For guest DBs, empty path means we're at the DB root, which is a valid
+     * starting point for relative navigation. */
+    if (g_repl_current_path[0] == '\0' && !g_repl_in_guest_db)
         return false;
 
     if (g_repl_in_guest_db) {
@@ -761,10 +767,12 @@ static boolean try_resolve_relative(const char *path_buf,
             }
             if (resolved_path != NULL && path_bufsize > 0) {
                 /* Build display path: current_path.resolved_inner_path */
-                if (local_resolved[0] != '\0') {
-                    snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, local_resolved);
+                const char *inner = (local_resolved[0] != '\0') ? local_resolved : path_buf;
+                if (g_repl_current_path[0] != '\0') {
+                    snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, inner);
                 } else {
-                    snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, path_buf);
+                    strncpy(resolved_path, inner, path_bufsize - 1);
+                    resolved_path[path_bufsize - 1] = '\0';
                 }
             }
             return true;
@@ -996,21 +1004,26 @@ boolean repl_jump_path(const char *path) {
                 update_prompt();
                 return true;  /* State was reset to root */
             }
-            char *last_dot = strrchr(g_repl_current_path, '.');
-            if (last_dot == NULL) {
+            if (g_repl_current_path[0] == '\0') {
                 /* At guest DB root level — exit guest DB, go to system root */
                 clear_guest_db_state();
                 g_repl_current_table = roottable;
-                g_repl_current_path[0] = '\0';
             } else {
-                /* Go up one level within guest DB */
-                *last_dot = '\0';
-                g_repl_current_table = completion_navigate_dotpath_from(g_repl_guest_db_root, g_repl_current_path);
-                if (g_repl_current_table == nil) {
-                    /* Shouldn't happen, but handle gracefully */
-                    clear_guest_db_state();
-                    g_repl_current_table = roottable;
+                char *last_dot = strrchr(g_repl_current_path, '.');
+                if (last_dot == NULL) {
+                    /* At top-level entry in guest DB — go up to guest DB root */
+                    g_repl_current_table = g_repl_guest_db_root;
                     g_repl_current_path[0] = '\0';
+                } else {
+                    /* Go up one level within guest DB */
+                    *last_dot = '\0';
+                    g_repl_current_table = completion_navigate_dotpath_from(g_repl_guest_db_root, g_repl_current_path);
+                    if (g_repl_current_table == nil) {
+                        /* Shouldn't happen, but handle gracefully */
+                        clear_guest_db_state();
+                        g_repl_current_table = roottable;
+                        g_repl_current_path[0] = '\0';
+                    }
                 }
             }
         } else {
@@ -1123,6 +1136,50 @@ boolean repl_jump_path(const char *path) {
             strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);
             resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
             clear_guest_db_state();
+        }
+    }
+
+    /* If still not found, check if path matches a guest DB display name
+     * (e.g., "/jump mainResponder.root" → jump to that DB's root table) */
+    if (target == nil && filewindowtable != nil) {
+        hdlhashnode fwnomad;
+        for (fwnomad = (**filewindowtable).hfirstsort; fwnomad != nil; fwnomad = (**fwnomad).sortedlink) {
+            /* Extract display name from filewindowtable key (full filesystem path) */
+            bigstring bskey;
+            gethashkey(fwnomad, bskey);
+            char fullpath[COMPLETION_MAX_NAME_LEN];
+            size_t keylen = stringlength(bskey);
+            if (keylen >= COMPLETION_MAX_NAME_LEN) keylen = COMPLETION_MAX_NAME_LEN - 1;
+            memcpy(fullpath, stringbaseaddress(bskey), keylen);
+            fullpath[keylen] = '\0';
+
+            const char *slash = strrchr(fullpath, '/');
+            const char *bslash = strrchr(fullpath, '\\');
+            const char *dbname;
+            if (slash != NULL && bslash != NULL)
+                dbname = (bslash > slash ? bslash : slash) + 1;
+            else if (slash != NULL)
+                dbname = slash + 1;
+            else if (bslash != NULL)
+                dbname = bslash + 1;
+            else
+                dbname = fullpath;
+
+            if (strcmp(path_buf, dbname) == 0) {
+                hdlhashtable db_root;
+                if (langexternalvaltotable((**fwnomad).val, &db_root, fwnomad) && db_root != nil) {
+                    /* Jump to guest DB root level */
+                    g_repl_in_guest_db = true;
+                    g_repl_guest_db_root = db_root;
+                    strncpy(g_repl_guest_db_name, dbname, REPL_PATH_MAX_LEN - 1);
+                    g_repl_guest_db_name[REPL_PATH_MAX_LEN - 1] = '\0';
+                    g_repl_current_table = db_root;
+                    g_repl_current_path[0] = '\0';
+                    update_prompt();
+                    repl_set_focus(db_root);
+                    return true;
+                }
+            }
         }
     }
 
