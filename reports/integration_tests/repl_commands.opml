@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Repl Commands (repl_commands) - 71 tests: 53 pass (74%) 18 skip (25%)</title>
-    <dateCreated>Wed, 11 Feb 2026 06:31:52 GMT</dateCreated>
+    <title>Repl Commands (repl_commands) - 81 tests: 61 pass (75%) 20 skip (24%)</title>
+    <dateCreated>Thu, 12 Feb 2026 00:58:53 GMT</dateCreated>
   </head>
   <body>
     <outline text="REPL /help - displays available commands - /help should list all available commands">
@@ -192,7 +192,7 @@
       <outline text="Metadata">
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: /list nonexistent.path&#10;/exit&#10;"/>
-        <outline text="expected_output_contains: ['Error', 'not found']"/>
+        <outline text="expected_output_contains: ['Error', 'not a valid table path']"/>
       </outline>
     </outline>
     <outline text="REPL /list - empty path argument lists current - /list with just whitespace lists current table">
@@ -491,6 +491,62 @@
         <outline text="expected_output_contains: ['Error', 'invalid index syntax']"/>
       </outline>
     </outline>
+    <outline text="REPL /list - trailing chars after bracket rejected - /list system[1]foo should error, not silently ignore trailing text">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system[1]foo&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'invalid index syntax', 'unexpected characters after']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - bare index into current table - /list [1] should index directly into root table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list [1]&#10;/exit&#10;"/>
+        <outline text="expected_output_not_contains: ['Error']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - negative index error - /list system[-1] should error with clear message">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system[-1]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'index must be &gt;= 1']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - double bracket rejected - /list system[[1]] should error on invalid syntax">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system[[1]]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - consecutive indices rejected - /list system[1][2] should error on trailing chars after bracket">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system[1][2]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'unexpected characters after']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - index on nonexistent intermediate - /list nonexistent[1] should error on unknown table name">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list nonexistent[1]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'not a valid table path']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - index on scalar (not a table) - /list with index on a non-table value should error">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /list system.verbs.colors.blue[1]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Error', 'not a table']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - bare index after /jump - /list [n] with no name should index into current table">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/list [1]&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['system.']"/>
+      </outline>
+    </outline>
     <outline text="REPL /list - relative path after /jump - /list with relative path should resolve from current table">
       <outline text="Metadata">
         <outline text="repl_mode: True"/>
@@ -538,6 +594,26 @@
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: /help&#10;/exit&#10;"/>
         <outline text="expected_output_contains: ['Relative']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /list - resolves guest database table name - /list should find table names inside open guest databases via filewindowtable search">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: Requires fileMenu.open which needs startup scripts; --skip-startup mode cannot open guest databases. Verified manually."/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: db.new(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7&quot;)&#10;fileMenu.open(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7&quot;)&#10;db.newtable(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7&quot;, &quot;guestTestSuite&quot;)&#10;/list guestTestSuite&#10;fileMenu.closeall()&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['guestTestSuite:']"/>
+        <outline text="expected_output_not_contains: ['not a valid table path']"/>
+      </outline>
+    </outline>
+    <outline text="REPL /jump - resolves guest database table name - /jump should navigate to table names inside open guest databases">
+      <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: Requires fileMenu.open which needs startup scripts; --skip-startup mode cannot open guest databases. Verified manually."/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: db.new(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7&quot;)&#10;fileMenu.open(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7&quot;)&#10;db.newtable(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7&quot;, &quot;guestJumpSuite&quot;)&#10;/jump guestJumpSuite&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['guestJumpSuite']"/>
+        <outline text="expected_output_not_contains: ['not a valid table path']"/>
       </outline>
     </outline>
   </body>

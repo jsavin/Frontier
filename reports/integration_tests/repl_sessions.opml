@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Repl Sessions (repl_sessions) - 56 tests: 51 pass (91%) 5 skip (8%)</title>
-    <dateCreated>Wed, 11 Feb 2026 06:31:52 GMT</dateCreated>
+    <title>Repl Sessions (repl_sessions) - 57 tests: 52 pass (91%) 5 skip (8%)</title>
+    <dateCreated>Thu, 12 Feb 2026 00:58:53 GMT</dateCreated>
   </head>
   <body>
     <outline text="REPL - system root auto-loaded - System root should be auto-loaded if available">
@@ -408,6 +408,13 @@
         <outline text="repl_mode: True"/>
         <outline text="stdin_input: /jump system&#10;/list verbs[1]&#10;/exit&#10;"/>
         <outline text="expected_output_contains: ['[system]&gt;']"/>
+      </outline>
+    </outline>
+    <outline text="REPL - nested relative jumps then list - Multiple nested /jump then /list verifies deep relative navigation">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: /jump system&#10;/jump verbs&#10;/jump builtins&#10;/list&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['[system.verbs.builtins]&gt;', 'system.verbs.builtins:']"/>
       </outline>
     </outline>
   </body>
