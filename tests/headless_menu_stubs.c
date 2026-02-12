@@ -353,9 +353,6 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
         log_debug(LOG_COMP_OP, "meloadoutline_internal: created new outline fl=%d", (int)fl);
     }
     else {
-        /* These are debug messages, not errors - menu loading in headless mode
-         * is expected to be deferred or skipped entirely. Failures here are
-         * normal and handled gracefully. */
         log_debug(LOG_COMP_OP, "meloadoutline_internal: reading adr=0x%llx ctx_db=%p global_db=%p",
                 (unsigned long long)adr, (void*)(ctx ? ctx->database : nil), (void*)databasedata);
 
@@ -366,8 +363,6 @@ boolean meloadoutline_internal (const db_context *ctx, dbaddress adr,
         }
 
         if (!fl) {
-            /* Database read failed - leave *houtline as nil. This is expected
-             * in headless mode where menus are intentionally deferred. */
             log_debug(LOG_COMP_OP, "meloadoutline_internal: dbrefhandle FAILED adr=0x%llx", (unsigned long long)adr);
             oppopoutline ();
             return (false);
