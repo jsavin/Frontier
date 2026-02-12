@@ -462,7 +462,7 @@ hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, s
         hdlhashnode fwnomad;
         for (fwnomad = (**filewindowtable).hfirstsort; fwnomad != nil; fwnomad = (**fwnomad).sortedlink) {
             hdlhashtable hsearch;
-            if (langexternalvaltotable((**fwnomad).val, &hsearch, fwnomad)) {
+            if (langexternalvaltotable((**fwnomad).val, &hsearch, fwnomad) && hsearch != nil) {
                 hdlhashnode hnode;
                 if (hashtablelookupnode(hsearch, bsname, &hnode)) {
                     /* Found in guest database - check if it's a navigable table */
@@ -611,7 +611,7 @@ void completion_add_path_entries(completion_matches_t *matches, const char *pref
         hdlhashnode fwnomad;
         for (fwnomad = (**filewindowtable).hfirstsort; fwnomad != nil && matches->count < COMPLETION_MAX_MATCHES; fwnomad = (**fwnomad).sortedlink) {
             hdlhashtable hsearch;
-            if (langexternalvaltotable((**fwnomad).val, &hsearch, fwnomad)) {
+            if (langexternalvaltotable((**fwnomad).val, &hsearch, fwnomad) && hsearch != nil) {
                 completion_add_table_entries(matches, hsearch, prefix);
             }
         }

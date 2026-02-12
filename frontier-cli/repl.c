@@ -940,6 +940,7 @@ boolean repl_jump_path(const char *path) {
         g_repl_current_table = result.htable;
         strncpy(g_repl_current_path, resolved_path, REPL_PATH_MAX_LEN - 1);
         g_repl_current_path[REPL_PATH_MAX_LEN - 1] = '\0';
+        clear_guest_db_state();
         update_prompt();
         repl_set_focus(result.htable);
         return true;
