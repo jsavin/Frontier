@@ -16,7 +16,8 @@
 7. [Examples](#examples)
 8. [Troubleshooting](#troubleshooting)
 9. [Advanced Usage](#advanced-usage)
-10. [REPL Known Limitations](#repl-known-limitations)
+10. [REPL Navigation and Guest Databases](#repl-navigation-and-guest-databases)
+11. [REPL Known Limitations](#repl-known-limitations)
 
 ---
 
@@ -891,8 +892,11 @@ This follows proven Frontier patterns:
 ### Available Commands
 
 ```
-/exit          Exit the REPL
-/help          Show help message with persistence examples
+/exit              Exit the REPL
+/help              Show help message with persistence examples
+/list [path]       List children of current table (or relative path)
+/jump [path]       Navigate to a table (absolute, relative, or ..)
+/jump root         Return to system root from anywhere
 ```
 
 ### Tips for REPL Usage
@@ -921,6 +925,100 @@ This follows proven Frontier patterns:
 
 For technical details about the QuickScript architecture, see:
 - `planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md`
+
+---
+
+## REPL Navigation and Guest Databases
+
+The REPL supports navigating into both the system root database and any open guest databases (databases opened via `window.open()` or similar verbs). The `/list` and `/jump` commands let you browse the object database hierarchy interactively.
+
+### Basic Navigation
+
+```
+> /list
+  [1] system                  tableType
+  [2] user                    tableType
+  [3] workspace               tableType
+
+> /jump system
+[system]> /list
+  [1] verbs                   tableType
+  [2] compiler                tableType
+  ...
+
+> /jump ..
+>
+```
+
+### Navigating into Guest Databases
+
+When a guest database is open, its top-level tables appear alongside system root tables in `/list`. You can `/jump` into any guest database table just like a system table.
+
+Once inside a guest database, the prompt changes to show the database name and your current path using `::` notation:
+
+```
+> /list
+  [1] system                  tableType
+  [2] mainResponder           tableType    ← guest DB table
+  ...
+
+> /jump mainResponder
+[mainResponder.root]> /list
+  [1] responderSuite          tableType
+  [2] data                    tableType
+  ...
+
+> /jump responderSuite
+[mainResponder.root::responderSuite]> /list
+  [1] handlers                tableType
+  [2] callbacks               tableType
+  ...
+```
+
+The prompt format is `[dbname::innerpath]>`, where:
+
+- **dbname** is the guest database filename (e.g., `mainResponder.root`)
+- **innerpath** is your location within that database (omitted when at the database root)
+
+### Relative Paths Inside Guest Databases
+
+Relative paths work inside guest databases the same way they work in the system root:
+
+```
+[radioCommunityServer.root]> /list background
+  [1] everyMinute             scriptType
+  [2] everyFiveMinutes        scriptType
+
+[radioCommunityServer.root]> /jump background
+[radioCommunityServer.root::background]>
+```
+
+### Going Up with `..`
+
+Using `..` navigates up one level within the guest database. When you are already at the guest database root, `..` exits the guest database and returns to the system root:
+
+```
+[mainResponder.root::responderSuite]> /jump ..
+[mainResponder.root]> /jump ..
+>
+```
+
+### Returning to the System Root
+
+From anywhere -- whether deep inside a guest database or in the system root hierarchy -- you can return to the system root immediately:
+
+```
+[radioCommunityServer.root::data::prefs]> /jump
+>
+
+[radioCommunityServer.root::data::prefs]> /jump root
+>
+
+[radioCommunityServer.root::data::prefs]> /jump @root
+>
+```
+
+All three forms (`/jump`, `/jump root`, `/jump @root`) return to the system root.
 
 ---
 

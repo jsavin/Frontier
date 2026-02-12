@@ -355,7 +355,12 @@ void completion_add_table_entries(completion_matches_t *matches,
  *
  * Returns the target table, or nil if not found.
  */
-hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, size_t path_bufsize) {
+hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, size_t path_bufsize,
+                                         hdlhashtable *out_guest_db_root, char *out_guest_db_name, size_t db_name_bufsize) {
+    /* Clear guest DB output params */
+    if (out_guest_db_root != NULL) *out_guest_db_root = nil;
+    if (out_guest_db_name != NULL && db_name_bufsize > 0) out_guest_db_name[0] = '\0';
+
     if (name == NULL || name[0] == '\0' || pathstable == nil) {
         return nil;
     }
@@ -452,12 +457,69 @@ hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, s
         nomad = (**nomad).sortedlink;
     }
 
+    /* Search filewindowtable (guest databases) - matches langsearchpathvisit() */
+    if (filewindowtable != nil) {
+        hdlhashnode fwnomad;
+        for (fwnomad = (**filewindowtable).hfirstsort; fwnomad != nil; fwnomad = (**fwnomad).sortedlink) {
+            hdlhashtable hsearch;
+            if (langexternalvaltotable((**fwnomad).val, &hsearch, fwnomad) && hsearch != nil) {
+                hdlhashnode hnode;
+                if (hashtablelookupnode(hsearch, bsname, &hnode)) {
+                    /* Found in guest database - check if it's a navigable table */
+                    hdlhashtable result;
+                    if (langexternalvaltotable((**hnode).val, &result, hnode) && result != nil) {
+                        /* Get the guest DB name (filewindowtable key is full path,
+                         * extract just the filename for display) */
+                        bigstring bsdbname;
+                        gethashkey(fwnomad, bsdbname);
+                        char fullpath[COMPLETION_MAX_NAME_LEN];
+                        size_t fullpathlen = stringlength(bsdbname);
+                        if (fullpathlen >= COMPLETION_MAX_NAME_LEN)
+                            fullpathlen = COMPLETION_MAX_NAME_LEN - 1;
+                        memcpy(fullpath, stringbaseaddress(bsdbname), fullpathlen);
+                        fullpath[fullpathlen] = '\0';
+
+                        /* Extract filename from path (cross-platform: handle both / and \) */
+                        const char *slash = strrchr(fullpath, '/');
+                        const char *bslash = strrchr(fullpath, '\\');
+                        const char *dbname;
+                        if (slash != NULL && bslash != NULL)
+                            dbname = (bslash > slash ? bslash : slash) + 1;
+                        else if (slash != NULL)
+                            dbname = slash + 1;
+                        else if (bslash != NULL)
+                            dbname = bslash + 1;
+                        else
+                            dbname = fullpath;
+
+                        /* resolved_path = just the entry name (inner path within guest DB) */
+                        if (resolved_path != NULL && path_bufsize > 0) {
+                            strncpy(resolved_path, name, path_bufsize - 1);
+                            resolved_path[path_bufsize - 1] = '\0';
+                        }
+
+                        /* Return guest DB context through output params */
+                        if (out_guest_db_root != NULL) {
+                            *out_guest_db_root = hsearch;
+                        }
+                        if (out_guest_db_name != NULL && db_name_bufsize > 0) {
+                            strncpy(out_guest_db_name, dbname, db_name_bufsize - 1);
+                            out_guest_db_name[db_name_bufsize - 1] = '\0';
+                        }
+
+                        return result;
+                    }
+                }
+            }
+        }
+    }
+
     return nil;  /* Not found in any path table */
 }
 
 /* Simple wrapper for completion_search_paths_ex without path output */
 hdlhashtable completion_search_paths(const char *name) {
-    return completion_search_paths_ex(name, NULL, 0);
+    return completion_search_paths_ex(name, NULL, 0, NULL, NULL, 0);
 }
 
 /* Adds matching entries from all system.paths tables to completion results.
@@ -549,11 +611,74 @@ void completion_add_path_entries(completion_matches_t *matches, const char *pref
 
         nomad = (**nomad).sortedlink;
     }
+
+    /* Add entries from filewindowtable (guest databases) - matches langsearchpathvisit() */
+    if (filewindowtable != nil) {
+        hdlhashnode fwnomad;
+        for (fwnomad = (**filewindowtable).hfirstsort; fwnomad != nil && matches->count < COMPLETION_MAX_MATCHES; fwnomad = (**fwnomad).sortedlink) {
+            hdlhashtable hsearch;
+            if (langexternalvaltotable((**fwnomad).val, &hsearch, fwnomad) && hsearch != nil) {
+                completion_add_table_entries(matches, hsearch, prefix);
+            }
+        }
+    }
 }
 
 /* ============================================================================
  * Phase 3: Dotted Path Navigation
  * ============================================================================ */
+
+/* Navigates a dotted path starting from an arbitrary table.
+ * Unlike completion_navigate_path(), does NOT search system.paths as fallback.
+ * Useful for navigating within a guest database or any known subtree.
+ */
+hdlhashtable completion_navigate_dotpath_from(hdlhashtable start_table, const char *path) {
+    if (start_table == nil) {
+        return nil;
+    }
+
+    if (path == NULL || path[0] == '\0') {
+        return start_table;
+    }
+
+    char path_copy[COMPLETION_MAX_NAME_LEN];
+    strncpy(path_copy, path, COMPLETION_MAX_NAME_LEN - 1);
+    path_copy[COMPLETION_MAX_NAME_LEN - 1] = '\0';
+
+    hdlhashtable current = start_table;
+    int depth = 0;
+
+    char *saveptr = NULL;
+    char *component = strtok_r(path_copy, ".", &saveptr);
+
+    while (component != NULL && current != nil && depth < COMPLETION_MAX_PATH_DEPTH) {
+        bigstring bs;
+        copyctopstring(component, bs);
+
+        tyvaluerecord val;
+        hdlhashnode node;
+        if (!hashtablelookup(current, bs, &val, &node)) {
+            return nil;
+        }
+
+        if (val.valuetype == externalvaluetype) {
+            hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
+            if (hv == nil) {
+                return nil;
+            }
+            if (!langexternalvaltotable(val, &current, node)) {
+                return nil;
+            }
+        } else {
+            return nil;
+        }
+
+        component = strtok_r(NULL, ".", &saveptr);
+        depth++;
+    }
+
+    return current;
+}
 
 /* Navigates a dotted path (e.g., "system.verbs") and returns the target table.
  * For single-component paths, also searches system.paths as a fallback.
