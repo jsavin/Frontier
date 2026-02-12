@@ -145,14 +145,32 @@ hdlhashtable completion_search_paths(const char *name);
  * Phase 2.5: Search system.paths for a name, returning full resolved path.
  * Like completion_search_paths but also fills resolved_path with the full
  * path (e.g., "system.verbs.builtins.fileMenu" for name "fileMenu").
+ *
+ * Optional guest database output parameters (pass NULL to ignore):
+ *   out_guest_db_root - If match came from filewindowtable, set to the guest DB's root table
+ *   out_guest_db_name - If match came from filewindowtable, filled with the DB name (e.g., "mainResponder.root")
+ *   db_name_bufsize   - Size of the out_guest_db_name buffer
+ *
+ * When a match comes from a guest database:
+ *   - resolved_path is set to just the entry name (not the full db.entry path)
+ *   - out_guest_db_root is set to the guest DB's root table
+ *   - out_guest_db_name is filled with the filewindowtable key
  */
-hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, size_t path_bufsize);
+hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, size_t path_bufsize,
+                                         hdlhashtable *out_guest_db_root, char *out_guest_db_name, size_t db_name_bufsize);
 
 /*
  * Phase 2.5: Add matching entries from all system.paths tables.
  * Makes path-accessible names available for top-level completion.
  */
 void completion_add_path_entries(completion_matches_t *matches, const char *prefix);
+
+/*
+ * Phase 3: Navigate to a table by dotted path starting from an arbitrary table.
+ * Unlike completion_navigate_path(), does NOT search system.paths as fallback.
+ * Returns nil if path is invalid or not a table.
+ */
+hdlhashtable completion_navigate_dotpath_from(hdlhashtable start_table, const char *path);
 
 /*
  * Phase 3: Navigate to a table by dotted path.

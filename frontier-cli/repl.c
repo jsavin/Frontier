@@ -61,6 +61,11 @@ static hdlhashtable g_repl_current_table = nil;
 static char g_repl_current_path[REPL_PATH_MAX_LEN] = "";
 static char g_repl_prompt[g_repl_prompt_MAX_LEN] = "[root]> ";
 
+// Guest database navigation state
+static boolean g_repl_in_guest_db = false;
+static char g_repl_guest_db_name[REPL_PATH_MAX_LEN] = "";
+static hdlhashtable g_repl_guest_db_root = nil;
+
 // REPL active flag - set when REPL event loop is running
 static boolean g_repl_active = false;
 
@@ -68,10 +73,20 @@ static boolean g_repl_active = false;
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
 
+/* Clears all guest database navigation state */
+static void clear_guest_db_state(void) {
+    g_repl_in_guest_db = false;
+    g_repl_guest_db_name[0] = '\0';
+    g_repl_guest_db_root = nil;
+}
+
 /* Updates the prompt string based on current path */
 static void update_prompt(void) {
     if (g_repl_current_path[0] == '\0') {
         snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[root]> ");
+    } else if (g_repl_in_guest_db) {
+        snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[%s::%s]> ",
+                 g_repl_guest_db_name, g_repl_current_path);
     } else {
         snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[%s]> ", g_repl_current_path);
     }
@@ -527,7 +542,8 @@ static boolean navigate_path_with_index(const char *path, typathlookupresult *re
 
                         /* Use the actual resolved path from system.paths */
                         char paths_resolved[REPL_PATH_MAX_LEN];
-                        hdlhashtable check = completion_search_paths_ex(name_part, paths_resolved, sizeof(paths_resolved));
+                        hdlhashtable check = completion_search_paths_ex(name_part, paths_resolved, sizeof(paths_resolved),
+                                                                          NULL, NULL, 0);
                         if (check != nil && paths_resolved[0] != '\0') {
                             strncpy(name_path, paths_resolved, sizeof(name_path) - 1);
                             name_path[sizeof(name_path) - 1] = '\0';
@@ -732,17 +748,29 @@ boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
     /* Try resolving relative to the focused table first (if not at root) */
     hdlhashtable current = repl_get_current_table();
     if (current != nil && current != roottable && g_repl_current_path[0] != '\0') {
-        char abs_path[REPL_PATH_MAX_LEN];
-        int wrote = snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
+        if (g_repl_in_guest_db) {
+            /* Navigate from current table directly (guest DB paths can't walk from roottable) */
+            hdlhashtable rel_target = completion_navigate_dotpath_from(current, path_buf);
+            if (rel_target != nil) {
+                result->htable = rel_target;
+                result->is_table = true;
+                if (resolved_path != NULL && path_bufsize > 0) {
+                    snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, path_buf);
+                }
+                found = true;
+            }
+        } else {
+            char abs_path[REPL_PATH_MAX_LEN];
+            int wrote = snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
 
-        if (wrote > 0 && (size_t)wrote < sizeof(abs_path)) {
-            /* Only try relative resolution if the combined path fits in the buffer */
-            char local_error[256] = "";
-            found = navigate_path_with_index(abs_path, result, resolved_path, path_bufsize,
-                                              local_error, sizeof(local_error));
-        }
-        if (wrote < 0 || (size_t)wrote >= sizeof(abs_path)) {
-            log_debug(LOG_COMP_GENERAL, "REPL: relative path truncated, trying absolute: %s", path_buf);
+            if (wrote > 0 && (size_t)wrote < sizeof(abs_path)) {
+                char local_error[256] = "";
+                found = navigate_path_with_index(abs_path, result, resolved_path, path_bufsize,
+                                                  local_error, sizeof(local_error));
+            }
+            if (wrote < 0 || (size_t)wrote >= sizeof(abs_path)) {
+                log_debug(LOG_COMP_GENERAL, "REPL: relative path truncated, trying absolute: %s", path_buf);
+            }
         }
     }
 
@@ -770,7 +798,8 @@ boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
 
         if (!found) {
             char rp[REPL_PATH_MAX_LEN] = "";
-            hdlhashtable target = completion_search_paths_ex(path_buf, rp, sizeof(rp));
+            hdlhashtable target = completion_search_paths_ex(path_buf, rp, sizeof(rp),
+                                                              NULL, NULL, 0);
             if (target != nil) {
                 result->htable = target;
                 result->is_table = true;
@@ -803,11 +832,14 @@ boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
  *   - Trailing dots are stripped (from tab completion)
  */
 boolean repl_jump_path(const char *path) {
-    /* Handle empty path or "@" - go to root */
+    /* Handle empty path, "@", "root", or "@root" - go to root */
     if (path == NULL || path[0] == '\0' ||
-        (path[0] == '@' && path[1] == '\0')) {
+        (path[0] == '@' && path[1] == '\0') ||
+        strcasecmp(path, "root") == 0 ||
+        strcasecmp(path, "@root") == 0) {
         g_repl_current_table = roottable;
         g_repl_current_path[0] = '\0';
+        clear_guest_db_state();
         update_prompt();
         repl_set_focus(roottable);
         return true;
@@ -836,23 +868,43 @@ boolean repl_jump_path(const char *path) {
             return true;
         }
 
-        /* Find last dot in current path */
-        char *last_dot = strrchr(g_repl_current_path, '.');
-        if (last_dot == NULL) {
-            /* No dot means we're one level deep - go to root */
-            g_repl_current_table = roottable;
-            g_repl_current_path[0] = '\0';
-        } else {
-            /* Truncate at the last dot to get parent path */
-            *last_dot = '\0';
-            /* Navigate to the parent path */
-            hdlhashtable parent = completion_navigate_path(g_repl_current_path);
-            if (parent == nil) {
-                /* Shouldn't happen, but handle gracefully */
+        if (g_repl_in_guest_db) {
+            char *last_dot = strrchr(g_repl_current_path, '.');
+            if (last_dot == NULL) {
+                /* At guest DB root level — exit guest DB, go to system root */
+                clear_guest_db_state();
                 g_repl_current_table = roottable;
                 g_repl_current_path[0] = '\0';
             } else {
-                g_repl_current_table = parent;
+                /* Go up one level within guest DB */
+                *last_dot = '\0';
+                g_repl_current_table = completion_navigate_dotpath_from(g_repl_guest_db_root, g_repl_current_path);
+                if (g_repl_current_table == nil) {
+                    /* Shouldn't happen, but handle gracefully */
+                    clear_guest_db_state();
+                    g_repl_current_table = roottable;
+                    g_repl_current_path[0] = '\0';
+                }
+            }
+        } else {
+            /* Find last dot in current path */
+            char *last_dot = strrchr(g_repl_current_path, '.');
+            if (last_dot == NULL) {
+                /* No dot means we're one level deep - go to root */
+                g_repl_current_table = roottable;
+                g_repl_current_path[0] = '\0';
+            } else {
+                /* Truncate at the last dot to get parent path */
+                *last_dot = '\0';
+                /* Navigate to the parent path */
+                hdlhashtable parent = completion_navigate_path(g_repl_current_path);
+                if (parent == nil) {
+                    /* Shouldn't happen, but handle gracefully */
+                    g_repl_current_table = roottable;
+                    g_repl_current_path[0] = '\0';
+                } else {
+                    g_repl_current_table = parent;
+                }
             }
         }
         update_prompt();
@@ -902,19 +954,27 @@ boolean repl_jump_path(const char *path) {
     /* Try resolving relative to the focused table first (if not at root) */
     hdlhashtable current = repl_get_current_table();
     if (current != nil && current != roottable && g_repl_current_path[0] != '\0') {
-        /* Build absolute path: current_path.user_input */
-        char abs_path[REPL_PATH_MAX_LEN];
-        snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
+        if (g_repl_in_guest_db) {
+            /* Navigate from current table directly (guest DB paths can't walk from roottable) */
+            target = completion_navigate_dotpath_from(current, path_buf);
+            if (target != nil) {
+                snprintf(resolved_path, sizeof(resolved_path), "%s.%s", g_repl_current_path, path_buf);
+            }
+        } else {
+            /* Build absolute path: current_path.user_input */
+            char abs_path[REPL_PATH_MAX_LEN];
+            snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
 
-        target = completion_navigate_path(abs_path);
-        if (target != nil) {
-            strncpy(resolved_path, abs_path, REPL_PATH_MAX_LEN - 1);
-            resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+            target = completion_navigate_path(abs_path);
+            if (target != nil) {
+                strncpy(resolved_path, abs_path, REPL_PATH_MAX_LEN - 1);
+                resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+            }
         }
     }
 
     if (target == nil && is_single_component) {
-        /* Single component - try roottable, then system.paths */
+        /* Single component - try roottable, then system.paths (including guest DBs) */
         bigstring bs;
         copyctopstring(path_buf, bs);
         tyvaluerecord val;
@@ -926,11 +986,25 @@ boolean repl_jump_path(const char *path) {
             } else {
                 strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);
                 resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+                clear_guest_db_state();
             }
         }
 
         if (target == nil) {
-            target = completion_search_paths_ex(path_buf, resolved_path, sizeof(resolved_path));
+            hdlhashtable guest_root = nil;
+            char guest_name[REPL_PATH_MAX_LEN] = "";
+            target = completion_search_paths_ex(path_buf, resolved_path, sizeof(resolved_path),
+                                                 &guest_root, guest_name, sizeof(guest_name));
+            if (target != nil && guest_root != nil) {
+                /* Entering a guest database */
+                g_repl_in_guest_db = true;
+                g_repl_guest_db_root = guest_root;
+                strncpy(g_repl_guest_db_name, guest_name, REPL_PATH_MAX_LEN - 1);
+                g_repl_guest_db_name[REPL_PATH_MAX_LEN - 1] = '\0';
+            } else if (target != nil) {
+                /* System path match, not guest DB */
+                clear_guest_db_state();
+            }
         }
     } else if (target == nil) {
         /* Multi-component path - try absolute navigation from root */
@@ -938,6 +1012,7 @@ boolean repl_jump_path(const char *path) {
         if (target != nil) {
             strncpy(resolved_path, path_buf, REPL_PATH_MAX_LEN - 1);
             resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
+            clear_guest_db_state();
         }
     }
 
@@ -1093,13 +1168,21 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
     /* Try resolving relative to the focused table first (if not at root) */
     hdlhashtable current_table = repl_get_current_table();
     if (current_table != nil && current_table != roottable && g_repl_current_path[0] != '\0') {
-        char abs_path[REPL_PATH_MAX_LEN];
-        snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
+        if (g_repl_in_guest_db) {
+            /* Navigate from current table directly (guest DB paths can't walk from roottable) */
+            target = completion_navigate_dotpath_from(current_table, path_buf);
+            if (target != nil && resolved_path != NULL && path_bufsize > 0) {
+                snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, path_buf);
+            }
+        } else {
+            char abs_path[REPL_PATH_MAX_LEN];
+            snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
 
-        target = completion_navigate_path(abs_path);
-        if (target != nil && resolved_path != NULL && path_bufsize > 0) {
-            strncpy(resolved_path, abs_path, path_bufsize - 1);
-            resolved_path[path_bufsize - 1] = '\0';
+            target = completion_navigate_path(abs_path);
+            if (target != nil && resolved_path != NULL && path_bufsize > 0) {
+                strncpy(resolved_path, abs_path, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            }
         }
     }
 
@@ -1120,7 +1203,8 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
 
         if (target == nil) {
             /* Try system.paths - this gives us the resolved path */
-            target = completion_search_paths_ex(path_buf, resolved_path, path_bufsize);
+            target = completion_search_paths_ex(path_buf, resolved_path, path_bufsize,
+                                                 NULL, NULL, 0);
         }
     } else if (target == nil) {
         /* Multi-component path - use standard navigation */
