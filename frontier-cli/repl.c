@@ -67,11 +67,11 @@ static char g_repl_prompt[g_repl_prompt_MAX_LEN] = "[root]> ";
  * migrate to thread-local storage or an explicit REPL context struct. */
 static boolean g_repl_in_guest_db = false;
 static char g_repl_guest_db_name[REPL_PATH_MAX_LEN] = "";
-/* WARNING: g_repl_guest_db_root holds a borrowed handle to the guest database's
+/* NOTE: g_repl_guest_db_root holds a borrowed handle to the guest database's
  * root table. This handle becomes dangling if the guest database is closed
  * (e.g., via window.close() or file.close()) while the REPL is still navigated
- * into it. A future improvement should register a close callback or validate
- * the handle before each use. */
+ * into it. validate_guest_db_state() checks filewindowtable to detect this
+ * and resets navigation to root when the handle is stale. */
 static hdlhashtable g_repl_guest_db_root = nil;
 
 // REPL active flag - set when REPL event loop is running
@@ -88,8 +88,46 @@ static void clear_guest_db_state(void) {
     g_repl_guest_db_root = nil;
 }
 
+/* Validates that g_repl_guest_db_root is still a live entry in filewindowtable.
+ * If the guest database has been closed (handle is dangling), clears guest DB
+ * state and resets navigation to root. Returns true if still valid (or not in
+ * guest DB mode), false if state was cleared due to a stale handle. */
+static boolean validate_guest_db_state(void) {
+    if (!g_repl_in_guest_db || g_repl_guest_db_root == nil)
+        return true;  /* Not in guest DB mode, nothing to validate */
+
+    if (filewindowtable == nil) {
+        /* No filewindowtable at all — guest DB can't be valid */
+        log_debug(LOG_COMP_GENERAL, "REPL: filewindowtable gone, clearing guest DB state");
+        clear_guest_db_state();
+        g_repl_current_table = roottable;
+        g_repl_current_path[0] = '\0';
+        return false;
+    }
+
+    /* Walk filewindowtable entries to see if any resolve to our stored root */
+    hdlhashnode fwnomad;
+    for (fwnomad = (**filewindowtable).hfirstsort; fwnomad != nil; fwnomad = (**fwnomad).sortedlink) {
+        hdlhashtable htable;
+        if (langexternalvaltotable((**fwnomad).val, &htable, fwnomad) && htable == g_repl_guest_db_root) {
+            return true;  /* Found it — handle is still valid */
+        }
+    }
+
+    /* Guest DB root not found in filewindowtable — it was closed */
+    log_debug(LOG_COMP_GENERAL, "REPL: guest DB '%s' no longer in filewindowtable, resetting to root",
+              g_repl_guest_db_name);
+    clear_guest_db_state();
+    g_repl_current_table = roottable;
+    g_repl_current_path[0] = '\0';
+    return false;
+}
+
 /* Updates the prompt string based on current path */
 static void update_prompt(void) {
+    /* Validate guest DB is still open before rendering prompt */
+    validate_guest_db_state();
+
     if (g_repl_current_path[0] == '\0') {
         snprintf(g_repl_prompt, g_repl_prompt_MAX_LEN, "[root]> ");
     } else if (g_repl_in_guest_db) {
@@ -693,6 +731,10 @@ static boolean try_resolve_relative(const char *path_buf,
                                      typathlookupresult *result,
                                      char *resolved_path, size_t path_bufsize,
                                      char *error_msg, size_t error_bufsize) {
+    /* Validate guest DB handle is still live before attempting relative resolution */
+    if (g_repl_in_guest_db && !validate_guest_db_state())
+        return false;  /* Guest DB was closed; state reset to root, skip relative */
+
     hdlhashtable current = repl_get_current_table();
 
     if (current == nil || current == roottable || g_repl_current_path[0] == '\0')
@@ -949,6 +991,11 @@ boolean repl_jump_path(const char *path) {
         }
 
         if (g_repl_in_guest_db) {
+            /* Validate handle before navigating within guest DB */
+            if (!validate_guest_db_state()) {
+                update_prompt();
+                return true;  /* State was reset to root */
+            }
             char *last_dot = strrchr(g_repl_current_path, '.');
             if (last_dot == NULL) {
                 /* At guest DB root level — exit guest DB, go to system root */
