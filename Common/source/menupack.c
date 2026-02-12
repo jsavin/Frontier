@@ -1144,7 +1144,6 @@ boolean meloadmenurecord_internal (const db_context *ctx, dbaddress adr,
 
 	if (!meloadoutline_internal (ctx, outline_adr, &houtline)) {
 #if defined(FRONTIER_HEADLESS)
-		/* Expected in headless mode - menus are intentionally deferred */
 		log_debug(LOG_COMP_OP, "meloadmenurecord_internal: meloadoutline_internal FAILED");
 #endif
 		return (false);

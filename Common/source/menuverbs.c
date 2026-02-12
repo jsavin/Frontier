@@ -192,7 +192,6 @@ boolean menuverbinmemory_context (const db_context *ctx, hdlexternalvariable hva
 	fl = meloadmenurecord_internal(ctx, adr, &hmenurecord);
 
 	if (!fl) {
-		/* Expected in headless mode - menus are intentionally deferred */
 		log_debug(LOG_COMP_OP, "menuverbinmemory_context: meloadmenurecord_internal FAILED adr=0x%llx",
 		        (unsigned long long)adr);
 		return (false);

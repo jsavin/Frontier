@@ -407,9 +407,29 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 			langhash_materialize_current_path = prior_path;
 			return ok;
 		}
-		default:
+		default: {
+			/* Materialize all other external types (scripts, outlines, menus, pictures, etc.)
+			 * using the comprehensive loader from langexternal.c */
+			if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+				log_trace(LOG_COMP_HASH, "materialize external path=%s id=%d",
+						path ? path : "<nil>", (int)(**hv).id);
+			}
+			db_context ctx;
+			if (db_format_is_legacy_db((**hv).hdatabase)) {
+				db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+			} else {
+				db_context_init(&ctx);
+				ctx.database = (**hv).hdatabase;
+			}
+			if (!ensure_external_in_memory(&ctx, hv)) {
+				log_error(LOG_COMP_HASH, "materialize external load failed path=%s id=%d",
+						path ? path : "<nil>", (int)(**hv).id);
+				langhash_materialize_current_path = prior_path;
+				return false;
+			}
 			langhash_materialize_current_path = prior_path;
 			return true;
+		}
 	}
 }
 
