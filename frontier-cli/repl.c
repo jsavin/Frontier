@@ -62,8 +62,16 @@ static char g_repl_current_path[REPL_PATH_MAX_LEN] = "";
 static char g_repl_prompt[g_repl_prompt_MAX_LEN] = "[root]> ";
 
 // Guest database navigation state
+/* TODO: These guest DB globals are not thread-safe. If the REPL ever supports
+ * concurrent access (e.g., background script evaluation while navigating),
+ * migrate to thread-local storage or an explicit REPL context struct. */
 static boolean g_repl_in_guest_db = false;
 static char g_repl_guest_db_name[REPL_PATH_MAX_LEN] = "";
+/* WARNING: g_repl_guest_db_root holds a borrowed handle to the guest database's
+ * root table. This handle becomes dangling if the guest database is closed
+ * (e.g., via window.close() or file.close()) while the REPL is still navigated
+ * into it. A future improvement should register a close callback or validate
+ * the handle before each use. */
 static hdlhashtable g_repl_guest_db_root = nil;
 
 // REPL active flag - set when REPL event loop is running
@@ -457,17 +465,19 @@ static boolean apply_and_resolve_index(hdlhashtable htable, long index,
     return true;
 }
 
-/* Navigate a dot-path with [n] index syntax support.
+/* Navigate a dot-path with [n] index syntax support, starting from a given table.
  * Tokenizes by '.' and for each component checks for [n] suffix.
  * Indices are 1-based (UserTalk convention); internally converted to 0-based for hashgetnthnode.
+ * When start_table != roottable, the system.paths fallback for the first component is skipped.
  *
  * Returns true if path resolved successfully.
  * On success, result contains either a table or scalar value.
  * On failure, error_msg describes the problem (if non-NULL).
  */
-static boolean navigate_path_with_index(const char *path, typathlookupresult *result,
-                                         char *resolved_name_path, size_t resolved_bufsize,
-                                         char *error_msg, size_t error_bufsize) {
+static boolean navigate_path_with_index_from(hdlhashtable start_table, const char *path,
+                                              typathlookupresult *result,
+                                              char *resolved_name_path, size_t resolved_bufsize,
+                                              char *error_msg, size_t error_bufsize) {
     if (path == NULL || path[0] == '\0' || result == NULL) {
         return false;
     }
@@ -487,7 +497,7 @@ static boolean navigate_path_with_index(const char *path, typathlookupresult *re
     char name_path[REPL_PATH_MAX_LEN] = "";
     size_t name_path_len = 0;
 
-    hdlhashtable current = roottable;
+    hdlhashtable current = start_table;
     size_t depth = 0;
     size_t components_consumed = 0;
     size_t total_components = 0;
@@ -534,8 +544,8 @@ static boolean navigate_path_with_index(const char *path, typathlookupresult *re
             tyvaluerecord val;
             hdlhashnode node;
             if (!hashtablelookup(current, bs, &val, &node)) {
-                /* Try system.paths fallback for first component */
-                if (first_component) {
+                /* Try system.paths fallback for first component (only from roottable) */
+                if (first_component && start_table == roottable) {
                     hdlhashtable path_result = completion_search_paths(name_part);
                     if (path_result != nil) {
                         current = path_result;
@@ -656,10 +666,105 @@ static boolean navigate_path_with_index(const char *path, typathlookupresult *re
     return true;
 }
 
+/* Convenience wrapper: navigate from roottable with index syntax support. */
+static boolean navigate_path_with_index(const char *path, typathlookupresult *result,
+                                         char *resolved_name_path, size_t resolved_bufsize,
+                                         char *error_msg, size_t error_bufsize) {
+    return navigate_path_with_index_from(roottable, path, result,
+                                          resolved_name_path, resolved_bufsize,
+                                          error_msg, error_bufsize);
+}
+
 /* Check if a path contains [n] index syntax */
 static boolean path_has_index_syntax(const char *path) {
     if (path == NULL) return false;
     return strchr(path, '[') != NULL;
+}
+
+/* Try resolving a path relative to the current table.
+ * When in guest DB mode, navigates from the current table directly using the
+ * index-aware resolver. Otherwise builds an absolute path and navigates from root.
+ *
+ * On success, sets *out_target and fills resolved_path. Returns true.
+ * On failure, returns false (out_target unchanged).
+ */
+static boolean try_resolve_relative(const char *path_buf,
+                                     hdlhashtable *out_target, boolean *out_is_result,
+                                     typathlookupresult *result,
+                                     char *resolved_path, size_t path_bufsize,
+                                     char *error_msg, size_t error_bufsize) {
+    hdlhashtable current = repl_get_current_table();
+
+    if (current == nil || current == roottable || g_repl_current_path[0] == '\0')
+        return false;
+
+    if (g_repl_in_guest_db) {
+        /* Navigate from current table directly (guest DB paths can't walk from roottable).
+         * Uses index-aware resolver so [n] syntax works inside guest DBs. */
+        typathlookupresult local_result;
+        char local_resolved[REPL_PATH_MAX_LEN] = "";
+        char local_error[256] = "";
+
+        if (navigate_path_with_index_from(current, path_buf, &local_result,
+                                           local_resolved, sizeof(local_resolved),
+                                           local_error, sizeof(local_error))) {
+            if (result != NULL) {
+                *result = local_result;
+            }
+            if (out_target != NULL && local_result.is_table) {
+                *out_target = local_result.htable;
+            }
+            if (out_is_result != NULL) {
+                *out_is_result = true;
+            }
+            if (resolved_path != NULL && path_bufsize > 0) {
+                /* Build display path: current_path.resolved_inner_path */
+                if (local_resolved[0] != '\0') {
+                    snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, local_resolved);
+                } else {
+                    snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, path_buf);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /* System table: build absolute path and navigate from root */
+    char abs_path[REPL_PATH_MAX_LEN];
+    int wrote = snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
+
+    if (wrote <= 0 || (size_t)wrote >= sizeof(abs_path)) {
+        log_debug(LOG_COMP_GENERAL, "REPL: relative path truncated, trying absolute: %s", path_buf);
+        return false;
+    }
+
+    if (result != NULL) {
+        /* Use index-aware navigation for full result */
+        char local_error[256] = "";
+        if (navigate_path_with_index(abs_path, result, resolved_path, path_bufsize,
+                                      local_error, sizeof(local_error))) {
+            if (out_target != NULL && result->is_table) {
+                *out_target = result->htable;
+            }
+            if (out_is_result != NULL) {
+                *out_is_result = true;
+            }
+            return true;
+        }
+    } else {
+        /* Simple table-only navigation */
+        hdlhashtable target = completion_navigate_path(abs_path);
+        if (target != nil) {
+            if (out_target != NULL) *out_target = target;
+            if (resolved_path != NULL && path_bufsize > 0) {
+                strncpy(resolved_path, abs_path, path_bufsize - 1);
+                resolved_path[path_bufsize - 1] = '\0';
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 /* Extended path resolution supporting [n] index syntax and relative paths.
@@ -746,33 +851,8 @@ boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
     boolean found = false;
 
     /* Try resolving relative to the focused table first (if not at root) */
-    hdlhashtable current = repl_get_current_table();
-    if (current != nil && current != roottable && g_repl_current_path[0] != '\0') {
-        if (g_repl_in_guest_db) {
-            /* Navigate from current table directly (guest DB paths can't walk from roottable) */
-            hdlhashtable rel_target = completion_navigate_dotpath_from(current, path_buf);
-            if (rel_target != nil) {
-                result->htable = rel_target;
-                result->is_table = true;
-                if (resolved_path != NULL && path_bufsize > 0) {
-                    snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, path_buf);
-                }
-                found = true;
-            }
-        } else {
-            char abs_path[REPL_PATH_MAX_LEN];
-            int wrote = snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
-
-            if (wrote > 0 && (size_t)wrote < sizeof(abs_path)) {
-                char local_error[256] = "";
-                found = navigate_path_with_index(abs_path, result, resolved_path, path_bufsize,
-                                                  local_error, sizeof(local_error));
-            }
-            if (wrote < 0 || (size_t)wrote >= sizeof(abs_path)) {
-                log_debug(LOG_COMP_GENERAL, "REPL: relative path truncated, trying absolute: %s", path_buf);
-            }
-        }
-    }
+    found = try_resolve_relative(path_buf, NULL, &found, result,
+                                  resolved_path, path_bufsize, NULL, 0);
 
     if (!found && is_single_component && !path_has_index_syntax(path_buf)) {
         /* Single component without index - try roottable, then system.paths */
@@ -953,26 +1033,8 @@ boolean repl_jump_path(const char *path) {
     char resolved_path[REPL_PATH_MAX_LEN] = "";
 
     /* Try resolving relative to the focused table first (if not at root) */
-    hdlhashtable current = repl_get_current_table();
-    if (current != nil && current != roottable && g_repl_current_path[0] != '\0') {
-        if (g_repl_in_guest_db) {
-            /* Navigate from current table directly (guest DB paths can't walk from roottable) */
-            target = completion_navigate_dotpath_from(current, path_buf);
-            if (target != nil) {
-                snprintf(resolved_path, sizeof(resolved_path), "%s.%s", g_repl_current_path, path_buf);
-            }
-        } else {
-            /* Build absolute path: current_path.user_input */
-            char abs_path[REPL_PATH_MAX_LEN];
-            snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
-
-            target = completion_navigate_path(abs_path);
-            if (target != nil) {
-                strncpy(resolved_path, abs_path, REPL_PATH_MAX_LEN - 1);
-                resolved_path[REPL_PATH_MAX_LEN - 1] = '\0';
-            }
-        }
-    }
+    try_resolve_relative(path_buf, &target, NULL, NULL,
+                          resolved_path, sizeof(resolved_path), NULL, 0);
 
     if (target == nil && is_single_component) {
         /* Single component - try roottable, then system.paths (including guest DBs) */
@@ -1167,25 +1229,8 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
     hdlhashtable target = nil;
 
     /* Try resolving relative to the focused table first (if not at root) */
-    hdlhashtable current_table = repl_get_current_table();
-    if (current_table != nil && current_table != roottable && g_repl_current_path[0] != '\0') {
-        if (g_repl_in_guest_db) {
-            /* Navigate from current table directly (guest DB paths can't walk from roottable) */
-            target = completion_navigate_dotpath_from(current_table, path_buf);
-            if (target != nil && resolved_path != NULL && path_bufsize > 0) {
-                snprintf(resolved_path, path_bufsize, "%s.%s", g_repl_current_path, path_buf);
-            }
-        } else {
-            char abs_path[REPL_PATH_MAX_LEN];
-            snprintf(abs_path, sizeof(abs_path), "%s.%s", g_repl_current_path, path_buf);
-
-            target = completion_navigate_path(abs_path);
-            if (target != nil && resolved_path != NULL && path_bufsize > 0) {
-                strncpy(resolved_path, abs_path, path_bufsize - 1);
-                resolved_path[path_bufsize - 1] = '\0';
-            }
-        }
-    }
+    (void)try_resolve_relative(path_buf, &target, NULL, NULL,
+                                resolved_path, path_bufsize, NULL, 0);
 
     if (target == nil && is_single_component) {
         /* Single component - try roottable first, then system.paths */

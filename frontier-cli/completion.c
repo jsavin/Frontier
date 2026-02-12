@@ -479,10 +479,16 @@ hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, s
                         memcpy(fullpath, stringbaseaddress(bsdbname), fullpathlen);
                         fullpath[fullpathlen] = '\0';
 
-                        /* Extract filename from path */
-                        const char *dbname = strrchr(fullpath, '/');
-                        if (dbname != NULL)
-                            dbname++;  /* skip the '/' */
+                        /* Extract filename from path (cross-platform: handle both / and \) */
+                        const char *slash = strrchr(fullpath, '/');
+                        const char *bslash = strrchr(fullpath, '\\');
+                        const char *dbname;
+                        if (slash != NULL && bslash != NULL)
+                            dbname = (bslash > slash ? bslash : slash) + 1;
+                        else if (slash != NULL)
+                            dbname = slash + 1;
+                        else if (bslash != NULL)
+                            dbname = bslash + 1;
                         else
                             dbname = fullpath;
 
