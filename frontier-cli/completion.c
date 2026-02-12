@@ -452,6 +452,46 @@ hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, s
         nomad = (**nomad).sortedlink;
     }
 
+    /* Search filewindowtable (guest databases) - matches langsearchpathvisit() */
+    if (filewindowtable != nil) {
+        hdlhashnode fwnomad;
+        for (fwnomad = (**filewindowtable).hfirstsort; fwnomad != nil; fwnomad = (**fwnomad).sortedlink) {
+            hdlhashtable hsearch;
+            if (langexternalvaltotable((**fwnomad).val, &hsearch, fwnomad)) {
+                hdlhashnode hnode;
+                if (hashtablelookupnode(hsearch, bsname, &hnode)) {
+                    /* Found in guest database - check if it's a navigable table */
+                    hdlhashtable result;
+                    if (langexternalvaltotable((**hnode).val, &result, hnode) && result != nil) {
+                        if (resolved_path != NULL && path_bufsize > 0) {
+                            /* For guest databases, use the guest db name + entry name */
+                            bigstring bsdbname;
+                            gethashkey(fwnomad, bsdbname);
+                            char dbname[COMPLETION_MAX_NAME_LEN];
+                            size_t dbnamelen = stringlength(bsdbname);
+                            if (dbnamelen >= COMPLETION_MAX_NAME_LEN)
+                                dbnamelen = COMPLETION_MAX_NAME_LEN - 1;
+                            memcpy(dbname, stringbaseaddress(bsdbname), dbnamelen);
+                            dbname[dbnamelen] = '\0';
+
+                            size_t namelen = strlen(name);
+                            if (dbnamelen + 1 + namelen < path_bufsize) {
+                                memcpy(resolved_path, dbname, dbnamelen);
+                                resolved_path[dbnamelen] = '.';
+                                memcpy(resolved_path + dbnamelen + 1, name, namelen);
+                                resolved_path[dbnamelen + 1 + namelen] = '\0';
+                            } else {
+                                strncpy(resolved_path, name, path_bufsize - 1);
+                                resolved_path[path_bufsize - 1] = '\0';
+                            }
+                        }
+                        return result;
+                    }
+                }
+            }
+        }
+    }
+
     return nil;  /* Not found in any path table */
 }
 
@@ -548,6 +588,17 @@ void completion_add_path_entries(completion_matches_t *matches, const char *pref
         }
 
         nomad = (**nomad).sortedlink;
+    }
+
+    /* Add entries from filewindowtable (guest databases) - matches langsearchpathvisit() */
+    if (filewindowtable != nil) {
+        hdlhashnode fwnomad;
+        for (fwnomad = (**filewindowtable).hfirstsort; fwnomad != nil && matches->count < COMPLETION_MAX_MATCHES; fwnomad = (**fwnomad).sortedlink) {
+            hdlhashtable hsearch;
+            if (langexternalvaltotable((**fwnomad).val, &hsearch, fwnomad)) {
+                completion_add_table_entries(matches, hsearch, prefix);
+            }
+        }
     }
 }
 
