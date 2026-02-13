@@ -7,7 +7,7 @@
 #   - fileMenu.save([path]) - Save system root or guest database (implemented in prior PR)
 #
 # Stub implementations (return "not implemented"):
-#   - fileMenu.new, savecopy, revert, print, quit, saveas
+#   - fileMenu.revert, print, quit
 #
 # Guest Database Concepts:
 #   - A "guest database" is any ODB file opened via fileMenu.open or db.open
@@ -30,17 +30,56 @@ tests:
   # Stub Verbs - Not Yet Implemented
   # ========================================================================
 
-  - name: "fileMenu.new - returns not implemented"
-    description: "fileMenu.new is a stub verb that returns 'not implemented' error"
+  - name: "fileMenu.new - create new database"
+    description: "fileMenu.new creates a new empty ODB database and opens it"
     script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "filemenu_new_basic.root7");
+      local(result = fileMenu.new(dbPath));
+      fileMenu.closeall();
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.new - file already exists error"
+    description: "fileMenu.new returns error if file already exists"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "filemenu_new_exists.root7");
+      fileMenu.new(dbPath);
+      fileMenu.closeall();
       try {
-        fileMenu.new("test");
+        fileMenu.new(dbPath);
         return "should_have_failed"
       } else {
         return "error_caught"
       }
     expected_success: true
     expected_result: "error_caught"
+
+  - name: "fileMenu.new - with hidden parameter"
+    description: "fileMenu.new accepts optional hidden parameter (ignored in headless)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "filemenu_new_hidden.root7");
+      local(result = fileMenu.new(dbPath, true));
+      fileMenu.closeall();
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.new - database is usable after creation"
+    description: "A database created with fileMenu.new can be written to and read from"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "filemenu_new_usable.root7");
+      fileMenu.new(dbPath);
+      db.setvalue(dbPath, "testKey", "testValue");
+      local(val = db.getvalue(dbPath, "testKey"));
+      fileMenu.closeall();
+      return val
+    expected_success: true
+    expected_result: "testValue"
 
   - name: "fileMenu.savecopy - error with no params"
     description: "fileMenu.savecopy requires exactly 1 parameter"
@@ -66,15 +105,14 @@ tests:
     expected_success: true
     expected_result: "error_caught"
 
-  - name: "fileMenu stub verbs - multiple stubs return not implemented"
-    description: "Verify that new and revert return errors"
+  - name: "fileMenu stub verbs - revert returns not implemented"
+    description: "Verify that revert returns error"
     script: |
       local(caught = 0);
-      try { fileMenu.new("test") } else { caught = caught + 1 };
       try { fileMenu.revert() } else { caught = caught + 1 };
       return caught
     expected_success: true
-    expected_result: "2"
+    expected_result: "1"
 
   # ========================================================================
   # fileMenu.closeall - Empty/No-Op Cases

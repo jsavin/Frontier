@@ -720,7 +720,6 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
     bigstring bspath;
     short ctparams;
     boolean flhidden = false;
-    boolean flexists = false;
 
     setbooleanvalue(false, vreturned);
 
@@ -751,9 +750,12 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
     filespectopath(&fs, bspath);
     log_debug(LOG_COMP_DB, "filemenu_new: creating new database at %s", stringbaseaddress(bspath));
 
-    /* Check if file already exists - don't overwrite */
-    if (fileexists(&fs, &flexists)) {
-        if (flexists) {
+    /* Check if file already exists - don't overwrite.
+     * fileexists() returns true if the file exists, false otherwise.
+     * The second parameter receives the is-folder flag, not existence. */
+    {
+        boolean flfolder = false;
+        if (fileexists(&fs, &flfolder)) {
             log_error(LOG_COMP_DB, "filemenu_new: file already exists at %s", stringbaseaddress(bspath));
             langerrormessage(BIGSTRING("\x27" "Can't create: file already exists at path"));
             return false;
