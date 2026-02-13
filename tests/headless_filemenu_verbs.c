@@ -34,6 +34,18 @@
 #include "cancoon.h"
 #include "ops.h"
 
+/*
+ * Safe null-termination for bigstring before passing to C string APIs.
+ * bigstring is unsigned char[256]: byte 0 = length (0-255), bytes 1-255 = data.
+ * If length is 255, nullterminate would write at s[256] (1 byte OOB).
+ * This macro caps the length at 254 before null-terminating to stay in bounds,
+ * which is acceptable for logging — paths over 254 chars are truncated.
+ */
+#define safenullterminate(s) do { \
+    if (stringlength(s) > 254) setstringlength(s, 254); \
+    nullterminate(s); \
+} while (0)
+
 /* tyodbrecord/hdlodbrecord defined in odbinternal.h (shared with dbverbs.c) */
 extern hdlodbrecord hodblist;
 
@@ -171,6 +183,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     }
 
     filespectopath(&fs, bspath);
+    safenullterminate(bspath);
     log_debug(LOG_COMP_DB, "filemenu_save_guestdb: looking for database at path=%s",
               stringbaseaddress(bspath));
 
@@ -270,6 +283,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     flhidden = vhidden.data.flvalue;
 
     filespectopath(&odbrec.fs, bspath);
+    safenullterminate(bspath);
     log_debug(LOG_COMP_DB, "filemenu_open: opening %s", stringbaseaddress(bspath));
 
     /* Check if already open in hodblist */
@@ -382,6 +396,7 @@ static boolean filemenu_close_guestdb(hdlodbrecord hodb) {
     bigstring bspath;
 
     filespectopath(&(**hodb).fs, bspath);
+    safenullterminate(bspath);
     log_debug(LOG_COMP_DB, "filemenu_close_guestdb: closing %s", stringbaseaddress(bspath));
 
     /* Close the ODB file first — use context guard to protect system root globals */
@@ -453,6 +468,7 @@ static boolean filemenu_close(tyvaluerecord *vreturned) {
     for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
         bigstring bsodbpath;
         filespectopath(&(**hodb).fs, bsodbpath);
+        safenullterminate(bsodbpath);
 
         if (equalstrings(bstargetname, bsodbpath)) {
             return filemenu_close_guestdb(hodb) ? true : false;
@@ -546,6 +562,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
         return false;
 
     filespectopath(&fsdest, bsdest);
+    safenullterminate(bsdest);
     log_debug(LOG_COMP_DB, "filemenu_saveas: destination=%s", stringbaseaddress(bsdest));
 
     /* Determine source database: check current target */
@@ -644,9 +661,9 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
         filespectopath(&fssource, bssource);
 
-        /* Use nullterminate to get C strings from Pascal strings */
-        nullterminate(bssource);
-        nullterminate(bsdest);
+        /* Use safenullterminate to get C strings from Pascal strings */
+        safenullterminate(bssource);
+        safenullterminate(bsdest);
 
         fin = fopen(stringbaseaddress(bssource), "rb");
 
@@ -742,6 +759,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
     flhidden = vhidden.data.flvalue;
 
     filespectopath(&fs, bspath);
+    safenullterminate(bspath);
     log_debug(LOG_COMP_DB, "filemenu_new: creating new database at %s", stringbaseaddress(bspath));
 
     /* Check if file already exists - don't overwrite.

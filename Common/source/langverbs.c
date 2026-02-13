@@ -1065,26 +1065,41 @@ boolean langabsfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 boolean langrandomfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/*
-	Return random number from 0 to max-1.
-	Uses standard C rand() function.
+	Return random number in [lower, upper] inclusive.
+	Matches original GUI kernel 2-param signature: random(lower, upper).
+
+	Uses unsigned arithmetic for the span to avoid signed overflow when
+	(upper - lower + 1) exceeds LONG_MAX, and rejection sampling to
+	eliminate modulo bias.
 	*/
-	long max;
-	long result;
+	long lower, upper;
+	unsigned long span, limit, r;
+
+	if (!getlongvalue (hparam1, 1, &lower))
+		return (false);
 
 	flnextparamislast = true;
 
-	if (!getlongvalue (hparam1, 1, &max))
+	if (!getlongvalue (hparam1, 2, &upper))
 		return (false);
 
-	if (max <= 0) {
+	if (lower > upper) {
 		langerror (badrandomboundserror);
 		return (false);
 		}
 
-	/* Use rand() modulo max to get value in [0, max-1] */
-	result = rand() % max;
+	span = (unsigned long) upper - (unsigned long) lower + 1UL;
 
-	return (setlongvalue (result, vreturned));
+	/* Rejection sampling: discard values that would cause modulo bias.
+	   For typical small ranges this almost never rejects. */
+
+	limit = ((unsigned long) RAND_MAX + 1UL) - (((unsigned long) RAND_MAX + 1UL) % span);
+
+	do {
+		r = (unsigned long) rand ();
+		} while (r >= limit);
+
+	return (setlongvalue (lower + (long) (r % span), vreturned));
 	} /*langrandomfunc*/
 
 
