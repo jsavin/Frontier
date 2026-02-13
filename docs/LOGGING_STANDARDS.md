@@ -210,9 +210,49 @@ log_debug(LOG_COMP_TABLE, "Inserting table='%.*s'", (int)bsname[0], (char *)&bsn
 
 ## Runtime Control
 
-### Environment Variables
+### Per-Component Log Levels (`FRONTIER_LOG`)
 
-Control logging at runtime without recompilation:
+The unified `FRONTIER_LOG` environment variable lets you set different log levels for different components. This is the recommended way to control logging.
+
+**Syntax**: `FRONTIER_LOG=comp:level,comp:level,...`
+
+```bash
+# Per-component levels — trace db, but only errors from lang
+FRONTIER_LOG=db:trace,lang:error ./frontier-cli -e "..."
+
+# Component without level — uses global default (warn)
+FRONTIER_LOG=db,hash:trace ./frontier-cli -e "..."
+
+# Global level shorthand (no colon) — same as FRONTIER_LOG_LEVEL
+FRONTIER_LOG=debug ./frontier-cli -e "..."
+
+# Mix per-component and global: migration at trace, everything else at warn
+FRONTIER_LOG=migration:trace ./frontier-cli --system-root old.root -e "..."
+```
+
+### CLI `--log` Flag
+
+The `--log` flag provides the same syntax as `FRONTIER_LOG`, and can be specified multiple times:
+
+```bash
+# Single --log
+frontier-cli --log db:trace,lang:error -e "..."
+
+# Multiple --log (concatenated with commas)
+frontier-cli --log db:trace --log lang:error -e "..."
+```
+
+### Precedence
+
+When multiple logging configuration sources are present, they are applied in this order (highest to lowest precedence):
+
+1. **`--log` CLI argument** — applied after env vars, overrides everything
+2. **`FRONTIER_LOG` env var** — when set, ignores `FRONTIER_LOG_LEVEL` and `FRONTIER_LOG_COMPONENT`
+3. **`FRONTIER_LOG_LEVEL` + `FRONTIER_LOG_COMPONENT`** — legacy vars, used when `FRONTIER_LOG` is not set
+
+### Legacy Environment Variables
+
+These still work when `FRONTIER_LOG` is **not** set:
 
 ```bash
 # Set log level (default: WARN)
@@ -223,7 +263,7 @@ export FRONTIER_LOG_LEVEL=debug
 export FRONTIER_LOG_COMPONENT=hash   # Single component
 export FRONTIER_LOG_COMPONENT=db,hash  # Multiple components (comma-separated)
 
-# Output format
+# Output format (always respected, independent of log spec)
 export FRONTIER_LOG_FORMAT=json      # json or text (default: text)
 export FRONTIER_LOG_FORMAT=text
 
@@ -235,6 +275,25 @@ FRONTIER_LOG_LEVEL=trace FRONTIER_LOG_FORMAT=json ./frontier-cli --system-root d
 
 # Example: Trace table lookups in hot path (reduce noise from general language runtime)
 FRONTIER_LOG_LEVEL=trace FRONTIER_LOG_COMPONENT=table_lookup ./frontier-cli --system-root db.root -e "sizeOf(system)"
+```
+
+### Common Recipes
+
+```bash
+# Debug database issues without noise from other components
+FRONTIER_LOG=db:debug ./frontier-cli --system-root Frontier.root -e "..."
+
+# Trace hash table operations, warn on everything else
+FRONTIER_LOG=hash:trace ./frontier-cli -e "..."
+
+# Full trace on multiple components
+FRONTIER_LOG=db:trace,hash:trace,table:trace ./frontier-cli -e "..."
+
+# Migration diagnostics (migration is disabled by default)
+FRONTIER_LOG=migration:trace,db:debug ./frontier-cli --system-root old.root -e "1"
+
+# Same via CLI flag
+./frontier-cli --log migration:trace --log db:debug --system-root old.root -e "1"
 ```
 
 ### Programmatic Control
@@ -251,6 +310,12 @@ log_init();
 log_set_level(LOG_LEVEL_DEBUG);
 log_set_component_enabled(LOG_COMP_HASH, true);
 log_set_component_enabled(LOG_COMP_DB, false);  // Disable DB logging
+
+// Per-component log level (overrides global for this component)
+log_set_component_level(LOG_COMP_DB, LOG_LEVEL_TRACE);
+
+// Parse a log spec string programmatically
+log_parse_spec("db:trace,lang:warn");
 ```
 
 ---
@@ -406,10 +471,16 @@ log_error(LOG_COMP_DB, "something failed");
 
 **Cause**: Log level is too verbose
 
-**Solution**: Lower the log level:
+**Solution**: Use per-component levels to focus on what matters:
 ```bash
-FRONTIER_LOG_LEVEL=warn ./frontier-cli -e "..."  # Only errors and warnings
-FRONTIER_LOG_COMPONENT=db ./frontier-cli -e "..."  # Only DB component
+# Only errors and warnings (global)
+FRONTIER_LOG_LEVEL=warn ./frontier-cli -e "..."
+
+# Only DB component
+FRONTIER_LOG_COMPONENT=db ./frontier-cli -e "..."
+
+# Per-component: trace db, but only errors from everything else
+FRONTIER_LOG=db:trace ./frontier-cli -e "..."
 ```
 
 ---

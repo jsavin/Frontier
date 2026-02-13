@@ -28,6 +28,8 @@ typedef enum {
 
 static log_level_t g_log_level = LOG_LEVEL_WARN;  // Default: warnings and errors
 static bool g_component_enabled[LOG_COMP_COUNT];  // Per-component enable flags
+static log_level_t g_component_level[LOG_COMP_COUNT];  // Per-component level override
+static bool g_component_level_set[LOG_COMP_COUNT];      // Whether per-component level was explicitly set
 static bool g_initialized = false;
 static log_format_t g_log_format = LOG_FORMAT_TEXT;  // Default: plain text
 static bool g_log_suppressed = false;  // Suppress all output (for JSON mode)
@@ -146,8 +148,13 @@ static void parse_components(const char *str) {
 
     char *token = strtok(str_copy, ",");
     while (token) {
-        // Trim whitespace
+        // Trim leading whitespace
         while (*token == ' ' || *token == '\t') token++;
+        if (*token == '\0') {
+            token = strtok(NULL, ",");
+            continue;
+        }
+        // Trim trailing whitespace
         char *end = token + strlen(token) - 1;
         while (end > token && (*end == ' ' || *end == '\t')) {
             *end = '\0';
@@ -170,29 +177,142 @@ static void parse_components(const char *str) {
 // Public API Implementation
 // ============================================================================
 
+/**
+ * Check if a string looks like a bare level name (no colons, matches a level).
+ * Returns true if str is a recognized level name.
+ */
+static bool is_bare_level(const char *str) {
+    if (!str) return false;
+    return (strcasecmp(str, "error") == 0 ||
+            strcasecmp(str, "warn") == 0 ||
+            strcasecmp(str, "info") == 0 ||
+            strcasecmp(str, "debug") == 0 ||
+            strcasecmp(str, "trace") == 0);
+}
+
+void log_parse_spec(const char *spec) {
+    if (!spec || !spec[0]) return;
+    if (!g_initialized) log_init();
+
+    char *str_copy = strdup(spec);
+    if (!str_copy) return;
+
+    // Check if this is a bare global level (no commas, no colons)
+    if (!strchr(str_copy, ',') && !strchr(str_copy, ':') && is_bare_level(str_copy)) {
+        g_log_level = parse_log_level(str_copy);
+        // Enable all components (except migration) and clear per-component overrides
+        for (int i = 0; i < LOG_COMP_COUNT; i++) {
+            g_component_enabled[i] = (i != LOG_COMP_MIGRATION);
+            g_component_level_set[i] = false;
+        }
+        free(str_copy);
+        return;
+    }
+
+    // Per-component spec: start with all disabled, then enable mentioned components
+    for (int i = 0; i < LOG_COMP_COUNT; i++) {
+        g_component_enabled[i] = false;
+        g_component_level_set[i] = false;
+    }
+
+    char *saveptr = NULL;
+    char *token = strtok_r(str_copy, ",", &saveptr);
+    while (token) {
+        // Trim leading whitespace
+        while (*token == ' ' || *token == '\t') token++;
+        if (*token == '\0') {
+            token = strtok_r(NULL, ",", &saveptr);
+            continue;
+        }
+        // Trim trailing whitespace
+        char *end = token + strlen(token) - 1;
+        while (end > token && (*end == ' ' || *end == '\t')) {
+            *end = '\0';
+            end--;
+        }
+
+        // Split on colon
+        char *colon = strchr(token, ':');
+        if (colon) {
+            *colon = '\0';
+            const char *comp_name = token;
+            const char *level_name_str = colon + 1;
+
+            int comp = parse_component(comp_name);
+            if (comp >= 0) {
+                g_component_enabled[comp] = true;
+                g_component_level[comp] = parse_log_level(level_name_str);
+                g_component_level_set[comp] = true;
+            } else {
+                fprintf(stderr, "[LOG] Warning: Unknown component '%s' in log spec, ignoring\n", comp_name);
+            }
+        } else {
+            // Component without level — enable at global default
+            int comp = parse_component(token);
+            if (comp >= 0) {
+                g_component_enabled[comp] = true;
+            } else {
+                fprintf(stderr, "[LOG] Warning: Unknown component '%s' in log spec, ignoring\n", token);
+            }
+        }
+
+        token = strtok_r(NULL, ",", &saveptr);
+    }
+
+    free(str_copy);
+}
+
 void log_init(void) {
     if (g_initialized) return;
 
-    // Parse FRONTIER_LOG_LEVEL
-    const char *level_str = getenv("FRONTIER_LOG_LEVEL");
-    g_log_level = parse_log_level(level_str);
+    // Initialize per-component level arrays
+    for (int i = 0; i < LOG_COMP_COUNT; i++) {
+        g_component_level_set[i] = false;
+        g_component_level[i] = LOG_LEVEL_WARN;
+    }
 
-    // Parse FRONTIER_LOG_COMPONENT
-    const char *comp_str = getenv("FRONTIER_LOG_COMPONENT");
-    parse_components(comp_str);
+    // Check for unified FRONTIER_LOG first (takes precedence over legacy vars)
+    const char *log_spec = getenv("FRONTIER_LOG");
+    const char *comp_str = NULL;
 
-    // Parse FRONTIER_LOG_FORMAT
+    if (log_spec && log_spec[0]) {
+        // FRONTIER_LOG is set — use it, ignore legacy vars
+        // Set defaults first, then parse_spec will override
+        // Migration component is disabled by default to avoid verbose migration diagnostics
+        g_log_level = LOG_LEVEL_WARN;
+        for (int i = 0; i < LOG_COMP_COUNT; i++) {
+            g_component_enabled[i] = (i != LOG_COMP_MIGRATION);
+        }
+        // Set initialized before parse_spec to prevent recursion (parse_spec calls log_init)
+        g_initialized = true;
+        log_parse_spec(log_spec);
+    } else {
+        // Legacy path: FRONTIER_LOG_LEVEL + FRONTIER_LOG_COMPONENT
+        const char *level_str = getenv("FRONTIER_LOG_LEVEL");
+        g_log_level = parse_log_level(level_str);
+
+        comp_str = getenv("FRONTIER_LOG_COMPONENT");
+        parse_components(comp_str);
+
+        g_initialized = true;
+    }
+
+    // Parse FRONTIER_LOG_FORMAT (always respected)
     const char *format_str = getenv("FRONTIER_LOG_FORMAT");
     g_log_format = parse_log_format(format_str);
 
-    g_initialized = true;
-
     // Optional: log initialization message (only if INFO or above)
     if (g_log_level >= LOG_LEVEL_INFO && g_component_enabled[LOG_COMP_STARTUP]) {
-        fprintf(stderr, "[STARTUP-INFO] Logging initialized: level=%s components=%s format=%s\n",
-                level_names[g_log_level],
-                comp_str ? comp_str : "all",
-                g_log_format == LOG_FORMAT_JSON ? "json" : "text");
+        if (log_spec && log_spec[0]) {
+            fprintf(stderr, "[STARTUP-INFO] Logging initialized: spec=%s format=%s\n",
+                    log_spec,
+                    g_log_format == LOG_FORMAT_JSON ? "json" : "text");
+        } else {
+            fprintf(stderr, "[STARTUP-INFO] Logging initialized: level=%s components=%s format=%s\n",
+                    level_names[g_log_level],
+                    comp_str ? comp_str : "all",
+                    g_log_format == LOG_FORMAT_JSON ? "json" : "text");
+        }
     }
 }
 
@@ -213,18 +333,31 @@ void log_set_component_enabled(log_component_t component, bool enabled) {
     }
 }
 
+void log_set_component_level(log_component_t component, log_level_t level) {
+    if (!g_initialized) log_init();
+    if (component >= 0 && component < LOG_COMP_COUNT) {
+        g_component_level[component] = level;
+        g_component_level_set[component] = true;
+        g_component_enabled[component] = true;
+    }
+}
+
 bool log_is_enabled(log_level_t level, log_component_t component) {
     if (!g_initialized) log_init();
 
     // Errors are always enabled
     if (level == LOG_LEVEL_ERROR) return true;
 
-    // Check level
-    if (level > g_log_level) return false;
-
-    // Check component
+    // Check component is enabled
     if (component >= 0 && component < LOG_COMP_COUNT) {
-        return g_component_enabled[component];
+        if (!g_component_enabled[component]) return false;
+
+        // Use per-component level if set, otherwise global level
+        log_level_t effective = g_component_level_set[component]
+            ? g_component_level[component]
+            : g_log_level;
+
+        return (level <= effective);
     }
 
     return false;

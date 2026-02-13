@@ -8,15 +8,21 @@
 /*
  * Logging Infrastructure
  *
- * Provides runtime-controlled logging with per-component filtering.
- * Configure via environment variables:
- *   FRONTIER_LOG_LEVEL=error|warn|info|debug|trace (default: warn)
- *   FRONTIER_LOG_COMPONENT=db,hash,table,... (default: all)
- *   FRONTIER_LOG_FORMAT=text|json (default: text)
+ * Provides runtime-controlled logging with per-component filtering and levels.
  *
- * Example:
+ * Configuration (highest to lowest precedence):
+ *   1. FRONTIER_LOG=comp:level,comp:level,...  (unified, per-component levels)
+ *   2. --log CLI argument                      (same syntax, merged with env)
+ *   3. FRONTIER_LOG_LEVEL + FRONTIER_LOG_COMPONENT (legacy, still works)
+ *
+ * FRONTIER_LOG examples:
+ *   FRONTIER_LOG=db:trace,lang:warn ./frontier-cli -e "..."
+ *   FRONTIER_LOG=debug ./frontier-cli -e "..."        # global level shorthand
+ *   FRONTIER_LOG=db,hash:trace ./frontier-cli -e "..."  # db=global default, hash=trace
+ *
+ * Legacy (used when FRONTIER_LOG is not set):
  *   FRONTIER_LOG_LEVEL=debug FRONTIER_LOG_COMPONENT=db ./frontier-cli -e "..."
- *   FRONTIER_LOG_FORMAT=json FRONTIER_LOG_LEVEL=debug ./frontier-cli -e "..."
+ *   FRONTIER_LOG_FORMAT=text|json (default: text)
  */
 
 // ============================================================================
@@ -84,8 +90,22 @@ void log_set_suppressed(bool suppressed);
 void log_set_component_enabled(log_component_t component, bool enabled);
 
 /**
+ * Set the log level for a specific component.
+ * When set, overrides the global log level for that component.
+ */
+void log_set_component_level(log_component_t component, log_level_t level);
+
+/**
+ * Parse a unified log spec string.
+ * Format: "comp:level,comp:level,..." or just "level" for global.
+ * Component without level uses the current global default.
+ * Example: "db:trace,lang:warn,hash" or "debug"
+ */
+void log_parse_spec(const char *spec);
+
+/**
  * Check if a specific level/component is enabled.
- * Used internally by macros; can also be used for conditional expensive operations.
+ * Uses per-component level if set, otherwise global level.
  */
 bool log_is_enabled(log_level_t level, log_component_t component);
 

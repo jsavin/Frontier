@@ -174,6 +174,11 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Apply --log spec if provided (overrides env var settings)
+    if (g_cli_options.log_spec != NULL) {
+        log_parse_spec(g_cli_options.log_spec);
+    }
+
     // Handle help and version requests
     if (g_cli_options.show_help) {
         print_usage(argv[0]);
@@ -297,10 +302,13 @@ int main(int argc, char* argv[]) {
     cli_set_json_mode(g_cli_options.output_json);
     log_set_suppressed(g_cli_options.output_json);
 
-    /* Set default log level to ERROR for REPL mode (unless user explicitly set FRONTIER_LOG_LEVEL)
+    /* Set default log level to ERROR for REPL mode (unless user explicitly configured logging)
      * This reduces startup noise from database warnings and WPText conversion messages.
-     * Script mode keeps default WARN level for better diagnostics. */
+     * Script mode keeps default WARN level for better diagnostics.
+     * Respect explicit logging config: FRONTIER_LOG, FRONTIER_LOG_LEVEL, or --log */
     if (getenv("FRONTIER_LOG_LEVEL") == NULL &&
+        getenv("FRONTIER_LOG") == NULL &&
+        g_cli_options.log_spec == NULL &&
         g_cli_options.script_file == NULL &&
         g_cli_options.inline_script == NULL) {
         log_set_level(LOG_LEVEL_ERROR);
@@ -602,13 +610,16 @@ static void print_usage(const char* program_name) {
     printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
+    printf("  --log SPEC               Set per-component log levels (e.g., db:trace,lang:warn)\n");
     printf("  -h, --help               Show this help message\n");
     printf("  --version                Show version information\n");
     printf("\n");
 
     printf("Environment Variables:\n");
-    printf("  FRONTIER_LOG_LEVEL       Set log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
-    printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (DB, HASH, LANG, etc.)\n");
+    printf("  FRONTIER_LOG             Per-component log levels (e.g., db:trace,lang:warn)\n");
+    printf("                           Overrides FRONTIER_LOG_LEVEL and FRONTIER_LOG_COMPONENT\n");
+    printf("  FRONTIER_LOG_LEVEL       Set global log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
+    printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (db, hash, lang, etc.)\n");
     printf("  FRONTIER_HEADLESS_RUN_STARTUP  Set to 0 to skip system.startup scripts (default: run)\n");
     printf("\n");
 
