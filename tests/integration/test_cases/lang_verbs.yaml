@@ -278,52 +278,52 @@ tests:
     script: 'lang.abs(1, 2)'
     expected_success: false
 
-  # lang.random - Random number generator
+  # lang.random - Random number generator (2-param: lower, upper)
   - name: "lang.random - in range"
-    description: "Random number should be in valid range [0, max-1]"
+    description: "Random number should be in valid range [1, 100] inclusive"
     script: |
-      local (x = lang.random(100));
-      return (x >= 0) and (x < 100)
+      local (x = lang.random(1, 100));
+      return (x >= 1) and (x <= 100)
     expected_success: true
     expected_result: "true"
 
-  - name: "lang.random - max=1"
-    description: "Random(1) should always return 0"
-    script: 'lang.random(1)'
+  - name: "lang.random - equal bounds"
+    description: "random(5, 5) should always return 5"
+    script: 'lang.random(5, 5)'
     expected_success: true
-    expected_result: "0"
+    expected_result: "5"
 
-  - name: "lang.random - max=10"
-    description: "Random(10) should be in [0,9]"
+  - name: "lang.random - small range"
+    description: "Random(1, 10) should be in [1, 10]"
     script: |
-      local (x = lang.random(10));
-      return (x >= 0) and (x <= 9)
+      local (x = lang.random(1, 10));
+      return (x >= 1) and (x <= 10)
     expected_success: true
     expected_result: "true"
 
   - name: "lang.random - multiple calls differ"
     description: "Multiple random calls should (usually) produce different values"
     script: |
-      local (x = lang.random(1000));
-      local (y = lang.random(1000));
-      local (z = lang.random(1000));
+      local (x = lang.random(1, 1000));
+      local (y = lang.random(1, 1000));
+      local (z = lang.random(1, 1000));
       return (x != y) or (y != z)
     expected_success: true
     expected_result: "true"
 
-  - name: "lang.random - max=0 error"
-    description: "Random(0) should fail (invalid range)"
-    script: 'lang.random(0)'
-    expected_success: false
-
-  - name: "lang.random - negative max error"
-    description: "Random with negative max should fail"
-    script: 'lang.random(-10)'
+  - name: "lang.random - lower greater than upper error"
+    description: "random(10, 1) should fail (lower > upper)"
+    script: 'lang.random(10, 1)'
     expected_success: false
 
   - name: "lang.random - no parameters"
-    description: "Parameter validation: missing parameter should fail"
+    description: "Parameter validation: missing parameters should fail"
     script: 'lang.random()'
+    expected_success: false
+
+  - name: "lang.random - one parameter error"
+    description: "Parameter validation: single parameter should fail (needs 2)"
+    script: 'lang.random(100)'
     expected_success: false
 
   # lang.memavail - Available memory
