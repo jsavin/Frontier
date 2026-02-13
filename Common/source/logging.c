@@ -148,8 +148,13 @@ static void parse_components(const char *str) {
 
     char *token = strtok(str_copy, ",");
     while (token) {
-        // Trim whitespace
+        // Trim leading whitespace
         while (*token == ' ' || *token == '\t') token++;
+        if (*token == '\0') {
+            token = strtok(NULL, ",");
+            continue;
+        }
+        // Trim trailing whitespace
         char *end = token + strlen(token) - 1;
         while (end > token && (*end == ' ' || *end == '\t')) {
             *end = '\0';
@@ -195,9 +200,10 @@ void log_parse_spec(const char *spec) {
     // Check if this is a bare global level (no commas, no colons)
     if (!strchr(str_copy, ',') && !strchr(str_copy, ':') && is_bare_level(str_copy)) {
         g_log_level = parse_log_level(str_copy);
-        // Enable all components (except migration) since user set a global level
+        // Enable all components (except migration) and clear per-component overrides
         for (int i = 0; i < LOG_COMP_COUNT; i++) {
             g_component_enabled[i] = (i != LOG_COMP_MIGRATION);
+            g_component_level_set[i] = false;
         }
         free(str_copy);
         return;
@@ -212,8 +218,13 @@ void log_parse_spec(const char *spec) {
     char *saveptr = NULL;
     char *token = strtok_r(str_copy, ",", &saveptr);
     while (token) {
-        // Trim whitespace
+        // Trim leading whitespace
         while (*token == ' ' || *token == '\t') token++;
+        if (*token == '\0') {
+            token = strtok_r(NULL, ",", &saveptr);
+            continue;
+        }
+        // Trim trailing whitespace
         char *end = token + strlen(token) - 1;
         while (end > token && (*end == ' ' || *end == '\t')) {
             *end = '\0';
@@ -267,11 +278,13 @@ void log_init(void) {
     if (log_spec && log_spec[0]) {
         // FRONTIER_LOG is set — use it, ignore legacy vars
         // Set defaults first, then parse_spec will override
+        // Migration component is disabled by default to avoid verbose migration diagnostics
         g_log_level = LOG_LEVEL_WARN;
         for (int i = 0; i < LOG_COMP_COUNT; i++) {
             g_component_enabled[i] = (i != LOG_COMP_MIGRATION);
         }
-        g_initialized = true;  // Set before parse_spec since it calls log_init()
+        // Set initialized before parse_spec to prevent recursion (parse_spec calls log_init)
+        g_initialized = true;
         log_parse_spec(log_spec);
     } else {
         // Legacy path: FRONTIER_LOG_LEVEL + FRONTIER_LOG_COMPONENT

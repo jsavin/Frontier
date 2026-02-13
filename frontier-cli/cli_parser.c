@@ -248,6 +248,10 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                     options->log_spec = combined;
                 } else {
                     options->log_spec = strdup(optarg);
+                    if (options->log_spec == NULL) {
+                        log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for --log");
+                        return false;
+                    }
                 }
                 break;
 

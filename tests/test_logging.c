@@ -246,6 +246,143 @@ void test_disabled_logging_has_no_effect(void) {
     PASS();
 }
 
+void test_per_component_levels(void) {
+    TEST("per-component log levels via log_parse_spec");
+
+    // Reset state
+    log_set_level(LOG_LEVEL_WARN);
+    for (int i = 0; i < LOG_COMP_COUNT; i++) {
+        log_set_component_enabled(i, true);
+    }
+
+    log_parse_spec("db:trace,lang:error");
+
+    // DB should be at TRACE level
+    ASSERT(log_is_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB) == true);
+    ASSERT(log_is_enabled(LOG_LEVEL_DEBUG, LOG_COMP_DB) == true);
+
+    // LANG should be at ERROR level (only errors pass)
+    ASSERT(log_is_enabled(LOG_LEVEL_WARN, LOG_COMP_LANG) == false);
+    ASSERT(log_is_enabled(LOG_LEVEL_ERROR, LOG_COMP_LANG) == true);
+
+    // HASH was not mentioned — should be disabled
+    ASSERT(log_is_enabled(LOG_LEVEL_WARN, LOG_COMP_HASH) == false);
+    // But errors are always shown regardless
+    ASSERT(log_is_enabled(LOG_LEVEL_ERROR, LOG_COMP_HASH) == true);
+
+    // Restore defaults
+    log_set_level(LOG_LEVEL_WARN);
+    for (int i = 0; i < LOG_COMP_COUNT; i++) {
+        log_set_component_enabled(i, true);
+    }
+
+    PASS();
+}
+
+void test_bare_level_spec(void) {
+    TEST("bare level spec sets global level");
+
+    log_parse_spec("debug");
+
+    // All components should be enabled at DEBUG
+    ASSERT(log_is_enabled(LOG_LEVEL_DEBUG, LOG_COMP_DB) == true);
+    ASSERT(log_is_enabled(LOG_LEVEL_DEBUG, LOG_COMP_HASH) == true);
+    ASSERT(log_is_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB) == false);
+
+    // Restore
+    log_set_level(LOG_LEVEL_WARN);
+
+    PASS();
+}
+
+void test_component_level_overrides_global(void) {
+    TEST("per-component level overrides global");
+
+    log_set_level(LOG_LEVEL_WARN);
+    log_set_component_level(LOG_COMP_DB, LOG_LEVEL_TRACE);
+
+    // DB at TRACE (per-component override)
+    ASSERT(log_is_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB) == true);
+
+    // HASH at WARN (global default, no override)
+    ASSERT(log_is_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH) == false);
+    ASSERT(log_is_enabled(LOG_LEVEL_WARN, LOG_COMP_HASH) == true);
+
+    // Restore
+    log_set_level(LOG_LEVEL_WARN);
+    for (int i = 0; i < LOG_COMP_COUNT; i++) {
+        log_set_component_enabled(i, true);
+    }
+
+    PASS();
+}
+
+void test_bare_level_clears_overrides(void) {
+    TEST("bare level spec clears prior per-component overrides");
+
+    // Set a per-component override first
+    log_parse_spec("db:trace");
+    ASSERT(log_is_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB) == true);
+
+    // Now set a bare global level — should clear the db:trace override
+    log_parse_spec("info");
+    ASSERT(log_is_enabled(LOG_LEVEL_INFO, LOG_COMP_DB) == true);
+    ASSERT(log_is_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB) == false);
+    ASSERT(log_is_enabled(LOG_LEVEL_DEBUG, LOG_COMP_DB) == false);
+
+    // Restore
+    log_set_level(LOG_LEVEL_WARN);
+
+    PASS();
+}
+
+void test_component_without_level(void) {
+    TEST("component without level uses global default");
+
+    log_set_level(LOG_LEVEL_WARN);
+    log_parse_spec("db,hash:trace");
+
+    // DB enabled at global default (WARN)
+    ASSERT(log_is_enabled(LOG_LEVEL_WARN, LOG_COMP_DB) == true);
+    ASSERT(log_is_enabled(LOG_LEVEL_DEBUG, LOG_COMP_DB) == false);
+
+    // HASH at TRACE
+    ASSERT(log_is_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH) == true);
+
+    // Restore
+    log_set_level(LOG_LEVEL_WARN);
+    for (int i = 0; i < LOG_COMP_COUNT; i++) {
+        log_set_component_enabled(i, true);
+    }
+
+    PASS();
+}
+
+void test_empty_and_malformed_specs(void) {
+    TEST("empty and edge case specs don't crash");
+
+    // Empty and null specs should be no-ops
+    log_parse_spec("");
+    log_parse_spec(NULL);
+
+    // Trailing/leading commas (empty tokens)
+    log_set_level(LOG_LEVEL_WARN);
+    log_parse_spec(",db:trace,");
+    ASSERT(log_is_enabled(LOG_LEVEL_TRACE, LOG_COMP_DB) == true);
+
+    // Whitespace-only token
+    log_parse_spec("  , db:debug , ");
+    ASSERT(log_is_enabled(LOG_LEVEL_DEBUG, LOG_COMP_DB) == true);
+
+    // Restore
+    log_set_level(LOG_LEVEL_WARN);
+    for (int i = 0; i < LOG_COMP_COUNT; i++) {
+        log_set_component_enabled(i, true);
+    }
+
+    PASS();
+}
+
 int main(void) {
     printf("=== Frontier Logging System Unit Tests ===\n\n");
 
@@ -259,6 +396,12 @@ int main(void) {
     test_level_hierarchy();
     test_macro_interface();
     test_disabled_logging_has_no_effect();
+    test_per_component_levels();
+    test_bare_level_spec();
+    test_component_level_overrides_global();
+    test_bare_level_clears_overrides();
+    test_component_without_level();
+    test_empty_and_malformed_specs();
 
     // Print summary
     printf("\n=== Test Summary ===\n");
