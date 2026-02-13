@@ -240,37 +240,34 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     tyodbrecord odbrec;
     hdlodbrecord hodb;
     bigstring bspath;
-    short ctparams;
     boolean flhidden = false;
+    short ctconsumed = 0;
+    short ctpositional;
+    tyvaluerecord vhidden;
 
     setbooleanvalue(false, vreturned);
 
     odbrec.fref = 0;
     odbrec.flreadonly = false;
 
-    ctparams = langgetparamcount(hparam1);
-
-    if (ctparams < 1 || ctparams > 2) {
-        langerrormessage(BIGSTRING("\x2f" "fileMenu.open requires 1 or 2 parameters (path, hidden)"));
-        return false;
-    }
-
     /* Get the file path (param 1) */
-    if (ctparams == 1)
-        flnextparamislast = true;
-
-    if (!getfilespecvalue(hparam1, 1, &odbrec.fs)) {
+    if (!getfilespecvalue(hparam1, ++ctconsumed, &odbrec.fs)) {
         log_error(LOG_COMP_DB, "filemenu_open: getfilespecvalue failed");
         return false;
     }
 
-    /* Consume optional 'hidden' param (ignored in headless mode) */
-    if (ctparams > 1) {
-        flnextparamislast = true;
+    /* Consume optional 'hidden' param — supports both positional and named styles:
+     *   filemenu.open(f, true)         — positional
+     *   filemenu.open(f, hidden:true)  — named
+     */
+    flnextparamislast = true;
+    ctpositional = ctconsumed;
+    setbooleanvalue(false, &vhidden);
 
-        if (!getbooleanvalue(hparam1, 2, &flhidden))
-            return false;
-    }
+    if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\x06" "hidden"), &vhidden))
+        return false;
+
+    flhidden = vhidden.data.flvalue;
 
     filespectopath(&odbrec.fs, bspath);
     log_debug(LOG_COMP_DB, "filemenu_open: opening %s", stringbaseaddress(bspath));
@@ -718,34 +715,31 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
     tyfilespec fs;
     hdlfilenum fnum;
     bigstring bspath;
-    short ctparams;
     boolean flhidden = false;
+    short ctconsumed = 0;
+    short ctpositional;
+    tyvaluerecord vhidden;
 
     setbooleanvalue(false, vreturned);
 
-    ctparams = langgetparamcount(hparam1);
-
-    if (ctparams < 1 || ctparams > 2) {
-        langerrormessage(BIGSTRING("\x2e" "fileMenu.new requires 1 or 2 parameters (path, hidden)"));
-        return false;
-    }
-
-    /* Get the file path (param 1) - don't mark as last yet if there's a second param */
-    if (ctparams == 1)
-        flnextparamislast = true;
-
-    if (!getfilespecvalue(hparam1, 1, &fs)) {
+    /* Get the file path (param 1) */
+    if (!getfilespecvalue(hparam1, ++ctconsumed, &fs)) {
         log_error(LOG_COMP_DB, "filemenu_new: getfilespecvalue failed");
         return false;
     }
 
-    /* Consume optional 'hidden' param (ignored in headless mode) */
-    if (ctparams > 1) {
-        flnextparamislast = true;
+    /* Consume optional 'hidden' param — supports both positional and named styles:
+     *   filemenu.new(f, true)         — positional
+     *   filemenu.new(f, hidden:true)  — named
+     */
+    flnextparamislast = true;
+    ctpositional = ctconsumed;
+    setbooleanvalue(false, &vhidden);
 
-        if (!getbooleanvalue(hparam1, 2, &flhidden))
-            return false;
-    }
+    if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\x06" "hidden"), &vhidden))
+        return false;
+
+    flhidden = vhidden.data.flvalue;
 
     filespectopath(&fs, bspath);
     log_debug(LOG_COMP_DB, "filemenu_new: creating new database at %s", stringbaseaddress(bspath));

@@ -68,6 +68,17 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "fileMenu.new - with named hidden parameter"
+    description: "fileMenu.new accepts named hidden:true parameter syntax"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "filemenu_new_named_hidden.root7");
+      local(result = fileMenu.new(dbPath, hidden:true));
+      fileMenu.closeall();
+      return result
+    expected_success: true
+    expected_result: "true"
+
   - name: "fileMenu.new - database is usable after creation"
     description: "A database created with fileMenu.new can be written to and read from"
     script: |
@@ -200,6 +211,18 @@ tests:
       local(dbPath = tmpDir + "/" + "filemenu_hidden.root7");
       db.new(dbPath);
       local(result = fileMenu.open(dbPath, true));
+      fileMenu.closeall();
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.open - with named hidden parameter"
+    description: "Opening with named hidden:true parameter syntax should succeed"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "filemenu_open_named_hidden.root7");
+      db.new(dbPath);
+      local(result = fileMenu.open(dbPath, hidden:true));
       fileMenu.closeall();
       return result
     expected_success: true
