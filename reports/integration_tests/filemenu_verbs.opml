@@ -1,22 +1,64 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Filemenu Verbs (filemenu_verbs) - 28 tests: 28 pass (100%)</title>
-    <dateCreated>Sat, 07 Feb 2026 05:27:06 GMT</dateCreated>
+    <title>Filemenu Verbs (filemenu_verbs) - 31 tests: 31 pass (100%)</title>
+    <dateCreated>Fri, 13 Feb 2026 08:57:39 GMT</dateCreated>
   </head>
   <body>
-    <outline text="fileMenu.new - returns not implemented - fileMenu.new is a stub verb that returns 'not implemented' error">
+    <outline text="fileMenu.new - create new database - fileMenu.new creates a new empty ODB database and opens it">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_basic.root7&quot;)"/>
+        <outline text="local(result = fileMenu.new(dbPath))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.new - file already exists error - fileMenu.new returns error if file already exists">
       <outline text="Metadata">
         <outline text="expected_result: error_caught"/>
       </outline>
       <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_exists.root7&quot;)"/>
+        <outline text="fileMenu.new(dbPath)"/>
+        <outline text="fileMenu.closeall()"/>
         <outline text="try">
-          <outline text="fileMenu.new(&quot;test&quot;)"/>
+          <outline text="fileMenu.new(dbPath)"/>
           <outline text="return &quot;should_have_failed&quot;"/>
         </outline>
         <outline text="} else">
           <outline text="return &quot;error_caught&quot;"/>
         </outline>
+      </outline>
+    </outline>
+    <outline text="fileMenu.new - with hidden parameter - fileMenu.new accepts optional hidden parameter (ignored in headless)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_hidden.root7&quot;)"/>
+        <outline text="local(result = fileMenu.new(dbPath, true))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.new - database is usable after creation - A database created with fileMenu.new can be written to and read from">
+      <outline text="Metadata">
+        <outline text="expected_result: testValue"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_usable.root7&quot;)"/>
+        <outline text="fileMenu.new(dbPath)"/>
+        <outline text="db.setvalue(dbPath, &quot;testKey&quot;, &quot;testValue&quot;)"/>
+        <outline text="local(val = db.getvalue(dbPath, &quot;testKey&quot;))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return val"/>
       </outline>
     </outline>
     <outline text="fileMenu.savecopy - error with no params - fileMenu.savecopy requires exactly 1 parameter">
@@ -47,13 +89,12 @@
         </outline>
       </outline>
     </outline>
-    <outline text="fileMenu stub verbs - multiple stubs return not implemented - Verify that new and revert return errors">
+    <outline text="fileMenu stub verbs - revert returns not implemented - Verify that revert returns error">
       <outline text="Metadata">
-        <outline text="expected_result: 2"/>
+        <outline text="expected_result: 1"/>
       </outline>
       <outline text="Script">
         <outline text="local(caught = 0)"/>
-        <outline text="try { fileMenu.new(&quot;test&quot;) } else { caught = caught + 1 }"/>
         <outline text="try { fileMenu.revert() } else { caught = caught + 1 }"/>
         <outline text="return caught"/>
       </outline>
