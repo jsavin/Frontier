@@ -10,6 +10,8 @@
  * - window.setSize/setPosition: accept params but return false (no-op indicator)
  * - window.getTitle: returns object's full dot-path, returns the path string
  * - window.setTitle: accepts params but returns false (no-op indicator)
+ * - window.show/hide: consume title param, return true (no-op)
+ * - window.isVisible: consumes title param, returns false (nothing visible)
  *
  * Note on setter return values: Setter verbs (setSize, setPosition, setTitle)
  * return false in headless mode to indicate the operation was a no-op. This
@@ -244,18 +246,27 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             /* Verb: window.next - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case winv_isvisible:
-            /* Verb: window.isvisible - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case winv_isvisible: {
+            /* window.isVisible(title) - always false in headless mode */
+            bigstring bstitle;
+
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 1, bstitle))
+                return false;
+
+            return setbooleanvalue(false, vreturned);
+        }
         case winv_show:
-            /* Verb: window.show - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
-        case winv_hide:
-            /* Verb: window.hide - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
-            return false;
+        case winv_hide: {
+            /* window.show/hide(title) - no-op in headless mode */
+            bigstring bstitle;
+
+            flnextparamislast = true;
+            if (!getstringvalue(hparam1, 1, bstitle))
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
         case winv_close:
             /* Verb: window.close - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);

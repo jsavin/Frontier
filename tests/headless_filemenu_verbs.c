@@ -10,11 +10,12 @@
  *   - fileMenu.closeall() - Closes all guest databases
  *   - fileMenu.save([f]) - Saves system root or guest database
  *
- * Implemented (Save As / Save Copy):
+ * Implemented (New / Save As / Save Copy):
+ *   - fileMenu.new(path, hidden=false) - Creates new empty ODB database, opens and mounts it
  *   - fileMenu.saveAs(path) / fileMenu.saveCopy(path) - Saves copy of current target database
  *
  * Stub implementations (return "not implemented"):
- *   - fileMenu.new, revert, print, quit
+ *   - fileMenu.revert, print, quit
  */
 
 #include "frontier.h"
@@ -697,15 +698,109 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 }
 
 
+/*
+ * filemenu_new - Create a new empty ODB database and open it
+ *
+ * This is the headless equivalent of File > New in the GUI. It:
+ *   1. Validates the file does not already exist (won't overwrite)
+ *   2. Creates a new file with opennewfile
+ *   3. Initializes ODB structure with odbNewFile
+ *   4. Closes the file
+ *   5. Reopens and mounts via filemenu_open
+ *
+ * Parameters:
+ *   hparam1 - Tree node: param 1 = file path (required), param 2 = hidden (optional, ignored)
+ *   vreturned - Return value (boolean)
+ *
+ * Returns: true on success, false on failure
+ */
+static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
+    tyfilespec fs;
+    hdlfilenum fnum;
+    bigstring bspath;
+    short ctparams;
+    boolean flhidden = false;
+    boolean flexists = false;
+
+    setbooleanvalue(false, vreturned);
+
+    ctparams = langgetparamcount(hparam1);
+
+    if (ctparams < 1 || ctparams > 2) {
+        langerrormessage(BIGSTRING("\x2e" "fileMenu.new requires 1 or 2 parameters (path, hidden)"));
+        return false;
+    }
+
+    /* Get the file path (param 1) - don't mark as last yet if there's a second param */
+    if (ctparams == 1)
+        flnextparamislast = true;
+
+    if (!getfilespecvalue(hparam1, 1, &fs)) {
+        log_error(LOG_COMP_DB, "filemenu_new: getfilespecvalue failed");
+        return false;
+    }
+
+    /* Consume optional 'hidden' param (ignored in headless mode) */
+    if (ctparams > 1) {
+        flnextparamislast = true;
+
+        if (!getbooleanvalue(hparam1, 2, &flhidden))
+            return false;
+    }
+
+    filespectopath(&fs, bspath);
+    log_debug(LOG_COMP_DB, "filemenu_new: creating new database at %s", stringbaseaddress(bspath));
+
+    /* Check if file already exists - don't overwrite */
+    if (fileexists(&fs, &flexists)) {
+        if (flexists) {
+            log_error(LOG_COMP_DB, "filemenu_new: file already exists at %s", stringbaseaddress(bspath));
+            langerrormessage(BIGSTRING("\x27" "Can't create: file already exists at path"));
+            return false;
+        }
+    }
+
+    /* Create the new file */
+    if (!opennewfile(&fs, 'LAND', 'ROOT', &fnum)) {
+        log_error(LOG_COMP_DB, "filemenu_new: opennewfile failed for %s", stringbaseaddress(bspath));
+        langerrormessage(BIGSTRING("\x24" "Can't create: failed to create new file"));
+        return false;
+    }
+
+    /* Initialize the ODB structure — guard globals since odbNewFile touches database state */
+    {
+        odb_context_guard guard;
+        boolean fl;
+
+        odb_guard_enter(&guard);
+        fl = odbNewFile(fnum);
+        odb_guard_exit(&guard);
+
+        if (!fl) {
+            log_error(LOG_COMP_DB, "filemenu_new: odbNewFile failed");
+            closefile(fnum);
+            langerrormessage(BIGSTRING("\x29" "Can't create: failed to initialize database"));
+            return false;
+        }
+    }
+
+    /* Close the OS file — odbNewFile closed the DB internals but not the file handle */
+    closefile(fnum);
+
+    log_debug(LOG_COMP_DB, "filemenu_new: created and initialized, now opening via filemenu_open");
+
+    /* Reopen and mount using the same logic as fileMenu.open */
+    return filemenu_open(hparam1, vreturned);
+}
+
+
 static boolean filemenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     (void)bserror;
     switch(token) {
         case filv_new:
-            /* Verb #0: filemenu.new - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
-            return false;
+            return filemenu_new(hparam1, vreturned);
 
         case filv_open:
             return filemenu_open(hparam1, vreturned);
