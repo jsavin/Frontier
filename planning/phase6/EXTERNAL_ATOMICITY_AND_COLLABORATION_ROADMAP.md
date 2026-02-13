@@ -713,7 +713,7 @@ Depends on format stability preferences.
 - Issue #135: Outline context refactoring (op_context_t infrastructure)
 - ADR-005: Parameter state thread-safety (pattern for thread-local migration)
 - `planning/phase3/GLOBAL_STATE_AUDIT.md`: Thread-safety audit findings
-- `planning/CRDT_FOUNDATION_ROADMAP.md`: Collaborative ODB vision
+- `planning/phase6/CRDT_FOUNDATION_ROADMAP.md`: Collaborative ODB vision
 - Dave Winer partnership discussions (2026-01-08)
 - Automattic partnership requirements (TBD)
 

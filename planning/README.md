@@ -32,11 +32,11 @@
 - `_CURRENT_STATUS.md` - Recent achievements and current focus
 - `_CURRENT_TODO_LIST.md` - Priority-ordered work queue
 - `phase4/INDEX.md` - Phase 4 roadmap (threading, networking, global state)
-- `CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation strategy
+- `phase6/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation strategy
 
 **Architecture Decisions**:
 - `architectural_decision_records/` - ADRs for major decisions
-- `EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md` - Multi-user collaboration
+- `phase6/EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md` - Multi-user collaboration
 - `DATABASE_CORRUPTION_PREVENTION.md` - Safety guidelines
 
 **Historical Context**:

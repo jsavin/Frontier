@@ -7,7 +7,7 @@
 - `CONTEXT_PATTERN_FOR_ODB_COLLABORATION.md` - Operation context pattern
 - `OUTLINE_OPERATION_CONTEXT.md` - Phase 3 implementation
 - `NODE_IDENTITY_ARCHITECTURE_ASSESSMENT.md` - UUID infrastructure
-- `../CRDT_FOUNDATION_ROADMAP.md` - Strategic vision
+- `../phase6/CRDT_FOUNDATION_ROADMAP.md` - Strategic vision
 
 ## Executive Summary
 
@@ -2099,7 +2099,7 @@ By Phase 8, Frontier will support Google Docs-style collaborative editing across
 - `CONTEXT_PATTERN_FOR_ODB_COLLABORATION.md` - Operation context pattern
 - `OUTLINE_OPERATION_CONTEXT.md` - Phase 3 implementation
 - `NODE_IDENTITY_ARCHITECTURE_ASSESSMENT.md` - UUID infrastructure
-- `../CRDT_FOUNDATION_ROADMAP.md` - Strategic vision
+- `../phase6/CRDT_FOUNDATION_ROADMAP.md` - Strategic vision
 
 ### Related Issues
 - Issue #135: Outline context refactoring (Phase 3 foundation)

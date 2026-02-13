@@ -39,8 +39,8 @@ Documents here are:
 ## Active vs Archived
 
 **Active reference docs remain in planning/**:
-- `CRDT_FOUNDATION_ROADMAP.md` - Current multi-user collaboration strategy
-- `EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md` - Active roadmap
+- `phase6/CRDT_FOUNDATION_ROADMAP.md` - Current multi-user collaboration strategy
+- `phase6/EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md` - Active roadmap
 - `DATABASE_CORRUPTION_PREVENTION.md` - Active safety guidelines
 - `legacy_glossary.md` - Actively used terminology reference
 

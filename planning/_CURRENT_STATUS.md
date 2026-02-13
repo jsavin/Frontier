@@ -199,7 +199,7 @@ Before resuming major infrastructure work, need decisions on:
 - **GUI Planning**: planning/gui/README.md
 - **GUI Architecture**: planning/gui/ARCHITECTURE.md
 - **GUI Protocol**: planning/gui/PROTOCOL.md
-- **CRDT Foundation**: planning/CRDT_FOUNDATION_ROADMAP.md
+- **CRDT Foundation**: planning/phase6/CRDT_FOUNDATION_ROADMAP.md
 
 ### Implementation Guides
 - **Getting Started**: docs/GETTING_STARTED.md

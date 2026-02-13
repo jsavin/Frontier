@@ -49,7 +49,7 @@ When working on the Frontier project, you have additional context about:
 
 ### Strategic Vision
 - **Collaborative ODB**: Frontier 2.0 targets Google Docs-style collaborative editing of Object Database (ODB) objects
-- See: `planning/CRDT_FOUNDATION_ROADMAP.md` - Foundation for multi-user collaborative ODB
+- See: `planning/phase6/CRDT_FOUNDATION_ROADMAP.md` - Foundation for multi-user collaborative ODB
 - Partnership context exists but focus technical work on implementation details
 - Vision: Runtime handles concurrency transparently, developers write single-threaded code
 

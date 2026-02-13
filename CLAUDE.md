@@ -117,7 +117,7 @@ Follow that file before starting non-trivial work.
 **Planning Documentation** (source of truth for strategic direction):
 - `planning/INDEX.md` - Navigation for active and archived workstreams
 - `planning/phase_overview.md` - Overview of all phases
-- `planning/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation roadmap
+- `planning/phase6/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation roadmap
 
 **Key Project Context**:
 - Frontier has "guest databases" - any databases opened that aren't system root

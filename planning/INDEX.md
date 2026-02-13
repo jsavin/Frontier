@@ -79,6 +79,26 @@ Change Log
 - ✅ Database context refactoring complete
 - [ODB Engine V7 Migration Plan](phase3/ODB_ENGINE_V7_MIGRATION_PLAN.md)
 
+### Phase 6: CRDT & Collaborative ODB (Future)
+
+**CRDT Foundation** - `planning/phase6/`
+- Multi-user collaborative editing of ODB objects via CRDTs
+- [Phase 6 INDEX](phase6/INDEX.md) — Overview and document links
+- [CRDT Foundation Roadmap](phase6/CRDT_FOUNDATION_ROADMAP.md) — Strategic vision (months 6-18)
+- [External Atomicity & Collaboration](phase6/EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md) — Migration path
+
+### Phase 7: Polyglot Scripting (Future)
+
+**Multi-Language Support** - `planning/phase7/polyglot/`
+- JavaScript and Python as first-class scripting languages
+- Abstract language interface (C vtable pattern)
+- Compiled extensions (Go, Rust via shared libraries)
+- [Vision & Architecture](phase7/polyglot/00-polyglot-vision.md) — Overview and prior art
+- [Language Interface Spec](phase7/polyglot/01-language-interface-spec.md) — C vtable definition
+- [JavaScript Integration](phase7/polyglot/02-javascript-integration.md) — JS engine analysis
+- [Python Integration](phase7/polyglot/03-python-integration.md) — Double-GIL problem and solutions
+- [Compiled Extensions](phase7/polyglot/04-compiled-extensions.md) — Go, Rust plugin model
+
 ### Phase 5: Parser & Tooling
 
 **Text Modernization** - `planning/phase5/text_modernization/`
@@ -122,8 +142,8 @@ The archive holds completed/retired material for historical reference.
 - **Patterns**: Explicit Context Passing (`architectural_decision_records/explicit-context-passing/`)
 
 ### Strategic Roadmaps
-- **CRDT Foundation**: `planning/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation
-- **Multi-User Collaboration**: `planning/EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md`
+- **CRDT Foundation**: `planning/phase6/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation
+- **Multi-User Collaboration**: `planning/phase6/EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md`
 - **Database Corruption Prevention**: `planning/DATABASE_CORRUPTION_PREVENTION.md`
 
 ### Reference Documentation

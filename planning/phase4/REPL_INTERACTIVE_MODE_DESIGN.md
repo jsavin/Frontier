@@ -1944,7 +1944,7 @@ LIBS += -lreadline  # or -ledit on macOS
 - `docs/CLI_USAGE_GUIDE.md` - Existing CLI documentation
 - `docs/TESTING_GUIDE.md` - Testing patterns and practices
 - `docs/VERB_IMPLEMENTATION_GUIDE.md` - Kernel verb implementation
-- `planning/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB vision
+- `planning/phase6/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB vision
 
 **Codebase References**:
 - `frontier-cli/main.c` - CLI entry point and initialization

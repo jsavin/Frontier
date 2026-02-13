@@ -350,7 +350,7 @@ This infrastructure is **essential for multi-user collaborative ODB**:
 - Conflict resolution callbacks: `onConflict(local_value, remote_value, merge_strategy)`
 - Connection state callbacks: `onConnect(user_id, session_id)`
 
-See: `planning/CRDT_FOUNDATION_ROADMAP.md` - Requires callback infrastructure for event notifications
+See: `planning/phase6/CRDT_FOUNDATION_ROADMAP.md` - Requires callback infrastructure for event notifications
 
 ### 3. Single-Threaded Developer Model
 
