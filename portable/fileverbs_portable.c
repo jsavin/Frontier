@@ -453,6 +453,23 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 	 * set to true, causing the next 2-parameter verb to fail with "too many parameters". */
 	flnextparamislast = false;
 
+	/*
+	 * Shared path buffers - hoisted above switch to avoid ~450KB stack frame.
+	 *
+	 * Without this, each case declares its own char path[4096] etc., and the
+	 * compiler allocates stack space for ALL case-local variables simultaneously
+	 * at function entry. Since UserTalk expressions like file.exists(file.folderFromPath(x))
+	 * cause recursive entry, two frames exceed the 512KB pthread stack limit.
+	 *
+	 * path       - primary path buffer (source path in two-path operations)
+	 * path2      - secondary path buffer (dest path in copy/move/rename)
+	 * normalized - for path normalization/comparison
+	 */
+	char path[4096];
+	char path2[4096];
+	char normalized[4096];
+	struct stat st;
+
 	switch (token) {
 
 		/* Tier 1: Critical file operations (20 verbs) - Phase 2 */
@@ -460,8 +477,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case fileexistsfunc: {
 			/* Check if file or folder exists */
 			tyfilespec fs;
-			char path[4096];
-			struct stat st;
 
 			flnextparamislast = true;
 
@@ -482,8 +497,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			 * This is required for file.sureFolder() to work correctly.
 			 */
 			tyfilespec fs;
-			char path[4096];
-			struct stat st;
 
 			flnextparamislast = true;
 
@@ -510,9 +523,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case fileisvolumefunc: {
 			/* Check if path is a mount point (volume root) */
 			tyfilespec fs;
-			char path[4096];
-			struct stat st, parent_st;
-			char parent_path[4096];
+			struct stat parent_st;
 
 			flnextparamislast = true;
 
@@ -537,10 +548,10 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return setbooleanvalue(false, vreturned);
 
 			/* Get parent directory path */
-			snprintf(parent_path, sizeof(parent_path), "%s/..", path);
+			snprintf(path2, sizeof(path2), "%s/..", path);
 
 			/* Get stat info for parent directory */
-			if (stat(parent_path, &parent_st) != 0)
+			if (stat(path2, &parent_st) != 0)
 				return setbooleanvalue(false, vreturned);
 
 			/* If device ID differs from parent, this is a mount point */
@@ -551,8 +562,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case filesizefunc: {
 			/* Return file size in bytes */
 			tyfilespec fs;
-			char path[4096];
-			struct stat st;
 
 			flnextparamislast = true;
 
@@ -573,8 +582,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case filecreatedfunc: {
 			/* Return file creation date as Frontier date (seconds since 1904) */
 			tyfilespec fs;
-			char path[4096];
-			struct stat st;
 			frontier_time_t frontierseconds;
 
 			flnextparamislast = true;
@@ -605,8 +612,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case filemodifiedfunc: {
 			/* Return file modification date as Frontier date */
 			tyfilespec fs;
-			char path[4096];
-			struct stat st;
 			frontier_time_t frontierseconds;
 
 			flnextparamislast = true;
@@ -630,8 +635,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case filefullpathfunc: {
 			/* Convert relative path to absolute path using realpath() */
 			tyfilespec fs;
-			char path[4096];
-			char resolved[4096];
 			bigstring bsresolved;
 
 			flnextparamislast = true;
@@ -643,17 +646,17 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				return false;
 
 			/* Use realpath() to resolve to absolute path */
-			if (realpath(path, resolved) == NULL) {
+			if (realpath(path, path2) == NULL) {
 				/* If realpath fails (file doesn't exist), just return the original path */
 				if (!filespectopath(&fs, bsresolved))
 					return false;
 			} else {
 				/* Convert C string to bigstring */
-				size_t len = strlen(resolved);
+				size_t len = strlen(path2);
 				if (len > 255)
 					len = 255;
 				bsresolved[0] = (unsigned char)len;
-				memcpy(&bsresolved[1], resolved, len);
+				memcpy(&bsresolved[1], path2, len);
 			}
 
 			/* Convert bigstring path back to filespec */
@@ -725,7 +728,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case newfunc: {
 			/* Create new empty file */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp;
 
 			flnextparamislast = true;
@@ -750,7 +752,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case newfolderfunc: {
 			/* Create new directory */
 			tyfilespec fs;
-			char path[4096];
 
 			flnextparamislast = true;
 
@@ -776,8 +777,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case filedeletefunc: {
 			/* Delete file or folder */
 			tyfilespec fs;
-			char path[4096];
-			struct stat st;
 
 			flnextparamislast = true;
 
@@ -816,7 +815,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case filerenamefunc: {
 			/* Rename file or folder */
 			tyfilespec fsold, fsnew;
-			char oldpath[4096], newpath[4096];
 
 			if (!getfilespecvalue(hparam1, 1, &fsold))
 				return false;
@@ -826,14 +824,14 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (!getfilespecvalue(hparam1, 2, &fsnew))
 				return false;
 
-			if (!filespec_to_cstring(&fsold, oldpath, sizeof(oldpath)))
+			if (!filespec_to_cstring(&fsold, path, sizeof(path)))
 				return false;
 
-			if (!filespec_to_cstring(&fsnew, newpath, sizeof(newpath)))
+			if (!filespec_to_cstring(&fsnew, path2, sizeof(path2)))
 				return false;
 
 			/* Use rename() system call */
-			if (rename(oldpath, newpath) != 0) {
+			if (rename(path, path2) != 0) {
 				if (errno == ENOENT) {
 					copyctopstring("File not found", bserror);
 				} else if (errno == EEXIST || errno == ENOTEMPTY) {
@@ -852,11 +850,9 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case filecopyfunc: {
 			/* Copy file from source to destination */
 			tyfilespec fssrc, fsdest;
-			char srcpath[4096], destpath[4096];
 			FILE *fpsrc = NULL, *fpdest = NULL;
-			char buffer[131072];  /* 128KB - reduces syscall overhead; macOS default stack is 8MB */
+			char *copybuf = NULL;
 			size_t bytes_read;
-			struct stat st;
 			boolean success = false;
 
 			if (!getfilespecvalue(hparam1, 1, &fssrc))
@@ -867,60 +863,70 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (!getfilespecvalue(hparam1, 2, &fsdest))
 				return false;
 
-			if (!filespec_to_cstring(&fssrc, srcpath, sizeof(srcpath)))
+			if (!filespec_to_cstring(&fssrc, path, sizeof(path)))
 				return false;
 
-			if (!filespec_to_cstring(&fsdest, destpath, sizeof(destpath)))
+			if (!filespec_to_cstring(&fsdest, path2, sizeof(path2)))
 				return false;
 
 			/* Check source exists and get permissions */
-			if (stat(srcpath, &st) != 0) {
+			if (stat(path, &st) != 0) {
 				copyctopstring("Source file not found", bserror);
 				return false;
 			}
 
+			/* Heap-allocate copy buffer (128KB) to avoid stack overflow */
+			copybuf = malloc(131072);
+			if (!copybuf) {
+				copyctopstring("Out of memory", bserror);
+				return false;
+			}
+
 			/* Open source for reading */
-			fpsrc = fopen(srcpath, "rb");
+			fpsrc = fopen(path, "rb");
 			if (!fpsrc) {
+				free(copybuf);
 				copyctopstring("Can't open source file", bserror);
 				return false;
 			}
 
 			/* Open destination for writing */
-			fpdest = fopen(destpath, "wb");
+			fpdest = fopen(path2, "wb");
 			if (!fpdest) {
 				fclose(fpsrc);
+				free(copybuf);
 				copyctopstring("Can't create destination file", bserror);
 				return false;
 			}
 
 			/* Copy data in chunks */
-			while ((bytes_read = fread(buffer, 1, sizeof(buffer), fpsrc)) > 0) {
-				if (fwrite(buffer, 1, bytes_read, fpdest) != bytes_read) {
+			while ((bytes_read = fread(copybuf, 1, 131072, fpsrc)) > 0) {
+				if (fwrite(copybuf, 1, bytes_read, fpdest) != bytes_read) {
 					copyctopstring("Write error during copy", bserror);
-					goto cleanup;
+					goto copy_cleanup;
 				}
 			}
 
 			/* Check for read error */
 			if (ferror(fpsrc)) {
 				copyctopstring("Read error during copy", bserror);
-				goto cleanup;
+				goto copy_cleanup;
 			}
 
 			success = true;
 
-		cleanup:
+		copy_cleanup:
 			if (fpsrc)
 				fclose(fpsrc);
 			if (fpdest)
 				fclose(fpdest);
+			free(copybuf);
 
 			/* Preserve permissions on success */
 			if (success) {
-				if (chmod(destpath, st.st_mode & 0777) != 0) {
+				if (chmod(path2, st.st_mode & 0777) != 0) {
 					log_warn(LOG_COMP_LANG, "file.copy: chmod failed for %s (errno=%d)",
-					        destpath, errno);
+					        path2, errno);
 					/* Continue - copy succeeded even if permission preservation failed */
 				}
 			}
@@ -934,8 +940,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case filemovefunc: {
 			/* Move file from source to destination */
 			tyfilespec fssrc, fsdest;
-			char srcpath[4096], destpath[4096];
-			struct stat st;
 
 			if (!getfilespecvalue(hparam1, 1, &fssrc))
 				return false;
@@ -945,50 +949,60 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (!getfilespecvalue(hparam1, 2, &fsdest))
 				return false;
 
-			if (!filespec_to_cstring(&fssrc, srcpath, sizeof(srcpath)))
+			if (!filespec_to_cstring(&fssrc, path, sizeof(path)))
 				return false;
 
-			if (!filespec_to_cstring(&fsdest, destpath, sizeof(destpath)))
+			if (!filespec_to_cstring(&fsdest, path2, sizeof(path2)))
 				return false;
 
 			/* Check source exists */
-			if (stat(srcpath, &st) != 0) {
+			if (stat(path, &st) != 0) {
 				copyctopstring("Source file not found", bserror);
 				return false;
 			}
 
 			/* Try rename() first (efficient for same volume) */
-			if (rename(srcpath, destpath) == 0) {
+			if (rename(path, path2) == 0) {
 				return setbooleanvalue(true, vreturned);
 			}
 
 			/* If cross-volume (EXDEV), fall back to copy+delete */
 			if (errno == EXDEV) {
 				FILE *fpsrc = NULL, *fpdest = NULL;
-				char buffer[131072];  /* 128KB - reduces syscall overhead; macOS default stack is 8MB */
+				char *copybuf = NULL;
 				size_t bytes_read;
 
+				/* Heap-allocate copy buffer (128KB) to avoid stack overflow */
+				copybuf = malloc(131072);
+				if (!copybuf) {
+					copyctopstring("Out of memory", bserror);
+					return false;
+				}
+
 				/* Open source for reading */
-				fpsrc = fopen(srcpath, "rb");
+				fpsrc = fopen(path, "rb");
 				if (!fpsrc) {
+					free(copybuf);
 					copyctopstring("Can't open source file", bserror);
 					return false;
 				}
 
 				/* Open destination for writing */
-				fpdest = fopen(destpath, "wb");
+				fpdest = fopen(path2, "wb");
 				if (!fpdest) {
 					fclose(fpsrc);
+					free(copybuf);
 					copyctopstring("Can't create destination file", bserror);
 					return false;
 				}
 
 				/* Copy data */
-				while ((bytes_read = fread(buffer, 1, sizeof(buffer), fpsrc)) > 0) {
-					if (fwrite(buffer, 1, bytes_read, fpdest) != bytes_read) {
+				while ((bytes_read = fread(copybuf, 1, 131072, fpsrc)) > 0) {
+					if (fwrite(copybuf, 1, bytes_read, fpdest) != bytes_read) {
 						copyctopstring("Write error during move", bserror);
 						fclose(fpsrc);
 						fclose(fpdest);
+						free(copybuf);
 						return false;
 					}
 				}
@@ -997,22 +1011,24 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				if (ferror(fpsrc)) {
 					fclose(fpsrc);
 					fclose(fpdest);
+					free(copybuf);
 					copyctopstring("Read error during move", bserror);
 					return false;
 				}
 
 				fclose(fpsrc);
 				fclose(fpdest);
+				free(copybuf);
 
 				/* Preserve permissions */
-				if (chmod(destpath, st.st_mode & 0777) != 0) {
+				if (chmod(path2, st.st_mode & 0777) != 0) {
 					log_warn(LOG_COMP_LANG, "file.move: chmod failed for %s (errno=%d)",
-					        destpath, errno);
+					        path2, errno);
 					/* Continue - copy succeeded even if permission preservation failed */
 				}
 
 				/* Delete source on success */
-				if (unlink(srcpath) != 0) {
+				if (unlink(path) != 0) {
 					copyctopstring("Can't delete source after copy", bserror);
 					return false;
 				}
@@ -1037,7 +1053,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* Get system or special folder path - map OSType codes to Unix paths */
 			OSType foldertype;
 			const char *folderpath = NULL;
-			char resolved[4096];
 			const char *home;
 			bigstring bspath;
 			tyfilespec fs;
@@ -1055,13 +1070,13 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			/* Map OSType codes to Unix paths */
 			switch (foldertype) {
 				case 'desk':  /* Desktop */
-					snprintf(resolved, sizeof(resolved), "%s/Desktop", home);
-					folderpath = resolved;
+					snprintf(path2, sizeof(path2), "%s/Desktop", home);
+					folderpath = path2;
 					break;
 
 				case 'docs':  /* Documents */
-					snprintf(resolved, sizeof(resolved), "%s/Documents", home);
-					folderpath = resolved;
+					snprintf(path2, sizeof(path2), "%s/Documents", home);
+					folderpath = path2;
 					break;
 
 				case 'temp':  /* Temporary Items */
@@ -1070,11 +1085,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 				case 'pref':  /* Preferences */
 					#ifdef __APPLE__
-						snprintf(resolved, sizeof(resolved), "%s/Library/Preferences", home);
+						snprintf(path2, sizeof(path2), "%s/Library/Preferences", home);
 					#else
-						snprintf(resolved, sizeof(resolved), "%s/.config", home);
+						snprintf(path2, sizeof(path2), "%s/.config", home);
 					#endif
-					folderpath = resolved;
+					folderpath = path2;
 					break;
 
 				case 'home':  /* Home directory */
@@ -1099,11 +1114,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 
 				case 'font':  /* Fonts */
 					#ifdef __APPLE__
-						snprintf(resolved, sizeof(resolved), "%s/Library/Fonts", home);
+						snprintf(path2, sizeof(path2), "%s/Library/Fonts", home);
 					#else
-						snprintf(resolved, sizeof(resolved), "%s/.fonts", home);
+						snprintf(path2, sizeof(path2), "%s/.fonts", home);
 					#endif
-					folderpath = resolved;
+					folderpath = path2;
 					break;
 
 				default:
@@ -1143,7 +1158,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			 * - Returns true if file opened successfully, false otherwise
 			 * - File can then be read/written using file.read(path, count) etc. */
 			tyfilespec fs;
-			char path[4096];
 			boolean success;
 
 			flnextparamislast = true;
@@ -1166,7 +1180,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			 * - Closes file previously opened with file.open(path)
 			 * - Returns true if closed successfully */
 			tyfilespec fs;
-			char path[4096];
 			boolean success;
 
 			flnextparamislast = true;
@@ -1185,7 +1198,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case endoffilefunc: {
 			/* file.endOfFile(path) - Check if at end of file */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp;
 			boolean iseof;
 
@@ -1211,7 +1223,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case setendoffilefunc: {
 			/* file.setEndOfFile(path) - Truncate file at current position */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp;
 			long pos;
 			int fd;
@@ -1251,7 +1262,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case getendoffilefunc: {
 			/* file.getEndOfFile(path) - Get file size */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp;
 			long current, size;
 
@@ -1302,7 +1312,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case setpositionfunc: {
 			/* file.setPosition(path, position) - Set file position */
 			tyfilespec fs;
-			char path[4096];
 			long position;
 			FILE *fp;
 
@@ -1336,7 +1345,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case getpositionfunc: {
 			/* file.getPosition(path) - Get current file position */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp;
 			long position;
 
@@ -1368,7 +1376,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case readlinefunc: {
 			/* file.readLine(path) - Read a line from file */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp;
 			bigstring bsline;
 			int ch;
@@ -1410,7 +1417,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case writelinefunc: {
 			/* file.writeLine(path, line) - Write a line to file */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp;
 			bigstring bsline;
 
@@ -1460,7 +1466,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			 * - If count is infinity, reads all remaining bytes
 			 * - Returns binary data */
 			tyfilespec fs;
-			char path[4096];
 			long long count;  /* Use long long to handle infinity (LLONG_MAX) */
 			FILE *fp;
 			Handle hdata;
@@ -1561,7 +1566,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			 * - Writes at current file position
 			 * - Returns true on success */
 			tyfilespec fs;
-			char path[4096];
 			Handle hdata;
 			FILE *fp;
 			size_t datasize;
@@ -1605,7 +1609,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case readwholefilefunc: {
 			/* Read entire file into string/binary */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp = NULL;
 			long filesize;
 			Handle hdata;
@@ -1693,7 +1696,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case writewholefilefunc: {
 			/* Write entire string or binary data to file */
 			tyfilespec fs;
-			char path[4096];
 			FILE *fp = NULL;
 			Handle hdata = NULL;
 			long datasize;
@@ -1742,7 +1744,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case comparefunc: {
 			/* Compare two files byte-by-byte - returns true if identical */
 			tyfilespec fs1, fs2;
-			char path1[4096], path2[4096];
 			FILE *fp1 = NULL, *fp2 = NULL;
 			int ch1, ch2;
 			boolean equal = true;
@@ -1755,13 +1756,13 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			if (!getfilespecvalue(hparam1, 2, &fs2))
 				return false;
 
-			if (!filespec_to_cstring(&fs1, path1, sizeof(path1)))
+			if (!filespec_to_cstring(&fs1, path, sizeof(path)))
 				return false;
 
 			if (!filespec_to_cstring(&fs2, path2, sizeof(path2)))
 				return false;
 
-			fp1 = fopen(path1, "rb");
+			fp1 = fopen(path, "rb");
 			if (!fp1) {
 				copyctopstring("Can't open first file", bserror);
 				return false;
@@ -1807,7 +1808,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		 * No extension: Return empty string
 		 */
 		tyfilespec fs;
-		char path[4096];
 		bigstring bspath, bsfilename, bsext, bsresult;
 		short i, lastslash, lastdot;
 
@@ -2088,7 +2088,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case volumefreespacefunc: {
 			/* Return free space available to non-root users (as long, may overflow) */
 			tyfilespec fs;
-			char path[4096];
 			struct statvfs vfs;
 
 			flnextparamislast = true;
@@ -2116,7 +2115,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case volumesizefunc: {
 			/* Return total volume size in bytes (as long, may overflow for large volumes) */
 			tyfilespec fs;
-			char path[4096];
 			struct statvfs vfs;
 
 			flnextparamislast = true;
@@ -2144,7 +2142,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case volumesizedoublefunc: {
 			/* Return total volume size in bytes (as double, handles large volumes) */
 			tyfilespec fs;
-			char path[4096];
 			struct statvfs vfs;
 
 			flnextparamislast = true;
@@ -2171,7 +2168,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case volumefreespacedoublefunc: {
 			/* Return free space available to non-root users (as double) */
 			tyfilespec fs;
-			char path[4096];
 			struct statvfs vfs;
 
 			flnextparamislast = true;
@@ -2198,7 +2194,6 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		case volumeblocksizefunc: {
 			/* Return volume block size in bytes */
 			tyfilespec fs;
-			char path[4096];
 			struct statvfs vfs;
 
 			flnextparamislast = true;
