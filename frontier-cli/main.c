@@ -174,6 +174,11 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Apply --log spec if provided (overrides env var settings)
+    if (g_cli_options.log_spec != NULL) {
+        log_parse_spec(g_cli_options.log_spec);
+    }
+
     // Handle help and version requests
     if (g_cli_options.show_help) {
         print_usage(argv[0]);
@@ -599,6 +604,7 @@ static void print_usage(const char* program_name) {
     printf("  --output PATH            Output path for migrated database (default: <input>.root7)\n");
     printf("  -f, --force              Force overwrite if output file exists\n");
     printf("  --skip-startup           Skip system.startup scripts (they run by default)\n");
+    printf("  --log SPEC               Set per-component log levels (e.g., db:trace,lang:warn)\n");
     printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
@@ -607,8 +613,10 @@ static void print_usage(const char* program_name) {
     printf("\n");
 
     printf("Environment Variables:\n");
-    printf("  FRONTIER_LOG_LEVEL       Set log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
-    printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (DB, HASH, LANG, etc.)\n");
+    printf("  FRONTIER_LOG             Per-component log levels (e.g., db:trace,lang:warn)\n");
+    printf("                           Overrides FRONTIER_LOG_LEVEL and FRONTIER_LOG_COMPONENT\n");
+    printf("  FRONTIER_LOG_LEVEL       Set global log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
+    printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (db, hash, lang, etc.)\n");
     printf("  FRONTIER_HEADLESS_RUN_STARTUP  Set to 0 to skip system.startup scripts (default: run)\n");
     printf("\n");
 

@@ -27,6 +27,7 @@ typedef struct {
     char* system_root;          // Path to system/root database (e.g., Frontier.root)
     char* migrate_database;     // Path to database to migrate (--migrate)
     char* output_path;          // Output path for migration (--output)
+    char* log_spec;             // Log spec string (--log comp:level,...)
     boolean verbose;            // Verbose output
     boolean debug;              // Debug output
     boolean output_json;        // Output results as JSON

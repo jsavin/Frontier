@@ -54,6 +54,8 @@ Minimum expectations:
 - Use Frontier structured logging for diagnostics (`log_trace`, `log_debug`, `log_info`, `log_warn`, `log_error`).
 - Do not use ad hoc `fprintf(stderr, ...)` for diagnostic logging.
 - User-facing terminal output may use `fputs` when appropriate.
+- Per-component log levels are supported via `FRONTIER_LOG` env var or `--log` CLI flag.
+- See `docs/LOGGING_STANDARDS.md` for full logging reference including per-component levels, recipes, and API.
 
 ## UserTalk and Integration Test Constraints
 

@@ -140,6 +140,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {"output-json", no_argument, 0, 'J'},
         {"verbose", no_argument, 0, 'v'},
         {"debug", no_argument, 0, 'D'},
+        {"log", required_argument, 0, 'L'},
         {"skip-startup", no_argument, 0, 'S'},
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'V'},
@@ -227,6 +228,27 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             case 'D':
                 // Debug mode
                 options->debug = true;
+                break;
+
+            case 'L':
+                // Log spec (--log comp:level,...)
+                if (options->log_spec != NULL) {
+                    // Multiple --log args: concatenate with commas
+                    size_t old_len = strlen(options->log_spec);
+                    size_t new_len = strlen(optarg);
+                    char *combined = malloc(old_len + 1 + new_len + 1);
+                    if (combined == NULL) {
+                        log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for --log");
+                        return false;
+                    }
+                    memcpy(combined, options->log_spec, old_len);
+                    combined[old_len] = ',';
+                    memcpy(combined + old_len + 1, optarg, new_len + 1);
+                    free(options->log_spec);
+                    options->log_spec = combined;
+                } else {
+                    options->log_spec = strdup(optarg);
+                }
                 break;
 
             case 'S':
@@ -334,6 +356,11 @@ void cli_free_options(cli_options_t* options) {
     if (options->output_path != NULL) {
         free(options->output_path);
         options->output_path = NULL;
+    }
+
+    if (options->log_spec != NULL) {
+        free(options->log_spec);
+        options->log_spec = NULL;
     }
 }
 
