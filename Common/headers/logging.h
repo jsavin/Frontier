@@ -11,8 +11,8 @@
  * Provides runtime-controlled logging with per-component filtering and levels.
  *
  * Configuration (highest to lowest precedence):
- *   1. FRONTIER_LOG=comp:level,comp:level,...  (unified, per-component levels)
- *   2. --log CLI argument                      (same syntax, merged with env)
+ *   1. --log CLI argument                      (overrides env vars)
+ *   2. FRONTIER_LOG=comp:level,comp:level,...  (unified, per-component levels)
  *   3. FRONTIER_LOG_LEVEL + FRONTIER_LOG_COMPONENT (legacy, still works)
  *
  * FRONTIER_LOG examples:
@@ -106,6 +106,7 @@ void log_parse_spec(const char *spec);
 /**
  * Check if a specific level/component is enabled.
  * Uses per-component level if set, otherwise global level.
+ * Note: LOG_LEVEL_ERROR is always enabled regardless of component or level settings.
  */
 bool log_is_enabled(log_level_t level, log_component_t component);
 
