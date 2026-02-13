@@ -791,8 +791,17 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     log_debug(LOG_COMP_DB, "filemenu_new: created and initialized, now opening via filemenu_open");
 
-    /* Reopen and mount using the same logic as fileMenu.open */
-    return filemenu_open(hparam1, vreturned);
+    /* Reopen and mount via filemenu_open. We use a create-close-reopen pattern because
+     * odbNewFile() closes the database internally (it's designed for minimal creation),
+     * so we must reopen it through the normal open path which handles hodblist insertion
+     * and system.compiler.files mounting. */
+    if (!filemenu_open(hparam1, vreturned)) {
+        log_warn(LOG_COMP_DB, "filemenu_new: filemenu_open failed after creation, cleaning up orphaned file");
+        deletefile(&fs);
+        return false;
+    }
+
+    return true;
 }
 
 
