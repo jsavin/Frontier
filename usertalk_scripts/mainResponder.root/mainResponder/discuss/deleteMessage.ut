@@ -1,0 +1,11 @@
+on deleteMessage (msgNum, adrRoot=nil) {
+	«Delete a message in a discussion group. Just mark its storage deleted, leave it in the tree.
+		«Changes:
+			«06/01/00; 5:31:30 PM by PBS
+				«adrRoot is a new optional parameter. It's the address of the discussion group to use. Pass this parameter when calling this script from outside a website framework rendering context -- otherwise this script will delete a message in the wrong discussion group.
+	
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrRoot));
+	adrMsgTable^.flDeleted = true;
+	adrMsgTable^.inResponseTo = -2;
+	
+	return (adrMsgTable)}

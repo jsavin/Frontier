@@ -1,0 +1,68 @@
+on signOut () {
+	«Changes:
+		«10/28/05; 10:44:51 PM by JES
+			«Comment out debugging code.
+		«10/28/05; 6:06:54 PM by JES
+			«If the cookieDomain for this group is a wild-card domain, clear legacy host-name-specific cookies.
+		«10/3/05; 2:03:30 PM by JES
+			«Ensure that both the site cookie and the admin cookie are reset, if the admin login feature is enabled.
+		«7/6/05; 3:29:15 AM by JES
+			«Log the sign out event. (Restoring an old change from 5/15/03, as yet unreleased.)
+		«3/28/05; 2:19:24 PM by JES
+			«Localized. Call sign-out callbacks.
+				«3/24/05, 23:19:29 by DAB
+		«10/24/99; 1:06:57 PM by PBS
+			«If the member is already signed out, a bug would present an error message about "" not being defined. Now check to see if the member is actually signed in before signing out.
+		«?/?/99 by PBS
+			«Created. Sign out a member.
+	
+	local (pta = html.getPageTableAddress ());
+	if defined (pta^.adrMemberInfo) { //PBS 10/24/99: sign out members only if they're already signed in
+		local (startticks = clock.ticks ());
+		local (mailAddress = nameOf (pta^.adrMemberInfo^));
+		local (t); new (tableType, @t);
+		t.memberLink = manilaSuite.members.linkToMember (pta^.defaultMembershipGroup, mailAddress);
+		
+		manilaSuite.members.callbacks (manilaSuite.getManilaSiteAddress (pta), pta^.adrMemberInfo, "signout");
+		
+		local (cookieHeaders = "");
+		on clearCookieForGroup (groupName) {
+			local (dateInPast = date.netStandardString (date.set (1, 1, 1980, 0, 0, 0)));
+			local (adrGroup = mainResponder.members.getMembershipTable (groupName));
+			local (mrCookieDomain = mainResponder.members.getCookieDomain (adrGroup));
+			if adrGroup^.cookieDomain beginsWith "*" { //clear legacy cookies -- more awful hacking
+				local (ctHostFields = string.countFields (pta^.host, ".") );
+				if ctHostFields > 2 {
+					local (ctCookieDomainFields = string.countFields (string.popLeading (mrCookieDomain, "."), ".") );
+					if ctCookieDomainFields < ctHostFields {
+						local (s = string.innerCaseName (adrGroup^.cookieName) + "=domain=" + pta^.host + "; path=/");
+						cookieHeaders = cookieHeaders + "\r\nSet-Cookie: " + string.innerCaseName (adrGroup^.cookieName) + "=; domain=" + pta^.host + "; path=/; expires=" + dateInPast}}};
+			local (domainString = "");
+			if mrCookieDomain != "" {
+				domainString = "domain=" + mrCookieDomain + "; "};
+			local (oneCookie = string.innerCaseName (adrGroup^.cookieName) + "=; " + domainString + "path=/; expires=" + dateInPast);
+			if cookieHeaders == "" {
+				cookieHeaders = oneCookie}
+			else { //this is an awful hack to get more than one cookie set -- we're doing a string hack on the webserver returns headers -- ouch!
+				cookieHeaders = cookieHeaders + "\r\nSet-Cookie: " + oneCookie};
+			«system.temp.debugString = cookieHeaders
+			return};
+		clearCookieForGroup (pta^.defaultMembershipGroup);
+		if config.mainResponder.prefs.flAdminGroupAlwaysAllowed {
+			clearCookieForGroup ("admin")};
+		
+		pta^.responseHeaders.["Set-Cookie"] = cookieHeaders;
+		
+		if defined (pta^.postArgs.referer) {
+			mainResponder.redirect (pta^.postArgs.referer)}
+		else {
+			if string.lower (pta^.method) == "post" {
+				mainResponder.redirect (pta^.url)}};
+		
+		if defined (manilaSuite.log.addEvent) {
+			manilaSuite.log.addEvent ("memberLogoff", startticks, @t)}};
+	pta^.title = manilaSuite.getString ("members.signoutPageTitle", pta: pta); // 05/03/25, 11:26:17 by DAB 
+	return (manilaSuite.getString ("members.signedoutNow", pta: pta))}; «05/03/25, 11:27:09 by DAB
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«signOut ()

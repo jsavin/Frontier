@@ -1,0 +1,110 @@
+on postEditedMessage (flAcceptFileUploads=false, flAcceptFileDeletions=false, flNeuterMacros=true, flNeuterText=true, lastUpdateTime=nil) {
+	«Changes:
+		«Wed, 19 May 1999 18:21:10 GMT by DW
+			«If postArgs contains a referer item, redirect to that instead of the discussion group message reader page.
+		«Thu, 20 May 1999 16:33:19 GMT by AR
+			«Added optional parameter named flAcceptFileUploads and defaulting to false. If true, the script saves attached files to the enclosure folder structure.
+		«Wed, 9 June 1999 4:44:53 PM by PBS
+			«Call mainResponder.discuss.memberCanEdit to see if the member can edit this message.
+				«It's possible that someone other than the original poster may be able to edit this message.
+		«12/23/99; 5:20:51 PM by DW
+			«Commented extraneous call to mainResponder.discuss.archiveMessage. 
+			«It wasn't necessary since mainResponder.discuss.setMessageText already calls it.
+			«I noticed it was creating two archive files for every change.
+		«03/15/00; 5:25:01 PM by PBS
+			«When computing the path to the attachments folder for this message, it now calls mainResponder.discuss.getMessageAttachmentsFolder -- a new bottleneck script.
+		«04/03/00; 10:50:09 AM by PBS
+			«lastUpdateTime is a new optional parameter: one can specify the last update time for a message that's been edited. This is used by Manila's time zones support.
+		«04/12/00; 1:29:33 PM by JES
+			«Localized error message if client doesn't have editorial permission.
+		«06/01/00; 5:25:27 PM by PBS
+			«Commented out superfluous call to mainResponder.discuss.archiveMessage: it's called by mainResponder.discuss.setMessageText.
+		«06/01/00; 7:47:10 PM by JES
+			«Merged localization with recent Brent's last change
+		«12/14/00; 2:17:55 PM by PBS
+			«Render OPML documents.
+		«05/23/01; 3:14:38 PM by PBS
+			«If a Radio-edited document is now being posted from the browser, delete the OPML and outline fields of the message table.
+		«10/13/04; 2:15:18 AM by JES
+			«Only delete attached files if the folder containing the attached file can be found.
+	
+	local (pta = html.getPageTableAddress ());
+	local (msgNum = number (pta^.postArgs.msgNum));
+	local (body = string (pta^.postArgs.body));
+	local (subject = string (pta^.postArgs.subject));
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum));
+	
+	«if string.lower (adrMsg^.member) != string.lower (nameOf (pta^.adrmemberinfo^))
+		«scriptError ("Can't accept changes to this message since you are not the author of the message.")
+	if not (mainResponder.discuss.memberCanEdit (adrMsg, pta^.adrMemberInfo)) { //PBS 6/9/99
+		scriptError (mainResponder.getString ("discuss.cantAcceptChangesNoPermission"))};
+	
+	bundle { //PBS 12/14/00: handle OPML formatted text
+		if defined (pta^.postArgs.flOpml) and (pta^.postArgs.flOpml == "true") { //it's a string, test string value
+			if not (date.versionLessThan (Frontier.version (), "7.0b21")) { //7.0b21 or greater required
+				op.newOutlineObject (body, @adrMsg^.opml);
+				local (localOutline);
+				try {
+					op.xmlToOutline (body, @localOutline)}
+				else {
+					scriptError ("Can't post changes because the document is not a valid OPML document.")};
+				
+				local (adrOutline = @localOutline);
+				local (oldTarget = target.set (adrOutline));
+				body = pikeRenderer.theRenderer (adrOutline);
+				try {target.set (oldTarget)};
+				
+				«local (s = string (localOutline))
+				«s = mainResponder.neuterText (s, true, false)
+				}}«op.newOutlineObject (s, @adrMsg^.outline)
+		else { //PBS 05/22/01: delete the outline and OPML fields of the message table if they exist
+			if defined (adrMsg^.opml) {
+				delete (@adrMsg^.opml)};
+			if defined (adrMsg^.outline) {
+				delete (@adrMsg^.outline)}}};
+	
+	mainResponder.discuss.setMessageText (adrMsg, body, flNeuterMacros, flNeuterText, lastUpdateTime:lastUpdateTime); //PBS 04/02/00: lastUpdateTime is a new parameter needed for time zone support in Manila
+	adrMsg^.subject = mainResponder.neuterText (subject);
+	fileMenu.saveMyRoot (adrMsg);
+	pta^.adrEditedMsg = adrMsg;
+	mainResponder.callbackLoop (@config.mainResponder.callbacks.editMessage, pta);
+	«mainResponder.discuss.archiveMessage (adrMsg) //PBS 06/01/00: commented out //8/13/99; 10:36:33 PM by DW
+	
+	if flAcceptFileUploads { //write attached file to the enclosure folder structure
+		if (defined (pta^.postArgs.attachFile) and (typeOf (pta^.postArgs.attachFile) == tableType)) {
+			mainResponder.discuss.postAttachedFile (@pta^.postArgs.attachFile, msgNum, pta^.members)}};
+	if flAcceptFileDeletions { //delete attached files that were checked off when the button was clicked
+		local (folderPath = "");
+		bundle { //compute folderPath
+			try {folderPath = mainResponder.discuss.getMessageAttachmentsFolder (adrMsg)}; //02/09/30, 14:56:47 by DAB
+			
+			«PBS 03/15/00: old code, now factored out
+				«local (pc = file.getPathChar ())
+				«local (adrdiscuss = mainResponder.discuss.openRoot ())
+				«on addToPaths (s) //append sub-folders to folderPath
+					«folderPath = folderPath + s + pc
+				«folderPath = adrdiscuss^.prefs.binaryServerFolder
+				«addToPaths (pta^.members)
+				«addToPaths (adrMsg^.member)
+				«addToPaths (nameOf (adrdiscuss^))
+				«addToPaths (msgNum)};};
+		if folderPath != "" { //made conditional 02/09/30, 14:56:39 by DAB
+			local (ix, ct = sizeOf (pta^.postArgs), adrArg, magicPrefix="delete_", f, fname);
+			for ix = ct downTo 1 {
+				adrArg = @pta^.postArgs [ix];
+				if nameOf (adrArg^) beginsWith magicPrefix {
+					fname = string.delete (nameOf (adrArg^), 1, sizeOf (magicPrefix));
+					local (i, ch);
+					for i = sizeOf (fname) downTo 1 { //pop off everything but the file name
+						ch = fname [i];
+						if not (string.isAlpha (ch) or string.isNumeric (ch) or (ch == ".") or (ch == " ")) {
+							fname = string.delete (fname, 1, i);
+							break}};
+					f = folderPath + fname;
+					if file.exists (f) {
+						file.delete (f)}}}}};
+	
+	local (redirectUrl = pta^.responderAttributes.urls^.discussMsgReader + msgNum);
+	if defined (pta^.postArgs.referer) {
+		redirectUrl = pta^.postArgs.referer};
+	mainResponder.redirect (redirectUrl)}

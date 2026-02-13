@@ -1,0 +1,29 @@
+on assignProfiles (pta=nil) {
+	«Changes:
+		«04/21/00; 2:26:22 AM by JES
+			«localized
+		«05/01/00; 3:08:37 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+	
+	local (editorsList);
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	editorsList = pta^.newsSite^.contributingEditors + pta^.newsSite^.sysopMail;
+	
+	local (oneEditor);
+	for oneEditor in editorsList {
+		if not defined (pta^.newsSite^.discussLinks.[oneEditor]) {
+			local (msgNum);
+			local (editorName = manilaSuite.unTaint (oneEditor));
+			local (groupName = pta^.defaultMembershipGroup);
+			local (adrMemberTable = mainResponder.members.getMemberTable (groupName, oneEditor));
+			if defined (adrMemberTable^.personalInfo.name) {
+				editorName = adrMemberTable^.personalInfo.name};
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.name = editorName;
+			msgNum = mainResponder.discuss.addMessage (manilaSuite.getString ("members.profilePageSubject", @replacementTable, pta: pta), oneEditor, 0, manilaSuite.getString ("members.profilePageBody", @replacementTable, pta: pta), false, false);
+			pta^.newsSite^.discussLinks.[oneEditor] = msgNum}};
+	
+	return (true)}

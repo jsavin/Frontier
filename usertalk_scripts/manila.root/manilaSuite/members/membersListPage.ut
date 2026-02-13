@@ -1,0 +1,224 @@
+on membersListPage () {
+	«Changes:
+		«11/2/05; 4:13:14 AM by JES
+			«If usernames are not required to be email addresses in this site, change column header from Email to Username. Localized.
+		«10/20/05; 2:07:13 AM by JES
+			«Don't allow members to be deleted if the membership group is outside of this site.
+		«8/30/05; 2:50:09 PM by JES
+			«If the number of members to list, as passed in through the URL to the member list page, is > 250, set to 250. This absolute maximum will prevent either inadvertent or intentional listing of very large numbers of members, which could cause the server to become unresponsive.
+		«11/24/04; 6:25:16 PM by JES
+			«When getting the usersMap key for a member, call through mainResponder.members.getUsersMapKey instead of generating it here.
+		«9/11/03; 5:23:38 PM by JES
+			«Added support for multiple pages for sites with large numbers of members.
+		«9/1/03; 5:26:18 PM by JES
+			«Add managerial functions for managing editors: Managing editors can see email addresses of members, and send mail to them directly by clicking their email address. Managing editors can also block, un-block and delete members.
+		«4/19/03; 12:31:11 PM by JES
+			«Use the new numeric mapped member keys member links instead of older style links which include the member's email address.
+		«04/21/00; 2:49:35 AM by JES
+			«localized
+		«01/6/00; 3:46:09 PM by PBS
+			«If flMembersListPublic is false, don't display the members list, it's private for the ME only.
+		«12/11/99; 3:50:42 PM by PBS
+			«Created. Generate an HTML list of all the members, linking each one to their profile page.
+	
+	local (pta = html.getPageTableAddress ());
+	local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta));
+	
+	pta^.title = manilaSuite.getString ("members.membersPageTitle"); // 4/21/00 JES: localized
+	
+	bundle { //PBS 1/6/00: don't display the members list if flMembersListPublic is false.
+		«The default below is true to take care of existing sites which expect the list to be public. New sites will have their pref set to false by default, because it's false in the new site template.
+		local (flPublic = manilaSuite.getNewsSitePref ("flMembersListPublic", default:true, flCreate:true));
+		if not flManagingEditor and not flPublic {
+			«This isn't the managing editor and the list isn't public. Don't display the list.
+			return (manilaSuite.getString ("members.membersListNotAvailableToPublic"))}}; // 4/21/00 JES: localized
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (groupName = pta^.defaultMembershipGroup);
+	local (adrMembershipGroup = mainResponder.members.getMembershipTable (groupName));
+	local (adrMembers = @adrMembershipGroup^.users);
+	local (adrMember);
+	local (ct = 1);
+	local (profileUrl = pta^.urls^.profilesHome);
+	if not (profileUrl endsWith "$") {
+		profileUrl = profileUrl + "$"};
+	
+	on hideEmail (memberKey) {
+		if memberKey contains "@" {
+			memberKey = string.nthField (memberKey, "@", 1) + "\\@" + string.mid (string.nthField (memberKey, "@", 2), 1, 1) + "..."};
+		return (memberKey)};
+	
+	local (htmlText = "", indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+	
+	if flManagingEditor { //if logged in as the managing editor, possibly handle a form POST
+		if pta^.method == "POST" {
+			manilaSuite.referer.checkSelf ();
+			if defined (pta^.postArgs.block) { //block one or more members
+				local (adr);
+				for adr in @pta^.postArgs {
+					if adr^ == "xxx" {
+						local (thisMember = nameOf (adr^));
+						local (adrThisMember = @adrMembers^.[thisMember]);
+						adrThisMember^.blocked = true}}};
+			if defined (pta^.postArgs.unblock) { //unblock one or more members
+				local (adr);
+				for adr in @pta^.postArgs {
+					if adr^ == "xxx" {
+						local (thisMember = nameOf (adr^));
+						local (adrThisMember = @adrMembers^.[thisMember]);
+						if defined (adrThisMember^.blocked) {
+							delete (@adrThisMember^.blocked)}}}};
+			if table.tableContains (adrsite, adrmembers) { //only allow deletion if member group is in this site
+				if defined (pta^.postArgs.delete) { //confirm first, then possibly delete one or more members
+					pta^.title = "Delete Member Confirm";
+					add ("<p>Are you sure you want to delete the following members? This operation cannot be undone.</p>");
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<ul>"); indentlevel++;
+					local (adr);
+					for adr in @pta^.postArgs {
+						if adr^ == "xxx" {
+							local (memberKey = string.lower (nameOf (adr^)));
+							local (memberName = string.replace (memberKey, "@", "\\@"));
+							local (adrThisMember = @adrMembers^.[memberKey]);
+							if defined (adrThisMember^.personalInfo.name) {
+								if typeOf (adrThisMember^.personalInfo.name) == stringType {
+									local (s = adrThisMember^.personalInfo.name);
+									s = string.trimWhiteSpace (s);
+									if s != "" {
+										memberName = s + " (" + memberName + ")"}}};
+							add ("<li><input type=\"hidden\" name=\"" + memberKey + "\" value=\"xxx\">" + memberName + "</li>")}};
+					add ("</ul>"); indentlevel--;
+					add ("<p><br /><input type=\"submit\" name=\"deleteConfirm\" value=\"Delete\">&nbsp;&nbsp;<input type=\"submit\" name=\"cancel\" value=\"Cancel\"></p>");
+					add ("</form>"); indentlevel--;
+					return (htmltext)};
+				if defined (pta^.postArgs.deleteConfirm) {
+					local (adr);
+					for adr in @pta^.postArgs {
+						if adr^ == "xxx" {
+							local (memberKey = string.lower (nameOf (adr^)));
+							if defined (adrMembers^.[memberKey].usersMapKey) {
+								try {delete (@adrMembershipGroup^.usersMap.[adrMembers^.[memberKey].usersMapKey])}};
+							try {delete (@adrMembers^.[memberKey])}}}}}}};
+	
+	on memberKeyToMappedKey (memberKey) {
+		return (mainResponder.members.getUsersMapKey (memberKey, adrMembershipGroup))};
+	
+	if flManagingEditor { //the member list is also a form
+		add ("<form method=\"POST\">"); indentlevel++};
+	add ("<table boder=\"0\" cellpadding=\"3\" cellspacing=\"0\">");
+	indentLevel++;
+	bundle { //column headers
+		local (memberHeader = manilaSuite.getString ("common.member"));
+		if flManagingEditor {
+			local (usernameHeader);
+			if manilaSuite.members.usernameMustBeEmail (adrsite) {
+				usernameHeader = manilaSuite.getString ("common.email")}
+			else {
+				usernameHeader = manilaSuite.getString ("common.username")};
+			add ("<tr><td></td><td></td><td><b>" + memberHeader + "</b></td><td><b>" + usernameHeader + "</b></td><td><b>" + manilaSuite.getString ("common.typeColumnName") + "</b></td></tr>")}
+		else { //not managing editor
+			add ("<tr><td></td><td><b>" + memberHeader + "</b></td></tr>")}};
+	
+	local (meList = manilaSuite.editors.getManagingEditorList ());
+	local (ceList = manilaSuite.editors.getContributingEditorList ());
+	local (conList = manilaSuite.editors.getContentEditorList ());
+	bundle { //make sure editor lists are in all lower-case
+		on makeListLowerCase (adrlist) {
+			local (i, sizeList = sizeOf (adrlist^));
+			for i = 1 to sizeList {
+				adrlist^[i] = string.lower (adrlist^[i])};
+			return};
+		makeListLowerCase (@meList);
+		makeListLowerCase (@ceList);
+		makeListLowerCase (@conList)};
+	
+	local (start = 1, numtolist = 50);
+	if defined (pta^.searchArgs) {
+		if pta^.searchArgs != "" {
+			local (args); new (tableType, @args);
+			webserver.parseArgs (pta^.searchArgs, @args);
+			if defined (args.s) {
+				try {start = number (args.s)}};
+			if defined (args.c) {
+				try {numtolist = number (args.c)};
+				if numtolist > 250 {
+					numtolist = 250}}}};
+	local (ix = start-1, ctmembers = sizeOf (adrmembers^));
+	loop {
+		ix++;
+		if (ix-start) >= numtolist {
+			break};
+		if ix > ctmembers {
+			break};
+		local (adrMember = @adrmembers^[ix]);
+		local (memberKey = string.lower (nameOf (adrMember^)));
+		local (memberName = hideEmail (memberKey));
+		if defined (adrMember^.personalInfo.name) {
+			if typeOf (adrMember^.personalInfo.name) == stringType {
+				local (s = adrMember^.personalInfo.name);
+				s = string.trimWhiteSpace (s);
+				if s != "" {
+					memberName = string.replaceAll (s, " ", "&nbsp;")}}};
+		local (profileLink = html.getLink (memberName, profileUrl + memberKeyToMappedKey (memberKey)));
+		local (flThisMember = false);
+		try { //set flThisMember
+			if adrMember == pta^.adrMemberInfo {
+				flThisMember = true}};
+		if flManagingEditor { //add checkboxes to block, unblock or delete
+			local (memberType = "member");
+			case true {
+				ceList contains memberKey {
+					memberType = "contributing&nbsp;editor"};
+				conList contains memberKey {
+					memberType = "content&nbsp;editor"};
+				meList contains memberKey {
+					memberType = "managing&nbsp;editor"}};
+			if defined (adrMember^.blocked) {
+				if adrMember^.blocked {
+					memberType = memberType + "&nbsp;(blocked)"}};
+			local (checkbox = "");
+			if not flThisMember { //set checkbox
+				checkbox = "<input type=\"checkbox\" name=\"" + memberKey + "\" value=\"xxx\">"};
+			if flThisMember {
+				add ("<tr><td>" + checkbox + "</td><td align=\"right\" style=\"padding-right:10px\"><i>" + (ct+start-1) + ".</i>" + "</td><td style=\"padding-right:10px\"><i>" + profileLink + "</i></td><td style=\"padding-right:10px\"><i>" + memberKey + "</i></td><td><i><nobr>" + memberType + "</nobr></i></td></tr>")}
+			else {
+				add ("<tr><td>" + checkbox + "</td><td align=\"right\" style=\"padding-right:10px\">" + (ct+start-1) + "." + "</td><td style=\"padding-right:10px\">" + profileLink + "</td><td style=\"padding-right:10px\">" + memberKey + "</td><td><nobr>" + memberType + "</nobr></td></tr>")}}
+		else { //not managing editor
+			if defined (adrMember^.blocked) { //don't list blocked members
+				if adrMember^.blocked {
+					continue}};
+			if flThisMember {
+				add ("<tr><td align=\"right\"><i>" + (ct+start-1) + ".</i>" + "&nbsp;&nbsp;</td><td><i>" + profileLink + "</i></td></tr>")}
+			else {
+				add ("<tr><td align=\"right\">" + (ct+start-1) + "." + "&nbsp;&nbsp;</td><td>" + profileLink + "</td></tr>")}};
+		ct++;
+		sys.systemTask ()};
+	
+	add ("</table>"); indentLevel--;
+	if ctmembers > numtolist { //add next/prev links
+		add ("<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;");
+		local (prevstart = start - numtolist);
+		if prevstart < 1 {
+			add (manilaSuite.getString ("common.previous"))}
+		else {
+			add (html.getLink (manilaSuite.getString ("common.previous"), pta^.uri + "?s=" + prevstart + "&c=" + numtolist))};
+		local (nextstart = start + numtolist);
+		add (" | ");
+		if nextstart > ctmembers {
+			add (manilaSuite.getString ("common.next"))}
+		else {
+			add (html.getLink (manilaSuite.getString ("common.next"), pta^.uri + "?s=" + nextstart + "&c=" + numtolist))};
+		add ("</p>")};
+	
+	if flManagingEditor { //add buttons and close out the form
+		local (deleteButton = "");
+		if table.tableContains (adrsite, adrmembers) { //only add Delete button if member group is in this site
+			deleteButton = "&nbsp;&nbsp;<input type=\"submit\" name=\"delete\" value=\"" + manilaSuite.getString ("admin.deleteMemberButton") + "\">"};
+		add ("<p><input type=\"submit\" name=\"block\" value=\"" + manilaSuite.getString ("admin.blockMemberButton") + "\">&nbsp;&nbsp;<input type=\"submit\" name=\"unblock\" value=\"" + manilaSuite.getString ("admin.unblockMemberButton") + "\">" + deleteButton + "</p>");
+		add ("</form>"); indentlevel--};
+	
+	htmlText = manilaSuite.unTaint (htmlText);
+	
+	return (htmlText)}

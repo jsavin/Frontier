@@ -1,0 +1,190 @@
+on getMessageWml (msgNum, flStripHtml = false, pta = nil) {
+	
+	«Build one or more WML documents based on the specified DG message.
+		«02/16/2000 at 7:30:31 AM by AR
+			«If neccessary, the document is split up into several decks. We're using simple heuristics to determine the compiled size of a deck. The Nokia 7110 crashes when it receives a compiled deck larger then about 1400 bytes.
+			«The WAP/WML specs are available from http://www.wapforum.org/
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	pta^.autoParagraphs = false;
+	pta^.clayCompatibility = false;
+	wp.newTextObject ("{bodytext}", @pta^.template);
+	
+	local (xmlText = "", indentLevel = 0);
+	on add (s) {
+		xmlText = xmlText + string.filledString ("\t", indentLevel) + s + "\r\n"};
+	on escapeDollarSigns (s) {
+		return (string.replaceAll (s, "$", "$$"))};
+	on escapeWithAmpersand (s) {
+		s = string.replaceAll (s, "&", "&amp;");
+		s = string.replaceAll (s, "<", "&lt;");
+		s = string.replaceAll (s, ">", "&gt;");
+		s = string.replaceAll (s, "\"", "&quot;");
+		return (s)};
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, pta));
+	
+	bundle { //prevent the card from being served from the cache
+		«See http://wap.colorline.no/wap-faq/?format=html#04.005
+			«Expires: Mon, 26 Jul 1997 05:00:00 GMT
+			«Last-Modified: DD. month YYYY HH:MM:SS GMT
+			«Cache-Control: no-cache, must-revalidate
+			«Pragma: no-cache
+		pta^.responseHeaders.["Expires"] = date.netStandardString (date.set (2, 1, 2000, 0, 0, 0)); //in the past
+		pta^.responseHeaders.["Last-Modified"] = date.netStandardString (adrmsg^.lastUpdate);
+		pta^.responseHeaders.["Cache-Control"] = "no-cache, must-revalidate";
+		pta^.responseHeaders.["Pragma"] = "no-cache"};
+	
+	pta^.responseHeaders.["Content-Type"] = "text/vnd.wap.wml";
+	
+	local (cards, indexOfCard = 0);
+	new (tableType, @cards);
+	
+	try {
+		on chewOneBit (s) {
+			if flStripHtml {
+				s = searchEngine.stripMarkup (s)};
+			s = html.processMacros (s, adrPageTable:pta);
+			s = string.trimWhiteSpace (s);
+			if s != "" { //skip blank lines
+				local (cardID = "card" + string.padWithZeros (++indexOfCard, 3));
+				new (tableType, @cards.[cardID]);
+				cards.[cardID].id = cardID;
+				cards.[cardID].body = escapeDollarSigns (s);
+				cards.[cardID].title = escapeDollarSigns (escapeWithAmpersand (adrMsg^.subject))}};
+		on outlineToXML (adrOutline) {
+			local (oldTarget = target.set (adrOutline));
+			local (oldCursor = op.getcursor ());
+			op.firstSummit ();
+			op.fullExpand ();
+			on getLineText () { //get the text of the cursor and all its subheads
+				local (lineText = op.getLineText ());
+				local (s = "");
+				s = s + lineText;
+				if op.go (right, 1) {
+					loop {
+						s = s + " " + getLineText (); //recurse
+						if not op.go (down, 1) {
+							break}};
+					op.go (left, 1)};
+				s = string.popTrailing (s, ' ');
+				return (s)};
+			loop {
+				local (s = getLineText ());
+				chewOneBit (s);
+				if not op.go (down, 1) {
+					break}};
+			op.setCursor (oldCursor);
+			try {target.set (oldTarget)}};
+		on stringToXML (s) {
+			local (ix, lineString);
+			bundle { //do some string gymnastics to get the line endings right
+				s = string.replaceAll (s, "\r\n", "\r");
+				s = string.replaceAll (s, "\n", "\r")};
+			while sizeOf (s) > 0 {
+				ix = string.patternMatch ("\r\r", s);
+				if ix == 0 {
+					lineString = s;
+					s = ""}
+				else {
+					lineString = string.mid (s, 1, ix - 1);
+					s = string.delete (s, 1, ix + 1)};
+				chewOneBit (lineString)}};
+		
+		if typeOf (adrMsg^.body) == outlineType {
+			outlineToXML (@adrMsg^.body)}
+		else {
+			stringToXML (string (adrMsg^.body))}}
+	else {
+		new (tableType, @cards);
+		new (tableType, @cards.error);
+		cards.error.id = "error";
+		cards.error.body = "A server error occured: " + escapeWithAmpersand (tryerror);
+		cards.error.title = "Ooops!"};
+	
+	local (ct = 1, start = -1, end = -1);
+	if defined (pta^.searchArgs) {
+		try {
+			local (argstable);
+			new (tableType, @argstable);
+			webserver.parseArgs (pta^.searchArgs, @argstable);
+			if defined (argstable.ct) {
+				ct = number (argstable.ct) + 1};
+			if defined (argstable.s) {
+				start = number (argstable.s)};
+			if defined (argstable.e) {
+				end = number (argstable.e)}}};
+	
+	local (myname = pta^.path);
+	bundle { //add WML header and template element
+		add ("<?xml version=\"1.0\"?>");
+		add ("<!DOCTYPE wml PUBLIC \"-//WAPFORUM//DTD WML 1.1//EN\" \"http://www.wapforum.org/DTD/wml_1.1.xml\">");
+		add ("<wml>"); indentLevel++;
+		
+		add ("<template>"); indentLevel++;
+		add ("<do type=\"accept\" name=\"Refresh\" label=\"Refresh Deck\"><go href=\"" + myname + "?ct=" + ct + "\"/></do>");
+		add ("</template>"); indentLevel--};
+	
+	local (ix, maxCards = sizeOf (cards));
+	local (len = 50, maxlen = 1150);
+	bundle { //prefligt start and end
+		if (start == -1) and (end != -1) { //loop backwards
+			if end < 1 {
+				end = 1};
+			if end > maxCards {
+				end = maxCards};
+			for ix = end downto 1 {
+				local (adrcard = @cards[ix]);
+				len = len + string.length (adrcard^.body) + string.length (adrcard^.title) + 100;
+				if len > maxlen {
+					break}};
+			start = ix}
+		else {
+			if start < 1 {
+				start = 1}
+			else {
+				if start > maxCards {
+					start = maxCards}};
+			if end < 1 {
+				end = 1}
+			else {
+				if end > maxCards {
+					end = maxCards}};
+			if end < start {
+				end = start};
+			for ix = start to maxCards {
+				local (adrcard = @cards[ix]);
+				len = len + string.length (adrcard^.body) + 100;
+				if len > maxlen {
+					break}};
+			end = ix}};
+	
+	for ix = start to end {
+		local (adrcard = @cards[ix]);
+		add ("<card id=\"" + adrcard^.id + "\" title=\"" + adrcard^.title + " " + ix +"/" + maxCards + "\">"); indentLevel++;
+		add ("<p>"); indentLevel++;
+		add (adrcard^.body);
+		add ("<br/>");
+		if ix == end {
+			if ix != maxCards {
+				add ("<do type=\"accept\" label=\"Next Deck\"><go href=\"" + myname + "?ct=" + ct + "&amp;s=" + (ix+1) + "\"/></do>")}}
+		else {
+			add ("<do type=\"accept\" label=\"Next Card\"><go href=\"#" + cards[ix+1].id + "\"/></do>")};
+		if ix == start {
+			if ix != 1 {
+				add ("<do type=\"accept\" label=\"Previous Deck\"><go href=\"" + myname + "?ct=" + ct + "&amp;e=" + (ix-1) + "#" + cards[ix-1].id + "\"/></do>")}}
+		else {
+			add ("<do type=\"accept\" label=\"Previous Card\"><go href=\"#" + cards[ix-1].id + "\"/></do>")};
+		add ("</p>"); indentLevel--;
+		add ("</card>"); indentLevel--};
+	
+	add ("</wml>"); indentLevel--;
+	
+	pta^.activeUrls = false;
+	pta^.processMacros = false;
+	pta^.expandGlossaryItems = false;
+	
+	return (xmlText)}

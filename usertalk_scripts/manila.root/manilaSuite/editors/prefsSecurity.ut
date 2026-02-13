@@ -1,0 +1,64 @@
+on prefsSecurity (okayMembersList) {
+	«Changes:
+		«9/22/05; 2:34:06 AM by JES
+			«If config.mainResponder.prefs.flAdminGroupAlwaysAllowed is defined and true, also check the admin group, ignoring the okayMembersList.
+		«04/19/00 at 6:54:25 PM by JES
+			«localized error message
+		«04/10/00; 3:13:10 PM by PBS
+			«This a bottleneck utility for #security scripts that need to allow access only to certain members (usually editors). It supports both old and new cookie formats.
+	
+	on error () {
+		scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: @responderAttributes))}; // 4/19/00 JES: localized
+	
+	on authenticate (groupName, flCheckOkayList=true) {
+		local (adrGroup = mainResponder.members.getMembershipTable (groupName));
+		local (cookieName = string.replaceAll (adrGroup^.cookieName, " ", ""));
+		local (cookie, email);
+		
+		if not defined (requestHeaders.cookies.[cookieName]) {
+			return (false)};
+		cookie = requestHeaders.cookies.[cookieName];
+		email = mainResponder.members.getMemberKeyFromCookie (cookie);
+		
+		if flCheckOkayList { //make sure the member key is on the okayMembersList
+			local (flOkay = false);
+			local (lowerEmail = string.lower (email));
+			local (oneMember);
+			for oneMember in okayMembersList {
+				if string.lower (oneMember) == lowerEmail {
+					flOkay = true;
+					break}};
+			
+			if not flOkay {
+				return (false)}};
+		
+		bundle { //authenticate
+			local (flHashedCookie = mainResponder.members.isHashedCookieFormat (cookie));
+			if flHashedCookie { //PBS 04/10/00: is it a new style cookie?
+				try {
+					local (t = mainResponder.members.cookieStringToTable (cookie));
+					mainResponder.members.getMemberTableWithHash (groupName, email, t.h)} //t.h contains the hashString
+				else {
+					return (false)}}
+			else { //it's an old style cookie
+				try {
+					cookie = string.urlDecode (cookie);
+					local (password = string.nthField (cookie, '\t', 2));
+					mainResponder.members.getMemberTableWithPassword (groupName, email, password)}
+				else {
+					return (false)}}};
+		
+		return (true)}; //authenticated
+	
+	local (adrNewsSite = responderAttributes.newsSite);
+	local (groupName = adrNewsSite^.sysopMemberOfGroup);
+	local (flCheckAdminGroup = false);
+	
+	if authenticate (groupName) {
+		return (true)};
+	if defined (config.mainResponder.prefs.flAdminGroupAlwaysAllowed) {
+		if config.mainResponder.prefs.flAdminGroupAlwaysAllowed {
+			if authenticate ("admin", false) {
+				return (true)}}};
+	
+	error ()}

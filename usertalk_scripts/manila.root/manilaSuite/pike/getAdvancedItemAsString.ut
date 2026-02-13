@@ -1,0 +1,67 @@
+on getAdvancedItemAsString (itemName, pta=nil) {
+	«Get an advanced item -- template, CSS, etc. -- as a string.
+		«01/13/00; 4:44:31 PM by PBS
+		«Changes:
+			«05/01/00; 5:31:04 PM by PBS
+				«Support for the news item template.
+			«05/04/00; 3:39:58 PM by JES
+				«localized
+			«10/14/00; 3:58:33 PM by PBS
+				«Added support for home page template.
+			«11/20/00; 4:56:12 PM by PBS
+				«Added directory template.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrSite = pta^.adrSiteRootTable);
+	local (adrNewsSite = pta^.newsSite);
+	
+	on getItem (adr) {
+		if not defined (adr^) {
+			return ("")};
+		return (string (adr^))};
+	
+	local (lowerItemName = string.lower (itemName));
+	case lowerItemName {
+		"template" {
+			return (getItem (@adrSite^.["#template"]))};
+		"navigation" {
+			return (getItem (@adrSite^.["#navigator"].outline))};
+		"cascading style sheet" {
+			return (getItem (@adrNewsSite^.cascadingStyleSheet))};
+		"javascript" {
+			return (getItem (@adrNewsSite^.javascript))};
+		"site structure" {
+			return (getItem (@adrSite^.["#hierarchy"].outline))};
+		"custom prefs" {
+			if not defined (adrNewsSite^.prefsWizard) {
+				return ("")};
+			return (getItem (@adrNewsSite^.prefsWizard.outline))};
+		"news day template" {
+			return (getItem (@adrNewsSite^.newsDayTemplate))};
+		"join now members box" {
+			if not defined (adrNewsSite^.membersBoxTemplates) {
+				return ("")};
+			return (getItem (@adrNewsSite^.membersBoxTemplates.signInBox))};
+		"sign out members box" {
+			if not defined (adrNewsSite^.membersBoxTemplates) {
+				return ("")};
+			return (getItem (@adrNewsSite^.membersBoxTemplates.signOutBox))};
+		"news item template" {
+			if not defined (adrNewsSite^.newsItems.template) {
+				return ("")};
+			return (getItem (@adrNewsSite^.newsItems.template))};
+		"home page template" { //PBS 10/14/00
+			local (adrObject = @adrSite^.["#homePageTemplate"]);
+			if not defined (adrObject^) {
+				wp.newTextObject ("", adrObject)};
+			return (getItem (adrObject))};
+		"directory template" { //PBS 11/20/00
+			local (adrObject = @adrSite^.["#newsSite"].directory.template);
+			return (getItem (adrObject))}};
+	
+	bundle { // 5/4/00 JES: localized error message
+		local (replacementTable); new (tableType, @replacementTable);
+		replacementTable.itemName = itemName;
+		scriptError (manilaSuite.getString ("pike.getAdvancedItemAsStringError", @replacementTable, pta: pta))}}

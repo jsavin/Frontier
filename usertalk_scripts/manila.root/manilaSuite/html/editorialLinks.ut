@@ -1,0 +1,209 @@
+on editorialLinks (pta=nil) {
+	«Build the editorial links for contributing, content, and managing editors.
+		«Changes:
+			«6/10/07; 12:38:47 PM by LL
+				«Support a new server level preference to override the help link URL.
+			«2/22/07; 1:30:19 AM by JS
+				«Add a space after each link. Some mobile browsers run the links together all on one line without this, even on very narrow layouts.
+			«2005
+				«10/19/05; 6:18:08 PM by JES
+					«Fix typo: adrcallback, not adrcallbak.
+				«10/17/05; 12:42:32 AM by JES
+					«Bug fix: If canonical site name is "manilaWebsite", don't strip from the site name when adding admin page link.
+				«10/17/05; 12:22:01 AM by JES
+					«Restore generating help link from pta^.urls^.editorialHelp. Help URL is now set in firstFilter, based on site shell version and presence of manilaData.constants.helpUrlDefault. Link is only changed if its value is present in manilaData.legacyObjects.helpUrls.
+				«10/3/05; 2:35:40 PM by JES
+					«If logged in as a server admin, change Editors Only to Admins Only, and make it a link to the admin page for the current site.
+				«10/1/05; 4:07:42 PM by JES
+					«If logged in as a server admin, italicize the Editors Only menu prompt to give a hint to the user.
+				«4/4/05; 2:04:32 AM by JES
+					«Added support for callbacks at config.manila.callbacks.editorialLinks. Callbacks return some HTML text for the editorial links to override the default. Return false to allow Manila to do its thing.
+			«2004 and earlier
+				«12/2/04; 2:03:58 PM by JES
+					«Plug-ins can override the default link text by defining a string named editorsOnlyLinkText in their config table.
+				«10/22/04; 10:11:18 AM by EDS
+					«added base url to plugin url when adding for non ME editors, incorporating DAB patch
+				«6/1/03; 11:40:22 AM by JES
+					«Change Help link to the new Manila User's Guide. When adding the current page in the Manila site to the searchArgs for the help link, url-encode the path to the current page.
+				«6/30/02; 3:18:22 PM by JES
+					«Added CSS class, editorialLink, to the <a href> elements.
+				«1/25/02; 6:05:42 PM by PBS
+					«Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+				«12/3/01; 5:19:40 PM by PBS
+					«Allow Content Editors to edit navigation XML.
+				«05/08/00; 7:00:03 PM by JES
+					«Fix broken link for localized prefs
+				«05/08/00; 12:51:07 AM by JES
+					«localized the DHTML menu -- localizers copy the object at manilaData.dhtmlEditorialMenu, and translate the text to their liking
+				«05/01/00; 5:29:44 PM by PBS
+					«Add the News link if news items are enabled.
+				«04/27/00; 12:28:49 PM by JES
+					«added IE5 support for DHTML menu
+				«04/21/00; 1:14:12 AM by JES
+					«localized, with the exception of the plugin interface
+				«04/16/00; 11:34:45 AM by PBS
+					«Add the Gems link, if gems are enabled for this site.
+				«02/23/00; 4:08:47 PM by PBS
+					«Support for Manila plug-ins -- plug-ins can show up in the Editors only menu.
+				«12/9/99; 10:57:35 PM by PBS
+					«Minor performance boost gained by untainting the text at the end rather than for each URL individually.
+	
+	if not defined (config.manila.callbacks.editorialLinks) {
+		new (tableType, @config.manila.callbacks.editorialLinks)};
+	local (adrcallback);
+	for adrcallback in @config.manila.callbacks.editorialLinks {
+		try {
+			while typeOf (adrcallback^) == addressType {
+				adrcallback = adrcallback^};
+			local (result = adrcallback^ ());
+			if result != false { //callbacks return a string
+				return (result)}}};
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if pta^.flEditor { //build the Editors Only links
+		local (htmlText = "");
+		
+		«local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta))
+		local (flManagingEditor = pta^.flManagingEditor);
+		local (flContentEditor = pta^.flContentEditor);
+		
+		if defined (html.menubar.render) { // don't try to render a menu if Frontier doesn't know how
+			if manilaSuite.html.clientSupportsDHTMLMenu (pta) { // 4/27/00 JES: send the DHTML menu if the client supports it
+				local (menuHtml, adrMenu, adrLanguageTable = manilaSuite.getLanguageTableAddress (pta));
+				bundle { // if there's a localized DHTML menu, use that one, otherwise, fall back to server/Frontier settings
+					if defined (adrLanguageTable^.menus.dhtmlEditorialMenu) {
+						adrMenu = @adrLanguageTable^.menus.dhtmlEditorialMenu}
+					else {
+						local (adrLanguagesTable = parentOf (adrLanguageTable^));
+						if defined (config.globals.lanugage) { // is there a language setting for the server?
+							if defined (adrLanguagesTable^.[config.globals.lanugage].menus.dhtmlEditorialMenu) {
+								adrMenu = @adrLanguagesTable^.[config.globals.lanugage].menus.dhtmlEditorialMenu}};
+						if adrMenu != nil { // no server setting -- is there a Frontier setting?
+							if defined (user.prefs.language) {
+								if defined (adrLanguagesTable^.[user.prefs.language].menus.dhtmlEditorialMenu) {
+									adrMenu = @adrLanguagesTable^.[user.prefs.language].menus.dhtmlEditorialMenu}}}};
+					if adrMenu == nil { // we didn't find a server setting or a Frontier setting -- use Manila's legacy menu
+						if defined (manilaData.dhtmlEditorialMenu) {
+							adrMenu = @manilaData.dhtmlEditorialMenu}}};
+				
+				menuHtml = html.menubar.render (adrMenu);
+				
+				if defined (pta^.adrMsgToEdit) {
+					menuHtml = string.replaceAll (menuHtml, "[[msgnum]]", pta^.adrMsgToEdit^.msgnum, false)};
+				
+				local (defaultTitle = pta^.title);
+				menuHtml = string.replaceAll (menuHtml, "[[shortcutname]]", "$" + defaultTitle, false);
+				
+				return (menuHtml)}};
+		
+		on add (s) {
+			htmlText = htmlText + (s + "\r");};
+		
+		on addLink (name, url, flAddPathArgsTitle=false) {
+			if flAddPathArgsTitle {
+				url = url + "[[urlEncodedTitle]]"};
+			add ("<b><a href=\"" + url + "\" class=\"editorialLink\">" + name + "</a></b> ");
+			return (true)};
+		
+		local (storiesUrl = pta^.urls^.editorialStories);
+		local (picturesUrl = pta^.urls^.editorialPictures);
+		local (shortcutsUrl = pta^.urls^.editorialShortcuts);
+		local (discussUrl = pta^.urls^.discussHomePage);
+		local (logOffUrl = pta^.urls^.memberLogoff);
+		local (editorialHelpUrl = pta^.urls^.editorialHelp);
+		
+		local (editorsOnlyPrompt = "<b>" + manilaSuite.getString ("editorialLinks.editorsOnly", pta: pta) + "</b>");
+		if pta^.flServerAdmin { //Editors Only is Admin Only, and is link to admin page
+			editorsOnlyPrompt = "<b>" + manilaSuite.getString ("editorialLinks.adminsOnly", pta: pta) + "</b>";
+			local (adminUrl = "");
+			if defined (user.inetd.config.http2) {
+				if user.inetd.config.http2.startup {
+					local (siteName = nameOf (pta^.adrSiteRootTable^));
+					if string.lower (siteName) endsWith "manilawebsite" {
+						if string.lower (siteName) != "manilawebsite" { //special case, but needed at UL
+							siteName = string.delete (siteName, sizeOf (siteName) - 12, 13)}};
+					local (host = pta^.host);
+					if host contains ":" {
+						host = string.popSuffix (host, ":")};
+					adminUrl = "http://" + host + ":" + user.inetd.config.http2.port + "/?site=" + string.urlEncode (siteName)}};
+			if adminUrl == "" { //just italicise the menu title
+				editorsOnlyPrompt = "<i>" + editorsOnlyPrompt + "</i>"}
+			else {
+				editorsOnlyPrompt = "<a href=\"" + adminUrl + "\" title=\"Click to go to the server admin page for this site.\"><i>" + editorsOnlyPrompt + "</a></i>"}};
+		add (editorsOnlyPrompt + " "); // 4/21/00 JES: localized
+		
+		bundle { //news items
+			if defined (pta^.newsSite^.flNewsItemSite) {
+				if pta^.newsSite^.flNewsItemSite {
+					local (newsUrl = pta^.urls^.editorialNewsItems);
+					addLink (manilaSuite.getString ("editorialLinks.news", pta: pta), newsUrl)}}};
+		
+		addLink (manilaSuite.getString ("editorialLinks.stories", pta: pta), storiesUrl); // 4/21/00 JES: localized
+		addLink (manilaSuite.getString ("editorialLinks.pictures", pta: pta), picturesUrl); // 4/21/00 JES: localized
+		
+		bundle { //PBS 04/12/00: maybe add Gems link, if enabled
+			if manilaSuite.gems.enabledInSite (pta) {
+				local (gemsUrl = pta^.urls^.editorialGems);
+				addLink (manilaSuite.getString ("editorialLinks.gems", pta: pta), gemsUrl)}}; // 4/21/00 JES: localized
+		
+		addLink (manilaSuite.getString ("editorialLinks.shortcuts", pta: pta), shortcutsUrl, true); // 4/21/00 JES: localized
+		addLink (manilaSuite.getString ("editorialLinks.discuss", pta: pta), discussUrl); // 4/21/00 JES: localized
+		
+		if flManagingEditor { //Site Prefs, Admin, and Bulletins
+			local (sitePrefsUrl = manilaSuite.admin.getSitePrefsPanelUrl ("welcome", pta));
+			local (adminUrl = pta^.urls^.editorialAdmin);
+			addLink (manilaSuite.getString ("editorialLinks.prefs", pta: pta), sitePrefsUrl); // 5/2/00 JES: localized
+			addLink (manilaSuite.getString ("editorialLinks.admin", pta: pta), adminUrl); // 5/2/00 JES: localized
+			
+			if defined (pta^.responderAttributes.urls^.editorialBulletins) {
+				local (bulletinsUrl = pta^.urls^.editorialBulletins);
+				addLink (manilaSuite.getString ("editorialLinks.bulletins", pta: pta), bulletinsUrl)}}; // 4/21/00 JES: localized
+		if flContentEditor and not flManagingEditor { //PBS 12/03/01: navigation
+			local (sitePrefsUrl = manilaSuite.admin.getSitePrefsPanelUrl ("advanced", pta));
+			addLink ("Navigation", sitePrefsUrl)};
+		
+		bundle { //PBS 02/23/00: add any plug-ins to the Editors only menu -- 4/21/00 JES: need localized pligin interface for this
+			if defined (pta^.adrSiteRootTable^.["#plugins"]) {
+				if defined (pta^.adrSiteRootTable^.["#plugins"].enabled) {
+					local (baseUrl = pta^.ftpSite^.url);
+					local (adrItem);
+					for adrItem in @pta^.adrSiteRootTable^.["#plugins"].enabled {
+						local (pluginName = nameOf (adrItem^));
+						local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
+						if defined (adrConfig^) {
+							if adrConfig^.flAddToEditorsOnlyMenu {
+								local (linkText = pluginName);
+								if defined (adrConfig^.editorsOnlyLinkText) {
+									linkText = adrConfig^.editorsOnlyLinkText};
+								if flManagingEditor {
+									addLink (linkText, baseURL + adrItem^)}
+								else {
+									if adrConfig^.flEditors {
+										addLink (linkText, baseURL+ adrItem^)}}}}}}}}; // 10/22/04; 10:12:52 AM by EDS incorporating DAB
+		
+		addLink (manilaSuite.getString ("editorialLinks.logoff", pta: pta), logOffUrl); // 4/21/00 JES: localized
+		
+		bundle { //add Help link -- add relative path to object to search args
+			local (flCustomHelpUrlEnabled = false);
+			if defined (config.manila.prefs.flCustomHelpUrlEnabled) {
+				flCustomHelpUrlEnabled = config.manila.prefs.flCustomHelpUrlEnabled};
+			if flCustomHelpUrlEnabled {
+				if defined (config.manila.prefs.customHelpUrl) {
+					editorialHelpUrl = config.manila.prefs.customHelpUrl}}
+			else {
+				if not (editorialHelpUrl endsWith "?") {
+					editorialHelpUrl = editorialHelpUrl + "?"};
+				local (relativePath = pta^.uri);
+				local (urlParts = string.urlSplit (pta^.ftpSite^.url));
+				local (basePath = "/" + urlParts [3]);
+				relativePath = string.delete (relativePath, 1, sizeOf (basePath));
+				editorialHelpUrl = editorialHelpUrl + "path=" + string.urlEncode ("/" + relativePath);
+				if pta^.pathArgs != "" {
+					editorialHelpUrl = editorialHelpUrl + string.urlEncode ("$" + pta^.pathArgs)}};
+			addLink (manilaSuite.getString ("editorialLinks.help", pta: pta), editorialHelpUrl)}; // 4/21/00 JES: localized
+		
+		return (string.replaceAll (htmlText, "{", "&#123;"))};
+	
+	return ("")}

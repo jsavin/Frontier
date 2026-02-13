@@ -1,0 +1,17 @@
+on getRelativePath (pta=nil) {
+	«Get the relative path to the page being built.
+		«03/14/00; 6:53:07 PM by PBS
+	
+	if pta == nil {
+		local (pta = html.getPageTableAddress ())};
+	
+	if defined (pta^.pathRelativeToSite) {
+		return (pta^.pathRelativeToSite)};
+	
+	local (relativePath = pta^.uri);
+	local (urlParts = string.urlSplit (pta^.ftpSite^.url));
+	local (basePath = "/" + urlParts [3]);
+	relativePath = string.delete (relativePath, 1, sizeOf (basePath));
+	pta^.pathRelativeToSite = relativePath;
+	
+	return (relativePath)}

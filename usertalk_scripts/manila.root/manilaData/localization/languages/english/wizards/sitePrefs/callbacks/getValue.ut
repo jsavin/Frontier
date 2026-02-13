@@ -1,0 +1,2 @@
+on getValue (partialAddress, defaultValue) {
+	return (manilaData.sitePrefs.wizard.callbacks.getValue (partialAddress, defaultValue))}

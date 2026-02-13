@@ -1,0 +1,191 @@
+on set (username, password, siteName, msgNum, subject, body, bodytype, windowInfo, rendererInfo) {
+	«Set the subject, body, and bodyType of a message.
+	«Changes:
+		«4/14/07; 10:02:22 PM by LL
+			«Support a new preference to filter text from members for any restricted HTML.
+		«1/17/04; 5:52:13 PM by JES
+			«Only set rendererInfo if the client sent us a table. Prevents errors when using the RPC interface to set the contents of a message previously edited with Radio.
+		«Changes prior to 1/1/04:
+			«03/15/01; 9:39:28 PM by JES
+				«Only set windowInfo if the client sent us a table. Otherwise, all of the messages created using the python sample code in Dave's article can't be set via RPC.
+			«01/02/01; 1:16:22 AM by JES
+				«On Macs, convert the subject to Mac text.
+			«12/31/00; 6:18:13 PM by JES
+				«On Macs, don't convert the body to Mac text if the type is text/x-opml, since opml is always stored as Latin text.
+			«12/11/00; 4:36:59 PM by PBS
+				«If it's an OPML document, and windowInfo is 0, get windowInfo from the OPML.
+			«11/07/00; 4:27:07 PM by JES
+				«Fixed a bug where macros would be neutered if the message type is text/x-opml.
+			«11/03/00; 1:00:44 AM by JES
+				«Handle processing of incoming opml documents.
+			«05/20/00; 9:31:23 PM by JES
+				«added language to context table for localization support
+			«05/01/00; 5:32:36 PM by PBS
+				«Support for news items which require some special processing as they're XML formatted.
+			«04/09/00; 3:40:30 PM by PBS
+				«If this is a Mac server, convert the text to Mac text. Pike always sends text as latin, even when Pike is running on a Mac workstation.
+			«04/05/00; 12:48:04 PM by PBS
+				«Call the homePageUpdate callbacks.
+			«04/04/00; 9:28:05 PM by PBS
+				«Added siteName and adrSite to the context table that's in scope when calling the rpcSaveMessage callbacks.
+				«Get a better URL than the msgReader$ URL.
+			«04/03/00; 11:31:15 AM by PBS
+				«Support for time zone prefs.
+			«03/30/00; 10:16:22 AM by PBS
+				«All macros were being neutered -- but that's not right. The context is now set up correctly so that safe macros are now not neutered.
+			«03/28/00; 2:05:18 AM by PBS
+				«Support for automatic static rendering.
+			«03/23/00; 3:44:39 PM by PBS
+				«New parameter: rendererInfo. It's a table (an XML-RPC struct) containing information about what renderer to use and when to use it. Two elements: name and flRenderOnEntry. name is the name of the renderer to use; flRenderOnEntry is a boolean specifying whether or not to render on entry into the system. Currently, Manila ignores the second parameter, and always renders everything on entry.
+				«Also: save the renderer info in the discussion group message table.
+			«03/23/00;11:40:43 AM by PBS
+				«There was a synchronization bug -- the body of the message was getting set before the outline was being rendered. So while the outline was being rendered, the body was just a wrapped version of the outline. Now the text of the message isn't set until after the outline has been rendered.
+			«02/10/00; 6:22:26 PM by PBS
+				«If this object is checked out by someone else, generate an error message.
+			«02/05/00; 5:39:55 PM by PBS
+				«New parameter: windowInfo. It contains information about the size, position, scroll state, and expansion state of the window.
+			«01/19/00 3:46:17 PM by PBS
+				«If plain text, convert \r\r to \r\n\r\n, which is how Manila gets text from the browser. The script which generates scriptingNews2.xml, for instance, looks for \r\n\r\n patterns. This may not be the only case.
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't set message \"" + msgNum + "\" because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum, adrroot:adrDiscuss));
+	local (adrSite = config.manila.sites.[siteName]);
+	
+	bundle { //PBS 02/10/00: make this message isn't checked out by someone else
+		if not (manilaSuite.rpcUtils.memberCanCheckOut (username, password, adrMsg, siteName, true)) { //true because this is a message
+			scriptError ("Can't set the contents of \"" + subject + "\" because it's being edited by another member.")}};
+	
+	manilaSuite.rpcUtils.authorCheck (siteName, username, adrMsg);
+	if system.environment.isMac { //01/02/01 JES: convert to Mac text
+		subject = latinToMac.convert (subject)};
+	subject = searchEngine.stripMarkup (subject);
+	if subject != "" {
+		adrMsg^.subject = subject};
+	adrMsg^.bodyType = string (bodyType);
+	if typeOf (windowInfo) == tableType { //03/15/2001 JES: only set windowInfo if the client sent a table
+		adrMsg^.windowInfo = windowInfo}; //PBS 02/05/00: save window info
+	if typeOf (rendererInfo) == tableType { //1/17/04 JES: only set rendererInfo if the client sent a table
+		table.assign (@adrMsg^.rendererInfo, rendererInfo)}; //PBS 03/23/00: save renderer info
+	
+	bundle { //PBS 04/09/00: if this server is a Mac, convert to Mac text
+		if system.environment.isMac and not (string.lower (bodytype) == "text/x-opml") {
+			body = latinToMac.convert (body)}};
+	
+	bundle { //PBS 04/05/00: call the homePageUpdate callbacks
+		try {manilaSuite.callbacks.rpcHomePageUpdate (adrMsg, adrSite, siteName, body, username, password)}};
+	
+	local (flFilterMemberHtml = false);
+	bundle { //check legal tags for member
+		if not manilaSuite.rpcUtils.isEditor (siteName, userName) {
+			if not defined (config.manila.prefs.flRestrictHtmlForMembers) {
+				config.manila.prefs.flRestrictHtmlForMembers = true};
+			
+			if config.manila.prefs.flRestrictHtmlForMembers {
+				if manilaSuite.getNewsSitePref ("discussionGroup.flRestrictHtmlForMembers", adrSite, true) {
+					flFilterMemberHtml = true}}}};
+	
+	case string.lower (bodyType) { //special processing for different types
+		"text/x-outline-tabbed" {
+			manilaSuite.rpcUtils.cleanObjectForImport (@body, flEnableSafeMacros:true);
+			op.newOutlineObject (body, @adrMsg^.outline);
+			mainResponder.neuterOutline (@adrMsg^.outline);
+			local (renderer = rendererInfo.name); //PBS 03/23/00: get the name of the renderer to use
+			manilaSuite.rpcUtils.renderMessageOutline (siteName, adrMsg, renderer, flFilterMemberHtml);
+			body = adrMsg^.body};
+		"text/x-opml" { //11/01/00 JES: handle opml documents
+			table.assign (@adrMsg^.opml, body); //12/31/00 JES: store the opml as a string
+			if system.environment.isMac { //12/31/00 JES: convert to Mac text
+				op.xmlToOutline (latinToMac.convert (body), @adrMsg^.outline)}
+			else {
+				op.xmlToOutline (body, @adrMsg^.outline)};
+			manilaSuite.rpcUtils.cleanObjectForImport (@adrMsg^.outline, flEnableSafeMacros:true);
+			mainResponder.neuterOutline (@adrMsg^.outline);
+			local (renderer = rendererInfo.name); //PBS 03/23/00: get the name of the renderer to use
+			manilaSuite.rpcUtils.renderMessageOutline (siteName, adrMsg, renderer, flFilterMemberHtml);
+			body = adrMsg^.body;
+			
+			if windowInfo == 0 { //PBS 12/11/00: get windowInfo from OPML
+				local (derivedWindowInfoTable);
+				derivedWindowInfoTable = manilaSuite.rpcUtils.getWindowInfoFromOpml (body);
+				table.assign (@adrMsg^.windowInfo, derivedWindowInfoTable)}};
+		"text/plain" {
+			if flFilterMemberHtml {
+				body = manilaSuite.html.stripHtmlAttributes (body)};
+			body = string.replaceAll (body, "\r\r", "\r\n\r\n")}}; //PBS 01/19/00: mimic text as it comes from the browser. The XML generator, for instance, looks for \r\n\r\n patterns.
+	
+	bundle { //PBS 03/30/00: set up the context so that safe macros are not neutered
+		«mainResponder.neuterText demands a page table, so create one.
+		local (pt);
+		new (tableType, @pt);
+		pt.enableSafeMacros = true;
+		if defined (adrSite^.["#newsSite"].legalTags) {
+			pt.legalTags = @adrSite^.["#newsSite"].legalTags};
+		local (t);
+		if manilaSuite.news.isNewsItem (adrMsg) {
+			new (tableType, @t);
+			t.department = true;
+			t.url = true;
+			t.description = true;
+			t.newsitem = true;
+			pt.legalTags = @t};
+		local (oldPta);
+		try {oldPta = html.getPageTableAddress ()};
+		html.setPageTableAddress (@pt);
+		local (lastUpdateTime = clock.now ());
+		local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+		if defined (adrSite^.["#newsSite"].timeZone) { //PBS 04/03/00: convert via time zone prefs
+			local (timeZone = adrSite^.["#newsSite"].timeZone.zone);
+			lastUpdateTime = manilaSuite.convertTime (clock.now (), timeZone);
+			manilaSuite.discuss.setTimeZoneForMessage (adrMsg, timeZone)};
+		mainResponder.discuss.setMessageText (adrMsg, body, lastUpdateTime:lastUpdateTime);
+		
+		if oldPta == nil {
+			html.deletePageTableAddress ()}
+		else {
+			html.setPageTableAddress (oldPta)}};
+	
+	fileMenu.saveMyRoot (adrMsg);
+	local (returnTable);
+	returnTable = adrMsg^;
+	returnTable.msgNum = msgNum;
+	bundle { //get the URL for this page
+		local (storyReaderUrl = adrSite^.["#urls"].storyReader);
+		if not (storyReaderUrl endsWith "$") {
+			storyReaderUrl = storyReaderUrl + "$"};
+		returntable.url = storyReaderUrl + msgNum;
+		if msgNum == adrSite^.["#newsSite"].discussLinks.homePageMsgNum {
+			returnTable.url = adrSite^.["#ftpSite"].url}
+		else {
+			if defined (adrSite^.["#hierarchy"].paths.[msgNum]) {
+				returnTable.url = adrSite^.["#ftpSite"].url + string.popLeading (adrSite^.["#hierarchy"].paths.[msgNum], '/')}}};
+	
+	manilaSuite.rpcUtils.cleanMessageTableForExport (@returnTable);
+	
+	bundle { //call the rpcSaveMessage callbacks at config.mainResponder.callbacks.rpcSaveMessage
+		if defined (config.mainResponder.callbacks.rpcSaveMessage) {
+			local (paramTable);
+			new (tableType, @paramTable);
+			paramTable.dgName = manilaSuite.rpcUtils.getDiscussGroupName (siteName);
+			paramTable.username = username;
+			paramTable.password = password;
+			paramTable.title = returnTable.subject;
+			paramTable.body = body;
+			paramTable.msgNum = msgNum;
+			paramTable.url = returnTable.url;
+			paramTable.adrMsgTable = adrMsg;
+			paramTable.lastSave = clock.now ();
+			paramTable.siteName = siteName;
+			paramTable.adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName);
+			if defined (adrSite^.["#prefs"].language) { // 05/19/00 JES: localization support
+				paramTable.language = adrSite^.["#prefs"].language}
+			else {
+				paramTable.language = nil};
+			if defined (client) {
+				paramTable.client = client};
+			try {mainResponder.callbackLoop (@config.mainResponder.callbacks.rpcSaveMessage, @paramTable)}}};
+	
+	return (returnTable)}

@@ -1,0 +1,9 @@
+on checkIn (username, password, siteName) {
+	«Release custody of the sign out members box.
+		«02/11/00; 11:18:58 AM by PBS
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject = @adrNewsSite^.membersBoxTemplates.signOutBox);
+	local (itemName = "sign out members box");
+	
+	return (manilaSuite.rpcUtils.releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName))}

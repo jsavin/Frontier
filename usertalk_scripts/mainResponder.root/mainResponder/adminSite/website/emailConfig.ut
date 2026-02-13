@@ -1,0 +1,1 @@
+return (mainResponder.controlPanel.emailConfig ())

@@ -1,0 +1,66 @@
+on getPathAddress(adrHierarchy, path, flCreatePath = true, nameAtt="") {
+	«manilaSuite.sitePrefs.siteStructure.getPathAddress : 04/05/16, 16:02:59 by DAB
+		«copied from manilaFixer.sitePrefs.siteStructure.getPathAddress
+		«getPathAddress : copied out of manilaFixer.siteStructure.map 01/10/28, 18:24:42 by DAB
+	on locateCategory(adrParent, nme) {
+		local (lowernme = string.lower(nme));
+		local (adr, adrCategory = nil, pathnameAtt);
+		for adr in adrParent {
+			if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
+				continue};
+			pathnameAtt = string.lower(xml.getAttributevalue(adr, "pathname"));
+			if (pathnameAtt == lowernme) {
+				adrCategory = adr;
+				break}};
+		case true {
+			(not adrCategory) {
+				if not flCreatePath {
+					return false};
+				«add category
+				adrCategory = xml.addTable(adrParent, "category");
+				adr = @adrCategory^.["/atts"];
+				new(tabletype, adr);
+				adr^.name = nme;
+				adr^.pathname = nme};
+			not manilaSuite.sitePrefs.siteStructure.isXMLCategory(adrCategory) { //02/04/15, 15:37:18 by DAB
+				«found, but not a category
+				adr = parentof(adrCategory^); //01/10/24, 19:16:01 by DAB
+				try {delete(@adrCategory^.["/pcdata"])};
+				lowernme = string.replace(nameof(adrCategory^), "story", "category"); //01/10/24, 19:16:01 by DAB
+				table.rename(adrCategory, lowernme); //01/10/24, 19:16:01 by DAB
+				adrCategory = @adr^.[lowernme]}}; //01/10/24, 19:16:01 by DAB
+		return adrCategory};
+	
+	local (adrParent= adrHierarchy, nodeName, adr); //01/10/24, 19:06:29 by DAB
+	«look for location of path
+	path = string.popLeading(path, "/"); //02/09/05, 10:28:24 by DAB
+	local (nodes = string.countFields(path, "/"));
+	local (ix);
+	if nodes > 1 {
+		for ix = 1 to nodes-1 {
+			adrParent = locateCategory(adrParent, string.nthField(path, "/", ix));
+			if adrParent == nil {
+				return false}}};
+	«look for last level
+	nodeName = string.nthField(path, "/", nodes);
+	for adr in adrParent {
+		if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
+			continue};
+		if string.lower(xml.getAttributeValue(adr, "pathname")) == string.lower(nodeName) {
+			return adr}};
+	
+	if flCreatePath {
+		local (s = "story");
+		if path endsWith "/" {
+			s = "category"};
+		adr = xml.addTable(adrParent, s);
+		try {delete(@adrparent^.["/pcdata"])}; //01/10/23, 20:32:44 by DAB
+		new(tabletype, @adr^.["/atts"]);
+		adr^.["/atts"].pathname = nodeName;
+		«adr^.["/atts"].name = nodeName    //needs a value  02/09/08, 15:02:24 by DAB
+		if nameAtt == "" { //03/03/28, 16:00:20 by DAB
+			nameAtt = nodename};
+		adr^.["/atts"].name = nameAtt; //03/03/28, 16:00:27 by DAB
+		return adr};
+	
+	return 0}

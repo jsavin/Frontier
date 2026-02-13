@@ -1,0 +1,52 @@
+on checkPermissions (pta=nil) {
+	«Changes
+		«11/3/04; 6:18:11 PM by JES
+			«Respect the flEnabled flag in the site's pathPermissions sub-table of #newsSite.
+		«5/21/03; 3:26:03 PM by JES
+			«Created. Check permissions on a page request to see if the member has permission to view the page.
+			«If permission is denied, we throw an error.
+	
+	return (true); // 11/05/05; 10:46:47 AM by PR wired off
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrdata = manilaSuite.pathPermissions.init (adrsite));
+	if not adrdata^.flEnabled {
+		return (true)};
+	local (lowerpath = string.lower (pta^.uri));
+	if lowerpath == "/member/login" { //always allowed
+		return (true)};
+	local (siteurl = manilaSuite.getSiteUrl (adrsite));
+	local (urlparts = string.urlSplit (siteurl));
+	lowerpath = string.delete (lowerpath, 1, sizeOf (urlparts[3]));
+	
+	local (adrpath);
+	
+	on deny () {
+		scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))};
+	
+	for adrpath in @adrdata^.paths {
+		if lowerpath beginswith string.lower (nameOf (adrpath^)) {
+			case adrpath^ {
+				"members" {
+					if not defined (pta^.adrMemberInfo) {
+						deny ()};
+					if defined (pta^.adrMemberInfo^.blocked) {
+						if pta^.adrMemberInfo^.blocked {
+							deny ()}}};
+				"editors" {
+					if not manilaSuite.editors.editorialTest (pta) {
+						deny ()}};
+				"contentEditors" {
+					if not manilaSuite.editors.contentEditorTest (pta) {
+						if not manilaSuite.editors.managingEditorTest (pta) { //managing editors are always allowed
+							deny ()}}};
+				"contributingEditors" {
+					if not manilaSuite.editors.contributingEditorTest (pta) {
+						if not manilaSuite.editors.managingEditorTest (pta) { //managing editors are always allowed
+							deny ()}}};
+				"managingEditors" {
+					if not manilaSuite.editors.managingEditorTest (pta) {
+						deny ()}}}}};
+	return (true)}

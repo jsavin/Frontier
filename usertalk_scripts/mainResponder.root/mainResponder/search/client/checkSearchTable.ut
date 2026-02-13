@@ -1,0 +1,21 @@
+on checkSearchTable (adrObject, adrTable) {
+	«Check for missing or empty items in the search prefs table. If something's missing or empty, log it, then return.
+	
+	on check (name) { //check that a field exists and is not empty
+		if not defined (adrTable^.[name]) {
+			mainResponder.search.client.logNoIndex (adrObject, "the required preference \"" + name + "\" does not exist.");
+			return (false)};
+		if adrTable^.[name] == "" {
+			mainResponder.search.client.logNoIndex (adrObject, "the required preference \"" + name + "\" is empty.");
+			return (false)};
+		return (true)};
+	
+	local (requiredFields = {"domain", "addToIndex", "indexOnCheckIn", "siteName", "siteUrl", "supportsIndexing", "port"});
+	local (i);
+	
+	«Check that required fields exist and are not empty.
+	for i = 1 to sizeOf (requiredFields) {
+		if not (check (requiredFields [i])) {
+			return (false)}};
+	
+	return (true)}

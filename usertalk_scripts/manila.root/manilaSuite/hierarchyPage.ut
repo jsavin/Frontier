@@ -1,0 +1,459 @@
+on hierarchyPage (pta=nil, flNotFoundPages=true) {
+	«Changes:
+		«5/1/06; 6:45:15 PM by JES
+			«When generating next/prev links, revert to using pathname for the link text, if name is not present.
+		«5/1/06; 1:22:09 PM by JES
+			«When calling manilaSuite.siteStructure.dive, use pta^.remainingPath, not pta^.path.
+		«4/27/06; 6:44:53 PM by JES
+			«Factored code that dives into the hierarchy into manilaSuite.siteStructure.dive and manilaSuite.siteStructure.getItemAddress.
+		«1/24/06; 5:09:48 PM by JES
+			«Fixed a bug generating next/prev links when the category contains story elements which have a url attribute instead of a pathname attribute.
+		«1/7/06; 1:18:17 AM by JES
+			«Add support for <story> with url attributes instead of pathname attributes, which link to pages outside this site.
+			«Don't URL-encode links to external sites.
+		«6/28/05; 1:41:08 AM by JES
+			«Throw redirects back up the call stack in addition to !return pseudo-errors.
+		«5/29/05; 3:20:06 AM by JES
+			«New optional parameter, flNotFoundPage. If true (as is the default), then Manila generates its 404 Not Found Page. Otherwise, we just return false, and let the caller (usually mainResponder.respond) do its thing.
+		«4/4/05; 3:34:19 AM by JES
+			«Added callback support. Plug-ins and Tools can now extend hierarchy behavior, without having to install anything in the site.
+		«2004
+			«10/22/04; 9:57:15 AM by EDS
+				«incorporating patches by DAB
+					«Use valid html  ul, li when listing stories in a hierarchy based directory
+					«Restore preference for hiding the admin box
+			«2/16/04; 5:29:01 PM by JES
+				«When listing sub-categories, if the sub-category has a description, add it to the item.
+			«2/10/04; 5:35:12 PM by JES
+				«Added support for redirects. Redirects take the following format:
+				«Redirect to external site:
+					«<redirect pathname="path" url="http://www.example.com/" />
+				«Redirect within this site
+					«<redirect pathname="path" url="/pathInSite" />
+		«2003
+			«4/25/03; 3:44:44 PM by JES
+				«Hierarchy pages always get the Admin box.
+		«2002
+			«8/10/02; 6:59:58 PM by JES
+				«Hierearchy pages now get an admin box if the pref is set. Default is false.
+			«1/14/02; 3:42:22 PM by PBS
+				«If a request ends with .opml, return the page as OPML.
+		«2001
+			«10/15/01; 9:21:16 PM by PBS
+				«Generate a 404 Not Found when the page can't be found.
+			«9/28/01; 2:37:46 PM by PBS
+				«Support for print friendly templates.
+			«06/12/01; 8:08:28 AM by JES
+				«Backed out the last change.
+			«06/11/01; 6:43:07 PM by JES
+				«Fixed two bugs: 1) pages would appear at multiple unintended locations. 2) If you had a page at a path like discuss/foo, it wouldn't be found.
+					«Fix based on a fix from Eric Soros, with an addition. See: http://manilanewbies.userland.com/discuss/msgReader$5684?mode=topic
+			«04/24/01; 8:48:00 PM by JES
+				«Call string.urlEncode on the link URLs, to fix problems with high-ascii characters. Add onmouseover and onmouseout handlers to the links so that the window's status bar will display the un-encoded URL.
+		«2000
+			«03/03/00; 6:13:12 PM by PBS
+				«Call manilaSuite.siteStructure.compileIfDirty, a new bottleneck script for compiling the site structure.
+			«03/28/00; 9:44:38 PM by PBS
+				«Automatic links to category pages should have a trailing slash.
+			«04/20/00; 8:29:55 PM by JES
+				«localized
+			«05/01/00; 3:15:30 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«05/01/00; 5:28:06 PM by PBS
+				«Support for news items -- supply the adrGetBodyCallback to mainResponder.discuss.readMessage, on the chance that someone has made a news item a hierarchy page. This way the news item will be formatted correctly in HTML rather than XML.
+			«05/09/00; 5:45:14 PM by JES
+				«added optional pta parameter
+			«?/?/00 by PBS
+				«Dive into the XML #hierarchy structure and find and build a page
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	
+	if not defined (config.manila.callbacks.hierarchyPage) {
+		new (tableType, @config.manila.callbacks.hierarchyPage)};
+	local (adrcallback);
+	for adrcallback in @config.manila.callbacks.hierarchyPage {
+		try {
+			while typeOf (adrcallback^) == addressType {
+				adrcallback = adrcallback^};
+			local (s = adrcallback^ ());
+			if s != false {
+				return (s)}}
+		else {
+			if tryError beginswith "!" {
+				scriptError (tryError)};
+			if defined (pta^.responderAttributes.redirectUrl) {
+				scriptError ("!return")}}};
+	
+	if pta == nil { // 05/08/00 JES: pta is now an optional parameter (useful for debugging)
+		pta = html.getPageTableAddress ()};
+	«if not (pta^.path endswith ".ico")
+		«workspace.pt = pta^
+	
+	local (adrHierarchy = pta^.hierarchy);
+	local (path = pta^.remainingPath);
+	path = string.urlDecode (path);
+	
+	local (flOpml = false);
+	if string.lower (path) endsWith ".opml" { //PBS 01/05/02: request for OPML document?
+		flOpml = true;
+		path = string.popSuffix (path)};
+	if flOpml { //home page or archive page?
+		if string.lower (path) == "default" or path == "" { //current home page?
+			local (homePageMsgNum = pta^.newsSite^.discussLinks.homePageMsgNum);
+			return (manilaSuite.discuss.opmlReader (homePageMsgNum))};
+		local (fullPath = "http://" + pta^.host + pta^.path);
+		local (siteUrl = pta^.ftpSite^.url);
+		if string.lower (fullPath) beginsWith string.lower (siteUrl) {
+			fullPath = string.delete (fullPath, 1, sizeOf (siteUrl));
+			local (firstPart = string.nthField (fullPath, '/', 1));
+			try {
+				firstPart = number (firstPart);
+				if firstPart > 1995 and firstPart < 2040 {
+					fullPath = string.popSuffix (fullPath);
+					fullPath = string.replaceAll (fullPath, "/", "\"].[\"");
+					local (adr = string (adrsite) + ".[\"" + fullPath + "\"]");
+					if defined (adr^.msgNum) {
+						return (manilaSuite.discuss.opmlReader (adr^.msgNum))}}}}};
+	
+	bundle { //compile the XML outline if needed
+		manilaSuite.siteStructure.compileIfDirty (adrsite)};
+	
+	local (indexPageNames = list (pta^.responderAttributes.defaultDirectoryItems));
+	local (nomad = manilaSuite.siteStructure.dive (adrsite, pta^.remainingPath, indexPageNames));
+	if not nomad { //not found
+		if flNotFoundPages {
+			return (manilaSuite.notFound.page (pta))}
+		else {
+			return (false)}};
+	bundle { //handle index pages (category pages) -- redirect if necessary
+		«If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
+		if string.lower (string.nthField (nameOf (nomad^), '\t', 2)) == "category" {
+			if not (pta^.remainingPath endsWith "/") {
+				«PBS 10/13/99: Handle default directory items.
+				local (lowerLastPathPart = string.lower (string.nthField (pta^.path, '/', string.countFields (pta^.path, '/'))));
+				local (i, flDefault = false);
+				for i = 1 to sizeOf (pta^.responderAttributes.defaultDirectoryItems) {
+					if lowerLastPathPart == string.lower (pta^.responderAttributes.defaultDirectoryItems [i]) {
+						flDefault = true;
+						break}};
+				if not flDefault {
+					scriptError ("!redirect " + pta^.path + "/")}}}
+		else { //it's not a category, it must not end with a slash.
+			if pta^.remainingPath endsWith "/" {
+				scriptError ("!redirect " + string.popTrailing (pta^.path, "/"))}}};
+	
+	local (type);
+	type = string.lower (string.nthField (nameOf (nomad^), '\t', 2));
+	if type == "" { «made conditional
+		type = "category"};
+	
+	local (htmlText);
+	
+	on displayMessage (msgNum) {
+		pta^.msgNum = msgNum; //moved 05/04/28, 21:49:11 by DAB
+		if defined(pta^.newsSite^.accessControl.enabled) and pta^.newsSite^.accessControl.enabled { //made conditional 05/06/04, 13:27:38 by DAB
+			manilaSuite.accesscontrol.checks()}; //05/04/28, 21:46:22 by DAB
+		local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+		pta^.adrMsgTable = adrMsgTable;
+		pta^.title = manilaSuite.unTaint (adrMsgTable^.subject);
+		manilaSuite.discuss.setLastUpdateTime (adrMsgTable);
+		
+		local (flAdminBox = false);
+		if not manilaSuite.staticRendering.isStaticRendering (pta) {
+			«Fri, Oct 22, 2004 at 9:53:12 AM by EDS incorporating DAB
+				«restoring earlier pref.
+			flAdminBox = manilaSuite.getNewsSitePref ("flAdminBoxOnHierarchyPages", adrsite, true, true)};
+		if flAdminBox {
+			add (manilaSuite.html.confirmBox (pta))};
+		
+		«Do we display bylines for stories?
+		local (flByline);
+		flByline = boolean (manilaSuite.getNewsSitePref ("flBylinesOnStories", default:true, flCreate:true));
+		
+		if flByline {
+			local (flShowEnclosureInStories = false);
+			if defined (pta^.newsSite^.flShowEnclosureInStories) and pta^.newsSite^.flShowEnclosureInStories {
+				flShowEnclosureInStories = true};
+			
+			pta^.flReadMessageProcessMacros = false;
+			pta^.flReadMessageAutoParagraphs = false;
+			pta^.flReadMessageExpandUrls = false;
+			pta^.flReadMessageStoryHeaderAndMessageHeaders = true;
+			local (flCowSkull = manilaSuite.discuss.dgReadAccess (pta));
+			if pta^.flPrintFriendlyTemplate { //PBS 09/28/01: always false in this case
+				flCowSkull = false};
+			add (mainResponder.discuss.readMessage (msgNum, false, false, false, flShowAuthor:false, flShowPostTime:false, flShowReads:false, flStoryHeaderOnly:true, flEditButtonsInHeader:false, flShowCowSkullLink:flCowSkull, flShowEnclosure:flShowEnclosureInStories, adrGetBodyCallback:@manilaSuite.callbacks.getBodyCallback))}
+		else { //no byline
+			add (manilaSuite.simplePage (msgNum, false, false, false, pta))};
+		
+		bundle { //possibly add the admin box
+			if flAdminBox {
+				add (manilaSuite.html.adminBox (pta, msgnum))}};
+		
+		return (true)};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	case string.lower (type) {
+		"category" {
+			local (i);
+			local (categoryDescription);
+			try {categoryDescription = xml.getValue (nomad, "description")};
+			if categoryDescription != nil {
+				add (manilaSuite.unTaint (categoryDescription) + "<p>")};
+			
+			try {
+				local (msgNum = xml.getAttributeValue (nomad, "msgnum"));
+				displayMessage (msgNum)}
+			else {
+				add("<ul>"); // 10/22/04; 9:59:15 AM by EDS incorporating DAB
+				for i = 1 to sizeOf (nomad^) {
+					local (adr = @nomad^ [i]);
+					local (oneName = nameOf (adr^));
+					if typeOf (adr^) == tableType {
+						if oneName contains "\t" {
+							local (linetext);
+							try {
+								linetext = xml.getAttributeValue (adr, "name")};
+							linetext = manilaSuite.unTaint (linetext);
+							local (description);
+							local (itemType = string.lower (string.nthField (nameOf (adr^), '\t', 2)));
+							if itemType == "story" or itemType == "category" {
+								local (url = pta^.path);
+								if not (url endsWith "/") {
+									url = string.popSuffix (url, "/") + "/"};
+								try { //use pathname for URL within this site
+									local (name = xml.getAttributeValue (adr, "pathname"));
+									url = url + manilaSuite.unTaint (name)}
+								else { //look for url attribute for link outside this site
+									url = xml.getAttributeValue (adr, "url")};
+								add ("<li>");
+								local (ct);
+								if itemType == "category" {
+									ct = sizeOf (xml.getAddressList (adr, "category"));
+									ct = ct + sizeOf (xml.getAddressList (adr, "link"));
+									ct = ct + sizeOf (xml.getAddressList (adr, "story"));
+									ct = " (" + ct + ")";
+									if not (url endswith "/") { //PBS 03/28/00: fix problem with links to categories -- should have trailing slash
+										url = url + "/"}};
+								local (mouseover);
+								bundle { //encode the url
+									if url beginswith "http://" {
+										mouseover = "onmouseover=\"window.status='" + string.urlDecode (string.mid (url, 2, infinity)) + "';\" onmouseout=\"window.status='';\""}
+									else {
+										mouseover = "onmouseover=\"window.status='" + pta^.ftpSite^.url + string.urlDecode (string.mid (url, 2, infinity)) + "';\" onmouseout=\"window.status='';\"";
+										url = string.urlEncode (url);
+										url = string.replaceAll (url, "%2F", "/");
+										url = string.replaceAll (url, "%25", "%")}};
+								«add (html.getLink (linetext, url))
+								add ("<a href=\"" + url + "\" " + mouseover + ">" + linetext + "</a>");
+								if ct != nil {
+									add (ct)};
+								if true { //itemType == "story"
+									try {
+										description = xml.getValue (adr, "description")};
+									if description != nil {
+										description = manilaSuite.unTaint (description);
+										add (" - " + description)}};
+								add ("</li>")}}}}; //10/22/04; 9:59:24 AM by EDS incorporating DAB
+				add("</ul>"); // 10/22/04; 9:59:28 AM by EDS incorporating DAB
+				local (title);
+				try {title = xml.getAttributeValue (nomad, "name")};
+				title = string.replaceAll (title, "\"", "&quot;");
+				title = manilaSuite.unTaint (title);
+				pta^.title = title}};
+		"story" {
+			local (msgNum = xml.getAttributeValue (nomad, "msgNum"));
+			if flOpml { //PBS 01/05/02: return OPML if .opml file requested
+				return (manilaSuite.discuss.opmlReader (msgNum))}
+			else { //default behavior -- HTML page
+				displayMessage (msgNum)}};
+		"redirect" { //JES 2/10/04: added redirect support
+			local (url = xml.getAttributeValue (nomad, "url"));
+			if url beginswith "http" { //off-site redirect
+				mainResponder.redirect (url);
+				scripterror ("!redirect " + url)}
+			else { //redirect to a page in this site
+				if url beginswith "/" {
+					url = string.delete (url, 1, 1)};
+				url = manilaSuite.getSiteUrl () + url;
+				mainResponder.redirect (url);
+				scripterror ("!redirect " + url)}}};
+	
+	«Build hierarchy path.
+	bundle {
+		local (pathText);
+		local (adrTable = nomad);
+		
+		local (pathBgColor = "beige");
+		local (flHierarchyPath = true);
+		
+		bundle { //get hierarchy path prefs
+			«if defined (adrHierarchy^.prefs.bgcolor)
+				«pathBgColor = adrHierarchy^.prefs.bgcolor
+			«else
+				«pathBgColor = pta^.bgColor
+			if defined (pta^.bgColor) {
+				pathBgColor = pta^.bgColor};
+			
+			if defined (adrHierarchy^.prefs.outlineColor) {
+				outlineColor = adrHierarchy^.prefs.outlineColor}
+			else {
+				outlineColor = "#CCCCCC"};
+			
+			if defined (adrHierarchy^.prefs.flHierarchyPath) {
+				flHierarchyPath = adrHierarchy^.prefs.flHierarchyPath}};
+		
+		on add (s) {
+			pathText = s + pathText};
+		
+		local (flStaticRendering = manilaSuite.staticRendering.isStaticRendering ());
+		local (staticSuffix = manilaSuite.staticRendering.getSuffix ());
+		on filterStaticUrl (url) {
+			if flStaticRendering {
+				url = string.lower (url);
+				if not (url endsWith "/") {
+					url = url + staticSuffix}};
+			return (url)};
+		
+		local (ctPops = 1);
+		if flHierarchyPath {
+			ctPops = 0}
+		else {
+			nomad = parentOf (nomad^)};
+		
+		if not (string.lower (nameOf (nomad^)) endsWith "\thierarchy") {
+			loop {
+				local (url = "");
+				if type == "category" {
+					if ctPops > 0 {
+						url = string.filledString ("../", ctPops)}}
+				else {
+					if ctPops > 1 {
+						url = string.filledString ("../", ctPops - 1) + "./"};
+					if ctPops == 1 {
+						url = "./"}};
+				
+				local (lineText = xml.getAttributeValue (nomad, "name"));
+				local (mouseover);
+				bundle { //encode the url
+					mouseover = "onmouseover=\"window.status='" + pta^.ftpSite^.url + string.urlDecode (string.mid (url, 2, infinity)) + "';\" onmouseout=\"window.status='';\"";
+					url = string.urlEncode (url);
+					url = string.replaceAll (url, "%2F", "/");
+					url = string.replaceAll (url, "%25", "%")};
+				«add (html.getLink (lineText, url))
+				add ("<a href=\"" + url + "\" " + mouseover + ">" + linetext + "</a>");
+				ctPops++;
+				if ctPops == 2 and not flHierarchyPath {
+					break};
+				nomad = parentOf (nomad^);
+				if string.lower (nameOf (nomad^)) endsWith "\thierarchy" {
+					break};
+				if flHierarchyPath {
+					add (" > ")}}};
+		if pathText != "" {
+			pathText = " | " + pathText};
+		
+		bundle { //was: if ctPops > 0
+			if ctPops == 0 {
+				pathText = ""};
+			local (nextPrevLinks = "Prev | Next");
+			
+			local (ix = 0);
+			local (i);
+			local (adrCategory = parentOf (adrTable^));
+			for i = 1 to sizeOf (adrCategory^) {
+				if nameOf (adrCategory^ [i]) == nameOf (adrTable^) {
+					ix = i;
+					break}};
+			
+			on getNextLink () {
+				local (i);
+				for i = (ix + 1) to sizeOf (adrCategory^) {
+					local (linktype = string.nthField (nameOf (adrCategory^ [i]), "\t", 2));
+					case string.lower (linktype) {
+						"category" {
+							local (title = xml.getAttributeValue (@adrCategory^ [i], "pathname"));
+							try {title = xml.getAttributeValue (@adrCategory^ [i], "name")};
+							local (url);
+							try {
+								url = xml.getAttributeValue (@adrCategory^ [i], "url")}
+							else {
+								url = xml.getAttributeValue (@adrCategory^ [i], "pathname");
+								if type == "category" {
+									url = url + "/";
+									url = filterStaticUrl (url);
+									return ("<a href=\"../" + url + "\" title=\"" + title + "\">" + manilaSuite.getString ("common.next") + "</a>")}; // 4/20/00 JES: localized
+								url = filterStaticUrl (url)};
+							return ("<a href=\"" + url + "/\" title=\"" + title + "\">" + manilaSuite.getString ("common.next") + "</a>")}; // 4/20/00 JES: localized
+						"link" {
+							local (url = xml.getValue (@adrCategory^ [i], "url"));
+							local (title = xml.getValue (@adrCategory^ [i], "linetext"));
+							return ("<a href=\"" + url + "\" title=\"" + title + "\">" + manilaSuite.getString ("common.next") + "</a>")}; // 4/20/00 JES: localized
+						"story" {
+							local (title = xml.getAttributeValue (@adrCategory^ [i], "name"));
+							local (url);
+							try {
+								url = xml.getAttributeValue (@adrCategory^ [i], "url")}
+							else {
+								url = xml.getAttributeValue (@adrCategory^ [i], "pathname");
+								if type == "category" {
+									url = url + "/";
+									url = filterStaticUrl (url);
+									return ("<a href=\"../" + url + "\" title=\"" + title + "\">" + manilaSuite.getString ("common.next") + "</a>")}; // 4/20/00 JES: localized
+								url = filterStaticUrl (url)};
+							return ("<a href=\"" + url + "\" title=\"" + title + "\">" + manilaSuite.getString ("common.next") + "</a>")}}}; // 4/20/00 JES: localized
+				return (manilaSuite.getString ("common.next"))}; // 4/20/00 JES: localized
+			on getPrevLink () {
+				local (i);
+				for i = (ix - 1) downTo 1 {
+					local (linktype = string.nthField (nameOf (adrCategory^ [i]), "\t", 2));
+					case string.lower (linktype) {
+						"category" {
+							local (title = xml.getAttributeValue (@adrCategory^ [i], "pathname"));
+							try {title = xml.getAttributeValue (@adrCategory^ [i], "name")};
+							local (url);
+							try {
+								url = xml.getAttributeValue (@adrCategory^ [i], "url")}
+							else {
+								url = xml.getAttributeValue (@adrCategory^ [i], "pathname");
+								if type == "category" {
+									url = url + "/";
+									url = filterStaticUrl (url);
+									return ("<a href=\"../" + url + "\" title=\"" + title + "\">" + manilaSuite.getString ("common.prev") + "</a>")}; // 4/20/00 JES: localized
+								url = filterStaticUrl (url)};
+							return ("<a href=\"" + url + "/\" title=\"" + title + "\">" + manilaSuite.getString ("common.prev") + "</a>")}; // 4/20/00 JES: localized
+						"link" {
+							local (url = xml.getValue (@adrCategory^ [i], "url"));
+							local (title = xml.getValue (@adrCategory^ [i], "linetext"));
+							return ("<a href=\"" + url + "\" title=\"" + title + "\">" + manilaSuite.getString ("common.prev") + "</a>")}; // 4/20/00 JES: localized
+						"story" {
+							local (title = xml.getAttributeValue (@adrCategory^ [i], "name"));
+							local (url);
+							try {
+								url = xml.getAttributeValue (@adrCategory^ [i], "url")}
+							else {
+								url = xml.getAttributeValue (@adrCategory^ [i], "pathname");
+								if type == "category" {
+									url = url + "/";
+									url = filterStaticUrl (url);
+									return ("<a href=\"../" + url + "\" title=\"" + title + "\">" + manilaSuite.getString ("common.prev") + "</a>")}; // 4/20/00 JES: localized
+								url = filterStaticUrl (url)};
+							return ("<a href=\"" + url + "\" title=\"" + title + "\">" + manilaSuite.getString ("common.prev") + "</a>")}}}; // 4/20/00 JES: localized
+				return (manilaSuite.getString ("common.prev"))}; // 4/20/00 JES: localized
+			
+			nextPrevLinks = getPrevLink () + " | " + getNextLink ();
+			
+			if pathText != "" {
+				pathText = "<table border=\"0\" cellpadding=\"2\" cellspacing=\"1\" bgcolor=\"" + outlineColor + "\"><tr><td bgcolor=\"" + pathBgColor + "\" align=\"left\"><font size=\"-1\">" + nextPrevLinks +  pathText + "</font></td></tr></table>"};
+			
+			pta^.hierarchyPath = manilaSuite.unTaint (pathText)}};
+	
+	bundle { //possibly add the render this page button
+		add (manilaSuite.staticRendering.displayRenderButton (pta))};
+	
+	return (htmlText)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«hierarchyPage ()

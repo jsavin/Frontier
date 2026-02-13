@@ -1,0 +1,17 @@
+on getPikeUserPort (adrPort, pta=nil) {
+	«Get the port Pike is listening on. It's in the member record, in the Pike subtable. adrPort^ gets the port. If found, return true. If not found, return false.
+		«01/14/00; 12:07:59 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if not defined (pta^.adrMemberInfo^.pike.port) {
+		return (false)};
+	
+	local (port);
+	port = pta^.adrMemberInfo^.pike.port;
+	port = string.trimWhiteSpace (port);
+	port = number (port);
+	adrPort^ = port;
+	
+	return (true)}

@@ -1,0 +1,8 @@
+on disableRpcHandlers () {
+	«Link in plug-ins RPC handlers.
+		«02/24/00; 2:55:44 PM by PBS
+	
+	if defined (user.betty.rpcHandlers.manilaPlugins) {
+		delete (@user.betty.rpcHandlers.manilaPlugins)};
+	
+	return (true)}

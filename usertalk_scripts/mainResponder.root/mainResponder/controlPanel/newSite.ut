@@ -1,0 +1,88 @@
+«Updated for 6.2 -- now uses the createSiteForm macro in Manila. It's the exact same form that appears on the top-level hosting site.
+	«07/11/00; 6:23:42 PM by PBS
+manilaSuite.init (); //PBS 07/11/00: make sure hosting prefs are set up
+local (pta = html.getPageTableAddress ());
+pta^.title = "Create a New Site";
+pta^.activeUrls = false;
+return (manilaSuite.hosting.createSiteForm ());
+«Old code:
+	«local (flPost = false)
+	«if string.lower (pta^.method) == "post"
+		«flPost = true
+	«
+	«if not defined (config.manila)
+		«new (tableType, @config.manila)
+	«if not defined (config.manila.sites)
+		«new (tableType, @config.manila.sites)
+	«if not defined (config.manila.prefs)
+		«new (tableType, @config.manila.prefs)
+	«if not defined (config.manila.prefs.baseUrl)
+		«config.manila.prefs.baseUrl = "http://" + tcp.myDottedId () + "/"
+	«local (baseUrl = config.manila.prefs.baseUrl)
+	«
+	«pta^.title = "Create a New Site"
+	«
+	«local (htmlText = "")
+	«
+	«on add (s)
+		«htmlText = htmlText + s
+	«
+	«on createForm (siteName="", name="", email="", password="", errorMessage="")
+		«local (formText = string (pta^.tools^.defaultForm))
+		«formText = string.replaceAll (formText, "[baseUrl]", string.replace (baseUrl, "://", ":\\//"))
+		«formText = string.replaceAll (formText, "[siteName]", siteName)
+		«formText = string.replaceAll (formText, "[sysopName]", name)
+		«formText = string.replaceAll (formText, "[sysopEmail]", email)
+		«formText = string.replaceAll (formText, "[sysopPassword]", password)
+		«
+		«if errorMessage != ""
+			«errorMessage = "<font color=\"red\">" + errorMessage + "</font><p>"
+		«formText = string.replace (formText, "[errormessage]", errorMessage)
+		«return (formText)
+	«
+	«if flPost
+		«local (siteName = pta^.postArgs.siteName)
+		«local (sysopName = pta^.postArgs.sysopName)
+		«local (sysopEmail = pta^.postArgs.sysopEmailAddress)
+		«local (sysopPassword = pta^.postArgs.sysopPassword)
+		«local (confirmSysopPassword = pta^.postArgs.confirmSysopPassword)
+		«
+		«if sysopPassword != confirmSysopPassword
+			«htmlText = htmlText + createForm (siteName, sysopName, sysopEmail, "", "Can't create a new site because the password and confirmation password did not match.")
+		«else
+			«Make sure another site with this same name doesn't exist.
+			«local (flExists = false)
+			«if defined (config.manila.sites.[siteName])
+				«flExists = true
+			«local (wwwFolder = Frontier.getSubFolder ("www"))
+			«local (f = wwwFolder + siteName + "ManilaWebsite.root")
+			«if file.exists (f)
+				«flExists = true
+			«
+			«if flExists
+				«local (errorMessage = "A site with the name \"" + siteName + "\" already exists. Please choose another name.<p>")
+				«add (createForm (siteName, sysopName, sysopEmail, sysopPassword, errorMessage))
+			«else //create the site
+				«local (membershipGroupName = siteName + "Members")
+				«local (discussionGroupName = siteName + "Discuss")
+				«local (siteUrl)
+				«local (partsList = string.urlSplit (baseUrl))
+				«local (serverName = partsList [2])
+				«serverName = string.nthField (serverName, ':', 1)
+				«local (path = partsList [3])
+				«local (port = user.inetd.config.http.port)
+				«if port != 80
+					«serverName = serverName + ":" + port
+				«siteUrl = "http://" + serverName + "/" + partsList [3]
+				«siteUrl = string.popTrailing (siteUrl, '/')
+				«siteUrl = siteUrl + "/"
+				«siteUrl = siteUrl + siteName + "/"
+				«flAddToDomains = false
+				«flAddToUserDatabases = true
+				«local (siteInfoTable)
+				«siteInfoTable = manilaSuite.clone (siteName + "ManilaWebsite", membershipGroupName, discussionGroupName, sysopEmail, sysopPassword, sysopName, siteUrl, flAddToDomains, flAddToUserDatabases)
+				«mainResponder.redirect (siteUrl)
+	«else //create the default form
+		«htmlText = htmlText + createForm ()
+	«
+	«return (htmlText)

@@ -1,0 +1,35 @@
+on listMemberMessages (memberkey, url=nil) {
+	«Changes:
+		«4/12/00; 1:06:12 PM by JES
+			«Localized column headings using mainResponder.getString
+			«Localized date display using mainResponder.localization.shortDateString
+	local (htmltext = "", indentlevel = 0);
+	if url == nil {
+		local (pta = html.getPageTableAddress ());
+		url = pta^.responderattributes.urls^.discussMsgReader};
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s, align="") {
+		add ("<td nowrap " + align + " valign=\"middle\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
+	on shortenstring (s, maxlen=35) {
+		if sizeof (s) <= maxlen {
+			return (s)};
+		return (string.mid (s, 1, maxlen - 3) + "...")};
+	local (adrroot = mainresponder.discuss.openroot ());
+	local (adrmsgs = @adrroot^.messages);
+	local (i, ct = sizeof (adrmsgs^), adritem);
+	add ("<table cellspacing=\"3\">"); indentlevel++;
+	bundle { //column headings; 4/13/00 by JES: localized headings
+		add ("<tr>"); indentlevel++;
+		td ("<b>" + mainResponder.getString ("listHeaders.date") + "</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.subject") + "</b>");
+		add ("</tr>"); indentlevel--};
+	for i = ct downto 1 {
+		adritem = @adrmsgs^ [i];
+		if adritem^.member == memberkey {
+			add ("<tr>"); indentlevel++;
+			td (mainResponder.localization.shortDateString (adritem^.posttime)); // 4/13/00 by JES: localized date display
+			td (mainresponder.discuss.linkToMessage (adritem, url, 40));
+			add ("</tr>"); indentlevel--}};
+	add ("</table>"); indentlevel--;
+	return (htmltext)}

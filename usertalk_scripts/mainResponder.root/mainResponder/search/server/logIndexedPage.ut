@@ -1,0 +1,21 @@
+on logIndexedPage (url, title, siteName, siteUrl, client=nil, indexName=nil) {
+	«Changes
+		«8/1/02; 7:05:47 PM by JES
+			«If config.mainresponder.search.prefs.flLogEnabled is false, don't do anything.
+		«Log one indexed page.
+	
+	if not config.mainresponder.search.prefs.flLogEnabled {
+		return (true)};
+	if not config.mainResponder.search.prefs.flLogIndex {
+		return (true)};
+	
+	local (adrItem = log.addToGuestDatabase ("Search Engine Indexer", flHourlyRoll:true));
+	
+	adrItem^.url = url;
+	adrItem^.title = title;
+	adrItem^.siteName = siteName;
+	adrItem^.siteUrl = siteUrl;
+	adrItem^.client = client;
+	adrItem^.indexName = indexName;
+	
+	return (true)}

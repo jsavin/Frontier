@@ -1,0 +1,18 @@
+on renderMessage (discussRoot, msgnum, flShowEditButton=true) {
+	local (htmlText);
+	local (adrdiscuss = mainResponder.editorial.getDiscussTableAddress (discussRoot));
+	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+	if defined (adrmsg^.category) {
+		local (category = adrmsg^.category);
+		local (adrScript = @adrdiscuss^.editorialprefs.categories.[category].renderer);
+		if defined (adrScript^) {
+			while typeof (adrScript^) == addressType {
+				adrScript = adrScript^};
+			htmlText = adrScript^ (adrMsg)}
+		else {
+			htmlText = string (adrMsg^.body)}}
+	else {
+		htmlText = string (adrMsg^.body)};
+	if flShowEditButton {
+		htmlText = htmlText + cr + mainResponder.editorial.editButton (discussRoot, msgnum)};
+	return (htmlText)}

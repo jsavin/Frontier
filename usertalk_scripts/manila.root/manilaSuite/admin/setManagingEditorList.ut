@@ -1,0 +1,35 @@
+on setManagingEditorList (s, adrNewsSite=nil, flPreserveCurrentEditor=true) {
+	«Changes
+		«10/3/05; 4:39:03 AM by JES
+			«If logged in as an admin, don't add the admin's email address to the managing editor list.
+		«9/10/02; 10:14:57 PM by JES
+			«New optional parameters, adrNewsSite and flPreserveCurrentEditor. If adrNewsSite is supplied, then this script can be called outside the website framework context. flPreserveCurrentEditor will also need to be false for this to work.
+		«11/11/99; 4:38:05 PM by PBS
+			«Given a string from a sitePrefs panel, update the managing editors list. Don't let the currently-logged in ME take themselves off the list!
+	
+	local (meList = manilaSuite.admin.stringToList (s));
+	
+	if flPreserveCurrentEditor { //make sure this person is still on the list
+		local (pta = html.getPageTableAddress ());
+		local (currentEditor = nameOf (pta^.adrMemberInfo^));
+		local (flFound = false);
+		if config.mainResponder.prefs.flAdminGroupAlwaysAllowed { //if logged in as admin, don't add to managing editor list
+			local (adrAdminUser = mainResponder.members.getMemberTable ("admin", currentEditor));
+			if pta^.adrMemberInfo == adrAdminUser {
+				flFound = true}};
+		if not flFound {
+			local (lowerCurrentEditor = string.lower (currentEditor));
+			local (oneEditor);
+			for oneEditor in meList {
+				local (lowerEditor = string.lower (oneEditor));
+				if lowerEditor == lowerCurrentEditor {
+					flFound = true;
+					break}};
+			if not flFound { //the current ME is not in the list, add the current ME
+				meList = meList + currentEditor}}};
+	
+	if adrNewsSite == nil {
+		adrNewsSite = manilaSuite.getNewsSiteAddress ()};
+	adrNewsSite^.sysopMail = meList;
+	
+	return (true)}

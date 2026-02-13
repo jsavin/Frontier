@@ -1,0 +1,17 @@
+on relativePathToAddress (relativePath, adrSite) {
+	«Convert a relative path to a site address.
+		«02/22/00; 2:26:45 PM by PBS
+	
+	local (adr = adrSite);
+	while (sizeOf (relativePath) > 0) {
+		relativePath = string.popLeading (relativePath, '/');
+		relativePath = string.popTrailing (relativePath, '/');
+		local (nextPart = string.nthField (relativePath, '/', 1));
+		if nextPart == "" {
+			break};
+		relativePath = string.delete (relativePath, 1, sizeOf (nextPart));
+		adr = @adr^.[nextPart];
+		if not defined (adr^) {
+			new (tableType, adr)}};
+	
+	return (adr)}

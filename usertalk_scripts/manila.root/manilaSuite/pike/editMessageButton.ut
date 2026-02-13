@@ -1,0 +1,33 @@
+on editMessageButton (adrMsgTable, linkTitle=nil, pta=nil) {
+	«Build an edit message button.
+		«11/21/00; 4:17:59 PM by PBS
+		«Changes:
+			«11/27/00; 6:19:06 PM by PBS
+				«No need to include the flAcceptsOpml boolean in the button URL -- RU gets it from the server when it gets the message to edit.
+			«11/27/00; 7:10:30 PM by PBS
+				«linkTitle is named parameter in call to manilaSuite.pike.pikeButton.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if manilaSuite.pike.memberHasPike (pta) {
+		if linkTitle == nil {
+			linkTitle = mainResponder.getString ("discuss.editThisStoryInPikeOutline", pta:pta)};
+		local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+		adrMember = pta^.adrMemberInfo;
+		
+		local (appendTable);
+		new (tableType, @appendTable);
+		appendTable.msgNum = adrMsgTable^.msgNum;
+		«if not date.versionLessThan (Frontier.version (), "7.0b21") //PBS 11/27/00: not needed
+			«appendTable.flAcceptsOpml = true
+		
+		local (editInPikeUrl);
+		editInPikeUrl = manilaSuite.pike.buildPikeButtonUrl (adrMsgTable, "editStory", @appendTable, pta);
+		
+		local (buttonText);
+		buttonText = manilaSuite.pike.pikeButton (editInPikeUrl, adrMsgTable, adrMember, adrSite, linkTitle:linkTitle, pta:pta);
+		
+		return (manilaSuite.unTaint (buttonText))};
+	
+	return ("")}

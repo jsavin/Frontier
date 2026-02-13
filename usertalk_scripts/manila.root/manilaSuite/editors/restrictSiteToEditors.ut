@@ -1,0 +1,104 @@
+on restrictSiteToEditors (pta, flMembersOnly=false) {
+	«Changes:
+		«1/6/06; 2:43:54 AM by JES
+			«If a callback errors starting with !, re-throw the error. Allows callbacks to do redirection.
+		«12/14/05; 1:40:36 AM by JES
+			«New optional parameter, flMembersOnly. If true, then we check for membership instead of editorial status. If rejected, we redirect to the members only page instead of the editors only page.
+				«(Both the Members Only and the Editors Only page are public.)
+		«5/23/05; 1:56:05 AM by JES
+			«Added callback support. Callbacks are at config.manila.callbacks.editorsOnlyTests. Each is called with the address of the site. If any returns false, then we bail out, and allow the page to be served. If none returns false, then we do our normal routine.
+		«3/7/05; 5:56:27 PM by JES
+			«Generalized authentication support to include machine readable formats wherever they reside in the site.
+		«10/11/03; 4:05:59 AM by JES
+			«Added support for HTTP authentication for syndication feeds: site RSS and scriptingNews2 feeds, and discussion group RSS feeds.
+		«09/19/00; 2:46:13 PM by PBS
+			«The /xml/externalEditorInfo.xml is also legal, so people can create Manila site nodes in Radio UserLand.
+		«01/20/00; 10:32:54 PM by PBS
+			«This site is restricted to editors only. If this person is an editor, they can view the site. If they're not an editor, or they're not logged in, they can view the login page only, but not the rest of the site. Update: the /xml/externalEditorInfo.xml is also legal, so people can create Manila site nodes in Radio UserLand.
+	
+	local (flEditor = manilaSuite.editors.editorialTest (pta));
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (groupname = manilaSuite.members.getGroupNameFromSiteAddress (adrsite));
+	
+	bundle { //JES 5/23/05: callback support
+		if not defined (config.manila.callbacks.editorsOnlyTests) {
+			new (tableType, @config.manila.callbacks.editorsOnlyTests)};
+		local (adr);
+		for adr in @config.manila.callbacks.editorsOnlyTests {
+			try {
+				while typeOf (adr^) == addressType {
+					adr = adr^};
+				local (result = adr^ ());
+				if typeOf (result) == booleanType {
+					if not result {
+						return (true)}}}
+			else {
+				if tryerror beginswith "!" {
+					scriptError (tryerror)}}}};
+	
+	if flEditor {
+		return (true)};
+	if flMembersOnly {
+		if defined (pta^.adrMemberInfo) {
+			return (true)}};
+	
+	local (lowerUrl = string.lower (pta^.url));
+	
+	if not defined (pta^.urls^.membersOnlyMessage) {
+		pta^.urls^.membersOnlyMessage = pta^.ftpSite^.url + "member/membersOnly"};
+	if not defined (adrsite^.member.membersOnly) {
+		adrsite^.member.membersOnly = manilaData.newSiteTemplate.member.membersOnly};
+	
+	local (loginUrl = pta^.urls^.memberLogon);
+	local (editorsOnlyMessageUrl = pta^.urls^.editorsOnlyMessage);
+	local (membersOnlyMessageUrl = pta^.urls^.membersOnlyMessage);
+	local (externalEditorXmlUrl = pta^.ftpSite^.url + "xml/externalEditorInfo.xml");
+	
+	on checkUrl (urlToCheck, flHttpAuthChallenge=false) {
+		if lowerUrl == string.lower (urlToCheck) {
+			if flHttpAuthChallenge {
+				if mainResponder.security.httpAuthentication (pta^.newsSite^.siteName, pta, groupname, securityLevel:0) {
+					return (true)}
+				else {return (false)}};
+			return (true)};
+		return (false)};
+	
+	if checkUrl (loginUrl) { //login page is public
+		return (true)};
+	if checkUrl (editorsOnlyMessageUrl) { //"this site for editors only" message is public
+		return (true)};
+	if checkUrl (membersOnlyMessageUrl) { //"this site for members only" message is public
+		return (true)};
+	if checkUrl (externalEditorXmlUrl) { //PBS 09/19/00: allow people to create Manila site nodes in Radio UserLand
+		return (true)};
+	
+	bundle { //check syndication feeds and RSD, with HTTP authentication
+		local (siteUrl = manilaSuite.getSiteUrl (adrsite, pta));
+		case true { //support for machine-readable formats
+			lowerurl endswith ".vcs"; //iCal calendars
+			lowerurl endswith ".ics";
+			lowerurl endswith ".csv"; //comma-separated values
+			lowerurl endswith ".xml" {
+				if checkUrl (lowerUrl, true) {
+					return (true)}}};
+		«bundle //old code
+			«if checkUrl (siteUrl + "xml/rss.xml", true)
+				«return (true)
+			«if checkUrl (siteUrl + "xml/scriptingNews2.xml", true)
+				«return (true)
+			«if checkUrl (siteUrl + "xml/rsd.xml", true)
+				«return (true)
+			«if checkUrl (manilaSuite.getUrl ("discussHomePage") + "rss.xml", true)
+				«return (true)
+			«if checkUrl (manilaSuite.getUrl ("discussHomePage") + "topicsRss.xml", true)
+				«return (true)
+		
+		«Allow for news item department RSS feeds
+		if lowerUrl beginswith string.lower (manilaSuite.getUrl ("editorialNewsItems") + "departments/") {
+			if mainResponder.security.httpAuthentication (pta^.newsSite^.siteName, pta, groupname) {
+				return (true)}}};
+	
+	if flMembersOnly {
+		scriptError ("!redirect " + membersOnlyMessageUrl)}
+	else {
+		scriptError ("!redirect " + editorsOnlyMessageUrl)}}

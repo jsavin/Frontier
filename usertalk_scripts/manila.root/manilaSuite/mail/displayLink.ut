@@ -1,0 +1,33 @@
+on displayLink (linktext) {
+	«Changes
+		«9/4/01; 8:31:05 PM by DW
+			«Return text that links to a page that mails the story to someone.
+		«9/6/01; 2:51:23 PM by PBS
+			«Don't create the mail table here -- it's part of manilaData.newSiteTemplate, and it's checked for in manilaSuite.filters.firstFilter (as with all other site shell upgrades).
+			«Untaint the returned text, since linktext may come from a user.
+			«When constructing the URL of the mail-story page, use pta^.ftpSite^.url instead of pta^.urls^.newsHome -- since newsHome may not actually be the home page of the site.
+		«10/1/01; 1:37:57 PM by PBS
+			«Fixed bug with static rendering -- the link was to the static site, but it should be to the dynamic site.
+	local (pta = html.getpagetableaddress ());
+	«scratchpad.params = pta^; edit (@scratchpad.params)
+	
+	local (htmltext = "");
+	if defined (pta^.adrMsgTable) {
+		local (adrmsgtable = pta^.adrMsgTable);
+		if manilaSuite.discuss.isStory (adrmsgtable) {
+			«bundle //make sure the mail page exists in this site //PBS 09/06/01: commented out, not needed here
+				«local (adrtable = @pta^.adrSiteRootTable^.mail)
+				«if not defined (adrtable^)
+					«new (tabletype, adrtable)
+				«local (adrpage = @adrtable^.mailStory)
+				«if not defined (adrpage^)
+					«local (s = "manilaSuite.staticRendering.buildHomePage ()")
+					«script.newScriptObject ("return (manilaSuite.mail.mailStory ())", adrpage)
+					«script.compile (adrpage) //prevent dialog box about uncompiled script
+			
+			«local (url = pta^.ftpSite^.url + "mail/mailStory$" + number (nameof (adrmsgtable^))) //PBS 09/06/01: use pta^.ftpSite^.url instead of pta^.urls^.newsHome -- since newsHome may not actually be the home page of the site.
+			local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+			local (url = adrSite^.["#ftpSite"].url); //get dynamic site URL
+			url = url + "mail/mailStory$" + number (nameof (adrmsgtable^));
+			htmltext = "<a href=\"" + url + "\">" + linktext + "</a>"}};
+	return (manilaSuite.unTaint (htmltext))} //PBS 09/06/01: untaint text

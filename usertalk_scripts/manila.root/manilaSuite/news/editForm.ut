@@ -1,0 +1,264 @@
+on editForm (pageTitle=nil, title=nil, description=nil, linkUrl=nil, departmentName=nil, adrDepartments=nil, msgNum=nil, actionUrl=nil, redirectUrl=nil, buttonText=nil, enclosure=nil, summary=nil) {
+	«Changes:
+		«10/18/05; 3:54:22 AM by JES
+			«Get the flOnHomePage flag from the newsItem sub-table instead of from the decompiled XML in the message body. Small optimization: Only set adrMsg once.
+		«10/17/05; 5:53:22 PM by JES
+			«Add Revert to Pending button if editing a posted news item.
+		«10/7/05; 4:07:13 AM by JES
+			«If multiple departments are enabled, and the site contains no departments, add a hidden field for flOnHomePage to be picked up by manilaSuite.news.postItemPage.
+		«8/23/05; 4:47:19 AM by JES
+			«Two new buttons: Send Bulletin and Delete, appear on the edit form when editing an existing item. The Send Bulletin button only appears if the news item is already posted to the home page.
+		«7/10/05; 4:17:21 AM by JES
+			«Added summary field, when prefs are set, and/or the edited news item already has a summary.
+		«7/7/05; 5:39:49 AM by JES
+			«Added support for multiple departments and home page pseudo-department.
+		«7/7/05; 4:43:54 AM by JES
+			«New option for department, when the site has departments -none-.
+		«3/11/05; 7:08:28 PM by JES
+			«Add the enclosure field if the feature is enabled in the site.
+		«9/8/03; 11:26:06 AM by JES
+			«Only add the URLs to Ping box if TrackBack is enabled in the site.
+		«8/22/03; 12:13:05 PM by JES
+			«If html.editor is not defined, use the old style editor.
+		«8/15/03; 2:46:03 PM by JES
+			«Add support for Mozilla's rich text editor.
+		«7/15/2003; 3:56:43 PM by JES
+			«Add support for maunal trackback pings.
+		«4/24/03; 5:48:17 PM by JES
+			«If the preference is enabled, display a checkbox for enabling or disabling the comment link on this item.
+		«4/17/03; 11:24:50 PM by JES
+			«Add an anchor to the top of the editing form. We redirect to this spot in the page after posting an edited news item.
+		«05/06/01; 1:12:26 AM by JES
+			«Replace quote characters with escaped quote characters in the description field, so that quotes will round-trip, whether escaped or not.
+		«10/03/00; 2:58:23 PM by PBS
+			«Support a choice of editors -- None, HTML Tags, WYSIWYG.
+		«10/02/00; 8:54:50 PM by JES
+			«Handle the WYSIWYG editor.
+		«05/04/00; 8:14:27 PM by JES
+			«localized
+		«04/19/00; 10:44:16 PM by PBS
+			«Created. Display an editing form for a news item.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	
+	local (flWysEditor = false, flTagEditor = true);
+	bundle { //figure out which editing tool is preferred
+		if defined (pta^.editingToolName) {
+			if string.lower (pta^.editingToolName) contains "wysiwyg" {
+				flWysEditor = true;
+				flTagEditor = false}}};
+	
+	if actionUrl == "" {
+		actionUrl = manilaSuite.getUrl ("newsItemPostItem")};
+	
+	on translateToEntities (s) {
+		«It's not necessary to translate everything, just ampersands, quotes, and left carets.
+		s = string.replaceAll (s, "&", "&amp;");
+		s = string.replaceAll (s, "<", "&lt;"); //PBS 01/31/00: convert carets to entities
+		s = string.replaceAll (s, "\"", "&quot;"); //PBS 01/31/00: convert quotes to entities
+		s = string.replaceAll (s, "{", "&#123;"); //PBS 03/19/00: convert { to HTML entities
+		return (s)};
+	
+	local (titlePrompt = manilaSuite.getString ("common.titlePrompt"));
+	if buttonText == nil {
+		buttonText = manilaSuite.getString ("news.createNewsItemButton")};
+	
+	local (htmlText = "", indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + string.filledString ('\t', indentLevel) + s + "\r"};
+	
+	if pageTitle == nil {
+		pageTitle = manilaSuite.getString ("news.createNewsItemPageTitle")};
+	pta^.title = pageTitle;
+	
+	bundle { //translate entities
+		if title != nil {
+			title = translateToEntities (title)};
+		if description != nil {
+			description = translateToEntities (description)}
+		else { //10/02/00 JES: for wysiwyg support
+			description = ""};
+		if summary != nil {
+			summary = translateToEntities (summary)};
+		description = string.replaceAll (description, "\\", "\\\\");
+		if linkUrl != nil {
+			linkUrl = translateToEntities (linkUrl)};
+		if departmentName != nil {
+			if typeOf (departmentName) == listType {
+				local (i, ct=sizeOf (departmentName));
+				for i = 1 to ct {
+					departmentName[i] = translateToEntities (departmentName[i])}}
+			else {
+				departmentName = translateToEntities (departmentName)}}};
+	
+	local (flEnclosures = manilaSuite.getNewsSitePref ("newsItems.prefs.flEnclosuresEnabled", default:false, flCreate:true));
+	local (enclosureFieldType = manilaSuite.getNewsSitePref ("newsItems.prefs.enclosureFieldType", default:"uploadFile", flCreate:true));
+	if not manilaSuite.gems.enabledInSite (pta) { //can't do uploadFile if gems aren't enabled -- revert to shortcutOrUrl
+		if enclosureFieldType == "uploadFile" {
+			enclosureFieldType = "shortcutOrUrl"}};
+	local (enctype = "");
+	if flEnclosures and enclosureFieldType == "uploadFile" {
+		enctype = "multipart/form-data"};
+	local (editorText = mainResponder.discuss.getHtmlEditor (description, pta));
+	local (enctypeatt = "");
+	if enctype != "" {
+		enctypeatt = " enctype=\"" + enctype + "\""};
+	if (editorText == "") or (flTagEditor) {
+		add ("<form method=\"POST\"" + enctypeatt + " action=\"" + actionURL + "\">")}
+	else { //10/02/00 JES: Handle the WYSIWYG form.
+		try {
+			add (html.editor.formStart ("body", actionURL, "editMessageForm", enctype:enctype, pta:pta))}
+		else {
+			add ("<form name=\"editMessageForm\" method=\"POST\"" + enctypeatt + " action=\"" + actionURL + "\" onsubmit=\"setMode(true);document.editMessageForm.body.value = document.frames('idEdit').document.body.innerHTML;\">"); indentLevel++;
+			add ("<input type=\"hidden\" name=\"body\">")}};
+	indentLevel++;
+	
+	local (adrmsg);
+	if msgNum != nil {
+		adrmsg = manilaSuite.discuss.getMessageTable (msgNum, adrSite)};
+	
+	bundle { //title and url
+		add ("<a name=\"edit\"></a><b>" + titlePrompt + "</b><br><input size=\"55\" maxlength=\"260\" name=\"title\" value=\"" + title + "\"><p>");
+		add ("<b>" + manilaSuite.getString ("common.urlPrompt") + "</b><br><input size=\"55\" name=\"url\" value=\"" + linkUrl + "\"><p>")};
+	bundle { //enclosure
+		if flEnclosures {
+			add ("<p><b>" + manilaSuite.getString ("news.enclosurePrompt") + "</b>&nbsp;");
+			if enclosure != nil { //existing enclosure -- give some feedback
+				local (url = enclosure^.url);
+				local (fname = string.urlDecode (string.nthField (url, '/', string.countFields (url, '/'))));
+				local (sizetypestring);
+				if defined (enclosure^.error) {
+					sizetypestring = "<br>" + enclosure^.error}
+				else { //no error -- add size and type
+					sizetypestring = "&nbsp;&nbsp;&nbsp;" + string.gigabyteString (enclosure^.length) + "&nbsp;&nbsp;&nbsp;" + enclosure^.type};
+				local (deletecheck = "<input type=\"checkbox\" name=\"flDeleteEnclosure\"> " + manilaSuite.getString ("news.removeEnclosure"));
+				add (html.getLink (fname, url) + sizetypestring + "<br>" + deletecheck + "<p>")}
+			else {
+				case enclosureFieldType {
+					"uploadFile" {
+						add ("<input type=\"file\" name=\"enclosure\"><p>")};
+					"shortcutOrUrl" {
+						add ("<br><input size=\"55\" name=\"enclosure\" value=\"" + enclosure + "\"><p>")}}}}};
+	bundle { //departments
+		if adrDepartments == nil {
+			adrDepartments = manilaSuite.news.getDepartmentTableAddress (adrSite)};
+		local (departmentList = manilaSuite.news.getDepartmentList (adrDepartments));
+		local (flMultipleDepartmentsEnabled = manilaSuite.getNewsSitePref ("newsItems.prefs.flMultipleDepartments", adrSite, false));
+		if departmentList != "" {
+			if flMultipleDepartmentsEnabled {
+				add ("<p><b>" + manilaSuite.getString ("news.departmentPrompt") + "</b><br>");
+				add ("<table border=\"0\" cellpadding=\"5\" cellspacing=\"0\">"); indentlevel++;
+				
+				add ("<tr>"); indentlevel++;
+				
+				local (homePageCheck = " checked");
+				if defined (adrmsg^.newsItem.flOnHomePage) {
+					if not adrmsg^.newsItem.flOnHomePage {
+						homePageCheck = ""}};
+				add ("<td><input type=\"checkbox\" name=\"flOnHomePage\" value=\"xxx\"" + homePageCheck + ">&nbsp;" + string.replaceAll (manilaSuite.getString ("news.homePageTitle"), " ", "&nbsp;") + "</td>");
+				
+				local (dept, col=2, cols=4);
+				for dept in departmentList {
+					if col > cols { //close row and start another one
+						add ("</tr>"); indentlevel--;
+						add ("<tr>"); indentlevel++;
+						col = 1};
+					local (checked = "");
+					if typeOf (departmentName) == listType { //multiple departments in this news item
+						local (i, ct=sizeOf (departmentName));
+						for i = 1 to ct {
+							if string.lower (dept) == string.lower (departmentName[i]) {
+								checked = " checked";
+								break}}}
+					else { //single department for this news item
+						if string.lower (departmentName) == string.lower (dept) {
+							checked = " checked"}};
+					add ("<td><input type=\"checkbox\" name=\"department_" + translateToEntities (dept) + "\" value=\"xxx\"" + checked + ">&nbsp;" + string.replaceAll (dept, " ", "&nbsp;") + "</td>");
+					col++};
+				
+				add ("</tr>"); indentlevel--;
+				
+				add ("</table>"); indentlevel--}
+			else { //single department pop-up
+				add ("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\">");
+				indentLevel++;
+				add ("<tr>");
+				indentLevel++;
+				add ("<td align=\"left\" valign=\"middle\">");
+				indentLevel++;
+				add ("<b>" + manilaSuite.getString ("news.departmentPrompt") + "</b>&nbsp;");
+				add ("</td>");
+				indentLevel--;
+				add ("<td align=\"left\" valign=\"top\">");
+				indentLevel++;
+				add ("<select name=\"department\">");
+				
+				add ("<option value=\"\">" + manilaSuite.getString ("news.departmentNone"));
+				
+				local (oneDepartment);
+				for oneDepartment in departmentList {
+					oneDepartment = translateToEntities (oneDepartment);
+					if string.lower (oneDepartment) == string.lower (departmentName) {
+						add ("<option value=\"" + translateToEntities (oneDepartment) + "\" selected>" + oneDepartment)}
+					else {
+						add ("<option value=\"" + translateToEntities (oneDepartment) + "\">" + oneDepartment)}};
+				
+				add ("</select>");
+				add ("</td>");
+				indentLevel--;
+				add ("</tr>");
+				indentLevel--;
+				add ("</table>");
+				indentLevel--}}
+		else { //department is hidden field, empty value
+			add ("<input type=\"hidden\" name=\"department\" value=\"\">");
+			if flMultipleDepartmentsEnabled {
+				add ("<input type=\"hidden\" name=\"flOnHomePage\" value=\"xxx\">")}}};
+	bundle { //summary
+		if manilaSuite.getNewsSitePref ("newsItems.flSummariesEnabled", adrSite, false) {
+			local (flSummaryField = false);
+			if summary != nil {
+				flSummaryField = true};
+			if not flSummaryField {
+				flSummaryField = not manilaSuite.getNewsSitePref ("newsItems.flSummariesAutomatic", adrSite, false)};
+			if flSummaryField {
+				local (summaryPrompt = manilaSuite.getString ("news.summaryPrompt"));
+				add ("<p><b>" + summaryPrompt + "</b><br><textarea name=\"summary\" rows=\"3\" cols=\"70\" wrap=\"soft\">" + summary + "</textarea>")}}};
+	bundle { //description
+		local (bodyPrompt = manilaSuite.getString ("news.descriptionPrompt"));
+		if editorText == "" {
+			add ("<p><b>" + bodyPrompt + "</b><br><textarea name=\"body\" rows=\"20\" cols=\"70\" wrap=\"soft\">" + description + "</textarea>")}
+		else { //add the HTML editor
+			add ("<p><b>" + bodyPrompt + "</b><br>" + editorText)}};
+	bundle { //comment link checkbox
+		if manilaSuite.getNewsSitePref ("newsItems.flCommentsCheckOnEditPage", default:false, flCreate:true) {
+			local (adrdata = manilaSuite.radioHosting.init ());
+			if config.manila.prefs.flRadioHostingEnabled and adrdata^.flEnabled {
+				local (flCommentLinkEnabled = manilaSuite.getNewsSitePref ("newsItems.flCommentsEnabledByDefault", default:true, flCreate:true));
+				if defined (adrmsg^.newsItem.flCommentLinkEnabled) {
+					flCommentLinkEnabled = adrmsg^.newsItem.flCommentLinkEnabled};
+				local (checked = "");
+				if flCommentLinkEnabled {
+					checked = " checked"};
+				add ("<p><input type=\"checkbox\" name=\"flCommentLinkEnabled\"" + checked + ">&nbsp;" + manilaSuite.getString ("news.enableCommentLinkThisPost"))}}};
+	bundle { //trackback urls to ping
+		if manilaSuite.getNewsSitePref ("trackback.flEnabled", adrSite, false, true) {
+			add ("<p><b>" + manilaSuite.getString ("news.urlsToPing") + "</b><br><textarea name=\"urlsToPing\" rows=\"3\" cols=\"70\" wrap=\"soft\"></textarea>")}};
+	bundle { //add msgnum and redirecturl as hidden inputs
+		if msgNum != nil {
+			add ("<input type=\"hidden\" name=\"msgNum\" value=\"" + msgNum + "\">")};
+		if redirectUrl != nil {
+			add ("<input type=\"hidden\" name=\"redirect\" value=\"" + translateToEntities (redirectUrl) + "\">")}};
+	bundle { //submit, delete, post as bulletin buttons
+		add ("<p>");
+		add ("<input type=\"submit\" name=\"postChanges\" value=\"" + buttonText + "\">");
+		if msgNum != nil { //Send Bulletin and Delete buttons only appear if editing an existing news item
+			if manilaSuite.news.isPosted (adrMsg) { //Send Bulletin and Revert to Pending only operate on posted news items
+				add ("<input type=\"submit\" name=\"sendBulletin\" value=\"" + manilaSuite.getString ("common.sendBulletinButton") + "\">");
+				add ("<input type=\"submit\" name=\"revertToPending\" value=\"" + manilaSuite.getString ("news.revertToPendingButton") + "\">")};
+			add ("<input type=\"submit\" name=\"deleteNewsItem\" value=\"" + manilaSuite.getString ("common.deleteButton") + "\">")}};
+	
+	add ("</form>"); indentLevel--;
+	
+	return (htmlText)}

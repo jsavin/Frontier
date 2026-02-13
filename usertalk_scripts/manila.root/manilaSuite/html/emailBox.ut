@@ -1,0 +1,59 @@
+on emailBox (adrMsgTable, pta=nil) {
+	«Draw the email box, which allows you to subscribe to responses to a message.
+		«This script assumes that the browser is a member, the message hasn't been deleted, and that email subscriptions are allowed -- check those things before calling this script. (See manilaSuite.discuss.msgReader.)
+		«04/07/00; 3:41:40 PM by PBS
+	«Changes:
+		«1/31/06; 3:14:01 AM by JES
+			«Change width of email box from 300 to 350 pixels.
+		«04/21/00; 2:21:16 AM by JES
+			«localized
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (flPost = (string.lower (pta^.method) == "post"));
+	local (memberKey = nameOf (pta^.adrMemberInfo^));
+	
+	on isSubscribed () {
+		if defined (adrMsgTable^.emailSubscribers.[memberKey]) {
+			return (true)};
+		return (false)};
+	
+	if flPost { //handle POST commands -- subscribe or unsubscribe
+		if defined (pta^.postArgs.emailSubscriptionCommand) {
+			if defined (pta^.postArgs.subscribe) {
+				if not defined (adrMsgTable^.emailSubscribers) {
+					new (tableType, @adrMsgTable^.emailSubscribers)};
+				adrMsgTable^.emailSubscribers.[memberKey] = true}
+			else {
+				try {delete (@adrMsgTable^.emailSubscribers.[memberKey])}}}};
+	
+	local (s = "");
+	local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
+	
+	bundle { //PBS 12/13/99:get the color preferences
+		manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor)};
+	
+	bundle { //build the top of the table
+		local (action = pta^.urls^.discussMsgReader);
+		if not (action endsWith "$") {
+			action = action + "$"};
+		action = action + adrMsgTable^.msgNum;
+		
+		s = "<br><br><br>\r<table border=\"0\" cellpadding=\"3\" cellspacing=\"1\" bgcolor=\"" + headerColor + "\" width=\"350\">";
+		s = s + "\r<tr bgcolor=\"" + headerColor +"\"><td align=\"left\"><b><font color=\"" + headerTextColor + "\">" + manilaSuite.getString ("common.email", pta: pta) + "</font></b></td></tr>"; // 4/21/00 JES: localized
+		s = s + "\r<tr bgcolor=\"" + backgroundColor + "\"><td><font color=\"" + backgroundTextColor + "\"><form method=\"POST\" action=\"" + action + "\">"};
+	
+	bundle { //build the middle of the table, the command's radio buttons
+		local (flChecked = isSubscribed ());
+		
+		s = s + "<input type=\"checkbox\" name=\"subscribe\"";
+		if flChecked {
+			s = s + " checked"};
+		s = s + ">&nbsp;";
+		s = s + manilaSuite.getString ("emailNotification.receiveEmailResponses", pta: pta) + "<p>\r"}; // 4/21/00 JES: localized
+	
+	bundle { //build the bottom of the table
+		s = s + "<p align=\"right\"><input type=\"submit\" name=\"emailSubscriptionCommand\" value=\"" + manilaSuite.getString ("common.submitButton", pta: pta) + "\">&nbsp;&nbsp;</p></font></form></td></tr></table>"}; // 4/21/00 JES: localized
+	
+	return (manilaSuite.unTaint (s))}

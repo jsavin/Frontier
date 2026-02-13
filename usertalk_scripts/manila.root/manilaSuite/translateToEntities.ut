@@ -1,0 +1,7 @@
+on translateToEntities (s) {
+	«It's not necessary to translate everything, just ampersands, quotes, and left carets.
+	s = string.replaceAll (s, "&", "&amp;");
+	s = string.replaceAll (s, "<", "&lt;"); //PBS 01/31/00: convert carets to entities
+	s = string.replaceAll (s, "\"", "&quot;"); //PBS 01/31/00: convert quotes to entities
+	s = string.replaceAll (s, "{", "&#123;"); //PBS 03/19/00: convert { to HTML entities
+	return (s)}

@@ -1,0 +1,16 @@
+on getDefaultFilename () {
+	«Get the name of the default file name, usually index.html or default.html.
+		«03/13/00; 10:15:59 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	
+	if defined (pta^.defaultFilename) {
+		return (pta^.defaultFilename)};
+	
+	if defined (pta^.adrStaticSite^.["#prefs"].defaultFilename) {
+		return (pta^.adrStaticSite^.["#prefs"].defaultFilename)};
+	local (default = config.manila.prefs.staticRenderingDefaultFilename);
+	default = string.popSuffix (default);
+	pta^.defaultFilename = default;
+	
+	return (default)}

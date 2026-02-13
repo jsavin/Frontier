@@ -1,0 +1,13 @@
+on unregisterLegalMacros (adrLegalMacros) {
+	«Changes
+		«3/9/06; 2:29:05 AM by JES
+			«Created. Converse of manilaSuite.plugins.registerLegalMacros.
+	local (adrItem);
+	local (adrConfigLegalMacros = @config.mainResponder.prefs.legalMacros);
+	for adrItem in adrLegalMacros {
+		local (macroString = string.popFileFromAddress (adrItem));
+		local (adrConfigItem = @adrConfigLegalmacros^.[macroString]);
+		if defined (adrConfigItem^) {
+			delete (adrConfigItem)}};
+	
+	return}

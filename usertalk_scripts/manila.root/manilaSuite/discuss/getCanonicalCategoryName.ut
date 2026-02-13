@@ -1,0 +1,30 @@
+on getCanonicalCategoryName (name, adrSite) {
+	«Changes:
+		«1/31/06; 5:58:53 PM by JES
+			«Bug fix: For categories other than stories, pictures and home pages, we needed to delete the site name prefix from the category name.
+		«10/11/00; 12:07:26 PM by PBS
+			«Call proper bottleneck scripts for getting category names.
+		«10/09/00; 10:02:06 PM by PBS
+			«Created. Go from a site-specific name like myCoolSitePictures to a canonical name like pictures.
+	
+	local (stories, pictures, homePages);
+	«stories = manilaSuite.getNewsSitePref ("storiesListedIn", adrSite)
+	«pictures = manilaSuite.getNewsSitePref ("picturesListedIn", adrSite)
+	«homePages = manilaSuite.getNewsSitePref ("homePagesListedIn", adrSite)
+	stories = manilaSuite.discuss.getStoriesCategory (adrSite);
+	pictures = manilaSuite.discuss.getPicturesCategory (adrSite);
+	homePages = manilaSuite.discuss.getHomePagesCategory (adrSite);
+	
+	case string.lower (name) {
+		string.lower (stories) {
+			return ("stories")};
+		string.lower (pictures) {
+			return ("pictures")};
+		string.lower (homePages) {
+			return (homePages)}};
+	
+	local (catprefix = string.mid (stories, 1, sizeOf (stories) - 7));
+	name = string.delete (name, 1, sizeOf (catprefix));
+	name[1] = string.lower (name[1]);
+	
+	return (name)} //return the name as-is

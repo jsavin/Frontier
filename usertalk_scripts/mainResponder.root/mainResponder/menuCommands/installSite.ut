@@ -1,0 +1,42 @@
+«Changes
+	«7/9/03; 3:57:29 PM by JES
+		«Register the site in config.mainResponder.domains, as a sub-site in the site tree if necessary.
+
+local (adr = table.getCursorAddress ());
+while (sizeOf (string.parseAddress (adr)) > 2) {
+	adr = parentOf (adr^)};
+
+local (siteName = nameOf (adr^));
+if string.lower (siteName) endsWith "manilawebsite" {
+	siteName = string.delete (siteName, sizeOf (siteName) - 12, 13)};
+
+if not (manilaSuite.isManilaSite (adr)) {
+	dialog.alert ("Can't install \"" + siteName + "\" because it isn't a Manila site.");
+	return (false)};
+
+local (oldUrl = adr^.["#ftpSite"].url);
+local (newUrl = oldUrl);
+if dialog.ask ("New site URL for " + siteName + ":", @newUrl) {
+	manilaSuite.installSite (adr);
+	
+	if not (newUrl endsWith "/") {
+		newUrl = newUrl + "/"};
+	if not (string.lower (newUrl) beginsWith "http://") {
+		newUrl = "http://" + newUrl};
+	if string.lower (oldUrl) != string.lower (newUrl) {
+		manilaSuite.admin.changeSiteUrl (oldUrl, newUrl, adr)};
+	
+	try { //JES 7/9/03: config.mainResponder.domains
+		local (url = adr^.["#ftpSite"].url);
+		local (urlparts = string.urlSplit (url));
+		local (path = urlparts[3]);
+		local (domain = string.lower (urlparts[2]));
+		if sizeOf (path) > 0 {
+			if not defined (config.mainResponder.domains.[domain]) { //use default domain
+				domain = "default"};
+			mainResponder.siteTree.addSiteToTree (domain, path, adr, false, true)}
+		else { //top-level site
+			if not defined (config.mainResponder.domains.[domain]) {
+				config.mainResponder.domains.[domain] = adr}}};
+	
+	dialog.notify ("\"" + siteName + "\" has been installed.")}

@@ -1,0 +1,9 @@
+on downloadTheme (lineText) {
+	«Return a link to the downloadable theme.
+		«06/05/00; 9:49:30 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (url = manilaSuite.themes.getDownloadUrl (adrSite));
+	local (link = html.getLink (lineText, url));
+	return (manilaSuite.unTaint (link))}

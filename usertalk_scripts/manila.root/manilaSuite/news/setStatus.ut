@@ -1,0 +1,36 @@
+on setStatus (msgNum, adrSite, status, adrMsgTable=nil) {
+	«Changes
+		«10/17/05; 7:14:50 PM by JES
+			«Remove items which were posted and are being set to editing or released from the postOrder index.
+		«10/17/05; 5:23:57 PM by JES
+			«Set the status of a news item to editing, released or posted.
+	
+	if adrMsgTable == nil { //set adrMsgTable
+		adrMsgTable = manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, msgNum)};
+	
+	local (currStatus = string.lower (manilaSuite.news.getStatus (msgNum, adrSite, adrMsgTable)));
+	status = string.lower (status);
+	if status == currStatus { //do nothing
+		return (true)};
+	
+	case status {
+		"editing";
+		"released" {
+			adrMsgTable^.newsItem.flReleased = (status == "released"); //release or un-release
+			if defined (adrMsgTable^.newsItem.flPosted) {
+				if adrMsgTable^.newsItem.flPosted { //remove from postOrder index
+					local (adrIndex = manilaSuite.news.getIndexAddress ("postOrder", adrSite));
+					local (sizeIndex = sizeOf (adrIndex^), i);
+					for i = sizeIndex downto 1 {
+						local (adr = @adrIndex^[i]);
+						if adr^ == adrMsgTable^.msgnum {
+							delete (adr);
+							break}}}};
+			adrMsgTable^.newsItem.flPosted = false};
+		"posted" {
+			adrMsgTable^.newsItem.flReleased = true;
+			manilaSuite.news.postItemToHomePage (adrMsgTable, adrSite)}};
+	
+	manilaSuite.news.updateIndexes (adrMsgTable, adrSite);
+	
+	return (true)}

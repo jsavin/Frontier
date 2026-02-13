@@ -1,0 +1,34 @@
+on addCategoryToMessage (adrMsgTable, category, adrSite=nil) {
+	«Changes:
+		«1/31/06; 3:34:13 AM by JES
+			«Add support for arbitrary categories.
+		«10/09/00; 9:58:23 PM by PBS
+			«adrSite, optional parameter. If supplied we can update the index for this category.
+		«10/19/99; 3:58:26 PM by PBS
+			«Created. Make this message a member of the specified category.
+				«This script can be called from outside the page rendering context.
+				«If this message is already a member of the category, leave it as-is.
+				«If this message is a member of other categories, don't erase those other categories.
+	
+	if not defined (adrMsgTable^.alsoListedIn) {
+		adrMsgTable^.alsoListedIn = {}};
+	
+	category = manilaSuite.unTaint (category); //PBS 10/31/99
+	
+	if manilaSuite.discuss.isInCategory (adrMsgTable, category) {
+		return (true)};
+	
+	adrMsgTable^.alsoListedIn = adrMsgTable^.alsoListedIn + category; //add the category
+	
+	if adrSite != nil { //PBS 10/09/00: update indexes
+		local (additionalCategories = {});
+		case string.lower (category) {
+			"homepages";
+			"stories";
+			"pictures" {
+				}}//NOP
+		else { //all other categories
+			additionalCategories = {manilaSuite.discuss.getCanonicalCategoryName (category, adrSite)}};
+		manilaSuite.discuss.addToIndexes (adrSite, adrMsgTable, additionalCategories)};
+	
+	return (true)}

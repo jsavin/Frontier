@@ -1,0 +1,2 @@
+on drawPanel (textinborder, borderwidth=3, bgcolor="lemonchiffon", width=85) {
+	return ("<table border=\"" + borderwidth + "\" cellspacing=\"0\" cellpadding=\"5\"><tr bgcolor=\"" + bgcolor + "\"><td width=\"" + width + "\"><center>" + textinborder + "</center></td></tr></table>")}

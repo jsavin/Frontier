@@ -1,0 +1,9 @@
+on getTimeOutSeconds (adrSite) {
+	«Get the number of seconds that must elapse before a time-out.
+		«02/12/00; 11:05:37 AM by PBS
+	
+	local (timeOutMinutes = 240);
+	if defined (adrSite^.["#newsSite"].custody.timeOutMinutes) {
+		timeOutMinutes = adrSite^.["#newsSite"].custody.timeOutMinutes};
+	
+	return (timeOutMinutes * 60)}

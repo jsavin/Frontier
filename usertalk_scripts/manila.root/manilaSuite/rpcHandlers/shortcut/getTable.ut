@@ -1,0 +1,50 @@
+on getTable (username, password, siteName) {
+	«Get a struct containing info about all the shortcuts for this site. This script is SOAP compatible.
+		«11/15/00; 11:54:43 PM by JES
+	«Changes:
+		«03/19/01; 3:22:21 PM by JES
+			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		«05/23/01; 1:15:21 AM by JES
+			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+	
+	bundle { //make sure this person is an editor of this site
+		local (beginningErrorString = "Can't list all shortcuts because ");
+		manilaSuite.rpcUtils.editorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrGlossary = @adrSite^.["#glossary"]);
+	
+	if not defined (adrGlossary) {
+		new (tableType, adrGlossary)};
+	
+	local (flSoap = false);
+	if string.upper (responder) == "SOAP" {
+		adrRequest^.customStructType = manilaData.soap.constants.customArrayTypes.shortcut;
+		adrRequest^.customNamespace = manilaData.soap.constants.manilaNamespace;
+		adrRequest^.customNamespaceURI = manilaData.soap.constants.manilaNamespaceURI;
+		flSoap = true};
+	local (url, adr, adrItem, shortcutsTable);
+	if flSoap {
+		shortcutsTable = {}}
+	else {
+		new (tableType, @shortcutsTable)};
+	
+	local (ct = 1);
+	on addShortcut (name, adrData) {
+		local (shortcutTable); new (tableType, @shortcutTable);
+		shortcutTable.name = name;
+		if typeOf (adrData^) == tableType {
+			shortcutTable.value = adrData^}
+		else {
+			shortcutTable.value = string (adrData^)};
+		if flSoap {
+			shortcutsTable[ct] = shortcutTable}
+		else {
+			local (adr = table.uniqueName ("shortcut", @shortcutsTable, 7));
+			adr^ = shortcutTable};
+		ct++};
+	
+	for adrItem in adrGlossary {
+		addShortcut (nameOf (adrItem^), adrItem)};
+	
+	return (shortcutsTable)}

@@ -1,0 +1,10 @@
+on disableForThisPage (pta=nil) {
+	«Changes
+		«9/14/05; 1:10:37 AM by JES
+			«Created. Disable ETP callbacks temporarily, for the page currently being rendered.
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	if defined (pta^.ETPFormSubstitutes) {
+		delete (@pta^.ETPFormSubstitutes);
+		return (true)};
+	return (false)}

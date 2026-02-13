@@ -1,0 +1,115 @@
+on backupOneSite (adrsite, adrdata, basefolder="") {
+	«Changes
+		«12/11/06; 2:54:14 PM by LL
+			«Save any error messages that can be used to debug the error.
+		«2002
+			«6/25/02; 3:24:48 AM by JES
+				«Use Frontier.getFileType to get the file extension on MacOS. Use string.popFileFromAddress when calling export.sendobject, to make backed up objects more portable.
+			«3/4/02; 1:38:49 PM by DW
+				«Created.
+	
+	adrdata^.ctfiles = 0;
+	adrdata^.cterrors = 0;
+	adrdata^.ctfilesbackedup = 0;
+	adrdata^.ctbytesbackedup = 0;
+	adrdata^.errorLog = "<p>";
+	
+	local (pc = file.getpathchar ());
+	on writeObject (folder, adr) {
+		local (f);
+		bundle { //calculate f
+			local (fname = nameOf (adr^));
+			if system.environment.isMac {
+				if sizeOf (fname) > 26 {
+					fname = string.mid (fname, 1, 26)};
+				fname = fname + "." + string.lower (frontier.getFileType (typeOf (adr^)))}
+			else {
+				fname = fname + "." + Frontier.getFileSuffix (typeOf (adr^))};
+			f = folder + fname};
+		local (moddate = timeModified (adr), creationdate = timeCreated (adr));
+		local (flwrite = true);
+		adrdata^.ctfiles++;
+		if file.exists (f) {
+			if typeof (moddate) == datetype { //not a scalar
+				if file.modified (f) >= moddate {
+					flwrite = false}}};
+		if flwrite {
+			try {
+				export.sendobject (string.popFileFromAddress (adr), f);
+				adrdata^.ctfilesbackedup++;
+				adrdata^.ctbytesbackedup = adrdata^.ctbytesbackedup + file.size (f)}
+			else {
+				adrdata^.cterrors++;
+				if adrdata^.cterrors <= 10 {
+					adrdata^.errorLog = adrdata^.errorLog + file.fileFromPath (f) + " : " + tryError + "<br>"}};
+			try {
+				if typeof (moddate) == datetype { //not a scalar
+					file.setmodified (f, moddate)}};
+			try {
+				if typeof (creationdate) == datetype { //not a scalar
+					file.setcreated (f, creationdate)}}}};
+	on writeSubfolder (folder, adrtable) {
+		«Each of the items in adrtable is written in its own file in the folder
+		local (adr);
+		file.surefolder (folder);
+		for adr in adrtable {
+			writeObject (folder, adr)}};
+	on writeMembers (adrmembers) {
+		local (membersfolder = basefolder + "#membershipGroup" + pc, adrsubitem);
+		file.surefolder (membersfolder);
+		for adrsubitem in adrmembers {
+			case string.lower (nameof (adrsubitem^)) {
+				"users" {
+					writeSubfolder (membersfolder + "users" + pc, adrsubitem)}}
+			else {
+				writeObject (membersfolder, adrsubitem)}}};
+	if basefolder == "" {
+		basefolder = frontier.pathstring + "Manila Backups" + pc};
+	file.surefilepath (basefolder + "x");
+	basefolder = basefolder + nameof (adrsite^) + pc;
+	file.surefolder (basefolder);
+	
+	local (adr);
+	for adr in adrsite {
+		case string.lower (nameof (adr^)) {
+			"#discussiongroup" {
+				local (dgfolder = basefolder + "#discussionGroup" + pc, adrsubitem);
+				file.surefolder (dgfolder);
+				for adrsubitem in adr {
+					case string.lower (nameof (adrsubitem^)) {
+						"calendar" {
+							writeSubfolder (dgfolder + "calendar" + pc, adrsubitem)};
+						"messages" {
+							writeSubfolder (dgfolder + "messages" + pc, adrsubitem)}}
+					else {
+						writeObject (dgfolder, adrsubitem)}}};
+			"#membershipgroup" {
+				local (adrmembers = adr);
+				if typeof (adrmembers^) == addresstype {
+					adrmembers = adr^};
+				writeMembers (adrmembers)};
+			"members" {
+				writeMembers (@[system.temp.mainResponder.membersRootFile].[adr^])}}
+		else {
+			writeObject (basefolder, adr)}};
+	
+	bundle { //see if it's an old-style site for membership
+		if defined (adrsite^.["#prefs"].defaultMembershipGroup) {
+			local (membergroupname = adrsite^.["#prefs"].defaultMembershipGroup);
+			if membergroupname != "default" {
+				writeMembers (@[system.temp.mainResponder.membersRootFile].[membergroupname])}}};
+	bundle { //see if it's an old-style site for discussion group
+		if defined (adrsite^.["#prefs"].discussionRoot) {
+			local (dgname = adrsite^.["#prefs"].discussionRoot);
+			local (dgfolder = basefolder + "#discussionGroup" + pc, adrsubitem);
+			file.surefolder (dgfolder);
+			for adrsubitem in @[system.temp.mainResponder.discussRootFile].[dgname] {
+				case string.lower (nameof (adrsubitem^)) {
+					"calendar" {
+						writeSubfolder (dgfolder + "calendar" + pc, adrsubitem)};
+					"messages" {
+						writeSubfolder (dgfolder + "messages" + pc, adrsubitem)}}
+				else {
+					writeObject (dgfolder, adrsubitem)}}}}};
+«bundle //test code
+	«backupOneWebsite (@createASiteManilaWebsite, @scratchpad.backupData)

@@ -1,0 +1,62 @@
+on view (url) {
+	«Include an OPML document. It will be rendered as if it's part of the current site. Any OPML documents it includes via a link nodeType will also be included.
+		«12/30/01; 2:45:52 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (flUseCache = true); //should be true except when debugging
+	local (htmlText = "");
+	local (lastRead = date (0));
+	local (flRead = false);
+	local (adrHtmlText, adrCacheDocument);
+	
+	bundle { //get cache table
+		local (adrDiscuss = manilaSuite.discuss.getDiscussionGroupAddress (manilaSuite.getManilaSiteAddress (pta)));
+		local (adrCache = @adrDiscuss^.viewOpmlCache);
+		if not defined (adrCache^) {
+			new (tableType, adrCache)};
+		adrCacheDocument = @adrCache^.[url];
+		if not defined (adrCacheDocument^) {
+			new (tableType, adrCacheDocument)};
+		adrHtmlText = @adrCacheDocument^.htmlText;
+		if defined (adrCacheDocument^.lastRead) {
+			lastRead = adrCacheDocument^.lastRead}};
+	
+	bundle { //find reasons to read via tcp
+		if lastRead < clock.now () - (60 * 60) { //older than one hour?
+			flRead = true};
+		if not defined (adrHtmlText^) { //rendered HTML text defined?
+			flRead = true};
+		if not flUseCache { //debugging?
+			flRead = true}};
+	
+	if flRead { //read via tcp
+		local (oldPta = pta);
+		local (opmlText = tcp.httpReadUrl (url));
+		html.setPageTableAddress (oldPta);
+		bundle { //expand inclusions; render opml text as html text
+			local (localOutline);
+			new (outlineType, @localOutline);
+			op.xmlToOutline (opmlText, @localOutline);
+			local (oldTarget = target.set (@localOutline));
+			bundle { //deal with inclusions
+				«Find included OPML documents and expand them.
+				op.firstSummit ();
+				loop {
+					local (atts);
+					if (op.attributes.getAll (@atts)) {
+						if defined (atts.type) {
+							if string.lower (atts.type) == "link" {
+								if defined (atts.url) {
+									if string.lower (atts.url) endsWith ".opml" {
+										Frontier.tools.data.nodeTypes.link.expand ()}}}}}; //expand it
+					if not (op.go (flatdown, 1)) {
+						break}}};
+			htmlText = pikeRenderer.theRenderer (@localOutline); //standard renderer
+			try {target.set (oldTarget)};
+			htmlText = mainResponder.neuterText (htmlText, true, true)}; //security: neuter bad macros and tags
+		adrHtmlText^ = htmlText; //store in cache
+		adrCacheDocument^.lastRead = clock.now ()}
+	else { //get from cache
+		htmlText = adrHtmlText^}; //get from cache
+	
+	return (html.processMacros (htmlText, true, pta))} //legal macros are okay; don't untaint

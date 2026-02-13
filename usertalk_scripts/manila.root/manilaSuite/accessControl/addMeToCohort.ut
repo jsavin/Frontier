@@ -1,0 +1,31 @@
+on addMeToCohort (pta, cohortID,  flCreateCohort=false) {
+	«manilaSuite.AccessControl.addMeToCohort : 04/05/20, 16:11:51 by DAB
+		«adds current user to cohort "X"; creating the cohort if necessary (if flCreateCohort is true)
+		«was manilaFixer.accessControl.addMeToCohort : 04/05/13, 12:24:33 by DAB
+	if not defined(pta^.adrMemberInfo) {
+		return false};
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	
+	case true { //reasons to bail out 
+		cohortID == "";
+		cohortID != string.dropNonAlphas(cohortID) {
+			return false};
+		not defined(adrCohorts^.[cohortID]) {
+			if not flCreateOK {
+				return false};
+			new(tabletpe, @adrCohorts^.[cohortID]);
+			adrCohorts^.[cohortID].name = s;
+			adrCohorts^.[cohortID].default = false;
+			adrCohorts^.[cohortID].systemdefinition = false;
+			new(tabletype, @adrCohorts^.[cohortID].memberdata);
+			adrCohorts^.[cohortID].containsTest = manilaSuite.accessControl.genericContainsTest;
+			script.compile(@adrCohorts^.[cohortID].containsTest)}};
+	
+	local (memberKey = nameOf(pta^.adrMemberInfo^));
+	if not defined (adrCohorts^.[cohortID].memberdata.[member]) {
+		adrCohorts^.[cohortID].memberdata.[memberKey] = clock.now();
+		return true};
+	
+	return false}

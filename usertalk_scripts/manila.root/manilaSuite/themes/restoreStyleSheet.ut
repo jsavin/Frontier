@@ -1,0 +1,7 @@
+on restoreStyleSheet (adrSiteInfo) {
+	«Restore the CSS to the default.
+		«06/06/00; 3:44:29 PM by PBS
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	manilaSuite.themes.restoreToDefault (adrSite, "cascadingStyleSheet");
+	return (true)}

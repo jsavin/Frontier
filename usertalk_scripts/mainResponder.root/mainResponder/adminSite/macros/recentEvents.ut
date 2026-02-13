@@ -1,0 +1,46 @@
+on recentEvents (n) {
+	«Changes
+		«6/6/02; 12:59:22 PM by JES
+			«Created.
+	
+	if not defined (radioCommunityServerSuite) { //RCS is not installed -- return the empty string
+		return ("")};
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledString ("\t", indentlevel) + s + "\r\n");};
+	
+	bundle { //start the table
+		add ("<table cellpadding=\"3\" cellspacing=\"1\" width=\"225\" bgcolor=\"black\" border=\"0\">"); indentlevel++};
+	bundle { //title
+		add ("<tr><td bgcolor=\"#DCDCFF\"><b>Recent Events</b></td></tr>")};
+	bundle { //add the events
+		add ("<tr><td bgcolor=\"white\">"); indentlevel++;
+		local (adrlog = log.getGuestSubTable (radioCommunityServerSuite.data.strings.logname));
+		local (adrhour, adritem, i, j, ct = 0);
+		add ("<table cellpadding=\"2\" cellspacing=\"0\" border=\"0\" bgcolor=\"white\">"); indentlevel++;
+		for i = sizeof (adrlog^) downto 1 {
+			adrhour = @adrlog^ [i];
+			for j = sizeof (adrhour^) downto 1 {
+				adritem = @adrhour^ [j];
+				local (s);
+				s = "<tr>";
+				local (itemtext = adritem^.htmltext);
+				if itemtext contains ": " {
+					itemtext = string.nthField (itemtext, ":", 1)};
+				s = s + "<td class=\"small\">" + adritem^.eventType + ": " + itemtext + "</td>";
+				s = s + "<td valign=\"top\" align=\"right\" class=\"small\" nowrap>" + date.timestring (xml.convertToDisplayName (nameof (adritem^))) + "</td>";
+				s = s + "</tr>";
+				adritem^.cache = s;
+				add (s);
+				ct++;
+				if ct >= n {
+					break}};
+			if ct >= n {
+				break}};
+		add ("</table>"); indentlevel--;
+		add ("</td></tr>"); indentlevel--};
+	
+	add ("</table><br />"); indentlevel--;
+	
+	return (htmltext)}

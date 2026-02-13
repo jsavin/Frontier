@@ -1,0 +1,760 @@
+on createSiteForm (pta=nil) {
+	«Changes:
+		«3/20/07; 3:47:48 PM by LL
+			«Added support for an editorial mode hosting pref to set default editorial preferences when creating a site.
+		«2005 and earlier
+			«11/1/05; 2:48:56 AM by JES
+				«Change call to tcp.sendMail to manilaSuite.sendMail.
+			«05/05/04, 13:58:03 by DAB
+				«DAB Changes from 03/01/05, 16:09:10
+					«all sites get their own root
+						«from the controlpanel  - always
+						«user form entry - if boolean config.manila.prefs.flOneSitePerRoot exists use that value
+					«A site preference can be set In #prefs flCannotChangeEmail
+						«true  - email address is taken from member record (non controlapnel calls)
+						«false - sets as before from the form
+					«name restricted to max of 18 chars - otherwise backups fail on Macintosh for folder name too long
+			«5/3/04; 6:15:26 PM by JES
+				«Make sure that site creation doesn't fail if one of the new hosting prefs is not defined.
+			«4/9/04; 5:34:36 PM by JES
+				«Handle the case where the site's hosting prefs don't define flRequireEmailConfirmation.
+			«7/9/03; 3:24:36 PM by JES
+				«Add sub-sites to the site tree for the base domain, or to the default domain if the base domain is not defined in config.mainResponder.domains.
+				«If the site has hosting prefs, but the hosting prefs table's flEnabled boolean is false, return an error.
+				«Added support for additional prefs from the hosting prefs table:
+					«defaultEditor
+					«defaultLanguage
+					«defaultHomePageSubject, defaultHomePageText
+					«defaultNewsItemTitle, defaultNewsItemText, defaultNewsItemLink
+					«flEnabled
+					«flNewsItemsEnabled
+					«flRequireEmailConfirmation, flRestrictByEmailDomain, restrictToDomain
+			«3/31/03; 3:04:43 PM by JES
+				«Fixed a bug which caused the create site form in the control panel not to work. Thanks to Sam Reynolds for debugging and suggesting the fix.
+			«8/16/02; 4:42:24 PM by JES
+				«Added support for creating sites via the Frontier Admin site.
+			«07/12/00; 3:18:55 PM by PBS
+				«Support for shared membership groups. The prefs table may specify using the membership group that the create-a-site site uses. config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup, if defined and true, means to use the membership group of the create-a-site site.
+				«Simplified canonical site names and site table names. The canonical site name is always just the path. The site table name is always the path plus "ManilaWebsite."
+			«07/03/00; 12:12:57 PM by JES
+				«Localized error messages.
+			«06/28/00; 12:27:43 PM by PBS
+				«If the domain doesn't exist, use the default. Don't convert or create any siteTree tables. Make sure the canonical site name is a short name.
+			«06/27/00; 12:30:27 PM by JES
+				«Bug fix - make sure the siteTree.directory table in config.mainResponder.domains contains an outline, after creating a sub-site.
+			«06/26/00; 7:49:48 PM by JES
+				«Bug fix - fixed createSiteForm on storyReader and msgReader pages
+			«06/25/00; 12:51:16 AM by JES
+				«Bug fix -- support for servers running on ports other than 80
+			«06/23/00; 10:05:39 PM by PBS
+				«The default theme didn't show up in the Create-a-Site form on the Control Panel -- now it does.
+				«When building the pop-up menu, use the display name of the Theme.
+			«06/22/00; 4:14:12 PM by PBS
+				«Make sure baseDomain is a good domain, doesn't have slashes or an http:// prefix. If doing top-level sites, make sure there's a period at the front.
+			«06/22/00; 1:13:38 AM by JES
+				«localized
+			«06/17/00; 11:20:02 PM by PBS
+				«If the base domain doesn't exist on config.mainResponder.domains, and sub-sites are being created, create the domain.
+				«Check the outline's mod date, re-compile if necessary, when adding a sub-site.
+			«05/26/00; 11:50:27 AM by PBS
+				«Created. Display a create a site form. If a POST, then create the site if the inputs are good. Otherwise return an error.
+	
+	if pta == nil {pta = html.getPageTableAddress ()};
+	«workspace.pt = pta^
+	
+	local (adrPrefs);
+	local (flControlPanel = false);
+	bundle { //figure out which site's prefs to use
+		case pta^.adrSiteRootTable {
+			@mainResponder.controlPanel {
+				adrPrefs = @config.manila.hosting.sites.default; //CP always uses default site prefs
+				flControlPanel = true};
+			@mainResponder.adminSite.website {
+				adrPrefs = @config.manila.hosting.sites.default; //CP always uses default site prefs
+				flControlPanel = true}}
+		else {
+			local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+			if not (manilaSuite.hosting.getPrefsAddressForSite (adrSite, @adrPrefs)) { //PBS 06/14/00: @adrPrefs is new second parameter
+				scriptError (manilaSuite.getString ("hosting.cantDisplayFormNotHostingSite", pta: pta))}; //JES 07/03/00: localized
+			if not (manilaSuite.hosting.isHostingSite (adrSite)) {
+				scriptError (manilaSuite.getString ("hosting.cantDisplayFormNotHostingSite", pta: pta))}}};
+	local (flSubSites = adrPrefs^.flSubSites);
+	local (baseDomain = adrPrefs^.baseDomain);
+	local (flEditorsOnly = adrPrefs^.flEditorsOnlyCreateSites);
+	local (flConvertToSiteTree = false); //PBS 06/28/00
+	local (flSiteTreeExists = false);
+	local (flCannotChangeEmail = false); «03/01/02, 18:34:33 by DAB
+	try {flCannotChangeEmail = adrPrefs^.flCannotChangeEmail}; «03/01/02, 18:34:37 by DAB
+	
+	bundle { //PBS 06/28/00: find out if we need to convert to a siteTree
+		local (domainMinusPort = string.popSuffix (baseDomain, ':'));
+		local (adrDomain);
+		if defined (config.mainResponder.domains.[domainMinusPort]) {
+			adrDomain = @config.mainResponder.domains.[domainMinusPort]};
+		if defined (config.mainResponder.domains.[baseDomain]) {
+			adrDomain = @config.mainResponder.domains.[baseDomain]};
+		if defined (adrDomain^.siteTree) {
+			flSiteTreeExists = true}};
+	
+	if flEditorsOnly and not flControlPanel {
+		local (flEditor = manilaSuite.editors.editorialTest (pta));
+		if not flEditor {
+			return ("")}}; //you don't even get to see the form
+	
+	bundle { //check baseDomain, make sure it's good
+		if string.lower (baseDomain) beginsWith "http://" {
+			baseDomain = string.delete (baseDomain, 1, sizeOf ("http://"))};
+		baseDomain = string.popLeading (baseDomain, '/');
+		baseDomain = string.popSuffix (baseDomain, '/');
+		if string.countFields (baseDomain, '/') > 1 {
+			baseDomain = string.nthField (baseDomain, '/', 1)};
+		
+		if not flSubSites { //if top-level sites
+			if not (baseDomain beginsWith ".") {
+				baseDomain = "." + baseDomain}}};
+	
+	local (htmlText = "", indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + string.filledString ('\t', indentLevel) + s + "\r"};
+	
+	on buildForm (path, name, email, password, theme) {
+		local (action = pta^.uri);
+		if pta^.pathArgs != "" { // 06/26/00 JES: fixed form on storyReader and msgReader pages
+			action = action + "$" + pta^.pathArgs};
+		add ("<form method=\"post\" action=\"" + action + "\">");
+		if flCannotChangeEmail { «01/10/17, 14:01:05 by DAB
+			add ("<input type='hidden' name='email' value='" + manilaSuite.translateToEntities (email) + "'>")};
+		indentLevel++;
+		«local (host = pta^.host)
+		add ("<table border=\"0\" cellpadding=\"3\" cellspacing=\"0\">");
+		indentLevel++;
+		bundle { //host
+			if flSubSites {
+				add ("<tr>");
+				indentLevel++;
+				add ("<td valign=\"top\" align=\"right\"><nobr>");
+				indentLevel++;
+				add ("http:\//" + baseDomain + "/");
+				add ("</nobr></td>");
+				indentLevel--;
+				add ("<td valign=\"top\" align=\"left\">");
+				indentLevel++;
+				«add ("<input size=\"25\" name=\"path\" value=\"" + manilaSuite.translateToEntities (path) + "\">/")
+				«(31- string.length("ManilaWebsite"))
+					«18
+				add ("<input size=\"18\" maxlength = '18'  name=\"path\" value=\"" + manilaSuite.translateToEntities (path) + "\">/"); «04/05/03, 15:26:33 by DAB
+				add ("</td>");
+				indentLevel--;
+				add ("</tr>");
+				indentLevel--}
+			else {
+				add ("<tr>");
+				indentLevel++;
+				add ("<td valign=\"top\" align=\"right\">");
+				indentLevel++;
+				add ("http:\// ");
+				add ("</td>");
+				indentLevel--;
+				add ("<td valign=\"top\" align=\"left\">");
+				indentLevel++;
+				add ("<input size=\"10\" name=\"path\" value=\"" + manilaSuite.translateToEntities (path) + "\">" );
+				add ("&nbsp;" + baseDomain + "/");
+				add ("</td>");
+				indentLevel--;
+				add ("</tr>");
+				indentLevel--}};
+		bundle { //name
+			add ("<tr>");
+			indentLevel++;
+			add ("<td valign=\"top\" align=\"right\">");
+			indentLevel++;
+			add (manilaSuite.getString ("hosting.namePrompt", pta: pta));
+			add ("</td>");
+			indentLevel--;
+			add ("<td valign=\"top\" align=\"left\">");
+			indentLevel++;
+			add ("<input size=\"25\" name=\"name\" value=\"" + manilaSuite.translateToEntities (name) + "\">");
+			add ("</td>");
+			indentLevel--;
+			add ("</tr>");
+			indentLevel--};
+		if not flCannotChangeEmail { «01/10/17, 14:01:05 by DAB email  conditional
+			add ("<tr>");
+			indentLevel++;
+			add ("<td valign=\"top\" align=\"right\">");
+			indentLevel++;
+			add (manilaSuite.getString ("hosting.emailPrompt", pta: pta));
+			add ("</td>");
+			indentLevel--;
+			add ("<td valign=\"top\" align=\"left\">");
+			indentLevel++;
+			add ("<input size=\"25\" name=\"email\" value=\"" + manilaSuite.translateToEntities (email) + "\">");
+			add ("</td>");
+			indentLevel--;
+			add ("</tr>");
+			indentLevel--};
+		bundle { //password
+			add ("<tr>");
+			indentLevel++;
+			add ("<td valign=\"top\" align=\"right\">");
+			indentLevel++;
+			add (manilaSuite.getString ("members.passwordPrompt", pta: pta));
+			add ("</td>");
+			indentLevel--;
+			add ("<td valign=\"top\" align=\"left\">");
+			indentLevel++;
+			add ("<input size=\"25\" type=\"password\" name=\"password\" value=\"\">");
+			add ("</td>");
+			indentLevel--;
+			add ("</tr>");
+			indentLevel--};
+		bundle { //theme
+			add ("<tr>");
+			indentLevel++;
+			add ("<td valign=\"top\" align=\"right\">");
+			indentLevel++;
+			add (manilaSuite.getString ("hosting.themePrompt", pta: pta));
+			add ("</td>");
+			indentLevel--;
+			add ("<td valign=\"top\" align=\"left\">");
+			indentLevel++;
+			local (adrThemes = @config.manila.themes);
+			add ("<select name=\"theme\">");
+			indentLevel++;
+			local (adrItem);
+			for adrItem in adrThemes {
+				local (flDisplayTheme = false);
+				if adrItem^.flEnabled {
+					if adrItem^.flPublic {
+						flDisplayTheme = true}};
+				if string.lower (nameOf (adrItem^)) == "default" {
+					flDisplayTheme = true};
+				if flDisplayTheme {
+					local (themeName = nameOf (adrItem^));
+					local (displayName = themeName);
+					if defined (adrItem^.info.displayName) {
+						displayName = adrItem^.info.displayName};
+					if string.lower (themeName) == string.lower (theme) {
+						add ("<option value=\"" + themeName + "\" selected>" + displayName)}
+					else {
+						add ("<option value=\"" + themeName + "\">" + displayName)}}};
+			add ("</select>");
+			indentLevel--;
+			add ("</td>");
+			indentLevel--;
+			add ("</tr>");
+			indentLevel--};
+		bundle { //Create Site button
+			add ("<tr>");
+			indentLevel++;
+			add ("<td valign=\"top\" align=\"right\">");
+			indentLevel++;
+			add ("&nbsp;");
+			add ("</td>");
+			indentLevel--;
+			add ("<td valign=\"top\" align=\"left\">");
+			indentLevel++;
+			add ("<input type=\"submit\" name=\"createSiteButton\" value=\"" + manilaSuite.getString ("common.submitButton", pta: pta) + "\">");
+			add ("</td>");
+			indentLevel--;
+			add ("</tr>");
+			indentLevel--};
+		
+		add ("</table>");
+		indentLevel--;
+		add ("</form>");
+		indentLevel--;
+		
+		return (true)};
+	
+	local (flPost = (string.lower (pta^.method) == "post"));
+	
+	if defined (pta^.searchArgTable.code) { //fake up the post
+		local (adrpendingsite, adrpendingsites = @pta^.adrSiteRootTable^.["#pendingSites"], adr);
+		if not defined (adrpendingsites^) {
+			new (tabletype, adrpendingsites)};
+		for adr in adrpendingsites {
+			if adr^.code == pta^.searchArgTable.code {
+				adrpendingsite = adr;
+				break}};
+		if adrpendingsite == nil {
+			return ("<font color=\"red\">Can't create the site because a valid code was not supplied.<br><br></font>")}
+		else { //fake up the post
+			flPost = true;
+			pta^.postArgs = adrpendingsite^;
+			pta^.postArgs.email = nameOf (adrpendingsite^);
+			pta^.postArgs.password = string (pta^.postArgs.password);
+			pta^.postArgs.createSiteButton = true;
+			delete (adrpendingsite)}}; //codes can be used only once
+	
+	if flPost {
+		if defined (pta^.postArgs.createSiteButton) or defined (pta^.postArgs.["createSiteButton.x"]) { //button may be an image
+			
+			local (errorMessage = "");
+			local (path, name, email, password, theme);
+			path = string.trimWhiteSpace (pta^.postArgs.path);
+			name = string.trimWhiteSpace (pta^.postArgs.name);
+			email = string.trimWhiteSpace (pta^.postArgs.email);
+			theme = string.trimWhiteSpace (pta^.postArgs.theme);
+			password = string.trimWhiteSpace (pta^.postArgs.password);
+			
+			on error (errorMessage) {
+				add ("<font color=\"red\">" + errorMessage + "</font><p>");
+				buildForm (path, name, email, "", theme);
+				return (manilaSuite.unTaint (htmlText))};
+			
+			bundle { //check inputs
+				bundle { //path
+					if path == "" {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSitePathIsEmpty", pta: pta)};
+					if path contains "/" {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSitePathContainsSlash", pta: pta)};
+					if path contains ":" {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSitePathContainsColon", pta: pta)};
+					if path contains "\\" {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSitePathContainsBackslash", pta: pta)};
+					if path contains " " {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSitePathContainsASpace", pta: pta)};
+					if path endsWith "." {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSitePathEndsWithPeriod", pta: pta)};
+					if errorMessage != "" {
+						return (error (errorMessage))};
+					path = string.dropNonAlphas (path)}; //PBs 06/24/00: remove non-alpha chars from path
+				bundle { //name
+					if name == "" {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSiteNoNameSpecified", pta: pta)};
+					if defined(maniladata.newSiteTemplate.[name]) or ({"home", "faq", "feedback"} contains string.lower(name) ) { «02/01/18, 12:01:07 by DAB
+						errormessage = name + " is reserved, please choose another name"};
+					if errorMessage != "" {
+						return (error (errorMessage))}};
+				bundle { //email
+					if not (string.countFields (email, '@') == 2) {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSiteEmailInvalid", pta: pta)};
+					if not (string.nthField (email, '@', 2) contains ".") {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSiteEmailInvalid", pta: pta)};
+					if email == "" {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSiteNoEmail", pta: pta)};
+					if errorMessage != "" {
+						return (error (errorMessage))}};
+				bundle { //password
+					if sizeOf (password) < 4 {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSitePasswordTooShort", pta: pta)};
+					if password == "" {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSiteNoPassword", pta: pta)};
+					if errorMessage != "" {
+						return (error (errorMessage))}};
+				bundle { //theme
+					if theme == "" {
+						theme = "default"};
+					if not defined (config.manila.themes.[theme]) {
+						theme = "default"};
+					if not (config.manila.themes.[theme].flEnabled) {
+						theme = "default"}; //default must always be enabled
+					if not (config.manila.themes.[theme].flPublic) {
+						theme = "default"}}}; //default must always be public
+			
+			local (flRequireEmailConfirmation = false);
+			if defined (adrPrefs^.flRequireEmailConfirmation) {
+				flRequireEmailConfirmation = adrPrefs^.flRequireEmailConfirmation};
+			if flRequireEmailConfirmation and (not flControlPanel) { //special handling for queuing the request, and sending confirmation email
+				if pta^.method == "POST" { //only send email for real posts
+					local (now = clock.now ());
+					local (mailsubject = adrPrefs^.confirmationEmailSubject);
+					local (mailtext = adrPrefs^.confirmationEmailBody);
+					
+					local (adrpendingsites = @pta^.adrSiteRootTable^.["#pendingSites"]);
+					bundle { //init #pendingSites table
+						if defined (adrpendingsites^) { //remove pending sites that have expired
+							local (i, adr);
+							for i = sizeof (adrpendingsites^) downto 1 {
+								adr = @adrpendingsites^ [i];
+								if adr^.when < date.yesterday (now) {
+									delete (adr)}}}
+						else {
+							new (tabletype, adrpendingsites)}};
+					
+					local (htmltext = "", indentlevel = 0);
+					on add (s) {
+						htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r"};
+					
+					on isvalidemail (email) { //return true if it's one of the permitted email addresses
+						if not adrPrefs^.flRestrictByEmailDomain {
+							return (true)};
+						return (string.lower (email) endswith string.lower (adrPrefs^.restrictToDomain))};
+					on getcode (email) { //turn an email address into a weird code that's good for one day
+						local (day, month, year, hour, minute, second);
+						date.get (now, @day, @month, @year, @hour, @minute, @second);
+						local (firstOfYear = date.set (1, 1, year, 0, 0, 0));
+						local (dayOfYear = number ((now - firstOfYear) / 86400) + 1);
+						return (string.hashMD5 (string.lower (email) + dayofyear))};
+					
+					local (errorlist = {});
+					on addError (s) {
+						errorlist = errorlist + {s}};
+					
+					name = string.trimWhiteSpace (pta^.postArgs.name);
+					email = string.trimWhiteSpace (pta^.postArgs.email);
+					if email contains "," {
+						email = string.nthfield (email, ",", 1)};
+					if email contains ";" {
+						email = string.nthfield (email, ";", 1)};
+					password = pta^.postArgs.password;
+					path = string.trimWhiteSpace (pta^.postArgs.path);
+					bundle { //validation
+						if not isvalidemail (email) {
+							return (error ("The email address does not end with " + adrPrefs^.restrictToDomain))};
+						bundle { //path
+							if defined (config.manila.sites.[path]) {
+								return (error (manilaSuite.getString ("hosting.cantCreateSiteAlreadyExists", pta: pta)))};
+							local (adr);
+							for adr in adrpendingsites {
+								if adr^.path == path {
+									«addError ("A pending site on this server will be named \"" + path + "\"")
+									return (error (manilaSuite.getString ("hosting.cantCreateSiteAlreadyExists", pta: pta)))}}}};
+					bundle { //if validated, send an email
+						if sizeof (errorlist) == 0 { //validated
+							local (url, code = getcode (email));
+							bundle { //build the url
+								url = "http://" + pta^.host + pta^.uri + "?code=" + code};
+							local (s = mailtext);
+							s = string.replace (s, "{url}", url);
+							try { //if we were able to send the mail, add the info to a new sub-table of the pendingSites table
+								bundle { //send mail -- hack up mail address for testing
+									local (mailto = email);
+									local (mailfrom = user.prefs.mailaddress);
+									try { //get the sender address from the site prefs
+										mailfrom = pta^.newsSite^.emailConfirmationSender};
+									manilaSuite.sendmail (mailto, mailsubject, s, mailfrom)};
+								bundle { //create pendingSites sub-table
+									local (adrtable = @adrpendingsites^.[email]);
+									new (tabletype, adrtable);
+									adrtable^.name = name;
+									adrtable^.client = pta^.client;
+									adrtable^.password = binary (password);
+									adrtable^.path = path;
+									adrtable^.theme = theme;
+									bundle { //set adrtable^.url
+										if adrPrefs^.flSubSites {
+											adrtable^.url = "http://" + adrPrefs^.baseDomain + "/" + path + "/"}
+										else { //top-level site
+											adrtable^.url = "http://" + path + adrPrefs^.baseDomain + "/"}};
+									adrtable^.code = code;
+									adrtable^.when = now};
+								add ("<p><font color=\"green\"><b><br>Email sent to \"" + email + "\" at " + date.timestring (clock.now (), true) + ".</b></font></p><p>Please check your mail, the message we sent contains a link with a code that will create the new weblog. Click on the link, and then follow the instructions to log in and post to your new weblog.</p>");
+								flshowform = false}
+							else {
+								addError ("There was an error sending the email: " + tryError)}}};
+					if sizeof (errorlist) > 0 {
+						add ("<tr><td colspan=\"2\">"); indentlevel++;
+						if sizeof (errorlist) > 1 {
+							local (s = "", e, ct = 1);
+							s = s + "<font color=\"red\">Can't create a new weblog because:";
+							for e in errorlist {
+								s = s + "&nbsp;" + ct++ + ".&nbsp;" + e + ";"};
+							s = string.mid (s, 1, sizeof (s) - 1) + ".</font><br><br>";
+							add (s)}
+						else {
+							local (s = errorlist [1]);
+							s [1] = string.lower (s [1]);
+							add ("<font color=\"red\">Can't create a new weblog because " + s + ".</font><br><br>")};
+						add ("</td></tr>")};
+					
+					add ("<br><br>");
+					return (htmltext)}};
+			
+			bundle { //make this person a member of the ISP site if they're not already
+				if not flControlPanel {
+					if not defined (pta^.adrMemberInfo) {
+						local (groupName = pta^.defaultMembershipGroup);
+						local (adrMembers = mainResponder.members.getMembershipTable (groupName));
+						local (adrMember = mainResponder.members.getMemberTable (groupName, email));
+						if defined (adrMember^) { //existing member?
+							if adrMember^.password == password {
+								mainResponder.members.setCookie (email, password, adrMembers, pta, groupName);
+								pta^.adrMemberInfo = adrMember}}
+						else { //new member
+							new (tableType, adrMember);
+							adrMember^.password = password;
+							new (tableType, @adrMember^.personalInfo);
+							adrMember^.personalInfo.name = name;
+							pta^.adrMemberInfo = adrMember;
+							mainResponder.members.setCookie (email, password, adrMembers, pta, groupName)}}}};
+			
+			local (canonicalSiteName, siteTableName);
+			bundle { //create canonical site name
+				«bundle //old code
+					«local (mangledHostName = string.innerCaseName (string.replaceAll (pta^.host, ".", " ")))
+					«local (mangledHostName)
+					«bundle //JES 06/24/00: fix for domains with a . or a : in them
+						«mangledHostName = string.replaceAll (string.replaceAll (pta^.host, ".", " "), "-", " ")
+						«mangledHostName = string.nthField (mangledHostName, ':', 1) // handle non-80 ports
+						«mangledHostName = string.innerCaseName (mangledHostName)
+					«local (firstChar = mangledHostName [1])
+					«firstChar = string.upper (firstChar)
+					«mangledHostName [1] = firstChar
+					«canonicalSiteName = path + mangledHostName
+					«canonicalSiteName = string.mid (canonicalSiteName, 1, 31 - sizeOf ("ManilaWebsite")) //Macs
+					«canonicalSiteName = canonicalSiteName + "ManilaWebsite"
+					«siteTableName = canonicalSiteName
+					«if flSiteTreeExists
+						«canonicalSiteName = siteTableName
+					«else
+						«canonicalSiteName = path
+				«PBS 07/12/00: simplification -- the canonical site name is always just the path. The table name is always the canonical site name plus "ManilaWebsite"
+				canonicalSiteName = path;
+				canonicalSiteName = string.mid (canonicalSiteName, 1, 31 - sizeOf ("ManilaWebsite")); //Macs
+				siteTableName = canonicalSiteName + "ManilaWebsite"};
+			
+			local (membershipGroupName = canonicalSiteName + "Members");
+			local (discussionGroupName = canonicalSiteName + "Discuss");
+			
+			local (flShareMembershipGroup = false);
+			bundle { //PBS 07/12/00: figure out if the new site shares a membership group
+				if defined (adrPrefs^.flUseHostingSiteMembershipGroup) {
+					if adrPrefs^.flUseHostingSiteMembershipGroup {
+						flShareMembershipGroup = true}}};
+			
+			local (adrHostingSite, hostingSiteGroupName);
+			if adrPrefs^.canonicalSiteName != "" {
+				if defined (config.manila.sites.[adrPrefs^.canonicalSiteName]) {
+					if flShareMembershipGroup { //PBS 07/12/00: use the shared membership group
+						try {
+							adrHostingSite = config.manila.sites.[adrPrefs^.canonicalSiteName];
+							hostingSiteGroupName = adrHostingSite^.["#prefs"].defaultMembershipGroup;
+							membershipGroupName = hostingSiteGroupName}}}};
+			
+			bundle { //check for existing site
+				if defined ([system.temp.mainResponder.discussRootFile].[discussionGroupName]) {
+					errorMessage = manilaSuite.getString ("hosting.cantCreateSiteDGAlreadyExists", pta: pta)};
+				if not flShareMembershipGroup { //PBS 07/12/00: check for existing group only if not shared
+					if defined ([system.temp.mainResponder.membersRootFile].[membershipGroupName]) {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSiteMembershipGroupAlreadyExists", pta: pta)}};
+				if defined (config.manila.sites.[canonicalSiteName]) {
+					errorMessage = manilaSuite.getString ("hosting.cantCreateSiteAlreadyExists", pta: pta)};
+				
+				if errorMessage != "" {
+					return (error (errorMessage))}};
+			
+			on createSite (siteUrl) {
+				local (flAddToDomains = false);
+				if not flSubSites {
+					flAddToDomains = true};
+				local (flAddToUserDatabases = false);
+				local (flUseExistingGdb = true)
+					«local (flUseExistingGdb = not flControlpanel)    «05/06/15, 14:52:22 by DAB;
+				if defined(config.manila.prefs.flOneSitePerRoot) { «03/01/05, 16:42:03 by DAB
+					flUseExistingGdb = not config.manila.prefs.flOneSitePerRoot; «03/05/19, 12:59:20 by DAB
+					flAddToUserDatabases  = true}; «03/11/11, 08:48:54 by DAB
+				if defined(maniladata.newSiteTemplate.[name]) or ({"home", "faq", "feedback"} contains string.lower(name) ) { «02/01/18, 12:01:07 by DAB
+					errormessage = name + " is reserved, please choose another name"};
+				local (existingGdbName);
+				if not defined (config.manila.prefs.hostingGdbName) {
+					config.manila.prefs.hostingGdbName = "home.root"};
+				existingGdbName = config.manila.prefs.hostingGdbName;
+				if defined (adrPrefs^.hostingGdbName) {
+					existingGdbName = adrPrefs^.hostingGdbName};
+				local (gdbPath = Frontier.getSubFolder ("www") + existingGdbName);
+				if not (defined ([gdbPath])) { //is it already open?
+					if file.exists (gdbPath) {
+						fileMenu.open (gdbPath, true)} //it does, open it
+					else {
+						fileMenu.new (gdbPath);
+						window.hide (@[gdbPath]);
+						fileMenu.save (gdbPath)}};
+				local (siteInfo);
+				local (siteName = siteTableName);
+				siteInfo = manilaSuite.clone (siteName, membershipGroupName, discussionGroupName, email, password, name, siteUrl, flAddToDomains, flAddToUserDatabases, flUseExistingGdb, existingGdbName, canonicalSiteName, theme);
+				siteInfo.adrSite^.["#newsSite"].siteName = path;
+				
+				if flShareMembershipGroup { //PBS 07/12/00: use membership-related URLs from the top-level site, make sure shared membership group has good cookie domain value
+					if adrHostingSite != nil {
+						on setUrl (urlName) {
+							local (url = adrHostingSite^.["#urls"].[urlName]); //get URL from hosting site
+							siteInfo.adrSite^.["#urls"].[urlName] = url; //copy URL to new site
+							return (true)};
+						setUrl ("memberLogon"); //for logging into the site
+						setUrl ("memberLogoff"); //for signing out
+						setUrl ("memberSignUp"); //join now page
+						setUrl ("prefsHome"); //prefs page
+						setUrl ("profilesHome"); //profiles page
+						
+						«Make sure cookie domain is of the form .domain.tld -- if not sub-sites, that is (sub-sites work automatically)
+						if not flSubSites {
+							local (adrGroup = mainResponder.members.getMembershipTable (membershipGroupName));
+							local (cookieDomain = adrPrefs^.baseDomain); //hey, the value's right there, excellent, no string splitting needed -- it even starts with a .
+							adrGroup^.cookieDomain = cookieDomain}}};
+				
+				bundle { //support for new per-site hosting prefs
+					if defined (adrPrefs^.defaultLanguage) {
+						siteInfo.adrSite^.["#prefs"].language = adrPrefs^.defaultLanguage};
+					if defined (adrPrefs^.defaultEditor) {
+						siteInfo.adrSite^.["#prefs"].editingToolName = adrPrefs^.defaultEditor};
+					bundle { //home page and first news item
+						local (adrmsgs = @siteInfo.adrSite^.["#discussionGroup"].messages);
+						local (adrHome, adrNewsItem);
+						local (adr);
+						for adr in adrmsgs { //set adrHome
+							if defined (adr^.alsoListedIn) {
+								local (listedIn);
+								for listedIn in adr^.alsoListedIn {
+									if listedIn endswith "HomePages" {
+										adrHome = adr;
+										break}}}};
+						for adr in adrmsgs { //set adrNewsItem
+							if defined (adr^.newsItem) {
+								adrNewsItem = adr;
+								break}};
+						
+						if defined (adrPrefs^.defaultHomePageSubject) {
+							adrHome^.subject = adrPrefs^.defaultHomePageSubject}
+						else {
+							adrHome^.subject = manilaData.defaultText.homeTitle};
+						if defined (adrPrefs^.defaultHomePageSubject) {
+							table.assign (@adrHome^.body, adrPrefs^.defaultHomePageText)}
+						else {
+							table.assign (@adrHome^.body, manilaData.defaultText.home)};
+						
+						if adrNewsItem == nil { //make sure first news item exists if pref is set
+							if defined (adrPrefs^.flNewsItemsEnabled) {
+								if adrPrefs^.flNewsItemsEnabled {
+									local (adrdiscuss = @siteInfo.adrSite^.["#discussionGroup"]);
+									local (title, description);
+									bundle { //set title, description
+										if defined (adrPrefs^.defaultNewsItemTitle) {
+											title = adrPrefs^.defaultNewsItemTitle}
+										else {
+											title = manilaData.defaultText.firstNewsItemTitle};
+										if defined (adrPrefs^.defaultNewsItemText) {
+											description = adrPrefs^.defaultNewsItemText}
+										else {
+											description = manilaData.defaultText.firstNewsItem}};
+									local (t);
+									bundle { //set news item attributes
+										new (tableType, @t);
+										t.title = title;
+										if defined (adrPrefs^.defaultNewsItemLink) {
+											t.url = adrPrefs^.defaultNewsItemLink}
+										else {
+											t.url = ""};
+										t.department = "";
+										t.description = description};
+									local (body = manilaSuite.news.tableToXml (@t));
+									local (msgNum = mainResponder.discuss.addMessage (title, email, 0, body, clock.now (), flcallback:false, adrRoot:adrdiscuss, groupName:membershipGroupName, flEmptyBodyOk:true));
+									local (adrmsg = @adrdiscuss^.messages.[string.padWithZeros (msgnum, 7)] );
+									manilaSuite.news.setMessageAttributes (adrmsg, @t);
+									manilaSuite.news.updateIndexes (adrmsg, siteInfo.adrSite);
+									manilaSuite.news.postItemToHomePage (adrmsg, siteInfo.adrSite)}}};
+						if adrNewsItem != nil { //reality check
+							local (title, description, link = "");
+							bundle { //set title, description
+								if defined (adrPrefs^.defaultNewsItemTitle) {
+									title = adrPrefs^.defaultNewsItemTitle}
+								else {
+									title = manilaData.defaultText.firstNewsItemTitle};
+								if defined (adrPrefs^.defaultNewsItemText) {
+									description = adrPrefs^.defaultNewsItemText}
+								else {
+									description = manilaData.defaultText.firstNewsItem};
+								if defined (adrPrefs^.defaultNewsItemLink) {
+									link = adrPrefs^.defaultNewsItemLink}};
+							adrNewsItem^.newsItem.title = title;
+							adrNewsItem^.newsItem.description = description;
+							adrNewsItem^.newsItem.url = link;
+							table.assign (@adrNewsItem^.body, manilaSuite.news.tableToXml (@adrNewsItem^.newsItem))}};
+					if defined (adrPrefs^.flNewsItemsEnabled) {
+						siteInfo.adrSite^.["#newsSite"].flNewsItemSite = adrPrefs^.flNewsItemsEnabled};
+					if defined (adrPrefs^.editorialMode) {
+						manilaSuite.sitePrefs.resetEditorialMode (siteInfo.adrSite, adrPrefs^.editorialMode)}};
+				
+				mainResponder.redirect (siteInfo.adrSite^.["#ftpSite"].url);
+				return (siteInfo)};
+			
+			if flSubSites {
+				local (adrDomain = @config.mainResponder.domains.[baseDomain]);
+				local (flCreate = false);
+				if not defined (adrDomain^) {
+					flCreate = true};
+				if defined (adrDomain^) {
+					if defined (adrDomain^.siteTree) {
+						flCreate = false}
+					else {
+						flCreate = true}};
+				if flCreate and flConvertToSiteTree { //PBs 06/28/00
+					local (initialPath, flAddress = true);
+					if defined (adrDomain^) {
+						initialPath = adrDomain^;
+						if typeOf (adrDomain^) != addressType {
+							flAddress = false}};
+					new (tableType, adrDomain);
+					new (tableType, @adrDomain^.siteTree);
+					new (tableType, @adrDomain^.siteTree.directory);
+					local (xmlText);
+					if initialPath != nil {
+						if flAddress {
+							xmlText = "<siteTree>\r\t<site address=\"" + string.popFileFromAddress (initialPath) + "\"/>\r\t</siteTree>"}
+						else {
+							xmlText = "<siteTree>\r\t<site folderPath=\"" + initialPath + "\"/>\r\t</siteTree>"};
+						wp.newTextObject (xmlText, @adrDomain^.siteTree.directory.outline)};
+					new (tableType, @adrDomain^.siteTree.directory.structure);
+					xml.compile (xmlText, @adrDomain^.siteTree.directory.structure)};
+				bundle { //re-compile if needed
+					if defined (adrDomain^.siteTree) {
+						local (outlineModDate = timeModified (@adrDomain^.siteTree.directory.outline));
+						local (structureModDate = timeModified (@adrDomain^.siteTree.directory.structure));
+						if outlineModDate > structureModDate {
+							xml.compile (string (adrDomain^.siteTree.directory.outline), @adrDomain^.siteTree.directory.structure)}}};
+				local (siteInfo);
+				bundle { //create the site and re-direct
+					local (siteUrl = "http://" + baseDomain + "/" + path + "/");
+					siteInfo = createSite (siteUrl)};
+				«bundle //old code for adding to site tree
+					«bundle //add to siteTree if needed
+						«if defined (adrDomain^.siteTree)
+							«local (adrStructure = @adrDomain^.siteTree.directory.structure [1] [1])
+							«local (adrSiteEntry)
+							«adrSiteEntry = xml.addTable (adrStructure, "site")
+							«new (tableType, @adrSiteEntry^.["/atts"])
+							«adrSiteEntry^.["/atts"].name = path
+							«adrSiteEntry^.["/atts"].address = canonicalSiteName
+							«adrSiteEntry^.["/atts"].address = siteTableName //PBS 07/12/00: it's the table name, not the canonical site name, that goes here
+							«try
+								«delete (@adrStructure^.["/pcdata"])
+							«local (s = xml.decompile (adrStructure))
+							«bundle //re-build the outline
+								«local (xmlHeader = string.nthField (s, '\r', 1))
+								«s = string.delete (s, 1, sizeOf (xmlHeader))
+								«s = string.trimWhiteSpace (s)
+								«s = "<siteTree>\r" + s + "\r\t</siteTree>"
+								«wp.newTextObject (s, @adrDomain^.siteTree.directory.outline)
+				try { //new code for adding to site tree
+					if defined (adrdomain^) {
+						mainResponder.siteTree.addSiteToTree (baseDomain, path, siteInfo.adrSite, false, true)}
+					else { //add to default domain
+						mainResponder.siteTree.addSiteToTree ("default", path, siteInfo.adrSite, false, true)}}}
+			else { //(try to) create a top-level site
+				if not (baseDomain beginsWith ".") {
+					baseDomain = "." + baseDomain};
+				bundle { //check for existing site
+					local (adrDomain = @config.mainResponder.domains.[path + baseDomain]);
+					if defined (adrDomain^) {
+						errorMessage = manilaSuite.getString ("hosting.cantCreateSiteDuplicateDomain", pta: pta)}; //07/03/00 JES: localized
+					if errorMessage != "" {
+						return (error (errorMessage))}};
+				local (siteUrl = "http://" + path + baseDomain + "/");
+				createSite (siteUrl)}}
+		else {
+			flPost = false}}; //it's a POST, but it's not our POST
+	
+	if not flPost { //display the form
+		local (path = "", name, email, password = "", theme="default");
+		if defined (pta^.adrMemberInfo) {
+			email = nameOf (pta^.adrMemberInfo^);
+			if defined (pta^.adrMemberInfo^.personalInfo.name) {
+				name = pta^.adrMemberInfo^.personalInfo.name;
+				name = string.trimWhiteSpace (name)}};
+		buildForm (path, name, email, password, theme)};
+	
+	return (manilaSuite.unTaint (htmlText))}; //no further macros should be processed in this text
+«bundle //test code
+	«html.setpagetableaddress (@workspace.pt)
+	«createsiteform ()

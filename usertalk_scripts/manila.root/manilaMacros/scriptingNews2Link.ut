@@ -1,0 +1,23 @@
+on scriptingNews2Link () {
+	«02/07/01; 2:57:38 PM by JES
+		«Generate a link to a Manila site's scriptingNews2 channel.
+	local (adrSite = manilaSuite.getSiteAddress ());
+	local (flSyndicate = manilaSuite.getNewsSitePref ("flSyndicate", adrSite));
+	if not flSyndicate { //return the empty string
+		return ("")};
+	local (siteUrl = manilaSuite.getSiteUrl (adrSite));
+	local (channelName = manilaSuite.getNewsSitePref ("rssInfo.channelTitle"));
+	local (urlParts = string.urlSplit (siteUrl));
+	local (imgUrl = "http://" + urlParts[2] + "/mainResponderResources/userlandIcons/xml");
+	local (imgHeight = 14, imgWidth = 36);
+	local (linkUrl = siteUrl + "xml/scriptingNews2.xml");
+	local (linkText = "");
+	
+	bundle { //build the link
+		on add (s) {
+			linkText = linkText + s};
+		add ("<a href=\"" + linkUrl + "\" title=\"This is a link to this site's scriptingNews2 channel: " + channelName + "\">");
+		add ("<img src=\"" + imgUrl + "\" height=\"" + imgHeight + "\" width=\"" + imgWidth + "\" border=\"0\" alt=\"XML icon\">");
+		add ("</a>")};
+	
+	return (linkText)}

@@ -1,0 +1,26 @@
+on enable (pluginName, adrSite) {
+	«Enable this plugin for this site.
+		«02/22/00; 1:56:07 PM by PBS
+	
+	local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
+	if adrConfig == nil {
+		scriptError ("Can't enable plug-in \"" + pluginName + "\" because it's config table doesn't exist.")};
+	
+	manilaSuite.plugins.initPluginsTable (adrSite); //make sure the site has a #plugins table
+	manilaSuite.plugins.initPluginStorage (pluginName, adrSite);
+	
+	local (adrEnableScript = @adrConfig^.enableScript);
+	if typeOf (adrConfig^.enableScript) == addressType {
+		adrEnableScript = adrEnableScript^};
+	
+	adrEnableScript^ (adrSite);
+	
+	local (relativePath = adrConfig^.relativePath);
+	local (adrEnabledTable = @adrSite^.["#plugins"].enabled);
+	if not defined (adrEnabledTable^.[pluginName]) {
+		adrEnabledTable^.[pluginName] = relativePath}; //save where it was installed
+	
+	return (true)};
+bundle { //test code
+	manilaSuite.plugins.enable ("Surveys", @myFirstSiteManilaWebsite)
+		«true}

@@ -1,0 +1,14 @@
+on mergeTable (adrSource, adrDest) {
+	«Friday, November 19, 1999 at 4:00:25 PM by AR
+		«Merge the contents of adrSource into adrDest
+	local (adrSourceItem, adrDestItem);
+	for adrSourceItem in adrSource {
+		adrDestItem = @adrDest^.[nameOf (adrSourceItem^)];
+		if typeOf (adrSourceItem^) == tableType {
+			if not defined (adrDestItem^) {
+				table.assign (adrDestItem, adrSourceItem^)}
+			else {
+				mergeTable (adrSourceItem, adrDestItem)}} //recurse
+		else {
+			table.assign (adrDestItem, adrSourceItem^)}};
+	return (true)}

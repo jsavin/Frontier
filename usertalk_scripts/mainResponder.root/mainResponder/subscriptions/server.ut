@@ -1,0 +1,176 @@
+on server (dbname, ipaddress, lastupdate, username, mailaddress, serialnumber) {
+	«Return new and changed parts of a database since the last update.
+	«Changes:
+		«8/31/05; 4:15:17 AM by JES
+			«Clean up formatting of change note, per what the client expects.
+		«8/31/05; 3:52:24 AM by JES
+			«Reworked the object packing and note-handling logic. Objects are now packed after all updates have been collected. This makes it possible to keep track of notes for all changes since the last update, instead of only the most recent one.
+		«8/31/05; 3:06:48 AM by JES
+			«If the part has a change note, include it in the data returned to the client.
+			«Don't erase the note after including it.
+		«6/21/05; 4:21:30 PM by JES
+			«Set parts.lastUpdateTime to the date.netStandardString of when on the most recent part returned to the client, instead of to date.netStandardString of the server's now time. Avoids missing parts at the point that checkpointing is removed.
+			«Respect the flIgnoreCheckpoint search arg on the RPC path.
+		«6/17/05; 7:47:15 PM by JES
+			«Call mainResponder.subscriptions.updateChangesTable to make sure that the #changes table has been updated to the new format which includes the part data, instead of just a reference to the part.
+			«Return the part data from the data sub-item of a #changes sub-table if defined. This is the object at the time it was checked in, instead of the current version.
+			«Don't pop the file part of a part's address here, since "what" has been updated by mainResponder.subscriptions.updateChangesTable to not include the file part.
+		«6/16/05; 2:54:06 AM by JES
+			«Rudimentary checkpoint feature. In user.databases, define flStopAtCheckpoint & set to true, and define checkpointDate as the date/time (on the server clock) after which changes are not sent to the client.
+			«This allows you to turn on the checkpoint, check in a bunch of changes in any order you want, and then turn off the checkpoint. Clients will never get part of your change set -- they get all or nothing.
+			«There is also a server-wide pair of corresponding settings at config.mainResponder.prefs.flSubscriptionsStopAtCheckpoint and config.mainResponder.prefs.subscriptionsCheckpointDate. These prefs override the per-database prefs.
+			«If both a per-database and a server-wide checkpoint date are set, the earlier of the two is used.
+		«8/12/04; 3:12:31 AM by JES
+			«Additional logging: Errors are now logged. When an update is successful, ctPartsSent (in the log sub-table) is set to the number of parts sent to the client.
+		«12/7/03; 11:52:32 PM by JES
+			«Add callback support. Callbacks are in config.mainResponder.callbacks.subscriptionsServer. They take the same parameters as this RPC handler. If any callback returns false, then an error is generated.
+		«11/04/00; 5:55:40 PM by PBS
+			«Return the time on the server of the last update, so clients don't miss updates.
+	local (adrtable = log.addToGuestDatabase ("subscriptions"));
+	bundle { //add a record to the subscription log
+		adrtable^.dbname = dbname;
+		adrtable^.ipaddress = ipaddress;
+		adrtable^.lastupdate = lastupdate;
+		adrtable^.username = username;
+		adrtable^.mailaddress = mailaddress;
+		adrtable^.serialnumber = serialnumber};
+	bundle { //call callbacks
+		local (adrcallbacks = @config.mainResponder.callbacks.subscriptionsServer);
+		if not defined (adrcallbacks^) {
+			new (tableType, adrcallbacks)};
+		local (adr, ct = sizeOf (adrcallbacks^), i, flSendUpdate = true);
+		for i = 1 to ct {
+			adr = @adrcallbacks^[i];
+			try {
+				while typeOf (adr^) == addressType {
+					adr = adr^};
+				if not adr^ (dbname, ipaddress, lastupdate, username, mailaddress, serialnumber) {
+					flSendUpdate = false}};
+			if not flSendUpdate {
+				scriptError ("Can't update because you are not authorized for updates to this database.")}}};
+	local (adrdb = @user.databases.[dbname]);
+	if not defined (adrdb^) {
+		adrtable^.error = "The sysop hasn't registered a database named \"" + dbname + "\"."; //02/04/07, 08:22:52 by DAB
+		scriptError ("Can't send you an update because the sysop hasn't registered a database named \"" + dbname + "\".")};
+	if not (adrdb^.supportsSubscribe) {
+		adrtable^.error = "The database \"" + dbname + "\" doesn't support subscriptions."; //02/04/07, 08:22:48 by DAB
+		scriptError ("Can't send you an update because the database \"" + dbname + "\" doesn't support subscriptions.")};
+	
+	local (checkpointDate = date.tomorrow (clock.now ())); //tomorrow is always later than the last item in the #changes table
+	bundle { //set checkpointDate based on per-database and server-wide settings, and on whether the client sent flIgnoreCheckpoint search arg
+		if defined (adrdb^.flStopAtCheckpoint) { //per-database defaults
+			if adrdb^.flStopAtCheckpoint {
+				if not defined (adrdb^.checkpointDate) {
+					adrdb^.checkpointDate = date.set (1, 1, 2040, 0, 0, 0)}; //2040 is close to our max representable date as of kernel 6/16/2005
+				checkpointDate = adrdb^.checkpointDate}};
+		if defined (config.mainResponder.prefs.flSubscriptionsStopAtCheckpoint) { //server-wide settings
+			if config.mainResponder.prefs.flSubscriptionsStopAtCheckpoint {
+				if not defined (config.mainResponder.prefs.subscriptionsCheckpointDate) {
+					config.mainResponder.prefs.subscriptionsCheckpointDate = date.set (1, 1, 2040, 0, 0, 0)};
+				if config.mainResponder.prefs.subscriptionsCheckpointDate < checkpointDate {
+					checkpointDate = config.mainResponder.prefs.subscriptionsCheckpointDate}}};
+		
+		local (pta = parentOf (client));
+		if defined (pta^.searchArgs) { //check for flIgnoreCheckpoint search arg from the client
+			local (args); new (tableType, @args);
+			webserver.parseArgs (pta^.searchArgs, @args);
+			if defined (args.flIgnoreCheckpoint) {
+				if args.flIgnoreCheckpoint { //client wants all parts, not just the ones up to the checkpoint
+					checkpointDate = date.tomorrow (clock.now ())}}}}; //reset to tomorrow -- always later than last item in #changes table
+	
+	local (adrguestdatabase = @[adrdb^.f]);
+	table.sureDatabaseOpen (adrguestdatabase);
+	
+	lastupdate = date (lastupdate); //convert from a net-standard-string
+	
+	local (frontierVersion = Frontier.version ());
+	local (adrchanges = @adrguestdatabase^.["#changes"]);
+	local (sizechanges = sizeof (adrchanges^));
+	
+	bundle { //possibly upgrade to new version of #changes, which includes the actual parts
+		mainResponder.subscriptions.updateChangesTable (adrchanges)};
+	
+	local (parts);
+	new (tabletype, @parts);
+	parts.serialNum = sizechanges; //it's synthetic!
+	parts.lastUpdateTime = date.netStandardString (clock.now ()); //PBS 11/4/00: save server time on client, to avoid missing updates
+	if sizechanges > 0 {
+		if checkpointdate < adrchanges^[sizechanges].when {
+			parts.lastUpdateTime = date.netStandardString (checkpointdate)}
+		else { //use checkin time from last change in the #changes table
+			parts.lastUpdateTime = date.netStandardString (date (adrchanges^[sizechanges].when) + 1)}};
+	new (tabletype, @parts.parts);
+	
+	on getNote (adrchange) {
+		return (adritem^.when + " (#" + indexof (adritem^) + "):\r" + string (adritem^.why) + "\r\r")};
+	
+	local (addeditems); new (tableType, @addeditems);
+	local (i, flLastUpdateTimeSet = false);
+	for i = sizechanges downto 1 {
+		local (adritem = @adrchanges^ [i]);
+		if adritem^.when > checkpointDate { //skip changes newer than the checkpoint date
+			continue};
+		if adritem^.when < lastupdate {
+			break};
+		if defined (addeditems.[adritem^.what]) { //we've already included this
+			if defined (adritem^.why) {
+				if sizeOf (adritem^.why) > 0 {
+					local (adrPartToSend = addeditems.[adritem^.what]);
+					local (s = string (adrPartToSend^.changes) + getNote (adritem));
+					wp.newTextObject (s, @adrPartToSend^.changes)}};
+			continue};
+		
+		local (name = "part" + string.padwithzeros (i, 4));
+		local (adrnewpart = @parts.parts.[name]);
+		new (tabletype, adrnewpart);
+		
+		bundle { //2/14/99; 9:01:26 AM by DW, customized error if object doesn't exist
+			if defined (adritem^.data) {
+				adrnewpart^.data = adritem^.data}
+			else { //old style, get the object from its real location, instead of from the #changes table sub-item
+				if not defined (adritem^.what^) {
+					delete (adrnewpart);
+					continue;
+					«bundle //old code throws an error -- error is wired off. this is a very common error, and always a pain to fix on the server
+						«adrtable^.error = "The #changes table in \"" + dbname + "\" on the server says that \"" + adritem^.what + "\" has changed, but the object isn't in the database." //02/04/07, 08:22:41 by DAB
+						«scriptError ("Can't do the update because the #changes table in \"" + dbname + "\" on the server says that \"" + adritem^.what + "\" has changed, but the object isn't in the database.")};
+				adrnewpart^.data = adritem^.what^}};
+		adrnewpart^.timestamp = adritem^.when;
+		if not flLastUpdateTimeSet {
+			parts.lastUpdateTime = date.netStandardString (date (adritem^.when) + 1);
+			flLastUpdateTimeSet = true};
+		adrnewpart^.userName = adritem^.who;
+		
+		«bundle //old code: put the relative address into adr field
+			«local (s = string (adritem^.what))
+			«local (ix = string.patternMatch ("].", s))
+			«s = string.delete (s, 1, ix + 1)
+			«adrnewpart^.adr = s
+		adrnewpart^.adr =adritem^.what; //new code: put the address (as string) into adr field
+		
+		if defined (adritem^.why) {
+			if sizeOf (adritem^.why) > 0 {
+				adrnewpart^.changes = getNote (adritem)}};
+		if not defined (adrnewpart^.changes) {
+			wp.newtextobject ("", @adrnewpart^.changes)};
+		adrnewpart^.platform = "both";
+		adrnewpart^.version = frontierVersion;
+		
+		addeditems.[adritem^.what] = adrnewpart;
+		
+		sys.systemTask ()};
+	
+	local (ctnewparts = sizeof (parts.parts));
+	for i = 1 to ctnewparts {
+		local (adrnewpart = @parts.parts[i]);
+		local (bytes);
+		pack (adrnewpart^, @bytes);
+		bytes = base64.encode (bytes, infinity);
+		delete (adrnewpart);
+		adrnewpart^ = bytes};
+	
+	adrtable^.ctPartsSent = ctnewparts; //02/04/07, 08:22:36 by DAB
+	
+	return (parts)};
+«bundle //test code
+	«server ("prefs.root", tcp.dns.getMyDottedId (), clock.now (), "Jake", "jake@userland.com", 10)

@@ -1,0 +1,137 @@
+on indexDisplay (adrIndex, fieldID) {
+	«manilaSuite.AccessControl.indexDisplay : 04/05/20, 17:11:55 by DAB
+		«display an report page showign an  index  created by manilaSuite.accessControl.indexBy
+		«was manilaFixer.accessControl.indexDisplay : 02/05/07, 16:22:31 by DAB
+	«message at manilaData.localization.languages.english.strings.accessControl
+	local (pta = html.getPageTableAddress());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (sitename = manilaSuite.getCanonicalSitename(adrSite));
+	local (picturesCat = manilaSuite.discuss.getPicturesCategory(adrSite));
+	local (storiesCat = manilaSuite.discuss.getStoriesCategory(adrSite));
+	
+	local (adminUrl = manilaSuite.getUrl ("editorialAdmin", pta));
+	if pta^.searchArgs != "" {
+		adminUrl = adminUrl + "?" + pta^.searchArgs};
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	local (replTbl);
+	bundle { //build replace table    02/03/24, 09:39:55 by DAB
+		new(tabletype, @replTbl);
+		replTbl.sitename = sitename;
+		repltBl.indexKeyName = manilaSuite.getString("accesscontrol." + fieldID, pta: pta)};
+	add(manilaSuite.getString("accesscontrol.indexhelptext", @replTbl, pta:pta));
+	
+	local (errCntr = 0);
+	on errorReport(errID) {
+		add("<p align = 'center'>");
+		add("<span style = 'color:red'>" + manilaSuite.getString("accessControl." + errID, @replTbl, pta:pta) + "</span>"); //02/04/14, 22:33:27 by DAB
+		add("</p>");
+		errCntr++};
+	
+	if pta^.method == "POST" {
+		if defined(pta^.postArgs.inspectChange) {
+			local (key = pta^.postargs.indexKeyValue);
+			local (adrEntry = @adrIndex^.[key]);
+			local (adr, msgNum, adrMsg, adrStorage);
+			local (flChangeSeen);
+			for adr in adrEntry {
+				msgNum = nameOf(adr^);
+				adrMsg = adr^;
+				replTbl.msgNum = msgnum;
+				replTbl.title = adrMsg^.subject;
+				if not manilaSuite.custody.checkOut(adrMsg, pta^.adrMemberInfo, adrSite, true) {
+					add("<p align = 'center'>");
+					add("<span style = 'color:red'>" + manilaSuite.getString("discuss.cantEditBecauseSomeoneElseIs", @replTbl, pta:pta) + "</span>");
+					add("</p>");
+					continue};
+				try {
+					bundle { //set cohorts
+						local (v  = {});
+						try {
+							v = pta^.postargs.["cohorts_" + msgNum];
+							case true {
+								 v == "Everyone" {
+									v = {}};
+								typeof(v) != listType {
+									v = list(v)}}};
+						
+						adrMsg^.accessControl.permittedCohorts = v};
+					manilaSuite.custody.checkIn(adrMsg, pta^.adrMemberInfo, adrSite, true);
+					flChangeSeen = true}
+				else {
+					replTbl.error = tryError;
+					manilaSuite.custody.undoCheckOut(adrMsg, pta^.adrMemberInfo, adrSite, false, true);
+					errorReport("errUpdateCohortsFailed")}};
+			
+			if flChangeSeen {
+				manilaSuite.accessControl.indexBy(adrSite, fieldID, adrIndex)}}};
+	
+	bundle { //02/05/07, 16:26:24 by DAB
+		local (adrEntry);
+		local (nme);
+		
+		for adrEntry in adrIndex {
+			nme  = nameOf(adrEntry^);
+			replTbl.indexKeyValue = nme;
+			add("<h4>" + manilaSuite.getString("accesscontrol.indexHeader", @replTbl, pta:pta) + "</h4>");
+			
+			add("\r<form method = 'post' action = '" + adminUrl + "#inspector' name = 'inspectmessages' id = 'inspectmessages' >");
+			add("\r<input type = 'hidden' name = 'indexkey' value = '" + fieldID + "'>");
+			add("\r<input type = 'hidden' name = 'indexkeyvalue' value = '" + nme + "'>");
+			add("\r\t<table align = 'center' border = '1'>");
+			bundle { //header
+				add("\r\t\t<tr>");
+				add("\r\t\t\t<th rowspan = '2'>#</th>");
+				add("\r\t\t\t<th rowspan = '2'>" + manilaSuite.getString("accesscontrol.permittedCohorts", pta: pta)  + "</th>");
+				add("\r\t\t\t<th>" + manilaSuite.getString("accesscontrol.releaseDate", pta: pta)  + "</th>");
+				add("\r\t\t</tr>");
+				add("\r\t\t<tr>");
+				add("\r\t\t\t<th>" + manilaSuite.getString("accesscontrol.expiryDate", pta: pta)  + "</th>");
+				add("\r\t\t</tr>")};
+			bundle { //row for each message
+				local (adr, msgNum, adrMsg);
+				for adr in adrEntry {
+					msgNum = nameof(adr^);
+					adrMsg =  adr^;
+					add("\r\t\t<tr>");
+					bundle {
+						add("\r\t\t\t<td align = 'center' valign = 'middle' rowspan = '2'>");
+						case true {
+							manilaSuite.discuss.isInCategory(adr^, picturesCat) {
+								add(html.getLink(msgNum, pta^.urls^.pictureEditInBrowser + msgnum))};
+							manilaSuite.discuss.isInCategory(adr^, storiesCat) {
+								add(html.getLink(msgNum, pta^.urls^.discussEditInBrowser + msgnum))}}
+						else {
+							add(html.getLink(msgNum, pta^.urls^.discussEditInBrowser + msgnum))};
+						add("</td>")};
+					bundle {
+						add("\r\t\t\t<td align = 'center' rowspan = '2'>");
+						add(manilaSuite.accessControl.cohortsPopup(pta, "cohorts_" + msgNum, adrMsg^.accessControl.permittedCohorts));
+						add("</td>")};
+					bundle {
+						local (release , expiry);
+						try {release = string(adrMsg^.accessControl.releaseDate)};
+						try {expiry = string(adrMsg^.accessControl.expiryDate)};
+						if not release {release = "-"};
+						if not expiry {expiry = "-"};
+						add("\r\t\t\t<td align = 'center' valign = 'middle'>");
+						add(release);
+						add("</td>");
+						add("\r\t\t</tr>");
+						add("\r\t\t<tr>");
+						add("\r\t\t\t<td align = 'center' valign = 'middle'>");
+						add(expiry);
+						add("</td>")};
+					add("\r\t\t</tr>")}};
+			bundle { //change button
+				add("\r\t\t<tr>");
+				add("\r\t\t\t<td align = 'center' colspan = '3'>");
+				add("<input type = 'submit' name = 'inspectChange' value = '" + manilaSuite.getString("accesscontrol.indexFormChangeButton", pta: pta) + "'>");
+				add("</td>");
+				add("\r\t\t</tr>")};
+			add("\r\t</table>");
+			add("\r</form>")}};
+	
+	return htmltext}

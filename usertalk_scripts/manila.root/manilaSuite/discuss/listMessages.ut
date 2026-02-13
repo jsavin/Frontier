@@ -1,0 +1,275 @@
+on listMessages (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, headerColor="black", headerTextColor=nil, cssPrefix="", flOneDay = true, numMessages = nil, memberKey = nil) {
+	«Changes:
+		«2/14/07; 11:26:57 AM by LL
+			«Don't list pending news items.
+		«2006 and earlier
+			«1/31/06; 2:15:41 AM by JES
+				«Add support for pending posts.
+			«10/11/05; 3:38:05 AM by JES
+				«If compatible with the item template, make the subject of the message a link to the message. Use member link instead of member name.
+			«9/24/04; 3:33:52 AM by JES
+				«Limit size of subjects to 60 characters (instead of 40).
+			«4/18/03; 5:50:22 PM by JES
+				«Pass in true for flUseMappedMemberKeys to mainResponder.discuss.listThreads.
+			«4/4/02; 12:13:57 AM by JES
+				«Respect prefs for whether to list stories, pictures and news items in the discussion group.
+			«1/25/02; 6:01:41 PM by PBS
+				«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+			«2001
+				«10/17/01; 10:39:54 AM by PBS
+					«When constructing the URL to a built-in icon, don't use the IP address at all. Make a URL that begins with a /. This fixes a bug with machines that have multiple IP addresses.
+				«9/28/01; 4:32:58 PM by PBS
+					«Support print friendly template.
+				«9/26/01; 6:26:00 PM by PBS
+					«Pass adrMembers to mainResponder.members routines for performance reasons.
+					«Call tcp.dns.getMyDottedId rather than tcp.myDottedId for performance reasons.
+			«2000:
+				«07/08/00; 1:37:43 AM by PBS
+					«Use string.ellipsize rather than the local shortenString routine. This is okay because string.ellipsize was a new kernel verb in 6.1, and Manila requires 6.1 or greater.
+				«07/09/00; 4:28:22 PM by JES
+					«Added some blank space between days in the multiple day listing
+				«10/10/00; 1:08:36 AM by JES
+					«Added support for the thread-based discussion group interface.
+				«10/12/00; 12:19:16 AM by JES
+					«Added search arg: mode=day to message link urls, to cause them to specifically link to the single message reader, instead of the topic-based message reader. Respect the mode searchArg rather than the site pref when listing messages/topics.
+				«10/14/00; 7:49:35 PM by JES
+					«Added support for template-based rendering.
+				«10/21/00; 1:20:22 AM by JES
+					«Fix infinite loop when rendering multiple days in chronological view.
+				«10/31/00; 6:30:22 PM by JES
+					«Fixed bug where if there were messages for the current day in the single-day chronological view, but they'd all been deleted, that you get an empty page, instead of the most recent day with non-deleted messages.
+				«07/07/00; 5:55:31 PM by JES
+					«Created. List discussion group messages, either for a single day, or for multiple days, up to n messages. Cribbed from mainResponder.discuss.ListDay.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrSite = manilaSuite.getSiteAddress (pta));
+	local (adrData = mainResponder.discuss.openRoot (pta));
+	local (adrCal = @adrData^.calendar);
+	
+	local (activeTopicIcon, inactiveTopicIcon, userIcon);
+	bundle { // get the icons
+		if defined (pta^.newsSite^.discussionGroup.activeTopicIcon) {
+			activeTopicIcon = pta^.newsSite^.discussionGroup.activeTopicIcon};
+		if defined (pta^.newsSite^.discussionGroup.inactiveTopicIcon) {
+			inActiveTopicIcon = pta^.newsSite^.discussionGroup.inActiveTopicIcon};
+		if defined (pta^.newsSite^.discussionGroup.userIcon) {
+			userIcon = pta^.newsSite^.discussionGroup.userIcon};
+		
+		local (activeThreadImgUrl, inactiveThreadImgUrl, threadStatusIconWidth = 17, threadStatusIconHeight = 14);
+		local (userIconUrl, userIconHeight = 16, userIconWidth = 16);
+		bundle { // build image data for the icons
+			«local (myDottedId = tcp.myDottedId ())
+			«local (myDottedId = tcp.dns.getMyDottedId ()) //PBS 09/26/01: faster
+			«local (myPort = user.inetd.config.http.port)
+			«local (portString = "")
+			«if myPort != 80
+				«portString = ":" + myPort
+			«local (resourcesUrl = "http://" + myDottedId + portString + "/mainResponderResources/")
+			local (resourcesUrl = "/mainResponderResources/"); //PBS 10/16/01: no need to use dotted id
+			activeThreadImgUrl = resourcesUrl + "icons/folder.open2";
+			inactiveThreadImgUrl = resourcesUrl + "icons/folder2";
+			userIconUrl = resourcesUrl + "icons/user"};
+		if userIcon == nil {
+			userIcon = "<img src=\"" + userIconUrl + "\" height=\"" + userIconHeight + "\" width=\"" + userIconWidth + "\" border=\"0\" alt=\"user\">"};
+		if activeTopicIcon == nil {
+			activeTopicIcon = "<img src=\"" + activeThreadImgUrl + "\" height=\"" + threadStatusIconHeight + "\" width=\"" + threadStatusIconWidth + "\" border=\"0\" alt=\"activeTopic\">"};
+		if inactiveTopicIcon == nil {
+			inactiveTopicIcon = "<img src=\"" + inactiveThreadImgUrl + "\" height=\"" + threadStatusIconHeight + "\" width=\"" + threadStatusIconWidth + "\" border=\"0\" alt=\"inactiveTopic\">"}};
+	
+	local (flDiscussTopicBased = manilaSuite.getNewsSitePref ("discussionGroup.topicBased", default: false, flCreate: true));
+	if pta^.searchArgs != "" { // 10/12/00 JES: does the URL specify which DG interface to use?
+		local (argTable);
+		new (tableType, @argTable);
+		webserver.parseArgs (pta^.searchArgs, @argTable);
+		if defined (argTable.mode) {
+			case string.lower (argTable.mode) {
+				"day" {
+					flDiscussTopicBased = false};
+				"topic" {
+					flDiscussTopicBased = true}}}};
+	if flDiscussTopicBased {
+		bundle { // don't render an empty list if there are no live topics
+			local (lastDay = clock.now ());
+			try {
+				lastDay = mainResponder.calendar.getLastDay (adrCal)};
+			if date.set (date.day (d), date.month (d), date.year (d), 0, 0, 0) > lastDay {
+				d = lastDay}};
+		local (daysTopicsActive = manilaSuite.getNewsSitePref ("discussionGroup.daysTopicsActive", default: 1, flCreate: true));
+		local (daysTopicsLive = manilaSuite.getNewsSitePref ("discussionGroup.daysTopicsLive", default: 5, flCreate: true));
+		local (adrTemplate = @pta^.newsSite^.discussionGroup.topicListTemplate);
+		local (adrItemTemplate = @pta^.newsSite^.discussionGroup.topicListItemTemplate);
+		local (adrTemplateHeader = @pta^.newsSite^.discussionGroup.topicListHeader);
+		local (adrTemplateFooter = @pta^.newsSite^.discussionGroup.topicListFooter);
+		return (mainResponder.discuss.listThreads (d, bgColor, otherColor, tableWidth, pta, headerColor, headerTextColor, cssPrefix, daysTopicsLive, daysTopicsActive, adrTemplate, adrItemTemplate, adrTemplateHeader, adrTemplateFooter, activeTopicIcon, inactiveTopicIcon, userIcon, @manilaSuite.discuss.isMessageInDiscussionGroup, true))};
+	
+	local (adrMsgs = @adrData^.messages);
+	local (htmlText = "", adrDay, i, ct = 0);
+	local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+	local (msgReaderUrl = pta^.responderAttributes.urls^.discussMsgReader);
+	local (yr = date.year (d), mo = date.month (d), day = date.day (d));
+	local (flCss = (cssPrefix != "")); //if true, emit CSS classes, otherwise don't
+	memberKey = string.lower (memberKey); //memberKey can be a string or a list.
+	local (templateHeader, template, templateFooter, itemTemplate);
+	local (adrMembers = mainResponder.members.getMembershipTable (membershipGroup));
+	
+	local (nameTable);
+	new (tableType, @nameTable);
+	
+	on add (s) {
+		htmlText = htmlText + (s + "\r");};
+	
+	try { //get the address of this day in the calendar structure for this discussion group.
+		local (lastDay = mainResponder.calendar.getLastDay (adrCal));
+		if d > lastDay {
+			d = lastDay};
+		adrDay = mainResponder.calendar.getDayAddress (adrCal, d, flCreate:false);
+		ct = sizeOf (adrDay^)}
+	else {
+		ct = 0}; //no messages yet, shortcut building of message listing
+	
+	local (dateAdded = false);
+	
+	if headerTextColor == nil { //PBS 10/30/99: the header text color may also be specified
+		headerTextColor = bgColor};
+	
+	bundle { // get the templates
+		templateHeader = string.trimWhiteSpace (string (pta^.newsSite^.discussionGroup.dayListHeader));
+		template = string.trimWhiteSpace (string (pta^.newsSite^.discussionGroup.dayListTemplate));
+		itemTemplate = string.trimWhiteSpace (string (pta^.newsSite^.discussionGroup.dayListItemTemplate));
+		templateFooter = string.trimWhiteSpace (string (pta^.newsSite^.discussionGroup.dayListFooter))};
+	
+	bundle { // replace color macros in the templates
+		template = string.replaceAll (template, "{bgColor}", otherColor, false);
+		template = string.replaceAll (template, "{headerColor}", headerColor, false);
+		template = string.replaceAll (template, "{headerTextColor}", headerTextColor, false);
+		
+		itemTemplate = string.replaceAll (itemTemplate, "{bgColor}", otherColor, false);
+		itemTemplate = string.replaceAll (itemTemplate, "{headerColor}", headerColor, false);
+		itemTemplate = string.replaceAll (itemTemplate, "{headerTextColor}", headerTextColor, false);
+		
+		templateHeader = string.replaceAll (templateHeader, "{bgColor}", otherColor, false);
+		templateHeader = string.replaceAll (templateHeader, "{headerColor}", headerColor, false);
+		templateHeader = string.replaceAll (templateHeader, "{headerTextColor}", headerTextColor, false);
+		
+		templateFooter = string.replaceAll (templateFooter, "{bgColor}", otherColor, false);
+		templateFooter = string.replaceAll (templateFooter, "{headerColor}", headerColor, false);
+		templateFooter = string.replaceAll (templateFooter, "{headerTextColor}", headerTextColor, false)};
+	
+	local (flSubjectIsLink = not (string.lower (itemTemplate) contains ">{subject}</a>") );
+	
+	on renderItem (adrItem) {
+		local (s = itemTemplate, memberName);
+		
+		bundle { //was this message deleted? If so, skip it.
+			if defined (adrItem^.flDeleted) {
+				«The flDeleted flag may not exist: it's necessary to test for existence before testing whether it's true or false.
+				if adrItem^.flDeleted {
+					return (false)}}}; // this message was deleted
+		bundle { //is this message pending approval? If so, skip it.
+			if defined (adrItem^.flPending) {
+				if adrItem^.flPending {
+					return (false)}}};
+		bundle { //is this news item not posted to the homepage? If so, skip it.
+			if manilaSuite.news.isNewsItem (adrItem) {
+				if not manilaSuite.news.isReleased (adrItem) {
+					return (false)}}};
+		bundle { //respect pref for whether to list stories, pictures and news items
+			if not manilaSuite.discuss.isMessageInDiscussionGroup (adrItem, adrsite) {
+				return (false)}};
+		bundle { //if a member key is specified, only list messages from member(s) in the key
+			if memberKey != nil {
+				if not (memberKey contains string.lower (adrItem^.member)) {
+					return (false)}}};
+		
+		local (msgurl = msgReaderUrl + adrItem^.msgNum + "?mode=day");
+		bundle { //get the name of the member who posted this message.
+			if defined (nameTable.[adrItem^.member]) { //cache member names in a local table, since repetitions are likely
+				memberName = nameTable.[adrItem^.member]}
+			else {
+				«memberName = mainResponder.members.getMemberName (membershipGroup, adrItem^.member, adrMembers) //PBS 09/26/01: pass adrMembers parameter
+				memberName = mainResponder.members.linkToMember (membershipGroup, adrItem^.member, true, adrMembers, pta, "", true);
+				nameTable.[adrItem^.member] = memberName}};
+		bundle { //replace messageNumber and messageUrl
+			s = string.replaceAll (s, "{messageNumber}", adrItem^.msgNum, false);
+			s = string.replaceAll (s, "{messageUrl}", msgurl, false)};
+		bundle { //replace postTime and readCount
+			s = string.replaceAll (s, "{postTime}", mainResponder.localization.shortTimeString (adrItem^.postTime, pta: pta), false);
+			s = string.replaceAll (s, "{readCount}", adrItem^.ctReads, false)};
+		bundle { //replace author, authorIcon
+			«s = string.replaceAll (s, "{author}", string.ellipsize (memberName, 20), false)
+			s = string.replaceAll (s, "{author}", memberName, false);
+			s = string.replaceAll (s, "{authorIcon}", userIcon, false)};
+		bundle { //replace subject
+			if flSubjectIsLink {
+				s = string.replaceAll (s, "{subject}", "<a href=\"" + msgurl + "\">" + string.ellipsize (adrItem^.subject, 60) + "</a>", false)}
+			else {
+				s = string.replaceAll (s, "{subject}", string.ellipsize (adrItem^.subject, 60), false)}};
+		
+		ct++;
+		
+		return (s)};
+	
+	local (ctRenderedItems = 0);
+	on renderDay (d, adrDay, maxItems = infinity) {
+		local (s = template, items, ctMessages = sizeOf (adrDay^), dayContainsItems = false);
+		local (flLastDay = (d == mainResponder.calendar.getLastDay (adrCal)));
+		local (yr = date.year (d), mo = date.month (d), day = date.day (d));
+		for i = ctMessages downTo 1 { //loop through messages in reverse-chronological order
+			local (item = "");
+			if defined (adrMsgs^.[nameOf (adrDay^ [i])]) {
+				item = renderItem (@adrMsgs^.[nameOf (adrDay^ [i])]);
+				if item {
+					items = items + item;
+					dayContainsItems = true;
+					ctRenderedItems++;
+					if ctRenderedItems == maxItems {
+						break}}}};
+		if not dayContainsItems {
+			return ("")};
+		bundle { // flow the list through the template
+			s = string.replaceAll (s, "{date}", mainResponder.localization.longDateString (d, pta), false);
+			
+			s = string.replaceAll (s, "{messageList}", items, false);
+			
+			local (topicListUrl = pta^.urls^.discussHomePage);
+			if not flLastDay {
+				topicListUrl = topicListUrl + "$" + yr + "/" + string.padWithZeros (mo, 2) + "/" + string.padWithZeros (day, 2);
+				topicListUrl = topicListUrl + "?mode=topic&y=" + yr + "&m=" + mo + "&d=" + day}
+			else {
+				topicListUrl = topicListUrl + "?mode=topic"};
+			s = string.replaceAll (s, "{topicListUrl}", topicListUrl, false);
+			
+			s = string.replaceAll (s, "{authorIcon}", userIcon, false)};
+		return (s)};
+	
+	add (templateHeader);
+	
+	local (firstDay = mainResponder.calendar.getFirstDay (adrCal));
+	if flOneDay { // default behavior of mainResponder.discuss.listDay
+		local (dayHtml = renderDay (d, adrDay));
+		while not dayHtml { // find the most recent day with non-deleted messages in it.
+			d = date.yesterday (d);
+			if d < firstDay {
+				break};
+			try {
+				adrDay = mainResponder.calendar.getDayAddress (adrCal, d, flCreate:false);
+				dayHtml = renderDay (d, adrDay)}};
+		if dayHtml { // if this fails, it means that there are *no* non-deleted messages in the DG.
+			add (dayHtml)}}
+	else { // multi-day behavior
+		while ctRenderedItems < numMessages {
+			local (dateAtMidnight = date.set (date.day (d), date.month (d), date.year (d), 0, 0, 0));
+			try {
+				adrDay = mainResponder.calendar.getDayAddress (adrCal, d, flCreate:false);
+				local (dayHtml = renderDay (d, adrDay, numMessages));
+				if dayHtml {
+					add (dayHtml)}};
+			if dateAtMidnight <= firstDay {
+				break};
+			d = date.yesterday (d)}};
+	
+	add (templateFooter);
+	
+	return (htmlText)}

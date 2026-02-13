@@ -1,0 +1,12 @@
+on getIndexTable (adrSite, categoryName) {
+	«Get the address of a table containing the index for this category. If the index doesn't exist, create it first.
+		«10/09/00; 8:47:03 PM by PBS
+	
+	local (adrIndex = manilaSuite.discuss.getIndexAddress (adrSite, categoryName));
+	
+	if defined (adrIndex^.flValid) and adrIndex^.flValid { //is it valid?
+		return (adrIndex)};
+	
+	manilaSuite.discuss.buildIndex (adrSite, categoryName);
+	
+	return (adrIndex)}

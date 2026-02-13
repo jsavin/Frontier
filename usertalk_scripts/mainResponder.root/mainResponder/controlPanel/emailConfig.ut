@@ -1,0 +1,48 @@
+on emailConfig (flAddFormTags = true) {
+	«Changes
+		«4/13/04; 12:40:22 AM by JES
+			«Optional param, flAddFormTags, used for calling this page within a radio.prefs.browser outline.
+		«12/17/01; 2:30:49 PM by PBS
+			«Created. Email Frontier configuration to someone (such as UserLand). No passwords are included in the email.
+	local (pta = html.getpagetableaddress ());
+	pta^.title = "Email Config";
+	workspace.pt = pta^;
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r"};
+	bundle { //prompt
+		add ("<p>Enter an email address in the form below and click on Submit, and an extensive status report for your Frontier configuration will be sent through email to the designated address. (No passwords are included in the email.)</p>")};
+	local (email = user.prefs.mailaddress);
+	bundle { //send email if args are present
+		local (args);
+		new (tabletype, @args);
+		if pta^.method == "POST" {
+			args = pta^.postArgs}
+		else { //it's a GET
+			webserver.parseargs (pta^.searchargs, @args)};
+		if defined (args.email) {
+			email = args.email;
+			try {
+				mainResponder.utilities.mailConfig (args.email);
+				local (t);
+				new (tabletype, @t);
+				t.email = args.email;
+				t.now = clock.now ();
+				add ("<p><font color=\"#00008B\">A configuration email has been sent to " + email + " on " + t.now + ".</font></p>")}
+			else {
+				if sizeOf (user.prefs.mailHost) == 0 {
+					add ("<p><font color=\"#8B0000\">Can't send your configuration information via email because your outgoing (SMTP) mail server has not been set.</font></p>")}
+				else {
+					add ("<p><font color=\"#8B0000\">" + tryError + "</font></p>")}}}
+		else {
+			if sizeOf (user.prefs.mailHost) == 0 {
+				add ("<p>In order for Frontier to send your configuration information via email, you will need to first set your outgoing (SMTP) mail server.</p>")}}};
+	if flAddFormTags {
+		add ("<form method=\"GET\">"); indentlevel++};
+	add ("<table cellspacing=\"10\" cellpadding=\"0\">"); indentlevel++;
+	add ("<tr><td>Email to:</td><td><input type=text size=\"50\" name=\"email\" value=\"" + email + "\"></td></tr>");
+	add ("<tr><td>&nbsp;</td><td><input type=\"submit\" value=\"Send Email\"></td></tr>");
+	add ("</table>"); indentlevel--;
+	if flAddFormTags {
+		add ("</form>"); indentlevel--};
+	return (htmltext)}

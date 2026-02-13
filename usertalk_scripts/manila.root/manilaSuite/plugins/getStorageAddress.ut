@@ -1,0 +1,13 @@
+on getStorageAddress (pluginName, adrSite=nil) {
+	«Get the address of storage for this plugin in a Manila site.
+		«02/22/00; 1:51:07 PM by PBS
+	
+	if adrSite == nil {
+		local (pta = html.getPageTableAddress ());
+		adrSite = pta^.adrSiteRootTable};
+	
+	manilaSuite.plugins.initPluginsTable (adrSite);
+	
+	local (adrStorage = @adrSite^.["#plugins"].data.[pluginName]);
+	
+	return (adrStorage)}

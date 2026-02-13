@@ -1,0 +1,37 @@
+on dive (adrtable, path, flCreateSubSites = false) {
+	«Changes
+		«7/2/02; 4:04:27 AM by JES
+			«Created.
+	local (nomad = adrtable);
+	on getSiteAddress (adrtable, adradrsite, name) {
+		local (lowername = string.lower (name));
+		for adr in adrtable {
+			if defined (adr^.["/atts"]) {
+				if defined (adr^.["/atts"].name) {
+					if string.lower (adr^.["/atts"].name) == lowername {
+						adradrsite^ = adr;
+						return (true)}}}};
+		return (false)};
+	while path != "" { //dive into the table
+		local (pathPart = string.nthField (path, "/", 1));
+		path = string.delete (path, 1, sizeOf (pathPart) + 1);
+		local (adrsite);
+		if getSiteAddress (nomad, @adrsite, pathPart) {
+			nomad = adrsite}
+		else { //create sub-site on the path to this site
+			if flCreateSubSites {
+				nomad = xml.addTable (nomad, "site");
+				new (tableType, @nomad^.["/atts"]);
+				nomad^.["/atts"].name = pathPart}
+			else {
+				scriptError ("Can't dive into siteTree because there is no (sub-)site named \"" + pathPart + "\".")}}};
+	return (nomad)};
+«bundle //testing
+	«local (xstruct)
+	«local (adrdomain = @config.mainResponder.domains.default)
+	«local (adroutline = @adrdomain^.siteTree.directory.outline)
+	«xml.compile (string (adroutline^), @xstruct)
+	«local (adrtree = xml.getAddress (@xstruct, "siteTree"))
+	«local (adrtopsite = xml.getAddress (adrtree, "site"))
+	«dive (adrtopsite, "foo")
+	«dive (adrtopsite, "foo/bar/baz")

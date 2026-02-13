@@ -1,0 +1,21 @@
+on rpcFormatLastNItems (siteName) {
+	«Get the last n items formatted properly. This supports the manila.homepage.getCurrentContent RPC handler.
+		«04/25/00; 5:53:53 PM by PBS
+	
+	local (adrSite = config.manila.sites.[siteName]);
+	local (n = manilaSuite.news.getItemsPerPagePref (adrSite));
+	local (newsItemTemplate = manilaSuite.news.getNewsItemTemplate (adrSite));
+	local (messageList = manilaSuite.news.getLastNMessageNumbers (n, adrSite:adrSite));
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+	local (msgNum);
+	for msgNum in messageList {
+		local (adrMsgTable = @adrDiscuss^.messages.[string.padWithZeros (msgNum, 7)]);
+		add (manilaSuite.news.formatNewsItem (adrMsgTable, newsItemTemplate, flAddEditLink:false, adrSite:adrSite, groupName:groupName))};
+	
+	return (htmlText)}

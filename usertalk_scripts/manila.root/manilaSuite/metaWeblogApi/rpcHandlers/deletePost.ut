@@ -1,0 +1,6 @@
+on deletePost (appkey, postid, username, password, publish) {
+	«Changes
+		«3/28/07; 1:26:48 AM by JES
+			«Created. Implement now-deprecated Blogger API function in MetaWeblog API for Manila.
+				«http://www.xmlrpc.com/stories/storyReader$2460
+	return (manilaSuite.bloggerApi.rpcHandlers.deletePost (appkey, postid, username, password, publish))}

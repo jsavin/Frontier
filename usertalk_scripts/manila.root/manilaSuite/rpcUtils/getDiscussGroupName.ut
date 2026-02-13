@@ -1,0 +1,3 @@
+on getDiscussGroupName (sitename) {
+	local (adrNewsSite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	return (adrNewsSite^.["#prefs"].discussionRoot)}

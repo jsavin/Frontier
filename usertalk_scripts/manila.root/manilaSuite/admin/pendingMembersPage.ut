@@ -1,0 +1,136 @@
+on pendingMembersPage () {
+	«Changes
+		«3/16/07; 9:48:51 PM by LL
+			«Created. List pending members, with radio buttons to approve or delete.
+			«Only managing editors are allowed.
+	local (pta = html.getpagetableaddress ());
+	bundle { //managing editor test
+		if not manilaSuite.editors.managingEditorTest () {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}};
+	
+	pta^.title = manilaSuite.getString ("admin.pendingMembersPageTitle");
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrgroup = manilaSuite.members.getGroupFromSiteAddress (pta^.adrSiteRootTable));
+	local (adrPendingMembers = @adrgroup^.pendingUsers);
+	if not defined (adrPendingMembers^) {
+		new (tableType, adrPendingMembers)};
+	
+	
+	
+	local (htext = "");
+	on add (s) {
+		htext = (htext + s + "\r");};
+	
+	add ("<p>" + manilaSuite.getString ("admin.pendingMembersPageDescription") + "</p>");
+	
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.submit) {
+			delete (@adrargs^.submit);
+			local (adr, ctApproved=0, ctDeleted=0);
+			for adr in adrargs {
+				case adr^[1] {
+					'a' { //approve
+						«Move the pending user table to the correct table
+						local (email = string.delete (adr^, 1, 1));
+						local (adrPendingMember = @adrPendingMembers^.[email]);
+						local (adrmember = @adrgroup^.users.[email]);
+						adrmember^ = adrPendingMember^;
+						delete (adrPendingMember);
+						delete (@adrmember^.comment);
+						delete (@adrmember^.whenConfirmationRequested);
+						manilaSuite.members.sendMemberSignupMail (adrmember, adrsite);
+						manilaSuite.members.callbacks(adrsite, adrmember, "signup"); //05/04/02, 17:34:00 by DABB
+						bundle { //log the event
+							if defined (manilaSuite.log.add) {
+								local (t); new (tableType, @t);
+								t.memberLink = manilaSuite.members.linkToMember (pta^.defaultMembershipGroup, nameOf (pta^.adrMemberInfo^));
+								manilaSuite.log.addEvent ("newMember", startticks, @t)}};
+						ctApproved++};
+					'd' { //delete
+						«Just delete the pending user table
+						local (email = string.delete (adr^, 1, 1));
+						local (adrPendingMember = @adrPendingMembers^.[email]);
+						try {
+							delete (adrPendingMember)};
+						ctDeleted++}}};
+			local (replTable); new (tableType, @replTable);
+			replTable.ctDeleted = ctDeleted;
+			replTable.ctApproved = ctApproved;
+			add ("<p><b><i>" + manilaSuite.getString ("admin.approveRejectedConfirmMembers", @replTable) + "</i></b></p>")}};
+	
+	add ("<form method=\"POST\">");
+	add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+	
+	bundle { //column headers
+		add ("<tr><td colspan=\"2\"><b>" + manilaSuite.getString ("admin.approveDeleteHeader") + "</b></td><td><b>" + manilaSuite.getString ("admin.memberHeader") + "</b></td><td><b>" + manilaSuite.getString ("common.dateColumnName") + "</b></td></tr>")};
+	
+	local (ctPending = 0);
+	on radioButton (cmd, msgnum, label) {
+		cmd = cmd + msgnum;
+		return ("<input type=\"radio\" name=\"" + msgnum + "\" id=\"" + cmd + "\" value=\"" + cmd + "\"><label for=\"" + cmd + "\">" + label + "</label>")};
+	on renderOneUser (adruser) {
+		add ("<tr>");
+		local (name, emailAddress = nameOf (adruser^));
+		if defined (adruser^.personalInfo.name) {
+			name = adruser^.personalInfo.name};
+		add ("<td valign=\"top\">" + radioButton ("a", emailAddress, manilaSuite.getString ("common.approveButton")) + "</td>");
+		add ("<td valign=\"top\">" + radioButton ("d", emailAddress, manilaSuite.getString ("common.deleteButton")) + "</td>");
+		add ("</td>");
+		
+		add ("<td valign=\"top\">");
+		if name != "" {
+			add (name + " (" + emailAddress + ")")}
+		else {
+			add (emailAddress)};
+		add ("</td>");
+		add ("<td valign=\"top\">");
+		add (date.longString (adruser^.whenConfirmationRequested));
+		add ("</td>");
+		
+		add ("</tr>");
+		local (comment = "");
+		if defined (adruser^.comment) {
+			comment = adruser^.comment};
+		add ("<tr>");
+		add ("<td valign=\"top\">&nbsp;</td>");
+		add ("<td valign=\"top\">&nbsp;</td>");
+		add ("<td valign=\"top\" width=\"400\">" + comment + "</td>");
+		add ("<td valign=\"top\">&nbsp;</td>");
+		add ("<td valign=\"top\">&nbsp;</td>");
+		add ("</td>");
+		
+		add ("</tr>");
+		
+		ctPending++;
+		
+		return (true)};
+	
+	local (adrItem);
+	bundle { //remove pending users that have expired
+		local (i);
+		local (now = clock.now ());
+		for i = sizeof (adrPendingMembers^) downto 1 {
+			adrItem = @adrPendingMembers^ [i];
+			if adrItem^.whenConfirmationRequested < date.prevWeek (now) {
+				delete (adrItem)}}};
+	
+	for adrItem in adrPendingMembers {
+		if not defined (adrItem^.confirmationCode) {
+			renderOneUser (adrItem)}};
+	
+	add ("</table>");
+	
+	if ctPending == 0 { //no pending members message
+		add ("<p>" + manilaSuite.getString ("admin.noPendingMembers") + "</p>")}
+	else { //submit button
+		add ("<p><input type=\"submit\" name=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\"></p>")};
+	add ("</form>");
+	
+	htext = manilaSuite.untaint (htext);
+	
+	return (htext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«pendingMembersPage ()

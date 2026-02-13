@@ -1,0 +1,672 @@
+on maintainUsers () {
+	«Changes
+		«2/22/06; 7:29:07 PM by JES
+			«Change default bulletin setting for new members from none to plain-text.
+		«11/11/05; 4:00:16 AM by JES
+			«Support for member table names which aren't email addresses, if enabled for the site/server.
+		«10/11/05; 4:08:55 AM by JES
+			«Respect server setting, config.manila.prefs.flManagingEditorCanSetPassword. Site can override either way.
+			«Localized row headers for lastVisit and hitCount in Member Definition section.
+		«3/31/05; 3:56:41 AM by JES
+			«Call callbacks when members are blocked, unblocked, signed up or deleted.
+		«3/28/05; 2:57:09 PM by JES
+			«Allow managing editors to change editorial status of members.
+		«5/28/04, 18:07:21 by DAB
+			«Created. Add users with cohorts.
+				«was manilafixer.accesscontrol.maintainUsers : 02/09/27, 13:36:31 by DAB
+				«strings at manilaData.localization.languages.english.strings.accessControl
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (flUsernameMustBeEmail = manilaSuite.members.usernameMustBeEmail (pta^.adrSiteRootTable));
+	local (sitename = manilaSuite.getCanonicalSitename (adrSite));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress (adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	if not defined (adrCohorts^) { //02/10/01, 22:28:36 by DAB
+		new (tabletype, adrCohorts)};
+	local (membershipGroupName = pta^.defaultMembershipGroup);
+	local (adminUrl = manilaSuite.getUrl ("editorialAdmin", pta));
+	if pta^.searchArgs != "" {
+		adminUrl = adminUrl + "?" + pta^.searchArgs};
+	
+	local (flAdminSetsPassword = config.manila.prefs.flManagingEditorCanSetPassword);
+	if defined (adrNewsSite^.accessControl.flAddUserFormPassword) {
+		flAdminSetsPassword = adrNewsSite^.accessControl.flAddUserFormPassword};
+	
+	«local (separatorColor, separatorTextColor)
+	«manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor)
+	«
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + s;};
+	
+	local (replTbl);
+	bundle {
+		new (tabletype, @replTbl);
+		replTbl.adminPageLink = manilaSuite.getUrl ("editorialAdmin", pta) + "#membership";
+		replTbl.sitename = sitename};
+	
+	local ( errCntr = 0);
+	on statusReport (errID, hue = "green") {
+		add ("<p align=\"center\" style=\"color:" + hue + "\">");
+		add (manilaSuite.getString ("accessControl." + errID, @replTbl, pta:pta));
+		add ("</p>");
+		return true};
+	on errorReport (errID) {
+		statusReport (errID, "red");
+		errCntr++;
+		return true};
+	
+	on confirmBox (deleteWhatMessage, itemList) {
+		«build confirm box modelled loosely on manilaSuite.html.confirmBox
+		local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
+		manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor);
+		local (itm);
+		add ("\r<form method=\"post\" action=\"" + pta^.url + "\" name=\"polldelete\">");
+		add ("\r\t<table align=\"center\" border=\"0\" cellpadding=\"3\" cellspacing=\"1\" bgcolor=\"" + headerColor + "\" width=\"350\">");
+		
+		add ("\r\t\t<tr bgcolor=\"" + headerColor + "\">");
+		add ("<td align=\"left\" style=\"color:" + headerTextColor + ";font-weight:bold\">");
+		add (manilaSuite.getString ("html.confirm", pta: pta));
+		add ("</td>");
+		add ("\r\t\t</tr>");
+		
+		add ("\r\t\t<tr bgcolor=\"" + backgroundColor + "\">");
+		add ("<td style=\"color:" + backgroundTextColor + "\">" );
+		add (manilaSuite.getString (deleteWhatmessage, @replTbl, pta:pta));
+		add ("<p align=\"right\">");
+		for itm in itemList {
+			add ("<input type=\"hidden\" name=\"memberkeys\" value=\"" + itm + "\">")};
+		add ("<input type=\"submit\" name=\"no\" value=\"" + manilaSuite.getString ("common.noButton", pta: pta) + "\">");
+		add ("&nbsp;&nbsp;");
+		add ("<input type=\"submit\" name=\"deleteconfirm\" value=\"" + manilaSuite.getString ("common.yesButton", pta: pta) + "\">");
+		add ("&nbsp;&nbsp;");
+		add ("</p>");
+		add ("</td>");
+		add ("\r\t\t</tr>");
+		
+		add ("\r\t</table>");
+		add ("\r</form>");
+		
+		return true};
+	
+	add (manilaSuite.getString ("accessControl.maintainUsersHelpText", @replTbl, pta:pta));
+	
+	local (newMemberWelcomeEmailChecked, newMemberPriviliges = "member", newMemberBulletinsType="plaintext");
+	local (selectedMembers = {nameOf (pta^.adrMemberInfo^)});
+	local (adrMemberInView);
+	if pta^.method == "POST" {
+		on batchOperation (cmd) {
+			local (cnt=0);
+			«local (selectedKeys = pta^.postargs.memberkeys)
+			local (selectedKeys); //05/02/13, 13:23:41 by DAB
+			try { //05/02/13, 13:23:37 by DAB
+				 selectedKeys = pta^.postargs.memberkeys}
+			else {
+				return 0};
+			if typeOf (selectedKeys) != listType {
+				selectedKeys = {selectedKeys}};
+			local (flSomethingChanged);
+			selectedMembers = {};
+			local (adrMember);
+			for memberKey in selectedKeys {
+				adrMember = @adrGroup^.users[number (memberkey)];
+				if not defined (adrMember^) {
+					continue};
+				case cmd {
+					"block" {
+						if not (defined (adrMember^.blocked) and adrMember^.blocked) {
+							adrMember^.blocked = true;
+							selectedMembers[0] = nameOf (adrMember^);
+							manilaSuite.members.callbacks (adrSite, adrMember, "block")}}; //05/03/24, 22:55:47 by DAB
+					"unblock" {
+						if defined (adrMember^.blocked) and adrMember^.blocked {
+							adrMember^.blocked = false;
+							selectedMembers[0] = nameOf (adrMember^);
+							manilaSuite.members.callbacks (adrSite, adrMember, "unblock")}}; //05/03/24, 22:55:47 by DAB
+					"delete" {
+						local (nme = nameOf (adrMember^));
+						case true { //reason to not delete a member
+							string.lower (nme )== string.lower (nameOf (pta^.adrMemberInfo^)) {
+								replTbl.memberKey = nme;
+								errorReport ("errDeleteSelf")};
+							adrNewsSite^.sysopmail contains nme;
+							adrNewsSite^.contentEditors contains nme;
+							adrNewsSite^.contributingEditors contains nme {
+								replTbl.memberKey = nme;
+								errorReport ("errInvDeleteEditors");
+								return 0}}
+						else {
+							selectedMembers[0] = nme}};
+					"deleteconfirm" {
+						local (nme = nameOf (adrMember^));
+						case true { //reason to not delete a member
+							string.lower (nme )== string.lower (nameOf (pta^.adrMemberInfo^)) {
+								replTbl.memberKey = nme;
+								errorReport ("errDeleteSelf")};
+							adrNewsSite^.sysopmail contains nme;
+							adrNewsSite^.contentEditors contains nme;
+							adrNewsSite^.contributingEditors contains nme {
+								replTbl.memberKey = nme;
+								errorReport ("errInvDeleteEditors");
+								return 0}}
+						else {
+							selectedMembers[0] = nameOf (adrMember^)}};
+					"viewfirst" {
+						adrMemberInView = adrMember;
+						selectedMembers[0] = nameOf (adrMember^);
+						return}};
+				cnt++};
+			return cnt};
+		
+		case true {
+			defined (pta^.postargs.editMember);
+			defined (pta^.postargs.addMemberToGroup) {
+				local (flEditingMember = defined (pta^.postargs.editMember));
+				local (memberKey = string.trimwhiteSpace (pta^.postargs.memberEmailAddress));
+				local (password = ""); //02/12/24, 19:25:27 by DAB
+				try {password = string.trimwhiteSpace (pta^.postargs.memberPassword)}; //02/12/24, 19:25:31 by DAB
+				local (membername = string.trimwhiteSpace (pta^.postargs.memberName)); //02/11/07, 11:07:31 by DAB
+				local (adrMember);
+				on validInput () {
+					if memberKey == "" {
+						errorReport ("errNoMemberKey");
+						return false};
+					replTbl.memberKey = string.replace (memberKey, "@", "\\@");
+					if flUsernameMustBeEmail {
+						try {
+							string.isValidEmailAddress (memberKey)}
+						else {
+							replTbl.error = tryError;
+							errorReport ("errInvalidMemberKey");
+							return false}};
+					adrMember = mainResponder.members.getMemberTable (membershipGroupName, memberKey);
+					if defined (adrMember^) and not flEditingMember {
+						errorReport ("errMemberExists");
+						return false};
+					if membername == "" {
+						errorReport ("errNomembername")};
+					if flAdminSetsPassword {
+						if password == "" {
+							errorReport ("errNoPassword")}}};
+				
+				if validInput () {
+					selectedMembers = {memberKey}; //05/02/13, 13:42:50 by DAB
+					if not flEditingMember {
+						new (tableType, adrMember)};
+					«setting the password or not; and where from is messy 05/02/13, 12:33:19 by DAB
+					if flEditingMember {
+						if flAdminSetsPassword and (password != "") {
+							adrMember^.password = password}}
+					else { //new user
+						if flAdminSetsPassword and (password != "") {
+							adrMember^.password = password}
+						else {
+							adrMember^.password = manilaSuite.passwords.generate ()}}; //05/02/13, 12:20:39 by DAB
+					if not defined (adrMember^.personalInfo) {
+						new (tableType, @adrMember^.personalInfo)};
+					adrMember^.personalInfo.name = membername;
+					
+					replTbl.memberType = ""; //05/02/13, 12:24:19 by DAB
+					if defined (pta^.postargs.memberType) { //possibly add this person as an editor
+						on editorsListToString (adr) { //convert a list to a comma-delimited string
+							local (s = string (adr^));
+							if s beginsWith "{" {
+								s = string.delete (s, 1, 1)}; //pop off left curly brace
+							if s endsWith "}" {
+								s = string.delete (s, sizeof (s), 1)};
+							s = string.replaceall (s, "\"", "");
+							s = string.replaceall (s, " ", "");
+							return (s)};
+						case pta^.postargs.memberType {
+							"contributingEditor" {
+								local (theList = editorsListToString (@pta^.newsSite^.contributingEditors));
+								if not (string.lower (theList) contains string.lower (memberKey)) {
+									theList = theList + "," + memberKey;
+									manilaSuite.admin.setContributingEditorList (theList)};
+								replTbl.memberType = manilaSuite.getString ("admin.contributingEditor")};
+							"contentEditor" {
+								local (theList = editorsListToString (@pta^.newsSite^.contentEditors));
+								if not (string.lower (theList) contains string.lower (memberKey)) {
+									theList = theList + "," + memberKey;
+									manilaSuite.admin.setContentEditorList (theList)};
+								replTbl.memberType = "Content Editor"};
+							"managingEditor" {
+								local (theList = editorsListToString (@pta^.newsSite^.sysopMail));
+								if not (string.lower (theList) contains string.lower (memberKey)) {
+									theList = theList + "," + memberKey;
+									manilaSuite.admin.setManagingEditorList (theList)};
+								replTbl.memberType = manilaSuite.getString ("admin.managingEditor")};
+							"member" {
+								replTbl.memberType = manilaSuite.getString ("admin.member")}}};
+					
+					if defined (pta^.postargs.memberBulletinsType) {
+						newMemberBulletinsType = pta^.postargs.memberBulletinsType;
+						on sureSitePrefs () {
+							if not defined (adrMember^.bulletins) {
+								new (tabletype, @adrMember^.bulletins)};
+							local (adrSitePrefs = @adrMember^.bulletins.[sitename]);
+							if not defined (adrSitePrefs^) {
+								new (tabletype, adrSitePrefs)};
+							return adrSitePrefs};
+						local (adrPrefs);
+						case newMemberBulletinsType {
+							"plaintext" {
+								adrPrefs = sureSitePrefs ();
+								adrPrefs^.enabled = true;
+								adrPrefs^.inhtml = false};
+							"html" {
+								adrPrefs = sureSitePrefs ();
+								adrPrefs^.enabled = true;
+								adrPrefs^.inhtml = true}}};
+					
+					local (addedToCohorts = {});
+					if defined (pta^.postargs.memberCohorts) { //add to cohorts
+						local (lst = pta^.postargs.memberCohorts);
+						if typeof (lst) != listType {
+							lst = list (lst)};
+						local (cohort);
+						for cohort in lst {
+							replTbl.cohort = cohort;
+							if not defined (adrCohorts^.[cohort]) {
+								errorReport ("errModifyDoesntExist");
+								continue};
+							if not defined (adrCohorts^.[cohort].memberdata.[memberKey]) {
+								adrCohorts^.[cohort].memberdata.[memberKey] = clock.now ();
+								addedToCohorts[0] = adrCohorts^.[cohort].name}};
+						};
+					
+					if defined (pta^.postargs.memberDefaultCohorts) { //add to default cohorts
+						local (lst = pta^.postargs.memberDefaultCohorts);
+						if typeof (lst) != listType {
+							lst = list (lst)};
+						
+						adrMember^.defaultCohorts = {};
+						
+						local (cohort);
+						for cohort in lst {
+							replTbl.cohort = cohort;
+							if not defined (adrCohorts^.[cohort]) {
+								errorReport ("errModifyDoesntExist");
+								continue};
+							if not defined (adrCohorts^.[cohort].memberdata.[memberKey]) {
+								adrCohorts^.[cohort].memberdata.[memberKey] = clock.now ();
+								addedToCohorts[0] = adrCohorts^.[cohort].name};
+							
+							adrMember^.defaultCohorts[0] =memberKey}};
+					
+					if defined (pta^.postargs.memberDefaultROCohorts) { //add to default RO cohorts
+						local (lst = pta^.postargs.memberDefaultROCohorts);
+						if typeof (lst) != listType {
+							lst = list (lst)};
+						
+						adrMember^.defaultROCohorts = {};
+						
+						local (cohort);
+						for cohort in lst {
+							replTbl.cohort = cohort;
+							if not defined (adrCohorts^.[cohort]) {
+								errorReport ("errModifyDoesntExist");
+								continue};
+							if not defined (adrCohorts^.[cohort].memberdata.[memberKey]) {
+								adrCohorts^.[cohort].memberdata.[memberKey] = clock.now ();
+								addedToCohorts[0] = adrCohorts^.[cohort].name};
+							
+							if not (adrMember^.defaultCohorts contains memberKey) {
+								adrMemberInfo^.defaultROCohorts[0] = memberKey}}};
+					
+					if boolean (pta^.postargs.sendWelcomeEmail) { //send a welcome message to the new member
+						manilaSuite.members.sendMemberSignupMail (adrMember);
+						newMemberWelcomeEmailChecked = true}
+					else {
+						newMemberWelcomeEmailChecked = false};
+					
+					local (flBlockedState = defined (adrMember^.blocked) and adrMember^.blocked ); //05/04/02, 17:14:05 by DAB
+					if boolean (pta^.postargs.blockmember) { //is this member blocked?
+						adrMember^.blocked = true;
+						if not flBlockedState { //05/04/02, 17:11:47 by DAB
+							manilaSuite.members.callbacks (adrSite, adrMember, "block")}}
+					else {
+						adrMember^.blocked = false;
+						if flBlockedState { //05/04/02, 17:15:00 by DAB
+							manilaSuite.members.callbacks (adrSite, adrMember, "unblock")}};
+					
+					if flEditingMember {
+						manilaSuite.members.callbacks (adrSite, adrMember, "modify"); //05/04/02, 17:11:47 by DAB
+						statusReport ("memberChanged")}
+					else {
+						if addedToCohorts == {} {
+							statusReport ("memberAdded")}
+						else {
+							replTbl.cohorts = string.replaceAll (manilaSuite.accessControl.listToString (addedToCohorts), ",", ", ");
+							statusReport ("memberAddedInserted")};
+						manilaSuite.members.callbacks (adrSite, adrMember, "signup")}}}; //05/03/24, 22:55:47 by DAB
+			defined (pta^.postargs.blockmembers) {
+				batchOperation ("block")};
+			defined (pta^.postargs.unblockmembers) {
+				batchOperation ("unblock")};
+			defined (pta^.postargs.deletemembers) {
+				if batchOperation ("delete") > 0 {
+					replTbl.memberToDelete = manilaSuite.accessControl.listToString (selectedMembers);
+					add (confirmBox ("accesscontrol.confirmMemberDelete", pta^.postargs.memberkeys));
+					return htmlText}};
+			defined (pta^.postargs.deleteconfirm) {
+				if batchOperation ("deleteconfirm") > 0 {
+					local (key);
+					for key in selectedMembers {
+						manilaSuite.members.callbacks (adrSite, @adrGroup^.users.[key], "delete"); //05/03/24, 22:55:47 by DAB
+						delete ( @adrGroup^.users.[key])}}};
+			defined (pta^.postargs.viewmembers) {
+				batchOperation ("viewfirst")}}};
+	
+	bundle { //build form to add a member/modify
+		local (val);
+		add ("\r<form action=\"" + adminUrl + "#membership\" method=\"post\" name = addmember\">");
+		add ("\r<table>");
+		
+		bundle { //row for member name
+			add ("\r\t<tr>");
+			add ("\r\t<td >");
+			add (manilaSuite.getString ("admin.memberNamePrompt", @replTbl, pta:pta));
+			add ("</td>");
+			add ("\r\t<td align=\"left\">");
+			val = "";
+			try {val = adrMemberInView^.personalInfo.name};
+			add ("\r\t\t<input name=\"memberName\" value=\"" + val + "\" size=\"25\">");
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		bundle { //row for member key
+			add ("\r\t<tr>");
+			add ("\r\t<td >");
+			if flUsernameMustBeEmail {
+				add (manilaSuite.getString ("admin.memberEmailAddressPrompt", @replTbl, pta:pta))}
+			else {
+				add (manilaSuite.getString ("members.usernamePrompt", @replTbl, pta:pta))};
+			add ("</td>");
+			add ("\r\t<td align=\"left\">");
+			val = "";
+			try {val = nameOf (adrMemberInView^)};
+			add ("\r\t\t<input name=\"memberEmailAddress\" value=\"" + val + "\" size=\"25\">");
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		if flAdminSetsPassword { //row for member password //02/12/17, 19:09:42 by DAB
+			add ("\r\t<tr>");
+			add ("\r\t<td >");
+			add (manilaSuite.getString ("admin.memberPasswordPrompt", @replTbl, pta:pta));
+			add ("</td>");
+			add ("\r\t<td align=\"left\">");
+			local (suggestedPW = manilaSuite.translateToEntities (manilaSuite.passwords.generate ())); //05/02/13, 11:33:09 by DAB
+			if config.manila.prefs.flManagingEditorCanSetPassword { //if server pref is set, ME's can see existing members' current passwords
+				try {suggestedPW = string (adrMemberInView^.password)}};
+			add ("\r\t\t<input name=\"memberPassword\" value=\"" + suggestedPW + "\" size=\"25\">");
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		bundle { //row for member privileges
+			add ("\r\t<tr>");
+			add ("\r\t<td >");
+			add (manilaSuite.getString ("admin.memberPrivilegesPrompt", @replTbl, pta:pta));
+			add ("</td>");
+			add ("\r\t<td >");
+			local (flNeedMenu = not adrMemberInView ); //05/03/10, 21:09:09 by DAB
+			if adrMemberInView {
+				val = string.lower (nameOf (adrMemberInView^));
+				case true {
+					adrNewsSite^.sysopmail contains val {
+						add (manilaSuite.getString ("admin.managingEditor"))};
+					adrNewsSite^.contributingEditors contains val {
+						add (manilaSuite.getString ("admin.contributingEditor"))};
+					adrNewsSite^.contentEditors contains val {
+						add (manilaSuite.getString ("admin.contentEditor"))}}
+				else {
+					«add (manilaSuite.getString ("admin.member"))
+					flNeedMenu = true}}; //allow ME to change status of ordinary members
+			if flNeedMenu { //was else 05/03/10, 21:10:29 by DAB
+				add ("\r\t\t<select name=\"memberType\">");
+				local (val);
+				on addMenuOption (name, value) {
+					local (s);
+					s = "\r\t\t\t<option value=\"" + value + "\"";
+					case true {
+						val != "" {
+							if value == val {
+								s = s + " selected"}};
+						value == newMemberPriviliges {
+							s = s + " selected"}};
+					s = s + ">" + name + "</option>";
+					add (s);
+					return true};
+				addMenuOption (manilaSuite.getString ("admin.member"), "member");
+				addMenuOption (manilaSuite.getString ("admin.contributingEditor"), "contributingEditor");
+				addMenuOption (manilaSuite.getString ("admin.contentEditor"), "contentEditor");
+				addMenuOption (manilaSuite.getString ("admin.managingEditor"), "managingEditor");
+				add ("</select>")};
+			add ("\r\t<td align=\"left\">");
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		if adrMemberInView == nil { //row for member cohorts
+			local (adr);
+			local (N = sizeOf (adrCohorts^));
+			for adr in adrCohorts {
+				if adr^.systemdefinition {
+					n--}};
+			
+			if N > 0 {
+				if N > 6 {
+					n = 6};
+				
+				local (selected="");
+				
+				bundle { //cohorts
+					add ("\r\t<tr>");
+					add ("\r\t<td >");
+					add (manilaSuite.getString ("accesscontrol.memberCohortsPrompt", @replTbl, pta:pta));
+					add ("</td>");
+					add ("\r\t<td align=\"left\">");
+					add ("\r\t\t<select name=\"memberCohorts\" multiple size=\"" + N + "\">");
+					for adr in adrCohorts {
+						if adr^.systemdefinition {
+							continue};
+						selected = "";
+						«if adrMemberInView and adr^ (
+							«selected = " selected"
+						add ("\r\t\t\t<option value=\"" + nameof (adr^) + "\"" + selected + ">" + adr^.name + "</option>")};
+					add ("\r\t\t</select>");
+					add ("</td>");
+					add ("\r\t</tr>")};
+				
+				bundle { //default cohorts
+					add ("\r\t<tr>");
+					add ("\r\t<td >");
+					add (manilaSuite.getString ("accesscontrol.memberDefCohortsPrompt", @replTbl, pta:pta));
+					add ("</td>");
+					add ("\r\t<td align=\"left\">");
+					add ("\r\t\t<select name=\"memberDefaultCohorts\" multiple size=\"" + N + "\">");
+					for adr in adrCohorts {
+						if adr^.systemdefinition {
+							continue};
+						selected = "";
+						«if adrMemberInView and adr^ (
+							«selected = " selected"
+						add ("\r\t\t\t<option value=\"" + nameof (adr^) + "\"" + selected + ">" + adr^.name + "</option>")};
+					add ("\r\t\t</select>");
+					add ("</td>");
+					add ("\r\t</tr>")};
+				
+				bundle { //default read-only cohorts
+					add ("\r\t<tr>");
+					add ("\r\t<td >");
+					add (manilaSuite.getString ("accesscontrol.memberDefROCohortsPrompt", @replTbl, pta:pta));
+					add ("</td>");
+					add ("\r\t<td align=\"left\">");
+					add ("\r\t\t<select name=\"memberDefaultROCohorts\" multiple size=\"" + N + "\">");
+					for adr in adrCohorts {
+						if adr^.systemdefinition {
+							continue};
+						add ("\r\t\t\t<option value=\"" + nameof (adr^) + "\">" + adr^.name + "</option>")};
+					add ("\r\t\t</select>");
+					add ("</td>");
+					add ("\r\t</tr>")}}};
+		
+		bundle { //row for Email Bulletins
+			add ("\r\t<tr>");
+			add ("\r\t<td >");
+			add (manilaSuite.getString ("admin.memberBulletinsPrompt", @replTbl, pta:pta));
+			add ("</td>");
+			add ("\r\t<td align=\"left\">");
+			add ("\r\t\t<select name=\"memberBulletinsType\">");
+			local (MemberBulletinsType="none");
+			bundle { //set MemberBulletinsType from viewed record if any
+				case true {
+					not adrMemberInView;
+					not defined (adrMemberInView^.bulletins);
+					not defined (adrMemberInView^.bulletins.[sitename]);
+					not defined (adrMemberInView^.bulletins.[sitename].enabled);
+					not defined (adrMemberInView^.bulletins.[sitename].inHtml);
+					not adrMemberInView^.bulletins.[sitename].enabled {
+						MemberBulletinsType = "none"};
+					adrMemberInView^.bulletins.[sitename].inHtml {
+						MemberBulletinsType = "html"}}
+				else {
+					MemberBulletinsType = "plaintext"}};
+			
+			on addMenuOption (name, value) {
+				local (s);
+				s = "\r\t\t\t<option value=\"" + value + "\"";
+				case true {
+					adrMemberInView and (value ==MemberBulletinsType);
+					value == newMemberBulletinsType {
+						s = s + " selected"}};
+				s = s + ">" + name + "</option>";
+				add (s);
+				return true};
+			
+			addMenuOption (manilaSuite.getString ("admin.noBulletins"), "none");
+			addMenuOption (manilaSuite.getString ("admin.plaintextBulletins"), "plaintext");
+			addMenuOption (manilaSuite.getString ("admin.htmlBulletins"), "html");
+			
+			add ("</select>");
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		bundle { //row to send welcome message or not
+			add ("\r\t<tr>");
+			add ("\r\t<td >");
+			add (manilaSuite.getString ("accesscontrol.memberWelcomePrompt", @replTbl, pta:pta));
+			add ("</td>");
+			add ("\r\t<td align=\"left\">");
+			local (checked = " checked");
+			if newMemberWelcomeEmailChecked {
+				checked = ""};
+			add ("<input type=\"radio\" name=\"sendWelcomeEmail\" value=\"false\"" + checked + ">");
+			add (manilaSuite.getString ("common.No", pta: pta));
+			checked = "";
+			if newMemberWelcomeEmailChecked {
+				checked = " checked"};
+			add ("<input type=\"radio\" name=\"sendWelcomeEmail\" value=\"true\"" + checked + ">");
+			add (manilaSuite.getString ("common.yes", pta: pta));
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		bundle { //row for blocked/unblocked
+			add ("\r\t<tr>");
+			add ("\r\t<td >");
+			add (manilaSuite.getString ("admin.blockMemberButton", @replTbl, pta:pta));
+			add ("</td>");
+			add ("\r\t<td align=\"left\">");
+			local (checked = " checked");
+			local (flBlocked = adrMemberInView and defined (adrMemberInView^.blocked) and adrMemberInView^.blocked);
+			if flBlocked {
+				checked = ""};
+			add ("<input type=\"radio\" name=\"blockmember\" value=\"false\"" + checked + ">");
+			add (manilaSuite.getString ("common.No", pta: pta));
+			checked = "";
+			if flBlocked {
+				checked = " checked"};
+			add ("<input type=\"radio\" name=\"blockmember\" value=\"true\"" + checked + ">");
+			add (manilaSuite.getString ("common.yes", pta: pta));
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		if adrMemberInView { //static rows of information
+			if defined (adrMemberInView^.lastVisit) {
+				add ("\r\t<tr>");
+				add ("\r\t<td >");
+				add (manilaSuite.getString ("admin.lastVisitPrompt"));
+				add ("</td>");
+				add ("\r\t<td align=\"left\">");
+				add (mainResponder.localization.dateTimeString (adrMemberInView^.lastVisit, pta));
+				add ("</td>");
+				add ("\r\t</tr>")};
+			if defined (adrMemberInView^.hitCount) {
+				add ("\r\t<tr>");
+				add ("\r\t<td >");
+				add (manilaSuite.getString ("admin.hitCountPrompt"));
+				add ("</td>");
+				add ("\r\t<td align=\"left\">");
+				add (string.addCommas (adrMemberInView^.hitCount));
+				add ("</td>");
+				add ("\r\t</tr>")}};
+		
+		bundle { //row for button
+			add ("\r\t<tr>");
+			add ("\r\t<td align=\"right\" colspan=\"2\">");
+			if adrMemberInView {
+				add ("<input type=\"submit\" name =\"editMember\" value=\"" + manilaSuite.getString ("accessControl.buttonEditMember") + "\">")}
+			else {
+				add ("<input type=\"submit\" name =\"addMemberToGroup\" value=\"" + manilaSuite.getString ("accessControl.buttonAddMember") + "\">")};
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		add ("\r</table>");
+		add ("\r</form>")};
+	
+	bundle { //operate on existing member
+		add (manilaSuite.getString ("accessControl.memberDrillDown", @replTbl, pta:pta));
+		
+		add ("\r<form method=\"post\" action=\"" + adminurl + "#membership\" name=\"setuser\">");
+		add ("\r<table align=\"center\">");
+		
+		bundle { //row for selection of members
+			add ("\r\t<tr>");
+			add ("\r\t<td align=\"left\" rowspan=\"4\">");
+			add (manilaSuite.accessControl.memberMenu (pta, "setuser", "memberkeys", selectedMembers, 10, 100));
+			add ("</td>");
+			
+			add ("\r\t<td align=\"center\" >");
+			add ("<input type=\"submit\" name =\"viewmembers\" value=\"" + manilaSuite.getString ("accessControl.buttonViewMember") + "\">");
+			add ("</td>");
+			
+			add ("\r\t</tr>")};
+		
+		bundle { //row (s) for buttons
+			add ("\r\t<tr>");
+			add ("\r\t<td align=\"center\">");
+			add ("<input type=\"submit\" name =\"blockmembers\" value=\"" + manilaSuite.getString ("accessControl.buttonblockMember") + "\">");
+			add ("</td>");
+			add ("\r\t</tr>");
+			
+			add ("\r\t<tr>");
+			add ("\r\t<td align=\"center\">");
+			add ("<input type=\"submit\" name =\"unblockmembers\" value=\"" + manilaSuite.getString ("accessControl.buttonunblockMember") + "\">");
+			add ("</td>");
+			add ("\r\t</tr>");
+			
+			add ("\r\t<tr>");
+			add ("\r\t<td align=\"center\">");
+			add ("<input type=\"submit\" name =\"deletemembers\" value=\"" + manilaSuite.getString ("accessControl.buttonDeleteMember") + "\">");
+			add ("</td>");
+			add ("\r\t</tr>")};
+		
+		add ("\r</table>");
+		add ("\r</form>")};
+	
+	return htmltext};
+«bundle //test code
+	«local (tbl = temp.pta.["414"].firstFilter)
+	«html.setPageTableAddress (@tbl)
+	«wp.newTextObject (maintainCohorts (), @temp.maintainCohorts)
+	«edit (@temp.maintainCohorts)

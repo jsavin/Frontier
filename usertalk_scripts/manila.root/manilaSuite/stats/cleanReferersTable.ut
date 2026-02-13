@@ -1,0 +1,27 @@
+on cleanReferersTable (adrSite) {
+	«Remove old referers from the referers table.
+		«11/02/00; 2:39:56 PM by PBS
+		«Changes:
+			«11/22/00; 6:12:12 PM by PBS
+				«Sometimes old referers weren't getting cleaned out -- now they all are. There was a missing coercion to date.
+	
+	local (adrTable = manilaSuite.stats.getReferersTableAddress (adrSite));
+	local (i);
+	local (yesterday = date.yesterday (clock.now ()));
+	
+	for i = sizeOf (adrTable^) downTo 1 {
+		local (adrItem = @adrTable^ [i]);
+		local (sizeTable = sizeOf (adrItem^));
+		local (j);
+		for j = sizeTable downTo 1 {
+			local (adrHit = @adrItem^ [j]);
+			try { //PBS 11/22/00: coerce to date
+				local (time = date (nameOf (adrHit^)));
+				if time < yesterday {
+					delete (adrHit)}}
+			else {
+				delete (adrHit)}};
+		if sizeOf (adrItem^) < 1 {
+			delete (adrItem)}};
+	
+	return (true)}

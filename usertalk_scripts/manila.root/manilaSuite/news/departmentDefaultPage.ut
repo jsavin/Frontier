@@ -1,0 +1,71 @@
+on departmentDefaultPage () {
+	«Changes
+		«9/3/03; 11:32:30 AM by JES
+			«Created. List news item departments. If logged in as the managing editor, then we manage departments via this page.
+	local (pta = html.getPageTableAddress ());
+	local (htext);
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	pta^.title = manilaSuite.getString ("common.departments");
+	
+	local (flManagingEditor = manilaSuite.editors.managingEditorTest ());
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrdepts = manilaSuite.news.getDepartmentTableAddress (adrsite));
+	local (siteurl = manilaSuite.getSiteUrl (adrsite, pta));
+	local (globeimg, xmlimg);
+	bundle { //set globeimg and xmlimg
+		local (urlparts = string.urlSplit (siteurl));
+		globeimg = "<img src=\"" + urlparts[1] + urlparts[2] + "/mainResponderResources/userlandIcons/remote" + "\" height=\"11\" width=\"11\" border=\"0\">";
+		xmlimg = "<img src=\"" + urlparts[1] + urlparts[2] + "/mainResponderResources/userlandIcons/xml" + "\" height=\"14\" width=\"36\" border=\"0\">"};
+	
+	if pta^.method == "POST" { //possibly delete department(s)
+		if defined (pta^.postArgs.deleteDepartment) {
+			local (adrarg);
+			for adrarg in @pta^.postArgs {
+				if adrarg^ == "xxx" {
+					local (deptname = string.urlDecode (nameOf (adrarg^)));
+					try {manilaSuite.news.deleteDepartment (adrsite, deptname)}}}}};
+	
+	bundle { //start the table, descriptive text
+		bundle { //descriptive text
+			add ("<p>" + manilaSuite.getString ("news.departmentsPageDescription") + "</p>")};
+		if flManagingEditor { //this page is a form
+			add ("<form method=\"POST\">")};
+		add ("<table cellspacing=\"0\" cellpadding=\"5\" border=\"0\">");
+		add ("<tr>");
+		if flManagingEditor { //add a column for checkboxes to delete departments
+			add ("<td></td>")};
+		add ("<td><b>" + manilaSuite.getString ("common.department") + "</b></td><td><b>" + manilaSuite.getString ("common.description") + "</b></td><td align=\"right\"><b>" + manilaSuite.getString ("common.created") + "</b></td><td></td>");
+		add ("</tr>")};
+	
+	local (adrdept);
+	for adrdept in adrdepts { //add the departments
+		local (name = nameOf (adrdept^));
+		local (url = manilaSuite.news.getDepartmentUrl (adrsite, name));
+		local (rssurl = manilaSuite.news.getDepartmentRssUrl (adrsite, name));
+		local (editurl = siteurl + "newsItems/edit/department$" + manilaSuite.news.departmentNameToPath (name));
+		local (created = manilaSuite.convertTime (adrdept^.createdDate));
+		local (description = "");
+		if defined (adrdept^.description) {
+			description = adrdept^.description};
+		add ("<tr>");
+		if flManagingEditor { //add a checkbox for deletion
+			add ("<td valign=\"top\"><input type=\"checkbox\" name=\"" + string.urlEncode (name) + "\" value=\"xxx\"></td>")};
+		if flManagingEditor { //globe-link to department page and edit link on department name
+			add ("<td valign=\"top\"><a href=\"" + url + "\">" + globeimg + "</a>&nbsp;&nbsp;<b><a href=\"" + editurl + "\">" + name + "</a></b></td>")}
+		else { //department name is a link to its page
+			add ("<td valign=\"top\"><b><a href=\"" + url + "\">" + name + "</a></b></td>")};
+		add ("<td valign=\"top\">" + description + "</td>");
+		add ("<td valign=\"top\" align=\"right\">" + mainResponder.localization.shortDateString (created) + "<td>");
+		add ("<td valign=\"top\"><a href=\"" + rssurl + "\">" + xmlimg + "</td>")};
+	
+	add ("</table>");
+	if flManagingEditor { //add buttons and close out the form
+		add ("<p><input type=\"submit\" name=\"deleteDepartment\" value=\"Delete\"></p>");
+		add ("</form>");
+		local (newurl = siteurl + "newsItems/edit/department");
+		add ("<p><b>" + string.replace (manilaSuite.getString ("news.clickToCreateNewDepartment"), "[[url]]", newurl) + "</b></p>")};
+	
+	return (htext)}

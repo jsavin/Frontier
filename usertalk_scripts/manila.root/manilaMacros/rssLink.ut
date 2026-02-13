@@ -1,0 +1,40 @@
+on rssLink () {
+	«Changes
+		«2/13/13; 11:32:18 AM by JES
+			«Get the feed's URL by calling manilaMacros.rssUrl.
+		«7/6/05; 2:28:09 AM by JES
+			«Added preliminary support for static rendering.
+		«5/12/03; 1:36:04 PM by JES
+			«When rendering a department page, the RSS link is a link to the per-department RSS feed.
+		«02/07/01; 2:51:59 PM by JES
+			«Created. Generate a link to a Manila site's rss channel.
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getSiteAddress (pta));
+	local (flSyndicate = manilaSuite.getNewsSitePref ("flSyndicate", adrSite));
+	if not flSyndicate { //return the empty string
+		return ("")};
+	local (siteUrl);
+	local (imgUrl);
+	if manilaSuite.staticRendering.isStaticRendering (pta) {
+		siteUrl = pta^.ftpSite^.url;
+		imgUrl = "http://radio.weblogs.com/0001000/images/xml.gif"}
+	else { //dynamic rendering
+		siteUrl = adrSite^.["#ftpSite"].url;
+		local (urlParts = string.urlSplit (siteUrl));
+		imgUrl = "http://" + urlParts[2] + "/mainResponderResources/userlandIcons/xml"};
+	local (channelName = manilaSuite.getNewsSitePref ("rssInfo.channelTitle"));
+	local (imgHeight = 14, imgWidth = 36);
+	local (linkUrl = manilaMacros.rssUrl (pta));
+	local (linkText = "");
+	
+	bundle { //build the link
+		on add (s) {
+			linkText = linkText + s};
+		add ("<a href=\"" + linkUrl + "\" title=\"This is a link to this site's RSS channel: " + channelName + "\">");
+		add ("<img src=\"" + imgUrl + "\" height=\"" + imgHeight + "\" width=\"" + imgWidth + "\" border=\"0\" alt=\"XML icon\">");
+		add ("</a>")};
+	
+	return (linkText)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«rssLink ()

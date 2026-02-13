@@ -1,0 +1,134 @@
+on handler (pta, adrObject) {
+	«Changes
+		«4/21/07; 11:59:46 PM by TAC
+			«Bug fix for members limited html tags feature not working
+			«moved page desc above site legal tags section of page
+		«4/12/07; 4:37:16 PM by LL
+			«Support a new preference to limit members to a set of HTML formatting commands.
+		«04/17/05; 13:28:43 by DAB
+			«Created.  Borrowed from manilaSuite.admin.legalTagsPage, messages at manilaData.localization.languages.english.strings.admin
+	
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf(this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName(pta, sectionName));
+	
+	local (replacementTable);
+	bundle { //set up replacement table
+		new (tableType, @replacementTable);
+		replacementTable.displayName = displayName};
+	
+	if defined(pta^.postargs.[shortname]) {
+		case true {
+			defined (pta^.postArgs.restoreToDefault) {
+				add(manilaSuite.sitePrefs.utility.confirmBox(pta, shortname, "admin.confirmTagsRestoreToDefault", @replacementTable))};
+			defined (pta^.postArgs.doRestoreDefault) { //restore to default
+				table.assign(adrObject, manilaData.newSiteTemplate.["#newsSite"].legalTags);
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.tagsHasBeenRestoredToDefault", @replacementTable))};
+			defined (pta^.postArgs.flRestrictHtmlForMembers) {
+				local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+				adrNewsSite^.discussionGroup.flRestrictHtmlForMembers = boolean (pta^.postArgs.flRestrictHtmlForMembers)};
+			defined (pta^.postArgs.no) { // cancel restore 05/04/26, 17:41:39 by DAB
+				}}
+		else { //try to update the colors
+			local (ix);
+			for ix = 1 to sizeOf(adrObject^) {
+				local (adrTag = @adrObject^ [ix]);
+				local (objType = typeOf (adrTag^));
+				local (tagName = nameOf (adrTag^));
+				
+				if defined (pta^.postargs.[tagName]) { //turn this tag on
+					case objType {
+						booleanType {
+							adrTag^ = true};
+						tableType {
+							adrTag^.flLegal = true}}}
+				else { //turn this tag off
+					case objType {
+						booleanType {
+							adrTag^ = false};
+						tableType {
+							adrTag^.flLegal = false}}}};
+			
+			manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+			
+			add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.TagsUpdatedSuccess", @replacementTable))}};
+	
+	if not defined (config.manila.prefs.flRestrictHtmlForMembers) {
+		config.manila.prefs.flRestrictHtmlForMembers = true};
+	if config.manila.prefs.flRestrictHtmlForMembers {
+		local (flChecked = false);
+		add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+		if manilaSuite.getNewsSitePref ("discussionGroup.flRestrictHtmlForMembers", adrSite, true) {
+			flChecked = true};
+		add("\r<p>");
+		add (manilaSuite.getString ("admin.restrictHtmlForMembersPrompt", pta: pta));
+		add("\r</p><p>");
+		add ("&lt;a href=\"\" title=\"\"> &lt;b> &lt;blockquote> &lt;cite> &lt;code> &lt;em> &lt;i> &lt;img src=\"\" src=\"\" width=\"\" height=\"\" alt=\"\" title=\"\" align=\"\"> &lt;li> &lt;ol> &lt;pre> &lt;strong> &lt;u> &lt;ul>");
+		add("\r</p><p>");
+		if flChecked {
+			add ("\r<input type=\"radio\" name=\"flRestrictHtmlForMembers\" value=true checked>Yes <input type=\"radio\" name=\"flRestrictHtmlForMembers\" value=false>No")}
+		else {
+			add ("\r<input type=\"radio\" name=\"flRestrictHtmlForMembers\" value=true>Yes <input type=\"radio\" name=\"flRestrictHtmlForMembers\" value=false checked>No")};
+		add("\r</p>");
+		add("\r<p>");
+		add("<input type='submit' value='&nbsp;" + manilaSuite.getString ("common.submitButton", pta: pta) + "&nbsp;'>");
+		add("\r</p>");
+		add ("\r<input type=\"hidden\" name=\"" + shortName + "\" value=\"true\" />");
+		add ("\r</form>")};
+	
+	add("\r<p style=\"padding-top: 13px;\">");
+	add(manilaSuite.getString ("admin.legalTagsPageDescription", pta: pta));
+	add("\r</p>");
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	bundle { //row per tag
+		local (ix);
+		for ix = 1 to sizeOf (adrObject^) {
+			local (adrTag = @adrObject^ [ix]);
+			local (objType = typeOf (adrTag^));
+			local (tagName = nameOf (adrTag^));
+			
+			on addTag (flChecked) {
+				local (checked="");
+				if flChecked {
+					checked = " checked"};
+				add ("<td><input type='checkbox' name='" + tagName + "'" + checked + "></td>"); //04/12/21, 15:00:33 by DAB
+				
+				return (true)};
+			
+			add ("<tr>");
+			case objType {
+				booleanType {
+					addTag (adrTag^)};
+				tableType {
+					addTag (adrTag^.flLegal)}};
+			
+			add ("<td>" + tagName + "</td>");
+			add ("</tr>")}};
+	
+	add ("\r</table>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	bundle { //row for buttons
+		add(manilaSuite.sitePrefs.utility.addButtons(pta, adrObject, sectionName, false))}; //no radio
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

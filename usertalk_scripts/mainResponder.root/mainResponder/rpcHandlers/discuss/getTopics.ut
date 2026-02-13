@@ -1,0 +1,10 @@
+«12/5/98; 9:36:01 AM by DW
+	«Return a list of lists with brief descriptions for all the top level topics
+
+local (adrmsgs = @[mainresponder.discuss.openfile ()].discuss.messages);
+local (topiclist = {}, i, ct = sizeof (adrmsgs^), adritem);
+for i = ct downto 1 {
+	adritem = @adrmsgs^ [i];
+	if adritem^.inResponseTo == 0 {
+		topiclist = topiclist + {{string (adritem^.msgnum), string (adritem^.subject), string (adritem^.posttime), string (adritem^.member)}}}};
+return (topiclist)

@@ -1,0 +1,21 @@
+on getMemberName (groupName, memberKey, adrMembers=nil) {
+	«Changes:
+		«10/11/05; 2:47:15 AM by JES
+			«If the pref is set for admin super-user and no matching member is found in the specified membership group, return the name of the matching admin group member.
+		«9/26/01; 6:20:26 PM by PBS
+			«New optional parameter: adrMembers is the address of the membership group.
+	on obscureEmail (email) {
+		if email contains '@' {
+			local (part1 = string.nthField (email, '@', 1));
+			local (part2 = string.nthField (email, '@', 2));
+			return (part1 + "&#64;" + part2[1] + "...")};
+		return (email)};
+	try {
+		local (adrmember = mainresponder.members.getmembertable (groupname, memberkey, adrMembers)); //PBS 09/26/01: pass adrMembers parameter
+		return (adrmember^.personalInfo.name)}
+	else {
+		if config.mainResponder.prefs.flAdminGroupAlwaysAllowed {
+			try {
+				local (adrmember = mainresponder.members.getmembertable ("admin", memberkey));
+				return (adrmember^.personalInfo.name)}};
+		return (obscureEmail (memberKey))}}

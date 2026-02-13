@@ -1,0 +1,28 @@
+on addToStoriesList (username, password, siteName, msgNum) {
+	«Mark a message as being a story, adding it to the stories list.
+		«Changes:
+			«10/09/00; 10:21:41 PM by PBS
+				«Make sure the stories index gets updated.
+			«12/26/00; 5:39:24 PM by JES
+				«If the site's pref is set, create a shortcut for the story.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't add message \"" + msgNum + "\" to the stories list because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss));
+	local (storiesCategory = manilaSuite.discuss.getStoriesCategory (adrSite));
+	manilaSuite.discuss.addCategoryToMessage (adrmsg, storiesCategory, adrSite); //PBS 10/09/00: update stories index
+	
+	bundle { // 12/26/00 JES: Create a shortcut for the story if the site's pref is set
+		local (flCreateShortcut = manilaSuite.getNewsSitePref ("autoShortcuts", adrSite, true));
+		if flCreateShortcut {
+			local (name = manilaSuite.unTaint (adrmsg^.subject));
+			local (adrGlossItem = @adrSite^.["#glossary"].[name]);
+			if not defined (adrGlossItem^) {
+				local (url = adrSite^.["#urls"].storyReader + msgnum);
+				adrGlossItem^ = html.getLink (name, url)}}};
+	
+	return (true)}

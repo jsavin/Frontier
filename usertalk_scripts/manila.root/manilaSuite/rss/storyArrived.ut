@@ -1,0 +1,12 @@
+on storyArrived (adrservice) {
+	«Changes
+		«1/6/2001; 10:35:36 AM by DW
+			«Created. It's called when a story arrives through manilaMacros.viewRssBox. We quickly check if the service can be subscribed to, and if necessary, send a subscribe message to the cloud in a separate thread.
+	if defined (adrservice^.compilation.cloud) {
+		local (flsubscribe = true);
+		if defined (adrservice^.timeSubscriptionExpires) {
+			if clock.now () < adrservice^.timeSubscriptionExpires {
+				flsubscribe = false}};
+		if flsubscribe {
+			thread.callscript (@manilaSuite.rss.subscribe, {adrservice});
+			adrservice^.timeSubscriptionExpires = clock.now () + (60 * 60 * 24)}}}

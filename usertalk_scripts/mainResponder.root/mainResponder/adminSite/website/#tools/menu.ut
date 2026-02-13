@@ -1,0 +1,2 @@
+on menu (color = "#FFFFFF") {
+	return (mainResponder.adminSite.macros.adminMenu (color))}

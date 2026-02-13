@@ -1,0 +1,247 @@
+on membersMessages (adrSite, memberKey) {
+	«Changes
+		«1/31/06; 1:49:15 AM by JES
+			«Add support for flPending flag.
+	«manilaSuite.accessControl.membersMessages : 04/05/31, 11:49:43 by DAB
+		«prepare a report of all message visible to member
+		«was manilaFixer.accessControl.membersMessages : 03/01/12, 13:32:55 by DAB
+	local (pta = html.getPageTableAddress());
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	local (htmlText = "");
+	on add(s) {
+		htmltext = htmlText + s;};
+	
+	local (replTbl);
+	bundle {
+		new(tabletype, @replTbl);
+		replTbl.memberKey = string.replace(memberKey, "@", "\\@")};
+	
+	local (adrMemberInfo = manilaSuite.members.getMemberTableFromSiteAddress(adrSite, memberKey));
+	
+	local (memberCohorts = {});
+	bundle { //build a list of cohorts, which memberKey is in
+		local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+		local (adrCohorts = @adrGroup^.cohorts);
+		local (adrCohort, adrMemberData,  tbl);
+		new(tabletype, @tbl);
+		for adrCohort in adrCohorts {
+			if defined(adrCohort^.systemDefinition) and adrCohort^.systemDefinition {
+				continue};
+			«if not defined(adrCohort^.containsTest)
+				«continue
+			«adrScript = @adrCohort^.containsTest
+			«while typeOf(adrScript^) == addressType
+				«adrScript = adrScript^
+			adrMemberData = @adrCohort^.memberData;
+			if defined(tbl.[string(adrMemberData)]) { // don't ask more than once
+				continue};
+			tbl.[string(adrMemberData)] = false;
+			if defined(adrMemberData^.[memberkey]) {
+				memberCohorts[0] = nameof(adrCohort^)}}};
+	
+	if sizeOf(memberCohorts) == 0 {
+		add("<p align = 'center' style = 'color:blue'>");
+		add(manilaSuite.getString("accesscontrol.memberNoCohorts", @replTbl, pta:pta));
+		add("</p>");
+		
+		return htmltext};
+	
+	if defined(adrNewsSite^.accesscontrol.siteStructureCohorts) and adrNewsSite^.accesscontrol.siteStructureCohorts {
+		manilaSuite.siteStructure.compileIfDirty(adrSite)};
+	
+	local (adrDiscuss = manilaSuite.discuss.getRootFromSiteAddress (adrSite));
+	local (storyCategory = manilaSuite.discuss.getStoriesCategory (adrSite));
+	local (pictureCategory = manilaSuite.discuss.getPicturesCategory (adrSite));
+	local (maxMsgNum = adrDiscuss^.prefs.nextMsgNum-1);
+	local (flStarted=false);
+	on startTable() {
+		if not flStarted {
+			add("<p>");
+			add(manilaSuite.getString("accesscontrol.memberMessagesTitle",@replTbl, pta:pta));
+			add("</p>");
+			add("<p>");
+			«replTbl.cohorts = manilaFixer.utilities.listToString(memberCohorts, ", ")
+			replTbl.cohorts = manilaSuite.accessControl.listToString(memberCohorts); //04/05/31, 13:15:41 by DAB
+			add(manilaSuite.getString("accesscontrol.memberCohortsList",@replTbl, pta:pta));
+			add("</p>");
+			add("\r<table align = 'center' border='1'>");
+			add("\r\t<tr>");
+			add("\r\t\t<th>#</th>");
+			add("\r\t\t<th>" + manilaSuite.getString("accessControl.reportAccessTitle", pta:pta) + "</th>");
+			add("\r\t\t<th>" + manilaSuite.getString("accesscontrol.reportAccessLevel", pta:pta) + "</th>");
+			add("\r\t\t<th>" + manilaSuite.getString("accesscontrol.reportAccessNote", pta:pta) + "</th>");
+			add("\r\t</tr>");
+			flStarted = true};
+		return true};
+	
+	local (msgNum, adrMsg, adrMsgStorage, cohortID);
+	on report(accessType, msgStringID, relPath=nil) {
+		local (txt, url);
+		startTable();
+		case true {
+			relPath != nil {
+				url = pta^.urls^.newsHome + string.popLeading(relPath, "/")};
+			defined(adrSite^.["#hierarchy"].paths.[msgnum]) {
+				url = pta^.urls^.newsHome + string.popLeading(adrSite^.["#hierarchy"].paths.[msgnum], "/")};
+			manilaSuite.discuss.isInCategory (adrMsg, storyCategory) {
+				url = pta^.urls^.storyReader + msgnum};
+			manilaSuite.discuss.isInCategory (adrMsg, pictureCategory) {
+				url = pta^.urls^.pictureReader + msgnum}}
+		else {
+			url = pta^.urls^.discussMsgReader + msgnum};
+		add("\r\t<tr>");
+		add("\r\t\t<td align = 'center'>" + msgnum + "</td>");
+		txt = string.ellipsize(adrMsg^.subject, 20);
+		add("\r\t\t<td align = 'left'>" + html.getLink(txt, url) + "</td>");
+		txt = "&nbsp;";
+		if accessType != "" {
+			txt = manilaSuite.getString("accesscontrol." + accessType,  @replTbl, pta:pta)};
+		add("\r\t\t<td align = 'center'>" + txt + "</td>");
+		txt = "&nbsp;";
+		if msgStringID != "" {
+			txt = manilaSuite.getString("accesscontrol." + msgStringID,  @replTbl, pta:pta)};
+		add("\r\t\t<td align = 'left'>" + txt + "</td>");
+		add("\r\t</tr>");
+		return true};
+	
+	on memberCanEdit(adrMsg, memberKey) {
+		memberKey = string.lower(memberKey);
+		case true {
+			memberKey == string.lower(adrMsg^.member) {
+				return true};
+			manilaSuite.news.isNewsItem (adrMsg) {
+				return manilaSuite.news.memberCanEdit (adrMsg, adrMemberInfo)};
+			defined (adrMsg^.alsoListedIn) and adrMsg^.alsoListedIn != {} {
+				return manilaSuite.getNewsSitePref("flContributingEditorsEditStories", adrSite, false, true) and pta^.newsSite^.contributingEditors contains memberKey}};
+		return false};
+	
+	for msgNum = 1 to maxMsgNum {
+		thread.sleepfor(0);
+		adrMsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss);
+		if not defined(adrMsg^) {
+			continue};
+		if defined(adrMsg^.fldeleted) and adrMsg^.fldeleted {
+			continue};
+		if defined (adrMsg^.flPending) and adrMsg^.flPending {
+			continue};
+		if defined(adrMsg^.inResponseTo) and adrMsg^.inResponseTo > 0 {
+			continue};
+		
+		if memberCanEdit(adrMsg, memberKey) {
+			report("AccessLevelEditCapable", "");
+			continue};
+		
+		local (adrTop = @adrSite^.["#hierarchy"].structure[1]);
+		on pathControls(pathAtt, accessLevelMessage) {
+			if not defined(adrSite^.["#hierarchy"].multiplePaths.[msgnum]) {
+				return false};
+			
+			on locate (pathSought, adrPath) {
+				
+				on walk(adrTop, pathRemaining) {
+					local (ix, adrEntry, entryName, pathname, flFound, str);
+					for ix = sizeof(adrTop^) downto 1 {
+						adrEntry = @adrTop^[ix];
+						entryName = string.lower(nameOf(adrEntry^));
+						case true {
+							not (entryName contains "\t") {
+								continue};
+							(entryName endsWith "\tcategory") {
+								pathnameAtt = string.lower(string.urldecode(xml.getAttributeValue(adrEntry, "pathname")));
+								if pathRemaining beginsWith pathnameAtt { //is ancestor
+									str = string.delete(pathRemaining, 1, string.length(pathNameAtt));
+									str = string.popleading(str, "/");
+									if str == "" { //or indexPage(str)
+										adrPath^ = adrEntry;
+										flFound = true}
+									else {
+										if walk(adrEntry,str) {
+											flFound =  true}}}
+								else { //is not ancestor of page being rendered
+									walk(adrEntry, pathRemaining)}};
+							flFound {
+								continue};
+							(entryName endsWith "\tstory") {
+								pathnameAtt = string.lower(string.urldecode(xml.getAttributeValue(adrEntry, "pathname")));
+								if (pathnameAtt == pathRemaining) {
+									flFound =  true;
+									adrPath^ = adrEntry}}}};
+					
+					return flFound};
+				
+				return walk(adrTop, string.popleading(string.lower(pathSought), "/"))};
+			
+			on checkPathTo(suppliedPath) {
+				local(adr, attValue, pattAttCohorts);
+				local (path = suppliedPath);
+				if  locate (path, @adr) {
+					loop {
+						pattAttCohorts = {};
+						try {
+							attValue = xml.getAttributeValue(adr, pathAtt);
+							pattAttCohorts = pattAttCohorts +  ("{\"" +string.replaceAll(attValue, ",", "\",\"") + "\"}")};
+						if pattAttCohorts != {} {
+							for cohortID in pattAttCohorts {
+								if memberCohorts contains cohortID {
+									replTbl.path = path;
+									replTbl.cohort = cohortID;
+									report(accessLevelMessage, "accessPathCohort", suppliedPath);
+									return true}};
+							return false};
+						adr = parentOf(adr^);
+						if adr == adrTop {
+							return false};
+						path = string.popSuffix(string.popTrailing(path, "/"), "/") + "/"}};
+				
+				return false};
+			
+			local (adrPath, flFound);
+			for adrPath in @adrSite^.["#hierarchy"].multiplePaths.[msgnum] {
+				if checkPathTo(adrPath^) {
+					flFound = true}};
+			
+			return flFound};
+		
+		on checkMessageCohorts() {
+			if not defined(adrMsg^.accessControl) {
+				return false};
+			if not defined(adrMsg^.accessControl.permittedCohorts) {
+				return false};
+			if adrMsg^.accessControl.permittedCohorts == {} {
+				return false};
+			local (cohortID);
+			for cohortID in adrMsg^.accessControl.permittedCohorts {
+				if memberCohorts contains cohortID {
+					replTbl.cohort = cohortID;
+					report("",  "AccessMessageCohort");
+					return true}};
+			if not defined(adrMsg^.accessControl.accessControl.permittedROCohorts) {
+				return false};
+			if adrMsg^.accessControl.accessControl.permittedROCohorts == {} {
+				return false};
+			for cohortID in adrMsg^.accessControl.permittedROCohorts {
+				if memberCohorts contains cohortID {
+					replTbl.cohort = cohortID;
+					report("AccessLevelReadOnly",  "AccessMessageCohort");
+					return true}};
+			return false};
+		
+		case true {
+			not defined(adrNewsSite^.accesscontrol.siteStructureCohorts);
+			not adrNewsSite^.accesscontrol.siteStructureCohorts {
+				checkMessageCohorts()};
+			pathControls("mlac", "" ) {
+				continue};
+			pathControls("romlac", "AccessLevelReadOnly") { //check read only status
+				continue}}
+		else { //check message cohorts 02/09/19, 12:35:31 by DAB
+			checkMessageCohorts()}};
+	
+	if flStarted {
+		add("\r</table>")}
+	else {
+		add("<p align = 'center' style = 'color:blue'>");
+		add(manilaSuite.getString("accesscontrol.nocontrolledMessages",@replTbl, pta:pta));
+		add("</p>")};
+	
+	return htmlText}

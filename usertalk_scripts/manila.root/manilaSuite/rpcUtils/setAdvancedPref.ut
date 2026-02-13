@@ -1,0 +1,25 @@
+on setAdvancedPref (username, password, siteName, itemName, friendlyItemName, s, windowInfoTable, flNeuterTags=true) {
+	«A common bottleneck routine for setting an advanced pref.
+		«12/18/00; 4:35:25 PM by PBS
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't set the " + friendlyItemName + " because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (pageTable, errorString, adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	itemName = string.dropNonAlphas (itemName);
+	
+	bundle { //neuter macros and tags
+		local (macrosTable = manilaSuite.themes.getLegalMacrosForObject (itemName));
+		s = html.neuterMacros (s, @macrosTable);
+		if flNeuterTags {
+			s = html.neuterTags (s, @adrSite^.["#newsSite"].legalTags)}};
+	
+	local (adrObject = manilaSuite.custody.getAdvancedItemAddress (itemName, adrSite));
+	table.assign (adrObject, s);
+	
+	bundle { //PBS 20/06/00: save the window info table
+		manilaSuite.rpcUtils.setWindowInfoTable (windowInfoTable, itemName, adrSite)};
+	
+	return (true)}

@@ -1,0 +1,21 @@
+on addToGlossary (title, url, pta=nil) {
+	«Add an item to the glossary for this site.
+		«Changes:
+			«10/30/99' 4:38:59 PM by PBS
+				«Call manilaSuite.unTaint to remove curly braces.
+			«05/09/00; 11:41:24 AM by PBS
+				«If title or url are "" then return false, don't attempt to create a glossary entry.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if title == "" or url == "" {
+		return (false)};
+	
+	title = manilaSuite.unTaint (title); //PBS 10/30/99
+	url = manilaSuite.unTaint (url); //PBS 10/30/99
+	
+	try {delete (@pta^.glossary^.[title])};
+	pta^.glossary^.[title] = html.getLink (title, url);
+	
+	return (true)}

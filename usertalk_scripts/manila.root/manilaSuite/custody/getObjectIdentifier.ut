@@ -1,0 +1,5 @@
+on getObjectIdentifier (adrObject, flMessage=false) {
+	if flMessage {
+		return (adrObject^.msgNum)};
+	«return (adrObject)
+	return string.popFileFromAddress(adrObject)} //04/05/19, 20:20:22 by DAB

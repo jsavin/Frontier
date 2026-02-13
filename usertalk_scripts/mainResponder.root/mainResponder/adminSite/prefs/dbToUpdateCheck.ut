@@ -1,0 +1,20 @@
+on dbToUpdateCheck (dbname) {
+	«Changes
+		«2/28/05; 2:09:11 AM by JES
+			«Fix error if no databases are checked on the Update Notification page.
+		«6/26/02; 10:46:48 PM by JES
+			«Created.
+	local (pta = html.getpagetableaddress ());
+	if pta^.method == "POST" {
+		if not defined (pta^.postArgs.updateNow) {
+			local (updateList = {});
+			try {updateList = pta^.postArgs.dbToUpdate};
+			if typeOf (updateList) != listType {
+				updateList = {updateList}};
+			config.mainresponder.prefs.updateNightlyList = updateList}};
+	local (checkbox = "<input type=\"checkbox\" name=\"dbToUpdate\" value=\"" + dbname + "\"");
+	if config.mainresponder.prefs.updateNightlyList contains dbname {
+		checkbox = checkbox + " checked>"}
+	else {
+		checkbox = checkbox + ">"};
+	return ("<tr><td colspan=\"2\">" + checkbox + "&nbsp;" + dbname + "</td></tr>")}

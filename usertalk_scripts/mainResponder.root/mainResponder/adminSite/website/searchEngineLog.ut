@@ -1,0 +1,42 @@
+on searchEngineLog (maxitems=200) {
+	«Changes
+		«8/1/02; 7:52:20 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Search Log";
+	local (colors = {pta^.trbg1, pta^.trbg2});
+	local (columns = {"Time", "Page", "Hits", "Index", "Client"});
+	local (colsToAlignRight = {"Hits"});
+	on renderItemCallback (adritem) {
+		local (itemtext = "");
+		on add (s) {
+			itemtext = itemtext + (s + "\r");};
+		on td (s, align="") {
+			if align != "" {
+				align = " align=\"" + align + "\""};
+			return ("<td" + align + "><font size=\"-1\" class=\"small\">" + s + "</font></td>")};
+		with adritem^ {
+			add (td (string.replaceAll (string.popLeading (string.nthField (xml.convertToDisplayName (nameOf (adrItem^)), ";", 2), ' '), " ", "&nbsp;") ));
+			local (link);
+			if defined (adrItem^.url) {
+				link = html.getLink (adrItem^.searchString, adrItem^.url)};
+			add (td (link));
+			add (td (adrItem^.hits, "right"));
+			add (td (adrItem^.index));
+			bundle { //add the member name, if we have it, otherwise do a DNS lookup
+				if defined (member) {
+					local (groupname = config.mainResponder.globals.defaultMembershipGroup);
+					local (link = mainResponder.members.linktomember (groupname, adritem^.member));
+					add (td (link))}
+				else {
+					local (client = adrItem^.client);
+					try {client = tcp.dns.getDomainName (adrItem^.client)};
+					add (td (client))}}};
+		return (itemtext)};
+	local (ctitems);
+	local (logtext = mainResponder.log.browseAny ("Search Engine", @renderItemCallback, colors, columns, 3, maxitems, colsToAlignRight, @ctitems));
+	if ctitems {
+		return (logtext)}
+	else {
+		return (logtext + "<p>There are no items to list at this time.</p>")};
+	}«return (mainResponder.search.server.logBrowser (maxitems, colors, 3, "smallAlignTop", false))

@@ -1,0 +1,171 @@
+on checkMail (adrsite) {
+	«Changes
+		«11/10/06; 5:59:29 PM by LL
+			«Fix a bug if the authorized senders list contained upper case character in the email address it would fail.
+		«10/10/03; 1:58:20 PM by JES
+			«Fix another time zone bug for sites which haven't got a timeZone sub-table in their #newsSite table.
+		«9/1/03; 12:02:18 PM by JES
+			«Fix a bug getting the time zone. Fix an array out of range bug generating the title for the post.
+		«5/14/03; 4:10:32 PM by JES
+			«Log Mail-to-Weblog events or error messages.
+		«5/8/03; 5:48:29 PM by JES
+			«Created. Check email for the mail-to-weblog feature, for one site.
+	local (adrdata = manilaSuite.mailToWeblog.initSite (adrsite));
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	on getFromAddress (adrmsg) {
+		local (addy = adrmsg^.from);
+		local (ixat = string.patternMatch ("@", addy));
+		if ixat == 0 {
+			return ("")};
+		local (ixstart = ixat - 1);
+		while ixstart > 1 {
+			case addy[ixstart] {
+				'<';
+				'>';
+				'(';
+				')';
+				'\"';
+				' ' {
+					ixstart++;
+					break}};
+			ixstart--};
+		local (ixend = ixat + 1);
+		while ixend < sizeOf (addy) {
+			case addy[ixend] {
+				'<';
+				'>';
+				'(';
+				')';
+				'\"';
+				' ' {
+					break}};
+			ixend++};
+		return string.mid (addy, ixstart, ixend-ixstart)};
+	on checkMessage (adrmsg) {
+		local (flAuthorized = false);
+		case (adrdata^.authorizationStyle) {
+			"beginsWithSecretSubject" {
+				flAuthorized = (string.lower (adrmsg^.subject) beginsWith string.lower (string (adrdata^.secretSubject)))};
+			"equalsSecretSubject" {
+				flAuthorized = (string.lower (adrmsg^.subject) == string.lower (string (adrdata^.secretSubject)))};
+			"any" {
+				flAuthorized = true}};
+		if flAuthorized { //check authorized senders
+			if adrdata^.flAllowAuthorizedSendersOnly {
+				if string.lower (adrdata^.authorizedSenders) contains string.lower (getFromAddress (adrmsg)) {
+					flAuthorized = true}
+				else {
+					flAuthorized = false}}};
+		return (flAuthorized)};
+	on checkForDeletion (adrmsg) {
+		if checkMessage (adrmsg) {
+			return (true)};
+		return (false)}; //don't delete
+	local (msgtable, adrmsg, ctmsgs=0, startticks = clock.ticks ());
+	try {
+		with adrdata^ { //get new mail
+			tcp.getMail (server, account, string (password), @msgtable, deleteMessages:false, flMessages:false, adrDeleteCallback:@checkForDeletion)};
+		for adrmsg in @msgtable {
+			if checkMessage (adrmsg) {
+				local (s = adrmsg^.text);
+				s = string.trimWhiteSpace (s);
+				s = string.quotedPrintableDecode (s);
+				s = string.replaceAll (s, "\r\n", "\r");
+				s = manilaSuite.untaint (s);
+				bundle { //preserve email formatting by replacing single line-breaks with <br /> tags
+					s = string.replaceAll (s, "\r\r", "[[[P]]]");
+					s = string.replaceAll (s, "\r", "<br />");
+					s = string.replaceAll (s, "[[[P]]]", "\r\r")};
+				local (username = "", password = "", siteName = "");
+				bundle { //get username, password and siteName
+					bundle { //siteName
+						siteName = manilaSuite.getCanonicalSiteName (adrsite)};
+					bundle { //username
+						local (fromAddress = getFromAddress (adrmsg));
+						local (adrmember = manilaSuite.members.getMemberTableFromSiteAddress (adrsite, fromAddress));
+						if defined (adrmember^) {
+							if manilaSuite.rpcUtils.isManagingEditor (siteName, fromAddress) {
+								username = fromAddress};
+							if manilaSuite.rpcUtils.isContentEditor (siteName, fromAddress) {
+								username = fromAddress}};
+						if username == "" {
+							if typeOf (adrsite^.["#newsSite"].sysopMail) == listType { //use 1st managing editor in the list
+								username = adrsite^.["#newsSite"].sysopMail[1]}
+							else {
+								username = adrsite^.["#newsSite"].sysopMail}}};
+					bundle { //password
+						local (adrmember = manilaSuite.members.getMemberTableFromSiteAddress (adrsite, username));
+						password = string (adrmember^.password)}};
+				local (title = "");
+				bundle { //set title
+					if not defined (adrNewsSite^.mailToWeblog.titleFormat) {
+						adrNewsSite^.mailToWeblog.titleFormat = "dateTime"};
+					case adrNewsSite^.mailToWeblog.titleFormat {
+						"dateTime" {
+							local (timeZone = 0);
+							if defined (adrNewsSite^.timeZone) { //no time zone prefs for this site
+								timeZone = adrNewsSite^.timeZone.zone};
+							local (pt); new (tableType, @pt); //fake page table for localization
+							if defined (adrsite^.["#prefs"].language) {
+								pt.language = adrsite^.["#prefs"].language};
+							title = mainResponder.localization.dateTimeString (manilaSuite.convertTime (clock.now (), timeZone), @pt)};
+						"firstSentence" {
+							local (ix = 1, sizemsg = sizeOf (s));
+							loop {
+								case s[ix] {
+									'\r';
+									'.';
+									'?';
+									'!' {
+										title = string.mid (s, 1, ix);
+										s = string.trimWhiteSpace (string.delete (s, 1, sizeOf (title)) );
+										break}};
+								ix++;
+								if ix == sizemsg { //didn't find the title -- give up
+									break}}};
+						"subject" {
+							title = adrmsg^.subject;
+							case adrdata^.authorizationStyle {
+								"beginsWithSecretSubject" {
+									title = string.trimWhiteSpace (string.delete (title, 1, sizeOf (adrdata^.secretSubject)));
+									if sizeOf (title) > 1 {
+										case title[1] {
+											':';
+											'-';
+											'/';
+											',';
+											';' {
+												title = string.trimWhiteSpace (string.delete (title, 1, 1))}}}}}}}};
+				if adrsite^.["#newsSite"].flNewsItemSite { //create a news item, possibly post to home page
+					manilaSuite.rpcHandlers.newsItem.create (username, password, siteName, title, "", s, "", adrdata^.flPostToHomePage)}
+				else { //add to home page, possibly flipping the home page first
+					local (adrDg = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+					local (homePageMsgNum = adrSite^.["#newsSite"].discussLinks.homePageMsgNum);
+					local (adrMsg = mainResponder.discuss.getMessageTable (homePageMsgNum, adrRoot:adrDg));
+					local (homePagePostTime = adrMsg^.postTime);
+					local (year, month, day, hour, minute, second);
+					date.get (homePagePostTime, @year, @month, @day, @hour, @minute, @second);
+					local (nowyear, nowmon, nowday, nowhour, nowmin, nowsec);
+					date.get (clock.now (), @nowyear, @nowmon, @nowday, @nowhour, @nowmin, @nowsec);
+					local (flflip = (nowyear != year) or (nowmon != month) or (nowday != day) );
+					if flflip { //flip home page
+						manilaSuite.rpcHandlers.homePage.flip (username, password, siteName)};
+					manilaSuite.rpcHandlers.homePage.addToHomePage (username, password, adrSite^.["#ftpSite"].url, s);
+					if flflip { //set home page message subject
+						homePageMsgNum = adrSite^.["#newsSite"].discussLinks.homePageMsgNum;
+						adrMsg = mainResponder.discuss.getMessageTable (homePageMsgNum, adrRoot:adrDg);
+						adrMsg^.subject = title}};
+				ctmsgs++}};
+		try { //logging
+			if ctmsgs > 0 {
+				local (t); new (tableType, @t); t.ctmsgs = ctmsgs;
+				manilaSuite.log.addEvent ("mailToWeblogPost", startticks, @t, adrsite)}}}
+	else { //log the error
+		try {
+			local (t); new (tableType, @t);
+			t.error = tryerror;
+			manilaSuite.log.addEvent ("mailToWeblogError", startticks, @t, adrsite)}};
+	return};
+«bundle //test code
+	«local (adrsite = @jaketest1ManilaWebsite)
+	«checkMail (adrsite)

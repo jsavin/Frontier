@@ -1,0 +1,17 @@
+on convertTime (d=clock.now (), timeZone=nil, pta=nil) {
+	«Convert a local time to a time that respects the time zone preferences of a Manila site.
+		«04/02/00; 7:00:27 PM by PBS
+	
+	if typeOf (timeZone) == unknownType { //make sure it's really nil and not 0
+		if pta == nil {
+			pta = html.getPageTableAddress ()};
+		if not defined (pta^.newsSite^.timeZone) { //no time zone prefs for this site
+			return (d)};
+		timeZone = pta^.newsSite^.timeZone.zone};
+	
+	local (t);
+	
+	«The formula is simple: convert to GMT, then add the specified time zone (which is in seconds).
+	t = (d - date.getCurrentTimeZone ()) + timeZone;
+	
+	return (t)}

@@ -1,0 +1,13 @@
+on fakePageTable (adrTable) {
+	adrTable^.client = "206.204.24.70";
+	adrTable^.adrMemberInfo = @MyFirstSiteManilaWebsite.["#membershipGroup"].users.["brent@userland.com"];
+	adrTable^.adrSiteRootTable = @MyFirstSiteManilaWebsite;
+	adrTable^.newsSite = @MyFirstSiteManilaWebsite.["#newsSite"];
+	adrTable^.ftpSite = @MyFirstSiteManilaWebsite.["#ftpSite"];
+	adrTable^.port = 80;
+	adrTable^.host = "206.204.24.80";
+	adrTable^.firstLine = "GET /foo/bar HTTP/1.1";
+	
+	html.setPageTableAddress (adrTable);
+	
+	return (true)}

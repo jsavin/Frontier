@@ -1,0 +1,664 @@
+on map (actionURL, shortname) {
+	«manilaSuite.sitePrefs.handlers.siteStructure.map : 04/05/16, 15:06:26 by DAB
+		«manilaFixer.siteStructure.Map : 01/01/22, 17:59:40 by DAB
+			«returns a page showing the entire site structure
+		«map (renamed) : 01/04/21, 15:37:27 by DAB
+		«01/05/20, 09:47:06 by DAB
+			«add site structure editing capability
+	«messages at manilaData.localization.languages.english.strings.siteStructure
+	local (pta = html.getPageTableAddress());
+	local (adrSite = manilaSuite.getSiteAddress(pta));
+	local (adrDiscuss = manilaSuite.discuss.getRootFromSiteAddress (adrSite));
+	local (adrStorage = pta^.hierarchy);
+	
+	local (htmltext = "");
+	on add(s) {
+		htmlText = htmlText + s;};
+	
+	local (replTbl);
+	bundle { //replacement table
+		new(tabletype, @replTbl);
+		replTbl.sitename = manilaSuite.getCanonicalSiteName(adrSite); //05/02/17, 23:03:45 by DAB
+		replTbl.pathAttributes = html.getLink("Path Attributes", "http://www.baylys.com:8080/manila/Techniques/PathAtts")};
+	
+	bundle { //compile the XML outline if needed
+		«The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
+		local (adrTable = pta^.hierarchy);
+		local (flCompile = true);
+		
+		if defined (adrTable^.structure) {
+			if timeModified (@adrTable^.outline) <= timeModified (@adrTable^.structure) {
+				flCompile = false}};
+		
+		if flCompile {
+			xml.compile (string (adrTable^.outline), @adrTable^.structure);
+			manilaSuite.siteStructure.buildPathsTable (adrSite)}}; //rebuild the paths table too
+	
+	on walkforAttributes(adrTbl, adrAttsTbl) {
+		«Create a table of names of attributes used in this site structure
+		local (adr, cnt=0);
+		for adr in adrTbl {
+			case true {
+				typeof(adr^) != tabletype {
+					continue};
+				nameOf(adr^) == "/atts" {
+					local (adrAtt);
+					for adrAtt in adr {
+						if not defined(adrAttsTbl^.[nameof(adrAtt^)]) {
+							adrAttsTbl^.[nameof(adrAtt^)] = sizeOf(adrAttsTbl^)+1}};
+					cnt++}}
+			else {
+				cnt = cnt + walkforAttributes(adr, adrAttsTbl)}};
+		return cnt};
+	
+	local (attnames, attNamesSorted, entryCnt);
+	on discoverAttnames() { //compute attnames and sorted table too
+		new(tabletype, @attnames);
+		attnames.msgNum = 1;
+		attnames.name = 2;
+		attnames.pathname = 3;
+		if manilaSuite.accessControl.isControlledSite(adrSite) {
+			attnames.mlac= 4;
+			attnames.romlac = 5};
+		entryCnt = walkForAttributes(@pta^.hierarchy^.structure[1], @attnames);
+		delete(@attnames.pathname);
+		new(tabletype, @attNamesSorted);
+		local (adr);
+		for adr in @attnames {
+			attNamesSorted.[string.padWithZeros(adr^, 6)] = nameOf(adr^)};
+		return true};
+	discoverAttnames();
+	
+	on detailForm(path) {
+		local (txt = "");
+		on add(s) {
+			txt = txt + s;};
+		
+		local (adrEntry = manilaSuite.sitePrefs.siteStructure.getPathAddress(@pta^.hierarchy^.structure[1], string.popleading(path, "/"), false));
+		if adrEntry == nil {
+			return ""};
+		
+		add(manilaSuite.getString("siteStructure.helptextdetail", @replTbl, pta:pta));
+		add("\r<hr align = 'center' width = '50%'>");
+		
+		add("\r<form method = 'POST' action = '" + actionURL + "' name = 'structureatts'>");
+		add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+		add("\r<table>"); //02/08/05, 22:23:16 by DAB
+		bundle { //path 
+			add("\r\t<tr>");
+			add("\r\t\t<th align = 'right'>");
+			add(manilaSuite.getString("siteStructure.formDetailpathtext",  @replTbl,  pta:pta));
+			add("</th>");
+			add("\r\t\t<td>");
+			add(" : ");
+			add("</td>");
+			add("\r\t\t<td>");
+			add(path);
+			«add("<input type = 'hidden' name = 'path'  value = '" + path + "'>")
+			«add("<input type = 'hidden' name = 'path'  value = \"" + bayly.iso8859encode(string.replaceAll(path, "\"","&quot;")) + "\">")
+			add("<input type = 'hidden' name = 'path'  value = \"" + string.iso8859encode(string.replaceAll(path, "\"","&quot;")) + "\">");
+			add("\</td>");
+			add("\r\t</tr>")};
+		bundle { //rows for defined atts
+			local (ix);
+			for ix = 1 to sizeof(attNamesSorted) {
+				local (attname = attNamesSorted[ix]);
+				local (s = "");
+				try { s = xml.getattributeValue(adrEntry, attname)};
+				add("\r\t<tr>");
+				add("\r\t\t<th align = 'right'>");
+				add(attName);
+				add("</th>");
+				add("\r\t\t<td>");
+				add(" : ");
+				add("</td>");
+				add("\r\t\t<td>");
+				case string.lower(attname) {
+					"msgnum" {
+						local (N = string.length(adrDiscuss^.prefs.nextMsgNum));
+						add("<input type = 'text' name = '" + attname + "' value = '" + s + "' size = '" + N + "' maxlength = '255' >")};
+					"mlac"; //message leval accesscontrol 04/05/23, 15:29:29 by DAB
+					"romlac" { //read only message leval accesscontrol    //04/05/23, 15:42:03 by DAB
+						if manilaSuite.accessControl.isControlledSite(adrSite) {
+							local (pattAttCohorts = {} +  ("{\"" +string.replaceAll(s, ",", "\",\"") + "\"}"));
+							add(manilaSuite.AccessControl.cohortsPopup(pta, attname, pattAttCohorts))}}}
+				else {
+					add("<input type = 'text' name = '" + attname + "' value = '" + s + "' size = '50' maxlength = '255'>")};
+				add("\</td>");
+				add("\r\t</tr>")}};
+		bundle { //new att row
+			add("\r\t<tr>");
+			add("\r\t\t<th align = 'right'>");
+			«add(manilaSuite.getString("siteStructure.formDetailNewAttText",  @replTbl,  pta:pta))
+			add("<input type = 'text' name = 'new.attribute.name' value = '" + manilaSuite.getString("siteStructure.formDetailNewAttText",  @replTbl,  pta:pta) + "' size = '10' maxlength = '255'>");
+			add("</th>");
+			add("\r\t\t<td>");
+			add(" : ");
+			add("</td>");
+			add("\r\t\t<td>");
+			add("<input type = 'text' name = 'new.attribute.value' value = '' size = '50' maxlength = '255'>");
+			add("\</td>");
+			add("\r\t</tr>")};
+		bundle { //row for button
+			add("\r\t<tr>");
+			add("\r\t\t<td colspan = '3' align = 'center'>");
+			local (flOKTodelete = true);
+			bundle { //check directories
+				if (path endsWith "/") {
+					local (adr);
+					for adr in adrEntry {
+						if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
+							continue};
+						flOKTodelete = false;
+						break}}};
+			if flOKTodelete {
+				add("<input type = 'submit' name = 'deleteURI' value = '" +manilaSuite.getString("siteStructure.formDetailDeleteURI",  @replTbl,  pta:pta) + "'>&nbsp;")};
+			add("<input type = 'submit' name = 'changeatts' value = '" + manilaSuite.getString("siteStructure.formDetailSubmit",  @replTbl,  pta:pta) + "'>"); //no reset by design
+			add("</td>");
+			add("\r\t</tr>")};
+		add("\r</table>");
+		add("\r</form>");
+		
+		return txt};
+	
+	if pta^.method == "POST" {
+		local (flChangeSeen = false, structureTbl);
+		local (haveToWalkAgain = false);
+		on errorReport(errID) {
+			«msg("Error " + errID)
+			add("<p align = 'center' style ='color:red'>");
+			add(manilaSuite.getString("siteStructure." + errID,  @replTbl, pta:pta) );
+			add("</p>")};
+		
+		on updateHierarchy() {
+			if not manilaSuite.custody.checkOut(@adrSite^.["#hierarchy"].outline, pta^.adrMemberInfo, adrSite, false) {
+				errorReport("errCheckedOut");
+				return false};
+			flChangeSeen = false;
+			try {
+				local (hierarchyText = xml.decompile(@structureTbl));
+				local (ix = string.patternmatch("<hierarchy>", hierarchyText));
+				if ix > 1 {
+					hierarchyText = string.mid(hierarchyText, ix, infinity)};
+				wp.newTextObject (hierarchyText, @pta^.hierarchy^.outline);
+				«and rebuild the structure
+				xml.compile (string (pta^.hierarchy^.outline), @pta^.hierarchy^.structure);
+				manilaSuite.siteStructure.buildPathsTable (adrSite); //rebuild the paths table too
+				
+				manilaSuite.custody.checkIn(@adrSite^.["#hierarchy"].outline, pta^.adrMemberInfo, adrSite, false);
+				
+				fileMenu.saveMyRoot(adrSite)}
+			else {
+				replTbl.tryError = tryError;
+				manilaSuite.custody.undoCheckOut(@adrSite^.["#hierarchy"].outline, pta^.adrMemberInfo, adrSite, flMessage:false);
+				errorReport("errScriptError");
+				return false};
+			
+			if haveToWalkAgain {
+				discoverAttnames();
+				haveToWalkAgain = false};
+			
+			return true};
+		
+		if defined(pta^.postargs.deleteURI) {
+			structureTbl = pta^.hierarchy^.structure;
+			local (path = pta^.postArgs.path);
+			on deleteURI() {
+				if path == "" {
+					errorReport("errDeleteEmpty");
+					return false};
+				replTbl.path = path;
+				local (adrEntry = manilaSuite.sitePrefs.siteStructure.getPathAddress(@structureTbl[1], string.popleading(path, "/"), false));
+				if adrEntry == nil {
+					replTbl.path = path;
+					errorReport("errDeleteNoPath");
+					return false};
+				
+				if manilaSuite.sitePrefs.siteStructure.isXMLCategory(adrEntry) { //02/04/15, 15:37:56 by DAB
+					local (adr);
+					for adr in adrEntry {
+						if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
+							continue};
+						«no good, story of category underneath
+						errorReport("errDeleteSubordinates");
+						return false}};
+				
+				delete(adrEntry);
+				flChangeSeen = true;
+				haveToWalkAgain = true;
+				
+				return true};
+			
+			if deleteURI() {
+				add("<p align = 'center' style = 'color:blue'>");
+				add(manilaSuite.getString("siteStructure.reportPathDeleted",  @replTbl, pta:pta));
+				add("</p>")}};
+		
+		if defined(pta^.postArgs.changeatts) {
+			structureTbl = pta^.hierarchy^.structure;
+			local (path = pta^.postArgs.path);
+			on changeAttributes() {
+				if path == "" {
+					errorReport("errChangeEmpty");
+					return false};
+				replTbl.path = path;
+				local (adr = manilaSuite.sitePrefs.siteStructure.getPathAddress(@structureTbl[1], string.popleading(path, "/"), false));
+				if adr == nil {
+					errorReport("errChangeNoPath");
+					return false};
+				
+				local (ix, attname, flNoValue);
+				for ix =1 to sizeOf(attNamesSorted) {
+					attname = attNamesSorted[ix];
+					flNoValue = not defined(pta^.postargs.[attname]) or (pta^.postargs.[attname] == "");
+					case string.lower(attname) {
+						"msgnum" {
+							if flNoValue {
+								if not (path endsWith "/") {
+									errorReport("errChangeStoryNoMsgnum");
+									return false}};
+							try {
+								msgNum = number(pta^.postArgs.msgNum);
+								replTbl.msgNum = msgNum;
+								if msgNum >= adrDiscuss^.prefs.nextMsgNum {
+									errorReport("errChangeBadMsgNum");
+									return false};
+								local (adrMsg = manilaSuite.discuss.getMessageTableFromSiteAddress(adrSite, msgNum));
+								if defined(adrMsg^.fldeleted) and adrMsg^.fldeleted {
+									errorReport("errChangeDeletedMsg");
+									return false}}
+							else {
+								replTbl.tryError = tryError;
+								errorReport("errChangeScriptError");
+								return false}};
+						"name" {
+							if flNoValue {
+								errorReport("errChangeNoName");
+								return false}}}
+					else {
+						haveToWalkAgain = flNoValue}; //because it might be last entry with this attribute
+					if flNoValue {
+						if defined(adr^.["/atts"].[attname]) {
+							delete(@adr^.["/atts"].[attname]);
+							flChangeSeen  = true}}
+					else {
+						if not defined(adr^.["/atts"].[attname]) or (adr^.["/atts"].[attname] != pta^.postargs.[attname]) {
+							adr^.["/atts"].[attname] = pta^.postargs.[attname];
+							flChangeSeen  = true}}};
+				
+				if defined(pta^.postargs.["new.attribute.value"]) and (pta^.postargs.["new.attribute.value"] != "") {
+					attname = pta^.postargs.["new.attribute.name"];
+					if (attname == "") {
+						errorReport("errChangeAttNoname");
+						return false};
+					replTbl.attname = attname;
+					if defined(attNames.[attname]) {
+						errorReport("errChangeAttDupname");
+						return false};
+					
+					adr^.["/atts"].[attname] = pta^.postargs.["new.attribute.value"];
+					attNames.[attname] = true;
+					attnamesSorted.[string.padWithZeros(sizeof(attnames),6)] = attname;
+					flChangeSeen = true};
+				
+				return true};
+			
+			if changeAttributes() {
+				add("<p align = 'center' style = 'color:blue'>");
+				add(manilaSuite.getString("siteStructure.reportPathChanged",  @replTbl,  pta:pta));
+				add("</p>")}
+			else {
+				flChangeSeen = false}};
+		
+		if defined(pta^.postArgs.marked) {
+			case true {
+				defined(pta^.postargs.mark) { //make a form for one entry
+					add("<hr align = 'center' width = '50%'>");
+					add(detailForm(string.urldecode(pta^.postargs.mark)));
+					};«add("<hr align = 'center' width = '50%'>")
+				defined(pta^.postargs.URI) and pta^.postArgs.URI != "" {
+					structureTbl = pta^.hierarchy^.structure;
+					local (path = pta^.postArgs.URI);
+					replTbl.path = path;
+					on addEntry() {
+						case string.lower(string.nthField(path, "/", string.countFields(path, "/"))) {
+							"default";
+							"Index" {
+								errorReport("errAddPathReserved");
+								return false}};
+						local (adr = manilaSuite.sitePrefs.siteStructure.getPathAddress(@structureTbl[1], string.popLeading(path, "/"), false));
+						if  adr != nil {
+							errorReport("errAddPathExists");
+							return false};
+						«gather msgNUM and name for new entry
+						local (msgNum = 0);
+						if defined(pta^.postArgs.msgNum) and (pta^.postArgs.msgNum != "") { //msgNum is optional  for categories
+							try {
+								msgNum = number(pta^.postArgs.msgNum);
+								replTbl.msgNum = msgNum;
+								if msgNum >= adrDiscuss^.prefs.nextMsgNum {
+									errorReport("errAddNoMsg");
+									return false};
+								local (adrMsg = manilaSuite.discuss.getMessageTableFromSiteAddress(adrSite, msgNum));
+								if defined(adrMsg^.fldeleted) and adrMsg^.fldeleted {
+									errorReport("errAddMsgDeleted");
+									return false}}
+							else {
+								errorReport("errAddScriptError");
+								return false}}
+						else {
+							if not (path endsWith "/") {
+								errorReport("errAddNoMsgNum");
+								return false}};
+						
+						local (msgname = "");
+						if not defined(pta^.postArgs.name) {
+							errorReport("errAddNoname");
+							return false};
+						msgname = pta^.postArgs.name;
+						
+						adr = manilaSuite.sitePrefs.siteStructure.getPathAddress(@structureTbl[1], string.popLeading(path, "/"), true);
+						if  adr == nil {
+							errorReport("errAddUnknownErr");
+							return false};
+						
+						adr = @adr^.["/atts"];
+						if msgNum != 0 {
+							adr^.msgNum = msgNum};
+						adr^.name = msgName;
+						flChangeSeen = true;
+						
+						return true};
+					
+					if addEntry() {
+						if sizeof(attnames) > 2 {
+							updateHierarchy(); //so the new walk is OK
+							
+							add("<hr align = 'center' width = '50%'>");
+							add(detailForm(path));
+							}«add("<hr align = 'center' width = '50%'>")
+						else {
+							add("<p align = 'center' style='color:blue'>");
+							add(manilaSuite.getString("siteStructure.reportPathAdded", @replTbl, pta:pta) );
+							add("</p>")}}}}};
+		
+		if defined(pta^.postArgs.sortMark) { //defined(pta^.postArgs.sortMarked)  2007/10/10, 18:47:51 by DAB
+			case true {
+				defined(pta^.postargs.mark) { //make a form for one entry
+					
+					local (url = string.urlDecode(pta^.postargs.mark)) «2007/10/10, 18:47:48 by DAB
+						«local (url = pta^.postargs.startURL);
+					on checkURL() {
+						if url == "" {
+							errorReport("errNoURL");
+							return false};
+						if not (url beginsWith "/") {
+							if not (url beginsWith pta^.urls^.newsHome) {
+								errorReport("errBadURL")};
+							url = string.delete(url, 1, string.length(pta^.urls^.newsHome))};
+						return true};
+					
+					if checkurl() {
+						if manilaSuite.sitePrefs.siteStructure.siteStructureSort(adrSite, url) {
+							add("<p align = 'center' style = 'color:blue'>");
+							add(manilaSuite.getString("siteStructure.reportSortDone", @replTbl, pta:pta)) «2007/10/10, 18:56:23 by DAB
+								«add(manila.getString("siteStructure.reportSortDone", @replTbl, pta:pta));
+							add("</p>")}
+						else {
+							replTbl.url = url;
+							errorReport("errSortFailed")}}}}};
+		
+		if defined(pta^.postArgs.selectDirectives) { //02/08/13, 16:41:06 by DAB
+			local (ids = {});
+			try {
+				ids = pta^.postargs.directives;
+				if typeof(ids) != listType {
+					ids = {ids}}};
+			adrStorage^.directives = ids;
+			«manilaSuite.sitePrefs.siteStructure.installFilterPatch ("pagefilterMF", "try {manilaFixer.siteStructure.setDirectives(pta)}", ids == {}, staticSite:false, adrSite:adrSite)    
+			«try
+				«manilaSuite.sitePrefs.siteStructure.installFilterPatch ("pagefilterMF", "try {manilaFixer.siteStructure.setDirectives(pta)}", ids=={}, staticSite:true, adrSite:adrSite)    };
+		
+		«if defined(pta^.postArgs.selectETPitems)          //02/09/26, 14:33:09 by DAB
+			«if not defined(adrStorage^.sitestructure)
+				«new(tabletype, @adrStorage^.sitestructure)
+			«local (ids = {})
+			«try
+				«ids = pta^.postArgs.etpitems
+				«if typeof(ids) != listType
+					«ids = {ids}
+			«adrStorage^.siteStructure.ETPitems= ids
+			«manilaSuite.sitePrefs.siteStructure.installFilterPatch("pageFilterMF", "try {manilaFixer.storyPost.pageFilter(pta)}", ids == {}) 
+			«manilaSuite.sitePrefs.siteStructure.installFilterPatch("finalFilterMF", "try {manilaFixer.storyPost.finalFilter(pta)}", ids == {})   
+		
+		if defined(pta^.postArgs.sitestructureRender) { //02/04/01, 16:17:08 by DAB
+			add(manilaSuite.sitePrefs.siteStructure.renderDirectory(string.urldecode(pta^.postargs.mark)))};
+		
+		if flChangeSeen {
+			on errorReport(messageText) { «05/05/04, 15:53:42 by DAB
+				add("<p style='color:red'>");
+				add(messageText);
+				add("</p>");
+				return true};
+			
+			if manilaSuite.sitePrefs.siteStructure.isValid(@structureTbl, @errorReport, adrDiscuss^.prefs.nextMsgNum, adrSite) {
+				updateHierarchy()}}};
+	
+	«if sizeOf(attnames) > 2     //build a form to select path attributes set from ETP forms
+		«add("<hr align = 'center' width = '50%'>")
+		«add(manilaSuite.getString("siteStructure.ETPHelptext", @replTbl, pta:pta))
+		«add("\r<form name = 'etpitems'  action = '" + pta^.URI + "' method = 'POST'>")
+		«add("\r<table align = 'center' >")
+		«bundle    //row for 
+			«add("\r\t<tr>")
+			«add("\r\t\t<td align = 'right'>")
+			«local (N = sizeof(attnames) - 2)
+			«if N > 10
+				«N = 10
+			«add("\r\t\t\t<select name = 'etpitems' multiple size = '" + N + "'>")
+			«bundle
+				«local (ix, nme, selected)
+				«for ix = 1 to sizeof(attNamesSorted)
+					«nme = attNamesSorted[ix]
+					«if {"msgnum", "name", "template"} contains string.lower(nme)
+						«continue
+					«selected = ""
+					«try
+						«if adrStorage^.siteStructure.ETPItems contains nme
+							«selected = " selected"
+					«add("\r\t\t\t\<option" + selected + ">" +  attNamesSorted[ix] + "</option>")
+			«add("</select>")
+			«add("</td>")
+			«add("\r\t\t<td align = 'left'>")
+			«add("<input type = 'submit' name = 'selectETPitems' value = '" + manilaSuite.getString("siteStructure.formSubmitsetETPItems", @replTbl, pta:pta)  + "'>")    //no reset by design
+			«add("</td>")
+			«add("\r\t</tr>")
+		«add("\r</table>")
+		«add("\r</form>")
+	
+	local (flHTMLTableStarted=false);
+	on startTable() {
+		flHTMLTableStarted = true;
+		add("<hr align = 'center' width = '50%'>");
+		add(manilaSuite.getString("siteStructure.structureMapHelptext", @replTbl, pta:pta));
+		«add("<p align = 'center'>")
+		add("\r<form name = 'structuremap' action = '" + actionURL + "' method = 'POST'>");
+		add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+		add("\r<table align = 'center' border = '1'>");
+		if entryCnt > 20 { //row for buttons on top for ease of use
+			add("\r\t<tr>");
+			add("\r\t\t<td colspan = '" + string(2 + sizeof(attNamesSorted)) + "' align = 'center'  style = 'background-color:gainsboro'>");
+			add("<input type = 'submit' name = 'viewxml' value = '" + manilaSuite.getString("admin.siteStructureViewXML", @replTbl, pta:pta)  + "'>"); //no reset by design
+			if sizeOf(attnames) > 2 {
+				add("&nbsp;");
+				add("<input type = 'submit' name = 'sortmark' value = '" + manilaSuite.getString("siteStructure.formSubmitSort", @replTbl, pta:pta)  + "'>")};
+			add("&nbsp;");
+			add("<input type = 'submit' name = 'marked' value = '" + manilaSuite.getString("siteStructure.formSubmitMarked", @replTbl, pta:pta)  + "'>"); //no reset by design
+			add("</td>");
+			add("\r\t</tr>")};
+		bundle { //row for header
+			add("\r\t<tr>");
+			add("\r\t\t<th style = 'background-color:gainsboro'>" + manilaSuite.getString("siteStructure.colMark", @replTbl, pta:pta) + "</th>");
+			add("\r\t\t<th align = 'center' style = 'background-color:gainsboro'>");
+			add(manilaSuite.getString("siteStructure.colURI",  @replTbl, pta:pta) );
+			add("</th>");
+			for ix = 1 to sizeof(attNamesSorted) {
+				add("\r\t\t<th align = 'center' nowrap style = 'background-color:gainsboro'>");
+				add(attNamesSorted[ix]);
+				add("</th>")};
+			add("\r\t</tr>")};
+		bundle { //row to add URI
+			add("\r\t<tr>");
+			add("\r\t\t<td align = 'center'>");
+			add(manilaSuite.getString("siteStructure.formIDAddURI", @replTbl, pta:pta) );
+			add("</td>");
+			add("\r\t\t<td>");
+			add("<input type = 'text' name = 'URI' value = '' size = '" + 17 + "' maxlength = '255'>");
+			add("</td>");
+			add("\r\t\t<td align = 'right'>");
+			local (N = string.length(adrDiscuss^.prefs.nextMsgNum));
+			add("<input type = 'text' name = 'msgNum' value = '' size = '" + N + "'>");
+			add("</td>");
+			add("\r\t\t<td align = 'left'>");
+			add("<input type = 'text' name = 'name' value = '' size = '" + 17 + "' maxlength = '255'>");
+			add("</td>");
+			N = sizeof(attNamesSorted)-2;
+			if N > 0 {
+				add("\r\t\t<td colspan = '" + string(N) + "'>&nbsp;</td>")};
+			add("\r\t</tr>")};
+		return true};
+	
+	on finishTable() {
+		bundle { //row for button
+			add("\r\t<tr style = 'background-color:gainsboro'>");
+			add("\r\t\t<td colspan = '" + string(2 + sizeof(attNamesSorted)) + "' align = 'center'  style = 'background-color:gainsboro'>");
+			add("<input type = 'submit' name = 'viewxml' value = '" + manilaSuite.getString("admin.siteStructureViewXML", @replTbl, pta:pta)  + "'>"); //no reset by design
+			if sizeOf(attnames) > 2 {
+				add("&nbsp;");
+				add("<input type = 'submit' name = 'sortmark' value = '" + manilaSuite.getString("siteStructure.formSubmitSort", @replTbl, pta:pta)  + "'>")};
+			add("&nbsp;");
+			add("<input type = 'submit' name = 'marked' value = '" + manilaSuite.getString("siteStructure.formSubmitMarked", @replTbl, pta:pta)  + "'>"); //no reset by design
+			add("</td>");
+			add("\r\t</tr>")};
+		if manilaSuite.staticRendering.isEnabled(adrSite) { //row for static render button
+			add("\r\t<tr style = 'background-color:gainsboro'>");
+			add("\r\t\t<td colspan = '" + string(2 + sizeof(attNamesSorted)) + "' align = 'center'  style = 'background-color:gainsboro'>");
+			add("<input type = 'submit' name = 'sitestructureRender' value = '" + manilaSuite.getString("siteStructure.formSubmitRender", @replTbl, pta:pta)  + "'>"); //no reset by design
+			add("</td>");
+			add("\r\t</tr>")};
+		add("\r</table>");
+		add("\r</form>");
+		return true};
+	
+	on report(URI, adr) {
+		local (ix);
+		if not flHTMLTableStarted {
+			startTable()};
+		bundle {
+			add("\r\t<tr>");
+			add("\r\t\t<td align = 'center'>");
+			add("<input type = 'radio' name = 'mark' value = '" + string.urlencode(URI) + "'>");
+			add("</td>");
+			add("\r\t\t<td nowrap>");
+			add(URI);
+			add("</td>");
+			«bundle
+				«add("\r\t\t<td>")
+				«if defined(pta^.glossary.[name])
+					«add("\"" + name + "\"")
+				«else
+					«add(name)
+				«add("</td>")
+				«add("\r\t\t<td align = 'right'>")
+				«add(msgnum)
+				«add("</td>")
+			for ix = 1 to sizeof(attNamesSorted) {
+				local (attname = string.lower(attNamesSorted[ix]));
+				local (s = "&nbsp;");
+				try { s = xml.getattributeValue(adr, attname)};
+				case attname {
+					"name" {
+						add("\r\t\t<td>");
+						«if defined(pta^.glossary^.[s])
+							«add("\"" + s + "\"")
+						«else
+							«add(s)
+						«add(html.getLink(s, pta^.urls^.newsHome + string.popLeading(uri, "/")))    //01/05/13, 15:06:48 by DAB
+						«add("<input type = 'text' name = '" + string.urlencode(URI) + "$" + attname + "' value = '" + s + "' size = '30' maxlength = '255'>")   //01/05/19, 18:01:46 by DAB
+						add(s);
+						add("</td>")};
+					"msgnum" {
+						add("\r\t\t<td align = 'right'>");
+						«add(s)
+						add(html.getLink(s, pta^.urls^.newsHome + string.popLeading(uri, "/"))); //01/05/19, 17:59:35 by DAB
+						add("</td>")}}
+				else {
+					add("\r\t\t<td>");
+					add(s);
+					«add("<input type = 'text' name = '" + string.urlencode(URI) + "$" + attname + "' value = '" + s + "' size = '30' maxlength = '255'>")   //01/05/19, 18:01:46 by DAB
+					add("</td>")}};
+			add("\r\t</tr>")}};
+	
+	on walk(adrTbl, pathToDate) {
+		local (adr);
+		for adr in adrTbl {
+			case true {
+				manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
+					continue};
+				manilaSuite.sitePrefs.siteStructure.isXMLCategory(adr) {
+					local (URI = pathToDate + xml.getAttributeValue(adr, "pathname") + "/");
+					report(URI, adr);
+					«local (msgnum, name)
+					«try
+						«msgnum = xml.getAttributeValue(adr, "msgNum")
+						«name =  xml.getAttributeValue(adr, "name")
+						«report(path, name, msgnum)
+					walk(adr, URI)};
+				manilaSuite.sitePrefs.siteStructure.isXMLStory(adr) {
+					local (URI = pathToDate + xml.getAttributeValue(adr, "pathname") );
+					report(URI, adr)}}};
+		return true};
+	
+	walk(@pta^.hierarchy^.structure[1], "/");
+	
+	if flHTMLTableStarted {
+		finishTable()}
+	else {
+		add("\r<p>");
+		add(manilaSuite.getString("siteStructure.reportSSEmpty",  @replTbl,  pta:pta));
+		add("\r</p>")};
+	
+	if sizeOf(attnames) > 2 { //build a form to select path attributes as directives
+		add("<hr align = 'left' width = '50%'>");
+		add(manilaSuite.getString("siteStructure.directiveHelptext", @replTbl, pta:pta));
+		add("\r<form name = 'directives'  action = '" +actionURL + "' method = 'POST'>");
+		add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+		add("\r<table align = 'center' >");
+		bundle { //row for menu
+			add("\r\t<tr>");
+			add("\r\t\t<td align = 'right'>");
+			local (N = sizeof(attnames) - 2);
+			if N > 10 {
+				N = 10};
+			add("\r\t\t\t<select name = 'directives' multiple size = '" + N + "'>");
+			bundle {
+				local (ix, nme, selected);
+				for ix = 1 to sizeof(attNamesSorted) {
+					nme = attNamesSorted[ix];
+					if {"msgnum", "name", "template"} contains string.lower(nme) {
+						continue};
+					selected = "";
+					try {
+						if adrStorage^.siteStructure.directives contains nme {
+							selected = " selected"}};
+					add("\r\t\t\t\<option" + selected + ">" +  attNamesSorted[ix] + "</option>")}};
+			add("</select>");
+			add("</td>");
+			add("\r\t\t<td align = 'left'>");
+			add("<input type = 'submit' name = 'selectDirectives' value = '" + manilaSuite.getString("siteStructure.formSubmitSelDirectives", @replTbl, pta:pta)  + "'>"); //no reset by design
+			add("</td>");
+			add("\r\t</tr>")};
+		add("\r</table>");
+		add("\r</form>")};
+	
+	return htmltext}

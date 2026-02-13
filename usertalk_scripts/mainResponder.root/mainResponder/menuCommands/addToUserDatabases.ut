@@ -1,0 +1,38 @@
+on addToUserDatabases (f=nil, flInteractive=true) {
+	«Changes
+		«9/26/05; 1:56:44 PM by JES
+			«New parameter, flInteractive. If false, and f is specified, add the database to user.databases without any interaction with the user.
+		«1999
+			«5/25/99; 9:50:04 AM by DW
+				«Created. Call this script from a menu command. When you create a new guest database that you want to open automatically when Frontier launches, choose the command. It creates a new user.databases sub-table that opens so you can change the default values it sets. I got tired of manually created user.databases sub-tables.
+	if f == nil { //work with the frontmost window
+		if not flInteractive { //whoops!
+			scriptError ("Can't add to user.databases because no database file was specified.")};
+		local (adr = table.getcursoraddress ());
+		if not table.inGuestDatabase (adr) {
+			scriptError ("Can't add Frontier.root to user.databases. It's just for guest databases.")};
+		local (x = string.parseAddress (adr));
+		f = x [1]};
+	if not file.exists (f) {
+		scriptError ("Can't add a file that doesn't exist to user.databases.")};
+	local (fname = file.filefrompath (f));
+	local (adrtable = @user.databases.[fname]);
+	if flInteractive { //confirm with the local user
+		if defined (adrtable^) {
+			if not dialog.confirm (adrtable + " exists. Replace it?") {
+				return}}
+		else {
+			if not dialog.confirm ("Add " + fname + " to user.databases?") {
+				return}}};
+	if not defined (adrtable^) {
+		new (tabletype, adrtable)};
+	adrtable^.f = f;
+	adrtable^.openOnStartup = true;
+	if not defined (adrtable^.runStartupScript) { //don't overwrite
+		adrtable^.runStartupScript = false};
+	if not defined (adrtable^.supportsSubscribe) { //don't overwrite
+		adrtable^.supportsSubscribe = false};
+	filemenu.save ();
+	if flInteractive {
+		edit (adrtable);
+		window.zoom (adrtable)}}

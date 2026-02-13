@@ -1,0 +1,41 @@
+on searchEngineIndexerLog (maxitems=200) {
+	«Changes
+		«8/2/02; 3:07:05 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Search Engine Indexing Log";
+	local (colors = {pta^.trbg1, pta^.trbg2});
+	local (columns = {"Time", "Page", "Site", "Client", "Index"});
+	on renderItemCallback (adritem) {
+		local (itemtext = "");
+		on add (s) {
+			itemtext = itemtext + (s + "\r");};
+		on td (s, align="") {
+			if align != "" {
+				align = " align=\"" + align + "\""};
+			return ("<td" + align + "><font size=\"-1\" class=\"small\">" + s + "</font></td>")};
+		with adritem^ {
+			add (td (string.replaceAll (string.popLeading (string.nthField (xml.convertToDisplayName (nameOf (adrItem^)), ";", 2), ' '), " ", "&nbsp;") ));
+			bundle { //add the title
+				local (title = adrItem^.title);
+				title = searchEngine.stripMarkup (title);
+				title = string.trimWhiteSpace (title);
+				if sizeOf (title) > 25 {
+					title = string.mid (title, 1, 25) + "..."};
+				local (url = adrItem^.url);
+				url = string.nthField (url, '@', 1);
+				add (td (html.getLink (title, url)))};
+			add (td (html.getLink (adrItem^.siteName, adrItem^.siteUrl)));
+			bundle { //add the member name, if we have it, otherwise do a DNS lookup
+				local (client = adrItem^.client);
+				try {client = tcp.dns.getDomainName (adrItem^.client)};
+				add (td (client))};
+			add (td (adrItem^.indexName))};
+		return (itemtext)};
+	local (ctitems);
+	local (logtext = mainResponder.log.browseAny ("Search Engine Indexer", @renderItemCallback, colors, columns, 3, maxitems, {}, @ctitems));
+	if ctitems {
+		return (logtext)}
+	else {
+		return (logtext + "<p>There are no items to list at this time.</p>")};
+	}«return (mainResponder.search.server.logBrowserIndexer (maxitems, colors, 3, "smallAlignTop", false))

@@ -1,0 +1,3 @@
+on getNewsSiteAddress (sitename) {
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	return (@adrSite^.["#newsSite"])}

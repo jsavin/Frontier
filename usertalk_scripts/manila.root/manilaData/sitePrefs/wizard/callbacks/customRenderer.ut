@@ -1,0 +1,512 @@
+on customRenderer (partialaddress, defaultvalue, adrxmltable) {
+	«Changes:
+		«3/7/06; 4:51:56 AM by JES
+			«Add support for feed:// urls on subscriptions page.
+		«11/12/04; 11:21:15 AM by EDS
+			«fixed "http://" comparison to improve chances for autodiscovery
+		«1/4/04; 4:09:29 PM by JES
+			«On the Subscriptions prefs page, if a url is present in the searchArgs, use it to populate the url-to-subscribe-to field.
+		«10/8/03; 1:57:39 PM by JES
+			«Added help text on the News Items page in the Departments section, which links to the department list page.
+		«9/26/03; 12:13:29 PM by JES
+			«Added Content Editors to the options for who can create and post news items.
+		«5/26/03; 7:04:15 PM by JES
+			«Added option to the Syndication prefs page for DG-RSS feeds.
+		«5/9/03; 3:44:09 PM by JES
+			«Added support for the Mail-to-Weblog prefs.
+		«5/2/03; 2:59:31 PM by EDS
+			«Added support for FTP filewriter prefs.
+		«4/11/03; 1:24:29 PM by JES
+			«Add descriptive text for the License section on the Syndication prefs page.
+		«3/17/03; 8:43:10 PM by JES
+			«Display last update time/date in the time zone for the site, and selected localization (language). Localized message displayed when no feeds are available on the subscriptions page. Added field for subscribing to an arbitrary feed, if the server manager has set the preference to allow it.
+		«3/8/03; 1:30:18 AM by JES
+			«Added support for the News Aggregator prefs page.
+		«10/1/01; 4:00:45 PM by PBS
+			«Custom renderer for separator and pref for sending home page update notices to weblogs.com.
+		«2000:
+			«12/18/00; 4:13:33 PM by PBS
+				«Edit slides template with Radio.
+			«11/26/00; 7:49:55 PM by PBS
+				«The external editor button connects to the local HTTP server, which then requests the object from the Manila server.
+			«10/27/00; 3:53:44 AM by JES
+				«Added DG theme help text and download link.
+			«06/25/00; 9:08:06 PM by JES
+				«Fixed bug with news items permissions display.
+			«05/30/00; 5:37:10 PM by JES
+				«Lanugage now defaults to server setting, or Frontier setting. If neither is defined, English is the default.
+			«05/20/00; 9:05:47 PM by JES
+				«language pref
+			«05/01/00; 5:36:28 PM by PBS
+				«Support for news items: departments, editorial access, editing the template in Pike.
+			«03/28/00; 12:34:12 AM by PBS
+				«Support for placing a link to the statically rendered site.
+			«02/12/00; 11:48:10 AM by PBS
+				«Added link to admin page under custody time out pref.
+		«1999:
+			«12/14/99; 1:54:48 PM by PBS
+				«On the Syndication panel, the pop-up menu for images included even pictures that were removed from the Pictures list. It included pictures that had been deleted from the discussion group. This has been fixed: only pictures that are in the Pictures list and have not been deleted from the discussion group are included.
+			«??/??/1999 PBS
+				«Custom renderer for the site prefs panels.
+	
+	local (pta = html.getpagetableaddress ());
+	local (htmltext = "", indentlevel = 0);
+	
+	
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	
+	on buildDepartmentPopup () {
+		local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+		local (adrDepartments = manilaSuite.news.getDepartmentTableAddress (adrSite));
+		local (departmentList = manilaSuite.news.getDepartmentList (adrDepartments));
+		
+		add ("<select name=\"" + partialAddress + "\">"); indentLevel++;
+		add ("<option value=\"\" selected>" + manilaSuite.getString ("news.chooseADepartment") + "</option>");
+		
+		local (oneDepartment);
+		for oneDepartment in departmentList {
+			oneDepartment = manilaSuite.unTaint (oneDepartment);
+			add ("<option value=\"" + oneDepartment + "\">" + oneDepartment + "</option>")};
+		
+		add ("</select>"); indentLevel--};
+	
+	on buildAccessPopup (selected) {
+		
+		add ("<select name=\"" + partialAddress + "\">"); indentLevel++;
+		
+		on addOption (value, displayText) {
+			if string.lower (value) == string.lower (selected) {
+				add ("<option value=\"" + value + "\" selected>" + displayText + "</option>")}
+			else {
+				add ("<option value=\"" + value + "\">" + displayText + "</option>")};
+			return (true)};
+		
+		addOption ("Managing Editors", manilaSuite.getString ("news.managingEditors"));
+		addOption ("Content Editors", manilaSuite.getString ("news.contentEditors"));
+		addOption ("All Editors", manilaSuite.getString ("news.allEditors"));
+		addOption ("Members", manilaSuite.getString ("news.members"));
+		
+		add ("</select>"); indentLevel--};
+	
+	on buildStaticRenderingMethodPopup (selected) {
+		local {
+			adrSite = manilaSuite.getManilaSiteAddress (pta);
+			writerList = manilaSuite.staticRendering.getAvailableWritersList(adrSite);
+			item};
+		add ("<select name=\"" + partialAddress + "\">"); indentLevel++;
+		
+		on addOption (value, displayText) {
+			if string.lower (value) == string.lower (selected) {
+				add ("<option value=\"" + value + "\" selected>" + displayText + "</option>")}
+			else {
+				add ("<option value=\"" + value + "\">" + displayText + "</option>")};
+			return (true)};
+		
+		selected = string.lower(selected);
+		
+		«if the writer list doesn't contain the method we're already using  (in selected)  we _may_ need to add the current method.
+			«If there's evidence that this site is specially set up, then we add that method.
+			«If it looks like this was just initialized when the options were different and we're not really using it, then we don't.
+		if sizeOf(selected) and not (writerList contains selected) {
+			if  ((selected equals "file") or (selected equals "ftp")) {
+				if adrSite^.["#newsSite"].flStaticRenderingAlwaysAvailable {
+					«We're special, and now we know it. 
+					writerList = selected + writerList}}
+			else {
+				«It's one we're not aware of. let it through. 
+				writerList = selected + writerList}};
+		
+		for item in writerList {
+			case item {
+				"file" {
+					addOption ("file",manilaSuite.getString("staticRendering.fileFilewriter"))};
+				"ftp" {
+					addOption ("ftp", "FTP")}}
+			else {
+				«They've setup something else  Leave that option in so that submitting doesn't kill it. 
+				addOption (item,item)}};
+		
+		
+		
+		add ("</select>"); indentLevel--};
+	
+	on editInRadioButton (adrObject, itemName) {
+		if manilaSuite.pike.memberHasPike (pta) {
+			if defined (adrObject^) {
+				local (editInPikeUrl = "editInPike?" + string.urlEncode (itemName));
+				local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+				local (helpDescription = "Edit your " + itemName + " in an outline in Radio UserLand.");
+				
+				local (appendTable);
+				new (tableType, @appendTable);
+				appendTable.itemType = string.dropNonAlphas (string.innerCaseName (itemName));
+				editInPikeUrl = manilaSuite.pike.buildPikeButtonUrl (adrObject, "editAdvancedItem", @appendTable, pta);
+				add (manilaSuite.pike.pikeButton (editInPikeUrl, adrObject, pta^.adrMemberInfo, adrSite, false, helpDescription, pta))}}};
+	
+	case partialaddress {
+		"aggregator.services" {
+			local (flAllowAnyFeedUrl = config.manila.prefs.flAggregatorAllowAnyRssUrl);
+			
+			if flAllowAnyFeedUrl { //field for adding a new feed by URL, and POST-handling thereof
+				add ("</td></tr></table>"); //hack -- we don't want this field inside the table, so we close it
+				add (manilaSuite.getString ("aggregator.subscribeByUrl") + "<p>");
+				local (feedurl = "http://");
+				if defined (pta^.searchArgs) {
+					if sizeOf (pta^.searchArgs) > 0 {
+						local (args); new (tableType, @args);
+						webserver.parseArgs (pta^.searchArgs, @args);
+						if defined (args.url) {
+							feedurl = args.url}}};
+				add ("<input type=\"text\" size=\"50\" maxlength=\"500\" name=\"url\" value=\"" + feedurl + "\">&nbsp;&nbsp;<input type=\"submit\" name=\"add\" value=\"" + manilaSuite.getString ("aggregator.addButton") + "\"><p>");
+				if pta^.method == "POST" {
+					if defined (pta^.postArgs.add) { //add button was clicked
+						local (errorstring, adrservice);
+						local (rssurl = string.trimWhiteSpace (pta^.postArgs.url));
+						if rssurl != "" {
+							if string.lower (rssurl) beginswith "feed://" { //support feed url protocol
+								rssurl = "http://" + string.delete (rssurl, 1, 7)};
+							try {
+								local (urlparts = string.urlSplit (rssurl))}
+							else { //make sure the url starts with http:// and at least ends with /
+								if not (string.lower (rssurl) beginswith "http://") {
+									rssurl = "http://" + rssurl};
+								try {
+									local (urlparts = string.urlSplit (rssurl))}
+								else { //try to add a trailing slash character -- RSS auto-discovery time
+									rssurl = rssurl + "/"}};
+							if xml.aggregator.subscribeService (rssurl, @errorstring, @adrservice) {
+								local (adrprefs = manilaSuite.aggregator.init ());
+								adrprefs^.services.[nameOf (adrservice^)] = true;
+								local (t); new (tableType, @t);
+								t.title = adrservice^.compilation.channeltitle;
+								add (manilaSuite.getString ("aggregator.subscribeSuccess", @t) + "<p>")}
+							else { //error
+								local (t); new (tableType, @t);
+								t.error = errorString;
+								add (manilaSuite.getString ("aggregator.subscribeError", @t) + "<p>")}}}};
+				add ("<table><tr><td><br>")}; //hack -- re-open the table after rendering the above pref
+			
+			local (adrdata = xml.aggregator.init ());
+			local (adrservices = @adrdata^.services);
+			local (adrprefs = manilaSuite.aggregator.init ());
+			local (adrmyservices = @adrprefs^.services);
+			if sizeOf (adrservices) > 0 {
+				
+				on getDateString (when, flIncludeSeconds=true) {
+					«bundle //old code cribbed from Radio
+						«local (day, month, year, hour, minute, second, nowday, nowmonth, nowyear)
+						«date.get (when, @day, @month, @year, @hour, @minute, @second)
+						«date.get (clock.now (), @nowday, @nowmonth, @nowyear, @hour, @minute, @second)
+						«if (day == nowday) and (month == nowmonth) and (year == nowyear)
+							«return (date.timestring (when, flIncludeSeconds))
+						«return (date.shortstring (when))
+					return (mainResponder.localization.shortTimeString (manilaSuite.convertTime (when, pta:pta), pta))};
+				
+				local (xmlimg);
+				bundle { //set xmlimg
+					xmlimg = "<img src=\"/mainResponderResources/userlandIcons/xml\" height=\"14\" width=\"36\" border=\"0\">"};
+				
+				local (sortedtable, adr, adrsort);
+				bundle { //fill sorted table
+					new (tabletype, @sortedtable);
+					for adr in @adrdata^.services {
+						if defined (adr^.compilation) {
+							if sizeof (adr^.compilation) > 0 {
+								try { //missing channeltitle doesn't stop us -- 3/20/02 DW
+									local (channeltitle = adr^.compilation.channeltitle);
+									if sizeof (channeltitle) > 0 {
+										adrsort = @sortedtable.[adr^.compilation.channeltitle];
+										if defined (adrsort^) { //collision
+											local (ct = 1);
+											loop {
+												adrsort = @sortedtable.[adr^.compilation.channeltitle + "." + ct++];
+												if not defined (adrsort^) {
+													break}}};
+										adrsort^ = nameof (adr^)}}}}}};
+				
+				bundle { //start the HTML table
+					add ("<table cellspacing=\"0\" cellpadding=\"0\"><tr bgcolor=\"DCDCDC\"><td>");
+					add ("<table cellspacing=\"1\" cellpadding=\"5\" border=\"0\">")};
+				for adr in @sortedtable { //list the services
+					local (adrservice = @adrservices^.[adr^]);
+					local (rssurl = nameOf (adrservice^));
+					local (title = adrservice^.compilation.channeltitle);
+					local (channeldescription = "", channellink = "");
+					if defined (adrservice^.compilation.channeldescription) {
+						channeldescription = xml.entityDecode (adrservice^.compilation.channeldescription, true, true);
+						channeldescription = string.replaceAll (channeldescription, "\"", "&quot;");
+						channeldescription = string.replaceAll (channeldescription, "\'", "&apos;");
+						channeldescription = string.replaceAll (channeldescription, "<", "&lt;");
+						channeldescription = string.replaceAll (channeldescription, ">", "&gt;")};
+					if defined (adrservice^.compilation.channellink) {
+						channellink = adrservice^.compilation.channellink};
+					
+					local (checkboxval = "xxx");
+					if defined (adrmyservices^.[rssurl]) { //this site is subscribed
+						checkboxval = checkboxval + " checked"};
+					
+					add ("<tr bgcolor=\"white\">");
+					add ("<td valign=\"top\"><input type=\"checkbox\" name=\"" + string.urlEncode (nameOf (adrservice^)) + "\" value=" + checkboxval + "></td>");
+					if sizeof (title) > 50 {
+						title = string.mid (title, 1, 50) + "..."};
+					add ("<td valign=\"top\" title=\"" + channeldescription + "\" nowrap><a href=\"" + channellink + "\">" + xml.entityDecode (title, true, true) + "</a></td>");
+					add ("<td align=\"right\" valign=\"top\"><nobr><font size=\"-1\">" + getDateString (adrservice^.timeLastChange, false) + "</font></nobr></td>");
+					add ("<td align=\"right\" valign=\"top\"><font size=\"-1\">" + adrservice^.ctChanges + "</font></td>");
+					add ("<td valign=\"top\"><a href=\"" + nameof (adrservice^) + "\" title=\"Click to view the current XML source text for the channel.\">" + xmlimg + "</a></td>");
+					add ("</tr>")};
+				bundle { //end the HTML table
+					add ("</table></td></tr></table>")}}
+			else {
+				if flAllowAnyFeedUrl {
+					add ("<p><br><br>" + manilaSuite.getString ("aggregator.noSubscriptions") + "</p>")}
+				else {
+					add ("<p><br><br>" + manilaSuite.getString ("aggregator.noFeedsAvailable") + "</p>")}};
+			add ("<input type=\"hidden\" name=\"" + partialaddress + "\" + value=\"xxx\">")}; //trigger the setValue callback
+		"newsRoom.discussLinks.channelGraphicMsgNum" {
+			add ("<select name=\"" + partialaddress + "\">"); indentlevel++;
+			local (category = pta^.newsSite^.picturesListedIn);
+			local (adrroot = mainresponder.discuss.openroot ());
+			local (adrmsgs = @adrroot^.messages);
+			local (i, ct = sizeof (adrmsgs^), adrmsg);
+			for i = 1 to ct {
+				adrmsg = @adrmsgs^ [i];
+				if defined (adrMsg^.image) {
+					if mainResponder.discuss.isMessageDeleted (adrMsg^.msgNum, adrMsg, pta) {
+						continue};
+					if manilaSuite.discuss.isPicture (adrMsg) {
+						local (msgnum = adrmsg^.msgnum);
+						local (s = "");
+						if defaultvalue == msgnum {
+							s = " selected"};
+						add ("<option value=\"" + msgnum + "\"" + s + ">" + adrmsg^.subject + "</option>")}}};
+			add ("</select>"); indentlevel--};
+		"newsRoom.bylineFormat" {
+			local (sysopName);
+			local (groupName = pta^.newsSite^.sysopMemberOfGroup);
+			local (adrTable = mainResponder.members.getMemberTable (groupName, nameOf (adrMemberInfo^)));
+			try {
+				sysopName = adrTable^.personalInfo.name}
+			else {
+				sysopName = "Dave Winer"};
+			
+			add ("<select name=\"" + partialaddress + "\">"); indentlevel++;
+			
+			on addChoice (choice, string) {
+				local (checked = "");
+				if string.lower (choice) == string.lower (pta^.newsSite^.bylineFormat) {
+					checked = " selected"};
+				add ("<option value=\"" + choice + "\"" + checked + ">" + string)};
+			
+			addChoice ("default", mainResponder.macros.byline (sysopName, manilaSuite.convertTime ()));
+			addChoice ("DaveNet", mainResponder.macros.byline (sysopName, manilaSuite.convertTime (), "DaveNet"));
+			
+			add ("</select>"); indentlevel--};
+		"newsRoom.colors.linkToColorsPage" {
+			return (manilaSuite.getString ("admin.customColorsLink"))};
+		"newsRoom.custody.linkToAdminPage" {
+			local (adminUrl = manilaSuite.getUrl ("editorialAdmin", pta));
+			«local (adminLink = html.getLink ("Admin", adminUrl))
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.adminUrl = adminUrl;
+			return (manilaSuite.getString ("admin.listOfCheckedOutItemsLink", @replacementTable))};
+		"newsRoom.staticRenderingSiteLink" {
+			if manilaSuite.staticRendering.isEnabled (pta^.adrSiteRootTable) {
+				local (adrStaticSite = @pta^.newsSite^.staticSite);
+				if not defined (adrStaticSite^) {
+					return ("")};
+				try {
+					local (url = adrStaticSite^.["#ftpSite"].url);
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.url = url;
+					«local (staticSiteLink = html.getLink ("here", url))
+					if url != "" {
+						if sizeOf (adrStaticSite^) > sizeOf (manilaData.newSiteTemplate.["#newsSite"].staticSite) {
+							return (manilaSuite.getString ("admin.staticSiteHasBeenRenderedHere", @replacementTable))};
+						return (manilaSuite.getString ("admin.staticSiteWillBeRenderedHere", @replacementTable))}}}
+			else {
+				return ("")}};
+		"newsRoom.directory.templateEditInPike" {
+			if manilaSuite.pike.memberHasPike (pta) {
+				if defined (pta^.newsSite^.directory.template) {
+					local (adrObject = @pta^.newsSite^.directory.template);
+					local (editInPikeUrl = "editInPike?" + string.urlEncode ("Directory Template"));
+					local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+					local (helpDescription = "Edit your directory template in an outliner in Radio UserLand.");
+					
+					«PBS 11/21/00: new method -- the browser calls the external editor.
+					local (appendTable);
+					new (tableType, @appendTable);
+					appendTable.itemType = "directoryTemplate";
+					editInPikeUrl = manilaSuite.pike.buildPikeButtonUrl (adrObject, "editAdvancedItem", @appendTable, pta);
+					add (manilaSuite.pike.pikeButton (editInPikeUrl, adrObject, pta^.adrMemberInfo, adrSite, false, helpDescription, pta))}}};
+		"newsRoom.slides.templateEditInPike" {
+			editInRadioButton (@pta^.newsSite^.slides.template, "slides template")};
+		
+		"newsRoom.mailToWeblog.passwordMessage" {
+			if defined (pta^.newsSite^.flNewsItemSite) {
+				if pta^.newsSite^.flNewsItemSite {
+					if pta^.method == "POST" {
+						if defined (pta^.postArgs.["newsRoom.mailToWeblog.password"]) {
+							if defined (pta^.postArgs.["newsRoom.mailToWeblog.repeatPassword"]) {
+								if pta^.postArgs.["newsRoom.mailToWeblog.password"] != pta^.postArgs.["newsRoom.mailToWeblog.repeatPassword"] {
+									return ("<b><font color=\"red\">" + manilaSuite.getString ("admin.mailToWeblogPasswordMismatch") + "</font></b>")}}}}}}};
+		
+		"newsRoom.newsItems.deleteDepartment" {
+			buildDepartmentPopup ()};
+		"newsRoom.newsItems.associateDepartmentGraphic" {
+			add ("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\">");
+			add ("<tr><td>");
+			buildDepartmentPopup ();
+			add ("</td><td>&nbsp;&nbsp;&nbsp;</td><td>");
+			add ("<input name=\"newsRoom.newsItems.departmentGraphic\" value=\"\" type=\"text\" size=\"20\">");
+			add ("</td></tr></table>")};
+		"newsRoom.newsItems.associateDepartmentGraphicHelpText" {
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.url = manilaSuite.getUrl ("editorialPictures");
+			return (manilaSuite.getString ("news.associatePictureWithDeptLink", @replacementTable))};
+		"newsRoom.newsItems.departmentListHelpText" {
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.url = manilaSuite.getUrl ("editorialNewsItems");
+			if not (replacementTable.url endswith "/") {
+				replacementTable.url = replacementTable.url + "/"};
+			replacementTable.url = replacementTable.url + "departments/";
+			return (manilaSuite.getString ("news.departmentListHelpText", @replacementTable))};
+		"newsRoom.newsItems.createPermission" {
+			local (selected = "Managing Editors");
+			if not defined (pta^.newsSite^.newsItems.access) {
+				pta^.newsSite^.newsItems.access = manilaData.newSiteTemplate.["#newsSite"].newsItems.access};
+			if pta^.newsSite^.newsItems.access.flMembersCreate {
+				selected = "Members"}
+			else {
+				if pta^.newsSite^.newsItems.access.flContributingEditorsCreate {
+					selected = "All Editors"}
+				else {
+					if not defined (pta^.newsSite^.newsItems.access.flContentEditorsCreate) {
+						pta^.newsSite^.newsItems.access.flContentEditorsCreate = false};
+					if pta^.newsSite^.newsItems.access.flContentEditorsCreate {
+						selected = "Content Editors"}}};
+			buildAccessPopup (selected)};
+		"newsRoom.newsItems.approvePermission" {
+			local (selected = "Managing Editors");
+			if not defined (pta^.newsSite^.newsItems.access) {
+				pta^.newsSite^.newsItems.access = manilaData.newSiteTemplate.["#newsSite"].newsItems.access};
+			if pta^.newsSite^.newsItems.access.flMembersPost {
+				selected = "Members"}
+			else {
+				if pta^.newsSite^.newsItems.access.flContributingEditorsPost {
+					selected = "All Editors"}
+				else {
+					if not defined (pta^.newsSite^.newsItems.access.flContentEditorsPost) {
+						pta^.newsSite^.newsItems.access.flContentEditorsPost = false};
+					if pta^.newsSite^.newsItems.access.flContentEditorsPost {
+						selected = "Content Editors"}}};
+			buildAccessPopup (selected)};
+		"newsRoom.newsItems.templateEditInPike" {
+			if manilaSuite.pike.memberHasPike (pta) {
+				if defined (pta^.newsSite^.newsItems.template) {
+					local (adrObject = @pta^.newsSite^.newsItems.template);
+					local (editInPikeUrl = "editInPike?" + string.urlEncode ("News Item Template"));
+					local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+					local (pikeHelpDescription = manilaSuite.getString ("news.editTemplateInPike"));
+					
+					«PBS 11/21/00: new method -- the browser calls the external editor
+					local (appendTable);
+					new (tableType, @appendTable);
+					appendTable.itemType = "newsItemTemplate";
+					editInPikeUrl = manilaSuite.pike.buildPikeButtonUrl (adrObject, "editAdvancedItem", @appendTable, pta);
+					add (manilaSuite.pike.pikeButton (editInPikeUrl, adrObject, pta^.adrMemberInfo, adrSite, false, pikeHelpDescription, pta))}}};
+		
+		"newsRoom.rssInfo.ccLicenseDescription" {
+			add (manilaSuite.getString ("admin.ccLicenseDescription"))};
+		
+		"prefs.language" {
+			add ("<select name=\"" + partialaddress + "\">"); indentlevel++;
+			
+			if not defined (pta^.language) { // set up the default language
+				local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+				local (adrPrefs = @adrSite^.["#prefs"]);
+				if defined (config.mainResponder.globals.language) {
+					adrPrefs^.language = config.mainResponder.globals.language}
+				else {
+					if defined (user.prefs.language) {
+						adrPrefs^.language = user.prefs.language}
+					else {
+						adrPrefs^.language = "English"}};
+				pta^.language = adrPrefs^.language};
+			
+			on addChoice (choice, string) {
+				local (checked = "");
+				if string.lower (choice) == string.lower (pta^.language) {
+					checked = " selected"};
+				add ("<option value=\"" + choice + "\"" + checked + ">" + string)};
+			
+			local (i, ct = sizeOf (manilaData.localization.languages));
+			for i = 1 to ct {
+				local (name = nameOf (manilaData.localization.languages[i]), displayName);
+				try { // in case the language name isn't translated
+					displayName = mainResponder.getString ("languages." + name)}
+				else { // use the name, with the first character uppercase'd
+					displayName = string.upper (name[1]) + string.mid (name, 2, infinity)};
+				addChoice (name, displayName)};
+			
+			add ("</select>"); indentlevel--};
+		
+		"newsRoom.discussTheme.helpText" {
+			return (manilaSuite.getString ("admin.discussionGroupThemeHelpText"))};
+		"newsRoom.discussTheme.downloadLink" {
+			local (flCloneable = manilaSuite.getNewsSitePref ("discussTheme.flCloneable", default:false, flCreate:true));
+			if flCloneable { //add download link
+				try {
+					local (adrSite = manilaSuite.getSiteAddress ());
+					local (downloadUrl = manilaSuite.discussThemes.getDownloadUrl (adrSite));
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.downloadUrl = downloadUrl;
+					add (manilaSuite.getString ("admin.themeDownloadLink", @replacementTable, pta: pta))}}};
+		
+		"newsRoom.flSendHomePageUpdatesSeparator" { //PBS 10/01/01: separator for home page updates
+			if defined (config.manila.prefs.flSendUpdateNoticesToUserLand) {
+				if config.manila.prefs.flSendUpdateNoticesToUserLand {
+					local (separatorColor, separatorTextColor);
+					manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+					on addSeparator (text) {
+						add ("<tr><td colspan=\"2\">");
+						add ("<table cellpadding=\"2\" cellspacing=\"0\" width=\"100%\"><tr>");
+						add ("<td bgcolor=\"" + separatorColor + "\"><font color=\"" + separatorTextColor + "\"><b>" + text + "</b></font></td>");
+						add ("</tr></table><p></td></tr>")};
+					addSeparator (defaultValue)}}};
+		"newsRoom.flSendHomePageUpdates" { //PBS 10/01/01: home page updates boolean
+			if defined (config.manila.prefs.flSendUpdateNoticesToUserLand) {
+				if config.manila.prefs.flSendUpdateNoticesToUserLand {
+					if not defined (pta^.newsSite^.flSendUpdateNoticesToUserLand) {
+						pta^.newsSite^.flSendUpdateNoticesToUserLand = true};
+					add ("<tr><td>");
+					add ("Do you want to send notices of home page updates to Weblogs.Com and Google BlogSearch?");
+					add ("</td><td>");
+					local (fl = boolean (pta^.newsSite^.flSendUpdateNoticesToUserLand));
+					on addradio (val, flchecked, linetext) {
+						local (s = "<input type=\"radio\" name=\"" + partialAddress + "\" value=" + val);
+						if flchecked {
+							s = s + " checked"};
+						add (s + ">" + linetext)};
+					addradio ("true", boolean (fl), "Yes");
+					addradio ("false", !boolean (fl), "No");
+					add ("</td></tr>")}}};
+		"newsRoom.staticRenderingMethod" {
+			buildStaticRenderingMethodPopup(defaultvalue)};
+		"newsRoom.staticRenderWhereConditionalStart";
+		"newsRoom.staticRenderWhereConditionalStop";
+		"newsRoom.staticRenderFTPConditionalStart";
+		"newsRoom.staticRenderFTPConditionalStop" {
+			htmltext="[[" + partialAddress + "]]"};
+		
+		"newsRoom.trackbackConditionalStart";
+		"newsRoom.trackbackConditionalStop";
+		"newsRoom.syndicateDgConditionalStart";
+		"newsRoom.syndicateDgConditionalStop" {
+			htmltext="[[" + partialAddress + "]]"}};
+	
+	if htmltext endswith "\r" {
+		htmltext = string.delete (htmltext, sizeof (htmltext), 1)};
+	
+	return (htmltext)}

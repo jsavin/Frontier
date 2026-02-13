@@ -1,0 +1,22 @@
+on getSiteFolder (adrSite) {
+	«Get the path on disk to the folder containing gems for this site.
+		«04/13/00; 9:19:30 PM by PBS
+	
+	local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));
+	if defined (adrPrefs^.folder) {
+		return (adrPrefs^.folder)};
+	
+	local (siteName = manilaSuite.getCanonicalSiteName (adrSite));
+	siteName = manilaSuite.getShortSitename (siteName);
+	
+	if not defined (config.manila.prefs.gemsFolder) {
+		scriptError ("Can't get the gems site folder for \"" + siteName + "\" because the global gems folder has not been set in the Control Panel.")};
+	
+	local (baseFolder = config.manila.prefs.gemsFolder);
+	file.sureFilePath (baseFolder);
+	if not (file.exists (baseFolder)) {
+		file.newFolder (baseFolder)};
+	local (pc = file.getPathChar ());
+	local (folder = baseFolder + siteName + pc);
+	
+	return (folder)} //note: the folder may not exist on disk

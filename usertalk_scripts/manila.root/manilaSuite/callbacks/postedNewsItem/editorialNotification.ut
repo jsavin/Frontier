@@ -1,0 +1,6 @@
+«Possibly send email to the editors that a news item has been posted to the home page.
+	«04/30/00; 6:23:07 PM by PBS
+
+url = adrSite^.["#ftpSite"].url; //URL of the home page
+manilaSuite.emailNotification.notifyNewsItemStatusChange (adrMsg, adrSite, url, adrMember, "posted");
+return (true)

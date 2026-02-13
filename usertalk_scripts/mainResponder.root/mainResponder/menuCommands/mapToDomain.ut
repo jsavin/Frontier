@@ -1,0 +1,9 @@
+local (adrwebsite = table.getcursoraddress ());
+if dialog.ask ("Enter domain name to map to \"" + nameof (adrwebsite^) + "\":", @config.mainResponder.prefs.lastMappedDomainName) {
+	local (adrconfig = @config.mainresponder.domains.[config.mainResponder.prefs.lastMappedDomainName]);
+	if defined (adrconfig^) {
+		if not dialog.confirm ("There's already a defined domain with the name \"" + config.mainResponder.prefs.lastMappedDomainName + "\", replace it?") {
+			return}};
+	adrconfig^ = adrwebsite;
+	webbrowser.openurl ("http://" + config.mainResponder.prefs.lastMappedDomainName + "/");
+	filemenu.savemyroot (adrconfig)}

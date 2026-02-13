@@ -1,0 +1,129 @@
+on handler (pta, adrObject) {
+	«manilaSuite.sitePrefs.handlers.Colors.handler : 04/05/15, 16:52:58 by DAB
+		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	«messages at manilaData.localization.languages.english.strings.admin
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf(this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName(pta, sectionName));
+	
+	add("\r<p>");
+	add(manilaSuite.getString ("admin." + shortName + "SectionDescription", pta: pta));
+	add("\r</p>");
+	
+	local (replacementTable);
+	bundle { //set up replacement table
+		new (tableType, @replacementTable);
+		replacementTable.displayName = displayName};
+	
+	if defined(pta^.postargs.[shortname]) {
+		case true {
+			defined (pta^.postArgs.restoreToDefault) {
+				add(manilaSuite.sitePrefs.utility.confirmBox(pta, shortname, "admin.confirmColorsRestoreToDefault", @replacementTable))};
+			defined (pta^.postArgs.doRestoreDefault) { //restore to default
+				local (siteInfo);
+				new (tableType, @siteInfo);
+				siteInfo.adrSite = adrSite;
+				siteInfo.siteName = nameOf(adrSite^); //PBS 12/13/99: fix for siteName not defined error
+				manilaSuite.newSite.createCustomColors (@siteInfo);
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				
+				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.ColorsRestoredToDefault", @replacementTable));
+				«cause the containing frame to refresh
+				add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")};
+			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
+				}}
+		else { //try to update the colors
+			adrObject^.membersBoxHeader = pta^.postArgs.["colors.membersBoxHeader"];
+			adrObject^.membersBoxHeaderText = pta^.postArgs.["colors.membersBoxHeaderText"];
+			adrObject^.membersBox = pta^.postArgs.["colors.membersBox"];
+			adrObject^.separator = pta^.postArgs.["colors.separator"];
+			adrObject^.separatorText = pta^.postArgs.["colors.separatorText"];
+			adrObject^.discussListings = pta^.postArgs.["colors.discussListings"];
+			manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+			
+			«Refresh the page.
+			add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.ColorsUpdatedSuccess", @replacementTable));
+			«cause the containing frame to refresh
+			add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname + "=2'</script>")}};
+	
+	if pta^.searchArgs != "" {
+		local (argTable);
+		new (tableType, @argTable);
+		webserver.parseArgs (pta^.searchArgs, @argTable);
+		if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+			case argTable.[shortName] {
+				"1" {
+					add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.ColorsHasBeenRestoredToDefault", @replacementTable))};
+				"2" {
+					add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.ColorsUpdatedSuccess", @replacementTable))}}}};
+	
+	on tdLabel (label="") {
+		if label == "" {
+			label = sectionName};
+		add ("\r\t\t<td align='left'valign='top'width='300'>" + label + "</td>");
+		return (true)};
+	on tdValue (prefName, default) {
+		local (value=default);
+		value = manilaSuite.getNewsSitePref(prefName, default:default, flCreate:false, flUntaint:true);
+		add ("\r\t\t<td valign='top' align='left'>");
+		add ("<input name='" + prefName + "' value='" + value + "' size='10'>");
+		add ("</td>");
+		return (true)};
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	bundle { //members box header color
+		add ("\r\t<tr>");
+		tdLabel ("Header color for Members box");
+		tdValue ("colors.membersBoxHeader", "black");
+		add ("\r\t</tr>")};
+	bundle { //members box header text color
+		add ("\r\t<tr>");
+		tdLabel ("Color for text in Members box header");
+		tdValue ("colors.membersBoxHeaderText", "ivory");
+		add ("\r\t</tr>")};
+	bundle { //members box bgcolor
+		add ("\r\t<tr>");
+		tdLabel ("Background color for Members box");
+		tdValue ("colors.membersBox", "ivory");
+		add ("\r\t</tr>")};
+	bundle { //separator color
+		add ("\r\t<tr>");
+		tdLabel ("Separator color");
+		tdValue ("colors.separator", "black");
+		add ("\r\t</tr>")};
+	bundle { //separator text color
+		add ("\r\t<tr>");
+		tdLabel ("Separator text color");
+		tdValue ("colors.separatorText", "ivory");
+		add ("\r\t</tr>")};
+	bundle { //dg listings color
+		add ("\r\t<tr>");
+		tdLabel ("Background color for discussion group listings");
+		tdValue ("colors.discussListings", "beige");
+		add ("\r\t</tr>")};
+	
+	add ("\r</table>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	bundle { //row for buttons
+		add(manilaSuite.sitePrefs.utility.addButtons(pta, adrObject, sectionName, false))};
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

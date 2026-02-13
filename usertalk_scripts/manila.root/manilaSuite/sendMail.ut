@@ -1,0 +1,41 @@
+on sendMail (recipient="", subject="", message="", sender=user.prefs.mailAddress, cc="", bcc="", host=user.prefs.mailHost, mimeType="text/plain", adrHdrTable=nil, timeOutTicks=60*60,  flMessages=true) {
+	«This is a wrapper script for tcp.sendMail. It allows the server manager to place a set of callback scripts to over-ride tcp.sendMail, add logging of email, do email filtering, whatever. It also (12/19/01) converts text from Mac to Latin on Macs.
+		«08/07/00; 3:25:12 PM by PBS
+		«Changes:
+			«03/26/01; 11:33:17 AM by PBS
+				«Removed a line of debugging code.
+			«12/19/01; 2:33:10 PM by PBS
+				«Convert message and subject from Mac to Latin text on Macs.
+	
+	if not defined (config.manila.callbacks.sendMail) { //just call tcp.sendMail if the user callbacks table doesn't exist
+		if system.environment.isMac { //PBS 12/19/01: bug fix from David Bayly: convert from Mac to Latin
+			message = latinToMac.macToLatin (message);
+			subject = latinToMac.macToLatin (subject)};
+		return (tcp.sendMail (recipient, subject, message, sender, cc, bcc, host, mimeType, adrHdrTable, timeOutTicks, flMessages))};
+	
+	local (t); //this is the context table for the callbacks; it contains the parameters to tcp.sendMail, but they may get changed by a callback.
+	new (tableType, @t);
+	bundle { //put parameters in the context table
+		t.recipient = recipient;
+		t.subject = subject;
+		t.message = message;
+		t.sender = sender;
+		t.cc = cc;
+		t.bcc = bcc;
+		t.host = host;
+		t.mimeType = mimeType;
+		t.adrHdrTable = adrHdrTable;
+		t.timeOutTicks = timeOutTicks;
+		t.flMessages = flMessages;
+		t.flCallbackSentMail = false}; //false by default; callback can change if it sent email
+	
+	manilaSuite.callbacks.sendMailCallback (@t);
+	
+	if t.flCallbackSentMail { //did a callback handle sending email?
+		return (true)}; //don't send email
+	
+	«Use the context table -- this allows callbacks to filter any of the parameters to tcp.sendMail.
+	if system.environment.isMac { //PBS 12/19/01: bug fix from David Bayly: convert from Mac to Latin
+		t.message = latinToMac.macToLatin (t.message);
+		t.subject = latinToMac.macToLatin (t.subject)};
+	return (tcp.sendMail (t.recipient, t.subject, t.message, t.sender, t.cc, t.bcc, t.host, t.mimeType, t.adrHdrTable, t.timeOutTicks, t.flMessages))}

@@ -1,0 +1,40 @@
+on renderWholeWeek (adrManilaSite, adrStaticSite=nil, dateInWeek=clock.now ()) {
+	«Render one week of home pages.
+		«9/7/01; 3:58:46 PM by PBS
+	
+	local (oldPta = html.getPageTableAddress ());
+	manilaSuite.staticRendering.startRenderSession (adrManilaSite, true);
+	
+	local (dayOfWeek = date.dayOfWeek (dateInWeek));
+	local (dateFirstOfWeek = dateInWeek);
+	local (i);
+	for i = 2 to dayOfWeek { //get first day in week
+		dateFirstOfWeek = date.yesterday (dateFirstOfWeek)};
+	
+	on renderDay (d) {
+		local (day, month, year, hour, minute, second);
+		date.get (d, @day, @month, @year, @hour, @minute, @second);
+		month = string.padWithZeros (month, 2);
+		day = string.padWithZeros (day, 2);
+		local (relativePath = year + "/" + month + "/" + day);
+		local (adrDay);
+		if defined (adrManilaSite^.[year].[month].[day]) {
+			manilaSuite.staticRendering.renderPage (relativePath, adrManilaSite, adrStaticSite);
+			local (adrItem); //do DaveNet-style days
+			for adrItem in @adrManilaSite^.[year].[month].[day] {
+				if typeOf (adrItem^) == tableType {
+					if defined (adrItem^.discussionRoot) {
+						local (relativePath = year + "/" + month + "/" + day + "/" + nameOf (adrItem^));
+						manilaSuite.staticRendering.renderPage (relativePath, adrManilaSite, adrStaticSite)}}}};
+		
+		return (true)};
+	
+	local (d = dateFirstOfWeek);
+	for i = 1 to 7 {
+		renderDay (d);
+		d = date.tomorrow (d)};
+	
+	html.setPageTableAddress (oldPta);
+	local (t);
+	t = manilaSuite.staticRendering.endRenderSession (adrManilaSite);
+	return (t)}

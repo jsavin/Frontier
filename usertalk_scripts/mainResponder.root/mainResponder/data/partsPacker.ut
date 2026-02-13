@@ -1,0 +1,20 @@
+«10/22/98; 8:23:16 AM by DW
+	«copies all the needed parts that live in Frontier.root
+
+window.about ();
+local (adrpartslist = @mainresponder.data.partslist);
+local (adrparts = @mainresponder.data.parts);
+new (tabletype, adrparts);
+target.set (adrpartslist);
+op.firstsummit ();
+local (ct = 1, adr, adrsubtable);
+loop {
+	adr = address (op.getlinetext ());
+	msg (adr);
+	adrsubtable = @adrparts^.["Part" + string.padwithzeros (ct++, 4)];
+	new (tabletype, adrsubtable);
+	adrsubtable^.adr = adr;
+	adrsubtable^.data = adr^;
+	if not op.go (down, 1) {
+		break}};
+filemenu.savemyroot (this)

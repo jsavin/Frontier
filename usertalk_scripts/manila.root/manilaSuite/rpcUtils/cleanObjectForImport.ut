@@ -1,0 +1,40 @@
+on cleanObjectForImport (adrObject, flEnableSafeMacros = false) {
+	«Monday, November 22, 1999 at 1:39:15 AM by AR
+		«Make sure it's safe to import the object
+	on cleanObject (adrObject) {
+		case typeOf (adrObject^) {
+			listType {
+				local (ix, item, theList);
+				for ix = 1 to sizeOf (adrObject^) {
+					theList = adrObject^[ix];
+					cleanObject (@theList);
+					adrObject^[ix] = theList}};
+			tableType {
+				local (adrItem);
+				for adrItem in adrObject {
+					cleanObject (adrItem)}};
+			stringType { //actual cleaning
+				local (s = adrObject^);
+				s = string.replaceAll (s, cr + lf, cr);
+				s = string.replaceAll (s, lf, cr);
+				adrObject^ = mainResponder.neuterText (s, true, false)}};
+		return (true)};
+	local (pageTable);
+	new (tableType, @pageTable);
+	pageTable.enableSafeMacros = flEnableSafeMacros;
+	local (oldpta);
+	try {oldpta = html.getPageTableAddress ()};
+	html.setPageTableAddress (@pageTable);
+	try {
+		cleanObject (adrObject)}
+	else {
+		if oldpta != nil {
+			html.setPageTableAddress (oldpta)}
+		else {
+			html.deletePageTableAddress ()};
+		scriptError (tryerror)};
+	if oldpta != nil {
+		html.setPageTableAddress (oldpta)}
+	else {
+		html.deletePageTableAddress ()};
+	return (true)}

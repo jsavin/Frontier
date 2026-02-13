@@ -1,0 +1,30 @@
+on getWorkgroupInfo (username, password) {
+	«3/14/99; 7:19:05 PM by DW
+		«Return the todolists for all members of the user's workgroup. We return a table. Each sub-table contains the todolist outline for one of the members of your workgroup. We pack the outline and base64-encode it and store it in the "outlinebits" sub-element of the table. However, if there was an error, the outlinebits item won't be there, and an "error" item will be there instead, containing a string which explains the error. Lots of things can go wrong. A person you name might not be member, or might not have a workgroup sub-table, or might not have you in his or her workgroup list. Everything has to be right in order for you to get the todolist.
+	local (groupname = "default");
+	local (adrmember = mainResponder.members.getMemberTableWithPassword (groupname, username, password));
+	local (adrworkgroup = @adrmember^.workgroup);
+	if not defined (adrworkgroup^) {
+		scriptError ("Can't get workgroup info because your member table doesn't contain a workgroup sub-table.")};
+	local (workgroupinfo); new (tabletype, @workgroupinfo);
+	local (adrlist = @adrworkgroup^.workgrouplist, ct = sizeof (adrlist^), item, adrcolleague, adrsubtable);
+	for item in adrlist^ {
+		adrsubtable = @workgroupinfo.[item]; new (tabletype, adrsubtable);
+		adrcolleague = mainResponder.members.getMemberTable (groupname, item);
+		if not defined (adrcolleague^) {
+			adrsubtable^.error = "There is no member table for this person on the workgroup server.";
+			continue};
+		if not defined (adrcolleague^.workgroup) {
+			adrsubtable^.error = "The member table for this person does not contain a workgroup sub-table.";
+			continue};
+		if not defined (adrcolleague^.workgroup.workgroupList) {
+			adrsubtable^.error = "Your email address, \"" + username + "\" is not in the workgroup list for \"" + item + "\".";
+			continue};
+		if not (adrcolleague^.workgroup.workgroupList contains username) {
+			adrsubtable^.error = "Your email address, \"" + username + "\" is not in the workgroup list for \"" + item + "\".";
+			continue};
+		
+		local (outlinebits);
+		pack (adrcolleague^.workgroup.todolist, @outlinebits);
+		adrsubtable^.outlinebits = base64.encode (string (outlinebits), 0)};
+	return (workgroupinfo)}

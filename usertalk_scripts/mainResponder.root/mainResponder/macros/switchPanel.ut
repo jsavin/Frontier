@@ -1,0 +1,11 @@
+local (pta = html.getpagetableaddress ());
+if defined (pta^.adrmemberinfo) {
+	local (adrmember = pta^.adrmemberinfo);
+	local (adrpanels = @adrmember^.panels);
+	if not defined (adrpanels^) {
+		new (tabletype, adrpanels)};
+	local (adrpanel = @adrpanels^.[pta^.panelName]);
+	if not defined (adrpanel^) {
+		new (tabletype, adrpanel)};
+	adrpanel^.panelnum = number (pta^.pathargs)};
+mainresponder.redirect (pta^.requestheaders.Referer)

@@ -1,0 +1,7 @@
+on setTemplateModified (adrnewssite) {
+	«Changes
+		«11/24/2000; 12:11:44 PM by DW
+			«Created. Sets templateModified date to now. This is called from manilaData.sitePrefs.wizard.callbacks.setValue and observed in manilaSuite.directory.initMessageTable.
+			«I made this a procedure so it would be easy to add functionality without diving into the prefs wizard system.
+	adrnewssite^.directory.templateModified = clock.now ();
+	return (true)}

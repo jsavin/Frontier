@@ -1,0 +1,91 @@
+on getSnippet (htmltext, words, flHtmlSnippets=true) {
+	«Changes
+		«8/7/02; 7:15:42 PM by JES
+			«Created. Take some html text and search terms and return a snippet of sample text from the page which contains the search terms, ala Google's snippets.
+	words = string.replaceAll (words, "\"", "");
+	htmltext = string.replaceAll (htmltext, "&nbsp;", " ");
+	local (lowertext = string.lower (htmltext));
+	bundle { //strip everything before <body>, if present
+		local (ixbody);
+		ixbody = string.patternMatch ("<body", lowertext);
+		if ixbody > 0 {
+			htmltext = string.delete (htmltext, 1, ixbody - 1);
+			lowertext = string.delete (lowertext, 1, ixbody - 1)}};
+	htmltext = searchEngine.stripMarkup (htmltext);
+	lowertext = searchEngine.stripMarkup (lowertext);
+	
+	local (flFirstSnippet = true);
+	on getOneSnippet (word) {
+		local (lowerword = string.lower (word));
+		local (ixword = string.patternMatch (lowerword, lowertext));
+		if ixword > 0 {
+			local (i, ix = ixword, flStartEllipses = true);
+			for i = 1 to 50 { //try to find the start of the sentence
+				if ix == 1 {
+					break};
+				case htmltext[ix] {
+					'.';
+					'!';
+					'?';
+					':';
+					')';
+					'\'';
+					'\"';
+					']' {
+						ix++;
+						flStartEllipses = false;
+						break}};
+				ix--};
+			local (s = string.trimWhiteSpace (string.mid (htmltext, ix, 75 + i)));
+			if flStartEllipses {
+				local (firstword = string.nthField (s, " ", 1));
+				s = string.delete (s, 1, sizeOf (firstword))};
+			local (lastword = string.nthField (s, " ", string.countFields (s, " ")));
+			s = string.trimWhiteSpace (string.mid (s, 1, sizeOf (s) - sizeOf (lastword)));
+			if flStartEllipses and flFirstSnippet {
+				s = "... " + s};
+			flFirstSnippet = false;
+			s = s + " ...";
+			return (s)}
+		else {
+			return ("")}};
+	
+	local (snippets = "", snippet);
+	local (ctwords = string.countFields (words, " "));
+	local (i);
+	for i = 1 to ctwords { //get snippets for the first 3 search terms
+		if i > 3 { //only do first three search terms
+			break};
+		snippet = getOneSnippet (string.nthField (words, " ", i)) + " ";
+		if not (snippets contains string.mid (snippet, 1, 30)) {
+			snippets = snippets + snippet}};
+	if flHtmlSnippets { //embolden search terms
+		local (lowersnippet = string.lower (snippets));
+		for i = 1 to ctwords {
+			local (lowerword = string.lower (string.nthField (words, " ", i)));
+			lowersnippet = string.replaceAll (lowersnippet, lowerword, "<b>" + lowerword + "</b>")};
+		local (ct = sizeOf (lowersnippet) - 3);
+		for i = 1 to ct {
+			if lowersnippet[i] == '<' {
+				if lowersnippet[i+1] == 'b' {
+					snippets = string.insert ("<b>", snippets, i)}
+				else { //closing tag
+					snippets = string.insert ("</b>", snippets, i)}}}};
+	if flHtmlSnippets { //make ellipses more visible
+		snippets = string.replaceAll (snippets + " ", "... ", "<b>...</b> ")}; //make ellipses more visible
+	return (string.popTrailing (snippets, " "))};
+«bundle //test code
+	«bundle //show snippet
+		«local (url = "http://127.0.0.1:8080/users/0000003/2002/07/11.html")
+		«local (snippet = getSnippet (pageinfo.[url].text, "john"))
+		«dialog.notify (snippet)
+	«local (folder = file.folderFromPath (frontier.getProgramPath ()))
+	«local (s = file.readWholeFile (folder + "Guest Databases:www:users:0000003:index.html"))
+	«bundle //show snippet
+		«local (snippet = getSnippet (s, "radio copyright"))
+		«dialog.notify (snippet)
+	«bundle //benchmark
+		«local (ticks = clock.ticks ())
+		«for i = 1 to 10
+			«getSnippet (s, "radio copyright")
+		«dialog.notify ((clock.ticks () - ticks) / 60.0)

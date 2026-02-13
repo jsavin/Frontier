@@ -1,0 +1,36 @@
+on getMemberEmail (adrMember) {
+	«Changes
+		«11/12/05; 10:46:29 PM by JES
+			«When checking for existing email address, use more conservative assumptions about the type of data that may already be there.
+		«11/1/05; 3:51:26 AM by JES
+			«Created. Return the email address of a member.
+				«This verb should be called any time you need the email address of a Manila site member.
+					«We can no longer assume that the name of the member table is a valid email address.
+					«We get the email address from adrMember^.personalInfo.email if it exists.
+					«If not defined or empty, we look for adrMember^.personalInfo.emailAddress.
+					«If emailAddress is also not defined or empty, then we attempt to get the email address from the name of the member table.
+					«If the name of the member table is not a valid email address, we generate an error.
+					«Note: There are two locations for email address storage because the username is always named personalInfo.email when calling prefsSuite.browser. personalInfo.emailAddress is an alternate storage location which can be specified in the custom prefs XML, so that members *may* have an email address, but don't have to.
+	if defined (adrMember^.personalInfo.email) {
+		if typeOf (adrMember^.personalInfo.email) == stringType {
+			if sizeOf (adrMember^.personalInfo.email) > 0 {
+				return (adrMember^.personalInfo.email)}}};
+	if defined (adrMember^.personalInfo.emailAddress) {
+		if typeOf (adrMember^.personalInfo.emailAddress) == stringType {
+			if sizeOf (adrMember^.personalInfo.emailAddress) > 0 {
+				return (adrMember^.personalInfo.emailAddress)}}};
+	local (tableName = nameOf (adrMember^));
+	if tableName contains "@" {
+		if not defined (adrMember^.personalInfo) {
+			new (tableType, @adrMember^.personalInfo)};
+		if not defined (adrMember^.personalInfo.email) {
+			adrMember^.personalInfo.email = tableName};
+		if adrMember^.personalInfo.email == nil {
+			adrMember^.personalInfo.email = tableName};
+		if sizeOf (adrMember^.personalInfo.email) == 0 {
+			adrMember^.personalInfo.email = tableName}}
+	else { //error
+		scriptError ("Can't get the email address for member, \"" + nameOf (adrMember^) + "\" because the member's table is not named for, and does not contain an email address.")};
+	return (adrMember^.personalInfo.email)};
+«bundle //test code
+	«manilaSuite.members.getMemberEmail (@homeManilaWebsite.["#membershipGroup"].users.test1)

@@ -1,0 +1,54 @@
+on attachPicture (username, password, siteName, msgNum, mimeType, pictureBits) {
+	«Attach picture data to a message.
+		«Changes:
+			«10/09/00; 10:22:51 PM by PBS
+				«Make sure pictures index gets updated.
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't attach a picture to message \"" + msgNum + "\" because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, adrroot:adrDiscuss));
+	
+	manilaSuite.rpcUtils.authorCheck (siteName, username, adrmsg);
+	
+	local (flStoredInDg = false);
+	
+	if defined (adrSite^.["#prefs"].flDiscussStoreImages) { //possibly store this image in the dg, not to disk
+		if adrSite^.["#prefs"].flDiscussStoreImages {
+			local (flGif = false, flJpeg = false);
+			
+			case string.lower (mimeType) { //is it a GIF or a JPEG?
+				"image/gif" {
+					flGif = true};
+				"image/jpeg";
+				"image/pjpeg" {
+					flJpeg = true}};
+			
+			if flGif or flJpeg { //store GIFs and JPEGs in the dg
+				if not defined (adrMsg^.image) {
+					new (tableType, @adrMsg^.image)};
+				adrMsg^.image.bits = binary (pictureBits);
+				adrMsg^.image.mimeType = mimeType;
+				local (hwList);
+				if flGif {
+					hwList = html.getGifHeightWidth (@adrMsg^.image.bits);
+					setBinaryType (@adrMsg^.image.bits, 'GIFf')};
+				if flJpeg {
+					hwList = html.getJpegHeightWidth (@adrMsg^.image.bits);
+					setBinaryType (@adrMsg^.image.bits, 'JPEG')};
+				adrMsg^.image.height = hwList [1];
+				adrMsg^.image.width = hwList [2];
+				flStoredInDg = true}}};
+	
+	if not flStoredInDg { //write to disk
+		scriptError ("Can't attach the image because the MIME type \"" + mimeType + "\" is not supported.")};
+	
+	local (picturesCategory = manilaSuite.discuss.getPicturesCategory (adrSite));
+	manilaSuite.discuss.addCategoryToMessage (adrmsg, picturesCategory, adrSite); //PBS 10/09/00: update indexes
+	
+	fileMenu.saveMyRoot (adrmsg);
+	
+	return (string (adrDiscuss^.prefs.msgReaderUrl) + msgNum)}

@@ -1,0 +1,78 @@
+on editStory (adrMsgTable, url, pta=nil) {
+	«Send a message to Pike: please open a window to edit this story.
+		«01/13/00; 4:08:53 PM by PBS
+		«Changes:
+			«02/05/00; 5:47:55 PM by PBS
+				«Add the windowInfo table to the storyInfo struct.
+			«04/10/00; 10:46:02 AM by PBS
+				«If this is a Mac, convert the body from Mac to Latin text, since Pike always expects Latin text.
+			«11/02/00; 9:52:09 PM by JES
+				«Add flServerAcceptsOpml to the story info struct. It's always true because we know the seerver is up-to-date if this change exists.
+	
+	local (pikeIp, pikePort, pikeRpcPath);
+	bundle { //get information about the machine running Pike
+		local (pikeInfoTable);
+		pikeInfoTable = manilaSuite.pike.getPikeInfo (pta);
+		pikeIp = pikeInfoTable.ipAddress;
+		pikePort = pikeInfoTable.port;
+		pikeRpcPath = pikeInfoTable.rpcPath};
+	
+	local (procedureName = "pike.editStory");
+	
+	local (siteInfoTable);
+	siteInfoTable = manilaSuite.pike.buildSiteInfo (pta);
+	
+	local (storyInfoTable);
+	bundle { //get info about the current story
+		new (tableType, @storyInfoTable);
+		«Add these elements from the dg message table:
+			«body -- the contents as a string.
+			«subject -- the title of the story.
+			«URL -- the URL of the story.
+			«member -- the member name of the person who originally posted the story.
+			«postTime -- the date and time the story was originally posted.
+			«lastUpdate -- the date and time the story was last updated.
+			«ctReads -- the number of times the story has been read.
+			«responses -- the list of message numbers that are responses to this story.
+		
+		bundle { //get the contents of this story
+			if defined (adrMsgTable^.outline) {
+				storyInfoTable.body = string (adrMsgTable^.outline)}
+			else {
+				storyInfoTable.body = string (adrMsgTable^.body)};
+			
+			if system.environment.isMac { //PBS 04/10/99: convert from Mac to Latin text
+				storyInfoTable.body = latinToMac.macToLatin (storyInfoTable.body)}};
+		
+		storyInfoTable.subject = adrMsgTable^.subject;
+		
+		bundle { //get the URL of this page
+			storyInfoTable.URL = url};
+		
+		storyInfoTable.member = adrMsgTable^.member;
+		storyInfoTable.postTime = adrMsgTable^.postTime;
+		storyInfoTable.lastUpdate = adrMsgTable^.lastUpdate;
+		storyInfoTable.ctReads = adrMsgTable^.ctReads;
+		storyInfoTable.responses = adrMsgTable^.responses;
+		storyInfoTable.msgNum = adrMsgTable^.msgNum;
+		if defined (adrMsgTable^.windowInfo) { //PBS 02/05/00: get windowInfo if present
+			storyInfoTable.windowInfo = adrMsgTable^.windowInfo};
+		local (rendererInfo);
+		if defined (adrMsgTable^.rendererInfo) {
+			rendererInfo = adrMsgTable^.rendererInfo}
+		else {
+			new (tableType, @rendererInfo);
+			rendererInfo.name = "pikeRenderer";
+			rendererInfo.flRenderOnEntry = true};
+		storyInfoTable.rendererInfo = rendererInfo;
+		if not date.versionLessThan (Frontier.version (), "7.0b21") { // only accept opml if the server is 7.0b21 or later
+			storyInfoTable.flServerAcceptsOpml = true; //11/02/00 JES: always true because we already know the server is up-to-date.
+			if defined (adrMsgTable^.opml) { //11/01/00 JES: add the opml to the table if present
+				storyInfoTable.opml = string (adrMsgTable^.opml)}}};
+	
+	local (params = {siteInfoTable, storyInfoTable});
+	
+	local (result);
+	result = betty.rpc.client (pikeIp, pikePort, procedureName, @params, fldebug:false);
+	
+	return (result)}

@@ -1,0 +1,4 @@
+on midnightDate (dt) {
+	local (day, month, year, hour, minute, second);
+	date.get (dt, @day, @month, @year, @hour, @minute, @second);
+	return (date.set (day, month, year, 0, 0, 0))}

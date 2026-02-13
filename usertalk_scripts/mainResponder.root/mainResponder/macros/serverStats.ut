@@ -1,0 +1,30 @@
+«Changes:
+	«04/14/00; 7:40:44 PM by JES
+		«localized
+	«05/01/00; 7:11:47 PM by JES
+		«Changed getString calls to use a replacement table address instead of a lists
+local (htmltext = "");
+on add (s) {
+	htmltext = htmltext + s};
+with user.webserver.stats {
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	replacementTable.upsince = mainResponder.localization.dateTimeString (upsince);
+	replacementTable.hits = hits;
+	replacementTable.maxconnections = maxConnections;
+	replacementTable.possible = user.inetd.config.http.count + 1;
+	replacementTable.frontierversion = Frontier.version ();
+	replacementTable.osname = system.environment.osFullNameForDisplay;
+	if defined (system.environment.winServicePackNumber) {
+		replacementTable.servicepaknum = system.environment.winServicePackNumber};
+	replacementTable.osversion = system.environment.osVersionString;
+	replacementTable.memavail = string.megabytestring (memavail ());
+	replacementTable.minmemavail = string.megabytestring (minMemAvail);
+	replacementTable.maxmemavail = string.megabytestring (maxMemAvail);
+	add (mainResponder.getString ("macros.serverStats.upSinceHits", @replacementTable) + "<br>");
+	add (mainResponder.getString ("macros.serverStats.maxConnectionsOf", @replacementTable) + "<br>");
+	if defined (system.environment.winServicePackNumber) {
+		add (mainResponder.getString ("macros.serverStats.versionString", @replacementTable) + "<br>")}
+	else {
+		add (mainResponder.getString ("macros.serverStats.versionStringNoServicePakNum", @replacementTable) + "<br>")};
+	add (mainResponder.getString ("macros.serverStats.memavailString", @replacementTable) + "<br>")};
+return (htmltext)

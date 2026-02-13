@@ -1,0 +1,112 @@
+on inspector () {
+	«Changes
+		«2/22/06; 7:41:40 PM by JES
+			«Reformat HTML to match the rest of the admin page.
+		«04/05/20, 17:20:39 by DAB
+			«create and process data for cohort mainteance 
+			«inspector : 02/05/07, 17:04:16 by DAB
+			«messages at manilaData.localization.languages.english.strings.accessControl
+	local (pta = html.getPageTableAddress());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	
+	local (adminUrl = manilaSuite.getUrl ("editorialAdmin", pta));
+	if pta^.searchArgs != "" {
+		adminUrl = adminUrl + "?" + pta^.searchArgs};
+	
+	manilaSuite.accessControl.buildDefaultCohorts(adrCohorts);
+	
+	local (separatorColor, separatorTextColor);
+	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (replTbl);
+	bundle { //02/03/24, 10:16:42 by DAB
+		new(tabletype, @replTbl)};
+	
+	local (errCntr = 0);
+	on errorReport(errID, hue="red") {
+		add("<p>");
+		add("<span style = 'color:" + hue + "'>" + manilaSuite.getString("accessControl." + errID, @replTbl, pta:pta) + "</span>");
+		add("</p>");
+		errCntr++};
+	
+	if pta^.method == "POST" {
+		«pta^.title = manilaSuite.getString("accessControl.pageTitle", pta:pta)    //02/03/24, 09:36:57 by DAB
+		«pta^.navigatorLinks = manilaFixer.drawManilaMenu ()
+		
+		case true {
+			defined(pta^.postArgs.inspectchange);
+			defined(pta^.postArgs.inspectview) {
+				local (indexTbl);
+				manilaSuite.AccessControl.indexBy(adrSite, pta^.postArgs.indexKey, @indexTbl);
+				add(manilaSuite.AccessControl.indexDisplay(@indexTbl, pta^.postArgs.indexKey));
+				return htmlText};
+			defined(pta^.postArgs.inspectMember) { //03/01/12, 18:24:56 by DAB
+				«return manilaSuite.accessControl.membersMessages(adrSite, pta^.postargs.memberkey)
+				«memberkey is an index into users subtable 04/05/31, 12:27:00 by DAB
+				local (memberKey = nameOf(adrGroup^.users[number(pta^.postargs.memberkey)]));
+				replTbl.memberKey = memberKey;
+				case true {
+					adrNewsSite^.sysopmail contains memberKey {
+						errorReport("memberisME", blue)};
+					adrNewsSite^.contentEditors contains memberKey {
+						errorReport("memberisCE", blue)}}
+				else {
+					add(manilaSuite.accessControl.membersMessages(adrSite, memberKey))}}}};
+	
+	bundle { //build form to select sort Key
+		add(manilaSuite.getString("accessControl.inspectorHelpText", pta:pta));
+		
+		add("\r<form action = '" + adminURL + "#inspector' method = 'post' name = 'inspector' id = 'inspector'>");
+		add("\r\t<table>");
+		
+		add("\r\t\t<tr>");
+		add("\r\t\t\t<td>" + manilaSuite.getString("accesscontrol.inspectFormIndexKeyID", pta: pta) + "</td>");
+		add("\r\t\t\t<td>");
+		add("\r\t\t\t\t<select name = 'indexkey'>");
+		add("\r\t\t\t\t\t<option selected value = 'permittedcohorts'>" + manilaSuite.getString("accesscontrol.permittedcohorts", pta: pta)    + "</option>");
+		add("\r\t\t\t\t\t<option value = 'releasedate'>" + manilaSuite.getString("accesscontrol.releasedate", pta: pta)    + "</option>");
+		add("\r\t\t\t\t\t<option value = 'expirydate'>" + manilaSuite.getString("accesscontrol.expirydate", pta: pta)    + "</option>");
+		add("\r\t\t\t\t</select>");
+		add("</td>");
+		add("<td>");
+		add("<input type = 'submit' name = 'inspectview' value = '" + manilaSuite.getString("accesscontrol.inspectFormVieweButton", pta: pta) + "'>");
+		add("</td>");
+		add("\r\t\t</tr>");
+		
+		add("\r\t</table>");
+		add("\r</form>")};
+	
+	bundle { //build form to show controlled messages visible to user 03/01/12, 13:15:08 by DAB
+		add(manilaSuite.getString("accessControl.inspectUserHelpText", pta:pta));
+		
+		add("\r<form action = '" + adminURL + "#inspector' method = 'post' name = 'inspectuser'>");
+		add("\r\t<table>");
+		add("\r\t\t<tr>");
+		add("\r\t\t\t<td>" + manilaSuite.getString("accesscontrol.inspectUserFormID", pta: pta) + "</td>");
+		add("\r\t\t\t<td>");
+		«add("\r\t\t\t\t<select name = 'memberkey'>")
+		«local (adrMember, nme, selected)
+		«for adrMember in @adrGroup^.users
+			«selected = ""
+			«nme = string.lower(nameof(adrMember^) )
+			«if nme == string.lower(nameof(pta^.adrMemberinfo^))
+				«selected = " selected"
+			«add("\r\t\t\t\t\t<option value = '" + nme+ "'" + selected + ">" + string.replace(nme, "@", "&#064;")  + "</option>")
+		«add("\r\t\t\t\t</select>")
+		add(manilaSuite.accessControl.memberMenu(pta, "inspect", "memberkey", {nameOf(pta^.adrMemberInfo^)}, 1, 100));
+		add("</td>");
+		add("<td>");
+		add("<input type = 'submit' name = 'inspectMember' value = '" + manilaSuite.getString("accesscontrol.inspectFormVieweButton", pta: pta) + "'>");
+		add("</td>");
+		add("\r\t\t</tr>");
+		add("\r\t</table>");
+		add("\r</form>")};
+	
+	return htmltext}

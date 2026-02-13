@@ -1,0 +1,13 @@
+on getContributingEditorList (pta=nil) {
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if not defined (pta^.newsSite^.contributingEditors) {
+		return ({})};
+	
+	local (ceList = pta^.newsSite^.contributingEditors);
+	
+	if typeOf (ceList) != listType {
+		ceList = {ceList}};
+	
+	return (ceList)}

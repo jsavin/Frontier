@@ -1,0 +1,13 @@
+on getLastDate (username, password, siteName) {
+	«Get the last date in the home page calendar.
+		«Changes:
+			«06/22/00; 8:36:59 PM by JES
+				«Bug fix: the call to manilaSuite.rpcUtils.memberCheck wasn't passing beginningErrorString
+	
+	bundle { //make sure the person is a member of the site
+		local (beginningErrorString = "Can't get the last date in the home page calendar because ");
+		manilaSuite.rpcUtils.memberCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	return (mainResponder.calendar.getLastDay (adrSite))}

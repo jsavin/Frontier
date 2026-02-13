@@ -1,0 +1,115 @@
+on messageUndo (pta, adrMsg) {
+	«Changes
+		«05/03/30, 11:12:34 by DAB
+			«Repair shortcuts to pictures after rolling a picture back to a previous version.
+		«04/05/18, 21:27:59 by DAB
+			«Created. Perform the actual rollback operation for messages; provoked by a post on the rollback form in an ETP page script.
+	local (adrSite = manilaSuite.getmanilaSiteAddress(pta));
+	local (adrMember = pta^.adrMemberInfo);
+	local (maxFilesOpened, maxVersions); //04/05/18, 21:50:36 by DAB
+	manilaSuite.versioning.getConfiguration(@maxFilesOpened, @maxVersions); //04/05/18, 21:50:07 by DAB
+	
+	local (replTbl);
+	bundle { //replacement table
+		new(tabletype, @replTbl);
+		replTbl.sitename = manilaSuite.getCanonicalSitename(adrSite);
+		replTbl.maxFilesOpened =  maxFilesOpened;
+		replTbl.maxVersions =  maxVersions};
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	on errorReport(s) {
+		add("<p align = 'center'>");
+		add("<span style = 'color:red'>" + manilaSuite.getString("versioning." + s, @replTbl, pta:pta)  + "</span>");
+		add("</p>")};
+	
+	pta^.title = manilaSuite.getString("Versioning.pageTitleRollback", @replTbl, pta:pta);
+	
+	manilaSuite.referer.checkEdit ();
+	
+	if pta^.method != "POST" { //shoudl not be here except from posts
+		scriptError("redirect " + pta^.requestHeaders.referer)};
+	
+	local (msgNum = pta^.postArgs.msgNum);
+	local (flDiscardCurrent = defined(pta^.postArgs.rollBackDiscard) and pta^.postArgs.rollBackDiscard=="on");
+	replTbl.object =  "message #" + msgNum; //05/02/12, 14:13:34 by DAB
+	
+	if pta^.postargs.rollbackto == "" {
+		errorReport("errNoVersionSpecified");
+		return htmlText};
+	
+	if not (manilaSuite.custody.memberCanCheckOutObject (adrMsg, adrMember, adrSite, true)) {
+		return (manilaSuite.getString ("discuss.cantPostStoryCustodyError"))};
+	
+	local (adrPriorMsg = adrMsg);
+	local (flFound);
+	bundle { //locate desired version
+		replTbl.version =   date(pta^.postargs.rollbackto);
+		
+		local (filesOpened=0, versionsFound=0);
+		
+		on openRoot(f) {
+			if file.exists (f) {
+				if window.isOpen (f) {
+					return true};
+				try {
+					fileMenu.open (f, true);
+					filesOpened++;
+					return true}};
+			return false};
+		
+		local (adrLinkTbl);
+		local (targetTimestamp = date(pta^.postargs.rollbackto));
+		loop {
+			if filesOpened == maxFilesOpened {
+				errorReport("errmaxFilesOpened");
+				break};
+			
+			if versionsFound == maxVersions {
+				errorReport("errmaxVersions");
+				break};
+			
+			adrLinkTbl = @adrPriorMsg^.versioning;
+			if not defined(adrLinkTbl^) {
+				errorReport("errNoLink");
+				break};
+			
+			local (f = adrLinkTbl^.logFile);
+			if not openRoot(f) {
+				errorReport("errMissingLog");
+				break};
+			
+			adrPriorMsg = @[f];
+			with adrPriorMsg^ {
+				adrPriorMsg = address(adrLinkTbl^.logEntry)};
+			if not defined(adrPriorMsg^) {
+				errorReport("errMissingEntry");
+				break};
+			
+			if adrLinkTbl^.timestamp == targetTimeStamp {
+				flFound = true;
+				break};
+			
+			versionsFound++}};
+	
+	if flFound {
+		table.assign(adrMsg, adrPriorMsg^);
+		if manilaSuite.discuss.isPicture(adrMsg, adrSite) { //05/03/30, 11:12:34 by DAB
+			local (shortcut);
+			if manilaSuite.pictures.getShortcutFromImageTable (adrMsg, @shortcut) {
+				pta^.glossary^.[shortcut] = mainResponder.discuss.buildImageTag (adrMsg^.msgNum)}};
+		manilaSuite.discuss.removeFromAllIndexes(adrSite, adrMsg); //05/03/30, 11:19:04 by DAB
+		manilaSuite.discuss.addToIndexes(adrSite, adrMsg); //05/03/30, 11:19:04 by DAB
+		pta^.adrEditedMsg = adrMsg; //05/03/30, 11:36:44 by DAB
+		mainResponder.callbackLoop (@config.mainResponder.callbacks.editMessage, pta); //05/03/30, 11:12:39 by DAB
+		if flDiscardCurrent {
+			manilaSuite.custody.undoCheckOut (adrMsg, adrMember, adrSite, flMessage:true)}
+		else {
+			manilaSuite.custody.checkIn (adrMsg, adrMember, adrSite, true)};
+		«local (redirectUrl = pta^.responderAttributes.urls^.discussMsgReader + msgNum)
+		«if defined (pta^.postArgs.referer)
+			«redirectUrl = pta^.postArgs.referer
+		};«mainResponder.redirect (redirectUrl)
+	
+	return  htmlText}

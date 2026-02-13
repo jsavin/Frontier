@@ -1,0 +1,30 @@
+on getLanguageTableAddress (pta = nil) {
+	«4/17/00; 1:22:19 AM by JES
+	«Returns the address of the language table corresponding to the language specified in the page table.
+		«If the page table specifies languageTableAddress, return that address
+		«If the page table does not specify languageTableAddress, return the address to the table corresponding to the language in the page table
+		«If the page table does not specify a language or if there's no translation table for the specified language, return the default address, the address of the English language table
+	«Changes:
+		«05/01/00; 1:51:33 PM by JES
+			«added checking for global Frontier language pref at user.prefs.language -- this is the default fallback for Frontier.getString
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if defined (pta^.manilaLanguageTableAddress) { // return the address specified in the page table -- optimization
+		return (pta^.manilaLanguageTableAddress)};
+	if defined (pta^.language) { // if the page table specifies a language, return the address for the language
+		if defined (manilaData.localization.languages.[pta^.language]) {
+			pta^.manilaLanguageTableAddress = (@manilaData.localization.languages.[pta^.language]);
+			return (pta^.manilaLanguageTableAddress)}};
+	if defined (config.mainResponder.globals.language) { // does the server have a default setting?
+		if defined (manilaData.localization.languages.[config.mainResponder.globals.language]) {
+			pta^.manilaLanguageTableAddress = (@manilaData.localization.languages.[config.mainResponder.globals.language]);
+			return (@manilaData.localization.languages.[config.mainResponder.globals.language])}};
+	if defined (user.prefs.language) { // does Frontier have a default setting?
+		if defined (manilaData.localization.languages.[user.prefs.language]) {
+			pta^.manilaLanguageTableAddress = (@manilaData.localization.languages.[user.prefs.language]);
+			return (@manilaData.localization.languages.[user.prefs.language])}};
+	
+	pta^.manilaLanguageTableAddress = @manilaData.localization.languages.english;
+	return (@manilaData.localization.languages.english)} // couldn't find the language table -- default to English

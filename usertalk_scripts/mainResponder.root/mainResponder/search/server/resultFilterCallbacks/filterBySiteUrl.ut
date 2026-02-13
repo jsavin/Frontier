@@ -1,0 +1,16 @@
+on singleSiteFilter (adrsearch) {
+	«Changes
+		«8/11/02; 2:21:44 AM by JES
+			«Created. A search result filter which removes all hits that aren't in the site specified by the siteurl searchArg.
+	local (siteurl = "http"); //default to all http pages
+	bundle { //set siteUrl if siteurl search arg is present
+		local (t); new (tableType, @t);
+		webserver.parseArgs (pta^.searchArgs, @t);
+		if defined (t.siteurl) {
+			siteurl = string.lower (t.siteurl)}};
+	local (i, ct = sizeOf (adrsearch^.rawResults));
+	for i = ct downto 1 {
+		if not (string.lower (nameOf (adrsearch^.rawResults[i])) beginsWith siteurl) {
+			delete (@adrsearch^.rawResults[i])}};
+	adrsearch^.totalHits = sizeOf (adrsearch^.rawResults);
+	return (true)}

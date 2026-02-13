@@ -1,0 +1,17 @@
+on upgradeSite (adrSite) {
+	«Upgrade an existing site to add gems support.
+		«04/15/00; 5:26:18 PM by PBS
+	
+	if not defined (adrSite^.gems) {
+		adrSite^.gems = manilaData.newSiteTemplate.gems};
+	
+	local (baseUrl = adrSite^.["#ftpSite"].url);
+	local (adrUrls = @adrSite^.["#urls"]);
+	if not defined (adrUrls^.editorialGems) {
+		adrUrls^.editorialGems = baseUrl + "gems/"};
+	if not defined (adrUrls^.gemPostMessage) {
+		adrUrls^.gemPostMessage = baseUrl + "gems/edit/postMsg"};
+	if not defined (adrUrls^.gemNewMessage) {
+		adrUrls^.gemNewMessage = baseUrl + "gems/edit/newGem"};
+	
+	return (true)}

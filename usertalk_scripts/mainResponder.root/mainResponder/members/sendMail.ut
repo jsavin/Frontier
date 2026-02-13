@@ -1,0 +1,51 @@
+on sendMail (mailaddress, adrmemberstable, pta=nil) {
+	«Changes:
+		«8/8/02; 2:58:26 PM by JES
+			«Support for passwords stored as binaries instead of as clear-text strings.
+		«10/27/00; 10:35:01 PM by PBS
+			«The page table addres is now an optional parameter. It may be needed by localization routines.
+		«05/01/00; 6:58:20 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+		«04/14/00; 9:15:22 PM by JES
+			«localized error messages
+	mainresponder.members.validmailaddress (mailaddress); //scriptErrors if not valid
+	
+	local (adrusers = @adrmemberstable^.users);
+	if not defined (adrusers^) {
+		new (tabletype, adrusers)};
+	local (adrpendingmember = @adrusers^.[mailaddress]);
+	
+	local (flnewpassword = true);
+	if adrmemberstable^.openToPublic {
+		if defined (adrpendingmember^) {
+			flnewpassword = false}
+		else {
+			new (tabletype, adrpendingmember)}}
+	else {
+		if not defined (adrpendingmember^) {
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.sysopmail = user.prefs.mailaddress;
+			scriptError (mainResponder.getString ("members.sendMailNotPublicError", @replacementTable, pta:pta))}; // 4/14/00 JES: localized //PBS 10/27/00: send pta parameter
+		if defined (adrpendingmember^.password) {
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.mailaddress = mailaddress;
+			scriptError (mainResponder.getString ("members.sendMailAlreadyMemberError", @replacementTable, pta:pta))}}; // 4/14/00 JES: localized //PBS 10/27/00: send pta parameter
+	
+	if flnewpassword {
+		local (password);
+		bundle { //create a new password
+			for i = 1 to 12 {
+				password = password + char (random ('A', 'Z'))};
+			adrpendingmember^.password = binary (password)}};
+	bundle { //send the email message
+		local (s = string (adrmemberstable^.mailtemplate));
+		s = string.replaceAll (s, "<<password>>", adrpendingmember^.password);
+		s = string.davenetMassager (2, 60, s);
+		local (subject = adrmemberstable^.mailSubject);
+		local (returnAddress = adrmemberstable^.mailReturnAddress);
+		tcp.sendMail (mailaddress, subject, s, returnAddress);
+		msg ("")}; //erase messages displayed by tcp.sendMail
+	fileMenu.saveMyRoot (adrmemberstable);
+	return (true)};
+«bundle //test code
+	«sendMail ("dave@userland.com", @["C:\\Palm Springs\\Websites\\discussiongroup.root"].["#members"])

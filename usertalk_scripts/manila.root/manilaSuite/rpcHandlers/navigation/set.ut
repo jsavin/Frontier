@@ -1,0 +1,35 @@
+on set (username, password, siteName, s, windowInfoTable) {
+	«Set the text of the navigation XML.
+		«Changes:
+			«02/06/00; 9:09:08 PM by PBS
+				«Save the window info table.
+			«02/22/01; 12:06:02 AM by JES
+				«Convert outgoing text from Mac to Latin, if the server is a Mac.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't set the navigation because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	manilaSuite.rpcUtils.cleanObjectForImport (@s);
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	if not defined (adrSite^.["#navigator"].outline) {
+		local (siteInfo);
+		new (tableType, @siteInfo);
+		siteInfo.adrSite = adrSite;
+		manilaSuite.newSite.createNavigator (@siteInfo)};
+	try {
+		local (t);
+		if system.environment.isMac {
+			s = latinToMac.convert (s)};
+		xml.compile (s, @t);
+		wp.newTextObject (s, @adrSite^.["#navigator"].outline)}
+	else {
+		scriptError ("Can't update the navigator because " + tryerror)};
+	
+	bundle { //PBS 20/06/00: save the window info table
+		manilaSuite.rpcUtils.setWindowInfoTable (windowInfoTable, "navigation", adrSite)};
+	
+	fileMenu.saveMyRoot (adrSite);
+	
+	return (true)}

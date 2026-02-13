@@ -1,0 +1,17 @@
+on addDepartment (adrSite, name, pictureShortcut=nil) {
+	«Add a department and, optionally, an associated picture.
+		«04/20/00; 8:22:23 PM by PBS
+	
+	local (adrDepartmentsTable = manilaSuite.news.getDepartmentTableAddress (adrSite));
+	local (adrDepartment = @adrDepartmentsTable^.[name]);
+	if not defined (adrDepartment^) {
+		new (tableType, adrDepartment)};
+	if pictureShortcut != nil {
+		adrDepartment^.pictureShortcut = pictureShortcut};
+	if not defined (adrDepartment^.createdDate) {
+		local (now = clock.now (), zone);
+		if manilaSuite.getSiteTimeZone (adrSite, @zone) {
+			now = manilaSuite.convertTime (now, zone)};
+		adrDepartment^.createdDate = now};
+	
+	return (adrDepartment)}

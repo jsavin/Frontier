@@ -1,0 +1,26 @@
+on getCurrentContent (siteName) {
+	«Get the contents of the current home page.
+		«4/4/07; 2:45:54 PM by LL
+			«If the site is a members only site, return an error message.
+		«4/16/00; 10:47:25 AM by DW
+			«In a single rpc call, we return the text that's currently on the home page of the site. In order to do it with the previous interfaces, we'd need to store a username and password to access information that is public. 
+			«Rather than replicate code, I added a new rpcUtil, manilaSuite.rpcUtils.getMessageContent, and changed manilaSuite.rpcHandlers.message.get to call it.
+		«Changes:
+			«04/17/00; 1:53:58 AM by PBS
+				«If it's an editors-only site, generate a scriptError.
+			«04/25/00; 6:07:06 PM by PBS
+				«If it's a news item site, return the news items rendering of the home page.
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrSite = parentOf (adrNewsSite^));
+	bundle { //if it's an editors only or members only site, generate a scriptError
+		if defined (adrNewsSite^.flEditorsOnlyAccessToSite) {
+			if adrNewsSite^.flEditorsOnlyAccessToSite {
+				scriptError ("Can't get the home page because \"" + siteName + "\" is an editors only site.")}};
+		if defined (adrNewsSite^.flMembersOnlyAccessToSite) {
+			if adrNewsSite^.flMembersOnlyAccessToSite {
+				scriptError ("Can't get the home page because \"" + siteName + "\" is a members only site.")}}};
+	if manilaSuite.news.newsItemsEnabled (adrSite) {
+		return (manilaSuite.news.rpcGetHomePageContent (siteName))};
+	local (msgNum = adrNewsSite^.discussLinks.homePagemsgNum);
+	return (manilaSuite.rpcUtils.getMessageContent (siteName, msgNum))}

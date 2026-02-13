@@ -1,0 +1,114 @@
+on index (adrObject, flMsgReader=false, adrDgMsg=nil, adrSiteTable=nil) {
+	«Index an object.
+		«This is the highest-level client-side index verb. Call this whenever something is new or changed.
+		«Pages are indexed when:
+			«1) They're checked in or sent to server via WebEdit.
+			«2) A discussion group message is new or changed.
+		«Wed, Mar 10, 1999 at 1:33:27 PM by PBS
+		«Changes:
+			«01/31/00; 12:50:09 PM by PBS
+				«Don't index messages in a Manila site. Allow Manila's indexing routines to handle those. Don't add anything to the log in this case.
+			«01/21/00; 6:10:11 PM by PBS
+				«If the script has access to the page table, get the address of the site there and check to see if it's a Manila site. If so, don't try the standard mainResponder indexer, allow Manila's indexer to handle indexing.
+			«07/15/00; 12:51:02 PM by PBS
+				«Fixed a bug in checking that the site is a Manila site. If a site is a Manila site, let Manila handle sending the index request to the search engine, skip the mainResponder indexer.
+	
+	local (dbPath = window.getFile (table.getRootAddress (adrObject)));
+	local (adrParent = parentOf (adrObject^));
+	
+	try { //PBS 01/31/00: don't index content in a Manila site, allow Manila's own indexing routines to handle indexing.
+		try { //we might have access to the page table -- get the address of the site there.
+			local (pta = html.getPageTableAddress ());
+			if manilaSuite.isManilaSite (pta^.adrSiteRootTable) {
+				return (true)}};
+		if string.lower (nameOf (adrParent^)) == "messages" {
+			local (adrDg = parentOf (adrParent^));
+			if string.lower (nameOf (adrDg^)) == "#discussiongroup" {
+				local (adrSite = parentOf (adrDg^));
+				if manilaSuite.isManilaSite (adrSite) {
+					return (true)}}}}; //don't index, this is a Manila site, let Manila do the indexing
+	
+	local (pageTable);
+	new (tableType, @pageTable);
+	
+	«First make sure our prefs exist.
+	if not defined (config.mainResponder.search) {
+		mainResponder.search.client.logNoIndex (adrObject, "because config.mainResponder.search is undefined.");
+		return (true)};
+	
+	«Find out if this is a discussion group message. If it is, call indexDiscussionMessage and return.
+	bundle {
+		local (flDg = false);
+		
+		bundle { //PBS 03/15/00: new logic for finding out if it's a dg message -- supports discussion groups outside of discuss.root
+			if string.lower (dbPath) == string.lower (system.temp.mainResponder.discussRootFile) {
+				flDg = true}
+			else {
+				local (adrParent = parentOf (adrObject^));
+				if nameOf (adrParent^) == "messages" { //it's probably a dg message
+					«Check to see if the object is a table containing subject, body, member, and postTime fields.
+					if defined (adrObject^.body) and defined (adrObject^.subject) and defined (adrObject^.member) and defined (adrObject^.postTime) {
+						«It's a dg message.
+						flDg = true}}}};
+		
+		if flDg {
+			«Make sure the parent of adrObject is the messages table.
+			if string.lower (nameOf (adrParent^)) == "messages" {
+				«flDiscussMessage = true //PBS 03/15/00: this line appears to be extraneous
+				return (mainResponder.search.client.indexDiscussionMessage (adrObject))}
+			else { //it's a change to discuss.root, but it's not a changed message. Don't index, return right away.
+				mainResponder.search.client.logNoIndex (adrObject, "is in discuss.root, but it's not the address of a discussion group message table.");
+				return (true)}}}; //true just means this script ran okay, it doesn't indicate anything else
+	
+	«At this point, adrObject is in a website, or it shouldn't be indexed.
+	
+	«First make sure it's in a website and doesn't start with # or have # in its path.
+		«Otherwise return -- this object should not be indexed.
+	bundle {
+		if html.traversalSkip (adrObject) {
+			mainResponder.search.client.logNoIndex (adrObject, "begins with a # sign.");
+			return (true)};
+		
+		if not (mainResponder.search.client.inWebsite (adrObject)) {
+			mainResponder.search.client.logNoIndex (adrObject, "it's not in the content part of a website.");
+			return (true)}};
+	
+	«At this point, adrObject is either a page, a part of a table that's a table, or a table containing pages.
+		«If it's a page, index it.
+		«If it's part of a table that's a page, figure out the address of the page itself.
+		«If it's a table containing pages, loop through the table, indexing each page.
+	
+	bundle { //build the page table for this page, we'll need it
+		
+		«Build a page table.
+		html.buildPageTable (adrObject, @pageTable)};
+	
+	«If it's a table, is it a table of pages or a table that's rendered as one web page?
+	if typeOf (adrObject^) == tableType {
+		«Look for the presence of a #renderTableWith directive. Look for a msgNum item.
+		if defined (pageTable.renderTableWith) {
+			if defined (adrObject^.msgNum) and defined (adrObject^.discussionRoot) {
+				return (mainResponder.search.client.indexPage (adrObject, @pageTable, flMsgReader, adrDgMsg, adrSiteTable))} //it's a page, index it
+			else {
+				«It's impossible to tell if it's a page or not. Don't index it, rather than index it wrongly.
+					«Return.
+				mainResponder.search.client.logNoIndex (adrObject, "the search engine can't tell if this is a page or a table containing other pages.");
+				return (true)}}
+		else { //it's a table containing other pages. Loop through the objects in that table.
+			local (i);
+			for i = 1 to sizeOf (adrObject^) {
+				mainResponder.search.client.index (@adrObject^ [i], flMsgReader, adrDgMsg, adrSiteTable)};
+			return (true)}}
+	else { //if it's not a table, it might be contained by a table that's a page
+		«Look for a renderTableWith directive.
+		if defined (pageTable.renderTableWith) {
+			if defined (adrParent^.msgNum) { //it's contained by a table that's a page
+				return (mainResponder.search.client.index (adrParent, @pageTable, flMsgReader, adrDgMsg, adrSiteTable))}
+			else {
+				«We don't know if this is a page or part of a table that's a page. Don't index, return.
+				mainResponder.search.client.logNoIndex (adrObject, "the search engine can't tell if this is a page or an element in a table containing other pages.");
+				return (true)}}
+		else { //it's a page, index it
+			return (mainResponder.search.client.indexPage (adrObject, @pageTable, flMsgReader, adrDgMsg, adrSiteTable))}};
+	
+	return (true)}

@@ -1,0 +1,27 @@
+on getDownloadUrl (adrSite) {
+	«Changes
+		«10/11/02; 11:15:31 PM by JES
+			«If the site does not have its own theme configured, but a theme has been applied, link to the theme's home page.
+		«06/05/00; 8:17:13 PM by PBS
+			«Created.
+			«Given the address of a site, return the URL for downloading the theme from the site.
+	
+	local (url);
+	local (baseUrl = adrSite^.["#ftpSite"].url);
+	url = baseUrl + "downloadTheme/";
+	local (name = "");
+	if defined (adrSite^.["#newsSite"].theme.name) {
+		name = adrSite^.["#newsSite"].theme.name;
+		local (fname = name);
+		fname = string.dropNonAlphas (string.innerCaseName (fname));
+		url = url + fname + ".fttb"; //it's a Frontier table
+		return (url)}
+	else {
+		if defined (adrsite^.["#themes"].lastThemeApplied) {
+			name = adrsite^.["#themes"].lastThemeApplied;
+			local (adrtheme = @config.manila.themes.[name]);
+			if defined (adrtheme^) {
+				if defined (adrtheme^.Info) {
+					if defined (adrtheme^.Info.siteUrl) {
+						return (adrtheme^.Info.siteUrl)}}}}};
+	scriptError ("Can't link to the theme because this site is not clone-able, and no theme has ever been applied.")}

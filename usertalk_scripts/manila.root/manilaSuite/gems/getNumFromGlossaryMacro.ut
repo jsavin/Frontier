@@ -1,0 +1,8 @@
+on getNumFromGlossaryMacro (s) {
+	«Given a glossary macro -- {manilaSuite.gems.includeGem ([num])} -- return num.
+		«04/14/00; 6:36:57 PM by PBS
+	
+	local (num = string.nthField (s, '(', 2));
+	num = string.nthField (num, ')', 1);
+	
+	return (num)}

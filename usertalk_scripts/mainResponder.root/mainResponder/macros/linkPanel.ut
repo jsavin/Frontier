@@ -1,0 +1,92 @@
+on linkPanel (adroutline, ixLinkSet, flUseCache=true, switchLinkUrl="switchLinks$", flFormulas=false) {
+	«Changes:
+		«4/14/00; 6:29:29 PM by JES
+			«localized
+	on link (url, linetext, title=nil, color=nil) {
+		local (startfont = "", endfont = "");
+		if color != nil {
+			startfont = "<font color=\"" + color + "\">";
+			endfont = "</font>"};
+		if url == "" {
+			return (startfont + linetext + endfont)}
+		else {
+			local (titlepart = "");
+			if title != nil {
+				titlepart = "title=\"" + title + "\""};
+			return ("<a " + titlepart + "href=\"" + url + "\">" + startfont + linetext + endfont + "</a>")}};
+	if ixlinkset == nil { //get it from the user's member info
+		ixlinkset = 1;
+		local (pta = html.getpagetableaddress ());
+		if defined (pta^.adrmemberinfo) {
+			local (adrpanels = @pta^.adrmemberinfo^.panels);
+			if defined (adrpanels^) {
+				local (adrpanel = @adrpanels^.[pta^.panelname]);
+				if defined (adrpanel^) {
+					ixlinkset = adrpanel^.panelnum}}}};
+	local (adrcache);
+	bundle { //check cache to see if we don't have to traverse the outline
+		local (adrsystemcache = @system.temp.mainResponder.linkPanelCache);
+		if not defined (adrsystemcache^) {
+			new (tabletype, adrsystemcache)};
+		local (adrcachetable = @adrsystemcache^.[string (adroutline)]);
+		if not defined (adrcachetable^) {
+			new (tabletype, adrcachetable)};
+		adrcache = @adrcachetable^.[string (ixLinkSet)];
+		if defined (adrcache^) {
+			if timeModified (adrcache) >= timeModified (adroutline) { //we can use the cache
+				if flUseCache {
+					return (string (adrcache^))}}}};
+	local (localoutline = adroutline^);
+	local (oldtarget = target.set (@localoutline), name, url, titleUrl);
+	local (oldcursor = op.getcursor ());
+	op.setdisplay (false);
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	bundle { //add switch-links
+		local (s = "<b>" + mainResponder.getString ("macros.linkPanel.links")); // 4/14/00 JES: localized
+		local (ct = 1);
+		op.firstsummit ();
+		loop {
+			s = s + "&nbsp;";
+			if ct == ixLinkSet {
+				s = s + link ("", op.getlinetext ())}
+			else {
+				s = s + link (switchLinkUrl + ct, op.getlinetext ())};
+			if not op.go (down, 1) {
+				s = s + "</b><p>";
+				add (s);
+				break};
+			ct++}};
+	bundle { //add links for this group
+		op.firstsummit ();
+		if ixLinkSet > 1 {
+			if not op.go (down, ixLinkSet - 1) {
+				scriptError (mainResponder.getString ("macros.linkPanel.notEnoughTopLevelGroupsError"))}}; // 4/14/00 JES: localized
+		op.expand (1);
+		if not op.go (right, 1) {
+			scriptError (mainResponder.getString ("macros.linkPanel.linkGroupHasNoSubheadsError"))}; // 4/14/00 JES: localized
+		loop {
+			name = op.getlinetext ();
+			op.expand (1);
+			url = ""; titleText = "";
+			if op.go (right, 1) {
+				url = op.getlinetext ();
+				if op.go (down, 1) {
+					titleText = op.getlinetext ()};
+				op.go (left, 1)};
+			if url == "" {
+				add (name + "<p>")}
+			else {
+				if flFormulas and (url beginswith "=") {
+					local (pta = html.getpagetableaddress ());
+					try {
+						url = evaluate (string.delete (url, 1, 1))}};
+				add (link (url, name, titletext) + "<p>")};
+			if not op.go (down, 1) {
+				break}}};
+	op.setcursor (oldcursor);
+	op.setdisplay (true);
+	target.set (oldtarget);
+	wp.newtextobject (htmltext, adrcache);
+	return (htmltext)}

@@ -1,0 +1,52 @@
+on pikeButton (url, adrObject, adrMember, adrSite, flMessage=false, linkTitle=nil, pta=nil) {
+	«Add a Pike button that can be clicked on.
+		«01/13/00; 7:00:58 PM by PBS
+		«Changes:
+			«01/17/00; 5:49:45 PM by PBS
+				«Don't display the Pike button if Pike support is not enabled on this server.
+			«02/10/00; 6:01:43 PM by PBS
+				«New parameters: adrObject, adrMember, adrSite, flMessage. These are needed for custody support. Display a dimmed Pike button if the member can't check out this page.
+			«03/23/00; 10:41:44 PM by PBS
+				«Don't serve the GIF from one of our static servers -- serve it from the local copy of Frontier. The two GIFs are now in mainResponder.resources.userlandIcons.
+			«03/27/00; 1:00:36 PM by PBS
+				«Specify the port, if other than 80, when creating the URL to the Pike GIF. This fixes the most common situation -- someone is running Frontier on a port other than 80.
+			«03/27/00; 11:50:30 PM by PBS
+				«Deal with the possible existence of resources.root.
+			«03/30/00; 10:01:56 AM by PBS
+				«Extended logic for determining if the Pike buttons should come from mainResponder resources or from a static server. This still needs more work: the buttons should always come from the local copy of Frontier.
+			«10/09/00; 6:31:05 PM by JES
+				«Serve the pike button graphic from mainResponder.resources using a /mainResponderResources/... path.
+			«10/20/00; 6:31:51 PM by JES
+				«Now use the Radio icon. Use the mainResponderResources path.
+			«12/02/00; 1:54:53 PM by PBS
+				«New button graphics.
+			«05/23/01; 5:27:57 PM by PBS
+				«If Radio is not enabled for this site, don't display a button.
+	
+	if not (manilaSuite.pike.pikeIsEnabled ()) { //PBS 01/17/00: don't display the Pike button if the Manila RPC handlers aren't linked in
+		return ("")};
+	if not (manilaSuite.pike.pikeIsEnabledForSite (adrSite)) { //PBS 05/23/01: Radio can be turned off on a siteby-site basis
+		return ("")};
+	
+	local (flDisabled = false);
+	local (pikeGifUrl);
+	pikeGifUrl = "/mainResponderResources/userlandIcons/radio2";
+	
+	if adrObject != nil {
+		if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, adrMember, adrSite, flMessage)) {
+			pikeGifUrl = "/mainResponderResources/userlandIcons/radio2Disabled";
+			flDisabled = true}};
+	
+	local (imgTag);
+	imgTag = "<img src=\"" + pikeGifUrl + "\" height=\"26\" width=\"90\" border=\"0\">";
+	
+	if flDisabled {
+		return (imgTag)};
+	
+	local (link);
+	if linkTitle != nil {
+		link = "<a href=\"" + url + "\" title=\"" + linkTitle + "\">" + imgTag + "</a>"}
+	else {
+		link = html.getLink (imgTag, url)};
+	
+	return (link)}

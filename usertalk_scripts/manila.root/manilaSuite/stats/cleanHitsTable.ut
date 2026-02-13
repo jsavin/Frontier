@@ -1,0 +1,31 @@
+on cleanHitsTable (adrTable) {
+	«Make sure the hits table doesn't have stale data.
+		«11/09/00; 7:18:40 PM by PBS
+	
+	local (day, month, year, hour, minute, second);
+	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+	local (currentHour = hour);
+	on newHour (adrTable) {
+		new (tableType, adrTable);
+		adrTable^.hits = 0;
+		adrTable^.day = day;
+		adrTable^.month = month;
+		adrTable^.year = year};
+	on checkHour (adrHour) {
+		if defined (adrHour^) {
+			if adrHour^.day != day {
+				newHour (adrHour)};
+			if adrHour^.month != month {
+				newHour (adrHour)};
+			if adrHour^.year != year {
+				newHour (adrHour)}}};
+	for i = currentHour downTo 0 {
+		adrHit = @adrTable^.[i];
+		checkHour (adrHit)};
+	
+	date.get (date.yesterday (clock.now ()), @day, @month, @year, @hour, @minute, @second);
+	for i = 23 downTo currentHour + 1 {
+		adrHit = @adrTable^.[i];
+		checkHour (adrHit)};
+	
+	return (true)}

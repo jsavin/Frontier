@@ -1,0 +1,30 @@
+on newGemForm (redirectUrl=nil, actionURL="") {
+	«Display the new Gem form.
+		«04/14/00; 3:50:23 PM by PBS
+	«Changes:
+		«04/20/00; 8:08:50 PM by JES
+			«localized
+	
+	local (titlePrompt = manilaSuite.getString ("gems.titlePrompt"));
+	local (filePrompt = manilaSuite.getString ("gems.chooseFilePrompt"));
+	local (buttonText = manilaSuite.getString ("gems.postNewGemButton"));
+	
+	local (htmlText = "", indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + string.filledString ('\t', indentLevel) + s + "\r"};
+	
+	local (enctypeAttrib = " enctype=\"multipart/form-data\"");
+	add ("<form method=\"POST\"" + enctypeAttrib + " action=\"" + actionURL + "\">");
+	indentLevel++;
+	
+	if redirectUrl != nil {
+		add ("<input type=\"hidden\" name=\"redirect\" value=\"" + redirectUrl + "\">")};
+	
+	add ("<b>" + titlePrompt + "</b><br><input size=\"40\" maxlength=\"60\" name=\"title\" value=\"\"><p>");
+	add ("<b>" + filePrompt + "</b><br><input type=\"file\" name=\"attachFile\"><p>");
+	
+	add ("<input type=\"submit\" value=\"" + buttonText + "\">");
+	add ("</form>");
+	indentLevel--;
+	
+	return (htmlText)}

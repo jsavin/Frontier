@@ -1,0 +1,30 @@
+on set (username, password, siteName, shortcutName, shortcutData) {
+	«Set a shortcut named shortcutName to shortcutData.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't set shortcut \"" + shortcutName + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrGlossary = @adrSite^.["#glossary"]);
+	
+	if not defined (adrGlossary) {
+		new (tableType, adrGlossary)};
+	
+	shortcutName = manilaSuite.unTaint (string.trimWhiteSpace (shortcutName));
+	manilaSuite.rpcUtils.cleanObjectForImport (@shortcutData, flEnableSafeMacros:true);
+	
+	local (adr = @adrGlossary^.[shortcutName]);
+	
+	if typeOf (shortcutData) == tableType {
+		if not defined (shortcutData.linetext) {
+			scriptError ("Can't set glossary entry because the submitted struct did not have a \"linetext\" element.")};
+		if not defined (shortcutData.path) {
+			scriptError ("Can't set glossary entry because the submitted struct did not have a \"path\" element.")};
+		new (tableType, adr);
+		adr^.linetext = string (shortcutData.linetext);
+		adr^.path = string (shortcutData.path)}
+	else {
+		table.assign (adr, string (shortcutData))};
+	
+	return (true)}

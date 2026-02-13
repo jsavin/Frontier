@@ -1,0 +1,117 @@
+on renderDomainTree (domain, maxsites=50) {
+	«Changes
+		«9/7/02; 1:29:32 PM by JES
+			«Handle non-site tree address-type domains.
+		«8/5/02; 9:16:19 PM by JES
+			«Created.
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	local (pta = html.getPageTableAddress ());
+	local (bg1 = pta^.trbg1, bg2 = pta^.trbg2);
+	local (bgcolor = bg2);
+	local (basedomain = domain);
+	if string.lower (basedomain) == "default" {
+		basedomain = string.nthField (pta^.host, ":", 1)}; //always pop off the port
+	local (baselink = "http://" + basedomain);
+	local (port = user.inetd.config.http.port);
+	bundle { //possibly append the port to the baselink
+		if defined (user.inetd.config.http.apparentPort) {
+			port = user.inetd.config.http.apparentPort};
+		if port != 80 {
+			baselink = baselink + ":" + user.inetd.config.http.port}};
+	local (adrdom = @config.mainResponder.domains.[domain]);
+	if mainResponder.siteTree.domainIsSiteTree (adrdom) {
+		mainResponder.siteTree.compileIfDirty (adrdom)};
+	local (pc = file.getPathChar ());
+	
+	on addRow (url, label, type, objectspec=nil) {
+		if bgcolor == bg1 {
+			bgcolor = bg2}
+		else {
+			bgcolor = bg1};
+		if objectspec == nil {
+			add ("<tr bgcolor=\"" + bgcolor + "\">")}
+		else { //make the bgcolor reflect whether or not the resource is available
+			case type {
+				"address" {
+					if defined (objectspec^) {
+						add ("<tr bgcolor=\"" + bgcolor + "\">")}
+					else {
+						add ("<tr bgcolor=\"#FFD0D0\">")}};
+				"folder" {
+					if file.exists (objectspec) {
+						add ("<tr bgcolor=\"" + bgcolor + "\">")}
+					else {
+						add ("<tr bgcolor=\"#FFD0D0\">")}}}};
+		add ("<td valign=\"top\" class=\"small\"><input type=\"checkbox\" name=\"" + domain + ":" + label + "\" /></td>");
+		add ("<td valign=\"top\" class=\"small\"><nobr><a href=\"" + url + "\">" + label + "</nobr></td>");
+		add ("<td valign=\"top\" class=\"small\">" + objectspec + "</td>");
+		add ("<td valign=\"top\" class=\"small\">" + type + "</td>");
+		add ("</tr>")};
+	
+	local (ctsites = 0);
+	on getLeafPath (adrleaf) {
+		local (path = "/");
+		local (nomad = adrleaf);
+		while string.lower (xml.convertToDisplayName (nameOf (nomad^))) == "site" {
+			if defined (nomad^.["/atts"].name) {
+				if sizeOf (nomad^.["/atts"].name) > 0 {
+					path = "/" + nomad^.["/atts"].name + path}};
+			nomad = parentOf (nomad^)};
+		return (path)};
+	on doSiteTreeLeaf (adrleaf) {
+		local (path = getLeafPath (adrleaf));
+		local (type, objectspec);
+		bundle { //set type and objectspec
+			if defined (adrleaf^.["/atts"].address) {
+				type = "address";
+				objectspec = adrleaf^.["/atts"].address}
+			else {
+				if defined (adrleaf^.["/atts"].folderpath) {
+					type = "folder";
+					objectspec = adrleaf^.["/atts"].folderpath}
+				else {
+					if defined (adrleaf^.["/atts"].redirect) {
+						type = "redirect";
+						objectspec = adrleaf^.["/atts"].redirect + "/"}}}};
+		addRow (baselink + path, path, type, objectspec);
+		ctsites++;
+		if ctsites >= maxsites {
+			if bgcolor == bg1 {
+				bgcolor = bg2}
+			else {
+				bgcolor = bg1};
+			add ("<tr bgcolor=\"" + bgcolor + "\"><td></td><td colspan=\"3\" class=\"small\">(There are more sites in this domain, but only the first " + maxsites + " are listed. To administer these sites, edit " + string.popFileFromAddress (adrdom) + " using the Frontier application. You can still add new sites using the form above.)</td></tr>");
+			return (false)};
+		return (true)};
+	on doDomain (adrdom) {
+		case typeOf (adrdom^) {
+			filespecType;
+			stringType {
+				if string.lower (adrdom^) beginsWith "http://" { //redirect
+					addRow (baselink + "/", "/", "redirect", adrdom^ + "/")}
+				else { // serving from filesystem
+					local (t);
+					if adrdom^ endsWith pc { //folder
+						t = "folder"}
+					else { //database
+						t = "database"};
+					addRow (baselink + "/", "/", t, adrdom^)}};
+			addressType {
+				local (url = "http://" + nameOf (adrdom^) + "/");
+				addRow (url, url, "address", string.popFileFromAddress (adrdom^))};
+			tableType {
+				if mainResponder.siteTree.domainIsSiteTree (adrdom) {
+					mainResponder.siteTree.visit (adrdom, @doSiteTreeLeaf)}
+				else {
+					local (adrdoc = @adrdom^.doctree);
+					doDomain (adrdoc)}}}};
+	
+	doDomain (adrdom);
+	
+	return (htmltext)};
+
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«renderDomainTree ("127.0.0.1")

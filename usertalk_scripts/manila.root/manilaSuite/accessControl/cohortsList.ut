@@ -1,0 +1,40 @@
+«on cohortsList (pta)
+on cohortsList (pta, maxCohortEntries=nil) {
+	«manilaSuite.AccessControl.cohortsList : 04/05/20, 16:45:31 by DAB
+		«returns a list of cohort names for which contains this member key
+		«was manilaFixer.accessControl.cohortsList : 02/02/21, 15:05:01 by DAB
+	local (lst = {});
+	
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	local (flIamME = manilaSuite.editors.managingEditorTest(pta));
+	
+	local (adr, adrScript);
+	if defined(adrCohorts^) {
+		for adr in adrCohorts {
+			local (flAddthisone = false);
+			case true {
+				flIamME {
+					flAddthisone = true}; //02/02/27, 17:33:26 by DAB
+				defined(adr^.containsTest) {
+					adrScript = @adr^.containsTest;
+					while typeof(adrScript^) == addressType {
+						adrScript = adrScript^};
+					if adrScript^(pta) {
+						flAddthisone = true}}}; //02/02/27, 17:33:26 by DAB
+			if flAddthisone { //02/02/27, 17:33:32 by DAB
+				case true {
+					maxCohortEntries == nil;
+					sizeoOf(adr^) <= maxCohortEntries {
+						lst[0] = string.popFileFromAddress(adr)}}
+				else { //partition needed
+					local (ix=1, N=1);
+					loop {
+						lst[0] = "[" + ix + "]" + string.popFileFromAddress(adr);
+						ix++;
+						N = N + maxCohortEntries;
+						if N > sizeOf(adr^) {
+							break}}}}}};
+	
+	return lst}

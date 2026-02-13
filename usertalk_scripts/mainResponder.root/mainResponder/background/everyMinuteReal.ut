@@ -1,0 +1,39 @@
+«Do mainResponder tasks that run every minute.
+	«Changes:
+		«12/26/99 ;7:12:46 PM by PBS
+			«Bug fix: save all open databases that have been modified, not just databases listed in user.databases and mainResponder-specific databases. If the new verb table.visitOpenDatabases exists, call that instead of mainResponder.visitDatabases.
+
+if config.mainResponder.prefs.flBuildPagesInBackground {
+	if defined (system.temp.mainResponder.backgroundPagesToBuild) {
+		local (i, adrItem, adrPage, ct = sizeOf (system.temp.mainResponder.backgroundPagesToBuild), pageList = {});
+		for i = ct downTo 1 {
+			adrItem = @system.temp.mainresponder.backgroundPagesToBuild [i];
+			adrPage = adrItem^;
+			delete (adrItem); //html.commands.releaseRenderedPage could take more than a minute!
+			if not (pageList contains adrPage) { //don't render it twice
+				try { //could time out
+					local (t); new (tableType, @t);
+					html.buildOnePage (adrPage, @t);
+					subtaskInfo.["builtPage" + i] = adrPage;
+					«frontier.bringtofront ()
+					pageList = pageList + {adrPage}}}};
+		html.deletePageTableAddress ()}}; //8/22/99; 10:58:08 AM by DW
+subtaskInfo.ctDatabasesSaved = 0;
+if config.mainResponder.prefs.flSaveDatabasesEveryMinute { //save all open guest databases 
+	local (ctSaved = 0);
+	on visit (f) {
+		if window.isModified (f) { //Fri, 30 Apr 1999 20:41:05 GMT by AR
+			fileMenu.save (f);
+			msg ("mainResponder.background.everyMinute: Saved " + file.fileFromPath (f) + ".");
+			ctSaved++};
+		return (true)};
+	local (adrVisitScript = @mainResponder.visitDatabases);
+	if defined (table.visitOpenDatabases) { //PBS 12/26/99: use the newer visit script if it exists.
+		adrVisitScript = @table.visitOpenDatabases};
+	adrVisitScript^ (@visit);
+	subtaskInfo.ctDatabasesSaved = ctSaved;
+	msg ("")};
+if config.mainResponder.prefs.flLogMemavail { //2/23/99; 5:59:57 AM by DW
+	local (adrTable = log.addToGuestDatabase ("memavail", flHourlyRoll:false));
+	adrTable^.memAvail = string.megabyteString (sys.memAvail ());
+	subtaskInfo.memAvail = adrTable^.memAvail}

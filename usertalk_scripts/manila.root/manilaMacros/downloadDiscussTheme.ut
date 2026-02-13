@@ -1,0 +1,10 @@
+on downloadDiscussTheme (lineText) {
+	«Return a link to the downloadable theme.
+		«06/05/00; 9:49:30 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (discussUrl = pta^.urls^.discussHomePage);
+	local (url = manilaSuite.discussThemes.getDownloadUrl (adrSite));
+	local (link = html.getLink (lineText, url));
+	return (manilaSuite.unTaint (link))}

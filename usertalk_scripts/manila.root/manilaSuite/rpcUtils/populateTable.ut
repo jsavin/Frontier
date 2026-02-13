@@ -1,0 +1,16 @@
+on populateTable (adrTable, adrData) {
+	«Friday, November 19, 1999 at 3:55:42 PM by AR
+		«For every item that exists in adrTable, look up the item with the same name in adrData and assign it, recursively.
+		«If an item doesn't exist in adrData, we delete it in adrTable, too.
+		«When we're done, adrTable holds a filtered copy of adrData, where the original content of adrTable served as the filter.
+	local (adrItem, adrDataItem);
+	for adrItem in adrTable {
+		adrDataItem = @adrData^.[nameOf (adrItem^)];
+		if not defined (adrDataItem^) {
+			delete (adrItem);
+			continue};
+		if (typeOf (adrItem^) == tableType) and (sizeof (adrItem) > 0) {
+			populateTable (adrItem, adrDataItem)} //recurse
+		else {
+			table.assign (adrItem, adrDataItem^)}};
+	return (true)}

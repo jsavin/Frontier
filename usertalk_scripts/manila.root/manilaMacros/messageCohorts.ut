@@ -1,0 +1,80 @@
+on messageCohorts (delimiter=",", flReadOnly= false) {
+	«Changes
+		«05/04/10, 14:28:32 by DAB
+			«Imported into Manila. Was ManilaExtras.messagecohorts : 02/03/16, 16:36:45 by DAB
+		«02/09/28, 14:01:59 by DAB
+			« incorporate site structure cohorts 
+			«flReadOnly optional parameter returns read only cohort list 
+			«treat systemdefinition cohorts as exclusive
+	local (pta = html.getPageTableAddress());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	
+	on getMessageCohorts(cohortListID, ifEmptyValue={}) {
+		local (adrMsgTable);
+		bundle {
+			«based on mainResponder.discuss.getMessageTable
+				«but works with new messages
+			case true {
+				defined (pta^.adrMsgTable) {
+					adrMsgTable = pta^.adrMsgTable};
+				defined (pta^.adrNewMsg) {
+					adrMsgTable = pta^.adrNewMsg};
+				defined (pta^.adrEditedMsg) {
+					adrMsgTable = pta^.adrEditedMsg}}
+			else {
+				local (msgnum);
+				if defined (pta^.msgNum) {
+					msgNum = pta^.msgNum}
+				else {
+					if pta^.pathArgs != "" {
+						msgNum = number (pta^.pathArgs)}};
+				if msgnum != 0 {
+					adrMsgTable = mainResponder.discuss.getMessageTable (msgNum)}}};
+		
+		if not defined(adrMsgTable^) {
+			return ifEmptyValue};
+		
+		adrMsgTable = manilaSuite.accessControl.goToOriginal(pta, adrMsgTable); //establish adrMsg as top of thread 02/05/06, 17:13:34 by DAB
+		
+		if not defined(adrMsgTable^.accessControl) {
+			return ifEmptyValue};
+		if not defined(adrMsgTable^.accessControl.[cohortListID]) {
+			return ifEmptyValue};
+		
+		if adrMsgTable^.accessControl.[cohortListID] == {} {
+			return ifEmptyValue};
+		
+		return adrMsgTable^.accessControl.[cohortListID]};
+	
+	on getSiteStructureCohorts(pathAttname) {
+		local (s = manilaExtras.pathAtt(pathAttname, flInherit:true));
+		if s == "" {
+			return false};
+		local (pattAttCohorts = {}); //02/08/25, 21:18:52 by DAB
+		pattAttCohorts = pattAttCohorts + ("{\"" +string.replaceAll(s, ",", "\",\"") + "\"}");
+		return pattAttCohorts};
+	
+	local (cohortList = {}, msgList={});
+	
+	if flreadOnly {
+		cohortList = getSiteStructureCohorts("romlac");
+		tmpList = getMessageCohorts("permittedROCohorts")}
+	else {
+		cohortList = getSiteStructureCohorts("mlac");
+		tmpList = getMessageCohorts("permittedCohorts", "Everyone")};
+	
+	local (txt="", delim = "", cohort);
+	for cohort in cohortList {
+		if defined(adrCohorts^.[cohort].systemdefinition) { //these are excluive
+			return "*" + cohort};
+		txt = txt + (delim + "*" + cohort);
+		delim = delimiter};
+	for cohort in msgList {
+		if cohortList contains cohort {
+			continue};
+		txt = txt + (delim + cohort);
+		delim = delimiter};
+	
+	return txt}

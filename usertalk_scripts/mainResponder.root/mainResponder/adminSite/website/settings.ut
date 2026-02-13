@@ -1,0 +1,28 @@
+on settings () {
+	«Changes
+		«9/26/05; 6:01:33 PM by JES
+			«Change default title to "Settings" as passed into radio.prefs.browser.
+		«9/8/02; 3:56:17 PM by JES
+			«Add the title to the settings pages.
+		«6/12/02; 3:57:59 PM by JES
+			«Created. Hard-wired to browse the prefs in English. Later when language is an option this can be beefed-up. (DW)
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Settings";
+	if pta^.searchArgs == "" or pta^.searchArgs == "page=1" { //default page has not title in the body of the page
+		pta^.flTitleOnPage = false};
+	local (adroutline = @mainResponder.adminSite.data.localization.languages.english.outlines.prefs);
+	bundle { //set the <%title%> in the <head> section of the page
+		case typeOf (pta^.pageHeader) {
+			addressType {
+				pta^.pageHeader = string.replace (pta^.pageHeader^, "<%title%>", pta^.title)}}
+		else {
+			pta^.pageHeader = string.replace (string (pta^.pageHeader), "<%title%>", pta^.title)};
+		case typeOf (pta^.template) {
+			addressType {
+				table.assign (@pta^.template, string (pta^.template^))}}
+		else {
+			table.assign (@pta^.template, string (pta^.template))};
+		pta^.template = string.replace (pta^.template, "<%title%>", pta^.title);
+		pta^.flIndirectTemplate = false};
+	local (htmltext = radio.prefs.browser (adroutline, "Settings"));
+	return (htmltext)}

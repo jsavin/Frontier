@@ -1,0 +1,35 @@
+on visitPages (adrSite, adrCallback) {
+	«Visit all the site structure pages in a Manila site. The callback takes the address of the page and the relative path.
+		«03/13/00; 4:19:32 PM by PBS
+	«Changes
+		«9/24/04; 3:44:28 AM by JES
+			«Yield processor time in the main loop.
+	
+	local (adrStructure = @adrSite^.["#hierarchy"].structure [1]);
+	local (relativePath = "/");
+	
+	on doTable (adrTable) {
+		local (adrItem);
+		for adrItem in adrTable {
+			local (itemName = nameOf (adrItem^));
+			if not (itemName contains "\t") {
+				continue};
+			local (lowerItemName = string.lower (xml.convertToDisplayName (itemName)));
+			if not (relativePath endsWith "/") { //may need to pop off the last story from the path
+				relativePath = string.popSuffix (relativePath, "/");
+				relativePath = relativePath + "/"};
+			if lowerItemName == "category" {
+				relativePath = relativePath + adrItem^.["/atts"].pathname + "/";
+				try {adrCallback^ (adrItem, relativePath)}; //call the callback
+				doTable (adrItem)};
+			if lowerItemName == "story" {
+				relativePath = relativePath + adrItem^.["/atts"].pathname; //no trailing slash
+				try {adrCallback^ (adrItem, relativePath)}}; //call the callback
+			thread.sleepfor (0)};
+		relativePath = string.popSuffix (relativePath, '/');
+		if relativePath == "" {
+			relativePath = "/"}};
+	
+	doTable (adrStructure);
+	
+	return (true)}

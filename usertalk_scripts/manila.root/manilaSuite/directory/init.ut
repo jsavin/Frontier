@@ -1,0 +1,12 @@
+local (pta = html.getpagetableaddress ());
+local (adrprefs = @pta^.newsSite^.directory);
+if not defined (adrprefs^) {
+	new (tabletype, adrprefs)};
+if not defined (adrprefs^.foldericon) {
+	adrprefs^.foldericon = "<img src=\"http://static.userland.com/shortcuts/images/misc/folder.gif\" width=\"15\" height=\"13\" border=\"0\">"};
+if not defined (adrprefs^.linkicon) {
+	adrprefs^.linkicon = "<img src=\"http://static.userland.com/shortcuts/images/qbullets/remote.gif\" width=\"11\" height=\"11\" border=\"0\">"};
+if not defined (config.mainresponder.prefs.legalMacros.viewDirectory) {
+	manilaSuite.makeManilaMacrosSafe ()};
+if not defined (config.mainresponder.prefs.legalMacros.viewDirectoryBox) {
+	manilaSuite.makeManilaMacrosSafe ()}

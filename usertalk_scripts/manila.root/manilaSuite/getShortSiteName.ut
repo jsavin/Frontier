@@ -1,0 +1,11 @@
+on getShortSiteName (siteName) {
+	«Given a name like FooBarManilaWebsite, return FooBar.
+		«11/16/99; 10:06:55 PM by PBS
+	
+	if string.lower (siteName) endsWith "manilawebsite" {
+		local (shortSiteName);
+		if sizeOf (siteName) > sizeOf ("manilaWebsite") {
+			shortSiteName = string.delete (siteName, sizeOf (siteName) - 12, 13);
+			return (shortSiteName)}};
+	
+	return (siteName)}

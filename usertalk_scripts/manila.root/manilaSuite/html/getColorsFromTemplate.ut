@@ -1,0 +1,33 @@
+«Get the appearance colors from the template.
+	«This script finds the body tag, then compiles it as XML, then gets the attributes. Much slicker than doing lots of pattern matching.
+	«10/27/99; 12:52:41 PM by PBS
+
+local (pta = html.getPageTableAddress ());
+local (s);
+s = string (pta^.template);
+local (ix = string.patternMatch ("<body ", string.lower (s)));
+if ix > 0 {
+	local (bodyTag = string.delete (s, 1, ix));
+	ix = string.patternMatch (">", bodyTag);
+	if ix > 0 {
+		bodyTag = string.delete (bodyTag, ix, infinity);
+		bodyTag = "<" + bodyTag + "/>";
+		local (xmlTable);
+		xml.compile (bodyTag, @xmlTable);
+		
+		on getOnePref (prefName) {
+			if defined (xmlTable [1].["/atts"].[prefName]) {
+				pta^.[prefName] = xmlTable [1].["/atts"].[prefName];
+				pta^.[prefName] = manilaSuite.unTaint (pta^.prefName);
+				if pta^.[prefName] beginsWith "#" {
+					pta^.[prefName] = string.popLeading (pta^.[prefName], '#')};
+				if defined (system.verbs.colors.[pta^.[prefName]]) {
+					pta^.[prefName] = system.verbs.colors.[pta^.[prefName]]}}};
+		
+		getOnePref ("bgcolor");
+		getOnePref ("link");
+		getOnePref ("alink");
+		getOnePref ("vlink");
+		getOnePref ("text");
+		getOnePref ("background")}};
+return (true)

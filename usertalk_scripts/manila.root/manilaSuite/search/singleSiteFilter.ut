@@ -1,0 +1,13 @@
+on singleSiteFilter (adrsearch, adrsite=nil) {
+	«Changes
+		«8/11/02; 2:21:44 AM by JES
+			«Created. A search result filter which removes all hits that aren't in the specified site.
+	if adrSite == nil {
+		adrSite = manilaSuite.getSiteAddress ()};
+	local (siteurl = manilaSuite.getSiteUrl (adrsite));
+	local (i, ct = sizeOf (adrsearch^.rawResults));
+	for i = ct downto 1 {
+		if not (nameOf (adrsearch^.rawResults[i]) beginsWith siteurl) {
+			delete (@adrsearch^.rawResults[i])}};
+	adrsearch^.totalHits = sizeOf (adrsearch^.rawResults);
+	return (true)}

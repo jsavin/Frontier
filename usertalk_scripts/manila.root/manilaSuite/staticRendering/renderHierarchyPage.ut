@@ -1,0 +1,26 @@
+on renderHierarchyPage () {
+	«Publish one site structure page.
+		«03/03/00; 10:48:19 PM by PBS
+		«Changes:
+			«05/31/00; 3:46:16 PM by PBS
+				«Bring the manilaMacros table in to scope when building a page.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	local (adrPage = manilaSuite.staticRendering.createPage ());
+	
+	if defined (manilaMacros) { //PBS 05/31/00
+		with manilaMacros {
+			html.buildOnePage (adrPage, pta)}}
+	else {
+		html.buildOnePage (adrPage, pta)};
+	
+	local (currentUrl);
+	local (relativePath = string.lower (pta^.relativePath));
+	currentUrl = pta^.adrStaticSite^.["#ftpSite"].url + relativePath;
+	if not (relativePath endsWith "/") {
+		currentUrl = currentUrl + manilaSuite.staticRendering.getSuffix ()};
+	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
+	manilaSuite.staticRendering.updateRenderStatus (adrManilaSite, currentUrl);
+	
+	return (true)}

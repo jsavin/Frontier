@@ -1,0 +1,4 @@
+on statusCenter () {
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Status Center";
+	return (mainResponder.adminSite.macros.statusCenter ())}

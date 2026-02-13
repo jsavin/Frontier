@@ -1,0 +1,26 @@
+on removeCategoryFromMessage (adrMsgTable, category, adrSite=nil) {
+	«Take away a category from this message.
+		«This script can be called from outside the page rendering context.
+		«If this message is not already a member of the category, leave it as-is.
+		«If this message is a member of other categories, don't erase those other categories.
+		«10/19/99; 11:41:37 PM by PBS
+		«Changes:
+			«10/09/00; 10:09:09 PM by PBS
+				«adrSite is new optional parameter. If supplied, we can remove the message from the appropriate index.
+	
+	if not defined (adrMsgTable^.alsoListedIn) {
+		return (true)};
+	
+	if not (manilaSuite.discuss.isInCategory (adrMsgTable, category)) {
+		return (true)};
+	
+	local (i);
+	local (lowerCategory = string.lower (category));
+	for i = sizeOf (adrMsgTable^.alsoListedIn) downTo 1 {
+		if string.lower (adrMsgTable^.alsoListedIn [i]) == lowerCategory {
+			delete (@adrMsgTable^.alsoListedIn [i])}};
+	
+	if adrSite != nil {
+		manilaSuite.discuss.removeFromIndex (adrSite, category, adrMsgTable)};
+	
+	return (true)}

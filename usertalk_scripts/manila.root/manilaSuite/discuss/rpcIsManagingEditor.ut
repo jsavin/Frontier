@@ -1,0 +1,33 @@
+on rpcIsManagingEditor (dgName, username, password) {
+	«Return true if this is the Managing Editor of the Manila site whose dg is specified.
+		«This script runs in an XML-RPC context.
+		«10/18/99; 4:23:30 PM by PBS
+	
+	«Get the name of the membership group.
+	local (groupName);
+	if not (manilaSuite.discuss.rpcGetMembershipGroup (dgName, @groupName)) {
+		return (false)}; //can't get the name of the membership group
+	
+	«Check the username and password.
+	bundle { //check the username and password
+		try {
+			mainResponder.members.getMemberTableWithPassword (groupName, username, password)}
+		else {
+			return (false)}}; //the authentication failed
+	
+	bundle { //make sure this is a managing editor
+		local (adrSite);
+		if not (manilaSuite.discuss.rpcGetSiteAddress (dgName, @adrSite)) {
+			return (false)}; //the discussion group doesn't exist
+		
+		local (editorList = adrSite^.["#newsSite"].sysopMail);
+		if typeOf (editorList) != listType {
+			editorList = {editorList}};
+		
+		local (i);
+		local (lowerUsername = string.lower (username));
+		for i = 1 to sizeOf (editorList) {
+			if string.lower (editorList [i]) == lowerUsername {
+				return (true)}}}; //this user is a managing editor
+	
+	return (false)} //this user is not a managing editor

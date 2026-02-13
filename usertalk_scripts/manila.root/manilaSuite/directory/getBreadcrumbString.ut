@@ -1,0 +1,15 @@
+on getBreadcrumbString (crumblist, uri) {
+	local (crumbstring = "", ctcrumbs = sizeof (crumblist));
+	on popuri (uri, levels) {
+		return (manilasuite.directory.popuri (uri, levels))};
+	if ctcrumbs == 0 {
+		crumbstring = "<b>Top</b>"}
+	else {
+		local (i);
+		crumbstring = crumbstring + "<a href=\"" + popuri (uri, ctcrumbs) + "\">Top</a> > ";
+		for i = 1 to ctcrumbs - 1 {
+			crumbstring = crumbstring + "<a href=\"" + popuri (uri, ctcrumbs - i) + "\">" + string.replaceall (crumblist [i], " ", "&nbsp;") + "</a> > "};
+		crumbstring = crumbstring + "<b>" + crumblist [ctcrumbs] + "</b>"};
+	return (crumbstring)};
+«bundle //test code
+	«dialog.alert (getBreadcrumbString ({"United States", "Western States", "California"}, "/us/west/ca"))

@@ -1,0 +1,46 @@
+on nextPrevLinks (adrcalendar, baseurl, thismonth, pta=nil) {
+	«Changes:
+		«04/14/00; 3:08:16 PM by JES
+			«localized the string that's linked
+			«added optional pta parameter
+		«05/01/00; 2:17:24 PM by JES
+			«Changed call to mainResponder.getString in linkTo(), so that it passes a replacementTableAdr, instead of a list.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	try {
+		thismonth = date (thismonth)}
+	else {
+		thismonth = clock.now ()};
+	on incalendar (somemonth) {
+		local (day, month, year, hour, minute, second);
+		date.get (somemonth, @day, @month, @year, @hour, @minute, @second);
+		try {return (defined (adrcalendar^.[year].[string.padwithzeros (month, 2)]))};
+		return (false)};
+	on linkto (curdate) {
+		local (day, month, year, hour, minute, second);
+		date.get (curdate, @day, @month, @year, @hour, @minute, @second);
+		«4/14/00 JES: localized
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacementTable, instead of list
+		replacementTable.month = month;
+		replacementTable.yy = string.delete (year, 1, 2);
+		local (monthyear = mainResponder.getString ("date.monthYear", @replacementTable, pta: pta));
+		if inCalendar (curdate) {
+			return ("<a href=\"" + baseurl + "$" + string.nthfield (curdate, ";", 1) + "\">" + monthyear + "</a>")};
+		return (monthyear)};
+	local (nextlink = linkto (date.nextMonth (thismonth)));
+	local (prevlink = linkto (date.lastofmonth (date.prevmonth (thismonth))));
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	
+	add ("<table>"); indentlevel++;
+	add ("<tr>"); indentlevel++;
+	add ("<td><center><font size=\"-1\">" + prevlink + "</font></center></td>");
+	add ("<td>" + "&nbsp;&nbsp;&nbsp;" + "</td>");
+	add ("<td><center><font size=\"-1\">" + nextlink + "</font></center></td>");
+	add ("</tr>"); indentlevel--;
+	add ("</table>"); indentlevel--;
+	return (htmltext)}

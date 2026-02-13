@@ -1,0 +1,95 @@
+on sendMailPage () {
+	«Changes
+		«3/12/07; 5:18:46 PM by LL
+			«Support new site level preference to require membership to use the spam-free mailto form.
+		«3/5/07; 12:34:59 AM by JES
+			«Validate sender's email address. Do not allow mail from email addresses corresponding to blocked members.
+		«11/9/06; 2:48:18 PM by LL
+			«Support new site level preference to turn off the spam-free mailto form.
+		«4/17/06; 5:39:28 PM by JES
+			«Defeat cross-site-scripting exploit.
+		«3/7/06; 12:23:52 PM by JES
+			«Add referer check.
+		«11/3/05; 4:10:56 AM by JES
+			«Always get the membership group with a call to manilaSuite.members.getGroupFromSiteAddress, since for sites with shared membership, pta^.membershipGroup will point at the wrong table.
+		«6/30/05; 8:26:50 AM by PR
+			«in some cases adrMemberShipGroup was not set
+		«3/24/2005; 09:04:26 AM by JanS
+			«Localized.
+		«4/20/03; 10:57:31 PM by JES
+			«Created. Implement Manila's version of the Spam-Free mailto links in Radio sites.
+	local (pta = html.getPageTableAddress ());
+	local (flDisplayMailtoLink = manilaSuite.getNewsSitePref ("flMemberMailtoLink", pta^.adrSiteRootTable, true, true));
+	if flDisplayMailtoLink {
+		local (flMailtoLinkMembersOnly = manilaSuite.getNewsSitePref ("flMailtoLinkMembersOnly", pta^.adrSiteRootTable, true, true));
+		if flMailtoLinkMembersOnly {
+			if not defined (pta^.adrMemberInfo) {
+				scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}};
+		if pta^.method == "POST" {
+			manilaSuite.referer.checkSelf ();
+			mainResponder.members.validMailAddress (pta^.postArgs.mail);
+			local (senderDomain = string.nthField (pta^.postArgs.mail, "@", 2));
+			if string.countFields (senderDomain, ".") < 2 {
+				local (t); new (tableType, @t);
+				t.domain = senderDomain;
+				scriptError (mainResponder.getString ("members.validMailAddressNoDot", @t))}};
+		local (groupName = pta^.defaultMembershipGroup);
+		local (adrMembershipGroup);
+		bundle { //set adrMembershipGroup
+			«bundle //old code
+				«if defined (pta^.membershipGroup)
+					«adrMembershipGroup = pta^.membershipGroup
+				«else
+					«manilaSuite.members.getGroupFromSiteAddress (manilaSuite.getSiteAddress ())
+					«adrMembershipGroup = manilaSuite.members.getGroupFromSiteAddress (manilaSuite.getSiteAddress ()) // 30/06/05; 8:27:21 AM by PR
+			adrMembershipGroup = manilaSuite.members.getGroupFromSiteAddress (manilaSuite.getSiteAddress (pta))};
+		local (adrmap = @adrMembershipGroup^.usersMap);
+		on getRecipient (usernum) {
+			local (memberKey = adrmap^.[usernum]);
+			return (memberKey)};
+		on getRecipientName (usernum) {
+			local (memberKey = adrmap^.[usernum]);
+			local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey));
+			if defined (adrMember^.personalInfo.name) {
+				return (adrMember^.personalInfo.name)};
+			local (ix = string.patternMatch ("@", memberKey));
+			return (string.mid (memberKey, 1, ix + 1) + "...")};
+		local (siteName = manilaSuite.getNewsSitePref ("siteName"));
+		local {
+			checkboxLabel = manilaSuite.getString ("members.sendMailCheckToCopySelf");
+			prompt = manilaSuite.getString ("members.sendMailPrompt");
+			promptWithReferer = manilaSuite.getString ("members.sendMailPromptWithReferer");
+			subjectTemplate = manilaSuite.getString ("members.sendMailSubjectTemplate");
+			template = manilaSuite.getString ("members.sendMailTemplate");
+			templateWithReferer = manilaSuite.getString ("members.sendMailTemplateWithReferer");
+			textBelowForm = manilaSuite.getString ("members.sendMailTextBelowForm");
+			namePrompt = manilaSuite.getString ("members.sendMailNamePrompt");
+			mailAddressPrompt = manilaSuite.getString ("members.sendMailMailAddressPrompt");
+			urlPrompt = manilaSuite.getString ("members.sendMailUrlPrompt");
+			messagePrompt = manilaSuite.getString ("members.sendMailMessagePrompt");
+			submitButtonText = manilaSuite.getString ("members.sendMailSubmitButtonText");
+			pageTitle = manilaSuite.getString ("members.sendMailPageTitle");
+			confirmPageTitle = manilaSuite.getString ("members.sendMailConfirmPageTitle");
+			cookieName = "spamFreeMailForm"};
+		«return (html.data.standardMacros.spamFreeMailto.form (siteName, pta^.ftpSite^.url, @getRecipient, @getRecipientName))
+		bundle { //defeat xss exploit
+			if pta^.searchArgs contains "referer=" {
+				pta^.searchArgs = string.replaceAll (pta^.searchArgs, "\"", "&quot;");
+				pta^.searchArgs = string.replaceAll (pta^.searchArgs, "\'", "&apos;");
+				pta^.searchArgs = string.replaceAll (pta^.searchArgs, "<", "&lt;");
+				pta^.searchArgs = string.replaceAll (pta^.searchArgs, ">", "&gt;")}};
+		bundle { //error if blocked user
+			local (name, mail, url);
+			try {
+				local (s = string.urlDecode (pta^.requestHeaders.cookies.[cookieName]));
+				name = string.nthfield (s, "\r", 1);
+				mail = string.nthfield (s, "\r", 2);
+				url = string.nthfield (s, "\r", 3)};
+			local (adrmember = manilaSuite.members.getMemberTableFromSiteAddress (pta^.adrSiteRootTable, mail));
+			if defined (adrmember^.blocked) {
+				if adrmember^.blocked {
+					scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}}};
+		return (html.data.standardMacros.spamFreeMailto.form (siteName, pta^.ftpSite^.url, @getRecipient, @getRecipientName, cookieName, prompt, promptWithReferer, namePrompt, mailAddressPrompt, urlPrompt, messagePrompt, submitButtonText, checkboxLabel, textBelowForm, template, templateWithReferer, subjectTemplate, pageTitle:pageTitle, confirmPageTitle:confirmPageTitle))} //3/24/05 at 09:19:59 by JanS
+	else {
+		pta^.title = "Mail a note to";
+		return ("Can't display because the send mail page is disabled.")}}

@@ -1,0 +1,42 @@
+on objects () {
+	«Changes
+		«8/3/02; 1:09:18 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Objects Checked Out With WebEdit";
+	
+	on add (s) {
+		htmlText = htmlText + s + "\r"};
+	local (htmlText = "");
+	local (flDisplayedCheckedOutItemsList = false);
+	bundle { //add checked-out item list
+		local (itemList = custody.getCheckedOutItems ());
+		if (sizeof (itemList) > 0) {
+			add ("<p>Objects currently checked out through WebEdit:</p>");
+			add ("<table cellpadding=\"3\" cellspacing=\"0\" border=\"0\" width=\"100%\">");
+			bundle { //column labels
+				add ("<tr>");
+				add ("<td><b>Checked Out</b></td>");
+				add ("<td><b>Object Address</b></td>");
+				add ("<td><b>User</b></td>");
+				add ("</tr>")};
+			
+			local (rec, bgcolor = 0);
+			for rec in itemList {
+				bgcolor++;
+				if bgcolor == 3 {
+					bgcolor = 1};
+				add ("<tr bgcolor=\"" + pta^.["trbg" + bgcolor] + "\">");
+				add ("<td class=\"small\" valign=\"top\">" + rec["checkedOutDate"] + "</td>");
+				add ("<td class=\"small\">" + string.popFileFromAddress (rec["address"]) + "</td>");
+				add ("<td class=\"small\" valign=\"right\">" + rec["user"] + "</td>");
+				add ("</tr>")};
+			add ("</table>");
+			flDisplayedCheckedOutItemsList = true}};
+	bundle { //display something
+		if not flDisplayedCheckedOutItemsList {
+			if not defined (user.betty.rpcHandlers.webEdit) {
+				add ("WebEdit Server is disabled on this computer.")}
+			else {
+				add ("No objects are currently checked out.")}}};
+	return (htmlText)}

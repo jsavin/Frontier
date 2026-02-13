@@ -1,0 +1,48 @@
+on listWebeditUsers () {
+	«Changes
+		«9/5/02; 2:17:08 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (bgcolors = {pta^.trbg1, pta^.trbg2});
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.removeUsers) {
+			local (adr);
+			for adr in adrargs {
+				if adr^ == "x" {
+					local (name = string.urlDecode (nameOf (adr^)));
+					local (adruser = @user.people.users.[name]);
+					if defined (adruser^) {
+						people.detachServiceFromUser (name, "WebEdit")}}}}};
+	
+	bundle { //list webedit users
+		people.init ();
+		
+		add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\">");
+		
+		bundle { //header
+			add ("<tr><td></td><td><b>Name</b></td><td><b>Email</b></td></tr>")};
+		
+		local (adr, ct = 0);
+		for adr in @user.people.users {
+			local (name = nameOf (adr^));
+			if suites.people.serviceIsAttachedToUser ("WebEdit", name) {
+				add ("<tr bgcolor=\"" + bgcolors[ (ct++ % 2) + 1] + "\">");
+				add ("<td><input type=\"checkbox\" name=\"" + string.urlEncode (name) + "\" value=\"x\" /></td>");
+				add ("<td>" + name + "</td>");
+				if defined (adr^.emailAddress) {
+					add ("<td>" + adr^.emailAddress + "</td>")}
+				else {
+					add ("<td></td>")};
+				add ("</tr>")}};
+		if ct > 0 {
+			add ("<tr><td colspan=\"3\"><br /><input type=\"submit\" name=\"removeUsers\" value=\"Remove Users\"></td></tr>")}
+		else {
+			add ("<tr><td colspan=\"3\">There are no WebEdit users to list at this time.</td></tr>")};
+		add ("</table>")};
+	
+	return (htmltext)}

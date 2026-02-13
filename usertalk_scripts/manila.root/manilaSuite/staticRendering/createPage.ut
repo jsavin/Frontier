@@ -1,0 +1,30 @@
+on createPage () {
+	«Create the page in the staticSite table.
+		«03/03/00; 11:00:55 PM by PBS
+		«Changes:
+			«04/01/00; 8:52:26 PM by PBS
+				«Call script.compile to prevent dialog boxes complaining of an uncompiled script.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	local (adrStaticSite = pta^.adrStaticSite);
+	local (nomad = adrStaticSite);
+	local (relativePath = pta^.relativePath);
+	if relativePath endsWith "/" {
+		relativePath = relativePath + manilaSuite.staticRendering.getDefaultFilename ()};
+	
+	while sizeOf (relativePath) > 0 {
+		relativePath = string.popLeading (relativePath, '/');
+		local (pathPart = string.nthField (relativePath, '/', 1));
+		relativePath = string.delete (relativePath, 1, sizeOf (pathPart));
+		local (flPage = false);
+		nomad = @nomad^.[pathPart];
+		if relativePath == "" { //create a page
+			local (s);
+			s = "manilaSuite.staticRendering.buildSiteStructurePage (\"" + pta^.relativePath + "\")";
+			script.newScriptObject (s, nomad);
+			script.compile (nomad)} //PBS 04/01/00: prevent unwanted dialog box
+		else { //create a table
+			new (tableType, nomad)}};
+	
+	return (nomad)}

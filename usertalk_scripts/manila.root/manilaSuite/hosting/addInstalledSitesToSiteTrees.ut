@@ -1,0 +1,20 @@
+on addInstalledSitesToSiteTrees () {
+	«Changes
+		«7/9/03; 3:28:27 PM by JES
+			«Created. Loop over all installed sites in config.manila.sites, and make sure that the site is in the site tree for its domain in config.mainResponder.domains.
+	local (adradrsite);
+	for adradrsite in @config.manila.sites {
+		try { //shouldn't fail for undefined sites
+			local (adrsite = adradrsite^);
+			local (url = adrsite^.["#ftpSite"].url);
+			local (urlparts = string.urlSplit (url));
+			local (path = urlparts[3]);
+			if sizeOf (path) > 0 {
+				local (domain = string.lower (urlparts[2]));
+				if not defined (config.mainResponder.domains.[domain]) { //use default domain
+					domain = "default"};
+				msg ("Adding " + string.popFileFromAddress (adrsite) + " to the siteTree for the " + domain + " domain...");
+				mainResponder.siteTree.addSiteToTree (domain, path, adrsite, false, true)}}};
+	msg ("")};
+«bundle //test code
+	«addInstalledSitesToSiteTrees ()

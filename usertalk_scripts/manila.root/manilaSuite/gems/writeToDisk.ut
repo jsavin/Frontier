@@ -1,0 +1,14 @@
+on writeToDisk (adrSite, adrData) {
+	«Write a gem to disk.
+		«04/13/00; 1:09:15 AM by PBS
+	
+	local (f = adrData^.f);
+	
+	if file.exists (f) {
+		try {
+			file.delete (f)}};
+	
+	try { //write the file to disk
+		file.writeWholeFile (f, adrData^.data)};
+	
+	return (true)}

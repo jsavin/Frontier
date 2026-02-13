@@ -1,0 +1,6 @@
+on getRootNameFromSiteAddress (adrSite) {
+	«Get the name of the discussion group storage for this site.
+		«This script can run outside the page rendering context if adrSite is not nil.
+		«10/19/99; 3:02:05 PM by PBS
+	
+	return (adrSite^.["#prefs"].discussionRoot)}

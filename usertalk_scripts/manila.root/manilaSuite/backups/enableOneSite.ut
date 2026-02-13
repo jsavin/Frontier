@@ -1,0 +1,9 @@
+on enableOneSite (adrsite) {
+	«Changes
+		«6/26/02; 7:57:47 PM by JES
+			«Created.
+	local (adrconfig = manilaSuite.backups.initSiteInfo (adrsite));
+	adrconfig^.flEnabled = true;
+	return (true)};
+«bundle //test code
+	«enableOneSite (@createASiteManilaWebsite)

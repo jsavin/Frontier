@@ -1,0 +1,27 @@
+on add (adrparamtable) {
+	«Changes
+		«8/14/02; 8:31:51 PM by JES
+			«If the membership group name is present in the pagetable, add it to the log table for this hit.
+	local (adrhittable = log.addToGuestDatabase ("mainResponder", adrparamtable^.client, true));
+	adrhittable^.time = clock.now ();
+	adrhittable^.threads = Frontier.countThreads ();
+	adrhittable^.code = adrparamtable^.code;
+	adrhittable^.size = sizeof (adrparamtable^.responseBody);
+	adrhittable^.url = adrparamtable^.uri;
+	adrhittable^.host = adrparamtable^.host;
+	if defined (adrparamtable^.adrmemberinfo) {
+		adrhittable^.member = nameof (adrparamtable^.adrmemberinfo^)};
+	if defined (adrparamtable^.pathargs) {
+		adrhittable^.pathargs = adrparamtable^.pathargs};
+	if defined (adrparamtable^.searchargs) { //PBS 3/15/99
+		adrhittable^.searchargs = adrparamtable^.searchargs};
+	if defined (adrparamtable^.memberGroupName) { //JES 8/14/02
+		adrhittable^.group = adrparamtable^.memberGroupName};
+	
+	try {adrhittable^.referrer = adrparamtable^.requestHeaders.Referer};
+	try {adrhittable^.agent = adrparamtable^.requestHeaders.["User-Agent"]};
+	
+	adrhittable^.ticks = clock.ticks () - adrParamTable^.stats.requestProcessingStarted;
+	return (adrhittable)};
+«bundle //test code
+	«dialog.alert (add (@scratchpad.paramtable))

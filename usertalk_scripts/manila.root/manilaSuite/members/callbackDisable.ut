@@ -1,0 +1,31 @@
+on callbackDisable (adrSite, whichCallback, key) {
+	«manilaSuite.members.callbackDisable : 05/04/02, 16:05:20 by DAB
+		«set up the membershipgroup of adrsite to no longer have a  callback 
+		«values for whichCallback 
+			«signup (also called for manual and rpchandler member create operations)
+			«login
+			«block 
+			«unblock
+			«signout
+			«delete   (from admin page)
+	whichCallback = string.lower(whichCallback);
+	case whichCallback {
+		"signup";
+		"modify";
+		"login";
+		"block";
+		"unblock";
+		"signout";
+		"delete" {
+			}}//these are all ok
+	else { //not a valid callback name
+		return false};
+	
+	local (adrMemberGroup = manilasuite.members.getGroupFromSiteAddress(adrSite));
+	if not defined(adrMemberGroup^.callbacks) {
+		return false};
+	if not defined(adrMemberGroup^.callbacks.[whichCallback]) {
+		return false};
+	if not defined(adrMemberGroup^.callbacks.[whichCallback].[key]) {
+		return false};
+	return delete(@adrMemberGroup^.callbacks.[whichCallback].[key])}

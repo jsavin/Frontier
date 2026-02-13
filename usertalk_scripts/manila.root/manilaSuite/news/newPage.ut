@@ -1,0 +1,80 @@
+on newPage () {
+	«Changes
+		«9/20/05; 4:57:21 PM by JES
+			«If an aggregator story doesn't have a title, try to extract a link, or default title to the channel title.
+		«9/20/05; 4:41:07 PM by JES
+			«Set autoParagraphs, clayCompatibility and activeUrls to false.
+		«9/20/05; 4:35:32 PM by JES
+			«Improved readability when editing raw HTML text for news items posted from the aggregator.
+		«9/20/05; 4:33:18 PM by JES
+			«Add support for aggregator post links.
+		«9/6/05; 6:54:02 PM by JES
+			«Add support for ETP callback, newsNewItem.
+		«04/19/00; 10:39:57 PM by PBS
+			«Created. This is the page that displays a form for creating a new news item.
+	
+	local (pta = html.getPageTableAddress ());
+	pta^.autoParagraphs = false;
+	pta^.clayCompatibility = false;
+	pta^.activeUrls = false;
+	
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	local (redirectUrl = manilaSuite.getUrl ("editorialNewsItems"));
+	
+	local (title, description, url);
+	bundle { //check to see if we can get default text for the news item from the aggregator
+		if pta^.searchArgs != "" {
+			local (args); new (tableType, @args);
+			webserver.parseArgs (pta^.searchArgs, @args);
+			if defined (args.story) {
+				local (storynum = number (args.story));
+				local (adrdata = xml.aggregator.init ());
+				local (adrstories = @adrdata^.stories);
+				local (adrstory = @adrstories^.[string.padWithZeros (storynum, 8)]);
+				if defined (adrstory^.storyUrl) {
+					url = adrstory^.storyUrl};
+				if defined (adrstory^.storyTitle) {
+					title = adrstory^.channeltitle + ": " + adrstory^.storyTitle}
+				else { //extract text of first link for title, or use channel title
+					try {
+						local (storytext = adrstory^.storytext);
+						local (lowertext = string.lower (storytext));
+						if string.lower (storytext) contains "</a>" {
+							local (ixend = string.patternMatch ("</a>", lowertext));
+							local (ixstart = string.patternMatch ("<a ", lowertext));
+							if ixstart != 0 {
+								if ixend > ixstart {
+									storytext = string.mid (storytext, ixstart, ixend-ixstart);
+									ixstart = string.patternMatch (">", storytext) + 1;
+									title = adrstory^.channeltitle + ": " + string.mid (storytext, ixstart, infinity)}}}};
+					if title == "" {
+						title = adrstory^.channeltitle}};
+				if defined (adrstory^.description) {
+					description = adrstory^.description;
+					if description endsWith " By ." {
+						description = string.mid (description, 1, sizeOf (description) - 5)};
+					local (link = "");
+					if url != "" {
+						link = "<p><a href=\"" + adrstory^.url + "\">" + adrstory^.channeltitle + "</a> - <a href=\"" + url + "\">" + adrstory^.storyTitle + "</a>:\r\n</p>"};
+					description = link + "<blockquote>" + description + "\r\n</blockquote>\r\n"}
+				else {
+					description = adrstory^.storytext;
+					if description contains " By ." {
+						description = description - " By ."};
+					description = "<blockquote>" + description + "\r\n</blockquote>\r\n"};
+				
+				description = manilaSuite.untaint (description);
+				title = manilaSuite.untaint (title);
+				url = manilaSuite.untaint (url)}}};
+	
+	local (adrETPBuilder = @manilaSuite.news.editForm);
+	manilaSuite.plugins.ETPoverride.getScriptAddress("newsNewItem", @adrETPbuilder);
+	htmlText = adrETPBuilder^ (title:title, description:description, linkUrl:url);
+	local (accessControls = manilaSuite.accesscontrol.ETPcontrols(pta, "newsItemNew", nil)); //accesscontrol 04.05.21, 22:03:59 by DAB
+	if accessControls != "" {
+		htmlText = string.replaceAll(htmlText, "</form>", accessControls + "</form>")};
+	
+	return (htmlText)}

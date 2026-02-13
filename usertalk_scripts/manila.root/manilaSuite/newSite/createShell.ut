@@ -1,0 +1,119 @@
+on createShell (adrSiteInfo) {
+	«Create the website shell.
+		«If the shell table already exists, its an error. This is to avoid accidentally over-writing an existing site.
+		«After the shell is created, fill in prefs, #members directives, and so on based on the preferences.
+		«10/21/99; 11:48:28 AM by PBS
+		«Changes:
+			«10/27/99; 11:02:50 AM by PBS
+				«New #newsSite pref: notifySender is by default the email address of the managing editor. This is the from address for email notifications from this site.
+			«10/27/99; 11:07:00 AM by PBS
+				«Don't create the notify list as a Frontier list.
+	
+	if defined (adrSiteInfo^.adrSite^) {
+		scriptError ("Can't create the website for \"" + adrSiteInfo^.shortSiteName + "\" because it already exists.")};
+	
+	adrSiteInfo^.adrSite^ = manilaData.newSiteTemplate; //copy the empty shell template
+	
+	local (adrSite = adrSiteInfo^.adrSite); //save typing
+	local (baseUrl = adrSiteInfo^.siteUrl);
+	
+	bundle { //handle URLs
+		if not (baseUrl endsWith "/") {
+			baseUrl = baseUrl + "/"};
+		if not (baseUrl beginsWith "http://") {
+			baseUrl = "http://" + baseUrl};
+		adrSite^.["#ftpSite"].url = baseUrl;
+		
+		local (adrUrlsTable = @adrSite^.["#urls"]);
+		local (serverUrl = "http://" + tcp.myDottedId () + "/");
+		for i = 1 to sizeOf (adrUrlsTable^) {
+			local (adrItem = @adrUrlsTable^ [i]);
+			adrItem^ = string.replace (adrItem^, "[[siteRootUrl]]", baseUrl);
+			adrItem^ = string.replace (adrItem^, "[[serverRootUrl]]", serverUrl)};
+		
+		local (logoFile);
+		if system.environment.isMac {
+			logoFile = "logoMacOs.gif"};
+		if system.environment.isWindows {
+			case system.environment.osFlavor {
+				"NT" {
+					logFile = "logoWinNt.gif"};
+				"98";
+				"95" {
+					logoFile = "logoWin95.gif"}}};
+		adrUrlsTable^.frontierLogo = "http://www.scripting.com/logos/" + logoFile};
+	
+	bundle { //handle references to the discussion group
+		local (discussRoot = adrSiteInfo^.discussionGroupName);
+		adrSite^.["#newsSite"].discussionRoot = discussRoot;
+		adrSite^.["#prefs"].discussionRoot = discussRoot};
+	
+	bundle { //handle references to the membership group
+		local (members = adrSiteInfo^.membershipGroupName);
+		adrSite^.["#newsSite"].sysopMemberOfGroup = members;
+		adrSite^.["#prefs"].defaultMembershipGroup = members;
+		adrSite^.admin.["#members"] = members;
+		if defined (adrSite^.discuss.["#members"]) {
+			adrSite^.discuss.["#members"] = members}
+		else {
+			adrSite^.discuss.edit.["#members"] = members};
+		adrSite^.pictures.edit.["#members"] = members;
+		adrSite^.prefs.["#members"] = members};
+	
+	bundle { //handle category names (alsoListedIn names) for stories, pictures, and home pages
+		local (storiesCategory, picturesCategory, homePagesCategory);
+		
+		storiesCategory = adrSiteInfo^.shortSiteName + "Stories";
+		picturesCategory = adrSiteInfo^.shortSiteName + "Pictures";
+		homePagesCategory = adrSiteInfo^.shortSiteName + "HomePages";
+		
+		adrSite^.["#newsSite"].storiesListedIn = storiesCategory;
+		adrSite^.["#newsSite"].picturesListedIn = picturesCategory;
+		adrSite^.["#newsSite"].homePagesListedIn = homePagesCategory};
+	
+	bundle { //set up editors
+		adrSite^.["#newsSite"].notifyList = adrSiteInfo^.sysopEmail; //PBS 10/27/99: don't create this is a list
+		adrSite^.["#newsSite"].sysopMail = {adrSiteInfo^.sysopEmail};
+		adrSite^.["#newsSite"].notifySender = adrSiteInfo^.sysopEmail}; //PBS 10/27/99: from address for email notification
+	
+	bundle { //handle the template
+		manilaSuite.newSite.createTemplate (adrSiteInfo)};
+	
+	bundle { //set up search prefs
+		local (adrSearchPrefs = @adrSite^.["#newsSite"].search);
+		adrSearchPrefs^.siteName = adrSiteInfo^.shortSiteName;
+		adrSearchPrefs^.siteUrl = baseUrl};
+	
+	bundle { //set up misc. #newsSite prefs
+		adrSite^.["#newsSite"].emailConfirmationSender = adrSiteInfo^.sysopEmail;
+		adrSite^.["#newsSite"].bulletins.senderEmail = adrSiteInfo^.sysopEmail;
+		
+		local (adrHtmlBulletinsTemplate = @adrSite^.["#newsSite"].bulletins.htmlTemplate);
+		local (s = string (adrHtmlBulletinsTemplate^));
+		local (unsubName = "unsubscribe");
+		local (unsubUrl = adrSite^.["#urls"].prefsHome);
+		local (unsubLink = html.getLink (unsubName, unsubUrl));
+		s = string.replaceAll (s, "[[unsubscribeLink]]", unsubLink);
+		delete (adrHtmlBulletinsTemplate);
+		wp.newTextObject (s, adrHtmlBulletinsTemplate);
+		local (adrBulletinsTemplate = @adrSite^.["#newsSite"].bulletins.plainTextTemplate);
+		s = string (adrBulletinsTemplate^);
+		s = string.replaceAll (s, "[[unsubscribeUrl]]", unsubUrl);
+		delete (adrBulletinsTemplate);
+		wp.newTextObject (s, adrBulletinsTemplate)};
+	
+	if defined ([adrSiteInfo^.f].["item #1"]) {
+		delete (@[adrSiteInfo^.f].["item #1"])};
+	
+	fileMenu.save (adrSiteInfo^.f);
+	
+	bundle { //add to config.mainResponder.domains, possibly
+		local (urlParts = string.urlSplit (baseUrl));
+		local (domainName = urlParts [2]);
+		adrSiteInfo^.domainName = domainName;
+		if adrSiteInfo^.flAddToDomains {
+			if string.countFields (baseUrl, '/') == 3 { //must be a top-level URL, like http://foo.com/
+				if not defined (config.mainResponder.domains.[domainName]) {
+					config.mainResponder.domains.[domainName] = adrSite}}}};
+	
+	return (true)}

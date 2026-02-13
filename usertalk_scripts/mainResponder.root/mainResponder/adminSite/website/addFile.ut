@@ -1,0 +1,193 @@
+on addFile () {
+	«Changes
+		«3/13/07; 2:42:05 PM by LL
+			«If the file is uploaded to a Themes folder, setup the folder to be rescanned since the themes thread is going to be disabled.
+		«9/26/05; 9:56:19 PM by JES
+			«Ensure that the filename we use is the file name part sent by the browser, not the full file path on the client machine.
+		«9/26/05; 2:15:08 PM by JES
+			«New Yes/No option for opening databases at startup -- if Yes, we add to user.databases, and also open immediately.
+			«Special handling for root files uploaded to the Tools folder -- if enabled, we install the Tool immediately.
+		«7/27/05; 2:31:26 PM by JES
+			«Add replacement confirmation. Close opened files/databases before replacing, if possible.
+		«7/27/05; 4:23:35 AM by JES
+			«Created. Provide a way for admins to upload a file into their installation.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Add File";
+	
+	local (locations = {});
+	local (locationNames = {});
+	on addLocation (path, name) {
+		locations = locations + path;
+		locationNames = locationNames + name};
+	bundle { //add all locations where we want to be able to add a file
+		addLocation ("apps", "apps");
+		addLocation ("www", "www");
+		addLocation ("ops", "ops");
+		addLocation ("apps/Tools", "Tools");
+		addLocation ("ops/themes", "Themes");
+		addLocation ("ops/discussion group themes", "DG Themes")};
+	
+	local (htext = "");
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	bundle { //explanatory text
+		add ("<p>You can add a file to your server using the form on this page. To add a file, choose the file and a destination, and click the Submit button.</p>")};
+	
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		local (adradmin = pta^.adrMemberInfo);
+		local (fname, folder, folderName, f, flWriteFile = false, adrfile);
+		case true { //modality
+			defined (adrargs^.cancel) { //clean up temp objects
+				if defined (adradmin^.mainResponder.adrAdminSiteAddFile) {
+					adrfile = adradmin^.mainResponder.adrAdminSiteAddFile;
+					delete (@adradmin^.mainResponder.adrAdminSiteAddFile)};
+				if defined (adrfile^) {
+					delete (adrfile)}};
+			defined (adrargs^.overwriteFile) {
+				local (flTempError = false);
+				if defined (adradmin^.mainResponder.adrAdminSiteAddFile) {
+					if defined (adradmin^.mainResponder.adrAdminSiteAddFile^) {
+						adrfile = adradmin^.mainResponder.adrAdminSiteAddFile;
+						fname = adrfile^.fileToAdd.filename;
+						folder = frontier.getSubFolder (adrfile^.location);
+						folderName = string.popTrailing (file.fileFromPath (folder), file.getPathChar ());
+						f = adrfile^.f;
+						flWriteFile = true}
+					else {
+						flTempError = true};
+					delete (@adradmin^.mainResponder.adrAdminSiteAddFile)}
+				else {
+					flTempError = true};
+				if flTempError {
+					add ("<p><b>Can't overwrite the file because the temporary copy no longer exists. Please upload the file again.</b></p>")}};
+			defined (adrargs^.addFile) {
+				fname = adrargs^.fileToAdd.filename;
+				bundle { //ensure fname is a file name, not a file path
+					on getLastField (s, chdelim) {
+						local (ctFields = string.countFields (s, chdelim));
+						s = string.nthField (s, chdelim, ctFields);
+						return (s)};
+					fname = getLastField (fname, '/'); //UNIX
+					fname = getLastField (fname, '\\'); //Windows
+					fname = getLastField (fname, ':'); //Macintosh
+					adrargs^.fileToAdd.filename = fname};
+				folder = frontier.getSubFolder (adrargs^.location);
+				folderName = string.popTrailing (file.fileFromPath (folder), file.getPathChar ());
+				f = folder + fname;
+				flWriteFile = false;
+				if file.exists (f) { //confirm
+					
+					if not defined (adradmin^.mainResponder) {
+						new (tableType, @adradmin^.mainResponder)};
+					table.surePath ("system.temp.mainResponder.misc.adminSite.addedFiles.x");
+					adrfile = table.uniqueName ("file", @system.temp.mainResponder.misc.adminSite.addedFiles, 2);
+					adrfile^ = adrargs^;
+					adrfile^.f = f;
+					adradmin^.mainResponder.adrAdminSiteAddFile = adrfile;
+					
+					local (openedDatabaseWarning = "");
+					if defined ([f]) { //we're about to overwrite an opened database
+						openedDatabaseWarning = " <font color=\"red\">This file is a database which is currently opened and running on this server.</font>"};
+					add ("<p><b>A file named \"" + fname + "\" already exists in \"" + folderName + "\"." + openedDatabaseWarning + "</b></p>");
+					add ("<p><b>Are you sure you want to overwrite this file? This operation cannot be undone.</b></p>");
+					add ("<form method=\"POST\">");
+					add ("<input type=\"submit\" name=\"cancel\" value=\"Cancel\">");
+					add ("<input type=\"submit\" name=\"overwriteFile\" value=\"Overwrite\">");
+					add ("</form>");
+					
+					return (htext)}
+				else { //proceed
+					adrfile = adrargs;
+					flWriteFile = true}}};
+		if flWriteFile { //write the file, set type and creator (Mac) and notify the user
+			local (flOpenDatabaseAfterUpload = false);
+			local (flToolsFolder = (string.lower (file.folderFromPath (f)) == string.lower (Frontier.tools.getToolsFolderPath ())) );
+			
+			if file.exists (f) { //delete the file first, closing the database first if it's a database that's currently opened
+				if defined ([f]) { //it's an opened database -- close it and set flag to re-open
+					fileMenu.close (f);
+					flOpenDatabaseAfterUpload = true}
+				else { //close opened files if possible
+					try {file.close (f)}}};
+			
+			file.writeWholeFile (f, adrfile^.fileToAdd.data);
+			if system.environment.isMac { //set type and creator
+				local (ext = string.nthField (f, ".", string.countFields (fname, ".")));
+				local (type = 'FATP');
+				local (creator = 'LAND');
+				case string.lower (ext) {
+					"gif";
+					"giff" {
+						type = 'gif ';
+						creator = user.html.prefs.imgFileCreator};
+					"jpg";
+					"jpeg" {
+						type = 'jpg ';
+						creator = user.html.prefs.imgFileCreator};
+					"root" {
+						type = 'TABL'};
+					"fttb" {
+						type = 'FTtb'};
+					"ftsc" {
+						type = 'FTsc'};
+					"txt" {
+						type = 'TEXT';
+						creator = user.html.prefs.textFileCreator};
+					"html" {
+						type = 'HTML';
+						creator = user.html.prefs.textFileCreator}};
+				file.setCreator (f, creator);
+				file.setType (f, type)};
+			
+			if string.lower (f) endswith ".root" { //is it a database?
+				if flToolsFolder { //special handling for Tools
+					if adrfile^.flAddToUserDatabases { //ensure enabled
+						Frontier.tools.enable (f, true)};
+					if Frontier.tools.isEnabled (f) { //defaults true for new Tools
+						Frontier.tools.install (f)}}
+				else { //non-Tool handling of user.databases
+					if adrfile^.flAddToUserDatabases {
+						mainResponder.menuCommands.addToUserDatabases (f, false);
+						flOpenDatabaseAfterUpload = true};
+					if flOpenDatabaseAfterUpload {
+						fileMenu.open (f, true)}}};
+			
+			delete (adrfile); //clean uptemp data
+			
+			if folderName == "themes" {
+				manilaSuite.themes.scanFolder ()};
+			if folderName == "discussion group themes" {
+				manilaSuite.themes.scanFolder (Frontier.getSubFolder ("ops/discussion group themes/"), @config.manila.discussionGroupThemes)};
+			add ("<p><b>Added \"" + fname + "\" to \"" + folderName + "\".</b></p>")}};
+	
+	bundle { //upload form
+		
+		add ("<form method=\"POST\" enctype=\"multipart/form-data\">");
+		
+		add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+		
+		add ("<tr>");
+		add ("<td><b>File:</b></td><td><input type=\"file\" name=\"fileToAdd\"></td>");
+		add ("</tr>");
+		
+		add ("<tr>");
+		add ("<td><b>Destination:</b></td><td><select name=\"location\">");
+		local (i, ct = sizeOf (locations));
+		for i = 1 to ct {
+			add ("<option value=\"" + locations[i] + "\">" + locationNames[i] + "</option>")};
+		add ("</select></td>");
+		add ("</tr>");
+		
+		local (yesBttn = "<input type=\"radio\" name=\"flAddToUserDatabases\" value=\"true\" checked>Yes</input>");
+		local (noBttn = "<input type=\"radio\" name=\"flAddToUserDatabases\" value=\"false\">No</input>");
+		add ("<tr><td><b>Open At Startup?</b></td><td>" + yesBttn + "&nbsp;" + noBttn + "<td></tr>");
+		
+		add ("<tr><td></td><td><input type=\"submit\" name=\"addFile\" value=\"Submit\"></td></tr>");
+		
+		add ("</table>");
+		
+		add ("</form>")};
+	
+	return (htext)}

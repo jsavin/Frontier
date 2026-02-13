@@ -1,0 +1,2 @@
+on firstFilter (pta) {
+	return (manilaSuite.staticRendering.filters.firstFilter (pta))}

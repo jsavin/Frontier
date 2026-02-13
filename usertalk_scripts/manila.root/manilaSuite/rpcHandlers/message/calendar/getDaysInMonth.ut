@@ -1,0 +1,21 @@
+on getDaysInMonth (username, password, siteName, year, month) {
+	«Return a list of days in a month. Used by the Radio UserLand discussion group browser.
+		«08/22/00; 10:18:02 PM by PBS
+	«Changes:
+		«03/08/01; 11:29:52 PM by JES
+			«Pad the month with zeros to two places. Fixes an error when called with numeric months between January and September.
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't get days in " + date.monthToString (month) + " in the message calendar because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrCal = @adrDiscuss^.calendar);
+	local (adrYear = @adrCal^.[year]);
+	local (adrMonth = @adrYear^.[string.padWithZeros (month, 2)]);
+	local (adrDay);
+	local (days = {});
+	for adrDay in adrMonth {
+		days = days + nameOf (adrDay^)};
+	
+	return (days)}

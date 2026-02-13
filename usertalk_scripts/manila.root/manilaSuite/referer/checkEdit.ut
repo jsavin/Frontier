@@ -1,0 +1,28 @@
+on checkEdit (editUrlName="discussEditInBrowser", postURLName="discussPostEditedMessage") {
+	«Changes
+		«7/14/05; 3:30:50 PM by JES
+			«Add support for referer checking pref.
+		«04.06.20, 18:41:14 by DAB
+			«allow a post  from the url that receives the post; cater to validation fo posts
+		«4/18/03; 12:21:21 AM by JES
+			«Ignore the URL arguments (chars after the ?) in the referring URL when comparing against the expected referer. Allows for redirect URLs to be passed around when editing pages, messages, and news items.
+		«05/09/00; 6:22:56 PM by PBS
+			«Created. This script makes sure that the referer is the edit-in-browser page and that the msgNums match.
+	
+	if not manilaSuite.referer.checkIsEnabled () {
+		return (true)};
+	manilaSuite.referer.mustNotBeEmpty ();
+	local (pta = html.getPageTableAddress ());
+	local (referer = string.popSuffix (pta^.requestHeaders.referer, '?'));
+	referer = string.popSuffix (referer, '#');
+	local (expectedReferer = pta^.urls^.[editUrlName] + pta^.postArgs.msgNum);
+	«if string.lower (referer) != string.lower (expectedReferer)
+		«scriptError (manilaSuite.getString ("admin.refererDoesntMatchError"))
+	«return (true)
+	case string.lower(referer) {
+		string.lower(expectedReferer);
+		string.lower(pta^.urls^.[postURLName]) {
+			return true}};
+	
+	log.add("CheckEdit:" + referer + "!=" + expectedReferer, "referer");
+	scriptError (manilaSuite.getString ("admin.refererDoesntMatchError"))}

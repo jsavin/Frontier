@@ -1,0 +1,65 @@
+on browseAny (logname, adrRenderItemCallback, colors={"gainsboro", "white"}, columns={}, hoursToDisplay=1, maxitems=infinity, colsToAlignRight={}, adrItemCount=nil) {
+	«Changes:
+		«8/2/02; 10:59:44 PM by JES
+			«Created. Based on mainResponder.log.browser.
+	local (adrlog = log.getGuestSubTable (logname));
+	if sizeOf (adrlog^) == 0 {
+		return ("")};
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledString ("\t", indentlevel) + s + "\r");};
+	
+	local (i, adrhourtable, adritem, sizelog = sizeof (adrlog^), sizehourtable);
+	add ("<table width=\"92%\" border=\"0\" cellpadding=\"3\" cellspacing=\"0\">"); indentlevel++;
+	
+	if sizeOf (columns) > 0 {
+		add ("<tr>"); indentlevel++;
+		local (column);
+		for column in columns {
+			if colsToAlignRight contains column {
+				add ("<td align=\"right\"><b>" + column + "</b></td>")}
+			else {
+				add ("<td><b>" + column + "</b></td>")}};
+		add ("</tr>"); indentlevel--};
+	
+	local (ixhour = sizelog, cthours = 0, ctitems = 0, ixcolor = 1); //generate for the most recent hour
+	while cthours < hoursToDisplay {
+		adrhourtable = @adrlog^ [ixhour];
+		sizehourtable = sizeof (adrhourtable^);
+		for i = sizehourtable downto 1 {
+			adritem = @adrhourtable^ [i];
+			add ("<tr bgcolor=\"" + colors [ixcolor] + "\">"); indentlevel++;
+			ixcolor++;
+			if ixcolor > sizeOf (colors) {
+				ixcolor = 1};
+			if defined (adritem^.itemcache) {
+				local (oldindentlevel = indentlevel);
+				indentlevel = 0;
+				add (adritem^.itemcache);
+				indentlevel = oldindentlevel}
+			else {
+				local (ixhtmltext = sizeof (htmltext));
+				try {
+					local (itemtext = adrRenderItemCallback^ (adritem) );
+					ctitems++;
+					add (itemtext);
+					adritem^.itemcache = itemtext}};
+			add ("</tr>"); indentlevel--;
+			ctitems++;
+			if ctitems >= maxitems {
+				break}};
+		ixhour--; cthours++;
+		if ixhour == 0 {
+			break};
+		if cthours >= hoursToDisplay {
+			break};
+		if ctitems >= maxitems {
+			break}};
+	
+	add ("</table>"); indentlevel--;
+	
+	if adrItemCount != nil {
+		adrItemCount^ = ctitems};
+	
+	return (htmltext)}

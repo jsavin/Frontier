@@ -1,0 +1,42 @@
+on firstFilter (pta) {
+	«Changes:
+		«10/11/05; 3:15:44 PM by JES
+			«If pta^.adrMemberInfo is defined, call mainResponder.members.setCookie to make sure that the admin user has an admin cookie.
+		«9/22/05; 2:41:22 AM by JES
+			«Call mainResponder.init to make sure everything is defined.
+		«6/9/02; 3:57:30 PM by JES
+			«Parse searchArgs, and ensure that both pta^.searchArgTable and pta^.postArgs are defined.
+		«05/10/00; 1:26:58 AM by PBS
+			«Check the referer to defeat the client side trojan horse bug.
+		«12/7/01; 7:13:21 PM by PBS
+			«Ignore search args.
+	
+	Frontier.versionRequired ("8.0");
+	mainResponder.init ();
+	bundle { //make sure that pta^.url is correct
+		«parentOf (parentOf (this^)^)^.["#ftpSite"].url = "http://" + pta^.host + "/"
+		pta^.url = "http://" + pta^.host + pta^.uri};
+	bundle { //PBS 05/10/00: check referer to defeat client side trojan horse
+		if pta^.method == "POST" {
+			local (referer = pta^.requestHeaders.referer);
+			if referer contains "?" { //PBS 12/07/01: strip search args
+				referer = string.nthField (referer, '?', 1)};
+			local (urlThisPage = "http://" + pta^.host);
+			urlThisPage = urlThisPage + pta^.uri;
+			if pta^.pathArgs != "" {
+				urlThisPage = urlThisPage + "$" + pta^.pathArgs};
+			if string.lower (referer) != string.lower (urlThisPage) {
+				scriptError ("Can't post to this page because the referer was not the expected referer.")}}};
+	bundle { //JES 6/7/02: if searchArgs are non-empty, parse to pta^.searchArgTable
+		new (tableType, @pta^.searchArgTable); //always define this
+		if defined (pta^.searchArgs) {
+			if sizeOf (pta^.searchArgs) > 0 {
+				new (tableType, @pta^.searchArgTable);
+				webserver.parseArgs (pta^.searchArgs, @pta^.searchArgTable)}}};
+	if not defined (pta^.postArgs) { //always define this
+		new (tableType, @pta^.postArgs)};
+	
+	if defined (pta^.adrMemberInfo) { //ensure that the admin has an admin cookie
+		mainResponder.members.setCookie (nameOf (pta^.adrMemberInfo^), string (pta^.adrMemberInfo^.password), groupName:"admin")};
+	
+	return (true)}

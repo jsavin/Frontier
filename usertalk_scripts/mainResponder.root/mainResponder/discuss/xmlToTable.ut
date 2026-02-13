@@ -1,0 +1,38 @@
+on xmlToTable (xmltext, adrtable) {
+	local (xtable);
+	xml.compile (xmltext, @xtable);
+	scratchpad.xtable = xtable; //debugging
+	local (adrheader, adrbody, adrpayload, adrauthor, adrenclosure, adrnotify);
+	xml.getPathAddress (@xtable, "/ticket/header", @adrheader);
+	xml.getPathAddress (@xtable, "/ticket/body", @adrbody);
+	xml.getPathAddress (@xtable, "/ticket/payload", @adrpayload);
+	xml.getPathAddress (@xtable, "/ticket/header/author", @adrauthor);
+	xml.getPathAddress (@xtable, "/ticket/header/enclosure", @adrenclosure);
+	xml.getPathAddress (@xtable, "/ticket/header/notify", @adrnotify);
+	
+	adrtable^.title = xml.getValue (adrheader, "title");
+	adrtable^.postTime = xml.getValue (adrheader, "posttime");
+	adrtable^.ticketnum = xml.getValue (adrheader, "ticketnum");
+	adrtable^.private = boolean (xml.getValue (adrheader, "private"));
+	
+	adrtable^.authorName = xml.getValue (adrauthor, "name");
+	adrtable^.authorOrganization = xml.getValue (adrauthor, "organization");
+	adrtable^.authorMail = xml.getValue (adrauthor, "mail");
+	
+	adrtable^.body = base64.decode (adrbody^);
+	
+	try { //might not have an enclosure
+		local (xlist = xml.getAddressList (adrenclosure, "address"), item);
+		adrtable^.enclosureAddress = xlist [1]^; //we only support a single enclosure
+		adrtable^.enclosureType = xml.getValue (adrpayload, "type");
+		adrtable^.enclosureBits = xml.getValue (adrpayload, "bits")};
+	
+	xlist = xml.getAddressList (adrnotify, "channel");
+	adrtable^.notifyList = {};
+	for item in xlist {
+		adrtable^.notifyList = adrtable^.notifyList + {item^}};
+	
+	return (true)};
+bundle { //test code
+	table.emptytable (@scratchpad.notetable);
+	xmltotable (xml.decompile (@nirvana.testing.testtable), @scratchpad.notetable)}

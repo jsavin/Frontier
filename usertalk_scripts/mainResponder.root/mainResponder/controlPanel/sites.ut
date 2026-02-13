@@ -1,0 +1,106 @@
+«List Manila sites on a server.
+	«Changes:
+		«10/25/04; 12:40:01 AM by JES
+			«Link to the site instead of to the site's discussion group.
+		«06/05/01; 11:02:37 AM by PBS
+			«When getting the ME's real name, don't generate a fatal error if there's a problem finding the membership group.
+		«01/05/01; 11:58:52 AM by PBS
+			«Moved or no longer existing sites can cause an error: the error should be non-fatal.
+		«02/23/00; 10:15:57 PM by PBS
+			«Don't list sites that aren't Manila sites. Trying to list a site that isn't a Manila site would cause an error. Non-Manila sites shouldn't be in config.manila.sites -- but sometimes they are.
+
+local (pta = html.getPageTableAddress ());
+local (htmlText = "");
+local (flFoundSites = false);
+
+on add (s) {
+	htmlText = htmlText + s + "\r"};
+
+local (infoTable);
+new (tableType, @infoTable);
+bundle { //build an intermediate table of information about the sites
+	if defined (config.manila.sites) {
+		local (adrSites = @config.manila.sites);
+		local (siteName, i);
+		
+		for i = 1 to sizeOf (adrSites^) {
+			if defined (adrSites^ [i]^) {
+				try { //PBS 01/05/01: moved sites or no longer existing sites can cause an error: the error should be non-fatal
+					«Get information about this site.
+					local (adrSite = adrSites^ [i]);
+					if not (manilaSuite.isManilaSite (adrSite)) { //PBS 02/23/00: don't list sites that aren't Manila sites
+						continue};
+					
+					local (siteName = nameOf (adrSite^));
+					if string.lower (siteName) endsWith "manilawebsite" {
+						siteName = string.delete (siteName, sizeOf (siteName) - 12, 13)};
+					
+					local (siteUrl = adrSite^.["#ftpSite"].url);
+					local (editor = adrSite^.["#newsSite"].sysopMail);
+					if typeOf (editor) == listType {
+						editor = editor [1]};
+					local (dgName = adrSite^.["#prefs"].discussionRoot);
+					local (dgUrl = adrSite^.["#urls"].discussHomePage);
+					local (profilesUrl = adrSite^.["#urls"].profilesHome);
+					if not (profilesUrl endsWith "$") {
+						profilesUrl = profilesUrl + "$"};
+					local (membershipGroupName = adrSite^.["#prefs"].defaultMembershipGroup);
+					
+					«Create a new entry in the table for this site.
+					local (adrItem = @infoTable.[siteName]);
+					new (tableType, adrItem);
+					
+					«Populate the entry in the table.
+					adrItem^.site = siteName;
+					adrItem^.siteUrl = siteUrl;
+					adrItem^.managingEditor = editor;
+					adrItem^.discussionGroup = dgName;
+					adrItem^.dgUrl = dgUrl;
+					adrItem^.profilesUrl = profilesUrl;
+					adrItem^.membershipGroupName = membershipGroupName;
+					
+					local (adrDiscuss);
+					pta^.discussionRoot = dgName;
+					adrDiscuss = mainResponder.discuss.openRoot ();
+					local (adrMessages = @adrDiscuss^.messages);
+					local (ctMessages = sizeOf (adrMessages^));
+					local (adrMostRecentMessage = @adrMessages^ [ctMessages]);
+					local (lastModDate = adrMostRecentMessage^.postTime);
+					adrItem^.modified = lastModDate;
+					
+					flFoundSites = true}}}}};
+
+local (adrTable = html.table.new (border:0, cellspacing:5, cellpadding:3));
+bundle { //build the table that gets rendered as HTML
+	if flFoundSites {
+		«Set up the HTML table
+		html.table.addColumn (adrTable, "Site");
+		html.table.addColumn (adrTable, "Managing Editor");
+		html.table.addColumn (adrTable, "Modified");
+		
+		«Loop through the table of info about the sites on this server.
+		for i = 1 to sizeOf (infoTable) {
+			local (adrItem = @infoTable [i]);
+			
+			local (siteLink = html.getLink (adrItem^.site, adrItem^.siteUrl));
+			local (editor = adrItem^.managingEditor);
+			local (editorLink = html.getLink (editor, adrItem^.profilesUrl + editor));
+			
+			try { //get the real name of the editor, if possible //PBS06/05/01: was a bundle, now a try, so errors aren't fatal
+				local (groupName = adrItem^.membershipGroupName);
+				local (adrInfo = mainResponder.members.getMemberTable (groupName, editor));
+				if (defined (adrInfo^.personalInfo.name)) and (adrInfo^.personalInfo.name != "") {
+					editorLink = html.getLink (adrInfo^.personalInfo.name, adrItem^.profilesUrl + editor)}};
+			
+			html.table.addRow (adrTable)^.cells = {siteLink, editorLink, adrItem^.modified}}}};
+
+pta^.title = "Sites";
+pta^.activeUrls = false;
+if flFoundSites {
+	add ("Below is a list of sites and their managing editors. Click on the site name to go the discussion group for that site, or click on the managing editor's name to see his or her profile.<p>");
+	add (html.table.render (adrTable))}
+else {
+	add ("There are no sites on this server.")};
+html.table.delete (adrTable);
+
+return (htmlText)

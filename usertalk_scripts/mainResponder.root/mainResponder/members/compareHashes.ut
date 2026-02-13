@@ -1,0 +1,13 @@
+on compareHashes (hashString, password, groupName) {
+	«Compare the hash string sent in the cookie to a calculated hash derived from the password and group name stored on the server. Return true if they match, false otherwise.
+		«04/10/00; 11:54:40 AM by PBS
+		«Changes
+			«8/8/02; 2:54:33 PM by JES
+				«Support for passwords stored as binaries instead of as clear-text strings.
+	
+	local (expectedHash = mainResponder.members.getHash (string (password), groupName));
+	
+	if hashString == expectedHash {
+		return (true)};
+	
+	return (false)}

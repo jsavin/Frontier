@@ -1,0 +1,29 @@
+local (pta = html.getPageTableAddress ());
+
+pta^.msgNum = number (pta^.pathArgs);
+
+local (adrMsgTable = mainResponder.discuss.getMessageTable (pta^.msgNum));
+
+pta^.title = adrMsgTable^.subject;
+pta^.title = string.replaceAll (pta^.title, "\"", "&quot;");
+pta^.title = manilaSuite.unTaint (pta^.title); //PBS 10/31/99: no curly-brace macros in titles
+pta^.flReadMessageAutoParagraphs = false;
+
+local (htmlText = "");
+
+htmlText = htmlText + manilaSuite.html.confirmBox (pta);
+
+local (flResponseForm = true);
+if defined (pta^.flResponseFormOnDiscussPage) {
+	flResponseForm = pta^.flResponseFormOnDiscussPage};
+htmlText = htmlText + mainResponder.discuss.readMessage (pta^.msgNum, flResponseForm:flResponseForm);
+local (s = manilaSuite.discuss.addDhtmlEditor (pta));
+if s != "" {
+	pta^.dhtmlEditor = s;
+	htmlText = string.replace (htmlText, "<br><textarea name=\"text\"", "<p>[[dhtmlEditor]]<textarea name=\"text\" style=\"padding:7px\"")};
+
+htmlText = htmlText + manilaSuite.html.adminBox (pta);
+
+manilaSuite.discuss.setLastUpdateTime (adrMsgTable);
+
+return (htmlText)

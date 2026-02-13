@@ -1,0 +1,3 @@
+local (adrSite = parentOf (this^));
+adrSite = parentOf (adrSite^);
+return (manilaSuite.admin.downloadMySite (adrSite))

@@ -1,0 +1,46 @@
+on init (adrsite=nil) {
+	«Changes
+		«8/3/02; 10:05:36 PM by JES
+			«Created. Init the search sub-table of a Manila site's #newsSite table.
+	if adrsite == nil {
+		adrsite = manilaSuite.getSiteAddress ()};
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	local (adrdata = @adrnewssite^.search);
+	if not defined (adrdata^) {
+		new (tableType, adrdata)};
+	if not defined (adrdata^.flIndex) {
+		adrdata^.flIndex = false};
+	if not defined (adrdata^.flIndexDgMessages) {
+		adrdata^.flIndexDgMessages = false};
+	if not defined (adrdata^.serverDomain) {
+		adrdata^.serverDomain = "127.0.0.1"};
+	if adrdata^.serverDomain == "" {
+		adrdata^.serverDomain = "127.0.0.1";
+		adrdata^.serverPort = user.inetd.config.http.port};
+	if not defined (adrdata^.serverPort) {
+		adrdata^.serverPort = 80};
+	if not defined (adrdata^.serverProcedureName) {
+		adrdata^.serverProcedureName = "mainResponder.search.index"};
+	if not defined (adrdata^.serverRpcPath) {
+		adrdata^.serverRpcPath = "/RPC2"};
+	if not defined (adrdata^.siteName) {
+		adrdata^.siteName = manilaSuite.getNewsSitePref ("siteName", adrsite)};
+	if not defined (adrdata^.siteUrl) {
+		adrdata^.siteUrl = manilaSuite.getSiteUrl (adrsite)};
+	if not defined (adrdata^.indexQueue) {
+		new (tableType, @adrdata^.indexQueue)};
+	if not defined (adrdata^.indexQueue.flRunning) {
+		adrdata^.indexQueue.flRunning = false};
+	if not defined (adrdata^.indexQueue.threadId) {
+		adrdata^.indexQueue.threadId = 0};
+	if not defined (adrdata^.indexQueue.nextMsgToIndex) {
+		adrdata^.indexQueue.nextMsgToIndex = 1};
+	if not defined (adrdata^.indexQueue.whenIndexStarted) {
+		adrdata^.indexQueue.whenIndexStarted = date (0)};
+	if not defined (adrdata^.indexQueue.whenLastIndexCompleted) {
+		adrdata^.indexQueue.whenLastIndexCompleted = date (0)};
+	if not defined (adrdata^.indexQueue.ctMsgsIndexed) {
+		adrdata^.indexQueue.ctMsgsIndexed = 0};
+	if not defined (adrdata^.indexQueue.lastError) {
+		adrdata^.indexQueue.lastError = ""};
+	return (adrdata)}

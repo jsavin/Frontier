@@ -1,0 +1,18 @@
+on getSiteUrl (adrSite) {
+	«Get the URL to the folder containing gems for this site.
+		«04/13/00; 9:36:38 PM by PBS
+	
+	local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));
+	if defined (adrPrefs^.url) {
+		return (adrPrefs^.url)};
+	
+	local (siteName = manilaSuite.getCanonicalSiteName (adrSite));
+	siteName = manilaSuite.getShortSitename (siteName);
+	
+	if not defined (config.manila.prefs.gemsUrl) {
+		scriptError ("Can't get the gems site URL for \"" + siteName + "\" because the global gems URL has not been set in the Control Panel.")};
+	
+	local (baseUrl = config.manila.prefs.gemsUrl);
+	local (url = baseUrl + siteName + "/");
+	
+	return (url)}

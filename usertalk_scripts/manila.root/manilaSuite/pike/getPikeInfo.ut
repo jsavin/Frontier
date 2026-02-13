@@ -1,0 +1,17 @@
+on getPikeInfo (pta=nil) {
+	«Get info about the machine running Pike: ip address, RPC path, and port. Return a table.
+		«01/13/00; 3:45:46 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (pikeInfoTable);
+	new (tableType, @pikeInfoTable);
+	pikeInfoTable.ipAddress = pta^.client;
+	
+	if not (manilaSuite.pike.getPikeUserPort (@pikeInfoTable.port, pta)) {
+		scriptError ("Can't send the message to Pike because can't get the port Pike is listening on from the membership record.")};
+	
+	pikeInfoTable.rpcPath = "/RPC2";
+	
+	return (pikeInfoTable)}

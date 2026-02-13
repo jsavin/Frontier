@@ -1,0 +1,111 @@
+on postGemPage (pta=nil, attachmentFieldName="attachFile", flIgnoreTitle=false, flIgnoreReferer=false, adrAdrGem=nil) {
+	«Post a gem. This is the website framework context wrapper for posting a new gem.
+		«04/13/00; 1:07:51 AM by PBS
+		«Changes:
+			«3/13/05; 6:11:41 PM by JES
+				«New optional parameter, attachmentFieldName -- corresponds to the name of the form element where the file was attached. This makes it possible to call postGemPage from your own forms, using an arbitrary field name for the file attachment.
+					«Used in this case to handle enclosures in news items, as called by manilaSuite.news.postItemPage.
+				«New optional parameter, flIgnoreTitle. If true, we ignore the title field returned by the form post, and just use the filename for the title of the gem.
+					«Needed to support enclosures in news items as posted gems -- we don't want to use the title of the news item, and the form doesn't provide a place for users to specify separately, the title of the gem.
+				«New optional parameter, flIgnoreReferer. If true we don't do referer checks. Needed to be called from another form handler.
+				«New optional parameter, adrAdrGem. If non-nil, adrAdrGem^ will be set to the address of the new gem table in the site, after the gem is created, and after callbacks get a shot at the data.
+			«08/09/02; 12:47:25 AM by JES
+				«Save adrGemTable in the pageTable, so that the finalFilter can get access. This allows the metadata plugin, for example, to react to the creation of a new gem.
+			«12/10/01; 5:02:01 PM by PBS
+				«The title, when not given, is supposed to be the filename -- but it was sometimes calculated incorrectly. Now it uses the same code that calculates the filename, which works.
+			«05/11/00; 7:57:04 PM by JES
+				«merged in Brent's security fix for the client side trojan horse attack.
+			«05/09/00; 10:41:04 PM by PBS
+				«Check the referer to defeat the client side trojan horse.
+			«04/20/00; 8:17:28 PM by JES
+				«localized
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	pta^.title = manilaSuite.getString ("gems.postGemPageTitle", pta: pta); // 4/20/00 JES: localized
+	
+	bundle { //PBS 05/09/00: check referer to defeat client side trojan horse
+		«manilaSuite.referer.checkNew ("gemNewMessage")
+		if not flIgnoreReferer {
+			manilaSuite.referer.checkNew ("gemNewMessage", "gemPostMessage")}}; //04.06.23, 14:59:43 by DAB
+	
+	bundle { //see if any pre post validation is requested,04.06.23, 12:28:24 by DAB
+		local (adrValidator, htmltext);
+		if manilaSuite.plugins.ETPoverride.getScriptAddress( "gemPostMessage", @adrValidator) { //04.06.23, 14:46:54 by DAB
+			if not adrValidator^(@htmltext) { //validator saw error, so returns whatever it says (repeat form)
+				return htmltext}}};
+	
+	local (dataTable); //this is the temporary data table other gems scripts will need; contains info about the gem
+	dataTable = pta^.postArgs.[attachmentFieldName];
+	if defined (pta^.postArgs.title) { //title was specified in the form
+		if not flIgnoreTitle {
+			dataTable.title = pta^.postArgs.title}};
+	if defined (dataTable.redirect) {
+		delete (@dataTable.redirect)}; //not needed to store with gem info
+	
+	bundle { //make sure data isn't empty
+		if dataTable.data == "" or dataTable.fileName == "" {
+			pta^.title = manilaSuite.getString ("gems.itDidntWorkPageTitle", pta: pta); // 4/20/00 JES: localized
+			return (manilaSuite.getString ("gems.didntChooseFileError", pta: pta))}}; // 4/20/00 JES: localized
+	
+	bundle { //convert file path from browser to file name
+		on getLastField (s, chdelim) {
+			local (ctFields = string.countFields (s, chdelim));
+			s = string.nthField (s, chdelim, ctFields);
+			return (s)};
+		
+		local (fname);
+		fname = dataTable.fileName; //the browser sends a path, not a file name
+		
+		fname = getLastField (fname, '/'); //UNIX
+		fname = getLastField (fname, '\\'); //Windows
+		fname = getLastField (fname, ':'); //Macintosh
+		
+		dataTable.fileName = fname};
+	
+	if (not (defined (dataTable.title))) or (dataTable.title == "") { //create default title if none is give; it's the filename
+		dataTable.title = dataTable.fileName}; //PBS 12/10/01: it's supposed to be the filename; why not do it the easy way, instead of calculating the filename again (and possibly incorrectly)?
+	
+	bundle { //add posttime and time zone to data table
+		local (postTime = manilaSuite.convertTime ());
+		dataTable.postTime = postTime;
+		
+		local (timeZone);
+		manilaSuite.getSiteTimeZone (manilaSuite.getManilaSiteAddress (pta), @timeZone);
+		dataTable.timeZone = timeZone};
+	
+	bundle { //add member to data table
+		local (memberKey = nameOf (pta^.adrMemberInfo^));
+		dataTable.member = memberKey};
+	bundle { //add size to data table
+		dataTable.sizeBytes = sizeOf (dataTable.data)};
+	
+	«Create the new gem: write to disk, store info in site, possibly create shortcut.
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (adrGemTable);
+	try { // create the gem
+		adrGemTable = manilaSuite.gems.createNewGem (adrSite, @dataTable);
+		pta^.adrGemTable = adrGemTable; //JES 8/9/02: store the address of the gem table in the page table for finalFilter
+		
+		bundle { //call new gem callbacks, if any 04.06.30, 15:21:43 by DAB
+			local (t);
+			bundle { //build context data for callback and return table
+				new(tabletype, @t);
+				t.adrSite = adrSite;
+				t.adrGemTable = adrGemTable;
+				t.adrMember = pta^.adrMemberInfo};
+			
+			manilaSuite.callbacks.newGemCallback(@t)}}
+	else {
+		htmlText = tryError;
+		htmlText = manilaSuite.unTaint (htmlText);
+		pta^.title = manilaSuite.getString ("gems.itDidntWorkPageTitle", pta: pta); // 4/20/00 JES: localized
+		return (htmlText)};
+	
+	if adrAdrGem != nil { //possibly return data to caller
+		adrAdrGem^ = adrGemTable};
+	
+	if defined (pta^.postArgs.redirect) {
+		mainResponder.redirect (pta^.postArgs.redirect)}; // + msgNum)
+	
+	return ("")}

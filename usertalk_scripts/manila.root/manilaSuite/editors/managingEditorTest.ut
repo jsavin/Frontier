@@ -1,0 +1,57 @@
+on managingEditorTest (pta=nil) {
+	«Changes:
+		«10/7/05; 4:17:52 PM by JES
+			«Changed criteria for admin user login -- it no longer matters if the pta^.adrMemberInfo points at an admin user or a member of this site's membership group -- if the member and password match, then we're an admin.
+		«10/3/05; 2:38:47 AM by JES
+			«Only set pta^.flServerAdmin to false if not already defined.
+		«10/1/05; 4:04:39 PM by JES
+			«Set pta^.flServerAdmin to true or false, depending on whether or not we're logged in as an admin.
+		«9/16/05; 3:23:54 PM by JES
+			«If the admin superuser is enabled, and the member is a member of the server's admin membership group, always give them managing editor privileges.
+		«03/14/01; 4:31:52 PM by PBS
+			«Minor optimizations: if the person is an ME, they're also a regular editor.
+		«6/7/99; 11:30:25 AM by PBS
+			«Since this script may be called several times during the building of a page, store the answer in the page table, at pta^.flManagingEditor, so this script returns more quickly on subsequent calls.
+		«?/?/99 by PBS
+			«Created. Return true if this is the managing editor, false otherwise.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if not defined (pta^.flServerAdmin) {
+		pta^.flServerAdmin = false}; //always false unless logged in as admin
+	
+	if defined (pta^.flManagingEditor) { //PBS 6/7/99: optimization
+		return (pta^.flManagingEditor)};
+	
+	if not defined (pta^.adrMemberInfo) {
+		pta^.flManagingEditor = false;
+		pta^.flEditor = false; //PBS 03/14/01: minor optimization
+		return (false)};
+	
+	if defined (config.mainResponder.prefs.flAdminGroupAlwaysAllowed) {
+		if config.mainResponder.prefs.flAdminGroupAlwaysAllowed { //check admin group, and allow admins to be ME's
+			local (adrAdminGroup = @[system.temp.mainResponder.membersRootFile].admin);
+			local (adrAdminUser = @adrAdminGroup^.users.[nameOf (pta^.adrMemberInfo^)] );
+			if defined (adrAdminUser^) {
+				if string (adrAdminUser^.password) == string (pta^.adrMemberInfo^.password) {
+					pta^.flManagingEditor = true;
+					pta^.flEditor = true;
+					pta^.flContentEditor = false;
+					pta^.flContributingEditor = false;
+					pta^.flServerAdmin = true; //JES 10/1/05: new flag makes it easy to test for this case
+					return (true)}}}};
+	
+	local (email = string.lower (nameOf (pta^.adrMemberInfo^)));
+	
+	local (i);
+	local (meList = manilaSuite.editors.getManagingEditorList (pta));
+	for i = 1 to sizeOf (meList) {
+		if string.lower (meList [i]) == email {
+			pta^.flManagingEditor = true;
+			pta^.flEditor = true; //PBS 03/14/01: minor optimization
+			return (true)}};
+	
+	pta^.flManagingEditor = false;
+	
+	return (false)}

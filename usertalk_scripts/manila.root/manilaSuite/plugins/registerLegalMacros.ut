@@ -1,0 +1,17 @@
+on registerLegalMacros (adrLegalMacros) {
+	«Register all the legal macros for a plugin.
+		«02/23/00; 2:26:36 PM by PBS
+	
+	local (adrItem);
+	local (adrConfigLegalMacros = @config.mainResponder.prefs.legalMacros);
+	for adrItem in adrLegalMacros {
+		local (macroString = string.popFileFromAddress (adrItem));
+		local (adrConfigItem = @adrConfigLegalmacros^.[macroString]);
+		if not defined (adrConfigItem^) {
+			new (tableType, adrConfigItem);
+			adrConfigItem^.flLegal = true;
+			adrConfigItem^.flParams = true}};
+	
+	return (true)};
+bundle { //test code
+	registerLegalMacros (@surveyMacros)}

@@ -1,0 +1,62 @@
+on xmlToTable (s) {
+	«Changes:
+		«7/7/05; 5:15:11 AM by JES
+			«Added support for multiple department elements in a newsItem XML.
+		«4/24/03; 5:09:45 PM by JES
+			«Add all elements to the table except for flPosted, flReleased and postTime.
+		«4/1/03; 12:58:24 PM by JES
+			«Ensure that the return table contains a description, url and department. Don't throw an error if the XML is malformed -- instead use the text for the description field. A defective news item should never break the site.
+		«07/05/00; 1:40:58 PM by PBS
+			«Allow neutered tags to remain neutered -- don't translate &lt; to <.
+		«04/20/00; 2:46:10 PM by PBS
+			«Created. Turn an XML-formatted body into a Frontier table.
+	
+	local (xmltext = s);
+	bundle { //make sure the <newsItem> container is there
+		if not (string.lower (s) contains "<newsitem>") {
+			xmltext = "<newsItem><description>" + s + "</description></newsItem>"}};
+	
+	local (t);
+	new (tableType, @t);
+	
+	try { //bad XML in the news item should never cause an error
+		local (xmlTable);
+		new (tableType, @xmlTable);
+		xml.compile (xmltext, @xmlTable);
+		
+		local (adrNewsItem = xml.getAddress (@xmlTable, "newsItem"));
+		local (adrItem);
+		for adrItem in adrNewsItem {
+			local (itemName = xml.convertToDisplayName (nameOf (adrItem^)));
+			case string.lower (itemName) {
+				"flposted";
+				"flreleased";
+				"posttime" {
+					continue}};
+			«local (value = xml.getValue (adrNewsItem, itemName)) //names are unique
+			local (value = adrItem^);
+			if itemName == "department" { //special case
+				if defined (t.department) {
+					if typeOf (t.department) == stringType {
+						t.department = {t.department}};
+					t.department = t.department + value}
+				else {
+					t.department = value};
+				continue};
+			if value == "true" {value = true};
+			if value == "false" {value = false};
+			t.[itemName] = value}}
+	else {
+		t.description = s};
+	
+	bundle { //ensure description, url, title and department
+		if not defined (t.description) {
+			t.description = ""};
+		if not defined (t.url) {
+			t.url = ""};
+		if not defined (t.title) {
+			t.title = ""};
+		if not defined (t.department) {
+			t.department = ""}};
+	
+	return (t)}

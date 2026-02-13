@@ -1,0 +1,2 @@
+on getDiscussTableAddress (discussRoot) {
+	return (@[mainResponder.discuss.openFile ()].[discussRoot])}

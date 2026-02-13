@@ -1,0 +1,75 @@
+on accessCheckAVHitList (adrHits) {
+	«manilaSuite.accessControl.accessCheckAVHitList : 04/05/21, 12:01:17 by DAB
+		«In the context of the page table, does the member belong to any
+		«cohorts assigned to the messages in the addedValue Hit list?
+		«was manilaFixer.accessControl.accessCheckAVHitList : 03/08/09, 21:34:21 by DAB
+	local (pta = html.getPagetableAddress());
+	
+	if manilaSuite.editors.managingEditorTest(pta) {
+		return sizeOf(adrHits^)};
+	
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	
+	on embargoed(adrMsg) { //release/expiry date checks 04/02/27, 12:00:08 by DAB
+		if not defined(adrMsg^.accessControl.releaseDate) {
+			adrMsg^.accessControl.releaseDate = nil};
+		if not defined(adrMsg^.accessControl.expiryDate) {
+			adrMsg^.accessControl.expiryDate = nil};
+		
+		local (now = clock.now());
+		case true {
+			(adrMsg^.accessControl.releaseDate==nil) and (adrMsg^.accessControl.expiryDate == nil) {
+				return false}; //unrestricted
+			(adrMsg^.accessControl.expiryDate==nil) {
+				return (adrMsg^.accessControl.releaseDate > now)};
+			(adrMsg^.accessControl.releaseDate==nil) {
+				return (now < adrMsg^.accessControl.expiryDate)}}
+		else {
+			return (adrMsg^.accessControl.releaseDate > now ) and (now < adrMsg^.accessControl.expiryDate)}};
+	
+	on checkOneMessage(adrMsg) {
+		if not defined(adrMsg^.accessControl) { //04/02/27, 12:10:21 by DAB
+			return true}; //unrestricted
+		if embargoed(adrMsg) { //date controls forbid this oen
+			return false};
+		if not defined(adrMsg^.accessControl.permittedCohorts) {
+			return true}; //unrestricted
+		if  not adrMsg^.accessControl.permittedCohorts {
+			return true}; //unrestricted
+		
+		«so we have a list of cohort names, so we must have a membership 
+		if not defined (pta^.adrMemberInfo) {
+			return false};
+		
+		local (itm, adrCohort, adrScript,  tbl);
+		new(tabletype, @tbl);
+		for itm in adrMsg^.accessControl.permittedCohorts {
+			adrCohort = @adrCohorts^.[itm];
+			if not defined(adrCohort^) {
+				continue};
+			if not defined(adrCohort^.containsTest) {
+				continue};
+			adrScript = @adrCohort^.containsTest;
+			while typeOf(adrScript^) == addressType {
+				adrScript = adrScript^}; //03/11/06, 16:01:06 by DAB Bad loop !!!
+			if defined(tbl.[string(adrScript)]) { // don't call more than once
+				continue};
+			if adrScript^(pta) {
+				return true};
+			tbl.[string(adrScript)] = true};
+		
+		return false};
+	
+	local (adr, ix);
+	for ix = sizeof(adrHits^) downto 1 {
+		adr = @adrHits^[ix];
+		if not checkOneMessage(address(nameOf(adr^))) {
+			delete(adr)}};
+	
+	return sizeof(adrHits^)};
+«bundle
+	«local (tbl = temp.pta.["367"].firstFilter)
+	«html.setPageTableAddress(@tbl)
+	«window.msg(checkMemberCohorts ())

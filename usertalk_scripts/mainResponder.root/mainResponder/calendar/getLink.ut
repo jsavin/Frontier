@@ -1,0 +1,31 @@
+on getLink (adrcal, d, url, flForwardInTime, mindate, maxdate) {
+	«Gets a link to the next or previous month
+		«Changes:
+			«4/14/00; 2:52:24 PM by JES
+				«Localized.
+			«03/20/01; 3:01:40 PM by PBS
+				«Skip empty months -- end the penalty for not updating frequently, so you can still use the calendar to navigate.
+	local (now = clock.now ());
+	local (day, month, year, hour, minute, second, monthstring, adrtable);
+	loop {
+		date.get (d, @day, @month, @year, @hour, @minute, @second);
+		month = string.padwithzeros (month, 2);
+		local (monthstring);
+		monthstring = mainResponder.getString ("date.abbrevMonthNames." + month); // JES 4/14/00: localized
+		«monthstring = date.monthToString (month)
+		day = string.padwithzeros (day, 2);
+		try {
+			«adrtable = @adrcal^.[year].[month].[day]
+			if defined (adrcal^.[year].[month].[day]) {
+				local (link = "<a href=\"" + url + year + "/" + month + "/" + day + "\">" + monthstring + "</a>");
+				return (link)};
+			if flForwardInTime {
+				d = date.tomorrow (d);
+				if d > maxdate {
+					return (monthstring)}}
+			else {
+				d = date.yesterday (d);
+				if d < mindate {
+					return (monthstring)}}}
+		else {
+			return (monthstring)}}}

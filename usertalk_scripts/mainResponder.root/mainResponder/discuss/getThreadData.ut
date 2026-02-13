@@ -1,0 +1,64 @@
+on getThreadData (adrTable, d, threadAliveDays, pta=nil, adrInDgCallback=nil) {
+	«Build a table containing information about each live thread for a given day
+		«10/10/00; 5:51:11 PM by JES
+	«Changes:
+		«10/11/00; 1:29:52 PM by JES
+			«Fixed bug where only two days of topics were alive, regardless of the value of threadAliveDays.
+		«10/14/00; 2:32:23 PM by JES
+			«Changed the message count to the count of the message and all responses, not just immediate daughters.
+		«4/4/02; 12:57:40 AM by JES
+			«New optional paramter, adrInDgCallback. If non-nil, call the callback for each message. If the callback returns false, don't list the message. If it returns true, preserve current behavior.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	local (adrData = mainResponder.discuss.openRoot (pta));
+	local (adrCal = @adrData^.calendar);
+	local (adrMsgs = @adrData^.messages);
+	
+	on countResponses (adrMsgTable) { // count all the responses in a thread
+		local (responseCount);
+		local (i, ct = sizeOf (adrMsgTable^.responses));
+		responseCount = ct;
+		for i = 1 to ct {
+			local (adrResponse = @adrData^.messages.[string.padWithZeros (adrMsgTable^.responses[i], 7)]);
+			if sizeOf (adrResponse^.responses) {
+				responseCount = responseCount + countResponses (adrResponse)}};
+		return (responseCount)};
+	on yearAndMonthDefined (d) {
+		y = date.year (d);
+		if defined (adrCal^.[y]) {
+			if defined (adrCal^.[y].[string.padWithZeros (date.month (d), 2)]) {
+				return (true)}};
+		return (false)};
+	
+	new (tableType, adrTable);
+	if not yearAndMonthDefined (d) { // don't return an error page if the calendar doesn't have an entry
+		return (0)};
+	local (adrDay = mainResponder.calendar.getDayAddress (adrCal, d, flCreate:false));
+	for i = 1 to threadAliveDays { // collect the thread-message data
+		if defined (adrDay^) {
+			local (ct = sizeOf (adrDay^));
+			for j = 1 to ct {
+				local (nomad = @adrMsgs^.[nameOf (adrDay^[j])]);
+				local (postDate = nomad^.postTime);
+				while (nomad^.inResponseTo > 0) {
+					nomad = mainResponder.discuss.getMessageTable (nomad^.inResponseTo, pta, adrData)};
+				if defined (nomad^.flDeleted) and nomad^.flDeleted {
+					continue};
+				if adrInDgCallback != nil {
+					if not adrInDgCallback^ (nomad) {
+						continue}};
+				local (name = nameOf (nomad^));
+				local (adrMsgData = @adrTable^.[nameOf (nomad^)]);
+				if defined (adrMsgData^) {
+					if postDate > adrMsgData^.lastPost { // this should never happen... (?)
+						adrMsgData^.lastPost = postDate}}
+				else {
+					new (tableType, adrMsgData);
+					adrMsgData^.adrThread = nomad;
+					adrMsgData^.lastPost = postDate;
+					adrMsgData^.msgCount = countResponses (nomad) + 1}}};
+		d = date.yesterday (d);
+		if yearAndMonthDefined (d) {
+			adrDay = mainResponder.calendar.getDayAddress (adrCal, d, flCreate:false)}};
+	return (sizeOf (adrTable^))}

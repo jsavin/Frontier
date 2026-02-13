@@ -1,0 +1,14 @@
+on getEditorialRole (siteName, username, password) {
+	«Return a string indicating the editorial role of the specified password. If password is wrong, don't trust username.
+		«Return: Managing Editor, Contributing Editor, Member, or Unknown.
+		«10/12/00; 9:39:31 PM by PBS
+	
+	local (editorialRole = "Unknown");
+	if manilaSuite.rpcUtils.authenticateMember (siteName, username, password) {
+		editorialRole = "Member";
+		if manilaSuite.rpcUtils.isContributingEditor (siteName, username) {
+			editorialRole = "Contributing Editor"};
+		if manilaSuite.rpcUtils.isManagingEditor (siteName, username) {
+			editorialRole = "Managing Editor"}};
+	
+	return (editorialRole)}

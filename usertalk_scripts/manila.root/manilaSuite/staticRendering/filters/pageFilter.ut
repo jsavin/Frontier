@@ -1,0 +1,5 @@
+on pageFilter (pta) {
+	pta^.bodyText = manilaSuite.staticRendering.patchLocalUrls (pta^.bodyText);
+	if pta^.calendar != "" {
+		pta^.calendar = manilaSuite.staticRendering.patchLocalUrls (pta^.calendar)};
+	return (true)}

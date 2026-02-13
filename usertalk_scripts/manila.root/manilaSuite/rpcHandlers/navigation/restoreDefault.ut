@@ -1,0 +1,14 @@
+on restoreDefault (username, password, siteName) {
+	«Restore the navigation XML to the default.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't restore the navigation to the default because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (siteInfo, adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	new (tableType, @siteInfo);
+	siteInfo.adrSite = adrSite;
+	manilaSuite.newSite.createNavigator (@siteInfo);
+	fileMenu.saveMyRoot (adrSite);
+	
+	return (string (adrSite^.["#navigator"].outline))}

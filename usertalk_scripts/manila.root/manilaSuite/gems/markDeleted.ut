@@ -1,0 +1,21 @@
+on markDeleted (adrSite, num, adrMemberTbl) {
+	«Changes
+		«05/03/24, 21:53:35 by DAB
+			«Factored from gems.gemsLister for use in rpchandlers.
+	local (adrTable = manilaSuite.gems.getGemAddress (adrSite, num));
+	manilaSuite.gems.deleteAssociatedFile (adrTable);
+	manilaSuite.gems.deleteAssociatedShortcut (adrTable);
+	manilaSuite.gems.deleteFromGemsList (adrTable);
+	
+	bundle { //call delete gems callbacks, if any 04/08/23, 14:50:01 by DAB
+		local (t);
+		bundle { //build context data for callback
+			new(tabletype, @t);
+			t.adrSite = adrSite;
+			t.adrGemTable = adrTable;
+			t.adrMember = adrMemberTbl;
+			t.flDeleting = true};
+		
+		manilaSuite.callbacks.deleteGemCallback(@t)};
+	
+	return true}

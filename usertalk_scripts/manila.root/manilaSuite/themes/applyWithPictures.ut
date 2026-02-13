@@ -1,0 +1,204 @@
+on apply (adrSite, themeName, flDefaultPages=false, adrTheme=nil, flNewSite=false) {
+	«Set the theme for a Manila site.
+		«05/24/00; 2:42:50 PM by PBS
+	if adrTheme == nil { //it normally should be nil, unless the theme isn't stored in the config.manila.themes table
+		adrTheme = @config.manila.themes.[themeName]};
+	local (adrTable = @adrTheme^.appearance);
+	local (adrPictures = @adrTheme^.pictures);
+	local (picturesInfoTable);
+	new (tableType, @picturesInfoTable);
+	local (dgName = adrSite^.["#prefs"].discussionRoot);
+	local (adrDg);
+	bundle { //get the address of the discussion group
+		manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrDg)};
+	local (postTime, timeZone);
+	if manilaSuite.getSiteTimeZone (adrSite, @timeZone) {
+		postTime = manilaSuite.convertTime (clock.now (), timeZone)}
+	else {
+		postTime = clock.now ()};
+	local (groupName = adrSite^.["#prefs"].defaultMembershipGroup);
+	local (memberKey);
+	memberKey = adrSite^.["#newsSite"].sysopMail;
+	if typeOf (memberKey) == listType {
+		memberKey = memberKey [1]};
+	local (homePageUrl = adrSite^.["#ftpSite"].url);
+	local (urlParts = string.urlSplit (homePageUrl));
+	local (path = "/" + urlParts [3]);
+	
+	bundle { //first add the pictures
+		if defined (adrPictures^) {
+			
+			local (adrItem);
+			for adrItem in adrPictures {
+				local (itemName = nameOf (adrItem^));
+				new (tableType, @picturesInfoTable.[itemName]);
+				
+				local (pt);
+				new (tableType, @pt);
+				
+				local (oldPta);
+				try {
+					oldPta = html.getPageTableAddress ()};
+				local (subject = itemName);
+				local (inResponseTo = 0);
+				
+				local (msgNum = mainresponder.discuss.addMessage (subject, memberKey, inResponseTo, string (adrItem^.body), groupName:groupName, flEmptyBodyOk:true, flCallback:false, postTime:postTime, adrRoot:adrDg));
+				local (attachFile);
+				new (tableType, @attachFile);
+				attachFile.filename = itemName;
+				attachFile.data = adrItem^.bits;
+				attachFile.["Content-Type"] = adrItem^.mimeType;
+				new (tableType, @pt.responderAttributes);
+				pt.responderAttributes.flDiscussStoreImages = true;
+				html.setPageTableAddress (@pt);
+				local (adrTable = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDg));
+				pt.discussionRoot = dgName;
+				mainResponder.discuss.postAttachedFile (@attachFile, msgNum, groupName);
+				manilaSuite.discuss.setTimeZoneForMessage (adrTable, timeZone);
+				bundle { //put this in the pictures category
+					local (picturesCategory = manilaSuite.discuss.getPicturesCategory (adrSite));
+					manilaSuite.discuss.addCategoryToMessage (adrTable, picturesCategory)};
+				new (tableType, @pt.postArgs);
+				pt.postArgs.attachFile = attachFile;
+				pt.adrSiteRootTable = adrSite;
+				pt.glossary = @adrSite^.["#glossary"];
+				new (tableType, @pt.responderAttributes);
+				pt.responderAttributes.urls = @adrSite^.["#urls"];
+				manilaSuite.pictures.writeToDisk (adrTable);
+				manilaSuite.pictures.updateShortcut (adrTable); //PBS 01/12/00: update the glossary
+				local (url);
+				try {
+					url = adrTable^.image.url}
+				else { //get from glossary
+					local (glossaryEntryName = adrTable^.image.shortcut);
+					url = adrSite^.["#glossary"].[glossaryEntryName];
+					url = string.nthField (url, '\"', 2)};
+				new (tableType, @picturesInfoTable.[itemName]);
+				picturesInfoTable.[itemName].url = url;
+				picturesInfoTable.[itemName].height = adrTable^.image.height;
+				picturesInfoTable.[itemName].width = adrTable^.image.width;
+				if oldPta != nil {
+					html.setPageTableAddress (oldPta)}
+				else {
+					html.deletePageTableAddress ()}}}};
+	
+	bundle { //set the prefs
+		local (adrItem);
+		for adrItem in adrTable {
+			local (itemName = nameOf (adrItem^));
+			local (adrParent = @adrSite^.["#newsSite"]);
+			case string.lower (itemName) {
+				"alink";
+				"bgcolor";
+				"leftmargin";
+				"topmargin";
+				"marginheight";
+				"marginwidth";
+				"link";
+				"vlink";
+				"text";
+				"background" {
+					adrParent = @adrSite^.["#prefs"]};
+				"template" {
+					adrParent = adrSite;
+					itemName = "#template"};
+				"newsitemstemplate" {
+					adrParent = @adrSite^.["#newsSite"].newsItems;
+					if not defined (adrParent^) { //make sure newsItems table exists
+						new (tableType, adrParent)};
+					itemName = "template"}};
+			
+			case typeOf (adrItem^) { //handle calculated items
+				stringType;
+				wpTextType;
+				outlineType {
+					local (value = string (adrItem^));
+					bundle { //replace picture references and the home page URL
+						local (s = string (adrItem^));
+						local (adrPicture);
+						for adrPicture in @picturesInfoTable {
+							local (pictureName = nameOf (adrPicture^));
+							local (url = adrPicture^.url);
+							s = string.replaceAll (s, "[" + pictureName + "]", url, false)}; //not case-sensitive
+						s = string.replaceAll (s, "[homePageUrl]", path, false); //not case sensitive
+						value = s};
+					case typeOf (adrItem^) {
+						wpTextType {
+							wp.newTextObject (value, @adrParent^.[itemName])};
+						outlineType {
+							op.newOutlineObject (value, @adrParent^.[itemName])}}
+					else {
+						table.assign (@adrParent^.[itemName], value)}}}
+			else {
+				adrParent^.[itemName] = adrItem^}}};
+	
+	bundle { //create the default pages if this is a new site
+		if flDefaultPages {
+			local (adrPages = @adrTheme^.pages);
+			if not defined (adrPages^) {
+				adrPages = @config.manila.themes.default.pages};
+			local (pagesInfoTable);
+			new (tableType, @pagesInfoTable);
+			local (adrItem);
+			for adrItem in adrPages { //loop through all pages
+				if typeOf (adrItem^) == tableType { //page descriptions are tables
+					local (pageName = nameOf (adrItem^));
+					local (adrInfo = @pagesInfoTable.[pageName]);
+					new (tableType, adrInfo);
+					
+					local (adrMessages = @adrDg^.messages);
+					local (adrDiscussLinks = @adrSite^.["#newsSite"].discussLinks);
+					on simpleAdd (subject, flStory=true, flHomePage=false, text="") {
+						local (msgNum);
+						msgNum = mainResponder.discuss.addMessage (subject, memberKey, 0, "", postTime:postTime, flcallback:false, adrRoot:adrDg, groupName:groupName, flEmptyBodyOk:true);
+						
+						«Make it a story and possibly a home page.
+						local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)]);
+						manilaSuite.discuss.setTimeZoneForMessage (adrMsgTable, timeZone);
+						local (storiesCategory, homePagesCategory);
+						storiesCategory = adrSite^.["#newsSite"].storiesListedIn;
+						homePagesCategory = adrSite^.["#newsSite"].homePagesListedIn;
+						adrMsgTable^.alsoListedIn = {};
+						if flHomePage {
+							adrMsgTable^.alsoListedIn = adrMsgTable^.alsoListedIn + homePagesCategory};
+						if flStory {
+							adrMsgTable^.alsoListedIn = adrMsgTable^.alsoListedIn + storiesCategory};
+						
+						if text != "" {
+							adrMsgTable^.body = text};
+						return (msgNum)};
+					local (subject = adrItem^.title);
+					local (flStory = adrItem^.flStory);
+					local (flHomePage = adrItem^.flHomePage);
+					local (text = string (adrItem^.text));
+					local (msgNum = simpleAdd (subject, flStory, flHomePage, text));
+					if flHomePage {
+						adrDiscussLinks^.homePageMsgNum = msgNum};
+					adrInfo^.msgNum = msgNum}};
+			
+			bundle { //do calculated items
+				local (siteUrlPrefix = string.popTrailing (path, '/'));
+				local (navigatorText = string (adrPages^.navigator));
+				local (siteStructureText = string (adrPages^.siteStructure));
+				on replaceSitePrefix (s) {
+					s = string.replaceAll (s, "[siteUrlPrefix]", siteUrlPrefix, false);
+					return (s)};
+				navigatorText = replaceSitePrefix (navigatorText);
+				
+				for adrItem in @pagesInfoTable { //replace msgNums in site structure
+					local (pageName = nameOf (adrItem^));
+					local (msgNum = adrItem^.msgNum);
+					siteStructureText = string.replaceAll (siteStructureText, "[" + nameOf (adrItem^) + "PageMsgNum]", msgNum, false)};
+				
+				wp.newTextObject (siteStructureText, @adrSite^.["#hierarchy"].outline);
+				wp.newTextObject (navigatorText, @adrSite^.["#navigator"].outline)}}};
+	
+	bundle { //save the info in the site
+		if not defined (adrSite^.["#themes"]) {
+			new (tableType, @adrSite^.["#themes"])};
+		adrSite^.["#themes"].lastThemeApplied = themeName};
+	
+	bundle { //call the callbacks
+		manilaSuite.callbacks.applyThemeCallback (adrSite, adrTheme, flNewSite)};
+	
+	return (true)}

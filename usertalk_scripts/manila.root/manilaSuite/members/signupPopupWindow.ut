@@ -1,0 +1,5 @@
+local (pta = html.getPageTableAddress ());
+pta^.wizard = @prefsSuite.signupWizard;
+if defined (pta^.newsSite^.signupWizard) {
+	pta^.wizard = @pta^.newsSite^.signupWizard};
+return (manilaSuite.prefs.popupWindow (pta^.wizard))

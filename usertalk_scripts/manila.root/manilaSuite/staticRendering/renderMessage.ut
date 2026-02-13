@@ -1,0 +1,41 @@
+on renderMessage (adrMsgTable, adrSite) {
+	«Given a message, render it -- or not. This is part of the automatic rendering support.
+		«03/14/00; 5:19:09 PM by PBS
+	
+	if not (manilaSuite.staticRendering.isEnabled (adrSite)) {
+		return (true)};
+	
+	local (msgNum = adrMsgTable^.msgNum);
+	
+	bundle { //handle home page
+		local (homePageMsgNum = adrsite^.["#newsSite"].discussLinks.homePageMsgNum);
+		if msgNum == homePageMsgNum {
+			manilaSuite.staticRendering.renderPage ("/", adrSite)}};
+	
+	bundle { //handle site structure page
+		local (relativePath = manilaSuite.siteStructure.getRelativePathToMessage (msgNum, adrSite));
+		if relativePath != "" {
+			manilaSuite.staticRendering.renderPage (relativePath, adrSite)}};
+	
+	bundle { //handle calendar page
+		local (i);
+		for i = 1904 to 2040 {
+			if defined (adrManilaSite^.[i]) {
+				local (relativePath = nameOf (adrManilaSite^.[i]));
+				local (adrMonth);
+				for adrMonth in adr {
+					local (adrDay);
+					for adrDay in adrMonth {
+						local (relativePath = string (i) + "/" + nameOf (adrMonth^) + "/" + nameOf (adrDay^));
+						if defined (adrDay^.discussionRoot) {
+							if adrDay^.msgNum == msgNum {
+								manilaSuite.staticRendering.renderPage (relativePath, adrManilaSite, adrStaticSite)}};
+						local (adrItem);
+						for adrItem in adrDay { //do DaveNet style essays
+							if typeOf (adrItem^) == tableType {
+								if defined (adrItem^.discussionRoot) {
+									if adrDay^.msgNum == msgNum {
+										local (relativePath = string (i) + "/" + nameOf (adrMonth^) + "/" + nameOf (adrDay^) + "/" + nameOf (adrItem^));
+										manilaSuite.staticRendering.renderPage (relativePath, adrManilaSite, adrStaticSite)}}}}}}}}};
+	
+	return (true)}

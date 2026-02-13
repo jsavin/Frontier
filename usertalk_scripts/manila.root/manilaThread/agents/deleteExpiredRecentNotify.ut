@@ -1,0 +1,7 @@
+«Empty old items in the mostRecentNotify table.
+	«1/15/02; 6:20:38 PM by PBS
+if defined (xml.pubsub) {
+	local (now = clock.now (), day, month, year, hour, minute, second);
+	date.get (now, @day, @month, @year, @hour, @minute, @second);
+	bundle { // if minute == 53
+		xml.pubsub.deleteExpiredRecentNotify (@config.manila.rssNotifications)}}

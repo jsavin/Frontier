@@ -1,0 +1,9 @@
+on createCustomColors (adrSiteInfo) {
+	«Set up the custom colors.
+		«11/9/99; 11:57:01 AM by PBS
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	adrNewsSite^.colors = manilaData.newSiteTemplate.["#newsSite"].colors;
+	
+	return (true)}

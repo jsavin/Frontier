@@ -1,0 +1,131 @@
+on default () {
+	«manilaFixer.versioning.default : 02/03/21, 21:56:52 by DAB
+	local (pta = html.getPageTableAddress());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (sitename = manilaSuite.getCanonicalSitename(adrSite));
+	local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite));
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (replTbl);
+	bundle { //replacement table
+		new(tabletype, @replTbl);
+		replTbl.version = pta^.manilafixerversion;
+		replTbl.sitename = sitename};
+	
+	pta^.title = manilafixer.getString("Versioning.pageTitle", @replTbl, pta);
+	pta^.navigatorLinks = manilaFixer.drawManilaMenu ();
+	add(manilafixer.getString("Versioning.helpText", @replTbl, pta));
+	add("\r<hr align = 'center' width = '50%'>");
+	
+	local (versioningState = 0);
+	try {versioningState = config.manilaFixer.versioning.availability};
+	local (flVersioningCheckBox, flRollbackCheckBox); //02/04/25, 11:32:11 by DAB
+	local (finalFilterPatch = "manilaFixer.versioning.finalFilter(pta)"); //02/04/25, 11:52:50 by DAB
+	case versioningState {
+		0 {
+			add(manilafixer.getString("Versioning.versioningDeActivated", @replTbl, pta))};
+		3 {
+			add(manilafixer.getString("Versioning.versioningActivated", @replTbl, pta));
+			flRollbackCheckBox = true}; //02/04/25, 11:50:13 by DAB
+		4 {
+			if defined(adrStorage^.versioning) and defined(adrStorage^.versioning.enabled) and adrStorage^.versioning.enabled {
+				add(manilafixer.getString("Versioning.versioningActivated", @replTbl, pta));
+				flRollbackCheckBox = true} //02/04/25, 11:50:13 by DAB
+			else {
+				add(manilafixer.getString("Versioning.versioningDeActivated", @replTbl, pta))}}}
+	else {
+		if not defined(adrStorage^.versioning) {
+			new(tabletype, @adrStorage^.versioning);
+			adrStorage^.versioning.enabled = false;
+			if versioningState == 2 {
+				adrStorage^.versioning.enabled = true}};
+		
+		«if pta^.method == "POST"
+			«case true
+				«defined(pta^.postargs.toggleversioning)
+					«manilaFixer.versioning.toggleState(defined(pta^.postargs.enabled) and (pta^.postargs.enabled == "on"))
+		
+		«bundle    //build the form to toggle versioning
+			«local (checked = "")
+			«if adrStorage^.versioning.enabled 
+				«checked = " checked"
+			«
+			«add("\r<form method = 'post' action = '" + pta^.url + "' name = 'toggleversioning'>")
+			«add("\r\t<table align = 'center'>")
+			«bundle    //row for checkbox
+				«add("\r\t\t<tr>")
+				«add("\r\t\t<td align = 'right'>")
+				«add(manilafixer.getString("Versioning.formIDEnabled", @replTbl, pta))
+				«add("</td>")
+				«add("\r\t\t<td align = 'left'>")
+				«add("<input type = 'checkbox' name = 'enabled'" + checked + ">")
+				«add("</td>")
+				«add("\r\t\t</tr>")
+			«bundle    //row for button
+				«add("\r\t\t<tr>")
+				«add("\r\t\t<td align = 'center' colspan = '2'>")
+				«add("<input type = 'submit' name = 'toggleversioning' value = '" + manilafixer.getString("Versioning.buttontoggleversioning", pta:pta) + "'>")
+				«add("</td>")
+				«add("\r\t\t</tr>")
+			«add("\r\t</table>")
+			«add("\r</form>")
+		flRollbackCheckBox = true; //02/04/25, 11:50:13 by DAB
+		flVersioningCheckBox = true}; //02/04/25, 11:50:13 by DAB
+	
+	if pta^.method == "POST" { //moved 02/04/25, 11:50:38 by DAB
+		case true {
+			defined(pta^.postargs.toggleversioning) {
+				if flVersioningCheckBox {
+					manilaFixer.versioning.toggleState(defined(pta^.postargs.enabled) and (pta^.postargs.enabled == "on"))};
+				if flRollbackCheckBox {
+					local (flChecked = defined(pta^.postargs.rollBack) and (pta^.postargs.rollBack == "on")); //02/04/25, 11:42:07 by DAB
+					manilaFixer.utilities.installFilterPatch("finalFilterMF", finalFilterPatch, asComment:not flChecked, adrSite:adrSite)}}}}; //02/04/25, 11:42:16 by DAB
+	
+	if flVersioningCheckBox or  flRollbackCheckBox { //build the form to toggle versioning/rollback
+		local (checked = "");
+		
+		add("\r<hr align = 'center' width = '50%'>");
+		add("\r<form method = 'post' action = '" + pta^.url + "' name = 'toggleversioning'>");
+		add("\r\t<table align = 'center'>");
+		if  flVersioningCheckBox { //row for versioning checkbox
+			checked = "";
+			if adrStorage^.versioning.enabled {
+				checked = " checked"};
+			add("\r\t\t<tr>");
+			add("\r\t\t<td align = 'right'>");
+			add(manilafixer.getString("Versioning.formIDEnabled", @replTbl, pta));
+			add("</td>");
+			add("\r\t\t<td align = 'left'>");
+			add("<input type = 'checkbox' name = 'enabled'" + checked + ">");
+			add("</td>");
+			add("\r\t\t</tr>")};
+		if flRollbackCheckBox { //row for rollback checkbox
+			checked = "";
+			if manilaFixer.utilities.isFilterPatchInstalled("finalFilterMF", finalFilterPatch, false, adrSite) {
+				checked = " checked"};
+			add("\r\t\t<tr>");
+			add("\r\t\t<td align = 'right'>");
+			add(manilafixer.getString("Versioning.formIDMessageRollbackEnabled", @replTbl, pta));
+			add("</td>");
+			add("\r\t\t<td align = 'left'>");
+			add("<input type = 'checkbox' name = 'rollback'" + checked + ">");
+			add("</td>");
+			add("\r\t\t</tr>")};
+		bundle { //row for button
+			add("\r\t\t<tr>");
+			add("\r\t\t<td align = 'center' colspan = '2'>");
+			add("<input type = 'submit' name = 'toggleversioning' value = '" + manilafixer.getString("Versioning.buttontoggleversioning", pta:pta) + "'>");
+			add("</td>");
+			add("\r\t\t</tr>")};
+		add("\r\t</table>");
+		add("\r</form>")};
+	
+	return htmltext};
+bundle {
+	local (tbl = temp.pta.["175"].firstFilter);
+	html.setPageTableAddress(@tbl);
+	wp.newTextObject(default (), @temp.versioning);
+	edit(@temp.versioning)}

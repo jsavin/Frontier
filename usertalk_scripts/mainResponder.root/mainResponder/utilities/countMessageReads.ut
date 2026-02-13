@@ -1,0 +1,10 @@
+local (adrroot = @[system.temp.mainResponder.discussRootFile], i, ct);
+mainResponder.init ();
+config.mainResponder.stats.ctDiscussionGroupReads = 0;
+window.about ();
+for i = 1 to sizeof (adrroot^) {
+	local (adrmessages = @adrroot^ [i].messages, j);
+	for j = 1 to sizeof (adrmessages^) {
+		ct = ct + adrmessages^ [j].ctReads;
+		config.mainResponder.stats.ctDiscussionGroupReads = ct;
+		msg (ct)}}

@@ -1,0 +1,103 @@
+on handler (pta, adrObject) {
+	«Changes
+		«1/9/09; 11:52:41 AM by LL
+			«Fixed a problem with errror message not being returned when submitting changes.
+		«04/05/15, 13:00:09 by DAB
+			«Created. Factored out of manilaSuite.admin.advancedPage.
+				«messages at manilaData.localization.languages.english.strings.admin
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf(this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName(pta, sectionName));
+	
+	add("\r<p>");
+	add(manilaSuite.getString ("admin." + shortname + "SectionDescription", pta: pta));
+	add("\r</p>");
+	
+	local (replacementTable);
+	bundle { //set up replacement table
+		new (tableType, @replacementTable);
+		replacementTable.displayName = displayName};
+	
+	if defined(pta^.postargs.[shortname]) {
+		case true {
+			defined (pta^.postArgs.restoreToDefault) {
+				add(manilaSuite.sitePrefs.utility.confirmBox(pta, shortname, "admin.confirmTemplateRestoreToDefault", @replacementTable))};
+			defined (pta^.postArgs.doRestoreDefault) { //restore to default
+				wp.newTextObject ("", adrObject);
+				pta^.newsSite^.flUseHomePageTemplate = false; //turn off template
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable));
+				«cause the containing frame to refresh
+				};«add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")
+			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
+				}}
+		else { //try to update the template
+			local (s = string (pta^.postArgs.[shortName]));
+			s = string.replaceAll (s, lf, "");
+			local (errorString);
+			if manilaSuite.admin.isGoodTemplate (s, @errorString, flCheckNavigatorLinks:false) { //PBS 10/25/00: don't enforce navigator links macro
+				s = mainResponder.neuterText (s, true, false);
+				wp.newTextObject (s, adrObject);
+				pta^.newsSite^.flUseHomePageTemplate = defined (pta^.postArgs.flUseHomePageTemplate);
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.homePageTemplateUpdateSuccess", @replacementTable));
+				«cause the containing frame to refresh
+				}«add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname + "=2'</script>")
+			else {
+				add (manilaSuite.sitePrefs.utility.errorMessage (errorString, flLocalised:false))}}};
+	
+	«if pta^.searchArgs != ""
+		«local (argTable)
+		«new (tableType, @argTable)
+		«webserver.parseArgs (searchArgs, @argTable)
+		«if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
+			«case argTable.[shortName]
+				«"1"
+					«add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable))
+				«"2"
+					«add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.homePageTemplateUpdateSuccess", @replacementTable))
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	bundle { //row for textarea
+		add ("\r\t<tr>");
+		add ("\r\t\t<td align='left' valign='top' colspan='2'>");
+		add("&nbsp;&nbsp;");
+		local (value = manilaSuite.sitePrefs.utility.exportOutline (string (adrObject^)));
+		add("<textarea name='" + shortName + "' cols='" + manilaSuite.sitePrefs.data.cols + "' rows='" + manilaSuite.sitePrefs.data.rowsBig + "' style='width:" + manilaSuite.sitePrefs.data.textareaWidthPixels + "; height:" + manilaSuite.sitePrefs.data.textareaHeightPixels + "'>" +  value + "</textarea>");
+		add ("\r\t\t</td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //checkbox for using this template
+		add ("\r\t<tr>");
+		add ("\r\t\t<td colspan='2'>");
+		local (checked="");
+		if defined (pta^.newsSite^.flUseHomePageTemplate) and pta^.newsSite^.flUseHomePageTemplate {
+			checked = " checked"};
+		add("&nbsp;&nbsp;");
+		add("<input type='checkbox' name='flUseHomePageTemplate'" + checked + "> ");
+		add(manilaSuite.getString ("admin.useHomePageTemplatePrompt", pta:pta));
+		add("\r\t\t</td>");
+		add("\r\t</tr>")};
+	
+	bundle { //row for buttons
+		add(manilaSuite.sitePrefs.utility.addButtons(pta, adrObject, sectionName, flMemberHasPike))};
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

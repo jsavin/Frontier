@@ -1,0 +1,333 @@
+on handler (pta, adrTemplates) {
+	«Changes
+		«29/06/05; 3:35:21 PM by PR
+			«Only show aux templates that don't contain a hyphen in the aux template box
+			«Throw an error if the user tries to add a new aux template that includes a hyphen
+				«Any aux template with a hyphen is considered read-only, we do this for content-only and other reserved template names
+	«manilaSuite.sitePrefs.handlers.AuxiliaryTemplates.handler : 04/05/16, 18:26:19 by DAB
+		«based loosely on manilafixer.templates; handles #templates in site
+		«messages at manilaData.localization.languages.english.strings.admin
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (seperatorColor, seperatorTextColor);
+	manilaSuite.html.getSeparatorColors (@seperatorColor, @seperatorTextColor);
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf(this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName(pta, sectionName));
+	
+	add("\r<p>");
+	add(manilaSuite.getString ("admin." + shortName + "SectionDescription", pta: pta));
+	add("\r</p>");
+	
+	local (replTbl);
+	bundle { //set up replacement table
+		new (tableType, @replTbl);
+		replacementTable.displayName = displayName;
+		«replTbl.structuremapLink  =  html.getLink("Structure Map", baseFragmentUrl + "structuremap")
+		};«replTbl.staticsetupLink  =  html.getLink("Static Site Setup", baseFragmentUrl + "staticSetup")
+	
+	on  separator(msgID) {
+		add("\r\t<tr>");
+		add("\r\t\t<th align = 'left' bgColor = '" + seperatorColor + "' colspan='3'>");
+		add("<span style = 'color:" + seperatorTextColor + "'>");
+		add(manilaSuite.getString("admin.auxtemplates." + msgID, @replTbl, pta:pta));
+		add("</span>");
+		add("</th>");
+		add("\r\t</tr>");
+		return true};
+	
+	on errorReport (errID, errColour="red") {
+		add ("<p align = 'center' style = 'color:" + errColour + " '>" + manilaSuite.getString("admin.auxtemplates."+ errID, @replTbl, pta:pta) + "</p>");
+		return true};
+	
+	on noteStatus (errID) {
+		add ("<p align = 'center' style = 'color:darkblue'>" + mainResponder.localization.dateTimeString (manilaSuite.convertTime (pta: pta), pta: pta)   + " " + manilaSuite.getString("admin.auxtemplates."+ errID, @replTbl, pta:pta) + "</p>");
+		return true};
+	
+	on sayFailed (message, errColour="red") {
+		message = string.replaceall (message, "{", "&#123;");
+		add ("<p align = 'center' style = 'color:" + errColour + " '>" + message + "</p>");
+		return (true)};
+	
+	on insertTemplate(s, adrObject, OKToFailValidate=false) {
+		s = string.replaceAll (s, lf, "");
+		local (errorString);
+		local (flValid = manilaSuite.admin.isGoodTemplate (s, @errorString, pta)); //02/05/05, 16:19:49 by DAB
+		if flvalid or OKToFailValidate {
+			if not FlValid { //02/05/05, 16:22:34 by DAB
+				sayFailed (manilaSuite.getString("admin.auxtemplates.warning", @replTbl, pta:pta) + errorString, "orange")};
+			s = mainResponder.neuterText (s, true, false);
+			wp.newTextObject (s, adrObject);
+			fileMenu.saveMyRoot(adrObject);
+			return true}
+		else {
+			sayFailed (errorString);
+			return false}};
+	
+	local (currrentTemplate = ""); //what we are working on
+	on editForm(templateID, templateStr = "") { //macro call version 04/01/17, 12:22:09 by DAB
+		local (flValidate =true, selected, errString);
+		if templateStr != "" {
+			flValidate = manilaSuite.admin.isGoodTemplate(templateStr, @errString, pta)};
+		
+		add("\r<hr align = 'center' width ='50%'>");
+		add("\r<form method = 'post' name = 'templates' action = '" + pta^.fname + "$" + advancedPageName  + "'>");
+		add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+		add("\r<input type = 'hidden' name = 'selectedTemplate' value = '" + templateID + "'>");
+		add("\r<table align = 'center'>");
+		
+		bundle { //row for title
+			add("\r\t<tr>");
+			add("\r\t\t<th align = 'center' bgColor = '" + seperatorColor + "' colspan='2'>");
+			add("<span style = 'color:" + seperatorTextColor + "'>");
+			add(manilaSuite.getString("admin.auxtemplates.formIDEditTitle", @replTbl, pta:pta));
+			add("</span>");
+			add("</th>");
+			add("\r\t</tr>")};
+		
+		bundle { //row for textarea
+			add("\r\t\t<tr>");
+			add("\r\t\t<td colspan = '2'>");
+			add ("<textarea name='template_body' rows='" + manilaSuite.sitePrefs.data.rowsBig + "' cols='" + manilaSuite.sitePrefs.data.cols + "'>");
+			add (manilaSuite.sitePrefs.utility.exportOutline(templateStr));
+			add ("</textarea>");
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		bundle { //row for validation/button
+			add("\r\t<tr>");
+			add("\r\t\t<td align = 'right'>");
+			add(manilaSuite.getString("admin.auxtemplates.formIDValidate", @replTbl, pta:pta));
+			if flValidate {selected = " checked"} else {selected = ""};
+			add ("<input type = 'radio' name = 'noValidate' value = 'true'" + selected + ">" + manilaSuite.getString("common.yes", pta:pta ));
+			if flValidate {selected = ""} else {selected = "checked"};
+			add ("<input type = 'radio' name = 'noValidate' value = 'false'" + selected + ">" + manilaSuite.getString("common.no", pta:pta ));
+			add("</td>");
+			add("\r\t\t<td align = 'left'>");
+			add("<input type = 'submit' name = 'modify' value = '" + manilaSuite.getString("admin.auxtemplates.formIDButtonChange", @replTbl, pta:pta) + "'>");
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		add("\r</table>");
+		add("\r</form>");
+		
+		return true};
+	
+	if defined(pta^.postargs.[shortname]) {
+		case true {
+			defined(pta^.postargs.auxtemplate_enable) {
+				pta^.newsSite^.flUseAuxTemplates = boolean(pta^.postargs.enableauxtemplates)};
+			defined(pta^.postargs.auxtemplate_add) {
+				local (id = string.trimwhiteSpace(pta^.postargs.new_template));
+				replTbl.selectedTemplate = id;
+				case true {
+					id == "" {
+						errorReport("errEmptyTemplatename")};
+					defined(adrTemplates^.[id]) {
+						errorReport("errTemplateExists")};
+					id contains "-" { // 29/06/05; 3:33:22 PM by PR
+						errorReport("errTemplateContainsHyphen")}}
+				else {
+					currrentTemplate = id;
+					editForm(currrentTemplate)}};
+			defined(pta^.postargs.auxtemplate_delete) {
+				local (id = string.trimwhiteSpace(pta^.postargs.edit_selectedTemplate));
+				replTbl.selectedTemplate = id;
+				case true {
+					id == "" {
+						errorReport("errEmptyTemplatename")};
+					not defined(adrTemplates^.[id]) {
+						errorReport("errNoSuchTemplate")}}
+				else {
+					add(manilaSuite.sitePrefs.utility.confirmBox(pta, shortname,"admin.auxtemplates.sureYouWantToDeleteTemplate",  @replTbl, "edit_selectedTemplate", id))}};
+			defined(pta^.postargs.doRestoreDefault) {
+				local (id = string.trimwhiteSpace(pta^.postargs.edit_selectedTemplate));
+				replTbl.selectedTemplate = id;
+				case true {
+					id == "" {
+						errorReport("errEmptyTemplatename")};
+					not defined(adrTemplates^.[id]) {
+						errorReport("errNoSuchTemplate")}}
+				else {
+					delete(@adrTemplates^.[id]);
+					manilaSuite.custody.checkInAndOut(adrTemplates, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+					fileMenu.saveMyRoot(adrTemplates);
+					noteStatus("reportTemplateDeleted");
+					if defined(pta^.newsSite^.defaultAuxTemplate) {
+						if pta^.newsSite^.defaultAuxTemplate == id {
+							delete(@pta^.newsSite^.defaultAuxTemplate)}}}};
+			defined(pta^.postargs.auxtemplate_default) {
+				local (id = string.trimwhiteSpace(pta^.postargs.edit_selectedTemplate));
+				replTbl.selectedTemplate = id;
+				case true {
+					id == "" {
+						if defined(pta^.newsSite^.defaultAuxTemplate ) {
+							delete(@pta^.newsSite^.defaultAuxTemplate);
+							fileMenu.saveMyRoot(adrTemplates);
+							noteStatus("reportTemplateCleared")}};
+					not defined(adrTemplates^.[id]) {
+						errorReport("errNoSuchTemplate")}}
+				else {
+					pta^.newsSite^.defaultAuxTemplate = id;
+					fileMenu.saveMyRoot(adrTemplates);
+					noteStatus("reportTemplateDefault")}};
+			defined(pta^.postargs.auxtemplate_edit) {
+				local (id = string.trimwhiteSpace(pta^.postargs.edit_selectedTemplate));
+				replTbl.selectedTemplate = id;
+				case true {
+					id == "" {
+						errorReport("errEmptyTemplatename")};
+					not defined(adrTemplates^.[id]) {
+						errorReport("errNoSuchTemplate")}}
+				else {
+					currrentTemplate = id;
+					editForm(currrentTemplate,  string(adrTemplates^.[id]))}};
+			defined(pta^.postargs.modify) {
+				local (flNeedNotValidate = boolean(pta^.postargs.noValidate));
+				local (templateStr = string.trimwhiteSpace(pta^.postargs.template_body));
+				templateStr = string.replaceAll (templateStr, lf, "");
+				local (id = string.trimwhiteSpace(pta^.postargs.selectedTemplate));
+				case true {
+					id == "" {
+						errorReport("errEmptyTemplatename")};
+					templateStr == "" {
+						errorReport("errEmptyTemplatename");
+						currrentTemplate = id}}
+				else {
+					local (flAddOperation = not defined(adrTemplates^.[id]));
+					currrentTemplate = id;
+					replTbl.selectedTemplate = id; //moved up
+					if insertTemplate(templateStr, @adrTemplates^.[id] , not flNeedNotValidate) {
+						manilaSuite.custody.checkInAndOut(adrTemplates, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+						if flAddOperation {
+							noteStatus("reportTemplateAdded")}
+						else {
+							noteStatus("reportTemplateModified")};
+						editForm(currrentTemplate, string(adrTemplates^.[id]))} //s=how massaged result 03/09/16, 15:04:44 by DAB
+					else { //04/01/17, 12:00:10 by DAB
+						editForm(currrentTemplate,  templateStr)}}}}};
+	
+	«if pta^.searchArgs != ""
+		«local (argTable)
+		«new (tableType, @argTable)
+		«webserver.parseArgs (searchArgs, @argTable)
+		«if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
+			«case argTable.[shortName]
+				«"1"
+					«add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable))
+				«"2"
+					«add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateUpdateSuccess", @replacementTable))
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	separator("formIDEnableAuxTemplate");
+	
+	bundle { //row to enable/disable auxiliary templates
+		add("\r<tr>");
+		add("\r<th align = 'right'>");
+		add(manilaSuite.getString("admin.auxtemplates.formIDEnableAuxTemplate", @replTbl, pta:pta));
+		add("</th>");
+		add("\r<td>");
+		local (flUseAuxTemplates = manilaSuite.getNewsSitePref("flUseAuxTemplates", adrSite, false, true));
+		local (checked= "");
+		if flUseAuxTemplates {
+			checked = " checked"};
+		add("<input type = 'radio' name = 'enableauxtemplates' value ='true'" + checked + ">");
+		add(manilaSuite.getString("common.yes", pta:pta ));
+		checked= "";
+		if not flUseAuxTemplates {
+			checked = " checked"};
+		add("<input type = 'radio' name = 'enableauxtemplates' value ='false'" + checked + ">"); //02/10/01, 11:53:45 by DAB
+		add(manilaSuite.getString("common.no", pta:pta ));
+		add("</td>");
+		add("\r\t\t<td align = 'center'>");
+		add("<input type = 'submit' name = 'auxtemplate_enable' value = '" + manilaSuite.getString("admin.auxtemplates.formIDButtonEnable", @replTbl, pta:pta) + "'>");
+		add("</td>");
+		add("\r</tr>")};
+	
+	separator("formIDAddAuxTemplate");
+	
+	bundle { //row to add a new templates
+		add("\r<tr>");
+		add("\r<th align = 'right'>");
+		add(manilaSuite.getString("admin.auxtemplates.formIDAddAuxTemplate", pta: pta));
+		add("</th>");
+		add("\r<td>");
+		add("<input type ='text' name = 'new_template' value = '' size = '17' maxlength = '65'>");
+		add("</td>");
+		add("\r\t\t<td align = 'center'>");
+		add("<input type = 'submit' name = 'auxtemplate_add' value = '" + manilaSuite.getString("admin.auxtemplates.formIDButtonAdd", @replTbl, pta:pta) + "'>");
+		add("</td>");
+		add("\r</tr>")};
+	
+	local (templateCnt = 0, optList="");
+	bundle { //count template items
+		local (adr, selected );
+		for adr in adrTemplates {
+			if not (nameOf(adr^) contains '-') {
+				case typeof(adr^) {
+					stringtype;
+					wptextType;
+					outlineType {
+						templateCnt++;
+						selected = "";
+						if nameOf(adr^) == currrentTemplate {
+							selected = " selected"};
+						optList = optList + "\r\t\t\t\t<option value='" + nameof(adr^) + "'" + selected + ">" + nameof(adr^) + "</option>"}}}}};
+	
+	if templateCnt > 0 {
+		separator("formIDEditAuxTemplate");
+		
+		bundle { //row for edit auxiliary template
+			add("\r\t<tr>");
+			add("\r\t\t<th align = 'right' >");
+			add(manilaSuite.getString("admin.auxtemplates.formIDEditAuxTemplate",  pta:pta));
+			add("</th>");
+			add("\r\t\t<td align = 'left'>");
+			add("\r\t\t\t<select name = 'edit_selectedTemplate' size ='1'>");
+			add(optList);
+			add("\r\t\t\t</select>");
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		bundle { //row for  buttons
+			add("\r\t<tr>");
+			add("\r\t\t<td align = 'center' colspan='3'>");
+			add("<input type = 'submit' name = 'auxtemplate_default' value = '" + manilaSuite.getString("admin.auxtemplates.formIDButtonDefault",  pta:pta) + "'>");
+			add("&nbsp;");
+			add("<input type = 'submit' name = 'auxtemplate_delete' value = '" + manilaSuite.getString("admin.auxtemplates.formIDButtonDelete", pta:pta) + "'>");
+			add("<input type = 'submit' name = 'auxtemplate_edit' value = '" + manilaSuite.getString("admin.auxtemplates.formIDButtonEdit", pta:pta) + "'>");
+			add("&nbsp;");
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		if defined(pta^.newsSite^.defaultAuxTemplate) and pta^.newsSite^.defaultAuxTemplate != "" {
+			add("\r\t<tr>");
+			add("\r\t\t<th align = 'center' colspan = '3'>");
+			replTbl.defaultTemplate = pta^.newsSite^.defaultAuxTemplate;
+			if defined(adrTemplates^.[pta^.newsSite^.defaultAuxTemplate]) {
+				add(manilaSuite.getString("admin.auxtemplates.currentDefaultTemplateOK", @replTbl, pta:pta)) //05/02/13, 20:59:50 by DAB
+					«add(manilaSuite.getString("admin.auxtemplatescurrentDefaultTemplateOK", @replTbl, pta:pta))}}
+			else {
+				add(manilaSuite.getString("admin.auxtemplatescurrentDefaultTemplateError", @replTbl, pta:pta))};
+			add("</th>");
+			add("\r\t</tr>")}};
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

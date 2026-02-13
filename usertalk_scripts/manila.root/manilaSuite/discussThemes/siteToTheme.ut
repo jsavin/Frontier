@@ -1,0 +1,63 @@
+on siteToTheme (adrSite, adrTheme, themeName, displayThemeName, author=nil, authorEmail=nil, siteUrl=nil, description="") {
+	«Generate a DG theme from a site's preferences.
+		«10/26/00; 9:27:28 PM by JES
+	
+	if adrTheme == nil {
+		adrTheme = @config.manila.themes.[themeName]};
+	
+	new (tableType, adrTheme);
+	
+	adrTheme^.flEnabled = true;
+	adrTheme^.flPublic = true;
+	
+	bundle { //Appearance table
+		local (adrPrefs = @adrSite^.["#prefs"]);
+		local (adrNewsSite = @adrSite^.["#newsSite"]);
+		local (adrTable = @adrTheme^.appearance);
+		new (tableType, adrTable);
+		
+		on copy (itemName, adrOriginalTable, defaultValue="") {
+			if defined (adrOriginalTable^.[itemName]) {
+				adrTable^.[itemName] = adrOriginalTable^.[itemName]}
+			else {
+				adrTable^.[itemName] = defaultValue}};
+		
+		bundle { // copy the site's theme data
+			copy ("discussionGroup", adrNewsSite);
+			copy ("flDiscussListByDay", adrNewsSite, true);
+			copy ("numMessagesInDiscussListing", adrNewsSite);
+			copy ("cowSkullImage", adrNewsSite);
+			copy ("flNewThreadOnDiscussHome", adrNewsSite)}};
+	
+	bundle { //Info table
+		local (adrInfo = @adrTheme^.Info);
+		new (tableType, adrInfo);
+		adrInfo^.CreationDate = clock.now ();
+		
+		«Author.
+		adrInfo^.Author = user.prefs.name;
+		if author != nil {
+			adrInfo^.Author = author};
+		
+		«Author email.
+		adrInfo^.AuthorEmail = user.prefs.mailAddress;
+		if authorEmail != nil {
+			adrInfo^.authorEmail = authorEmail};
+		
+		«Description.
+		wp.newTextObject (description, @adrInfo^.Description);
+		
+		«Originating site URL.
+		adrInfo^.siteUrl = adrSite^.["#ftpSite"].url;
+		if siteUrl != nil {
+			adrInfo^.siteUrl = siteUrl};
+		
+		«Display Name
+		adrInfo^.displayName = displayThemeName};
+	
+	bundle { //security: neuter macros and validate structure
+		manilaSuite.themes.neuterAllObjects (adrTheme); //neuter macros
+		manilaSuite.discussThemes.validateStructure (adrTheme)}}; //make sure it's a valid theme table
+
+«bundle // test code
+	«siteToTheme (@sandboxManilaWebsite, @workspace.discussTheme, "testTheme", "Test Theme", "Jake", "jake@userland.com", "http://spunky.jspace.org/", "A test DG theme.")

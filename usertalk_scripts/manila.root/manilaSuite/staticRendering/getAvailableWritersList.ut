@@ -1,0 +1,20 @@
+on getAvailableWritersList (adrSite) {
+	«Return the list of available file writers for the given site. 
+		«Tue, Apr 29, 2003 at 9:42:36 AM by EDS
+	local {
+		writerList = {}};
+	case true {
+		defined (adrSite^.["#newsSite"].flStaticRenderingFileEnabled) {
+			if  adrSite^.["#newsSite"].flStaticRenderingFileEnabled {
+				writerList = writerList +"file"}};
+		defined (config.manila.prefs.flStaticRenderingFileEnabled) and config.manila.prefs.flStaticRenderingFileEnabled {
+			writerList = writerList +"file"}};
+	case true {
+		defined (adrSite^.["#newsSite"].flStaticRenderingFTPEnabled) {
+			if  adrSite^.["#newsSite"].flStaticRenderingFTPEnabled {
+				writerList = writerList +"ftp"}};
+		defined (config.manila.prefs.flStaticRenderingFTPEnabled) and config.manila.prefs.flStaticRenderingFTPEnabled {
+			writerList = writerList +"ftp"}};
+	return (writerList)};
+«bundle //test code
+	«getAvailableWritersList (@fooManilaWebsite)

@@ -1,0 +1,72 @@
+on pluginsPage () {
+	«Changes:
+		«10/1/05; 2:49:21 AM by JES
+			«Fix double display of page title.
+		«1/25/02; 6:16:58 PM by PBS
+			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		«4/18/00; 3:13:30 PM by JES
+			«localized
+		«02/24/00; 11:09:57 AM by PBS
+			«Creatd. Display the plugins form and handle the POST.
+	
+	local (pta = html.getPageTableAddress ());
+	pta^.title = manilaSuite.getString ("admin.pluginsPageTitle"); // 4/18/00 JES: localized
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + (s + "\r");};
+	
+	«add ("<h2>" + pta^.title + "</h2>")
+	
+	bundle { //build the form and handle the POST args
+		local (pluginsList = manilaSuite.plugins.getList ());
+		if pluginsList == {} {
+			add (manilaSuite.getString ("admin.noPluginsInstalled"))} // 4/18/00 JES: localized
+		else {
+			add (manilaSuite.getString ("admin.pluginsPageDescription") + "<p>"); // 4/18/00 JES: localized
+			add ("<form method=\"POST\" action=\"" + pta^.fname + "$plugins\">");
+			add ("<table cellpadding=\"7\" cellspacing=\"0\" border=\"0\">");
+			
+			local (flPost = (string.lower (pta^.method) == "post"));
+			local (adrArgs);
+			if flPost {
+				adrArgs = @pta^.postArgs};
+			
+			on addTag (tagName, flChecked) {
+				add ("<tr>");
+				if flChecked {
+					add ("<td><input type=\"checkbox\" name=\"" + tagName + "\" checked></td>")}
+				else {
+					add ("<td><input type=\"checkbox\" name=\"" + tagName + "\"></td>")};
+				
+				return (true)};
+			
+			local (plugin);
+			for plugin in pluginsList {
+				if flPost {
+					if defined (adrArgs^.[plugin]) { //possibly enable this plugin
+						if not (manilaSuite.plugins.isEnabled (plugin, pta^.adrSiteRootTable)) {
+							manilaSuite.plugins.enable (plugin, pta^.adrSiteRootTable)};
+						addTag (plugin, true)}
+					else { //turn this plugin off
+						if manilaSuite.plugins.isEnabled (plugin, pta^.adrSiteRootTable) {
+							manilaSuite.plugins.disable (plugin, pta^.adrSiteRootTable)};
+						addTag (plugin, false)}}
+				else {
+					if manilaSuite.plugins.isEnabled (plugin, pta^.adrSiteRootTable) {
+						addTag (plugin, true)}
+					else {
+						addTag (plugin, false)}};
+				
+				local (link = plugin);
+				local (url = manilaSuite.plugins.getPluginDescriptionUrl (plugin));
+				if url != "" {
+					link = html.getLink (plugin, url)};
+				add ("<td>" + link + "</td>");
+				add ("</tr>")};
+			
+			add ("<tr><td colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\"></td></tr>"); // 4/18/00 JES: localized
+			add ("</table>");
+			add ("</form>")}};
+	
+	return (manilaSuite.unTaint (htmlText))}

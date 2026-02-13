@@ -1,0 +1,31 @@
+on securityLevel (prompt) {
+	«Changes
+		«6/27/02; 7:59:04 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		config.mainResponder.prefs.securityLevel = number (adrargs^.securityLevel)};
+	
+	add ("<tr>");
+	add ("<td>" + prompt + ":</td>");
+	
+	local (levels = {"Basic Only", "Basic or Digest", "Digest Only", "Digest with replay protection"});
+	add ("<td>");
+	add ("<select name=\"securityLevel\">");
+	local (i);
+	for i = 0 to 3 {
+		local (selectedtext = "");
+		if i == config.mainResponder.prefs.securityLevel {
+			selectedtext = " selected"};
+		add ("<option value=\"" + i + "\"" + selectedtext + ">" + levels[i+1] + "</option>")};
+	add ("</select>");
+	add ("</td>");
+	
+	add ("</tr>");
+	
+	return (htmltext)}

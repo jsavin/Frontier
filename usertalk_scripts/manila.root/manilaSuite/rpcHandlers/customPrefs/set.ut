@@ -1,0 +1,51 @@
+on set (username, password, siteName, s, windowInfoTable) {
+	«Set the custom prefs XML text.
+		«Changes:
+			«02/06/00; 9:07:14 PM by PBS
+				«Save the window info table.
+			«05/30/00; 9:02:23 PM by JES
+				«Bug fix: Setting the custom prefs now updates the new member signup wizard as well.
+			«02/22/01; 12:06:02 AM by JES
+				«Convert outgoing text from Mac to Latin, if the server is a Mac.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't set the custom prefs because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	manilaSuite.rpcUtils.cleanObjectForImport (@s);
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrSite = parentOf (adrNewsSite^)); // 05/30/00 JES
+	if not defined (adrNewsSite^.prefsWizard) {
+		local (siteInfo);
+		new (tableType, @siteInfo);
+		siteInfo.adrSite = adrSite; // 05/30/00 JES
+		manilaSuite.newSite.createCustomPrefsWizard (@siteInfo)};
+	local (adrObject = @adrNewsSite^.prefsWizard.outline);
+	try {
+		local (t);
+		if system.environment.isMac {
+			s = latinToMac.convert (s)};
+		xml.compile (string (s), @t);
+		wp.newTextObject (string (s), adrObject);
+		
+		bundle { // 05/30/00 JES: update the new member signup wizard
+			local (tempTable); // a fake page table for localization support
+			new (tableType, @tempTable);
+			tempTable.language = manilaSuite.getLanguageName (adrSite);
+			local (adrSignupWizard = manilaSuite.getWizardAddress ("signup", @adrNewsSite^.signupWizard, @tempTable));
+			if not defined (adrSignupWizard^) {
+				adrSignupWizard^ = prefsSuite.signupWizard;
+				setTimeModified (@adrSignUpWizard^.outline, 0)};
+			local (adrRequiredStructure = manilaSuite.getWizardAddress ("signUpPanelStructure", @manilaData.SignUpPanelStructure, @tempTable));
+			manilaSuite.prefs.buildSignUpStructure (@adrNewsSite^.prefsWizard, @adrSignUpWizard^.structure, adrRequiredStructure)}}
+	else {
+		scriptError ("Can't update the custom member preferences because " + tryerror)};
+	
+	bundle { //PBS 20/06/00: save the window info table
+		«local (adrSite = parentOf (adrNewsSite^)) // 05/30/00 JES
+		manilaSuite.rpcUtils.setWindowInfoTable (windowInfoTable, "customPrefs", adrSite)};
+	
+	fileMenu.saveMyRoot (adrNewsSite);
+	
+	return (true)}

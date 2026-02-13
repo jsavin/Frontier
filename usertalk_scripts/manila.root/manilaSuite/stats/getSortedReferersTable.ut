@@ -1,0 +1,18 @@
+on getSortedReferersTable (adrSite) {
+	«Return a sorted table containing the last 24 hours worth of referers. Table is sorted by frequency (value).
+		«11/02/00; 2:38:52 PM by WM
+	
+	local (adrTable = manilaSuite.stats.getReferersTableAddress (adrSite));
+	local (t);
+	new (tableType, @t);
+	local (oldTarget = target.set (@t));
+	table.sortBy ("Value");
+	try {target.set (oldTarget)};
+	manilaSuite.stats.cleanReferersTable (adrSite);
+	local (adrItem);
+	for adrItem in adrTable {
+		local (url = nameOf (adrItem^));
+		local (hits = sizeOf (adrItem^));
+		if hits > 0 {
+			t.[url] = hits}};
+	return (t)}

@@ -1,0 +1,10 @@
+on createJavaScript (adrSiteInfo) {
+	local (adrSite = adrSiteInfo^.adrSite);
+	local (adrJavaScript = @adrSite^.["#newsSite"].javaScript);
+	
+	local (s);
+	s = "<script language=\"JavaScript\">\r  <!-- Begin hiding from older browsers\r\r  //End hiding-->\r  </script>";
+	
+	wp.newTextObject (s, adrJavaScript);
+	
+	return (true)}

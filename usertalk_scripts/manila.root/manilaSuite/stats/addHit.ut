@@ -1,0 +1,33 @@
+on addHit (pta) {
+	«Record this hit in the hourly table.
+		«Hits are stored in config.root. Why? Because with this feature every hit is a write operation. We'd be saving pretty much every gdb every minute. Better to limit the writing to config.root. (Since it's already being written to with each hit.)
+		«11/09/00; 2:00:38 PM by PBS
+	
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (adrTable);
+	if not (manilaSuite.stats.getSiteHitsTable (adrSite, @adrTable)) {
+		return (false)};
+	
+	local (day, month, year, hour, minute, second);
+	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+	
+	on newHour (adrTable) {
+		new (tableType, adrTable);
+		adrTable^.hits = 0;
+		adrTable^.day = day;
+		adrTable^.month = month;
+		adrTable^.year = year};
+	local (adrHitsTable = @adrTable^.[hour]);
+	if not defined (adrHitsTable^) {
+		newHour (adrHitsTable)};
+	if adrHitsTable^.day != day {
+		newHour (adrHitsTable)};
+	if defined (adrHitsTable^.month) {
+		if adrHitsTable^.month != month {
+			newHour (adrHitsTable)}};
+	if defined (adrHitsTable^.year) {
+		if adrHitsTable^.year != year {
+			newHour (adrHitsTable)}};
+	adrHitsTable^.hits++;
+	
+	return (true)}

@@ -1,0 +1,15 @@
+on clientSupportsDHTMLMenu (pta=nil) {
+	«05/22/00; 12:44:54 AM by JES
+		«return true if the client's browser supports our DHTML menus and the pref is true
+	
+	if pta==nil {
+		pta = html.getPAgeTableAddress ()};
+	
+	if not defined (pta^.dhtmlMenu) {
+		pta^.dhtmlMenu = false};
+	if pta^.dhtmlMenu == false {
+		return (false)};
+	if not defined (html.menubar.styleSheet) {
+		return (false)};
+	userAgent = pta^.requestHeaders.["User-Agent"];
+	return (userAgent contains "MSIE 5")}

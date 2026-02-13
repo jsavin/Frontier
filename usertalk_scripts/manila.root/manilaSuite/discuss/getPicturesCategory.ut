@@ -1,0 +1,6 @@
+on getPicturesCategory (adrSite=nil) {
+	«Get the alsoListedIn category for pictures.
+		«This script can run outside the page rendering context if adrSite is not nil.
+		«10/19/99; 3:43:00 PM by PBS
+	
+	return (manilaSuite.discuss.getCategoryName ("pictures", adrSite))}

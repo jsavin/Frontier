@@ -1,0 +1,22 @@
+on restoreDefault (username, password, siteName) {
+	«Restore the home page template to the default.
+		«10/14/00; 2:05:26 PM by PBS
+		«Changes:
+			«12/10/01; 6:02:42 PM by PBS
+				«Toss the home page cache.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't restore the home page template to the default because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (siteInfo, adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	local (adrObject = @adrSite^.["#homePageTemplate"]);
+	wp.newTextObject ("", adrObject); //empty it out
+	adrSite^.["#newsSite"].flUseHomePageTemplate = false; //don't use home page template
+	
+	manilaSuite.cache.tossHomePage (adrSite:adrSite); //PBS 12/10/01: toss the home page cache
+	
+	fileMenu.saveMyRoot (adrSite);
+	
+	return (string (adrObject^))}

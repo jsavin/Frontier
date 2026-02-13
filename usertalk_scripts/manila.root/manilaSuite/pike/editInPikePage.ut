@@ -1,0 +1,77 @@
+on editInPikePage (pta=nil) {
+	«Send an edit story message to Pike.
+		«01/13/00; 10:39:25 PM by PBS
+	«Changes:
+		«10/09/00; 7:45:24 PM by JES
+			«If using the topics-based discussion group interface, redirect to the message in the topic, instead of to the referer, since the referer may be the top message in the topic, instead of the one you want to edit.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (msgNum = pta^.pathArgs);
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+	
+	local (referer);
+	if defined (pta^.requestHeaders.referer) {
+		referer = pta^.requestHeaders.referer;
+		bundle { // 10/09/00 JES: redirect to the correct message in the thread if using the topic-based DG interface
+			local (flDiscussTopicBased = manilaSuite.getNewsSitePref ("discussionGroup.topicBased", default: false, flCreate: true));
+			if flDiscussTopicBased and referer beginsWith pta^.urls^.discussMsgReader {
+				if adrMsgTable^.inResponseTo != 0 { // redirect to the topic reader page -- to the message requested.
+					local (nomad = adrMsgTable);
+					while (nomad^.inResponseTo > 0) {
+						nomad = mainResponder.discuss.getMessageTable (nomad^.inResponseTo)};
+					local (url = pta^.responderAttributes.urls^.discussMsgReader);
+					if not (url endsWith '$') {
+						url = url + "$"};
+					url = url + nomad^.msgNum;
+					if url != (pta^.url + "$" + pta^.pathArgs) { // make sure we're not redirecting to ourselves
+						try { // in case there are non-numeric pathArgs
+							if number (pta^.pathArgs) != number (nomad^.msgNum) {
+								url = url + "#" + pta^.pathArgs}}};
+					referer = url}}}}
+	else {
+		referer = pta^.urls^.storyReader;
+		if not (referer endsWith "$") {
+			referer = referer + "$"};
+		referer = referer + msgNum};
+	
+	try { //try to send an edit message to Pike
+		local (adrMember = pta^.adrMemberInfo);
+		local (adrSite = pta^.adrSiteRootTable);
+		
+		bundle { //make sure the member can edit this story
+			«The member probably can edit this story -- unless he goes to this page not from a Pike button link.
+			local (posterKey = adrMsgTable^.member);
+			local (lowerPosterKey = string.lower (posterKey));
+			local (memberKey = nameOf (adrMember^));
+			local (lowerMemberKey = string.lower (memberKey));
+			if lowerPosterKey != lowerMemberKey { //it's not the same member, but it might be an ME.
+				local (adrCallbacks = @config.mainResponder.callbacks.memberCanEdit);
+				pta^.flMemberCanEdit = false;
+				pta^.adrMsgToEdit = adrMsgTable;
+				mainResponder.callbackLoop (adrCallbacks, pta);
+				if not pta^.flMemberCanEdit {
+					scriptError ("Can't edit this page because you do not have editorial privileges.")}}};
+		
+		bundle { //PBS 02/10/00: make sure the story is available to be checked out
+			if not (manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, adrMember, adrSite, true)) { //true because it's a message
+				local (title = manilaSuite.unTaint (adrMsgTable^.subject));
+				scriptError ("Can't edit \"" + title + "\" because it's already being edited by another member.")}};
+		
+		manilaSuite.pike.sendToPike.editStory (adrMsgTable, referer, pta); //send the edit story command to Pike
+		
+		bundle { //PBS 02/10/00: check out the story
+			manilaSuite.custody.checkOut (adrMsgTable, adrMember, adrSite, true)}; //true because it's a message
+		
+		mainResponder.redirect (referer);
+		return ("")}
+	else { //display the error
+		pta^.title = "It Didn't Work";
+		local (htmlText);
+		on add (s) {
+			htmlText = htmlText + s};
+		add ("Sorry, the server couldn't send the story to your copy of Pike.\r<p>");
+		add ("Here's the message we received from your workstation (it may be cryptic):\r<p>");
+		add ("<blockquote><i>" + manilaSuite.unTaint (tryError) + "</i></blockquote>");
+		return (htmlText)}}

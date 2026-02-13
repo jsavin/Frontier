@@ -1,0 +1,7 @@
+on notify () {
+	«Notify anyone who cares that the RSS file has changed.
+		«1/15/02; 8:54:58 PM by PBS
+	local (url = adrSite^.["#ftpSite"].url);
+	local (rssUrl = url + "xml/rss.xml");
+	if defined (xml.pubsub) {
+		xml.pubsub.notify (rssUrl, @config.manila.rssNotifications)}}

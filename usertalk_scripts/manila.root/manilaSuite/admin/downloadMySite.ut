@@ -1,0 +1,21 @@
+on downloadMySite (adrSite) {
+	«Changes:
+		«02/06/01; 2:34:31 PM by JES
+			«Return a page with a link to the download, instead of the download itself.
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + s + cr};
+	bundle { // start the page
+		add ("<html><head><Title>Download My Site</title></head><body bgcolor=\"#FFFFFF\"><blockquote>")};
+	add ("<h2>Download My Site</h2>");
+	if config.manila.prefs.flSiteDownloadsEnabled {
+		local (downloadUrl = manilaSuite.admin.exportGdb (adrSite));
+		add ("Your site is ready for download.");
+		add ("<br><br>");
+		add ("Download the following link to disk:");
+		add ("<br><br>");
+		add ("<a href=\"" + downloadUrl + "\">" + downloadUrl + "</a>")}
+	else {
+		add ("Can't download this site because the site download feature is not available.")};
+	add ("</blockquote></body></html>"); // end the page
+	return (htmlText)}

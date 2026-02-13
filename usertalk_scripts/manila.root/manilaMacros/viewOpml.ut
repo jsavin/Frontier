@@ -1,0 +1,2 @@
+on viewOpml (url) {
+	return (manilaSuite.opml.view (url))}

@@ -1,0 +1,9 @@
+on newMessageCallback (adrMsg) {
+	«Notify the world that a new message has been created. This is the website framework context entry point.
+		«04/04/00; 9:47:22 PM by PBS
+	
+	local (adrCallbacks = @manilaSuite.callbacks.newMessage);
+	local (adrUserCallbacks = @config.manila.callbacks.newMessage);
+	manilaSuite.callbacks.doWsfCallbacks (adrCallbacks, adrUserCallbacks, adrMsg);
+	
+	return (true)}

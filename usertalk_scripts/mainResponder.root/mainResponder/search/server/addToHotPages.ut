@@ -1,0 +1,38 @@
+on addToHotPages (indexName=nil) {
+	«This script adds the page the user's going to to the hot pages list.
+		«The hot pages list tracks where people go for a given search string. Pages that are popular for a given search string get a higher relevancy ranking.
+	
+	local (pta = html.getPageTableAddress ());
+	local (indexPath = mainResponder.search.utilities.getIndexPath (indexName));
+	
+	local (adrHotPages = @[indexPath].hotPages);
+	if not defined (adrHotPages^) {
+		new (tableType, adrHotPages)};
+	
+	local (searchString = pta^.displaySearchString);
+	
+	local (argTable);
+	new (tableType, @argTable);
+	webserver.parseArgs (pta^.searchArgs, @argTable);
+	
+	local (adrPageTable = html.getPageTableAddress ());
+	
+	local (url = argTable.url);
+	
+	local (adrTable = @adrHotPages^.[searchString]);
+	if not defined (adrTable^) {
+		new (tableType, adrTable)};
+	
+	local (adrHitCount = @adrTable^.[url]);
+	if not defined (adrHitCount^) {
+		adrHitCount^ = 1}
+	else {
+		adrHitCount^++};
+	
+	«Sort the hot pages list. Sort now so we don't have to sort during a search.
+	local (oldTarget = target.set (adrTable));
+	target.set (adrTable);
+	table.sortBy ("Value");
+	try {target.set (oldTarget)};
+	
+	return ("")}

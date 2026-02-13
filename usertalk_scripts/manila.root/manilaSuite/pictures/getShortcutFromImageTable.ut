@@ -1,0 +1,10 @@
+on getShortcutFromImageTable (adrMsgTable, adrName) {
+	«Get the name of the shortcut for this picture. It's stored in the image subtable. adrName^ gets the name. Return true if found, false otherwise. The shortcut name may not actually be in the glossary -- when you get the result back from here, don't assume it's in the glossary.
+		«01/12/00; 2:29:33 PM by PBS
+	
+	if not defined (adrMsgTable^.image.shortcut) {
+		return (false)};
+	
+	adrName^ = adrMsgTable^.image.shortcut;
+	
+	return (true)}

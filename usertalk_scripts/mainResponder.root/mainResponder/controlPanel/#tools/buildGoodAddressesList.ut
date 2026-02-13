@@ -1,0 +1,22 @@
+«Build the list of okay partial addresses by walking the XML structure.
+
+local (adrStructure = @mainResponder.controlPanel.["#wizard"].structure [1]);
+
+local (okList = "");
+
+on doTable (adrTable) {
+	local (i);
+	for i = 1 to sizeOf (adrTable^) {
+		adrItem = @adrTable^ [i];
+		local (itemName = nameOf (adrItem^));
+		if string.lower (itemName) == "/atts" {
+			if defined (adrItem^.adr) {
+				if defined (adrItem^.adr^) {
+					okList = okList + "\r\"" + adrItem^.adr + "\""}}}
+		else {
+			if typeOf (adrItem^) == tableType {
+				doTable (adrItem)}}}};
+doTable (adrStructure);
+
+op.newOutlineObject (okList, @temp.okPartialAddresses);
+edit (@temp.okPartialAddresses)

@@ -1,0 +1,150 @@
+on pendingList (flCreateLink=true) {
+	«Changes:
+		«12/22/04; 12:04:34 PM by LL
+			«Localize the dates used for pending news items.
+		«10/8/03; 2:09:01 PM by JES
+			«Add department column if the site has one or more departments.
+		«8/30/03; 1:24:34 PM by JES
+			«If the news item has no title, substitute "(untitled)" so we can render a link to the item.
+		«4/19/03; 8:07:45 PM by JES
+			«Add #edit anchor to the edit links, to scroll directly to the editing form.
+		«05/11/00; 8:04:39 PM by JES
+			«merged in Brent's security fix for the client side trojan horse attack.
+		«05/09/00; 10:42:03 PM by PBS
+			«Check referer to defeat the client side trojan horse.
+		«05/04/00; 5:40:07 PM by JES
+			«localized
+		«04/19/00; 10:22:10 PM by PBS
+			«Created. Build an HTML table displaying all the pending news items.
+	
+	local (pta = html.getPageTableAddress ());
+	local (flEditor = manilaSuite.editors.editorialTest ());
+	local (flManagingEditor = manilaSuite.editors.managingEditorTest ());
+	local (flPost = (string.lower (pta^.method) == "post"));
+	local (newUrl = manilaSuite.getUrl ("newsItemNew"));
+	local (editUrl = manilaSuite.getUrl ("newsItemEditInBrowser"));
+	local (adrSite = manilaSuite.getManilaSiteAddress ());
+	local (htmlText);
+	local (flMemberMayCreate = manilaSuite.news.memberMayCreateNewItems ());
+	local (flDepartments = false);
+	bundle { //set flDepartments to true if this site has departments
+		local (adrdepts = manilaSuite.news.getDepartmentTableAddress (adrsite));
+		if sizeOf (adrdepts^) > 0 {
+			flDepartments = true}};
+	
+	pta^.activeUrls = false;
+	
+	on add (s) {
+		htmlText = htmlText + s + "\r"};
+	
+	add (manilaSuite.getString ("news.pendingNewsItemsListDescription") + "<p>");
+	
+	if flPost { //handle delete command
+		manilaSuite.referer.checkSelf (); //PBS 05/09/00: check referer to defeat client side trojan horse
+		if flManagingEditor { //managing editors only may delete from a list
+			if defined (pta^.postArgs.delete) {
+				«if string.lower (pta^.postArgs.delete) == "delete" // 05/19/00 JES: test fails if localized
+				local (lowerCategory = "newsitem");
+				local (adrItem);
+				for adrItem in @pta^.postArgs {
+					local (itemName = nameOf (adrItem^));
+					local (lowerName = string.lower (itemName));
+					if lowerName beginsWith lowerCategory {
+						lowerName = string.delete (lowerName, 1, sizeOf (lowerCategory));
+						local (flDelete = false);
+						local (num);
+						try {
+							num = number (lowerName);
+							flDelete = true;
+							temp.num = num};
+						if flDelete {
+							local (adrMsgTable = mainResponder.discuss.getMessageTable (num));
+							adrMsgTable^.flDeleted = true;
+							manilaSuite.news.updateIndexes (adrMsgTable, adrSite)}}}}}};
+	
+	on listTopics () {
+		on td (s, align="") {
+			add ("<td nowrap " + align + " valign=\"top\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
+		
+		local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+		local (adrMessages = manilaSuite.news.getPendingTableAddress (adrSite));
+		
+		if flManagingEditor { //add start form
+			local (actionUrl = manilaSuite.unTaint (pta^.fname));
+			add ("<form method=\"post\" action=\"" + actionUrl + "\">")};
+		
+		add ("<table cellspacing=\"3\" border=\"0\">");
+		
+		bundle { //column headings
+			add ("<tr>");
+			if flManagingEditor {
+				td ("&nbsp;")};
+			td ("<b>" + manilaSuite.getString ("common.dateColumnName") + "</b>");
+			td ("<b>" + manilaSuite.getString ("common.titleColumnName") + "</b>");
+			td ("<b>" + manilaSuite.getString ("common.originatorColumnName") + "</b>");
+			td ("<b>" + manilaSuite.getString ("common.statusColumnName") + "</b>");
+			if flDepartments { //add department column
+				td ("<b>" + manilaSuite.getString ("common.department") + "</b>")};
+			add ("</tr>")};
+		local (editUrl = manilaSuite.getUrl ("newsItemEditInBrowser"));
+		local (i, ct = sizeOf (adrMessages^));
+		for i = ct downTo 1 {
+			local (msgNum = number (nameOf (adrMessages^ [i])));
+			local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+			if defined (adrMsgTable^.flDeleted) {
+				if adrMsgTable^.flDeleted {
+					continue}};
+			add ("<tr>");
+			if flManagingEditor { //delete checkbox
+				td ("<input type=\"checkbox\" name=\"newsItem" + adrMsgTable^.msgNum + "\">")};
+			bundle { //date
+				td (mainResponder.localization.shortDateString (adrMsgTable^.postTime, pta))};
+			bundle { //edit link
+				local (title = adrMsgTable^.subject);
+				if title == "" {
+					title = "(untitled)"};
+				local (editLink = html.getLink (title, editUrl + adrMsgTable^.msgNum + "#edit"));
+				td (editLink)};
+			bundle { //member
+				td (mainResponder.members.getMemberName (membershipGroup, adrMsgTable^.member))};
+			bundle { //status
+				local (status = manilaSuite.news.getStatus (msgNum, adrSite, adrMsgTable));
+				td (manilaSuite.getString ("news." + status + "Status"))};
+			if flDepartments { //department
+				on deptLink (department) {
+					return ("<a href=\"" + manilaSuite.news.getDepartmentUrl (adrsite, department) + "\">" + department + "</a>")};
+				if defined (adrMsgTable^.newsItem.department) {
+					if typeOf (adrMsgTable^.newsItem.department) == listType {
+						local (depts = "", onedept);
+						for onedept in adrMsgTable^.newsItem.department {
+							depts = depts + deptLink (onedept) + ", "};
+						if sizeOf (depts) > 0 {
+							depts = string.mid (depts, 1, sizeOf (depts) - 2)};
+						add ("<td style=\"padding-left:0.7em\">" + depts + "</td>")}
+					else {
+						td (deptLink (adrMsgTable^.newsItem.department))}}};
+			add ("</tr>")};
+		
+		add ("</table>");
+		
+		if flManagingEditor { //add Delete button, close form
+			add ("<p><input type=\"submit\" name=\"delete\" value=\"" + manilaSuite.getString ("common.deleteButton") + "\">");
+			add ("</form>")};
+		
+		return (htmltext)};
+	
+	listTopics ();
+	
+	if flCreateLink and flMemberMayCreate { //create link
+		add ("<p>");
+		newLink = "<b>" + html.getLink (manilaSuite.getString ("news.createANewsItem"), newUrl) + "</b>";
+		add (newLink)};
+	
+	bundle { //department list link
+		local (deptListPageUrl = manilaSuite.getUrl ("editorialNewsItems"));
+		if not (deptListPageUrl endswith "/") {
+			deptListPageUrl = deptListPageUrl + "/"};
+		deptListPageUrl = deptListPageUrl + "departments/";
+		add ("<p>" + string.replace (manilaSuite.getString ("news.departmentListLink"), "[[url]]", deptListPageUrl))};
+	
+	return (htmlText)}

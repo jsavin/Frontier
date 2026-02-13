@@ -1,0 +1,24 @@
+on getSitePrefsNavigatorAddress (pta=nil) {
+	«5/12/00; 3:47:01 PM by JES
+		«Gets the address of the (localized) site prefs navigator
+			«Note: The wizard and the navigator must have the same names for panels, or prefsSuite.browser won't work.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrNavigator, adrLanguageTable = manilaSuite.getLanguageTableAddress (pta));
+	if defined (adrLanguageTable^.navigators.sitePrefs) {
+		adrNavigator = @adrLanguageTable^.navigators.sitePrefs}
+	else {
+		local (adrLanguagesTable = parentOf (adrLanguageTable^));
+		if defined (config.globals.lanugage) { // is there a language setting for the server?
+			if defined (adrLanguagesTable^.[config.globals.lanugage].navigators.sitePrefs) {
+				adrNavigator = @adrLanguagesTable^.[config.globals.lanugage].navigators.sitePrefs}};
+		if adrNavigator != nil { // no server setting -- is there a Frontier setting?
+			if defined (user.prefs.language) {
+				if defined (adrLanguagesTable^.[user.prefs.language].navigators.sitePrefs) {
+					adrNavigator = @adrLanguagesTable^.[user.prefs.language].navigators.sitePrefs}}}};
+	if adrNavigator == nil { // we didn't find a server setting or a Frontier setting -- use Manila's legacy menu
+		if defined (manilaData.sitePrefs.navigator) {
+			adrNavigator = @manilaData.sitePrefs.navigator}};
+	return (adrNavigator)}

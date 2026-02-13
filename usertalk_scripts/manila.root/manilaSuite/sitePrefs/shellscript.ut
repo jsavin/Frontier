@@ -1,0 +1,33 @@
+on shellscript (adrSite) {
+	«Changes
+		«2/28/05; 1:08:42 PM by JES
+			«Use the script-based default page when upgrading the site shell, instead of the wptext type version.
+	«manilaSuite.sitePrefs.shellscript : 04/05/14, 18:54:08 by DAB
+		«convert one site to the new style of advanced sitesprefs
+	table.assign(@adrSite^.admin.sitePrefs.default, manilaData.newSiteTemplate.admin.sitePrefs.default);
+	«table.assign(@adrSite^.admin.sitePrefs.default, manilaSuite.sitePrefs.maniladata.siteprefs.default) //05/01/03, 19:44:41 by DAB
+	if not defined( adrSite^.["#newsSite"].cascadingStyleSheet) {
+		adrSite^.["#newsSite"].cascadingStyleSheet =  "&lt;style type=\"text/css\"&gt;\r\r  &lt;/style&gt;"};
+	if not defined(adrSite^.["#newsSite"].externalStyleSheet) {
+		adrSite^.["#newsSite"].externalStyleSheet = manilaData.newSiteTemplate.["#newsSite"].externalStyleSheet};
+	if not defined(adrSite^.["#newsSite"].javaScript) {
+		adrSite^.["#newsSite"].javaScript = "&lt;script language=\"JavaScript\"&gt;\r  &lt;!-- Begin hiding from older browsers\r\r  //End hiding--&gt;\r  &lt;/script&gt;"};
+	if not defined(adrSite^.["#newsSite"].newsDayTemplate) {
+		adrSite^.["#newsSite"].newsDayTemplate = "&lt;b>&#123;newsPostTime&#125;&lt;/b>\r&lt;p>\r&#123;newsContent&#125;\r&lt;p>"};
+	if not defined(adrSite^.["#newsSite"].membersBoxTemplates) {
+		adrSite^.["#newsSite"].membersBoxTemplates = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates};
+	if not defined(adrSite^.accesscontrol) { //04/05/24, 22:41:05 by DAB
+		adrSite^.accesscontrol = manilaData.newSiteTemplate.accessControl};
+	adrSite^.["#prefs"].flPluginCustodyAvailable = true; //04/06/12, 17:29:18 by DAB
+	if not defined(adrSite^.["#urls"].gemEditInBrowser) { //05/02/14, 15:26:22 by DAB
+		adrSite^.["#urls"].gemEditInBrowser = manilaData.newSiteTemplate.["#urls"].gemEditInBrowser};
+	if not defined(adrSite^.gems.edit.editGem) { //05/02/14, 15:26:22 by DAB
+		adrSite^.gems.edit.editGem = manilaData.newSiteTemplate.gems.edit.editGem};
+	if not defined(adrSite^.["#urls"].gemPostEditedMessage) { //05/02/14, 15:26:22 by DAB
+		adrSite^.["#urls"].gemPostEditedMessage = manilaData.newSiteTemplate.["#urls"].gemPostEditedMessage};
+	if not defined(adrSite^.gems.edit.postEditedGem) { //05/02/14, 15:26:22 by DAB
+		adrSite^.gems.edit.postEditedGem = manilaData.newSiteTemplate.gems.edit.postEditedGem};
+	
+	return true};
+«bundle //test code
+	«shellscript (@jpManilawebsite)

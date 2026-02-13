@@ -1,0 +1,2 @@
+«Run this script when installing this site on another machine.
+manilaSuite.installSite (parentOf (this^))

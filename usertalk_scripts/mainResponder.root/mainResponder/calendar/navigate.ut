@@ -1,0 +1,26 @@
+on navigate (adrCalendar, adrDay, flForwardInTime) {
+	«Tue, May 23, 2000 at 5:46:29 PM by AR
+		«Old code
+			«on navigate (adrCalendar, adrDay, flForwardInTime)
+				«Notes
+					«Fri, 12 Mar 1999 19:44:02 GMT by AR
+						«adrCalendar is the address of a valid calendar structure.
+						«adrDay is the address of an existing entry in the calendar.
+						«flForwardInTime is a boolean.
+						«We walk the calendar in the direction indicated by flForwardInTime and return the address of the next existing element.
+						«We rely on mainResponder.calendar.getNextAddress or mainResponder.calendar.getMostRecentAddress to do the actual work.
+				«if not defined (adrDay^)  //consistency check
+					«scriptError ("Can't navigate the calendar structure because adrDay does not point to an existing calendar element.")
+				«local (d = mainResponder.calendar.getAddressDay (adrDay))
+				«if flForwardInTime
+					«return (mainResponder.calendar.getNextAddress (adrCalendar,date.tomorrow (d)))
+				«else
+					«return (mainResponder.calendar.getMostRecentAddress (adrCalendar, date.yesterday (d)))
+	kernel (mrcalendar.navigate)};
+«bundle  //test code
+	«dialog.notify (navigate (@scriptingNews, @scriptingNews.["1998"].["12"].["26"], true))
+	«dialog.notify (navigate (@scriptingNews, @scriptingNews.["1998"].["12"].["26"], false))
+	«dialog.notify (navigate (@scriptingNews, @scriptingNews.["1998"].["12"].["24"], true))
+	«dialog.notify (navigate (@scriptingNews, @scriptingNews.["1998"].["12"].["24"], false))
+	«dialog.notify (navigate (@scriptingNews, @scriptingNews.["1999"].["03"].["08"], true))
+	«dialog.notify (navigate (@scriptingNews, @scriptingNews.["1999"].["03"].["09"], true))

@@ -1,0 +1,63 @@
+on diskInfo () {
+	«Changes
+		«8/14/02; 3:34:39 PM by JES
+			«Created.
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	local (pta = html.getPageTableAddress ());
+	local (bgcolors = {pta^.trbg2, pta^.trbg1});
+	local (frontiericon, systemicon);
+	bundle { //get icons
+		if system.environment.isMac {
+			systemicon = "<img src=\"/mainResponderResources/logos/macosIconSmall\" height=\"16\" width=\"16\" border=\"0\">"}
+		else {
+			systemicon = "<img src=\"/mainResponderResources/logos/windowsIconSmall\" height=\"16\" width=\"16\" border=\"0\">"};
+		frontiericon = "<img src=\"/mainResponderResources/userlandIcons/cactusIconSmall\" height=\"16\" width=\"16\" border=\"0\">"};
+	local (systemdisk, frontierdisk);
+	bundle { //get system and frontier disks
+		systemdisk = file.getSystemDisk ();
+		frontierdisk = frontier.pathstring;
+		local (pc = file.getPathChar ());
+		while string.popTrailing (frontierdisk, pc) contains pc {
+			frontierdisk = file.folderFromPath (frontierdisk)}};
+	
+	add ("<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"70%\">");
+	bundle { //headers
+		if system.environment.isMac {
+			add ("<tr><td style=\"padding-left:5px;\"><b>Disk</b></td><td>&nbsp;</td><td align=\"right\"><b>Size</b></td><td align=\"right\" style=\"padding-right:10px;\"><b>Free</b></td><td align=\"right\" style=\"padding-right:10px;\"><b>Files</b></td></tr>")}
+		else {
+			add ("<tr><td style=\"padding-left:5px;\"><b>Disk</b></td><td>&nbsp;</td><td align=\"right\"><b>Size</b></td><td align=\"right\" style=\"padding-right:10px;\"><b>Free</b></td></tr>")}};
+	
+	local (ct = 0);
+	fileloop (f in "") {
+		if not system.environment.isMac { //skip the A & B drives on Windows
+			if string.lower (f) beginsWith "a:" {
+				continue};
+			if string.lower (f) beginsWith "b:" {
+				continue}};
+		try {
+			local (sizedouble = file.volumeSizeDouble (f));
+			local (freedouble = file.freeSpaceOnVolumeDouble (f));
+			local (files);
+			if system.environment.isMac {
+				files = file.filesOnVolume (f)};
+			local (icon = "");
+			if f == systemdisk {
+				icon = icon + "&nbsp;" + systemicon + "&nbsp;"};
+			if f == frontierdisk {
+				icon = icon + "&nbsp;" + frontiericon + "&nbsp;"};
+			
+			ct++;
+			add ("<tr bgcolor=\"" + bgcolors[(ct%2) + 1] + "\">");
+			add ("<td class=\"small\" style=\"padding-left:5px;\">" + f + "</td>");
+			add ("<td class=\"small\" style=\"padding-top:5px;\"><nobr>" + icon + "</nobr></td>");
+			add ("<td class=\"small\" align=\"right\">" + string.gigabyteString (sizedouble) + "</td>");
+			add ("<td class=\"small\" align=\"right\" style=\"padding-right:10px;\">" + string.gigabyteString (freedouble) + "</td>");
+			if system.environment.isMac { //file.filesOnVolume only works on MacOS
+				add ("<td class=\"small\" align=\"right\" style=\"padding-right:10px;\">" + string.addCommas (files) + "</td>")};
+			add ("</tr>")}};
+	
+	add ("</table>");
+	
+	return (htmltext)}

@@ -1,0 +1,61 @@
+on defaultPage () {
+	«Changes:
+		«10/17/05; 12:18:56 AM by JES
+			«Adjust vertical alignment of cohort pop-up and prompt. Use bold text for both cohorts prompt and HTML recipients check, for consistency with other form fields.
+		«10/15/05; 4:31:31 AM by JES
+			«Add cohorts popup if access controls are enabled for the site.
+				«Change from DAB.
+		«4/27/03; 1:56:00 PM by JES
+			«If a message number is specified in the url (?msgnum=xx), use the text and subject of that message for the default text of the bulletin. Don't hot up urls or email addresses.
+		«4/18/00; 8:21:04 PM by JES
+			«converted page from an outline to a script so it could be localized
+			«localized static strings
+	
+	local (pta = html.getPageTableAddress (), htmltext);
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta)); //05/10/09, 14:23:17 by DAB
+	local (newssite = manilaSuite.getNewsSiteAddress (adrSite)); //05/10/09, 14:23:52 by DAB
+	
+	on add (s) {
+		htmltext = htmltext + s + cr};
+	on translateToEntities (s) {
+		s = string.replaceAll (s, "&", "&amp;");
+		s = string.replaceAll (s, "<", "&lt;"); //PBS 01/31/00: convert carets to entities
+		s = string.replaceAll (s, "\"", "&quot;"); //PBS 01/31/00: convert quotes to entities
+		s = string.replaceAll (s, "{", "&#123;"); //PBS 03/19/00: convert { to HTML entities
+		return (s)};
+	
+	pta^.title = manilaSuite.getString ("bulletins.bulletinSenderPageTitle");
+	pta^.autoparagraphs = false;
+	pta^.addlinefeeds = false;
+	pta^.activeUrls = false;
+	pta^.clayCompatibility = false;
+	
+	local (subject = newssite^.bulletins.lastsubject);
+	local (text = newssite^.bulletins.lasttext);
+	
+	if defined (pta^.searchArgs) {
+		if pta^.searchArgs != "" {
+			local (args); new (tableType, @args);
+			webserver.parseArgs (pta^.searchArgs, @args);
+			if defined (args.msgnum) {
+				local (adrmsg = manilaSuite.discuss.getMessageTable (number (args.msgnum)));
+				subject = adrmsg^.subject;
+				if manilaSuite.news.isNewsItem (adrmsg) {
+					text = adrmsg^.newsItem.description}
+				else {
+					text = adrmsg^.body}}}};
+	
+	bundle { // explanatory text
+		add (manilaSuite.getString ("bulletins.bulletinSenderPageInstructions"))};
+	bundle { // bulletin form
+		add ("<form action=\"postCatcher\" method=\"POST\">");
+		add ("<p><b>" + manilaSuite.getString ("common.subjectPrompt") + "</b><br>");
+		add ("<input size=\"40\" maxlength=\"60\" name=\"subject\" value=\"" + translateToEntities (subject) + "\">");
+		add ("<p><b>" + manilaSuite.getString ("common.textPrompt") + "</b><br><textarea name=\"text\" rows=\"15\" cols=\"70\" wrap=\"soft\">" + translateToEntities (text) + "</textarea>");
+		if manilaSuite.accesscontrol.isControlledSite (adrSite) { //05/10/09, 14:22:37 by DAB
+			add("<p><table cellpadding=0 cellspacing=0 border=0><tr><td valign=top><b>" + manilaSuite.getString ("bulletins.sendOnlyToCohorts") + "</b></td><td style=\"padding-left:15px\">" + manilaSuite.accessControl.cohortsPopup (pta, "sendToCohorts", {"Members Only"}, {"Everyone"}) + "</td></tr></table>")};
+		add ("<p><input type=\"checkbox\" name=\"htmlOnly\">&nbsp;<b>" + manilaSuite.getString ("bulletins.htmlRecipientsOnlyPrompt") + "</b>");
+		add ("<p><input type=\"submit\" name=\"preview\" value=\"" + manilaSuite.getString ("bulletins.previewButton") + "\">&nbsp;<input type=\"submit\" name=\"send\" value=\"" + manilaSuite.getString ("bulletins.sendButton") + "\">");
+		add ("</form>")};
+	
+	return (htmltext)}

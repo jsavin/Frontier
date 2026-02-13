@@ -1,0 +1,24 @@
+on addDhtmlEditor (pta=nil) {
+	«Add the DHTML Editor buttons and scripts.
+		«02/14/00; 9:13:54 AM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if not defined (pta^.requestHeaders.["User-Agent"]) {
+		return ("")};
+	local (lowerUserAgent = string.lower (pta^.requestHeaders.["User-Agent"]));
+	if not (lowerUserAgent contains "msie") {
+		return ("")};
+	if not (lowerUserAgent contains "windows") {
+		return ("")};
+	
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	local (s = string (manilaData.dhtml.editor));
+	
+	add (s);
+	
+	return (htmlText)}

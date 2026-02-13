@@ -1,0 +1,240 @@
+on pictureRef (shortcutName, explanation=nil, hspace="", align="", usemap="", ismap=false, border=0, glossref="", vspace="", lowsrc="", rollsrc="", height="", width="", name="", id="", style="", class="", title="", onload="", onabort="", onerror="", onmouseOver="", onmouseOut="", onClick="", flNoLinkToCurrentPage=false, currentPageShortcut="") {
+	«Changes:
+		«8/12/05; 12:19:16 PM by JES
+			«When checking to see if we're rendering the current page, only check pta^.pathargs if defined.
+		«7/6/05; 8:48:09 PM by JES
+			«Added callback support. All parameters for this macro are also in scope in the callback script. In addition, the following are also defined: adrsite -- the address of the site, imageTable -- a sub-table which contains information about the image. If the callback returns a string, return that string. If it returns anything else, ignore the return result.
+			«Callbacks are set up by either adding its address to the page table in a variable named adrPictureRefCallback, or by defining a thread-global named adrPictureRefCallback before calling this macro.
+			«Callbacks are utilized in theme-creation for capturing images which are included in the site's templates using the pictureRef macro. These images are added automatically to the theme, and are added to the site the theme is applied to.
+		«27/06/05; 3:08:14 PM by PR
+			«in error subroutine, pass named pta to getString
+			«if the glossref points to an image, build an href
+		«05/04/13, 10:17:19 by DAB
+			«Optional onload, onabort, onerror javascript handlers for the img tag.
+			«glossRef paramater javascript handlers onmouseOver , onmouseOut , onClick - used only if glossRef is non empty.
+			«Optional flNoLinkToCurrentPage parameter, disables glossRef linkage if the glossRef resolves to the current page.
+			«Optional currentPageShortcut parameter, is used as alternate picture if this is the current page and flNoLinkToCurrentPage is off.
+		«12/21/01; 3:01:51 PM by PBS
+			«It is no longer a fatal error if the image has no alt text.
+		«06/10/00; 6:28:47 PM by JES
+			«localized error message
+		«06/02/00; 5:13:46 PM by PBS
+			«Created. Include a picture in a web page. This macro is modelled after imageRef, but is specifically for Manila sites. The first parameter is the name of the shortcut. The pageTable parameter has been removed.
+	
+	local (htmlText = "");
+	local (heightWidthString = "");
+	local (imageTable);
+	local (pta = html.getPageTableAddress ());
+	
+	on error (message, shortcutName) { //prepend friendly "Can't do xxx" text
+		local (replacementTable); new (tableType, @replacementTable);
+		replacementTable.message = message;
+		replacementTable.shortcutName = shortcutName;
+		message = manilaSuite.getString ("macros.cantIncludePictureError", @replacementTable, pta:pta);
+		message = manilaSuite.unTaint (message);
+		scriptError (message)};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	try { //try to embed the picture: if it fails, generate a friendly error message
+		on getImageTable (shortcutName, adrTable) {
+			local (glossaryImageTag);
+			bundle { //get the image tag from the glossary
+				try {
+					glossaryImageTag = html.refGlossary (shortcutName)}
+				else {
+					«error ("it doesn't exist in the list of shortcuts for this site.", shortcutName)
+					try {
+						local (adrGlobalSite = config.manila.prefs.globalSiteAddress); //04/05/18, 11:07:35 by DAB
+						glossaryImageTag = adrGlobalSite^.["#glossary"].[shortcutName]}
+					else {
+						error ("it doesn't exist in the list of shortcuts for this site.", shortcutName)}}};
+			
+			bundle { //get URL, height, width, and alt text from glossary entry
+				«<img src="http://static2.userland.com/pictures/itworkedcom/lightGrayBg.gif" height="40" width="22" border="0" alt="lightGrayBg.gif: ">
+				local (xmlText = glossaryImageTag);
+				xmlText = string.insert ("/", xmlText, sizeOf (xmlText)); //add closing slash so it can be compiled
+				
+				local (xmlTable);
+				try { //compile the text so atts can be pulled from it
+					xml.compile (xmlText, @xmlTable)}
+				else {
+					error ("the image tag in the shortcuts table is not well-formed.", shortcutName)};
+				
+				adrTable^ = xmlTable [1].["/atts"]};
+			
+			return (true)};
+		
+		getImageTable (shortcutName, @imageTable);
+		
+		bundle { //JES 5/26/05: callback support
+			local (adradrcallback = thread.getGlobalAddress ("adrPictureRefCallback"));
+			if defined (pta^.adrPictureRefCallback) {
+				adradrcallback = @pta^.adrPictureRefCallback};
+			if defined (adradrcallback^) {
+				local (adrcallback = adradrcallback^);
+				if defined (adrcallback^) {
+					local (argtable); new (tableType, @argtable);
+					bundle { //add all input params to argtable, for passing in callscript call to the callback
+						on addtotable (name, value=nil) {
+							if value == nil {
+								if defined ([name]) {
+									argtable.[name] = [name]}
+								else {
+									argtable.[name] = nil}}
+							else {
+								argtable.[name] = value}};
+						addtotable ("shortcutName");
+						addtotable ("explanation");
+						addtotable ("hspace");
+						addtotable ("align");
+						addtotable ("usemap");
+						addtotable ("ismap");
+						addtotable ("border");
+						addtotable ("glossref");
+						addtotable ("vspace");
+						addtotable ("lowsrc");
+						addtotable ("rollsrc");
+						addtotable ("height");
+						addtotable ("width");
+						addtotable ("name");
+						addtotable ("id");
+						addtotable ("style");
+						addtotable ("class");
+						addtotable ("title");
+						addtotable ("onload");
+						addtotable ("onabort");
+						addtotable ("onerror");
+						addtotable ("onmouseOver");
+						addtotable ("onmouseOut");
+						addtotable ("onClick");
+						addtotable ("flNoLinkToCurrentPage");
+						addtotable ("currentPageShortcut");
+						addtotable ("imageTable");
+						local (adrsite = manilaSuite.getSiteAddress ());
+						addtotable ("adrsite")};
+					try {
+						local (retval = callScript (adrcallback, {}, @argtable));
+						if typeOf (retval) == stringType {
+							return (retval)}}}}};
+		
+		local (glossRefValue, glossRefAtts); //03/12/19, 11:30:45 by DAB
+		
+		on isCurrentPage(url) {
+			local (pta = html.getPageTableAddress());
+			local (pageURL = "http://" + pta^.host + pta^.URI);
+			if defined (pta^.pathargs) {
+				if pta^.pathargs != "" {
+					pageURL = pageURL + "$" + pta^.pathargs}};
+			url = string.popSuffix(url, "?");
+			return string.lower(pageURL) == string.lower(url)};
+		
+		if glossRef != "" { //handle hotting and alternate picture logic here 03/12/19, 11:30:48 by DAB
+			glossRefValue = html.refGlossary (glossref);
+			if not (glossRefValue beginsWith "[[#") {
+				if glossRefValue beginsWith "<img" { //27/06/05; 3:06:49 PM by PR if it's an image build an href to it
+					glossRefValue = string.insert ("/", glossRefValue, sizeOf (glossRefValue));
+					xml.compile(glossRefValue, @glossRefAtts);
+					glossRefValue = "<a href=\"" + glossRefAtts[1].["/atts"].src + "\" />"};
+				xml.compile(glossRefValue, @glossRefAtts);
+				if isCurrentPage(glossRefAtts[1].["/atts"].href) {
+					case true {
+						flNoLinkToCurrentPage {
+							glossRef = ""}; //currentPage
+						currentPageShortcut != "" {
+							shortcutName = currentPageShortcut}}};
+				if glossRef != "" {
+					if onmouseOver !="" {
+						glossRefAtts[1].["/atts"].onmouseOver = onmouseover};
+					if onmouseOut !="" {
+						glossRefAtts[1].["/atts"].onmouseOut = onmouseOut};
+					if onClick !="" {
+						glossRefAtts[1].["/atts"].onClick = onClick}}}};
+		
+		bundle { //get height and width of image
+			if height == "" {
+				height = imageTable.height};
+			if width == "" {
+				width = imageTable.width};
+			
+			heightWidthString = "height=\"" + height + "\" width=\"" + width + "\""};
+		
+		bundle { //build html text
+			if name == "" { //optional name parameter
+				add ("<img src=\"" + imageTable.src + "\" " + heightWidthString)}
+			else {
+				add ("<img name=\"" + name + "\" src=\"" + imageTable.src + "\" " + heightWidthString)};
+			
+			if id != "" {
+				add (" id=\"" + id + "\"")};
+			if lowsrc != "" {
+				local (lowSrcData);
+				new (tabletype, @lowSrcData); «05/06/15, 14:58:14 by DAB
+				getImageTable (lowSrc, @lowSrcData);
+				add (" lowsrc=\"" + lowSrcData.src + "\"")};
+			if explanation == nil {
+				if defined (imageTable.alt) {
+					explanation = imageTable.alt}
+				else { //PBS 12/21/01: not a fatal error if alt text isn't defined
+					explanation = shortcutName}};
+			if hspace != "" {
+				add (" hspace=\"" + hspace + "\"")};
+			if vspace != "" {
+				add (" vspace=\"" + vspace + "\"")};
+			if align != "" {
+				add (" align=\"" + align + "\"")};
+			if usemap != "" {
+				add (" usemap=\"#" + usemap + "\"")};
+			if ismap {
+				add (" ismap")};
+			if rollsrc != "" {
+				local (rollData);
+				new(tabletype, @rollData); «05/06/15, 14:58:09 by DAB
+				getImagetable (rollSrc, @rollData);
+				add (" onmouseout=\"this.src='" + imageTable.src + "'\"");
+				add (" onmouseover=\"this.src='" + rollData.src + "'\"")};
+			if style != "" {
+				add (" style=\"" + style + "\"")};
+			if class != "" {
+				add (" class=\"" + class + "\"")};
+			if title != "" {
+				add (" title=\"" + title + "\"")};
+			if onload != "" { //05/04/13, 10:22:35 by DAB
+				add (" onload=\"" + onload + "\"")};
+			if onabort != "" { //05/04/13, 10:22:35 by DAB
+				add (" onabort=\"" + onabort + "\"")};
+			if onerror != "" { //05/04/13, 10:22:35 by DAB
+				add (" onerror=\"" + onerror + "\"")};
+			
+			add (" alt=\"" + explanation + "\""); //always add alt tag for valid HTML
+			add (" border=\"" + border + "\""); //Wed, Dec 25, 1996 at 7:33:16 AM by DW
+			
+			add (">")};
+		
+		«if glossref != "" //5.0 enclose the imageref in an anchor or glosspatch
+			«local (s = html.refGlossary (glossref))
+			«assume we have a hard-coded link or a glosspatch
+				«<a href="http://www.scripting.com/frontier/">Frontier</a> or
+				«[[#glossPatch Welcome to Alpha User's Test Page!|websitessamples/randomStuff|]]
+			«if s beginsWith "[[#"
+				«local (ix = string.patternMatch (' ', s))
+				«s = string.delete (s, 1, ix)
+				«s = string.nthField (s, '|', 2) «this is the part we keep
+				«htmltext = "[[#glossPatch " + htmltext + "|" + s + "|]]"
+			«else «assume it's an a href
+				«s = string.nthField (s, '>', 1) + ">" «pop off the <a href="xxx"> part
+				«htmltext = s + htmltext + "</a>"
+		if glossRef != "" { //05/04/13, 10:27:43 by DAB
+			if htmlText beginsWith "[[#" {
+				local (ix = string.patternMatch (' ', glossRefValue));
+				glossRefValue = string.delete (glossRefValue, 1, ix);
+				glossRefValue = string.nthField (glossRefValue, '|', 2); «this is the part we keep
+				htmltext = "[[#glossPatch " + htmltext + "|" + glossRefValue + "|]]"}
+			else { //assume it's an a href
+				glossRefAtts[1].["/pcdata"] = htmltext;
+				htmltext = string.trimwhiteSpace(string.nthField(xml.decompile(@glossRefAtts), "\n", 2))}};
+		
+		return (manilaSuite.unTaint (htmlText))} //no further macros should be processed
+	else {
+		error (tryError, shortcutName)}}

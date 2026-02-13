@@ -1,0 +1,5 @@
+on isModule (adrMsgTable, adrSite=nil) {
+	«Is a discussion group message a module?
+		«11/14/00; 12:55:31 AM by PBS
+	local (category = "modules");
+	return (manilaSuite.discuss.isInCategory (adrMsgTable, category))}

@@ -1,0 +1,16 @@
+on enabledInSite (pta=nil, adrSite=nil) {
+	«Changes
+		«3/19/05; 10:54:44 PM by JES
+			«Pass pta in to manilaSuite.getManilaSiteAddress.
+		«04/12/00; 6:16:43 PM by PBS
+			«Created. Return true if Gems are enabled for this site. (Even if the site has reached its maximum.)
+	
+	bundle { //check site first.
+		if adrSite == nil {
+			adrSite = manilaSuite.getManilaSiteAddress (pta)};
+		local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));
+		if defined (adrPrefs^.flEnabled) {
+			return (adrPrefs^.flEnabled)}};
+	
+	«Check global setting. Normally, it's not set at the site level, but at the global level.
+	return (manilaSuite.gems.enabledOnServer ())}

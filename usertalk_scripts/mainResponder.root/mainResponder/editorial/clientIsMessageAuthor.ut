@@ -1,0 +1,14 @@
+on clientIsMessageAuthor (discussRoot, msgnum) {
+	
+	local (authinfo);
+	try {
+		authinfo = mainResponder.editorial.getClientUsernamePassword (discussRoot)}
+	else {
+		return (false)};
+	
+	if not mainResponder.editorial.authenticateMember (authinfo[1], authinfo[2], discussRoot) {
+		return (false)};
+	if not mainResponder.editorial.checkMessageAuthor (discussRoot, msgnum, authinfo[1]) {
+		return (false)};
+	
+	return (true)}

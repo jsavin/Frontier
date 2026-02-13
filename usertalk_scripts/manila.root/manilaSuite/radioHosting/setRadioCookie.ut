@@ -1,0 +1,38 @@
+on setRadioCookie (usernum, userPassword, flClear=false) {
+	«Changes
+		«1/13/06; 3:10:48 AM by JES
+			«Created. Factored from manilaSuite.radioHosting.commentsPage for additional use called from manilaSuite.trackback.defaultPage.
+			«Commented out debugging code.
+	local (pta = html.getPageTableAddress ());
+	«if flClear
+		«add ("Call made to clear Radio Cookie!!")
+	local (year, day, month, hour, minute, second, t, cookieExpires, cookieValue, cookieName);
+	bundle { // get the cookie name
+		local (groupName = pta^.defaultMembershipGroup);
+		local (adrmembers = mainResponder.members.getMembershipTable (groupname));
+		cookieName = adrmembers^.cookieName + "radioCommentEditor"};
+	bundle { // set the expiration date, currently the same day next month
+		if flClear {
+			cookieExpires = ""}
+		else {
+			cookieExpires = date.nextMonth (clock.now ());
+			cookieExpires = date.netStandardString (cookieExpires);
+			cookieExpires [8] = '-';
+			cookieExpires [12] = '-';
+			cookieExpires = ";expires=" + cookieExpires}};
+	bundle { // set cookie value
+		if flClear {
+			cookieValue = ""}
+		else {
+			new (tableType, @t);
+			t.id = usernum;
+			t.h = manilaSuite.radioHosting.getEditorHash (pta, usernum, userPassword);
+			cookieValue = webserver.encodeArgs (@t)}};
+	bundle { // build and set the cookie string
+		local (cookie = string.innerCaseName (cookieName));
+		cookie = cookie + "=" + cookieValue;
+		cookie = cookie + ";domain=" + pta^.requestHeaders.host;
+		cookie = cookie +  cookieExpires;
+		cookie = cookie + ";path=/";
+		pta^.responseHeaders.["Set-Cookie"] = cookie};
+	return (true)}

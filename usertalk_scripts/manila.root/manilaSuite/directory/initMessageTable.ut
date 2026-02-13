@@ -1,0 +1,27 @@
+on initMessageTable (adrmsg, adrdirectoryinfo) {
+	on clearcache () {
+		new (tabletype, @adrdirectoryinfo^.cache);
+		manilaSuite.directory.initDirectoryTable (adrmsg)};
+	local (adroutline = @adrmsg^.outline);
+	if not defined (adroutline^) {
+		scriptError ("Can't display this directory because message #" + adrmsg^.msgnum + " does not contain an outline.")};
+	bundle { //rebuild the xml structure if it needs it
+		local (flrebuild = false);
+		if defined (adrdirectoryinfo^.xmlstruct) {
+			if timemodified (adroutline) > timemodified (@adrdirectoryinfo^.xmlstruct) {
+				flrebuild = true}}
+		else {
+			flrebuild = true};
+		if flrebuild {
+			local (pta = html.getpagetableaddress ());
+			local (owneremail = adrmsg^.member);
+			local (ownername = mainResponder.members.getMemberName (pta^.defaultMembershipGroup, owneremail));
+			xml.compile (op.outlinetoxml (adroutline, ownername, owneremail), @adrdirectoryinfo^.xmlstruct);
+			clearcache ()}};
+	bundle { //clear the cache if one of the templates has changed
+		try {
+			local (pta = html.getpagetableaddress ());
+			if timeCreated (@adrdirectoryinfo^.cache) < pta^.newsSite^.directory.templateModified {
+				clearcache ()}}}};
+«bundle //test code
+	«initmessagetable (@superopendirectorymanilawebsite.["#discussionGroup"].messages.["0000004"])

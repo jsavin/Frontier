@@ -1,0 +1,59 @@
+on buildPathsTable (adrSite) {
+	«Changes
+		«9/16/04; 2:27:50 AM by JES
+			«Fix bugs related to high-ascii characters in paths, and cross-platform encoding issues.
+		«04/05/31, 12:10:28 by DAB
+			«overcome design flaw; build table that handles msgnums with  multiple paths in site structure
+		«03/03/00; 6:09:19 PM; PBS
+			«Created. Build the paths table for a site.
+	
+	local (adrHierarchy = @adrSite^.["#hierarchy"]);
+	local (adrPaths = @adrHierarchy^.paths);
+	new (tableType, adrPaths);
+	local (adrMultiPaths = @adrHierarchy^.multiplePaths); //04/05/31, 12:10:14 by DAB
+	new (tableType, adrMultiPaths); //04/05/31, 12:10:23 by DAB
+	
+	if not defined (adrHierarchy^.structure) {
+		return};
+	if not defined (adrHierarchy^.structure [1]) {
+		return};
+	
+	local (structure = adrHierarchy^.structure [1]);
+	
+	local (currentPath = "/");
+	on doTable (adrTable) {
+		local (adrItem);
+		for adrItem in adrTable {
+			local (itemName = xml.convertToDisplayName (nameOf (adrItem^)));
+			if string.lower (itemName) == "category" {
+				if defined (adrItem^.["/atts"].pathName) {
+					local (pathName = adrItem^.["/atts"].pathName);
+					
+					local (origCurrentPath = currentPath);
+					if system.environment.isMac {
+						currentPath = currentPath + string.urlEncode (string.macToLatin (pathName)) + "/"}
+					else {
+						currentPath = currentPath + string.urlEncode (pathName) + "/"};
+					doTable (adrItem);
+					
+					currentPath = origCurrentPath}};
+			if defined (adrItem^.["/atts"].msgNum) {
+				local (msgNum = adrItem^.["/atts"].msgNum);
+				if defined (adrItem^.["/atts"].pathName) {
+					local (pathName = adrItem^.["/atts"].pathName);
+					
+					local (path);
+					if system.environment.isMac {
+						path = currentPath + string.urlEncode (string.macToLatin (pathName))}
+					else {
+						path = currentPath + string.urlEncode (pathName)};
+					if string.lower (itemName) == "category" {
+						path = path + "/"};
+					adrPaths^.[msgNum] = path;
+					
+					if not defined(adrMultiPaths^.[msgNum]) { //04/05/31, 12:09:30 by DAB
+						new(tabletype, @adrMultiPaths^.[msgNum])};
+					xml.addValue(@adrMultiPaths^.[msgNum], "path", path)}}}}; //04/05/31, 12:13:27 by DAB
+	doTable (@structure);
+	
+	return}

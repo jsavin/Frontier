@@ -1,0 +1,80 @@
+on initStaticSite (adrSite) {
+	«Create the default static site for a Manila site.
+		«03/14/00; 2:28:26 PM by PBS
+		«Changes:
+			«04/09/00; 1:09:04 AM by PBS
+				«Bug-fix for new sites -- it may have a staticSite table, but not be initialized. In that case, initialize it.
+			«04/10/00; 11:03:53 AM by PBS
+				«In some cases the static site table was getting over-written. Fixed a typo that caused this bug, and added an additional check to make sure it won't happen.
+			«05/24/00; 8:10:54 PM by JES
+				«localized
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	local (adrStaticSite = @adrNewsSite^.staticSite);
+	
+	local (tempTable); // a fake page table for localization
+	new (tableType, @tempTable);
+	tempTable.language = manilaSuite.getLanguageName (adrSite);
+	
+	if defined (adrStaticSite^) {
+		if defined (adrStaticSite^.["#ftpSite"].folder) { //PBS 04/09/00: init the static site if the ftpSite has no folder -- bug fix for newly created sites
+			if adrStaticSite^.["#ftpSite"].folder != "" {
+				return (true)}}};
+	
+	local (baseUrl, baseFolder);
+	baseUrl = config.manila.prefs.staticRenderingUrl;
+	baseFolder = config.manila.prefs.staticRenderingFolder;
+	
+	if baseUrl == "" {
+		scriptError (manilaSuite.getString ("staticRendering.baseUrlNotSetError", pta: @tempTable))};
+	if baseFolder == "" {
+		scriptError (manilaSuite.getString ("staticRendering.baseFolderNotSetError", pta: @tempTable))};
+	
+	bundle { //create the initial static site table
+		if not defined (adrStaticSite^) { //PBS 04/10/00: don't over-write existing static site
+			adrStaticSite^ = manilaData.newSiteTemplate.["#newsSite"].staticSite}};
+	
+	bundle { //set the folder and URL in the static site's #ftpSite table
+		local (adrFtpSite = @adrStaticSite^.["#ftpSite"]);
+		
+		«Create the folder name for this site. There's an algorithm:
+			«If the site is a top-level site, like xxx.editthispage.com, create the folder name as xxx.
+				«If xxx is already taken as a folder name, use the canonical name of the site.
+			«If the site is in a "folder," as in www.mysite.com/foo/, then name the folder foo.
+				«If foo is already taken, use the canonical name of the site.
+			«This matches expectations.
+		bundle {
+			local (identifier);
+			local (urlParts = string.urlSplit (adrSite^.["#ftpSite"].url));
+			if urlParts [3] == "" { //is this a top-level site
+				identifier = string.nthField (urlParts [2], '.', 1)} //get the xxx in xxx.editthispage.com
+			else {
+				identifier = string.nthField (urlParts [3], '/', 1)}; //get the xxx in www.mysite.com/xxx/
+			
+			on checkForAvailableFolder (folderName) {
+				folderName = string.lower (folderName);
+				if file.exists (baseFolder + folderName + file.getPathChar ()) {
+					return (false)};
+				return (true)};
+			
+			on setFtpSitePrefs (folderName) {
+				folderName = string.lower (folderName);
+				adrFtpSite^.url = baseUrl + folderName + "/";
+				adrFtpSite^.folder = baseFolder + folderName + file.getPathChar ();
+				
+				file.sureFolder (adrFtpSite^.folder);
+				return (true)};
+			
+			if checkForAvailableFolder (identifier) {
+				setFtpSitePrefs (identifier)}
+			else { //try the canonical name
+				local (canonicalSiteName = manilaSuite.getCanonicalSiteName (adrSite));
+				if checkForAvailableFolder (canonicalSiteName) {
+					setFtpSitePrefs (canonicalSiteName)}
+				else { //can't set up prefs, it's an error
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.siteIdentifier = identifier;
+					replacementTable.siteName = canonicalSiteName;
+					scriptError (manilaSuite.getString ("staticRendering.foldersAlreadyExistError", @replacementTable, pta: @tempTable))}}}};
+	
+	return (true)}

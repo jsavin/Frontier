@@ -1,0 +1,15 @@
+on getNewTable (adrSite) {
+	«Create a new table in data storage and return the address of the table.
+		«04/14/00; 2:09:43 PM by PBS
+	
+	local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));
+	if not defined (adrPrefs^.nextGemNum) {
+		adrPrefs^.nextGemNum = 0};
+	local (gemNum = (++adrPrefs^.nextGemNum));
+	local (adrData = manilaSuite.gems.getSiteDataAddress (adrSite));
+	local (longNum = string.padWithZeros (gemNum, 7));
+	local (adrTable = @adrData^.[longNum]);
+	new (tableType, adrTable);
+	adrTable^.num = gemNum;
+	
+	return (adrTable)}

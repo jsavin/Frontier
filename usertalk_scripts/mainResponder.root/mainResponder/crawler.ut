@@ -1,0 +1,58 @@
+on crawler (adrobject, adrcallback = @msg) {
+	local (adrstack = @system.temp.crawlerStack);
+	on crawlObject (adrobject) {
+		try {
+			adrstack^.[string.padwithzeros (sizeof (adrstack^), 5)] = adrobject;
+			if not adrcallback^ (adrobject) { //callback gets to say no
+				return};
+			case typeof (adrobject^) {
+				addresstype {
+					if not defined (adrobject^^) {
+						edit (adrobject);
+						scripterror ("Pointer points to an object that doesn't exist.")};
+					crawlObject (adrobject^)};
+				tabletype {
+					local (i, adritem);
+					for i = 1 to sizeof (adrobject^) {
+						adritem = @adrobject^ [i];
+						if not html.traversalSkip (adritem) {
+							crawlObject (adritem)}}};
+				filespectype {
+					local (f = adrobject^);
+					if not file.exists (f) {
+						edit (adrobject);
+						scripterror (f + " does not exist.")};
+					if file.isfolder (f) {
+						local (subfile);
+						fileloop (subfile in f) {
+							crawlObject (@subfile)}}
+					else {
+						if f endswith ".root" { //an object db, open it
+							local (weOpenedIt = false);
+							if not window.isopen (f) {
+								filemenu.open (f);
+								window.hide (f);
+								weOpenedIt = true};
+							crawlObject (@[f]);
+							if weOpenedIt {
+								filemenu.close (f)}}}}};
+			delete (@adrstack^ [sizeof (adrstack^)])}
+		else {
+			edit (adrobject);
+			scripterror (tryerror)}};
+	mainresponder.init ();
+	window.about ();
+	if defined (adrstack^) {
+		table.emptytable (adrstack)}
+	else {
+		new (tabletype, adrstack)};
+	crawlObject (adrobject)};
+«bundle //test code
+	«on callback (adrobject)
+		«case typeof (adrobject^)
+			«filespectype
+				«msg (adrobject^)
+		«else
+			«msg (adrobject)
+		«return (true)
+	«crawler (@config.mainresponder.domains, @callback)

@@ -1,0 +1,65 @@
+on createSite (url, email, password, name=nil, theme="default", canonicalSiteName=nil, membershipGroupName=nil, discussionGroupName=nil, adrSiteInfo=nil) {
+	«Changes
+		«3/25/03; 9:33:54 AM by JES
+			«When creating sub-sites, add the site to the default site tree if the domain does not already exist. Otherwise, add the site to the site tree for the specified domain.
+		«3/24/03; 2:08:44 PM by JES
+			«Created. Simplified wrapper for manilaSuite.clone. Create a site with minimum hassle, and return the address of the new site.
+			«If adrSiteInfo is passed in, it will be populated with a table of information about the site.
+				«The following sub-elements are in the site-info table:
+				«adrDiscussionGroup, adrMembershipGroup, adrSite -- the address of the site's DG, membership group and root table
+				«discussionGroupName, membershipGroupName -- the name of the site's DG and membership group
+				«domainName -- the domain name of the site
+				«existingGdbName -- the name of the guest database the site is in
+				«f -- the full path to the guest database the site is in
+				«language -- the language for the stie
+				«siteName, shortSiteName -- the site's canonical name and short name
+				«siteUrl -- the site's full url
+				«sysopEmail, sysopName, sysopPassword -- the sysop's name, email address and password
+				«theme -- the name of the site's theme
+	
+	if not (url endswith "/") {
+		url = url + "/"};
+	if not (url beginsWith "http://") {
+		url = "http://" + url};
+	
+	local (siteTableName, urlparts = string.urlSplit (url));
+	bundle { //calculate defaults
+		if canonicalSiteName == nil { //calculate canonicalSiteName from url
+			on domainToInnerCaseName (s) {
+				local (i, ct = sizeOf (s));
+				for i = 1 to ct {
+					if not string.isAlpha (s[i]) {
+						if not string.isNumeric (s[i]) {
+							s[i] = ' '}}};
+				return (string.innerCaseName (s))};
+			if sizeOf (urlparts[3]) > 0 { //use the path part for the canonical site name
+				canonicalSiteName = string.popTrailing (urlparts[3], "/");
+				if defined (config.manila.sites.[canonicalSiteName]) {
+					canonicalSiteName = domainToInnerCaseName (urlparts[2] + " " + string.popTrailing (urlparts[3], "/"))}}
+			else { //use the domain part for the canonical site name
+				canonicalSiteName = domainToInnerCaseName (urlparts[2])}};
+		
+		siteTableName = string.mid (canonicalSiteName, 1, 31 - sizeOf ("ManilaWebsite")) + "ManilaWebsite";
+		
+		if membershipGroupName == nil {
+			membershipGroupName = canonicalSiteName + "Members"};
+		if discussionGroupName == nil {
+			discussionGroupName = canonicalSiteName + "Discuss"}};
+	
+	local (siteInfo);
+	bundle { //create the site
+		siteInfo = manilaSuite.clone (siteTableName, membershipGroupName, discussionGroupName, email, password, name, url, flAddToDomains:true, flAddToUserDatabases:false, flUseExistingGdb:true, existingGdbName:config.manila.prefs.hostingGdbName, canonicalSiteName:canonicalSiteName, theme:theme);
+		if sizeOf (urlparts[3]) > 0 { //sub-site -- add to site tree (top-level sites are added via the above call)
+			if defined (config.mainResponder.domains.[urlparts[2]]) { //add to existing domain
+				mainResponder.siteTree.addSiteToTree (string.lower (urlparts[2]), urlparts[3], siteInfo.adrSite, flCreateDomain:true, flConvertToSiteTree:true)}
+			else { //add to default site tree
+				mainResponder.siteTree.addSiteToTree ("default", urlparts[3], siteInfo.adrSite, flCreateDomain:true, flConvertToSiteTree:true)}}};
+	
+	if adrSiteInfo != nil {
+		adrSiteInfo^ = siteInfo};
+	
+	return (siteInfo.adrSite)};
+
+«bundle //test code
+	«createSite ("http://127.0.0.1/createSiteTest/", user.prefs.mailAddress, "dummy", adrSiteInfo:@scratchpad.siteInfo)
+	«edit (@scratchpad.siteInfo)

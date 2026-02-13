@@ -1,0 +1,19 @@
+on getStoryTitle () {
+	«Get the title of a message.
+		«Changes:
+			«10/27/00; 1:17:56 AM by PBS
+				«Check for empty pathArgs and use 1 as msgNum.
+			«1/14/02; 3:25:35 PM by PBS
+				«Strip possible .opml from pathArgs.
+	local (pta = html.getPageTableAddress ());
+	local (msgNum = pta^.pathArgs);
+	if string.lower (msgNum) endsWith ".opml" {
+		msgNum = string.popSuffix (msgNum)};
+	msgNum = number (msgNum);
+	if pta^.pathArgs == "" { //PBS 10/26/00: empty pathArgs -- use 1 as msgNum
+		msgNum = 1};
+	local (adrTable = mainResponder.discuss.getMessageTable (msgNum));
+	local (title = adrTable^.subject);
+	title = string.replaceAll (title, "\"", "&quot;");
+	title = manilaSuite.unTaint (title);
+	return (title)}

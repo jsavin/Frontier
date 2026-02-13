@@ -1,0 +1,16 @@
+on renderHomePage (pta=nil, flUseNewsDayTemplate=false) {
+	«Wrapper script for rendering the home page.
+		«04/24/00; 3:31:09 PM by PBS
+		«Changes:
+			«05/02/00; 5:02:00 PM by PBS
+				«Support for the news day template.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (newsItemTemplate);
+	if defined (pta^.newsSite^.newsItems.template) {
+		newsItemTemplate = string (pta^.newsSite^.newsItems.template)};
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (n = manilaSuite.news.getItemsPerPagePref (adrSite));
+	return (manilaSuite.news.formatLastNItems (n, flEditLinks:true, newsItemTemplate:newsItemTemplate, flUseNewsDayTemplate:flUseNewsDayTemplate))}

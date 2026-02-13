@@ -1,0 +1,79 @@
+on searchPage (altColor="", flShowSiteNames=true, flFeedback=false) {
+	«Changes:
+		«8/3/02; 2:37:48 AM by JES
+			«Created. Generalized search page for mainResponder. Based on workspace.sampleSearch. Original change notes below.
+				«01/31/00; 1:40:00 PM by PBS
+					«Added the closing </form> tag, so the Edit this Page button will work.
+				«01/27/00; 1:40:08 PM by PBS
+					«This is a safe macro which displays a search page. You can specify an alternate altColor by supplying the third parameter. You can turn off display of site names by supplying the flShowSiteNames parameter and setting it to false. 
+	
+	bundle { //deal with defaults
+		if altColor == "" {
+			altColor = "gainsboro"}};
+	
+	local (pta = html.getPageTableAddress ()); //get the address of the current page table
+	local (indexName = "Index.root"); //change this if you want to use a different index
+	
+	local (adrFilterCallback);
+	if defined (pta^.responderAttributes.adrSearchFilterCallback) {
+		adrFilterCallback = pta^.responderAttributes.adrSearchFilterCallback};
+	
+	local (flRunSearch = false); //will be true if a search should be run
+	
+	local (actionUrl); //the action URL for the form
+	bundle { //get the action URL
+		actionUrl = pta^.uri;
+		if defined (pta^.pathArgs) { //there may also be a $xxx component
+			if pta^.pathArgs != "" {
+				if not (actionUrl endsWith "$") {
+					actionUrl = actionUrl + "$"};
+				actionUrl = actionUrl + pta^.pathArgs}}};
+	
+	local (htmlText); //htmlText will contain the HTML that will be returned
+	on add (s) { //subroutine for adding a string to htmlText
+		htmlText = htmlText + s};
+	
+	local (queryString = "", displayQueryString = "");
+	local (querySite= ""); «05/05/04, 11:25:42 by DAB
+	bundle { //get the query string and display query string
+		local (argTable);
+		new (tableType, @argTable);
+		if defined (pta^.searchArgs) and pta^.searchArgs != "" {
+			flRunSearch = true;
+			webserver.parseArgs (pta^.searchArgs, @argTable); //parse the search args into a local table
+			if defined(argTable.site) { «05/05/04, 11:26:59 by DAB
+				querySite=argTable.site};
+			if defined (argTable.q) { //q is the element which contains the query string from the browser
+				queryString = string.trimWhiteSpace (argTable.q); //trim it up
+				
+				local (adrIsoTable);
+				if system.environment.isMac {
+					adrIsoTable = @html.data.iso8859.mac};
+				if system.environment.isWindows {
+					adrIsoTable = @html.data.iso8859.win};
+				displayQueryString = string.iso8859Encode (queryString, adrIsoTable); //encode characters as HTML entities
+				
+				«Various additional filterings are necessary to get this to show up correctly in the input field.
+				displayQueryString = string.replaceAll (displayQueryString, "\"", "&quot;");
+				displayQueryString = string.replaceAll (displayQueryString, "<", "&lt;");
+				displayQueryString = string.replaceAll (displayQueryString, ">", "&gt;");
+				displayQueryString = string.replaceAll (displayQueryString, "+", " ")}}};
+	
+	on addSearchForm () { //build the search form -- you might want to customize the display of this
+		add ("<form method=\"get\" action=\"" + actionUrl + "\">\r"); //it's a GET method form
+		add ("Search for:&nbsp;\r");
+		add ("<input type=\"text\" name=\"q\" size=\"30\" value=\"" + displayQueryString + "\">&nbsp;&nbsp;&nbsp;");
+		if querySite { «05/05/04, 11:28:25 by DAB
+			add("<input type='hidden' name='site' value='" + querySite + "'>")};
+		add ("<input type=\"submit\" value=\"Search\"><p>\r");
+		add ("</form>")}; //PBS 01/31/00: close the form.
+	addSearchForm ();
+	
+	if flRunSearch { //display the search results if a search should be run
+		add (mainResponder.search.server.htmlSearch (pta, actionUrl, flShowSiteNames, altColor, flFeedback, indexName, adrFilterCallback))};
+	
+	«Make sure this page is totally secure -- no macros may be run.
+	htmlText = manilaSuite.unTaint (htmlText);
+	htmltext = string.replaceAll (htmltext, "<%", "&lt;%");
+	
+	return (htmlText)} //return the text of the page

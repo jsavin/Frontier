@@ -1,0 +1,69 @@
+on hourlyHitsPage (pta=nil) {
+	«Display the table of hits for the past 24 hours. Respect the time zone settings for this site.
+		«11/09/00; 2:36:27 PM by PBS
+		«12/11/01; 6:00:39 PM by PBS
+			«Clean the hits table before generating the list of hits. This clears out old data.
+		«1/25/02; 6:28:38 PM by PBS
+			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	pta^.title = "Hourly Hits";
+	local (now = manilaSuite.convertTime (clock.now (), pta:pta));
+	pta^.lastUpdate = now;
+	local (adrTable);
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	if not (manilaSuite.stats.getSiteHitsTable (adrSite, @adrTable)) {
+		return ("Can't display hits per hour because of hits for this site are not recorded.")};
+	manilaSuite.stats.cleanHitsTable (adrTable);
+	local (flYesterdayDisplayed = false);
+	local (day, month, year, hour, minute, second);
+	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+	local (aday, amonth, ayear, ahour, aminute, asecond);
+	date.get (now, @aday, @amonth, @ayear, @ahour, @aminute, @asecond);
+	local (midnight = date.set (aday, amonth, ayear, 0, 0, 0));
+	«midnight = manilaSuite.convertTime (midnight, pta:pta)
+	local (flFirstHour = true);
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + (s + "\r");};
+	
+	on addHit (d, hits) {
+		d = manilaSuite.convertTime (d, pta:pta);
+		if d < midnight {
+			if not flYesterdayDisplayed {
+				add ("<tr><td colspan=\"3\"><b>Yesterday</b></td></tr>");
+				flYesterdayDisplayed = true}};
+		
+		local (displayHour = mainResponder.localization.shortTimeString (d, pta));
+		add ("<tr><td align=\"right\">" + displayHour + "</td><td>&nbsp;</td><td align=\"right\">" + hits + "</td></tr>")};
+	
+	add ("This page shows hits by hour for the last 24 hours.<p>");
+	
+	add ("<table border=\"0\" cellpadding=\"4\" cellspacing=\"4\">");
+	add ("<tr><td align=\"right\"><b>Hour</b></td><td>&nbsp;</td><td align=\"right\"><b>Hits</b></td></tr>");
+	
+	local (adrHit);
+	local (i);
+	local (adrCurrent = @adrTable^.[hour]);
+	local (sizeTable = sizeOf (adrTable^));
+	for i = hour downTo 0 {
+		adrHit = @adrTable^.[i];
+		if defined (adrHit^) {
+			local (d = date.set (adrHit^.day, adrHit^.month, adrHit^.year, nameOf (adrHit^), 0, 0));
+			local (hits);
+			hits = adrHit^.hits;
+			addHit (d, hits)}};
+	for i = 23 downTo hour + 1 {
+		adrHit = @adrTable^.[i];
+		if defined (adrHit^) {
+			local (d = date.set (adrHit^.day, adrHit^.month, adrHit^.year, nameOf (adrHit^), 0, 0));
+			local (hits);
+			hits = adrHit^.hits;
+			addHit (d, hits)}};
+	
+	add ("</table>");
+	
+	add ("<br><i>Hits last compiled " + now + ".</i><p>");
+	
+	return (manilaSuite.unTaint (htmlText))}

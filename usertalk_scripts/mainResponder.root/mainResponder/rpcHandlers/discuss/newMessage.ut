@@ -1,0 +1,56 @@
+on newMessage (dgname, username, password, title, body, inResponseTo) {
+	«8/19/99; 2:56:10 PM by DW, XML-RPC call to create a new message
+		«Changes:
+			«10/5/99; 1:54:51 PM by PBS
+				«Added support for addresses and strings that can be coerced to addresses in discuss.root.
+			«10/9/99; 8:13:14 PM by PBS
+				«Added new callback at config.mainResponder.callbacks.rpcNewMessage. This callback is called whenever a new message is saved via this XML-RPC handler. This allows other applications to do things like send the message to a search engine, send email notification, and so on.
+				«Callbacks in this table are called after the normal processing is complete: they're notification callbacks rather than filter callbacks.
+				«The table in scope for this callback includes the parameters to this script, msgNum, adrMsgTable, URL, and client (if it's defined).
+	local (adrlog = log.addtoguestdatabase ("discussXmlRpcInterface"));
+	bundle { //logging code
+		adrlog^.operation = "newMessage";
+		adrlog^.dgname = dgname;
+		adrlog^.username = username;
+		adrlog^.title = title;
+		adrlog^.bodysize = sizeof (body) + " chars";
+		adrlog^.inResponseTo = inResponseTo};
+	local (adrroot = @[system.temp.mainResponder.discussRootFile].[dgname]);
+	if not defined (adrroot^) {
+		scriptError ("Can't add a new story because there is no discussion group named \"" + dgname + "\".")};
+	if typeOf (adrroot^) == addressType or typeOf (adrroot^) == stringType { //PBS 10/5/99: support for addresses and strings in discuss.root
+		if defined (adrroot^^) {
+			adrroot = adrroot^} //de-reference to get the address of the discussion group
+		else {
+			scriptError ("Can't add a new story because there is no discussion group named \"" + dgname + "\".")}};
+	local (groupname = adrroot^.editorialPrefs.membershipGroup);
+	local (adruser = mainResponder.members.getMemberTableWithPassword (groupname, username, password));
+	if (title == "") and (inResponseTo != 0) { //derive the title from the parent message
+		local (adrparent = mainresponder.discuss.getmessagetable (inResponseTo, nil, adrroot));
+		title = adrparent^.subject;
+		if not (string.lower (title) beginswith "re:") {
+			title = "Re:" + title}};
+	local (msgnum = mainResponder.discuss.addMessage (title, username, inResponseTo, body, false, false, clock.now (), adrroot, false, groupname, flEmptyBodyOk: true));
+	local (returnedtable);
+	new (tabletype, @returnedtable);
+	returnedtable.msgnum = msgnum;
+	returnedtable.url = adrroot^.prefs.msgReaderUrl + msgnum;
+	returnedtable.title = title;
+	adrlog^.returnedtable = returnedtable;
+	bundle { //PBS 10/9/99: call the rpcNewMessage callbacks at config.mainResponder.callbacks.rpcNewMessage
+		if defined (config.mainResponder.callbacks.rpcNewMessage) {
+			local (paramTable);
+			new (tableType, @paramTable);
+			paramTable.dgName = dgName;
+			paramTable.username = username;
+			paramTable.password = password;
+			paramTable.body = body;
+			paramTable.inResponseTo = inResponseTo;
+			paramTable.title = returnedtable.title;
+			paramTable.msgNum = returnedtable.msgnum;
+			paramTable.url = returnedtable.url;
+			paramTable.adrMsgTable = @adrRoot^.messages.[string.padWithZeros (msgNum, 7)];
+			if defined (client) {
+				paramTable.client = client};
+			try {mainResponder.callbackLoop (@config.mainResponder.callbacks.rpcSaveMessage, @paramTable)}}};
+	return (returnedtable)}

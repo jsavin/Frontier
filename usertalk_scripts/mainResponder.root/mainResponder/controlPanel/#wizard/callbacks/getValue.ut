@@ -1,0 +1,261 @@
+on getValue (partialAddress, defaultValue) {
+	«Get one value for the control panel settings.
+		«Changes:
+			«7/3/02; 12:43:33 AM by JES
+				«Added support for the Meta-Weblog API. See http://frontier.userland.com/metaWeblogApi
+			«1/28/02; 2:06:41 PM by PBS
+				«Support pref for Manila RSS pub-sub.
+			«1/21/02; 9:57:08 PM by PBS
+				«Support for enabling the Blogger API.
+			«2001:
+				«02/06/01; 2:07:14 AM by JES
+					«Added site download preferences.
+				«12/6/01; 10:00:52 PM by PBS
+					«Common log format prefs.
+			«2000:
+				«01/18/00; 6:23:01 PM by PBS
+					«Support for enabling/disabling Manila RPC and for setting the base URL for Manila sites created via the New Site page.
+				«02/24/00; 3:03:49 PM by PBS
+					«Added support for Manila plug-ins RPC handlers.
+				«03/01/00; 2:49:37 PM by PBS
+					«Added support for Manila static pictures writing to disk.
+				«03/13/00; 9:36:31 PM by PBS
+					«Added support for Manila static rendering prefs.
+				«04/07/00; 6:46:02 PM by PBS
+					«Support for the discussion group email subscriptions pref.
+				«04/10/00; 8:45:09 PM by PBS
+					«Support for hashed cookies global preference.
+				«04/15/00; 5:54:03 PM by PBS
+					«Added support for gems prefs to the Manila prefs page.
+				«05/10/00; 4:23:15 PM by PBS
+					«Support a pref for writing out a nightly XML file listing the top 100 most read sites.
+				«07/11/00; 3:17:01 PM by PBS
+					«Added prefs for common log logging and root updates logging.
+				«07/12/00; 5:45:22 PM by PBS
+					«Added prefs for sharing a membership group.
+				«11/10/00; 12:04:23 PM by PBS
+					«Added the home page updates pref for sending update notices to UserLand.
+				«11/19/00; 4:18:35 PM by PBS
+					«Add command for enabling the Manila SOAP interface.
+	
+	on checkUpdateList (gdbName) {
+		if not defined (config.mainResponder.prefs.updateNightlyList) {
+			config.mainResponder.prefs.updateNightlyList = {}};
+		local (adrList = @config.mainResponder.prefs.updateNightlyList);
+		local (oneItem);
+		local (lowerGdbName = string.lower (gdbName));
+		for oneItem in adrList^ {
+			if string.lower (oneItem) == lowerGdbName {
+				return (true)}};
+		return (false)};
+	
+	case partialAddress {
+		"controlPanel.manila.flDiscussAllowEmailSubscriptions" {
+			if not defined (config.manila.prefs.flDiscussAllowEmailSubscriptions) {
+				config.manila.prefs.flDiscussAllowEmailSubscriptions = false};
+			return (boolean (config.manila.prefs.flDiscussAllowEmailSubscriptions))};
+		"controlPanel.manila.flEnableBloggerApi" {
+			if defined (user.betty.rpcHandlers.blogger) {
+				return (true)};
+			return (false)};
+		"controlPanel.manila.flEnableMetaWeblogApi" {
+			if defined (user.betty.rpcHandlers.metaWeblog) {
+				return (true)};
+			return (false)};
+		"controlPanel.manila.flEnableRpc" {
+			if defined (user.betty.rpcHandlers.manila) {
+				return (true)};
+			return (false)};
+		"controlPanel.manila.flEnablePluginsRpc" {
+			if defined (user.betty.rpcHandlers.manilaPlugins) {
+				return (true)};
+			return (false)};
+		"controlPanel.manila.flGemsEnabled" {
+			if not defined (config.manila.prefs.flGemsEnabled) {
+				config.manila.prefs.flGemsEnabled = false};
+			return (boolean (config.manila.prefs.flGemsEnabled))};
+		"controlPanel.manila.flSiteDownloadsEnabled" {
+			if not defined (config.manila.prefs.flSiteDownloadsEnabled) {
+				config.manila.prefs.flSiteDownloadsEnabled = false};
+			return (boolean (config.manila.prefs.flSiteDownloadsEnabled))};
+		"controlPanel.manila.flFrontierServesDownloadedSites" { //JES 02/06/00
+			if not defined (config.manila.prefs.flFrontierServesDownloadedSites) {
+				config.manila.prefs.flFrontierServesDownloadedSites = false};
+			return (boolean (config.manila.prefs.flFrontierServesDownloadedSites))};
+		"controlPanel.manila.flSendUpdateNoticesToUserLand" { //PBS 11/10/00
+			if not defined (config.manila.prefs.flSendUpdateNoticesToUserLand) {
+				config.manila.prefs.flSendUpdateNoticesToUserLand = false};
+			return (boolean (config.manila.prefs.flSendUpdateNoticesToUserLand))};
+		"controlPanel.manila.flEnableSoap" { //PBS 11/19/00: SOAP interface for Manila
+			if defined (user.soap.rpcHandlers.manila) {
+				if defined (user.webserver.responders.soap.enabled) {
+					if user.webserver.responders.soap.enabled {
+						return (true)}}};
+			return (false)};
+		"controlPanel.manila.flRssPubSub" { //PBS 01/28/02: Manila RSS pub-sub
+			if defined (user.betty.rpcHandlers.manilaRss) {
+				return (true)};
+			return (false)};
+		"controlPanel.manila.flStaticRenderingEnabled" {
+			if not defined (config.manila.prefs.flStaticRenderingEnabled) {
+				config.manila.prefs.flStaticRenderingEnabled = false};
+			return (boolean (config.manila.prefs.flStaticRenderingEnabled))};
+		"controlPanel.manila.flWritePicturesToStaticServer" {
+			if not defined (config.manila.prefs.flWritePicturesToStaticServer) {
+				config.manila.prefs.flWritePicturesToStaticServer = false};
+			return (boolean (config.manila.prefs.flWritePicturesToStaticServer))};
+		"controlPanel.manila.flXmlSitesReport" {
+			if not defined (config.manila.prefs.flXmlSitesReport) {
+				config.manila.prefs.flXmlSitesReport = false};
+			return (boolean (config.manila.prefs.flXmlSitesReport))};
+		"controlPanel.manila.gemsFolder" {
+			if not defined (config.manila.prefs.gemsFolder) {
+				config.manila.prefs.gemsFolder = ""};
+			return (config.manila.prefs.gemsFolder)};
+		"controlPanel.manila.gemsLimit" {
+			if not defined (config.manila.prefs.gemsLimit) {
+				config.manila.prefs.gemsLimit = 1000 * 1024};
+			local (limit = config.manila.prefs.gemsLimit);
+			local (displayLimit = double (double (limit) / (1000 * 1024)));
+			return (displayLimit)};
+		"controlPanel.manila.gemsUrl" {
+			if not defined (config.manila.prefs.gemsUrl) {
+				config.manila.prefs.gemsUrl = ""};
+			return (config.manila.prefs.gemsUrl)};
+		"controlPanel.manila.siteDownloadFolder" {
+			if not defined (config.manila.prefs.siteDownloadFolder) {
+				config.manila.prefs.siteDownloadFolder = ""};
+			return (config.manila.prefs.siteDownloadFolder)};
+		"controlPanel.manila.siteDownloadUrl" {
+			if not defined (config.manila.prefs.siteDownloadUrl) {
+				config.manila.prefs.siteDownloadUrl = ""};
+			return (config.manila.prefs.siteDownloadUrl)};
+		"controlPanel.manila.hostingBaseDomain" {
+			local (adrPrefs = @config.manila.hosting.sites.default);
+			local (s = adrPrefs^.baseDomain);
+			if string.lower (s) beginsWith "http://" {
+				 s = string.mid (s, 1, sizeOf ("http://"))};
+			s = string.popSuffix (s, '/');
+			s = string.popLeading (s, '/');
+			adrPrefs^.baseDomain = s;
+			if not adrPrefs^.flSubSites {
+				if not (adrPrefs^.baseDomain beginsWith ".") {
+					adrPrefs^.baseDomain = "." + adrPrefs^.baseDomain}};
+			return (adrPrefs^.baseDomain)};
+		"controlPanel.manila.hostingFlSubSites" {
+			local (adrPrefs = @config.manila.hosting.sites.default);
+			if adrPrefs^.flSubSites {
+				return ("subSites")};
+			return ("topLevelSites")};
+		"controlPanel.manila.hostingWhoCreatesSites" {
+			local (adrPrefs = @config.manila.hosting.sites.default);
+			if adrPrefs^.flEditorsOnlyCreateSites {
+				return ("editors")};
+			return ("anybody")};
+		"controlPanel.manila.staticFilesFolder" {
+			if not defined (config.manila.prefs.staticFilesFolder) {
+				config.manila.prefs.staticFilesFolder = ""};
+			return (string (config.manila.prefs.staticFilesFolder))};
+		"controlPanel.manila.staticFilesUrl" {
+			if not defined (config.manila.prefs.staticFilesUrl) {
+				config.manila.prefs.staticFilesUrl = ""};
+			return (string (config.manila.prefs.staticFilesUrl))};
+		"controlPanel.manila.staticRenderingDefaultFilename" {
+			if not defined (config.manila.prefs.staticRenderingDefaultFilename) {
+				config.manila.prefs.staticRenderingDefaultFilename = "index.html"};
+			return (string (config.manila.prefs.staticRenderingDefaultFilename))};
+		"controlPanel.manila.staticRenderingFolder" {
+			if not defined (config.manila.prefs.staticRenderingFolder) {
+				config.manila.prefs.staticRenderingFolder = ""};
+			return (string (config.manila.prefs.staticRenderingFolder))};
+		"controlPanel.manila.staticRenderingUrl" {
+			if not defined (config.manila.prefs.staticRenderingUrl) {
+				config.manila.prefs.staticRenderingUrl = ""};
+			return (string (config.manila.prefs.staticRenderingUrl))};
+		"controlPanel.webEditServer.flEnabled" {
+			if defined (user.betty.rpcHandlers.webEdit) {
+				return (true)};
+			return (false)};
+		"controlPanel.webEditServer.editUserEmailAddress";
+		"controlPanel.webEditServer.editUserEmailPassword";
+		"controlPanel.webEditServer.newUserEmailPassword";
+		"controlPanel.webEditServer.newUserName";
+		"controlPanel.webEditServer.newUserEmailAddress" {
+			return ("")};
+		"controlPanel.flUpdateFrontier" {
+			return (checkUpdateList ("Frontier.root"))};
+		"controlPanel.flUpdateMainResponder" {
+			return (checkUpdateList ("mainResponder.root"))};
+		"controlPanel.flUpdateManila" {
+			return (checkUpdateList ("manila.root"))};
+		"controlPanel.flUpdatePrefs" {
+			return (checkUpdateList ("prefs.root"))};
+		"controlPanel.flHostingShareMembershipGroup" { //PBS 07/12/00
+			manilaSuite.init ();
+			adrPrefs = @config.manila.hosting.sites.default;
+			if not defined (adrPrefs^.flUseHostingSiteMembershipGroup) {
+				adrPrefs^.flUseHostingSiteMembershipGroup = false};
+			return (adrPrefs^.flUseHostingSiteMembershipGroup)};
+		"config.mainResponder.prefs.flUpdateNightly" {
+			if not defined (config.mainResponder.prefs.flUpdateNightly) {
+				config.mainResponder.prefs.flUpdateNightly = false};
+			return (config.mainResponder.prefs.flUpdateNightly)};
+		"config.mainResponder.prefs.flMembershipHashedCookies" { //PBS 04/10/00
+			if not defined (config.mainResponder.prefs.flMembershipHashedCookies) {
+				config.mainResponder.prefs.flMembershipHashedCookies = false};
+			return (config.mainResponder.prefs.flMembershipHashedCookies)};
+		"controlPanel.flRootUpdatesLogging" {
+			if user.rootUpdates.prefs.flShowUpdatesToUser {
+				if defined (user.rootUpdates.prefs.adrOutlineForUser) {
+					return (true)}};
+			return (false)};
+		"controlPanel.flCommonLog" {
+			if not defined (user.webserver.postFilters.commonLog) {
+				return (false)};
+			return (true)};
+		"user.prefs.mailaddress";
+		"user.prefs.name";
+		"user.prefs.organization";
+		"user.prefs.mailHost";
+		"config.manila.prefs.baseUrl";
+		"config.mainResponder.prefs.flBackupNightly";
+		"config.mainResponder.prefs.backupFolder";
+		"config.mainResponder.prefs.flArchiveDiscuss";
+		"config.mainResponder.prefs.discussArchiveFolder";
+		"config.mainResponder.prefs.flLog";
+		"user.betty.prefs.flKeepServerLog";
+		"user.scheduler.prefs.logInGuestDatabase";
+		"config.mainResponder.prefs.flLogMemavail";
+		"config.mainResponder.prefs.flLogReopenHourly";
+		"config.mainResponder.prefs.logFolder";
+		"user.webserver.prefs.flDomainStats";
+		"config.mainResponder.prefs.flDiscussStatsNightly";
+		"config.mainResponder.globals.allowDirectoryListings";
+		"config.mainResponder.globals.allowScriptListings";
+		"config.mainResponder.globals.allowScriptsToRun";
+		"config.mainResponder.prefs.flAllowByIpOnly";
+		"config.mainResponder.prefs.allowedIpAddresses";
+		"user.betty.prefs.flAllowByIpOnly";
+		"user.betty.prefs.allowedIpAddresses";
+		"config.mainResponder.prefs.flSaveDatabasesEveryMinute";
+		"config.mainResponder.prefs.flLogDatabaseOpens";
+		"config.mainResponder.prefs.flSubscriptions";
+		"config.mainResponder.prefs.flBuildPagesInBackground";
+		"config.mainResponder.prefs.flSearchEngine";
+		"config.mainResponder.prefs.flDebug";
+		"config.mainResponder.prefs.flKeepParamTable";
+		"config.mainResponder.prefs.flProfiling" {
+			try {
+				local (adr = address (partialAddress));
+				return (adr^)}};
+		"user.webserver.prefs.commonLog.flIncludeVirtualHosts"; //PBS 12/06/01: new common log prefs
+		"user.webserver.prefs.commonLog.flIncludeReferers";
+		"user.webserver.prefs.commonLog.flIncludeUserAgents";
+		"user.webserver.prefs.commonLog.flUseCommonLogDateFormat" {
+			if not defined (user.webserver.prefs.commonLog) {
+				new (tableType, @user.webserver.prefs.commonLog)};
+			if not defined (partialAddress^) {
+				partialAddress^ = false};
+			return (partialAddress^)}};
+	
+	return ("")}

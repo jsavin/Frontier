@@ -1,0 +1,9 @@
+on releasedNewsItemCallback (adrMsg) {
+	«Notify the world that a news item has been released. This is the website framework context entry point.
+		«04/30/00; 6:21:46 PM by PBS
+	
+	local (adrCallbacks = @manilaSuite.callbacks.releasedNewsItem);
+	local (adrUserCallbacks = @config.manila.callbacks.releasedNewsItem);
+	manilaSuite.callbacks.doWsfCallbacks (adrCallbacks, adrUserCallbacks, adrMsg);
+	
+	return (true)}

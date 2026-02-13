@@ -1,0 +1,18 @@
+on getLanguageName (adrsite=nil) {
+	«Changes
+		«9/30/02; 10:43:32 AM by JES
+			«Fixed a typo: language, not lanugage.
+		«05/22/00; 4:51:40 PM by JES
+			«returns the name of the language for a manila site
+	
+	if adrsite == nil {
+		local (pta = html.getPageTableAddress ());
+		adrsite = pta^.adrSiteRootTable};
+	
+	if defined (adrSite^.["#prefs"].language) {
+		return (adrSite^.["#prefs"].language)};
+	if defined (config.mainResponder.globals.language) {
+		return (config.mainResponder.globals.language)};
+	if defined (user.prefs.language) {
+		return (user.prefs.language)};
+	return ("English")}

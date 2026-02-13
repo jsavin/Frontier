@@ -1,0 +1,23 @@
+on printFriendlyLink (s="Print-Friendly Version") {
+	«Changes:
+		«12/19/01; 9:08:30 PM by PBS
+			«Works with static rendering pages now.
+	local (pta = html.getPageTableAddress ());
+	local (printUrl = pta^.uri);
+	if manilaSuite.staticRendering.isStaticRendering (pta) {
+		local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+		local (dynamicUrl = adrSite^.["#ftpSite"].url);
+		printUrl = dynamicUrl;
+		local (relativePath = manilaSuite.staticRendering.getRelativePath (pta));
+		printUrl = printUrl + string.popSuffix (relativePath, '.');
+		printUrl = printUrl + "?print-friendly=true"}
+	else {
+		if pta^.pathArgs != "" {
+			printUrl = printUrl + "$" + pta^.pathArgs};
+		if pta^.searchArgs != "" {
+			printUrl = printUrl + "?" + pta^.searchArgs;
+			printUrl = printUrl + "&print-friendly=true"}
+		else { //add search args
+			printUrl = printUrl + "?print-friendly=true"}};
+	local (link = "<a href=\"" + printUrl + "\">" + s + "</a>");
+	return (manilaSuite.unTaint (link))}

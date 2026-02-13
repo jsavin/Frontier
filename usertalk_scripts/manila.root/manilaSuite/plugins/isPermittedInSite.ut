@@ -1,0 +1,31 @@
+on isPermittedInSite (pluginName, adrSite) {
+	«Changes
+		«8/25/04; 3:14:39 PM by JES
+			«Created. Bottleneck for determining if a plugin is allowed to be enabled for a given site.
+	
+	local (adrPlugins = manilaSuite.plugins.getRegisteredPluginsAddress ());
+	local (adrPlugin = @adrPlugins^.[pluginName]);
+	local (adrPluginsPrefs = @config.manila.plugins.prefs);
+	local (adrPluginPrefs = @adrPluginsPrefs^.[pluginName]);
+	
+	local (flPermitted = true);
+	if defined (config.manila.prefs.flPluginsVisibleByDefault) {
+		flPermitted = config.manila.prefs.flPluginsVisibleByDefault};
+	if defined (config.manila.plugins.prefs.[pluginName].flVisibleByDefault) {
+		flPermitted = config.manila.plugins.prefs.[pluginName].flVisibleByDefault};
+	local (canonicalSiteName = manilaSuite.getShortSiteName (nameOf (adrSite^)));
+	if defined (adrPluginPrefs^.alwaysVisibleToSites.[canonicalSiteName]) {
+		flPermitted = adrPluginPrefs^.alwaysVisibleToSites.[canonicalSiteName]};
+	if config.manila.prefs.flPluginVisibilityScriptsEnabled { //run #isVisible script if present
+		if defined (adrPlugin^.["#isVisible"]) {
+			try { //to run the #isVisible script
+				local (adrscript = @adrPlugin^.["#isVisible"]);
+				while typeOf (adrscript^) != scriptType { //dereference until we find the actual script
+					adrscript = adrscript^};
+				flPermitted = adrscript^ (adrSite)}
+			else { //log the error, and hide the plugin
+				flPermitted = false; //safest thing to do is hide the plugin if an error occurs running #security
+				log.add ("Can't run the #isVisible script for Manila plugin, " + pluginName + ", because: " + tryError, "security")}}};
+	return (flPermitted)};
+«bundle //test code
+	«isPermittedInSite ("metadata", @testManilaWebsite)

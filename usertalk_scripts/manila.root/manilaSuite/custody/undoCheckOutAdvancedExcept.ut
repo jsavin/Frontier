@@ -1,0 +1,19 @@
+on undoCheckOutAdvancedExcept (adrObject, adrMember, adrSite) {
+	«manilaSuite.custody.undoCheckOutAdvancedExcept : 04/05/14, 21:15:38 by DAB
+		«undo checkouts of all advanced objects checked out by this member EXCEPT adrobject
+		«returns number of items for checkout was undone.
+	«local (objectIdentifier = manilaSuite.custody.getObjectIdentifier (adrObject, false))
+	local (objectIdentifier);
+	if adrObject {
+		objectIdentifier = manilaSuite.custody.getObjectIdentifier (adrObject, false)};
+	local (adrTable = manilaSuite.custody.getObjectsTableAddress (adrSite, false));
+	local (adrItem, cnt=0);
+	for adrItem in adrTable {
+		case true {
+			objectIdentifier and (adrItem == @adrTable^.[objectIdentifier]) {
+				continue};
+			manilaSuite.custody.isCheckedOutByUser (adrItem, adrMember, adrSite, false) {
+				delete (adrItem);
+				cnt++}}};
+	
+	return cnt}

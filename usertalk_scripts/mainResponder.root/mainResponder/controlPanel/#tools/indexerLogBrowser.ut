@@ -1,0 +1,48 @@
+on indexerLogBrowser (linecount, colors) { //a macro that returns HTML for the log
+	local (adrlog = log.getGuestSubTable ("Search Engine Indexer"));
+	linecount = number (linecount); //I keep getting bit by this, when called thru a macro, it's a string DW
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s) {
+		return ("<td valign=\"top\"><font size=\"-1\">" + s + "</font></td>")};
+	
+	local (i, j, adrhourtable, adritem, sizelog = sizeof (adrlog^), ixlog, sizehourtable);
+	if sizelog < 1 {
+		add ("There have been no recent page indexes.");
+		return (htmlText)};
+	add ("<table width=\"100%\" border=\"0\" cellpadding=\"4\" cellspacing=\"0\">"); indentlevel++;
+	
+	adrhourtable = @adrlog^ [sizelog]; //generate for the most recent hour
+	sizehourtable = sizeof (adrhourtable^);
+	ixlog = sizehourtable - linecount + 1;
+	if ixlog < 1 {
+		ixlog = 1};
+	
+	for j = sizehourtable downto ixlog {
+		adritem = @adrhourtable^ [j];
+		add ("<!-- " + j + " -->");
+		local (ixhtmltext = sizeof (htmltext));
+		add ("<tr bgcolor=\"" + colors [(j % sizeof (colors)) + 1] + "\">"); indentlevel++;
+		add ("<td height=\"28\"></td>"); //a dummy table cell to establish row height
+		with adritem^ {
+			local (time = nameOf (adrItem^));
+			time = string.nthField (time, ';', 2);
+			time = string.trimWhiteSpace (time);
+			time = string.replaceAll (time, " ", "&nbsp;");
+			add (td (time));
+			add (td (client));
+			local (index = string.popSuffix (indexName, '.'));
+			index = string.replaceAll (index, " ", "&nbsp;");
+			add (td (index));
+			local (site = siteName);
+			site = string.replaceAll (site, " ", "&nbsp;");
+			add (td (html.getLink (site, siteUrl)));
+			local (pageUrl = string.delete (url, 1, 7));
+			add (td (html.getLink (pageUrl, url)))};
+		add ("</tr>"); indentlevel--};
+	
+	add ("</table>"); indentlevel--;
+	
+	return (htmltext)}

@@ -1,0 +1,7 @@
+on getGemAddress (adrSite, gemNum) {
+	«Given a gem identifier (a number), return the address of the storage table.
+		«04/14/00; 5:49:41 PM by PBS
+	
+	local (adrGems = manilaSuite.gems.getSiteDataAddress (adrSite));
+	local (longNum = string.padWithZeros (gemNum, 7));
+	return (@adrGems^.[longNum])}

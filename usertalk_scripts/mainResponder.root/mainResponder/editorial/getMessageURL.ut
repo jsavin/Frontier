@@ -1,0 +1,5 @@
+on getMessageURL (discussRoot, msgnum) {
+	local (adrdiscuss = mainResponder.editorial.getDiscussTableAddress (discussRoot));
+	if defined (adrdiscuss^.prefs.url) {
+		return (adrdiscuss^.prefs.url + msgnum)};
+	return ("")}

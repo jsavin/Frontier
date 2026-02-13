@@ -1,0 +1,31 @@
+on openMessage (msgNum, discussRoot, userName, password) {
+	
+	if not mainResponder.editorial.authenticateMember (username, password, discussRoot) {
+		scriptError ("Can't open this document because " + userName + " does not have editorial privileges.")};
+	
+	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+	
+	if string.lower (adrmsg^.member) != string.lower (userName) {
+		scriptError ("Can't edit this document because " + userName + " does not have editorial privileges.")};
+	
+	local (docTable = adrmsg^);
+	doctable.previewURL = mainResponder.editorial.getMessageURL (discussRoot, msgnum);
+	doctable.binaryServerURL = mainResponder.editorial.getMessageBinaryURL (discussRoot, msgnum);
+	bundle { //add binaryNames
+		new (tableType, @docTable.binaryNames);
+		local (f, binaryfolder = mainResponder.editorial.getMessageBinaryFolder (discussRoot, msgnum));
+		if file.exists (binaryfolder) {
+			fileloop (f in binaryfolder, 1) {
+				docTable.binaryNames.[file.fileFromPath (f)] = file.size (f)}}};
+	«doctable.binaryServerURL = mainResponder.editorial.getDiscussTableAddress (discussRoot)^.editorialprefs.binaryServerURL
+	«if defined (doctable.enclosureBits)  //add table of enclosure names
+		«if typeof (doctable.enclosureBits) == tableType
+			«local (ix)
+			«new (tableType, @doctable.enclosures)
+			«for ix = 1 to sizeof (doctable.enclosureBits)
+				«if typeof (doctable.enclosureBits [ix]) == binaryType
+					«doctable.enclosures.[nameOf (doctable.enclosureBits [ix])] = getBinaryType (doctable.enclosureBits [ix])
+		«delete (@doctable.enclosureBits)
+	mainResponder.editorial.cleanDocTableForExport (@doctable);
+	
+	return (docTable)} //send it to the workstation

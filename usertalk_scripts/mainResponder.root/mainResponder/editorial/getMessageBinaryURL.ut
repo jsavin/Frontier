@@ -1,0 +1,13 @@
+on getMessageBinaryURL (discussRoot, msgnum) {
+	local (adrdiscuss = mainResponder.editorial.getDiscussTableAddress (discussRoot));
+	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+	local (membergroup = adrdiscuss^.editorialprefs.membershipgroup);
+	«local (url = adrdiscuss^.editorialprefs.binaryServerURL)
+	local (url = adrdiscuss^.prefs.binaryServerURL);
+	on add (s) {
+		url = url + s + "/"};
+	add (membergroup);
+	add (adrmsg^.member);
+	add (discussRoot);
+	add (msgnum);
+	return (url)}

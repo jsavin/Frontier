@@ -1,0 +1,4 @@
+on getDateFileName (theDate) {
+	local (day, month, year, hour, minute, second);
+	date.get (theDate, @day, @month, @year, @hour, @minute, @second);
+	return (year + "-" + string.padwithzeros (month, 2) + "-" + string.padwithzeros (day, 2))}

@@ -1,0 +1,11 @@
+on getMessageTableFromSiteAddress (adrSite, msgNum) {
+	«Get the address of a message table, given the address of a site and a msgNum.
+		«This script can run outside the page rendering context.
+		«10/19/99; 3:15:39 PM by PBS
+	
+	local (adrDiscuss = manilaSuite.discuss.getRootFromSiteAddress (adrSite));
+	
+	local (adrMsgTable);
+	adrMsgTable = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss);
+	
+	return (adrMsgTable)}

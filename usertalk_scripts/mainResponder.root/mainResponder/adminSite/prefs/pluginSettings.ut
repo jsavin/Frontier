@@ -1,0 +1,60 @@
+on pluginSettings () {
+	«Changes
+		«8/27/04; 2:49:31 PM by JES
+			«Created. Implement UI for specific plug-in visibility settings, available from Settings -> Manila -> Plug-ins in the Admin site.
+	local (pta = html.getPageTableAddress ());
+	
+	local (htext = "");
+	on add (s) {
+		htext = htext + (s + cr);};
+	
+	if pta^.method == "POST" {
+		«workspace.pt = pta^; edit (@workspace.pt)
+		local (adr);
+		for adr in @config.manila.plugins.prefs {
+			local (name = nameOf (adr^));
+			if defined (pta^.postArgs.[name]) {
+				case pta^.postArgs.[name] {
+					"default" {
+						if defined (config.manila.plugins.prefs.[name].flVisibleByDefault) {
+							delete (@config.manila.plugins.prefs.[name].flVisibleByDefault)}};
+					"visible" {
+						config.manila.plugins.prefs.[name].flVisibleByDefault = true};
+					"invisible" {
+						config.manila.plugins.prefs.[name].flVisibleByDefault = false}}}}};
+	
+	on addPopup (pluginName) {
+		local (visibleSelected = "", defaultSelected = " selected", invisibleSelected = "");
+		if defined (config.manila.plugins.prefs.[pluginName].flVisibleByDefault) {
+			defaultSelected = "";
+			if config.manila.plugins.prefs.[pluginName].flVisibleByDefault {
+				visibleSelected = " selected"}
+			else {
+				invisibleSelected = " selected"}};
+		add ("<tr>");
+		
+		add ("<td>");
+		add ("<select name=\"" + pluginName + "\">");
+		add ("<option value=\"default\"" + defaultSelected + ">Use global setting</option>");
+		add ("<option value=\"visible\"" + visibleSelected + ">Visible</option>");
+		add ("<option value=\"invisible\"" + invisibleSelected + ">Invisible</option>");
+		add ("</select>");
+		add ("</td>");
+		
+		add ("<td>" + pluginName + "</td>");
+		
+		add ("</tr>");
+		
+		return};
+	
+	add ("<td colspan=\"2\">");
+	add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\">");
+	
+	local (adr);
+	for adr in @config.manila.plugins.prefs { //add a pop-up for each plug-in
+		addPopup (nameOf (adr^))};
+	
+	add ("</table>");
+	add ("</td>");
+	
+	return (htext)}

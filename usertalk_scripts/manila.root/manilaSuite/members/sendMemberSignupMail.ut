@@ -1,0 +1,53 @@
+on sendMemberSignupMail (adrMemberInfo=nil, adrsite=nil, emailText=nil, subject=nil) {
+	«Changes:
+		«11/1/05; 4:50:47 AM by JES
+			«Only throw an error sending the welcome email if the site or server requires that members have a valid email address.
+		«10/15/05; 4:59:58 AM by JES
+			«Use personalInfo.email for recipient address, if defined.
+				«Change by DAB.
+		«3/9/05; 5:01:19 AM by JES
+			«New optional params, emailText and subject. Allows the caller to override the default message.
+		«9/10/02; 10:18:05 PM by JES
+			«New optional param, adrsite, makes it possible to call this script from outside the website framework context.
+		«7/27/01; 6:52:10 PM by JES
+			«Factored from manilaSuite.members.signupCallback. This script optionally takes the address of a member's table, to whom you want to send a welcome email.
+	
+	if adrsite == nil or adrmemberinfo == nil { //get these from the pageTable
+		local (pta = html.getPageTableAddress ());
+		if adrMemberInfo == nil {
+			adrMemberInfo = pta^.adrMemberInfo};
+		if adrsite == nil {
+			adrsite = pta^.adrSiteRootTable}};
+	
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	local (loginUrl = adrsite^.["#urls"].memberLogon);
+	local (signOutLink = html.getLink ("Sign Out", adrsite^.["#urls"].memberLogOff));
+	
+	local (fromAddress, memberName);
+	if emailText == nil {
+		emailText = string (adrnewssite^.emailConfirmation)};
+	if subject == nil {
+		subject = string (adrnewssite^.emailConfirmationSubject)};
+	fromAddress = string (adrnewssite^.emailConfirmationSender);
+	if defined (adrMemberInfo^.personalInfo.name) {
+		memberName = adrMemberInfo^.personalInfo.name}
+	else {
+		memberName = nameOf (adrMemberInfo^)};
+	
+	local (recipient);
+	if manilaSuite.members.usernameMustBeEmail (adrsite) {
+		recipient = manilaSuite.members.getMemberEmail (adrMemberInfo)}
+	else { //try to send the email, but don't error if getting the member's email address fails
+		try {
+			recipient = manilaSuite.members.getMemberEmail (adrMemberInfo)}
+		else {
+			return (false)}};
+	
+	emailText = searchEngine.replaceAll (emailText, "{password}", adrMemberInfo^.password, true);
+	emailText = searchEngine.replaceAll (emailText, "{memberName}", memberName, true);
+	emailText = searchEngine.replaceAll (emailText, "{loginUrl}", loginUrl, true);
+	emailText = searchEngine.replaceAll (emailText, "{signOutLink}", signOutLink, true);
+	
+	manilaSuite.sendMail (recipient, subject, emailText, fromAddress); //PBS 08/07/00: call manilaSuite.sendMail
+	
+	return (true)}

@@ -1,0 +1,61 @@
+on convertPathPermissions (adrSite) {
+	«Changes
+		«3/22/06; 2:19:42 AM by JES
+			«Obscure bug fix: If adrNewsSite^.pathPermissions.flEnabled is not defined, set it to true before converting.
+		«10/05/05; 6:45:44 PM by PR
+			«Delete all the tables when done, this prevents path permissions from being accidently re-initialized
+		«02/05/05; 10:51:34 AM by PR
+			«Various fixes suggested by DAB
+	«Notes
+		«If path permissions are enabled we loop over the paths table and add access control mlacs to site structure elements that match.
+		«Anything not matched is left in place.
+		«At the end of the script we disable path permissions so that the user can no longer use the admin interface...
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+	if defined (adrNewsSite^.pathPermissions.paths) {
+		if not defined (adrNewsSite^.pathPermissions.flEnabled) {
+			adrNewsSite^.pathPermissions.flEnabled = true};
+		if adrNewsSite^.pathPermissions.flEnabled {
+			bundle { // make sure the site is ready...
+				local (adrGroup = manilaSuite.members.getGroupFromSiteAddress (adrSite)); // 02/05/05; 10:51:55 AM by PR moved declaration in the correct bundle
+				manilaSuite.siteStructure.compileIfDirty (adrSite);
+				manilaSuite.accessControl.buildDefaultCohorts(@adrGroup^.cohorts)};
+			local (flModified = false);
+			local (adrHierarchy = @adrSite^.["#hierarchy"]);
+			local (adrHierarchyXml = xml.getAddress (@adrHierarchy^.structure, "hierarchy"));
+			local (adr, ix);
+			for ix = sizeof(adrNewsSite^.pathPermissions.paths) downto 1 {
+				adr = @adrNewsSite^.pathPermissions.paths[ix];
+				local {
+					path = string.popTrailing (nameOf (adr^), "/");
+					cohort = adr^};
+				case cohort {
+					"contentEditors" {
+						cohort = "Content Editors Only"};
+					"contributingEditors" {
+						cohort = "Contributing Editors Only"};
+					"editors" {
+						cohort = "Editors Only"};
+					"members" {
+						cohort = "Members Only"};
+					"managingEditors" {
+						cohort = "Managing Editors Only"}};
+				local (adrHierPath = manilaSuite.sitePrefs.siteStructure.getPathAddress (adrHierarchyXml, path, false));
+				if adrHierPath != 0 { // path exists in site structure
+					delete (adr); // if we get this far we want to remove this path from path permissions
+					flModified = true;
+					if defined (adrHierPath^.["/atts"].mlac) {
+						«the regex ensures that we don't match get a false positive for 'Editors Only' if 'Managing Editors Only' is one of the current mlacs
+						if re.match (re.compile ("(^|,\\s*)" + cohort + "($|\\s*,)"), adrHierPath^.["/atts"].mlac) == 0 {
+							cohort = adrHierPath^.["/atts"].mlac + ", " + cohort}
+						else {
+							continue}};
+					adrHierPath^.["/atts"].mlac = cohort};
+				delete (adr)}; // 10/05/05; 6:46:46 PM by PR always delete the old tables
+			if flModified {
+				bundle { // recreate the oultine
+					wp.newTextObject(string.replace (xml.decompile (@adrHierarchy^.structure), "<?xml version=\"1.0\"?>", ""), @adrHierarchy^.outline);
+					manilaSuite.siteStructure.compileIfDirty (adrSite)}}}; // 02/05/05; 10:58:58 AM by PR rebuild from the outline
+		adrNewsSite^.pathPermissions.flEnabled = false}}; // disable path permissions
+bundle { // test
+	html.setPageTableAddress (@workspace.pta);
+	convertPathPermissions (@homeManilaWebsite)}

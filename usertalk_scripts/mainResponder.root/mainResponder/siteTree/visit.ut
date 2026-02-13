@@ -1,0 +1,39 @@
+on visit (adrdomain, adrvisitproc) {
+	«Changes
+		«8/13/02; 3:50:52 PM by JES
+			«Compile the siteTree XML if needed, before doing any visiting.
+		«8/6/02; 1:33:35 AM by JES
+			«Created.
+	mainResponder.siteTree.compileIfDirty (adrdomain);
+	
+	local (adrtree = @adrdomain^.siteTree);
+	local (adrdir = @adrtree^.directory);
+	local (adrstruct = @adrdir^.structure);
+	local (adrsite = @adrstruct^[1][1]); //there is always only 1 top-level site
+	
+	on doLevel (adrsite) {
+		if adrvisitproc^ (adrsite) {
+			local (adr);
+			for adr in adrsite {
+				if nameOf (adr^) beginsWith "/" {
+					continue};
+				if nameOf (adr^) beginsWith "?" {
+					continue};
+				if string.lower (xml.convertToDisplayName (nameOf (adr^))) == "site" {
+					if not doLevel (adr) {
+						return (false)}}};
+			return (true)}
+		else {
+			return (false)}};
+	
+	return (doLevel (adrsite))};
+
+«bundle //test code
+	«on visitproc (adr)
+		«if defined (adr^.["/atts"].name)
+			«if adr^.["/atts"].name != ""
+				«msg (adr^.["/atts"].name)
+				«return (true)
+		«msg ("[none]")
+		«return (true)
+	«visit (@config.mainResponder.domains.default, @visitproc)

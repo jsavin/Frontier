@@ -1,0 +1,17 @@
+on checkOut (username, password, siteName, itemName) {
+	«Check out a template or other advanced pref item.
+		«11/21/00; 12:53:09 PM by PBS
+	
+	bundle { //make sure this person is an ME
+		local (beginningErrorString = "Can't check out \"" + itemName + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = config.manila.sites.[siteName]);
+	local (adrObject = manilaSuite.custody.getAdvancedItemAddress (itemName, adrSite));
+	
+	bundle { //make sure the item can be checked out
+		if not (manilaSuite.rpcUtils.memberCanCheckOut (username, password, adrObject, siteName, false)) {
+			scriptError ("Can't check out \"" + itemName + "\" because it's already checked out.")}};
+	
+	«Check out the item.
+	return (manilaSuite.rpcUtils.checkOut (username, password, adrObject, siteName, false))}

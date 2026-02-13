@@ -1,0 +1,18 @@
+«Possibly send email to the editors that content has changed.
+	«04/04/00; 11:02:01 PM by PBS
+	«Changes:
+		«05/19/00; 5:15:56 PM by JES
+			«added language parameter to email call -- for localization
+
+local (flNew = false);
+
+bundle { //special case for home page -- it may be the first edit after being flipped
+	if adrMsg^.msgNum == adrSite^.["#newsSite"].discussLinks.homePageMsgNum {
+		if not defined (adrMsg^.flNewPostNotificationSent) {
+			adrMsg^.flNewPostNotificationSent = false};
+		if not (adrMsg^.flNewPostNotificationSent) {
+			adrMsg^.flNewPostNotificationSent = true;
+			flNew = true}}}; //state that it's a new home page, because it's the first edit after a flip
+
+manilaSuite.emailNotification.notifyEditors (adrMsg, adrSite, url, adrMember, flNew, language);
+return (true)

@@ -1,0 +1,76 @@
+«Changes:
+	«9/6/01; 3:05:15 PM by PBS
+		«Make sure the referer is the current page when it's a POST.
+	«9/7/01; 9:13:47 AM by DW
+		«The message now makes it clear that we don't know for a fact who sent the message, and we also include the sender's IP address, which makes it less likely this feature will be used in an abusive way.
+	«10/1/01; 3:09:29 PM by PBS
+		«Expand macros and glossary items in the text for both the excerpt and the email message.
+	«12/19/01; 2:43:52 PM by PBS
+		«Call manilaSuite.sendMail instead of tcp.sendMail so user callbacks get called and text gets converted (bug fix from David Bayly on Frontier-Server list).
+local (pta = html.getpagetableaddress ());
+pta^.title = "Mail a Story";
+
+local (senderemail = "");
+if defined (pta^.adrmemberinfo) {
+	senderemail = nameof (pta^.adrmemberinfo^)};
+
+local (referer = pta^.requestHeaders.referer);
+local (htmltext = "", indentlevel = 0);
+on add (s) {
+	htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+if pta^.method == "POST" {
+	manilaSuite.referer.checkSelf (); //PBS 09/06/01: make sure the referer is this page
+	«scratchpad.postargs = pta^.postargs; edit (@scratchpad.postargs)
+	local (adrmsg = mainResponder.discuss.getMessageTable (number (pta^.postargs.msgnum)));
+	local (membername = mainResponder.members.getMemberName (pta^.defaultMembershipGroup, adrmsg^.member));
+	local (dashes = string.filledString ("-- ", 25));
+	local (storytext = string (adrMsg^.body));
+	storyText = html.processMacros (storyText, false, pta); //PBS 10/01/01: expand glossary entries and macros
+	storyText = string.htmlToEmail (storyText);
+	local (s = "", lineend = "\r\n");
+	s = s + "This story was forwarded to you by Manila's Mail-This-Story feature by a person who claimed to be \"" + pta^.postargs.sender + "\" at Internet address " + pta^.client + ", who says: \"" + string.trimwhitespace (pta^.postargs.message) + "\"" + lineend + lineend;
+	s = s + "Story URL:  " + pta^.postargs.referer + "." + lineend + lineend;
+	s = s + dashes + lineend;
+	s = s + "Title: " + string.trimwhitespace (adrmsg^.subject) + lineend + lineend;
+	s = s + "By " + membername + ", " + adrmsg^.posttime + "." + lineend + lineend;
+	s = s + storytext + "." + lineend + lineend;
+	s = s + dashes + lineend;
+	s = s + "This is a Manila site: http://manila.userland.com/.";
+	«tcp.sendMail (pta^.postargs.recipient, "[" + pta^.sitename + "] " + adrmsg^.subject, s, sender:pta^.postargs.sender)
+	manilaSuite.sendMail (pta^.postargs.recipient, "[" + pta^.sitename + "] " + adrmsg^.subject, s, sender:pta^.postargs.sender); //PBS 12/19/01: call manilaSuite.sendMail so user callbacks get called and text gets converted (bug fix from David Bayly on Frontier-Server list)
+	add ("Mail message sent to \"" + pta^.postargs.recipient + "\" at " + string.timestring () + ".")}
+else {
+	local (adrmsg = mainResponder.discuss.getMessageTable (number (pta^.pathargs)));
+	«edit (adrmsg) //debugging
+	bundle { //add story excerpt
+		add ("<table width=\"100%\" cellpadding=\"5\">"); indentlevel++;
+		add ("<tr bgcolor=\"whitesmoke\">"); indentlevel++;
+		add ("<td>"); indentlevel++;
+		add ("<h3>" + adrmsg^.subject + "</h3>");
+		local (membername = mainResponder.members.getMemberName (pta^.defaultMembershipGroup, adrmsg^.member));
+		add ("By " + membername + ".<br>");
+		add ("Posted on " + adrmsg^.posttime + ".<br><br>");
+		bundle { //add the first few sentences
+			local (s = adrmsg^.body, i);
+			s = html.processMacros (s, false, pta); //PBS 10/01/01: process macros in excerpt
+			for i = 1 to 3 {
+				sent1 = string.firstSentence (s);
+				s = string.delete (s, 1, sizeof (sent1));
+				add (sent1)}};
+		add ("<br><br><i>Approximate word count: " + string.countwords (adrmsg^.body) + ".</i><br><br>");
+		add ("</td>"); indentlevel--;
+		add ("</tr>"); indentlevel--;
+		add ("</table><br>"); indentlevel--};
+	add ("Enter the email address of the person you want to send the story to. Separate multiple addresses with commas. Enter your email address so the recipient knows who sent it. You can add a short personal message to the email.");
+	add ("<form method=\"POST\" action=\"" + pta^.uri + "\">"); indentlevel++;
+	add ("<table cellspacing=\"10\" cellpadding=\"0\">"); indentlevel++;
+	add ("<tr><td>Send&nbsp;this&nbsp;story to:</td><td><input type=text size=\"50\" name=\"recipient\" value=\"\"></td></tr>");
+	add ("<tr><td>Your&nbsp;email&nbsp;address:</td><td><input type=text size=\"50\" name=\"sender\" value=\"" + senderemail + "\"></td></tr>");
+	add ("<tr><td valign=\"top\" width=\"100\">Personal&nbsp;message:</td><td><textarea rows=\"5\" cols=\"38\" wrap=\"virtual\" name=\"message\"></textarea></td></tr>");
+	add ("<tr><td>&nbsp;</td><td><input type=\"submit\" name=\"submit\" value=\"Submit\"></td></tr>");
+	add ("</table>"); indentlevel--;
+	add ("<input name=\"referer\" type=\"hidden\" value=\"" + referer + "\">");
+	add ("<input name=\"msgnum\" type=\"hidden\" value=\"" + adrmsg^.msgnum + "\">");
+	add ("</form>"); indentlevel--;
+	add ("Your email address is used only to let the recipient know who sent the story. Both your address and the recipient's address will not be used for any other purpose.")};
+return (manilaSuite.untaint (htmltext))

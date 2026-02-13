@@ -1,0 +1,36 @@
+on cohortsPopup (pta, selectname = "cohort", preSelects = nil, exclusions={}, flNoMulitple=false, maxShown=6) {
+	«manilaSuite.AccessControl.cohortsPopup : 04/05/20, 16:47:00 by DAB
+		«build a popupMenu of the available cohorts
+		«exclusions parameter added 02/08/03, 14:48:31 by DAB
+		«was manilaFixer.accessControl.cohortsPopup : 02/02/21, 14:34:43 by DAB
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (cohortList = manilaSuite.accessControl.cohortsList(pta));
+	
+	add("\r<select name = '" + selectname + "'");
+	local (sz = sizeOf(cohortList));
+	if not flNoMulitple and (sz > 1) {
+		if sz > maxShown {
+			sz = maxShown};
+		add(" multiple size = '" + sz + "'")};
+	add(">");
+	
+	local (itm, adr, selection, fl);
+	for itm in cohortList {
+		adr = address(itm);
+		selection = "";
+		case true {
+			exclusions contains nameOf(adr^) { «not adr^.name  06/10/28, 11:15:2 by DAB
+				continue};
+			preSelects == nil {
+				if adr^.default {
+					selection = " selected"}};
+			preSelects contains  nameOf(adr^) { «not adr^.name 06.10.28, 10:51:55 by DAB
+				selection = " selected"}};
+		add("\r\t<option value = '" + nameof(adr^) + "'" + selection + ">" + adr^.name + "</option>")}; //02/03/24, 11:09:11 by DAB
+	
+	add("\r</select>");
+	
+	return htmltext}

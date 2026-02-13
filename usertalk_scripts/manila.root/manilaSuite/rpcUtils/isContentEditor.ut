@@ -1,0 +1,13 @@
+on isContentEditor (sitename, username) {
+	«Return true if this person is a content editor.
+		«11/26/01; 10:55:34 AM by PBS
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	if not defined (adrNewsSite^.contentEditors) {
+		return (false)};
+	local (oneEditor, contentEditorsList = adrNewsSite^.contentEditors);
+	username = string.lower (username);
+	for oneEditor in list (contentEditorsList) {
+		if username == string.lower (oneEditor) {
+			return (true)}};
+	return (false)}

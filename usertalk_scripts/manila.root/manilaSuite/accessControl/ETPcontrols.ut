@@ -1,0 +1,206 @@
+on ETPcontrols (pta, urlName, adrMsgTable) {
+	«Changes
+		«3/24/05; 4:19:51 AM by JES
+			«Fix an error, 's' not defined. Display a section header if any elements are rendered into the calling page.
+		«5/20/04, 20:52:47 by DAB
+			«Created.
+			«build the accesscontrol html excerpt that is inserted into ETP forms
+				«adMsgTable is message table
+				«urlname is the name of an entry in #urls tables
+			«extracted from manilaSuite.accessControl.finalFilter 
+	local (adrSite = manilasuite.getSiteAddress(pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	
+	case true { //reasons to bail out quick
+		not defined(adrNewsSite^.accesscontrol);
+		not defined(adrNewsSite^.accesscontrol.enabled);
+		not adrNewsSite^.accesscontrol.enabled {
+			return ""}};
+	
+	local (flCohortPopupNeeded=false, flROCohortPopupWanted=false, flEditorControlsNeeded=false, flNewsCohortPopupNeeded);
+	if defined(pta^.adrMemberInfo) { //recast  this 02/12/17, 17:05:05 by DAB
+		flCohortPopupNeeded = adrNewsSite^.accessControl.cohortPopupWanted;
+		flNewsCohortPopupNeeded = defined(adrNewsSite^.accessControl.newsCohortPopupWanted) and adrNewsSite^.accessControl.newsCohortPopupWanted;
+		if defined(adrNewsSite^.accessControl.ROcohortPopupWanted) { //02/09/18, 22:14:21 by DAB
+			flROCohortPopupWanted = adrNewsSite^.accessControl.ROcohortPopupWanted};
+		if adrNewsSite^.accessControl.cohortPopupEditors {
+			flEditorControlsNeeded = manilaSuite.editors.contentEditorTest(pta) or manilaSuite.editors.managingEditorTest(pta)}};
+	
+	local (flTimePopupWanted = defined(adrNewsSite^.accessControl.timePopupWanted) and adrNewsSite^.accessControl.timePopupWanted);
+	local (flTNewsTimePopupWanted = defined(adrNewsSite^.accessControl.newsTimePopupWanted) and adrNewsSite^.accessControl.newsTimePopupWanted);
+	
+	local (flHiddenModerateField = false); //02/08/03, 22:39:11 by DAB
+	local (ModeratorsCohort = maniladata.accessControl.moderatorCohort);
+	if defined(adrNewsSite^.accessControl.moderated) and adrNewsSite^.accessControl.moderated {
+		if not manilaSuite.editors.editorialTest(pta) {
+			flHiddenModerateField = true;
+			try { //check to see if member is a moderator, don't 
+				local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+				local (adrCohort = @adrGroup^.cohorts.[ModeratorsCohort]);
+				local (adrScript = @adrCohort^.containsTest);
+				if defined(adrScript^) {
+					while typeOf(adrScript^) == addressType {
+						adrScript = adrScript^};
+					flHiddenModerateField = not adrScript^(pta)}}}};
+	
+	bundle { //now we know enough to decide if path is of interest  
+		local (flPageOfInterest);
+		case string.lower(urlname) {
+			"discusseditinbrowser" {
+				if flEditorControlsNeeded { //02/12/17, 10:04:27 by DAB
+					flCohortPopupNeeded = true;
+					flTimePopupWanted = true};
+				if flCohortPopupNeeded or flROCohortPopupWanted or flHiddenModerateField or flTimePopupWanted { //02/08/24, 12:48:09 by DAB
+					flPageOfInterest = (pta^.adrMsgToEdit^.inResponseTo == 0)}}; //02/05/24, 12:18:06 by DAB
+			"editorialnewstory" {
+				flPageOfInterest = flCohortPopupNeeded or flROCohortPopupWanted or flHiddenModerateField or flTimePopupWanted}; //02/08/24, 12:46:30 by DAB
+			"discussnewthread" {
+				flPageOfInterest = flCohortPopupNeeded or flROCohortPopupWanted or flHiddenModerateField or flTimePopupWanted}; //02/08/24, 12:46:30 by DAB
+			"pictureeditinbrowser" {
+				if flEditorControlsNeeded { //02/12/17, 10:04:27 by DAB
+					flCohortPopupNeeded = true;
+					flTimePopupWanted = true};
+				if flCohortPopupNeeded or flROCohortPopupWanted or flHiddenModerateField or flTimePopupWanted { //02/08/24, 12:48:09 by DAB
+					flPageOfInterest = (pta^.adrMsgToEdit^.inResponseTo == 0)}}; //02/05/24, 12:18:06 by DAB
+			"editorialnewpicture" {
+				flPageOfInterest = flCohortPopupNeeded or flROCohortPopupWanted or flHiddenModerateField or flTimePopupWanted}; //02/08/24, 12:46:30 by DAB
+			"newsitemnew" { //02/08/24, 11:33:35 by DAB   
+				flPageOfInterest =  flNewsCohortPopupNeeded or flTNewsTimePopupWanted;
+				flCohortPopupNeeded = flNewsCohortPopupNeeded;
+				flTimePopupWanted = flTNewsTimePopupWanted;
+				flHiddenModerateField = false};
+			"newsitemeditinbrowser" { //02/08/24, 11:33:43 by DAB
+				flPageOfInterest =  flNewsCohortPopupNeeded or flTNewsTimePopupWanted;
+				flCohortPopupNeeded = flNewsCohortPopupNeeded;
+				flTimePopupWanted = flTNewsTimePopupWanted;
+				flHiddenModerateField = false;
+				currentmsgNum = pta^.pathargs}};
+		if  not flPageOfInterest {
+			return ""}};
+	
+	local (currCohorts, currROCohorts, currReleaseDate, currExpiryDate); //added currROCohorts 02/09/18, 22:34:00 by DAB
+	bundle { //retrieve stored values if they exist
+		if defined(adrMsgTable^) {
+			if not defined(adrMsgTable^.accessControl) {
+				new(tabletype, @adrMsgTable^.accessControl)};
+			local (adrMsgStorage = @adrMsgTable^.accessControl);
+			if not defined(adrMsgStorage^.permittedCohorts) {
+				local (adrMemberInfo = manilaSuite.AccessControl.getMemberInfoAddress(pta, "accesscontrol", true)); //02/08/04, 10:24:41 by DAB
+				if defined(adrMemberInfo^.defaultCohorts) { //02/08/04, 11:07:38 by DAB
+					adrMsgStorage^.permittedCohorts = adrMemberInfo^.defaultCohorts}
+				else {
+					adrMsgStorage^.permittedCohorts = {}}};
+			if not defined(adrMsgStorage^.permittedROCohorts) { //02/09/18, 22:31:37 by DAB
+				local (adrMemberInfo = manilaSuite.AccessControl.getMemberInfoAddress(pta, "accesscontrol", true));
+				if defined(adrMemberInfo^.defaultROCohorts) {
+					adrMsgStorage^.permittedROCohorts = adrMemberInfo^.defaultROCohorts}
+				else {
+					adrMsgStorage^.permittedROCohorts = {}}};
+			if not defined(adrMsgStorage^.releaseDate) {
+				adrMsgStorage^.releaseDate = nil};
+			if not defined(adrMsgStorage^.expiryDate) {
+				adrMsgStorage^.expiryDate = nil};
+			
+			currCohorts = adrMsgStorage^.permittedCohorts;
+			currROCohorts = adrMsgStorage^.permittedROCohorts; //02/09/18, 22:33:38 by DAB
+			currReleaseDate = adrMsgStorage^.releaseDate;
+			currExpiryDate = adrMsgStorage^.expiryDate}
+		else { //new message , set default cohorts maybe 02/08/04, 13:16:50 by DAB
+			local (adrMemberInfo = manilaSuite.AccessControl.getMemberInfoAddress(pta, "accesscontrol", true));
+			if defined(adrMemberInfo^.defaultCohorts) {
+				currCohorts = adrMemberInfo^.defaultCohorts};
+			if defined(adrMemberInfo^.defaultROCohorts) {
+				currROCohorts = adrMemberInfo^.defaultROCohorts}}};
+	
+	local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
+	manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor);
+	
+	local (htmltext = "<input type ='hidden' name='accesscontrol_fields' value = 'true'>"); //set flag so manilaSuite.accessControl.ETPcontrolsPost knows when have to deal with flPost
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	case true { //show access control section header?
+		flHiddenModerateField;
+		flCohortPopupNeeded;
+		flROCohortPopupWanted;
+		flTimePopupWanted {
+			add("<p><b>" + manilaSuite.getString("accessControl.AccessControlSectionHeader", pta:pta)  + "</b>")}};
+	
+	case true {
+		flHiddenModerateField {
+			add("<input type = 'hidden' name = 'accesscontrol_cohorts' value = '" + ModeratorsCohort + "'>" )};
+		flCohortPopupNeeded {
+			add("<table class ='accessETPform'>"); //fox request 04/06/04, 15:15:38 by DAB
+			
+			add("<tr>");
+			add("<td>");
+			add(manilaSuite.getString("accessControl.formIDcohortsPopup", pta:pta));
+			add("</td>");
+			add("<td>");
+			add(manilaSuite.accessControl.cohortsPopup(pta, "accesscontrol_cohorts", currCohorts));
+			add("</td>");
+			if defined(adrNewsSite^.accesscontrol.userDefaultCohortsOK) and adrNewsSite^.accesscontrol.userDefaultCohortsOK { //02/08/04, 11:13:06 by DAB
+				add("<td>");
+				add("<input type = 'checkbox' name = 'accesscontrol_setDefaultCohorts'>");
+				add(manilaSuite.getString("accessControl.makeCohortsMyDefault", pta:pta));
+				add("</td>")};
+			add("</tr>");
+			
+			if flROCohortPopupWanted { //02/09/18, 23:21:12 by DAB
+				add("<tr>");
+				add("<td>");
+				add(manilaSuite.getString("accessControl.formIDROCohortsPopup", pta:pta));
+				add("</td>");
+				add("<td>");
+				add(manilaSuite.accessControl.cohortsPopup(pta, "accesscontrol_ROcohorts", currROCohorts));
+				add("</td>");
+				if defined(adrNewsSite^.accesscontrol.userDefaultCohortsOK) and adrNewsSite^.accesscontrol.userDefaultCohortsOK {
+					add("<td>");
+					add("<input type = 'checkbox' name = 'accesscontrol_setDefaultROCohorts'>");
+					add(manilaSuite.getString("accessControl.makeCohortsMyRODefault", pta:pta));
+					add("</td>")};
+				add("</tr>")};
+			
+			add("</table>")};
+		flROCohortPopupWanted { //setting ronly and not normal cohorts 02/12/17, 17:16:23 by DAB
+			add("<table>");
+			add("<tr>");
+			add("<td>");
+			add(manilaSuite.getString("accessControl.formIDROCohortsPopup", pta:pta));
+			add("</td>");
+			add("<td>");
+			add(manilaSuite.accessControl.cohortsPopup(pta, "accesscontrol_ROcohorts", currROCohorts));
+			add("</td>");
+			if defined(adrNewsSite^.accesscontrol.userDefaultCohortsOK) and adrNewsSite^.accesscontrol.userDefaultCohortsOK {
+				add("<td>");
+				add("<input type = 'checkbox' name = 'accesscontrol_setDefaultROCohorts'>");
+				add(manilaSuite.getString("accessControl.makeCohortsMyRODefault", pta:pta));
+				add("</td>")};
+			add("</tr>");
+			add("</table>")}};
+	
+	if flTimePopupWanted {
+		local (fl12HrClock); //02/03/15, 15:50:54 by DAB
+		try {fl12HrClock = not adrNewsSite^.accessControl.timeIsMilitary}; //02/03/15, 15:51:16 by DAB
+		 add("<table class = 'accessETPform'>"); //fox request 04/06/04, 15:13:33 by DAB
+		add("<tr>");
+		add("<td>"); //04/06/04, 15:14:03 by DAB
+		add(manilaSuite.getString("accessControl.formIDrelease", pta:pta) );
+		add("</td>");
+		add("<td>");
+		add(manilaSuite.accessControl.timeStampPopup(pta, "accesscontrol_releaseDate", clock.now(), currReleaseDate, fl12HrClock));
+		add("</td>");
+		add("</tr>");
+		
+		add("<tr>");
+		«add("<td style='color:" + backgroundTextColor + "'>")  
+		add("<td>"); //04/06/04, 15:14:18 by DAB
+		add(manilaSuite.getString("accessControl.formIDExpiry", pta:pta));
+		add("</td>");
+		add("<td>");
+		add(manilaSuite.accessControl.timeStampPopup(pta, "accesscontrol_expiryDate", clock.now() + 30*24*3600, currExpiryDate, fl12HrClock));
+		add("</td>");
+		add("</tr>");
+		add("</table>")};
+	
+	return htmltext}

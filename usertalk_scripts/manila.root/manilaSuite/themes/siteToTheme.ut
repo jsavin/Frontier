@@ -1,0 +1,170 @@
+on siteToTheme (adrSite, adrTheme, themeName, displayThemeName, author=nil, authorEmail=nil, siteUrl=nil, description="") {
+	«Changes:
+		«5/27/05; 2:54:32 AM by JES
+			«Added support for including pictureRef'd pictures with the theme. Any picture which is referenced in a template is included with the theme. The actual inclusion takes place in manilaSuite.themes.pictureRefCallback.
+		«4/20/03; 10:09:28 PM by JES
+			«Added support for External Style Sheet.
+		«10/8/01; 2:44:19 PM by PBS
+			«Copy directory templates and other new prefs into the theme.
+		«10/23/00; 2:34:41 AM by JES
+			«Copy ["#newsSite"].discussionGroup into the theme. Copy homepage template, and flUseHomePageTemplate into the theme.
+		«06/26/00; 3:58:58 PM by JES
+			«Fix problem with flBackIssueDisplayTitle not being defined for very old sites
+		«05/31/00; 4:19:38 PM by PBS
+			«Created. Convert a site to a theme.
+	
+	if adrTheme == nil {
+		adrTheme = @config.manila.themes.[themeName]};
+	
+	new (tableType, adrTheme);
+	
+	adrTheme^.flEnabled = true;
+	adrTheme^.flPublic = true;
+	
+	bundle { //Appearance table
+		local (adrPrefs = @adrSite^.["#prefs"]);
+		local (adrNewsSite = @adrSite^.["#newsSite"]);
+		local (adrTable = @adrTheme^.appearance);
+		new (tableType, adrTable);
+		
+		on copy (itemName, adrOriginalTable, defaultValue="") {
+			if defined (adrOriginalTable^.[itemName]) {
+				adrTable^.[itemName] = adrOriginalTable^.[itemName]}
+			else {
+				adrTable^.[itemName] = defaultValue}};
+		
+		bundle { // copy the site's theme data
+			copy ("alink", adrPrefs);
+			copy ("background", adrPrefs);
+			copy ("bgcolor", adrPrefs);
+			copy ("bylineFormat", adrNewsSite);
+			copy ("calendarTemplates", adrNewsSite);
+			copy ("cascadingStyleSheet", adrNewsSite);
+			copy ("externalStyleSheet", adrNewsSite);
+			copy ("colors", adrNewsSite);
+			copy ("cowSkullImage", adrNewsSite);
+			copy ("flDiscussListByDay", adrNewsSite, true);
+			copy ("numMessagesInDiscussListing", adrNewsSite);
+			copy ("flBackIssueDisplayTitle", adrNewsSite, true); // 06/26/00 JES: boolean default for old sites
+			copy ("flBylinesOnHomePage", adrNewsSite);
+			copy ("flBylinesOnStories", adrNewsSite);
+			copy ("flCalendarOnHomePage", adrNewsSite);
+			copy ("flEditFormOnHomePage", adrNewsSite);
+			copy ("flHomePageDisplayTitle", adrNewsSite);
+			copy ("javaScript", adrNewsSite);
+			copy ("link", adrPrefs);
+			copy ("membersBoxTemplates", adrNewsSite);
+			copy ("navigation", adrNewsSite);
+			copy ("newsDayTemplate", adrNewsSite);
+			copy ("numNewsDaysToRender", adrNewsSite, 3);
+			copy ("text", adrPrefs);
+			copy ("vlink", adrPrefs);
+			if defined (adrNewsSite^.discussionGroup) { //10/22/00 JES: copy DG templates
+				copy ("discussionGroup", adrNewsSite)};
+			copy ("flUseHomePageTemplate", adrNewsSite, false); //10/25/00 JES: deal with homepage template
+			
+			if defined (adrNewsSite^.directory) { //PBS 10/08/01: directory templates
+				copy ("directory", adrNewsSite)};
+			if defined (adrNewsSite^.alternateTemplates) { //PBS 10/08/01: print-friendly templates
+				copy ("alternateTemplates", adrNewsSite)};
+			copy ("flNewsItemsByNewsDay", adrNewsSite, false); //PBS 10/08/01: News Items pref was missing
+			if defined (adrNewsSite^.slides) { //PBS 10/08/01: slides
+				copy ("slides", adrNewsSite)};
+			
+			bundle { //PBS 10/08/01: margins
+				if defined (adrPrefs^.topmargin) {
+					copy ("topmargin", adrPrefs)};
+				if defined (adrPrefs^.marginheight) {
+					copy ("marginheight", adrPrefs)};
+				if defined (adrPrefs^.leftmargin) {
+					copy ("leftmargin", adrPrefs)};
+				if defined (adrPrefs^.marginWidth) {
+					copy ("marginWidth", adrPrefs)}}};
+		
+		if defined (adrNewsSite^.newsItems.template) { //news items template is special case
+			adrTable^.newsItemsTemplate = string (adrNewsSite^.newsItems.template)}
+		else {
+			adrTable^.newsItemsTemplate = string (manilaData.newSiteTemplate.["#newsSite"].newsItems.template)};
+		
+		adrTable^.template = adrSite^.["#template"];
+		if defined (adrSite^.["#homePageTemplate"]) { //10/25/00 JES: deal with homepage template
+			adrTable^.homePageTemplate = adrSite^.["#homePageTemplate"]}}; //10/25/00 JES: deal with homepage template
+	
+	bundle { //include pictures referenced with the pictureRef macro
+		local (adrTable = @adrTheme^.appearance);
+		local (s = string (adrTable^.template));
+		if defined (adrTable^.homePageTemplate) {
+			s = s + string (adrTable^.homePageTemplate)};
+		if defined (adrTable^.newsItemsTemplate) {
+			s = s + string (adrTable^.newsItemsTemplate)};
+		local (adritem);
+		for adritem in @adrTable^.membersBoxTemplates {
+			s = s + string (adritem^)};
+		s = s + string (adrTable^.newsDayTemplate);
+		if defined (adrTable^.discussionGroup) {
+			for adritem in @adrTable^.discussionGroup {
+				if typeOf (adritem^) != booleanType {
+					s = s + string (adritem^)}}};
+		if defined (adrTable^.directory) {
+			for adritem in @adrTable^.directory {
+				if typeOf (adritem^) != booleanType {
+					s = s + string (adritem^)}}};
+		if defined (adrTable^.alternateTemplates) {
+			for adritem in @adrTable^.alternateTemplates {
+				if typeOf (adritem^) != booleanType {
+					s = s + string (adritem^)}}};
+		if defined (adrTable^.slides) {
+			for adritem in @adrTable^.slides {
+				if typeOf (adritem^) != booleanType {
+					s = s + string (adritem^)}}};
+		
+		local (tempPta, pt);
+		try { //call html.processMacros with the callback primed -- the callback will add items to the theme table
+			with manilaMacros {
+				try {
+					tempPta = html.getPageTableAddress ()};
+				bundle { //set up a very minimal temporary page table
+					new (tableType, @pt);
+					pt.adrObject = @adrSite^.default;
+					pt.adrTheme = adrTheme;
+					pt.adrSiteRootTable = adrSite;
+					pt.adrPictureRefCallback = @manilaSuite.themes.pictureRefCallback;
+					html.setPageTableAddress (@pt)};
+				html.processMacros (s, adrPageTable:@pt)}};
+		try { //undo page table address sleight of hand
+			if tempPta == nil {
+				html.deletePageTableAddress ()}
+			else {
+				html.setPageTableAddress (tempPta)}}};
+	
+	bundle { //Info table
+		local (adrInfo = @adrTheme^.Info);
+		new (tableType, adrInfo);
+		adrInfo^.CreationDate = clock.now ();
+		
+		«Author.
+		adrInfo^.Author = user.prefs.name;
+		if author != nil {
+			adrInfo^.Author = author};
+		
+		«Author email.
+		adrInfo^.AuthorEmail = user.prefs.mailAddress;
+		if authorEmail != nil {
+			adrInfo^.authorEmail = authorEmail};
+		
+		«Description.
+		wp.newTextObject (description, @adrInfo^.Description);
+		
+		«Originating site URL.
+		adrInfo^.siteUrl = adrSite^.["#ftpSite"].url;
+		if siteUrl != nil {
+			adrInfo^.siteUrl = siteUrl};
+		
+		«Display Name
+		adrInfo^.displayName = displayThemeName};
+	
+	bundle { //security: neuter macros and validate structure
+		manilaSuite.themes.neuterAllObjects (adrTheme); //neuter macros
+		manilaSuite.themes.validateStructure (adrTheme)}; //make sure it's a valid theme table
+	
+	return (adrTheme)}

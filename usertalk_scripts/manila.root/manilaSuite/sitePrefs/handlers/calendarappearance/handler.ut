@@ -1,0 +1,117 @@
+on handler (pta, adrObject) {
+	«manilaSuite.sitePrefs.handlers.calendarappearance.handler : 04/05/15, 20:47:18 by DAB
+		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	«messages at manilaData.localization.languages.english.strings.admin
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf(this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName(pta, sectionName));
+	local (value = manilaSuite.sitePrefs.utility.exportOutline (string (adrObject^)));
+	
+	add("\r<p>");
+	add(manilaSuite.getString ("admin." + shortName + "SectionDescription", pta: pta)); //!!! inconsistent name!!!!
+	add("\r</p>");
+	
+	local (replacementTable);
+	bundle { //set up replacement table
+		new (tableType, @replacementTable);
+		replacementTable.displayName = displayName};
+	
+	if defined(pta^.postargs.[shortname]) {
+		case true {
+			defined (pta^.postArgs.restoreToDefault) {
+				add(manilaSuite.sitePrefs.utility.confirmBox(pta, shortname, "admin.navAppearanceRestoreConfirm", @replacementTable))};
+			defined (pta^.postArgs.doRestoreDefault) { //restore to default
+				local (siteInfo);
+				new (tableType, @siteInfo);
+				siteInfo.adrSite = adrSite;
+				siteInfo.siteName = nameOf(adrSite^); //PBS 12/13/99: fix for siteName not defined error
+				manilaSuite.themes.restoreCalendarAppearance (@siteInfo); //PBS 06/06/00: restore to default via themes
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				
+				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.calAppearanceRestoredSuccess", @replacementTable));
+				«cause the containing frame to refresh
+				add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")};
+			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
+				}}
+		else { //try to update the colors
+			adrObject^.monthYearTemplate = manilaSuite.unTaint (string.replace(pta^.postArgs.monthYearTemplate, "{item}", "***", false));
+			adrObject^.dayNameTemplate = manilaSuite.unTaint (string.replace(pta^.postArgs.dayNameTemplate, "{item}", "***", false));
+			adrObject^.dayTemplate = manilaSuite.unTaint (string.replace(pta^.postArgs.dayTemplate, "{item}", "***", false));
+			manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+			
+			«Refresh the page.
+			add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.navAppearanceUpdated", @replacementTable));
+			«cause the containing frame to refresh
+			add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname + "=2'</script>")}};
+	
+	if pta^.searchArgs != "" {
+		local (argTable);
+		new (tableType, @argTable);
+		webserver.parseArgs (pta^.searchArgs, @argTable);
+		if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+			case argTable.[shortName] {
+				"1" {
+					add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.calAppearanceRestoredSuccess", @replacementTable))};
+				"2" {
+					add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.calAppearanceUpdatedSuccess", @replacementTable))}}}};
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	on encodeText (s) { //dunno why we need a special one here
+		s = string.replaceAll (s, "&", "&amp;");
+		s = string.replaceAll (s, "<", "&lt;");
+		s = string.replaceAll (s, ">", "&gt;");
+		s = string.replaceAll (s, "\"", "&quot;");
+		s = string.replaceAll (s, "***", "{item}");
+		return (s)};
+	
+	«local (myt, dnt, dt)
+	«bundle         //get the current prefs
+		«manilaSuite.html.getCalendarTemplates (@myt, @dnt, @dt)
+	
+	bundle { //row for 'monthYearTemplate'
+		add ("\r\t<tr>");
+		add ("<td align='left'>" + manilaSuite.getString ("admin.monthYearPrompt", pta: pta) + "</td>");
+		add ("\r\t\t<td align='left'>");
+		add("<input name='monthYearTemplate' size='55' value='" + encodeText(adrObject^.monthYearTemplate) + "'>");
+		add ("</td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for dayName
+		add ("\r\t<tr>");
+		add ("\r\t\t<td align='left' valign='top'>" + manilaSuite.getString ("admin.dayNamePrompt", pta: pta) + "</td>");
+		add ("\r\t\t<td align='left'>");
+		add ("<input name='dayNameTemplate' size='55' value='" + encodeText(adrObject^.dayNameTemplate) + "'>");
+		add ("</td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for day
+		add ("\r\t<tr>");
+		add ("\r\t\t<td align='left' valign='top'>" + manilaSuite.getString ("admin.dayPrompt", pta: pta) + "</td>");
+		add ("\r\t\t<td align='left'>");
+		add("<input name='dayTemplate' size='55' value='" + encodeText(adrObject^.dayTemplate) + "'>");
+		add ("</td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for buttons
+		add(manilaSuite.sitePrefs.utility.addButtons(pta, adrObject, sectionName, false))}; //no radio
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

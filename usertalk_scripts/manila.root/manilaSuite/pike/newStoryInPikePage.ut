@@ -1,0 +1,79 @@
+on newStoryInPikePage (pta=nil) {
+	«Send a message to Pike to open a new story.
+		«01/13/00; 7:36:05 PM by PBS
+		«Changes:
+			«11/26/00; 9:26:46 PM by PBS
+				«The form action now points to the external editor, not to Manila.
+				«Old code:
+					«if pta == nil
+						«pta = html.getPageTableAddress ()
+					«
+					«local (flPost, lowerMethod)
+					«lowerMethod = string.lower (pta^.method)
+					«if lowerMethod == "post"
+						«flPost = true
+					«if flPost //ask Pike to open a new story window
+						«try //try to send a new story message to Pike
+							«local (subject = pta^.postArgs.title)
+							«manilaSuite.pike.sendToPike.newStory (subject, pta) //send the new story command to Pike
+							«mainResponder.redirect (pta^.urls^.editorialStories)
+							«return ("")
+						«else //display the error
+							«pta^.title = "It Didn't Work"
+							«local (htmlText)
+							«on add (s)
+								«htmlText = htmlText + s
+							«add ("Sorry, the server couldn't send a new story command to your copy of Pike.\r<p>")
+							«add ("Here's the message we received from your workstation (it may be cryptic):\r<p>")
+							«add ("<blockquote><i>" + manilaSuite.unTaint (tryError) + "</i></blockquote>")
+							«return (htmlText)
+					«else //prompt for a title for the new story
+						«local (htmlText)
+						«
+						«on add (s)
+							«htmlText = htmlText + s
+						«
+						«pta^.title = "Create New Story in Pike"
+						«
+						«add ("<form method=\"post\" action=\"\">\r")
+						«add ("<b>Title:</b><br>\r")
+						«add ("<input type=\"text\" size=\"40\" maxlength=\"60\" name=\"title\" value=\"\"><p>\r")
+						«add ("<input type=\"submit\" value=\"Create\">\r")
+						«add ("</form>")
+						«
+						«return (htmlText)
+			«12/22/00; 7:13:40 PM by JES
+				«Redirect to /stories/newStoryInRadio if the URL is /stories/newStoryInPike. Changed page title to Create New Story in Radio UserLand.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	bundle { //12/22/00 JES: redirect to stories/newStoryInRadio
+		local (storiesUrl = string.lower (manilaSuite.getUrl ("editorialStories")));
+		if not (storiesUrl endsWith "/") {
+			storiesUrl = storiesUrl + "/"};
+		local (newStoryInPikeUrl = storiesUrl + "newstoryinpike");
+		if string.lower (pta^.url) == newStoryInPikeUrl {
+			scriptError ("!redirect " + storiesUrl + "newStoryInRadio")}};
+	
+	pta^.title = "Create New Story in Radio UserLand";
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	local (appendTable);
+	new (tableType, @appendTable);
+	if not date.versionLessThan (Frontier.version (), "7.0b21") {
+		appendTable.flAcceptsOpml = true};
+	appendTable.flPromoteToStory = true;
+	appendTable.rendererName = "pikeRenderer";
+	appendTable.flRenderOnEntry = true;
+	appendTable.redirectUrl = pta^.urls^.editorialStories;
+	
+	local (url = manilaSuite.pike.buildPikeButtonUrl (nil, "newStory", @appendTable, pta:pta, flUsePathArgs:true));
+	add ("<form method=\"get\" action=\"" + url + "\">\r");
+	add ("<b>Title:</b><br>\r");
+	add ("<input type=\"text\" size=\"40\" maxlength=\"60\" name=\"title\" value=\"\"><p>\r");
+	add ("<input type=\"submit\" value=\"Create\">\r");
+	add ("</form>");
+	
+	return (manilaSuite.unTaint (htmlText))}

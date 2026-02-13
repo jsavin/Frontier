@@ -1,0 +1,22 @@
+on security (pta) {
+	«Make sure only authorized people can see the discussion group.
+		«6/11/99; 11:56:17 AM by PBS
+		«Changes:
+			«09/29/00; 5:04:52 PM by PBS
+				«Check on every page -- a site may be customized, and we can't guarantee that the dg is in the discuss sub-table.
+				«Also: set flNewDiscussTopic to false if this person can't post a new message. This prevents display of the New Topic link at the bottom of the discussion group.
+	
+	bundle { //was: if string.lower (pta^.adrObject) contains "discuss"
+		local (flPublicMembersDgAccess);
+		flPublicMembersDgAccess = manilaSuite.getNewsSitePref ("flPublicMembersDgAccess", default:true, flCreate:true);
+		
+		if flPublicMembersDgAccess {
+			return (true)};
+		
+		if manilaSuite.editors.editorialTest (pta) { //is this member an editor?
+			return (true)};
+		
+		pta^.flResponseFormOnDiscussPage = false;
+		pta^.flNewDiscussTopic = false};
+	
+	return (true)}

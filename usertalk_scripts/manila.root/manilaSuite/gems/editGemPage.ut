@@ -1,0 +1,85 @@
+on editGemPage () {
+	«manilaSuite.gems.editGemPage : 04.06.24, 21:36:10 by DAB
+		«Display a page showing details of a gem;  hithertoo not editable
+		«but allows ETP override to return a form to edit other attributes
+	«messages at manilaData.localization.languages.english.strings.gems
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (gemNumber = pta^.pathargs);
+	local (adrGemTbl = manilaSuite.gems.getGemAddress(adrSite, gemNumber));
+	
+	local (htmlText="");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (replTbl);
+	bundle {
+		new(tabletype,  @replTbl);
+		replTbl.gemTitle = adrGemTbl^.title};
+	
+	pta^.title = manilaSuite.getString ("gems.editGemPageTitle", @replTbl, pta:pta);
+	
+	if manilaSuite.plugins.ETPoverride.getScriptAddress("gemEditInBrowser", @adrETPbuilder) {
+		htmlText = adrETPbuilder^ (adrGemTbl, pta^.urls^.editorialGems, pta^.urls^.gemPostEditedMessage)}
+	else {
+		add("\r<table>");
+		bundle { //row for title
+			add("\r<tr>");
+			add("\r<th align = 'right'>");
+			add(manilaSuite.getString ("common.titleColumnName", pta:pta));
+			add("\r</th><td>:</td>");
+			add("\r<td>");
+			add(adrGemTbl^.title);
+			add("\r<//td>");
+			add("\r</tr>")};
+		bundle { //row for originator
+			add("\r<tr>");
+			add("\r<th align = 'right'>");
+			add(manilaSuite.getString ("common.originatorColumnName", pta:pta));
+			add("\r</th><td>:</td>");
+			add("\r<td>");
+			local (nme = adrGemTbl^.member);
+			manilaSuite.members.getMemberName(nme, @nme);
+			add (nme);
+			add("\r<//td>");
+			add("\r</tr>")};
+		bundle { //row for date
+			add("\r<tr>");
+			add("\r<th align = 'right'>");
+			add(manilaSuite.getString ("common.dateColumnName", pta:pta));
+			add("\r</th><td>:</td>");
+			add("\r<td>");
+			add (date.shortString (adrGemTbl^.postTime));
+			add("\r<//td>");
+			add("\r</tr>")};
+		bundle { //row for size
+			add("\r<tr>");
+			add("\r<th align = 'right'>");
+			add(manilaSuite.getString ("common.sizeColumnName", pta:pta));
+			add("\r</th><td>:</td>");
+			add("\r<td>");
+			local (size = manilaSuite.gems.getFileSize (adrGemTbl));
+			add (string.addCommas(size));
+			add("\r<//td>");
+			add("\r</tr>")};
+		bundle { //row for type
+			add("\r<tr>");
+			add("\r<th align = 'right'>");
+			add(manilaSuite.getString ("common.typeColumnName", pta:pta));
+			add("\r</th><td>:</td>");
+			add("\r<td>");
+			add(adrGemTbl^.["Content-type"]);
+			add("\r<//td>");
+			add("\r</tr>")};
+		bundle { //row for url
+			add("\r<tr>");
+			add("\r<th align = 'right'>");
+			add(manilaSuite.getString ("common.urlColumnName", pta:pta));
+			add("\r</th><td>:</td>");
+			add("\r<td>");
+			add (html.getLink (adrGemTbl^.url, adrGemTbl^.url));
+			add("\r<//td>");
+			add("\r</tr>")};
+		add("\r</table>")};
+	
+	return htmlText}

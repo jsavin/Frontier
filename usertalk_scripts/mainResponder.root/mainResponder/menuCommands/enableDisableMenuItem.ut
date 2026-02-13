@@ -1,0 +1,5 @@
+if not defined (config.mainResponder.prefs.flControlPanel) {
+	config.mainResponder.prefs.flControlPanel = true};
+if config.mainResponder.prefs.flControlPanel {
+	return ("Disable Admin Sites")};
+return ("Enable Admin Sites")

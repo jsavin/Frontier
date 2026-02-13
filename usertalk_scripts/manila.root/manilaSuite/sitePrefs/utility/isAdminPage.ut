@@ -1,0 +1,55 @@
+on isAdminPage (pta) {
+	«manilaSuite.sitePrefs.utility.isAdminPage : 04/05/16, 16:59:25 by DAB
+		«returns true if we are building an admin page
+			«See manilasuite.html.EditorialLinks for logic
+		«02/04/17, 12:55:39 by DAB Cache this value in pagetable
+	
+	if defined(pta^.manilaFixer_isAdminPage) { //02/04/17, 12:56:00 by DAB
+		return pta^.manilaFixer_isAdminPage};
+	local (pageURL = string.lower(pta^.url));
+	if pageurl endsWith "/default" {
+		pageurl = string.mid(pageurl, 1, string.length(pageurl) - 7)}; //leave trailing /
+	«msg(pageURL)
+	case true {
+		(pageURL+"$") == string.lower(pta^.urls^.storyReader); //03/08/28, 14:28:49 by DAB
+		(pageURL+"$") == string.lower(pta^.urls^.discussMsgReader) { //03/08/28, 14:28:49 by DAB
+			}; //addedValues and other plugins fool with these, so avoid getting see as plugin page
+		pageURL == string.lower(pta^.urls^.editorialStories); //01/01/12, 09:31:26 by DAB
+		«pageURL == string.lower(pta^.urls^.editorialPictures)   //01/01/12, 09:31:32 by DAB
+		pageURL beginsWith string.lower(pta^.urls^.pictureHomePage); //01/04/21, 12:12:49 by DAB
+		pageURL beginsWith (string.lower(pta^.urls^.newsHome) + "xml/"); //02/05/22, 18:57:42 by DAB
+		pageURL beginsWith string.lower(pta^.urls^.editorialShortcuts);
+		pageURL beginsWith string.lower(pta^.urls^.discussHomePage);
+		pageURL beginsWith string.lower(pta^.urls^.memberLogoff);
+		pageURL beginsWith string.lower(pta^.urls^.membersignup); //03/01/23, 17:21:10 by DAB
+		«pageURL beginsWith string.lower(pta^.urls^.editorialHelp)    //comment out 03/01/19, 16:39:29 by DAB
+		pageURL beginsWith string.lower(pta^.urls^.editorialNewsItems);
+		pageURL beginsWith string.lower(pta^.urls^.editorialGems);
+		pageURL beginsWith string.lower(pta^.urls^.editorialPrefs);
+		pageURL beginsWith string.lower(pta^.urls^.editorialAdmin);
+		pageURL beginsWith string.lower(pta^.urls^.prefsHome); //01/04/23, 12:11:27 by DAB
+		pageURL beginsWith string.lower(pta^.urls^.profilesHome); //01/03/28, 16:48:01 by DAB
+		pageURL beginsWith string.lower(pta^.urls^.editorialBulletins) {
+			pta^.manilaFixer_isAdminPage = true; //02/04/17, 12:56:00 by DAB
+			return true};
+		pageURL beginsWith string.lower(pta^.ftpSite^.url) {
+			local (pageURLRemaining = string.delete(pageURL, 1, string.length(pta^.ftpSite^.url)));
+			pageURLRemaining = string.lower(pageURLRemaining);
+			«msg(pageURLRemaining)
+			if defined (pta^.adrSiteRootTable^.["#plugins"]) {
+				if defined (pta^.adrSiteRootTable^.["#plugins"].enabled) {
+					local (adrItem);
+					for adrItem in @pta^.adrSiteRootTable^.["#plugins"].enabled {
+						local (pluginName = nameOf (adrItem^));
+						local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
+						if defined (adrConfig^) {
+							if adrConfig^.flAddToEditorsOnlyMenu {
+								if (pageURLRemaining beginsWith string.lower(adrItem^)) {
+									«msg("Match found " + pageURLRemaining + " == " + adrItem^)
+									pta^.manilaFixer_isAdminPage = true; //02/04/17, 12:56:00 by DAB
+									return true}}}}}}}};
+	«
+	«msg(pageurl + " not admin page")
+	pta^.manilaFixer_isAdminPage = false; //02/04/17, 12:56:00 by DAB
+	return false};
+msg(isAdminPage (@temp.pta.["169"].pageFilter))

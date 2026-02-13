@@ -1,0 +1,31 @@
+on listMessageEnclosure (msgNum) {
+	«List a message enclosure.
+		«Changes:
+			«03/15/00; 2:50:23 PM by PBS
+				«The call to user.html.macros.nestedTableDisplayer was wrong -- it's at html.data.standardMacros.nestedTableDisplayer.
+	
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum));
+	
+	if adrMsg^.enclosureAddress != "" {
+		local (localObject);
+		local (bytes = binary (base64.decode (adrMsg^.enclosureBits)));
+		local (type = adrMsg^.enclosureType);
+		
+		bundle { //fart around with the type
+			local (prefix = "application/x-frontier-");
+			if type beginsWith prefix {
+				type = string.delete (type, 1, sizeof (prefix))}};
+		
+		setBinaryType (@bytes, type);
+		unpack (@bytes, @localObject);
+		
+		if typeof (localObject) == tableType {
+			return (html.data.standardMacros.nestedTableDisplayer (@localObject))}
+		else {
+			local (s = string (localObject));
+			s = string.replaceAll (s, "&", "&amp;");
+			s = string.replaceAll (s, "<", "&lt;");
+			s = string.replaceAll (s, "\t", "   ");
+			return ("<pre>" + s + "</pre>")}}
+	else {
+		return ("")}}

@@ -1,0 +1,13 @@
+on getIndexAddress (adrSite, categoryName) {
+	«Get the address of an index table. Make sure it exists. This script does not make sure the index is valid -- call getIndexTable when you must have a valid index.
+		«10/09/00; 8:51:17 PM by PBS
+	
+	local (adrIndexes = @adrSite^.["#newsSite"].indexes);
+	if not defined (adrIndexes^) {
+		new (tableType, adrIndexes)};
+	
+	local (adrIndex = @adrIndexes^.[categoryName]);
+	if not defined (adrIndex^) {
+		new (tableType, adrIndex)};
+	
+	return (adrIndex)}

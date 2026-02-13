@@ -1,0 +1,261 @@
+on readMessage (msgnum, flResponses=true, flResponseForm=true, flShowMsgNums=true, flShowAuthor=true, flShowPostTime=true, flShowReads=true, flStoryHeaderOnly=false, flEditButtonsInHeader=true, flShowEnclosure=true, editPageURL="", flShowCowSkullLink=false) {
+	local (pta = html.getPageTableAddress ());
+	«Changes
+		«5/19/99; 10:19:48 PM by DW
+			«Changed "By Dave Winer" to "Posted by Dave Winer". This makes more sense because I might post articles written by other people.
+		«Mon, 01 Mar 1999 17:45:42 GMT by AR
+			«Changed code in the "set member info" section to no longer reference config.mainResponder.prefs.defaultDiscussRoot. Instead we get the discussion group rootname by dereferencing adrdata which is set by mainresponder.discuss.openroot.
+		«Thu, 22 Apr 1999 15:00:04 GMT by AR
+			«Modified after closing a security hole in htmlInterfaces.root
+				«http://frontier.userland.com/security/htmlInterfacesRoot
+		«5/12/99; 6:43:55 AM by DW
+			«Added Topic line for non-top-level messages. It takes you to the top-level topic that the message is in response to.
+		«Wed, 19 May 1999 18:50:24 GMT by AR
+			«Added three new parameters: flShowAuthor, flShowPostTime, flShowReads. Default: true.
+			«Added a new parameter: flStoryHeaderOnly. Default: false.
+			«Inserted missing </tr> tag after header section.
+			«Added a new parameter: flEditButtonsInHeader. Default: true.
+		«Fri, 21 May 1999 16:58:48 GMT by AR
+			«Added optional editPageURL parameter for setting the action URL of the Edit This Page button. If it's the empty string, we use pta^.responderattributes.urls^.discussEditInBrowser.
+		«Sat, 22 May 1999 15:32:02 GMT by AR
+			«Added optional parameter flShowCowSkullLink. The default is false. If it's set to true, a cowskull linking to the standard msgReader page for this message is added. This feature probably only makes sense for sites like stories.userland.com where messages are displayed outside of the standard discussion group context.
+		«Wed, 26 May 1999 01:33:57 GMT by AR
+			«Real names of message authors are now looked up in the membership group specified thru pta^.responderAttributes.defaultMembershipGroup instead of formerly config.mainresponder.globals.defaultMembershipGroup, allowing greater flexibility while retaining backwards-compatibility.
+		«Monday, June 07, 1999 at 2:25:39 PM by PBS
+			«New pagetable attributes: flReadMessageAutoParagraphs, flReadMessageProcessMacros, and flReadMessageExpandUrls give more control over what happens when reading a discussion group message. When calling this script from a web page that's a script, it's best to set these all to false. When calling from a macro, it's not necessary to define these attributes: previous behavior is conserved, there's no breakage.
+		«Wednesday, June 09, 1999 at 4:47:49 PM by PBS
+			«Call mainResponder.discuss.memberCanEdit to determine if the member may edit this message.
+		«Fri, Jun 11, 1999 at 10:33:25 AM by PBS
+			«New page table attribute: if pta^.readMessageByLineFormat is "DaveNet," then the byline will appear like this:
+				«Tuesday, March 16, 1999; by Dave Winer.
+		«Sat, 12 Jun 1999 13:42:51 GMT by AR
+			«Bug fix: The Topics header now works properly if the displayed message is part of the response tree of a message that has been deleted.
+	local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+	
+	local (adrdata = mainresponder.discuss.openroot ());
+	local (ixlastmsg = adrdata^.prefs.nextmsgnum - 1);
+	
+	local (adritem = mainresponder.discuss.getMessageTable (msgnum));
+	adritem^.ctReads++;
+	config.mainResponder.stats.ctDiscussionGroupReads++; //1/17/99; 9:20:18 AM by DW
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	
+	if defined (adritem^.flDeleted) {
+		if adritem^.flDeleted {
+			add ("This message has been deleted.");
+			return (htmltext)}};
+	
+	local (pagetable);
+	bundle { //set up the page table for our macro processing
+		new (tabletype, @pagetable);
+		pagetable.claycompatibility = true;
+		pagetable.autoparagraphs = true;
+		pagetable.activeurls = true};
+	
+	«Calculate lots of booleans in advance to avoid spitting out unwanted empty table cells etc.
+	flShowEnclosure = flShowEnclosure and (defined (adritem^.enclosureaddress) and (adritem^.enclosureaddress != ""));
+	«local (flShowEditButtons = (defined (pta^.adrmemberinfo) and (nameof (pta^.adrmemberinfo^) == adritem^.member)))
+	local (flShowEditButtons = (defined (pta^.adrmemberinfo) and (mainResponder.discuss.memberCanEdit (adrItem, pta^.adrMemberInfo)))); //PBS 6/9/99: a member other than the poster may be able to edit this message
+	local (flEditButtonsAtTop = (flShowEditButtons and flEditButtonsInHeader));
+	local (flEditButtonsAtBottom = (flShowEditButtons and not flEditButtonsInHeader));
+	local (flShowMessageHeaders = (not flStoryHeaderOnly) and (flShowAuthor or flShowPostTime or flShowMsgNums or flShowEnclosure or flShowReads));
+	
+	on addEditButtons () {
+		local (editableinfrontier = false);
+		if defined (pta^.adrmemberinfo^.isFrontierSixAlpha) { //edit in Frontier button
+			«bundle //old code
+				«add ("<hr><b>Frontier 6 Alphas</b><p>")
+				«add ("According to our records, you are a Frontier 6 alpha tester, and you created the message that you're viewing. That means that you can edit this message using Frontier 6's wrapping headlines outliner.")
+				«add ("To use this feature, be sure Frontier is running, and you have suites.editorial installed. Then click on the following link. <i>Please follow the instructions carefully.</i><p>")
+				«add ("<a href=\"" + pta^.responderattributes.urls^.discussEditInFrontier + msgnum + "\">Edit message #" + msgnum + " in Frontier</a>")
+				«add ("<font size=\"-2\"><br>You can edit this message<br>because you are a Frontier 6<br>alpha tester and you are<br>the author of this message.</font>")
+			local (url = pta^.responderattributes.urls^.discusseditInFrontier + msgnum);
+			add ("<td valign=\"middle\"><center>"); indentlevel++;
+			add ("<form method=\"POST\" action=\"" + url + "\">"); indentlevel++;
+			add ("<input name=\"msgnum\" type=\"hidden\" value=\"" + msgnum + "\">");
+			add ("<input type=\"submit\" value=\"Edit in Frontier\">");
+			editableinfrontier = true;
+			add ("</form>"); indentlevel--;
+			add ("</center></td>"); indentlevel--};
+		bundle { //edit in web browser button
+			add ("<td valign=\"middle\"><center>"); indentlevel++;
+			if editPageURL == "" {
+				editPageURL = pta^.responderattributes.urls^.discussEditInBrowser};
+			add ("<form method=\"POST\" action=\"" + editPageURL + msgnum + "\">"); indentlevel++;
+			add ("<input name=\"msgnum\" type=\"hidden\" value=\"" + msgnum + "\">");
+			local (buttonvalue = "Edit this Page");
+			if editableinfrontier {
+				buttonvalue = "Edit in Browser";
+				add ("&nbsp;")};
+			add ("<input type=\"submit\" value=\"" + buttonvalue + "\">");
+			add ("</form>"); indentlevel--;
+			add ("</center></td>"); indentlevel--}};
+	if (flStoryHeaderOnly or flShowMessageHeaders or flEditButtonsAtTop) { //put up message headers section
+		add ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">"); indentlevel++;
+		add ("<tr>"); indentlevel++;
+		if flStoryHeaderOnly { // story intro line: "Posted by Dave Winer, 5/17/99 at 3:33 PM."
+			add ("<td>"); indentlevel++;
+			
+			«Support DaveNet-style bylines: PBS 6/11/99
+				«Like: Friday, June 11, 1999; by Dave Winer (no link to author)
+			if defined (pta^.readMessageBylineFormat) and string.lower (pta^.readMessageBylineFormat) == "davenet" {
+				local (adrmember = mainresponder.members.getmembertable (membershipGroup, adritem^.member));
+				local (name = adrmember^.personalInfo.name);
+				add ("<i>" + date.abbrevString (adritem^.posttime) + "; by " + name + ".</i>")}
+			else { //standard byline format
+				local (authorlink = mainResponder.members.linktomember (membershipGroup, adritem^.member));
+				add ("<i>Posted by " + authorlink + ", " + date.shortString (adritem^.posttime) + " at " + date.timeString (adritem^.posttime, false) + ".</i>")};
+			
+			add ("</td>"); indentlevel--};
+		if flShowMessageHeaders { //add author, posted, msg#, etc
+			add ("<td>"); indentlevel++;
+			add ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">"); indentlevel++;
+			on tr (label, val) {
+				add ("<tr>"); indentlevel++;
+				add ("<td valign=\"top\"><font size=\"+0\"><b>" + label + "</b>:&nbsp;</font></td>");
+				add ("<td valign=\"top\"><font size=\"+0\">" + val + "</font></td>");
+				add ("</tr>"); indentlevel--};
+			on msglink (msgnum) {
+				return ("<a href=\"" + pta^.responderattributes.urls^.discussMsgReader + msgnum + "\">" + msgnum + "</a>")};
+			if flShowAuthor {
+				tr ("Author", mainResponder.members.linktomember (membershipGroup, adritem^.member))};
+			if flShowPostTime {
+				tr ("Posted", adritem^.posttime)};
+			if flShowMsgNums and (adritem^.inresponseto > 0) { //spit out the Topic line
+				local (nomad = adritem);
+				while nomad^.inresponseto > 0 {
+					nomad = mainresponder.discuss.getMessageTable (nomad^.inresponseto)};
+				tr ("Topic", "<a href=\"" + pta^.responderattributes.urls^.discussMsgReader + nomad^.msgnum + "\">" + nomad^.subject + "</a>")};
+			if flShowMsgNums { //put out the Msg# line
+				local (val = msgnum);
+				if adritem^.inresponseto > 0 {
+					try {val = val + " (in response to " + msglink (adritem^.inResponseTo) + ")"}}
+				else {
+					val = val + " (top msg in thread)"};
+				tr ("Msg#", val)};
+			if flShowEnclosure { //regurgitate the Enclosure line
+				«http://discuss.userland.com/enclosures/view$868
+				local (viewingurl = pta^.responderattributes.urls^.discussEnclosureViewer + msgnum);
+				local (listinglink = "<a href=\"" + viewingurl + "\">view</a>");
+				local (fatpagelink = "<a href=\"" + pta^.responderattributes.urls^.discussEnclosureDownloader + msgnum + "\">fat page</a>");
+				local (rpclink = "<a href=\"" + pta^.responderattributes.urls^.discussEnclosureRPCer + msgnum + "\">RPC</a>");
+				tr ("Enclosure", listinglink + ", " + fatpagelink + ", " + rpclink)};
+			if flShowMsgNums { //throw up Prev/Next
+				local (ixprev = -1, ixnext = -1, adritem);
+				for i = msgnum - 1 downto 1 {
+					if not mainResponder.discuss.isMessageDeleted (i) {
+						ixprev = i;
+						break}};
+				for i = msgnum + 1 to ixlastmsg {
+					if not mainResponder.discuss.isMessageDeleted (i) {
+						ixnext = i;
+						break}};
+				
+				if ixprev == -1 {
+					if ixnext != -1 {
+						tr ("Next", msglink (ixnext))}}
+				else {
+					if ixnext == -1 {
+						if ixprev != -1 {
+							tr ("Prev", msglink (ixprev))}}
+					else {
+						tr ("Prev/Next", msglink (ixprev) + "/" + msglink (ixnext))}}};
+			if flShowReads {
+				tr ("Reads", adritem^.ctreads)};
+			add ("</table>"); indentlevel--;
+			add ("</td>"); indentlevel--};
+		if flEditButtonsAtTop { //add edit in Frontier button, possibly other stuff
+			if (flStoryHeaderOnly or flShowMessageHeaders) { //a bit of horiz space
+				add ("<td width=\50\">&nbsp;</td>")};
+			addEditButtons ()};
+		add ("</tr>"); indentlevel--;
+		add ("</table>"); indentlevel--;
+		add ("<p>")};
+	
+	case typeof (adritem^.body) {
+		outlinetype { //renderer should be an attribute but it's not
+			local (oldRenderOutlineWith = nil);
+			if defined (pta^.renderOutlineWith) {
+				oldRenderOutlineWith = pta^.renderOutlineWith};
+			if defined (pta^.renderDiscussOutlinesWith) {
+				pta^.renderOutlineWith = pta^.renderDiscussOutlinesWith};
+			
+			if defined (pta^.flReadMessageProcessMacros) and pta^.flReadMessageProcessMacros {
+				try {add (html.processMacros (html.tenderRender (@adritem^.body)))}}
+			else {
+				if defined (pta^.flReadMessageExpandUrls) and not pta^.flReadMessageExpandUrls {
+					try {add (html.tenderRender (@adritem^.body))}}
+				else { //default, original behavior
+					try {add (html.expandURLs (html.tenderRender (@adritem^.body)))}}};
+			
+			if oldRenderOutlineWith != nil {
+				pta^.renderOutlineWith = oldRenderOutlineWith}}}
+	else {
+		local (s = string (adritem^.body));
+		s = string.replaceall (s, "\n", ""); //2/15/99 DW, inside <pre>s these cause extra line-skips
+		if not (defined (pta^.flReadMessageAutoParagraphs)) or pta^.flReadMessageAutoParagraphs {
+			s = string.replaceall (s, "\r\r", "\r\r<p>")};
+		if not (defined (pta^.flReadMessageProcessMacros)) or pta^.flReadMessageProcessMacros {
+			s = html.processmacros (s, false, nil)};
+		add ("<font size=\"+0\">" + s + "</font>")};
+	
+	if flEditButtonsAtBottom { //add edit in Frontier button, possibly other stuff
+		add ("<p>");
+		add ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">"); indentlevel++;
+		add ("<tr>"); indentlevel++;
+		addEditButtons ();
+		add ("</tr>"); indentlevel--;
+		add ("</table>"); indentlevel--;
+		add ("<p>")};
+	
+	if flShowCowSkullLink { //add cowskull link to standard msgReader page
+		try {add ("<p><a href=\"" + pta^.responderattributes.urls^.discussMsgReader + msgnum + "\">" + mainresponder.discuss.cowSkullImage () + "</a>")}};
+	
+	if flResponses { //list message response structure
+		if sizeof (adritem^.responses) > 0 {
+			local (stack = {});
+			on addResponses (adritem) {
+				add ("<ul>"); indentlevel++;
+				local (adrtable, msgnum, replyMember, i, ct = sizeof (adritem^.responses), fldeleted);
+				for i = ct downto 1 {
+					msgnum = adritem^.responses [i];
+					if stack contains msgnum { //avoid infinite recursion
+						continue};
+					try { //a message might have been deleted
+						adrtable = mainresponder.discuss.getMessageTable (msgnum);
+						fldeleted = false;
+						if defined (adrtable^.fldeleted) {
+							fldeleted = adrtable^.fldeleted};
+						if not fldeleted {
+							replyMember = mainResponder.members.getMemberName (membershipGroup, adrtable^.member);
+							add ("<li><a href=\"" + pta^.responderattributes.urls^.discussMsgReader + msgnum + "\">" + adrtable^.subject + "</a>, " + replyMember + ", " + adrtable^.posttime + "<p>");
+							if sizeof (adrtable^.responses) > 0 {
+								stack = stack + {adrtable^.msgnum};
+								addResponses (adrtable);
+								delete (@stack [sizeof (stack)])}}}};
+				add ("</ul>"); indentlevel--};
+			add ("<p><hr><b>There are responses to this message:</b>");
+			addResponses (adritem)}}; //it's recursive
+	if flResponseForm { //provide a response form
+		if defined (pta^.adrmemberinfo) { //only members can add messages
+			local (subject = adritem^.subject);
+			if not (string.lower (subject) beginswith "re:") {
+				subject = "Re: " + subject};
+			add (mainresponder.discuss.newMessageForm (msgnum, subject, "<p><hr>Response subject", "Post Response"))}};
+	bundle { //set member info
+		if defined (pta^.adrMemberInfo) {
+			local (adrmember = pta^.adrMemberInfo);
+			if not defined (adrmember^.discussionGroupInfo) {
+				new (tabletype, @adrmember^.discussionGroupInfo)};
+			local (rootname = nameOf (adrdata^));
+			local (adrtable = @adrmember^.discussionGroupInfo.[rootname]);
+			if not defined (adrtable^) {
+				new (tabletype, adrtable)};
+			if not defined (adrtable^.highestMessageRead) {
+				adrtable^.highestMessageRead = 0};
+			if msgnum > adrtable^.highestMessageRead {
+				adrtable^.highestMessageRead = msgnum}}};
+	return (htmltext)}

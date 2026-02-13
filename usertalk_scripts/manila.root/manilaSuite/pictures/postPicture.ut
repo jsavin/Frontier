@@ -1,0 +1,87 @@
+on postPicture (pta=nil, flCheckReferer=true, adrAdrMessage=nil) {
+	«Post a picture.
+	«Changes:
+		«4/8/05; 3:46:05 AM by JES
+			«New optional parameters, flCheckReferer and adrAdrMessage. These make it possible to call this script from some other form. Note that the file must still be posted as a file input whose name is 'attachPicture'.
+			«To call from another form, set flCheckReferer to false.
+			«If your form needs the address of the message containing the newly created picture, set adrAdrMessage to the address of a local variable where you want the address of the new picture message to be saved.
+		«9/10/03; 2:04:56 PM by JES
+			«Commented out an erroneous line which caused error messages not to be localized when attempting to upload an invalid picture file.
+		«05/11/00; 8:13:49 PM by JES
+			«merged in Brent's security fix for the client side trojan horse attack.
+		«05/09/00; 10:43:27 PM by PBS
+			«Check referer to defeat the client side trojan horse.
+		«05/01/00; 2:41:49 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+		«04/21/00; 11:52:59 AM by JES
+			«localized
+		«04/03/00; 11:23:12 AM by PBS
+			«Support for Manila time zone prefs.
+		«02/29/00; 11:44:02 PM by PBS
+			«Write the shortcut to disk, if the prefs specify.
+		«1/12/00; 5:05:21 PM by PBS
+			«Update the shortcut when it's uploaded, not when the pictureViewer page is rendered.
+		«1/3/00; 12:32:10 PM by PBS
+			«Make sure the attached picture is a GIF or a JPEG. If not, return a meaningful error page -- no more "binaryServerFolder not defined" pages.
+		«12/26/99; 5:25:19 PM by PBS
+			«Commented out an unnecessary call to fileMenu.saveMyRoot. This should boost performance.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	pta^.title = manilaSuite.getString ("pictures.messageReceiverPageTitle", pta: pta); // 4/21/00 JES: localized
+	
+	if flCheckReferer { //PBS 05/09/00: check referer to defeat client side trojan horse
+		manilaSuite.referer.checkNew ("pictureNewMessage", "picturePostMessage")}; //04.06.23, 14:52:57 by DAB
+	
+	bundle { //see if any pre post validation is requested,04.06.23, 12:28:24 by DAB
+		local (adrValidator, htmltext);
+		if manilaSuite.plugins.ETPoverride.getScriptAddress( "picturePostMessage", @adrValidator) { //04.06.20, 13:14:14 by DAB
+			if not adrValidator^(@htmltext) { //validator saw error, so returns whatever it says (repeat form)
+				return htmltext}}};
+	
+	if (not (defined (pta^.postArgs.subject))) or (pta^.postArgs.subject == "") { //create default subject if none is give; it's the filename
+		local (s  = pta^.postArgs.attachFile.filename, i, ch);
+		for i = sizeof (s) downto 1 { //pop off everything but the file name
+			ch = s [i];
+			if not (string.isAlpha (ch) or string.isNumeric (ch) or (ch == ".") or (ch == " ") or (ch=="_") or (ch=="-")) { // 06/05/05; 12:09:16 PM by PR
+				s = string.delete (s, 1, i);
+				break}};
+		pta^.postArgs.subject = s};
+	
+	bundle { //PBS 1/3/00: make sure this is a valid picture
+		if defined (pta^.postArgs.attachFile) {
+			local (errorString = "");
+			if not (manilaSuite.pictures.hasValidPicture (pta, @errorString)) {
+				pta^.title = manilaSuite.getString ("discuss.itDidntWorkPageTitle", pta: pta); // 4/21/00 JES: localized
+				local (refererLink = html.getLink (manilaSuite.getString ("pictures.goBack", pta: pta), pta^.requestHeaders.referer)); // 4/21/00 JES: localized
+				refererLink = refererLink + "...";
+				«return ("Can't post &quot;" + manilaSuite.unTaint (pta^.postArgs.subject) + "&quot; because " + errorString + ".\r<p>" + refererLink)
+				local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+				replacementTable.picture = manilaSuite.unTaint (pta^.postArgs.subject);
+				replacementTable.error = errorString;
+				return (manilaSuite.getString ("pictures.cantPostBecause", @replacementTable, pta: pta) + "<p>" + refererLink)}}}; // 4/21/00 JES: localized
+	
+	local (msgNum = manilaSuite.pictures.postMessage (flAcceptFileUploads:true, postTime:manilaSuite.convertTime ())); //PBS 04/03/00: use the time zone settings for the current site
+	local (adrTable = mainResponder.discuss.getMessageTable (msgNum));
+	manilaSuite.discuss.setTimeZoneForMessage (adrTable); //PBS 04/03/00: store time zone info with message
+	
+	if adrAdrMessage != nil {
+		adrAdrMessage^ = adrTable};
+	
+	bundle { //put this in the pictures category
+		local (picturesCategory = manilaSuite.discuss.getPicturesCategory ());
+		local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+		manilaSuite.discuss.addCategoryToMessage (adrTable, picturesCategory, adrSite)}; //PBS 10/09/00: pass adrSite param -- update indexes
+	
+	manilaSuite.pictures.writeToDisk (adrTable); //PBS 02/29/00: possibly write to disk, to a static server
+	
+	manilaSuite.pictures.updateShortcut (adrTable); //PBS 01/12/00: update the glossary
+	
+	try {manilaSuite.callbacks.newStoryCallback (adrTable)};
+	
+	«fileMenu.saveMyRoot (adrTable) //PBS 12/26/99: unnecessary call commented out.
+	
+	if defined (pta^.postArgs.redirect) {
+		mainResponder.redirect (pta^.postArgs.redirect + msgNum)};
+	
+	return ("")}

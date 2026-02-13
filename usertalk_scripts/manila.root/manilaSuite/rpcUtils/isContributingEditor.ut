@@ -1,0 +1,8 @@
+on isContributingEditor (sitename, username) {
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	local (ce, ceList = adrSite^.["#newsSite"].contributingEditors);
+	username = string.lower (username);
+	for ce in list (ceList) {
+		if username == string.lower (ce) {
+			return (true)}};
+	return (false)}

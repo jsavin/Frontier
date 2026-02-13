@@ -1,0 +1,10 @@
+on checkIn (username, password, adrObject, siteName, flMessage=false) {
+	«Remove the lock on this object.
+		«02/11/00; 11:04:10 AM by PBS
+	
+	local (adrSite = config.manila.sites.[siteName]);
+	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
+	local (adrMembers = @adrGroup^.users);
+	local (adrMember = @adrMembers^.[username]);
+	
+	return (manilaSuite.custody.checkIn (adrObject, adrMember, adrSite, flMessage))}

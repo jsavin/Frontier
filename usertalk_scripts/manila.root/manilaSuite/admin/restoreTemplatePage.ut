@@ -1,0 +1,59 @@
+on restoreTemplatePage (pta=nil) {
+	«Emergency restore template to default page.
+		«04/12/00; 2:13:10 PM by PBS
+		«Changes:
+			«04/18/00; 3:47:42 PM by JES
+				«localized
+			«05/01/00; 4:11:32 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«05/09/00; 10:34:36 PM by PBS
+				«Check the referer to defeat the client side trojan horse.
+			«05/11/00; 7:02:20 PM by JES
+				«merged in Brent's security fix for the client side trojan horse attack.
+			«06/06/00; 4:48:47 PM by PBS
+				«Call the themes restore script.
+			«06/11/00; 3:50:52 AM by JES
+				«Merged Brent's themes restore code
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if not (manilaSuite.editors.managingEditorTest (pta)) {
+		scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}; // 4/18/00 JES: localized
+	
+	pta^.template = "<html><head><Title>" + manilaSuite.getString ("admin.restoreTemplatePageTitle", pta: pta) + "</title></head><body bgcolor=\"#FFFFFF\"><blockquote>{bodytext}</blockquote></body></html>"; // 4/18/00 JES: localized
+	
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s + "\r"};
+	
+	local (flPost = (string.lower (pta^.method) == "post"));
+	
+	if flPost {
+		manilaSuite.referer.checkSelf (); //PBS 05/09/00: check that referer is this page to defeat client side trojan horse
+		if defined (pta^.postArgs.restoreTemplateToDefault) {
+			«4/18/00 JES: removed paranoid test because localization could break it
+				«if string.lower (pta^.postArgs.restoreTemplateToDefault) == "yes"
+			local (siteInfo);
+			new (tableType, @siteInfo);
+			local (adrSite = pta^.adrSiteRootTable);
+			siteInfo.adrSite = adrSite;
+			siteInfo.siteName = nameOf (adrSite^); //PBS 12/13/99: fix for siteName not defined error
+			«manilaSuite.newSite.createTemplate (@siteInfo)
+			manilaSuite.themes.restoreTemplate (@siteInfo);
+			add (manilaSuite.getString ("admin.restoreTemplateSuccess", pta: pta) + "<p>"); // 4/18/00 JES: localized
+			local (homeUrl = pta^.ftpSite^.url);
+			local (homeLink = html.getLink ("home page", homeUrl));
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.homepageLink = homeLink;
+			add (manilaSuite.getString ("admin.goToTheHomepage", @replacementTable, pta: pta)); // 4/18/00 JES: localized
+			return (manilaSuite.unTaint (htmlText))};
+		add (manilaSuite.getString ("admin.templateNotRestoredToDefault", pta: pta))} // 4/18/00 JES: localized
+	else { //display the restore-to-default form
+		add ("<b>" + manilaSuite.getString ("admin.restoreTemplatePageDescription", pta: pta) + "</b>"); // 4/18/00 JES: localized
+		add ("<form method=\"post\" action=\"" + pta^.fname + "\">");
+		add ("<input type=\"submit\" name=\"restoreTemplateToDefault\" value=\"" + manilaSuite.getString ("common.yesButton", pta: pta) + "\">"); // 4/18/00 JES: localized
+		add ("<input type=\"submit\" name=\"cancel\" value=\"" + manilaSuite.getString ("common.noButton", pta: pta) + "\">"); // 4/18/00 JES: localized
+		add ("</form>")};
+	
+	return (manilaSuite.unTaint (htmlText))}

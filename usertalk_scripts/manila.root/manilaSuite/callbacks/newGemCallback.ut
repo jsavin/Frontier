@@ -1,0 +1,17 @@
+on newGemCallback (adrContextTable) {
+	«manilaSuite.callbacks.newGemCallback : 04/06/30, 14:44:28 by DAB
+		«This callback runner allows the server manager to place a set of callback scripts 
+		«at config.manila.callbacks.newGem to postprocess after a gem is added
+	
+	local (adrUserCallbacks = @config.manila.callbacks.newGem);
+	
+	if defined (adrUserCallbacks^) { //loop through the callbacks
+		local (adrScript);
+		for adrScript in adrUserCallbacks {
+			try { //scriptErrors can't stop callbacks
+				while typeOf (adrScript^) == addressType {
+					adrScript = adrScript^};
+				if typeOf (adrScript^) == scriptType {
+					callScript (adrScript, {}, adrContextTable)}}}};
+	
+	return (true)} //return the table 

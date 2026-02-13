@@ -1,0 +1,14 @@
+on successMessage (pta, messageID, adrReplTbl) {
+	«manilaSuite.sitePrefs.utility.successMessage : 04/05/14, 20:47:30 by DAB
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	if not (messageID contains ".") {
+		messageID = "admin." + messageID};
+	add("<span style='color:darkblue'>");
+	add (manilaSuite.getString (messageID, adrReplTbl));
+	add(" " + mainResponder.localization.dateTimeString (manilaSuite.convertTime (pta: pta), pta: pta));
+	add("</span>");
+	
+	return htmltext}

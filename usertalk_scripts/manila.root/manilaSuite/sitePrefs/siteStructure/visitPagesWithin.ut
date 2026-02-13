@@ -1,0 +1,65 @@
+on visitPagesWithin (adrSite, relativePath, adrCallback) {
+	«manilaSuite.sitePrefs.siteStructure.visitPagesWithin : 04/05/16, 17:28:48 by DAB
+		«walk the site structure of Manila site at adrSite and invoke 
+		«adrCallback for each story and category whose path is within /relPath/
+		«manilaFixer.utilityvisitPagesWithin : 01/03/06, 23:32:16 by DAB
+	
+	«compile the XML outline if needed
+	manilaSuite.siteStructure.compileIfDirty (adrSite);
+	
+	local (adrStructure = @adrSite^.["#hierarchy"].structure[1]);
+	local (nomad = adrStructure);
+	
+	bundle { //locate starting point 
+		local (relpath = relativePath);
+		loop {
+			relpath = string.popLeading(relpath, "/");
+			if relPath == "" {
+				break};
+			local (nodeName = string.lower(string.nthField(relpath, "/", 1)));
+			relpath = string.delete(relpath, 1, string.length(nodename));
+			local (adrItem);
+			local (flFoundNode = false);
+			for adrItem in nomad {
+				if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adrItem) {
+					continue};
+				if string.lower(xml.getAttributeValue(adrItem, "pathname")) == nodename { //01/08/12, 16:28:50 by DAB
+					flFoundNode = true;
+					break}};
+			if not flFoundNode {
+				«scripterror("Invalid  path " + startPath + " at " + nodename)
+				scripterror("Invalid  path " + relativePath + " at " + nodename)}; //01/08/12, 16:20:01 by DAB
+			nomad = adrItem}};
+	
+	try {adrCallback^ (nomad, relativePath)}; //call the callback
+	
+	on doTable (adrTable) {
+		local (adrItem);
+		for adrItem in adrTable {
+			local (itemName = nameOf (adrItem^));
+			if not (itemName contains "\t") {
+				continue};
+			local (lowerItemName = string.lower (xml.convertToDisplayName (itemName)));
+			if not (relativePath endsWith "/") { //may need to pop off the last story from the path
+				relativePath = string.popSuffix (relativePath, "/");
+				relativePath = relativePath + "/"};
+			if lowerItemName == "category" {
+				relativePath = relativePath + adrItem^.["/atts"].pathname + "/";
+				try {adrCallback^ (adrItem, relativePath)}; //call the callback
+				doTable (adrItem)};
+			if lowerItemName == "story" {
+				relativePath = relativePath + adrItem^.["/atts"].pathname; //no trailing slash
+				try {adrCallback^ (adrItem, relativePath)}}; //call the callback
+			sys.systemTask()}; //01/01/25, 12:08:49 by DAB
+		relativePath = string.popSuffix (relativePath, '/');
+		if relativePath == "" {
+			relativePath = "/"}};
+	
+	doTable(nomad);
+	
+	return true};
+bundle {
+	local (cnt);
+	on counter(adrItem, itemPath) {
+		window.msg(itempath)};
+	visitPagesWithin (@craigpottonManilawebsite, "/", @counter)}

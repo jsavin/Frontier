@@ -1,0 +1,13 @@
+on listToString (theList) {
+	«manilaSuite.accessControl.listToString : 04/05/28, 18:13:56 by DAB
+		«after John vanDyke and Jake Savins algorithm for metadata, optimised by DAB
+		«Bayly.listToString : 02/08/09, 16:24:35 by DAB
+	local (s = string (theList));
+	return  string.replaceAll (string.replaceAll (string.replaceAll ( string.mid (s, 2, sizeOf (s) - 2), "\\\"", char (17)), "\"", ""), char (17), "\"")};
+«bundle    //test logic
+	«local (N = 1000)
+	«local (ticks = clock.ticks())
+	«for ix = N downto 1
+		«listToString({"one","two","nestedone\",\"nestedtwo"})
+	«ticks = clock.ticks() -ticks
+	«msg(N + " in " + ticks + " Ticks")

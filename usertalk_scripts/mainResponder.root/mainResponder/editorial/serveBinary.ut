@@ -1,0 +1,21 @@
+on serveBinary (pathargs) {
+	local (argtable); new (tableType, @argtable);
+	webserver.parseArgs (pathargs, @argtable);
+	local (adrmsg = mainResponder.editorial.getMessageTable (argtable.r, argtable.n));
+	local (adrbits = @adrmsg^.enclosurebits);
+	if not defined (adrbits^) {
+		scripterror ("The requested object does not exist.")};
+	case typeof (adrbits^) {
+		binarytype {
+			responseHeaders.["Content-Type"] = mainResponder.getODBMimeType (adrbits);
+			return (adrbits^)};
+		tabletype {
+			local (adritem = @adrbits^.[argtable.i]);
+			if not defined (adritem^) {
+				scripterror ("The requested object does not exist.")};
+			if typeof (adritem^) != binaryType {
+				scripterror ("The requested object is not a binary object.")};
+			responseHeaders.["Content-Type"] = mainResponder.getODBMimeType (adritem);
+			return (adritem^)}}
+	else {
+		scripterror ("The requested object does not exist or is not a binary object.")}}

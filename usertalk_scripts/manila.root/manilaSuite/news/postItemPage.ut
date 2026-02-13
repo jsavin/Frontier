@@ -1,0 +1,321 @@
+on postItemPage (pta=nil) {
+	«Changes:
+		«09/18/06; 4:24:45 PM by LL
+			«Bug fix: Return an error message to the user if there is a problem encountered while posting the enclosure.
+		«10/18/05; 3:39:53 AM by JES
+			«If multiple departments is enabled, and a news item is posted with no department, including Home Page, revert the news item to pending status, so it can be found easily on the Pending News Items page.
+		«10/17/05; 7:19:12 PM by JES
+			«Don't unnecessarily calculate the message table address a second time.
+		«10/17/05; 6:01:08 PM by JES
+			«Handle Revert to Pending button on edit news item page, for reverting posted items to pending status.
+		«9/14/05; 1:19:38 AM by JES
+			«Set pta^.adrPostedMessage to the address of the (newly) posted message table containing this news item. Provides a caller with the possibility of further manipulation of the news item.
+		«9/13/05; 7:35:27 PM by JES
+			«Added support for ETP callback validation, newsPostItem.
+		«8/23/05; 4:46:51 AM by JES
+			«Add support for Send Bulletin and Delete buttons on the edit form.
+		«7/10/05; 4:35:23 AM by JES
+			«Added support for summary field.
+		«7/7/05; 5:39:20 AM by JES
+			«Added support for multiple departments and home page pseudo-department.
+		«3/11/05; 7:31:36 PM by JES
+			«Added support for enclosures.
+		«2000-2004
+			«7/15/2003; 3:56:43 PM by JES
+				«Add support for maunal trackback pings.
+			«4/24/03; 5:47:40 PM by JES
+				«If the pref is enabled, possibly pick up the per-item comment link checkbox.
+			«4/17/03; 11:28:58 PM by JES
+				«When handling a POST for an existing news item, redirect to the editing form, skipping the preview. For new items, we want to see the preview, but for existing items, we want to go straight to the editing form again.
+			«4/8/03; 3:47:29 PM by JES
+				«Add the client IP address to the message table.
+			«10/29/00; 7:47:24 PM by JES
+				«Allow callbacks to run in mainresponder.discuss.addMessage to support search engine indexing of news items.
+			«07/05/00; 1:39:59 PM by PBS
+				«Neuter tags -- News Items obeys the legal tags list.
+			«05/11/00; 8:06:37 PM by JES
+				«merged in Brent's security fix for the client side trojan horse attack.
+			«05/09/00; 10:42:28 PM by PBS
+				«Check referer to defeat the client side trojan horse.
+			«05/04/00; 5:28:40 PM by JES
+				«localized
+			«04/19/00; 11:44:12 PM by PBS
+				«Created. Post a news item.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	local (adrSite = manilaSuite.getManilaSiteAddress ());
+	
+	bundle { //9/13/05 JES: ETP callback validation
+		local (adrValidator, errortext, urlname = "newsPostItem");
+		if manilaSuite.plugins.ETPoverride.getScriptAddress (urlName, @adrValidator) {
+			if not adrValidator^ (@errortext) { //validation error
+				return (errortext)}}};
+	
+	pta^.title = manilaSuite.getString ("admin.messageReceiver", pta: pta);
+	
+	case true { //handle delete commands -- we assume edits aren't saved at this point
+		defined (pta^.postArgs.deleteNewsItem) {
+			pta^.title = manilaSuite.getString ("news.deleteNewsItemPageTitle");
+			
+			local (htext = "");
+			on add (s) {
+				htext = htext + (s + "\r");};
+			
+			add ("<p>" + manilaSuite.getString ("news.deleteNewsItemConfirmation") + "</p>");
+			
+			local (msgNum = number (pta^.postArgs.msgNum));
+			local (adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, msgNum));
+			
+			add ("<p><form method=\"POST\">");
+			add ("<input type=\"hidden\" name=\"msgNum\" value=\"" + msgNum + "\">");
+			add ("<input type=\"submit\" name=\"cancelNewsItemDeletion\" value=\"" + manilaSuite.getString ("common.cancelButton") + "\">");
+			add ("<input type=\"submit\" name=\"deleteNewsItemConfirm\" value=\"" + manilaSuite.getString ("common.deleteButton") + "\">");
+			add ("</form></p>");
+			
+			add (manilaSuite.news.formatNewsItem (adrmsg, manilaSuite.news.getNewsItemTemplate (adrSite), flFullItemPage:true));
+			
+			return (htext)};
+		defined (pta^.postArgs.deleteNewsItemConfirm) {
+			local (msgNum = number (pta^.postArgs.msgNum));
+			local (adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, msgNum));
+			adrmsg^.flDeleted = true;
+			mainResponder.redirect (manilaSuite.getUrl ("discussMsgReader") + msgNum);
+			return ("")};
+		defined (pta^.postArgs.cancelNewsItemDeletion) { //redirect to archives
+			local (msgNum = number (pta^.postArgs.msgNum));
+			local (adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, msgNum));
+			mainResponder.redirect (manilaSuite.getPermalinkUrl (adrSite, adrMsg));
+			return ("")}};
+	
+	local (t);
+	new (tableType, @t);
+	
+	local (flMultipleDepartmentsEnabled = manilaSuite.getNewsSitePref ("newsItems.prefs.flMultipleDepartments", adrSite, false));
+	
+	bundle { //add posted values to t
+		t.title = pta^.postArgs.title;
+		t.url = pta^.postArgs.url;
+		if defined (pta^.postArgs.department) {
+			t.department = pta^.postArgs.department}
+		else { //multiple department support
+			t.department = {};
+			local (adr);
+			for adr in @pta^.postArgs {
+				if nameOf (adr^) beginswith "department_" {
+					t.department = t.department + string.delete (nameOf (adr^), 1, 11)}}};
+		t.description = pta^.postArgs.body;
+		if flMultipleDepartmentsEnabled {
+			if defined (pta^.postArgs.flOnHomePage) {
+				t.flOnHomePage = true}
+			else {
+				t.flOnHomePage = false}};
+		if defined (pta^.postArgs.summary) {
+			t.summary = pta^.postArgs.summary};
+		
+		bundle { //PBS 07/05/00: neuter tags, so News Items obeys legal tags
+			«It's tricky because this is a case of embedding HTML in XML.
+			local (adrLegalTags = @config.mainResponder.prefs.legalTags);
+			if defined (pta^.newsSite^.legalTags) {
+				adrLegalTags = @pta^.newsSite^.legalTags};
+			t.description = html.neuterTags (t.description, adrLegalTags);
+			t.description = string.replaceAll (t.description, "&lt;", "&amp;lt;")}};
+	local (body = manilaSuite.news.tableToXml (@t));
+	local (now = manilaSuite.convertTime ());
+	local (flNew = false);
+	
+	local (msgNum);
+	
+	local (adrMember = pta^.adrMemberInfo);
+	local (adrTable);
+	
+	on postMessage () {
+		manilaSuite.referer.checkNew ("newsItemNew"); //PBS 05/09/00: check referer to defeat client side trojan horse
+		local (subject = t.title);
+		local (memberKey = nameof (pta^.adrMemberInfo^));
+		
+		local (data); new (tableType, @data);
+		data.ipAddress = pta^.client;
+		
+		local (msgNum = mainresponder.discuss.addMessage (subject, memberKey, 0, body, true, false, groupName:pta^.defaultMembershipGroup, postTime:now, adrdata:@data)); //10/29/00 JES: commented flCallback:false -- allows search engine indexing.
+		
+		return (msgNum)};
+	on postEditedMessage () {
+		manilaSuite.referer.checkEdit ("newsItemEditInBrowser"); //PBS 05/09/00: check referer to defeat client side trojan horse
+		adrTable = mainResponder.discuss.getMessageTable (msgNum);
+		local (adrMember = pta^.adrMemberInfo);
+		bundle { //if the object is checked out by someone else, return an error page.
+			if not (manilaSuite.custody.memberCanCheckOutObject (adrTable, adrMember, adrSite, true)) { //true because it's a message
+				return (manilaSuite.getString ("news.cantPostNewsItemCustodyError", pta: pta))}};
+		adrTable^.subject = t.title;
+		mainResponder.discuss.setMessageText (adrTable, body, true, false, lastUpdateTime:now);
+		bundle { //check in the object
+			manilaSuite.custody.checkIn (adrTable, adrMember, adrSite, true)}}; //true because it's a message
+	
+	if defined (pta^.postArgs.msgNum) { //existing news item?
+		msgNum = pta^.postArgs.msgNum;
+		postEditedMessage ()}
+	else { //new news item
+		flNew = true;
+		msgNum = postMessage ();
+		adrTable = mainResponder.discuss.getMessageTable (msgNum);
+		t.postTime = adrTable^.postTime};
+	
+	bundle { //deal with possibility that multiple departments were on, but have been switched off: delete flOnHomePage flag if present
+		if defined (adrTable^.newsItem.flOnHomePage) {
+			delete (@adrTable^.newsItem.flOnHomePage)}};
+	
+	manilaSuite.discuss.setTimeZoneForMessage (adrTable); //PBS 04/03/00: store time zone info with message
+	
+	bundle { //enclosure
+		if defined (pta^.postArgs.enclosure) {
+			local (enclosureUrl, flValidUrl=false, flHaveMetaData=false, length, mimeType);
+			case typeOf (pta^.postArgs.enclosure) {
+				stringType { //typed URL or shortcut name
+					local (s = string.trimWhiteSpace (pta^.postArgs.enclosure));
+					if s beginswith "http://" { //we have a url -- check validity, get data from server
+						flValidUrl = true;
+						enclosureUrl = s}
+					else { //we might have a shortcut
+						try { //only add as shortcut if the shortcut exists
+							s = pta^.glossary^.[s];
+							if (s beginswith "{") and (s endswith "}") { //shortcut to a gem is a macro -- call the macro to get link text
+								s = string.delete (s, 1, 1);
+								s = string.delete (s, sizeOf (s), 1);
+								s = evaluate (s)};
+							local (attname);
+							case true {
+								s contains "href=" {
+									attname = "href"};
+								s contains "HREF=" {
+									attname = "HREF"};
+								s contains "src" {
+									attname = "src"};
+								s contains "SRC" {
+									attname = "SRC"}};
+							if attname != nil {
+								local (t); xml.compile (s, @t);
+								local (adrtag = @t[1]);
+								s = xml.getAttributeValue (adrtag, attname)};
+							flValidUrl = true;
+							enclosureUrl = s}}};
+				tableType { //uploaded file -- first post as a gem, and then get info about it
+					if sizeOf (pta^.postArgs.enclosure.data) > 0 {
+						local (adrGem, s);
+						s = manilaSuite.gems.postGemPage (pta, "enclosure", true, true, @adrGem);
+						if s == "" {
+							enclosureUrl = adrGem^.url;
+							length = adrGem^.sizeBytes;
+							mimeType = adrGem^.["Content-Type"];
+							flValidUrl = true;
+							flHaveMetaData = true}
+						else {
+							scriptError (s)}}}};
+			if flValidUrl { //actually add the enclosure
+				local (flchanged = true);
+				if defined (adrtable^.enclosure) {
+					if defined (adrtable^.enclosure.url) {
+						if adrtable^.enclosure.url == enclosureUrl {
+							flchanged = false}}};
+				if flchanged {
+					if defined (adrtable^.enclosure) {
+						table.emptytable (@adrtable^.enclosure)}
+					else {
+						new (tabletype, @adrtable^.enclosure)};
+					adrtable^.enclosure.url = manilaSuite.untaint (enclosureUrl);
+					if defined (adrtable^.enclosure.length) and defined (adrtable^.enclosure.type) {
+						length = adrtable^.enclosure.length;
+						type = adrtable^.enclosure.type;
+						flHaveMetaData = true};
+					if not flHaveMetaData { //get meta-data about the file from the server that's hosting it
+						try {
+							local (urlParts = string.urlsplit (enclosureUrl));
+							local (s = tcp.httpClient ("HEAD", server:urlParts [2], path:urlParts [3], timeOutTicks:60*30, flmessages:false, ctFollowRedirects:5, flJustHeaders:true));
+							local (headheaders);
+							new (tabletype, @headheaders);
+							webserver.util.parseHeaders (s, @headheaders);
+							length = headheaders.["Content-length"];
+							mimeType = headheaders.["Content-Type"];
+							flHaveMetaData = true}};
+					if flHaveMetaData { //set length and type
+						adrtable^.enclosure.length = manilaSuite.untaint (length);
+						adrtable^.enclosure.type = manilaSuite.untaint (mimeType);
+						if defined (adrtable^.error) {
+							delete (@adrtable^.error)};
+						manilaSuite.cache.tossHomePage (pta)}
+					else { //set error text in the enclosure table
+						adrtable^.enclosure.error = manilaSuite.getString ("news.cantAddEnclosureCheckUrl")}}}};
+		if defined (pta^.postArgs.flDeleteEnclosure) {
+			if defined (adrtable^.enclosure) {
+				delete (@adrtable^.enclosure);
+				manilaSuite.cache.tossHomePage (pta)}}};
+	
+	bundle { //manual trackback ping(s)
+		if defined (pta^.postArgs.urlsToPing) {
+			local (s = pta^.postArgs.urlsToPing, i);
+			s = string.replace (s, "\r\n", "\r");
+			s = string.replace (s, "\n", "\r");
+			local (ct = string.countFields (s, "\r"));
+			for i = 1 to ct {
+				local (urltoping = string.trimWhiteSpace (string.nthField (s, "\r", i)));
+				bundle { //reality checks
+					if urltoping == "" {
+						continue};
+					if not (urltoping contains "/") {
+						urltoping = urltoping + "/"};
+					if not (urltoping beginswith "http://") {
+						urltoping = "http://" + urltoping}};
+				try {trackback.initOutboundUrl (adrTable, urltoping)}}}};
+	
+	bundle { //set news item atts
+		manilaSuite.news.setMessageAttributes (adrTable, @t)};
+	
+	 bundle { //possibly set flCommentLinkEnabled for the message
+		if manilaSuite.getNewsSitePref ("newsItems.flCommentsCheckOnEditPage", default:false, flCreate:true) {
+			local (flEnabledByDefault = manilaSuite.getNewsSitePref ("newsItems.flCommentsEnabledByDefault", default:true, flCreate:true));
+			if defined (pta^.postArgs.flCommentLinkEnabled) {
+				if (not flEnabledByDefault) or defined (adrTable^.newsItem.flCommentLinkEnabled) {
+					adrTable^.newsItem.flCommentLinkEnabled = true}}
+			else {
+				if flEnabledByDefault or defined (adrTable^.newsItem.flCommentLinkEnabled) {
+					adrTable^.newsItem.flCommentLinkEnabled = false}}}};
+	
+	bundle { //call new callbacks
+		if flNew {
+			try {manilaSuite.callbacks.newMessageCallback (adrTable)}}
+		else {
+			try {manilaSuite.callbacks.changedMessageCallback (adrTable)}};
+		pta^.adrPostedMessage = adrTable};
+	
+	bundle { //possibly revert to pending status
+		if flMultipleDepartmentsEnabled {
+			if manilaSuite.news.isPosted (adrTable) {
+				if defined (adrTable^.newsItem.flOnHomePage) {
+					if not adrTable^.newsItem.flOnHomePage {
+						if defined (adrTable^.newsItem.department) {
+							if sizeOf (adrTable^.newsItem.department) == 0 {
+								pta^.postArgs.revertToPending = true}}}}}};
+		if defined (pta^.postArgs.revertToPending) {
+			manilaSuite.news.setStatus (msgNum, adrSite, "editing", adrTable)}};
+	
+	bundle { //update indexes
+		manilaSuite.news.updateIndexes (adrTable, adrSite)};
+	
+	bundle { //redirect
+		local (redirectUrl);
+		case true { //specific redirect cases
+			defined (pta^.postArgs.revertToPending) { //just reverted to pending status -- redirect to pending items page
+				redirectUrl = manilaSuite.getSiteUrl (adrSite) + "newsItems/"};
+			defined (pta^.postArgs.sendBulletin) { //we're sending this as a bulletin after posting changes
+				redirectUrl = manilaSuite.getSiteUrl (adrSite) + "bulletins/?msgnum=" + msgNum};
+			defined (pta^.postArgs.redirect) { //the caller specified where to redirect to
+				redirectUrl = pta^.postArgs.redirect}}
+		else { //redirect to edit page by default
+			local (editUrl = manilaSuite.getUrl ("newsItemEditInBrowser", pta));
+			editUrl = editUrl + msgNum;
+			if not flNew { //redirect to the editing form -- for new items, you want to see the preview
+				editUrl = editUrl + "#edit"};
+			redirectUrl = editUrl};
+		mainResponder.redirect (redirectUrl)};
+	
+	return ("")} //we're redirecting, this should never display

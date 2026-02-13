@@ -1,0 +1,6 @@
+on getNewsSiteAddress (adrSite=nil) {
+	if adrSite != nil {
+		return (@adrSite^.["#newsSite"])};
+	
+	local (pta = html.getPageTableAddress ());
+	return (pta^.newsSite)}

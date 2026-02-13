@@ -1,0 +1,31 @@
+on newPicturePage () {
+	«06/11/00; 2:59:03 PM by JES
+		«The new picture page
+			«Was a WPText object in the site. It's now a script. The site shell upgrade checks to make sure that users haven't modified the object, and if not, a script is installed which calls this script.
+	«Changes:
+		«01/04/01; 2:04:57 PM by JES
+			«If the member isn't an editor, don't display the new picture form.
+		«9/13/01; 2:14:52 PM by PBS
+			«Don't use a maxlength attribute in the subject field.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	pta^.title = manilaSuite.getString ("pictures.newPicturePageTitle");
+	bundle { //01/04/01 JES: only allow new pictures if you're an editor
+		if not manilaSuite.editors.editorialTest () {
+			return (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	local (titlePrompt, buttonText, filePrompt, bodyPrompt);
+	titlePrompt = manilaSuite.getString ("common.titlePrompt");
+	buttonText = manilaSuite.getString ("pictures.postNewPictureButton");
+	filePrompt = manilaSuite.getString ("pictures.filePrompt");
+	bodyPrompt = manilaSuite.getString ("common.textPrompt");
+	
+	«return (mainResponder.discuss.newMessageForm (0, "", titlePrompt, buttonText, redirectUrl:pta^.urls^.pictureReader, flShowFileUpload:true, filePrompt:filePrompt, bodyPrompt:bodyPrompt, actionURL:pta^.urls^.picturePostMessage, flLimitSubjectLength:false)) //PBS 09i/13/01: don't use maxlength attribute in subject field
+	local (adrETPbuilder = @mainResponder.discuss.newMessageForm); //04.06.22, 22:13:57 by DAB
+	manilaSuite.plugins.ETPoverride.getScriptAddress("editorialNewPicture", @adrETPbuilder); //04.06.23, 12:24:58 by DAB
+	local (htmltext = adrETPbuilder^ (0, "", titlePrompt, buttonText, redirectUrl:pta^.urls^.pictureReader, flShowFileUpload:true, filePrompt:filePrompt, bodyPrompt:bodyPrompt, actionURL:pta^.urls^.picturePostMessage, flLimitSubjectLength:false)); //PBS 09i/13/01: don't use maxlength attribute in subject field
+	local (accessControls = manilaSuite.accesscontrol.ETPcontrols(pta, "editorialnewpicture", nil)); //accesscontrol 04.05.21, 22:03:59 by DAB
+	if accessControls != "" {
+		htmlText = string.replaceAll(htmlText, "</form>", accessControls + "</form>")};
+	
+	return htmltext}

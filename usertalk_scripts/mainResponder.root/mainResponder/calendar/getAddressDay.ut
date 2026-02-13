@@ -1,0 +1,13 @@
+on getAddressDay (adr) { //turn an address into a date
+	«Tue, May 23, 2000 at 5:40:45 PM by AR
+		«Old code
+			«on getAddressDay (adr)
+				«local (alist = string.parseaddress (adr))
+				«local (sizelist = sizeof (alist))
+				«local (day = number (alist [sizelist]))
+				«local (month = number (alist [sizelist - 1]))
+				«local (year = number (alist [sizelist - 2]))
+				«return (date.set (day, month, year, 0, 0, 0))
+	kernel (mrcalendar.getaddressday)};
+«bundle //debugging code
+	«dialog.notify (getAddressDay (@AndresFirstSiteManilaWebsite.["#discussionGroup"].calendar.["2000"].["02"].["24"]))

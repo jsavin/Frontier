@@ -1,0 +1,322 @@
+on getRss (adrSite=nil, adrIncludeCallback=nil, adrItemCallback=nil, adrChannelCallback=nil, adrNamespaceCallback=nil, indexName="", start=1, maxitems=50, flReverse=true, title="", link="", description="", language="none", managingEditor="", webMaster="", ttl=60) {
+	«Changes
+		«7/21/07; 10:48:10 PM by LL
+			«Bug fix: Encode the enclosure URL.
+		«4/4/07; 3:48:10 PM by LL
+			«Fix bug with summaries not working properly for department feeds.
+		«2/14/07; 11:26:57 AM by LL
+			«Don't list pending news items.
+		«12/10/06; 2:04:45 PM by LL
+			«Commented out some unused lines for deprecated copyright notices.
+		«11/8/06; 5:46:18 PM by LL
+			«Added channel-level pubDate and Creative Commons elements.
+			«Changed <docs> to link to the RSS 2.0 spec at http://blogs.law.harvard.edu/tech/rss
+			«Removed channel-level <webMaster> and <managingEditor> elements because they include email addresses which could be mined by spammers.
+		«1/31/06; 2:19:53 AM by JES
+			«Add support for pending messages.
+		«2005 and earlier
+			«7/9/05; 5:31:07 AM by JES
+				«Add support for news item summaries in RSS feeds.
+			«3/30/05; 2:31:04 AM by JES
+				«Added support for dc:creator element. This element specifies the author of an item by name, rather than by email address as the RSS 2.0 spec says that the author sub-element of item should.
+				«We don't use the built-in author element because it uses an email address, and we're trying to avoid getting spammed.
+			«3/20/05; 1:46:35 AM by JES
+				«Added support for old style DG enclosures, with enclosure content stored in the message table.
+			«3/12/05; 5:44:32 AM by JES
+				«Added enclosure support.
+			«5/9/03; 7:41:09 PM by JES
+				«Created. A generalized script for generating RSS from a Manila site's discussion group.
+					«Parameters:
+						«adrSite
+							«The address of the Manila site to generate RSS from its discussion group. If not specified, then we assume we're running in the website framework context and get the site address from the page table.
+						«adrIncludeCallback
+							«The address of a callback script which takes one parameter -- the address of a discussion group message, and returns true or false -- true to include the message in the RSS feed, and false to omit it.
+							«If not specified, all non-deleted discussion group messages are included.
+						«adrItemCallback
+							«The address of a callback script which adds elements to an item element.
+						«adrChannelCallback
+							«The address of a callback script which adds elements to the channel element.
+						«adrNamespaceCallback
+							«The address of a callback script which adds namespace declarations to the rss element.
+						«indexName
+							«The name of an index to loop over, i.e. stories, homePages, pictures, etc. If not specified, then we loop over all messages in the discussion group.
+						«start
+							«The index of the first item to put in the RSS feed. Defaults to 1, meaning the last message in the DG, or the last message in the given index.
+						«maxitems
+							«The maximum number of items to include -- default is 50.
+						«flReverse
+							«If true, items in the RSS feed are presented in reverse-chronological order. If false, then they're presented in chronological order. Default is true.
+						«title, link, description, language, managingEditor, webMaster and ttl
+							«These all correspond to channel-level elements in RSS 2.0. If no value is specified, we generate a sensible default.
+						«Note: The item callback, channel callback, and namespace callback follow gthe convention of similar callbacks in Radio. See this page for docs:
+							«http://backend.userland.com/stories/storyReader$210
+	
+	if adrSite == nil { //get from page table
+		adrSite = manilaSuite.getSiteAddress ()};
+	
+	try { //set up the page table to serve XML instead of HTML
+		local (pta = html.getPageTableAddress ());
+		«workspace.pt = pta^ //debugging
+		pta^.responseHeaders.["Content-Type"] = "text/xml";
+		pta^.clayCompatibility = false;
+		pta^.activeUrls = false;
+		wp.newTextObject ("{bodytext}", @pta^.template)};
+	
+	local (xtext = "", il = 0, ct = 0);
+	on add (s) {
+		xtext = xtext + (string.filledString ("\t", il) + s + "\r\n");};
+	on entityEncode (s) {
+		s = string.replaceAll (s, "&", "&amp;");
+		s = string.replaceAll (s, "<", "&lt;");
+		s = string.replaceAll (s, ">", "&gt;");
+		s = xml.entityEncode (s, false);
+		return (s)};
+	on encode (s) {
+		if system.environment.isMac { //02/22/2001 JES: convert to Latin text
+			return (entityEncode (latinToMac.macToLatin (s)))}
+		else {
+			return (entityEncode (s))}};
+	on doCallback (adrcallback, adrpost=nil) {
+		if adrcallback == nil {
+			return};
+		local (t, adr, name);
+		new (tabletype, @t);
+		try { //call the callbacks
+			if adrpost != nil {
+				adrcallback^ (@t, adrpost)}
+			else {
+				adrcallback^ (@t)}};
+		for adr in @t {
+			name = nameof (adr^);
+			if name contains "\t" { //allowing more than one element with the same name
+				name = string.nthfield (name, "\t", 2)};
+			if typeof (adr^) == tabletype {
+				local (adrsubitem, s = "<" + name);
+				for adrsubitem in adr {
+					if nameof (adrsubitem^) != "/value" {
+						s = s + " " + nameof (adrsubitem^) + "=\"" + encode (string (adrsubitem^)) + "\""}};
+				adrsubitem = @adr^.["/value"];
+				if defined (adrsubitem^) {
+					s = s + ">" + encode (string (adrsubitem^)) + "</" + name + ">"}
+				else {
+					s = s + " />"};
+				add (s)}
+			else {
+				add ("<" + name + ">" + encode (string (adr^)) + "</" + name + ">")}};
+		return};
+	
+	bundle { //xml and generator comment
+		add ("<?xml version=\"1.0\"?>");
+		add ("<!-- RSS generated by UserLand Frontier v" + frontier.version () + " on " + date.netstandardstring (clock.now ()) + " -->")};
+	bundle { //rss
+		local (s = "");
+		local (spacestable);
+		new (tabletype, @spacestable);
+		spacestable.dc = "http://purl.org/dc/elements/1.1/";
+		if defined (adrSite^.["#newsSite"].rssInfo.ccLicense) {
+			spacestable.creativeCommons = "http://backend.userland.com/creativeCommonsRssModule"};
+		if adrNamespaceCallback != nil { //call namespace callback
+			try {
+				adrNamespaceCallback^ (@spacestable)};
+			local (adr)};
+		for adr in @spacestable {
+			s = s + "xmlns:" + nameof (adr^) + "=\"" + string (adr^) + "\" "};
+		s = string.trimwhitespace (s);
+		add ("<rss version=\"2.0\" " + s + ">"); il++};
+	bundle { //channel
+		add ("<channel>"); il++;
+		«local (authorNameForCopyright = "")
+		bundle { //get defaults
+			if title == "" {
+				title = adrSite^.["#newsSite"].siteName + " Discussion Group"};
+			if link == "" {
+				link = adrSite^.["#urls"].discussHomePage};
+			if description == "" {
+				description = string (adrSite^.["#newsSite"].tagLine)};
+			«if managingEditor == ""
+				«if defined (adrSite^.["#newsSite"].rssInfo.userLandExtensions.managingEditor)
+					«managingEditor = adrSite^.["#newsSite"].rssInfo.userLandExtensions.managingEditor
+				«else
+					«managingEditor = adrSite^.["#newsSite"].sysopMail [1]
+					«local (adrmember = manilaSuite.members.getMemberTableFromSiteAddress (adrsite, managingEditor))
+					«if defined (adrmember^.personalInfo.name)
+						«managingEditor = managingEditor + " (" + adrmember^.personalInfo.name + ")"
+						«authorNameForCopyright = " " + adrmember^.personalInfo.name
+			«if webMaster == ""
+				«if defined (adrSite^.["#newsSite"].rssInfo.userLandExtensions.webmaster)
+					«webMaster = adrSite^.["#newsSite"].rssInfo.userLandExtensions.webmaster
+				«else
+					«webMaster = managingEditor
+			«if defined (adrSite^.["#newsSite"].rssInfo.userLandExtensions.copyrightOwner)
+				«authorNameForCopyright = adrSite^.["#newsSite"].rssInfo.userLandExtensions.copyrightOwner};
+		add ("<title>" + encode (title) + "</title>");
+		add ("<link>" + encode (link) + "</link>");
+		add ("<description>" + encode (description) + "</description>");
+		if defined (adrSite^.["#newsSite"].rssInfo.ccLicense) {
+			add ("<creativeCommons:license>" + adrSite^.["#newsSite"].rssInfo.ccLicense + "</creativeCommons:license>")};
+		if language != "none" {
+			add ("<language>" + language + "</language>")};
+		add ("<pubDate>" + date.netstandardstring (clock.now ()) + "</pubDate>");
+		add ("<lastBuildDate>" + date.netstandardstring (clock.now ()) + "</lastBuildDate>");
+		add ("<docs>http://blogs.law.harvard.edu/tech/rss</docs>");
+		add ("<generator>UserLand Frontier v" + frontier.version () + "</generator>");
+		«add ("<managingEditor>" + encode (managingEditor) + "</managingEditor>")
+		«add ("<webMaster>" + encode (webMaster) + "</webMaster>")
+		add ("<ttl>" + ttl + "</ttl>");
+		doCallback (adrChannelCallback)};
+	bundle { //items
+		local (msgReaderUrl = adrsite^.["#urls"].discussMsgReader);
+		if not (msgReaderUrl endswith "$") {
+			msgReaderUrl = msgReaderUrl + "$"};
+		local (flFirstMessage = true);
+		on visitCallback (adrmsg) { //add one item
+			local (flInclude = true);
+			if defined (adrmsg^.flDeleted) {
+				flInclude = adrmsg^.flDeleted};
+			if flInclude { //pending messages
+				if defined (adrmsg^.flPending) {
+					flInclude = adrmsg^.flPending}};
+			if flInclude { //pending news items
+				if defined (adrmsg^.flPending) {
+					flInclude = adrmsg^.flPending};
+				if manilaSuite.news.isNewsItem (adrmsg) {
+					flInclude = manilaSuite.news.isReleased (adrmsg)}};
+			if flInclude { //try the callback
+				if adrIncludeCallback != nil {
+					if not adrIncludeCallback^ (adrmsg) {
+						flInclude = false}}};
+			if flInclude {
+				if flFirstMessage { //ETag/If-None-Match support
+					try { //in a try block in case we're being called outside the website framework context
+						if flReverse { //use the lastUpdate time of the first (most recent) message for the etag value
+							manilaSuite.cache.ifNoneMatch ("e" + number (adrmsg^.lastUpdate))}
+						else { //use the count of responses in the first message thread
+							manilaSuite.cache.ifNoneMatch ("e" + manilaSuite.discuss.getResponseCount (adrmsg))}};
+					flFirstMessage = false};
+				add ("<item>"); il++;
+				bundle { //title
+					local (title = string.trimWhiteSpace (adrmsg^.subject));
+					if sizeOf (title) > 0 {
+						add ("<title>" + encode (title) + "</title>")}};
+				bundle { //description, link
+					local (link = "");
+					if defined (adrmsg^.newsItem.url) {
+						link = adrmsg^.newsItem.url};
+					local (description);
+					if defined (adrmsg^.newsitem.description) {
+						description = adrmsg^.newsitem.description;
+						if manilaSuite.getNewsSitePref ("newsItems.flSummariesEnabled", adrSite, false) {
+							if manilaSuite.getNewsSitePref ("newsItems.flSummariesInRss", adrSite, false) {
+								local (summary = "");
+								if defined (adrmsg^.newsitem.summary) {
+									summary = adrmsg^.newsitem.summary};
+								if summary == "" {
+									if manilaSuite.getNewsSitePref ("newsItems.flSummariesAutomatic", adrSite, false) {
+										summary = manilaSuite.news.getSummary (adrmsg)}};
+								if summary != "" {
+									description = summary;
+									if manilaSuite.getNewsSitePref ("newsItems.flSummariesOnHomePage", adrSite, false) { //link to full item if permalink is to summary
+										try {link = manilaSuite.getUrl ("newsItemViewFullItem") + "$" + adrmsg^.msgNum}}}}}}
+					else { //use body
+						description = adrmsg^.body};
+					bundle { //convert line-feeds for paragraph expansion
+						description = string.replaceAll (description, "\n", "");
+						description = string.replaceAll (description, "\r\r", "\r<p>")};
+					try { //process macros
+						description = html.processMacros (description, true, html.getPageTableAddress ())};
+					add ("<description>" + encode (description) + "</description>");
+					if sizeOf (link) > 0 {
+						add ("<link>" + encode (link) + "</link>")}
+					else { //use the DG reader url for the link
+						add ("<link>" + encode (msgReaderUrl + adrmsg^.msgnum) + "</link>")}};
+				bundle { //guid, pubDate
+					bundle { //guid
+						«add ("<guid>" + encode (msgReaderUrl + adrmsg^.msgnum) + "</guid>")
+						local (description);
+						if defined (adrmsg^.newsitem.description) {
+							description = adrmsg^.newsitem.description;
+							if manilaSuite.getNewsSitePref ("newsItems.flSummariesEnabled", adrSite, false) {
+								if manilaSuite.getNewsSitePref ("newsItems.flSummariesInRss", adrSite, false) {
+									local (summary = "");
+									if defined (xmlTable.summary) {
+										summary = xmlTable.summary};
+									if summary == "" {
+										if manilaSuite.getNewsSitePref ("newsItems.flSummariesAutomatic", adrSite, false) {
+											summary = manilaSuite.news.getSummary (adrmsg)}};
+									if summary != "" {
+										description = summary;
+										if manilaSuite.getNewsSitePref ("newsItems.flSummariesOnHomePage", adrSite, false) { //link to full item if permalink is to summary
+											try {link = manilaSuite.getUrl ("newsItemViewFullItem") + "$" + adrmsg^.msgNum}}}}}}
+						else { //use body
+							description = adrmsg^.body};
+						add ("<guid isPermalink=\"false\">" + string.hashMd5 (description) + "</guid>")};
+					bundle { //pubDate
+						if defined (adrmsg^.newsitem.postTime) {
+							add ("<pubDate>" + date.netStandardString (adrmsg^.newsitem.postTime) + "</pubDate>")}
+						else {
+							add ("<pubDate>" + date.netStandardString (adrmsg^.postTime) + "</pubDate>")}}};
+				bundle { //categories
+					if defined (adrmsg^.newsItem.department) {
+						if sizeOf (adrmsg^.newsItem.department) > 0 {
+							if typeOf (adrmsg^.newsItem.department) == listType {
+								local (cat);
+								for cat in adrmsg^.newsItem.department {
+									add ("<category>" + encode (cat) + "</category>")}}
+							else { //single department
+								add ("<category>" + encode (adrmsg^.newsItem.department) + "</category>")}}}};
+				«bundle //author
+					«local (author = adrmsg^.member)
+					«try //get the author's name
+						«local (adrmember = manilaSuite.members.getMemberTableFromSiteAddress (adrSite, author))
+						«if defined (adrmember^.personalInfo.name)
+							«author = adrmember^.personalInfo.name
+					«if author contains "@" //hide email addresses
+						«author = string.nthField (author, "@", 1) + "@..."
+					«add ("<author>" + encode (author) + "</author>")
+				bundle { //dc:creator
+					local (author = adrmsg^.member);
+					try { //get the author's name
+						local (adrmember = manilaSuite.members.getMemberTableFromSiteAddress (adrSite, author));
+						if defined (adrmember^.personalInfo.name) {
+							author = adrmember^.personalInfo.name}};
+					if author contains "@" { //hide email addresses
+						author = string.nthField (author, "@", 1) + "@..."};
+					add ("<dc:creator>" + encode (author) + "</dc:creator>")};
+				bundle { //enclosure
+					local (flEnclosureAdded = false);
+					if defined (adrmsg^.enclosure) {
+						local (adrEnclosure = @adrmsg^.enclosure);
+						if defined (adrEnclosure^.length) and defined (adrEnclosure^.type) { //reality check
+							flEnclosureAdded = true;
+							add ("<enclosure url=\"" + encode (adrEnclosure^.url) + "\" length=\"" + adrEnclosure^.length + "\" type=\"" + adrEnclosure^.type + "\" />")}};
+					if not flEnclosureAdded { //check for old-style DG enclosure
+						if defined (adrmsg^.enclosureBits) { //this is an old-style enclosure, with the content and type stored in the message table
+							if typeOf (adrmsg^.enclosureBits) == binaryType { //only binary objects are supported here -- all others use a viewer in a browser
+								flEnclosureAdded = true;
+								add ("<enclosure url=\"" + adrsite^.["#urls"].discussHomePage + "enclosures/view$" + adrmsg^.msgnum + "\" length=\"" + sizeOf (adrmsg^.enclosureBits) + "\" type=\"" + mainResponder.getODBMimeType (@adrmsg^.enclosureBits) + "\" />")}}}};
+				bundle { //run item-level callback
+					doCallback (adrItemCallback, adrmsg)};
+				add ("</item>"); il--;
+				ct++;
+				if ct == maxitems { //return false to stop
+					return (false)}};
+			return (true)}; //continue looping
+		manilaSuite.discuss.visitIndex (adrSite, indexName, @visitCallback, flReverse:flReverse, start:start, ct:infinity)};
+	bundle { //close out channel and rss
+		add ("</channel>"); il--;
+		add ("</rss>"); il--};
+	
+	try { //turn off rendering to prevent double-macro/glossary expansion
+		local (pta = html.getPageTableAddress ());
+		pta^.flRender = false;
+		pta^.processMacros = false;
+		pta^.expandGlossaryItems = false;
+		pta^.autoParagraphs = false};
+	
+	return (xtext)};
+«bundle //test code
+	«wp.newTextObject (getRss (@jaketest2ManilaWebsite), @workspace.rssText)
+	«edit (@workspace.rssText)
+«bundle //more test code
+	«html.setPageTableAddress (@workspace.pt)
+	«getRss ()

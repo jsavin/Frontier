@@ -1,0 +1,22 @@
+on subscribe (adrservice) {
+	«Changes
+		«1/6/2001; 10:37:17 AM by DW
+			«The service has a cloud sub-table of compilation.
+			«Send an XML-RPC or SOAP message to the cloud requesting notification of changes.
+			«This code came from myUserLandSuite.updateSubscriptions in Radio.
+		«1/6/01; 3:46:22 PM by JES
+			«Changed the value of the 1st and 3rd parameters in the SOAP implementation to supply the correct actionURI and methodName.
+	local (adrlogtable = log.addtoguestdatabase ("pleaseNotify"));
+	adrlogtable^.adrservice = adrservice;
+	with adrservice^.compilation.cloud {
+		try {
+			local (url = nameof (adrservice^), result);
+			if protocol == "xml-rpc" {
+				local (params = {"manila.rss.channelChanged", user.inetd.config.http.port, "/RPC2", "xml-rpc", {url}});
+				result = betty.rpc.client (domain, port, registerProcedure, @params, rpcPath: path)};
+			if protocol == "soap" {
+				local (params = {"channelChanged", user.inetd.config.http.port, "/manila/rss", "soap", {url}});
+				result = soap.rpc.client (path, registerProcedure, @params, domain, port)};
+			adrlogtable^.result = result}
+		else {
+			adrlogtable^.error = tryError}}}

@@ -1,0 +1,30 @@
+on megabytePref (prompt, adrnumber, lowerbound=0, upperbound=infinity, colspan=1, textToRight="") {
+	«Changes:
+		«4/22/03; 2:31:21 AM by JES
+			«Created.
+	local (pta = html.getpagetableaddress ());
+	local (size = 6);
+	if sizeof (string (lowerbound)) > size {
+		size = sizeof (string (lowerbound))};
+	local (maxlength = 10, type = "text");
+	local (error = "");
+	if pta^.method == "POST" {
+		local (value);
+		try {
+			if system.environment.isRadio { //PBS 02/05/02: conditionalized to work in Frontier
+				value = double (pta^.radioresponder.postargs.[string.urlEncode (string.popFileFromAddress (adrnumber))]) * (1024*1024)}
+			else {
+				value = double (pta^.postargs.[string.urlEncode (string.popFileFromAddress (adrnumber))]) * (1024*1024)};
+			if value < lowerbound {
+				error = radio.prefs.errorstring ("Can't set the number because it is too small. The smallest permissible value is " + double (lowerbound) + ".")};
+			if value > upperbound {
+				error = radio.prefs.errorstring ("Can't set the number because it is too large. The largest permissible value is " + doubl (upperbound) + ".")};
+			if sizeof (error) == 0 {
+				local (adr = address (string.popFileFromAddress (adrnumber)));
+				adr^ = value}}
+		else {
+			error = radio.prefs.errorstring (tryError)}};
+	local (inputField = "<input type=\"" + type + "\" name=\"" + string.popFileFromAddress (adrnumber) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + (adrnumber^ / (1024.0*1024)) + "\">");
+	local (s = "<tr><td colspan=\"2\"><table><tr><td valign=\"middle\">" + prompt + ":</td><td valign=\"middle\">" + inputField + textToRight + "</tr></table></td></tr>");
+	return (error + "<tr><td align=\"left\" nowrap>" + prompt + ":</td><td align=\"left\" valign=\"top\" colspan=\"" + colspan + "\" width=\"70%\"><input type=\"" + type + "\" name=\"" + string.urlEncode (string.popFileFromAddress (adrnumber)) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + (adrnumber^ / (1024.0*1024)) + "\">" + textToRight + "</td></tr>");
+	return (error + s)}

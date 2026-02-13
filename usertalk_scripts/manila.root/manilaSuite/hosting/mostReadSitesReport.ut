@@ -1,0 +1,67 @@
+on mostReadSitesReport (adrSitesTable, n, d=nil) {
+	«Generate a page listing the n most read sites.
+		«05/03/00; 3:11:34 PM by PBS
+		«Changes:
+			«05/15/00; 7:49:25 PM by JES
+				«localized
+	
+	local (htmlText, indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + string.filledString ('\t', indentLevel) + s + "\r"};
+	
+	local (tempTable); // 05/20/00 JES: a fake page table for manilaSuite.getString (contains server's language setting)
+	new (tableType, @tempTable);
+	if defined (config.mainResponder.globals.language) {
+		tempTable.language = config.mainResponder.globals.language}
+	else { // no server setting -- use Frontier setting?
+		if defined (user.prefs.language) {
+			tempTable.language = user.prefs.language}
+		else { // no Frontier setting -- use English
+			tempTable.language = "English"}};
+	
+	bundle { //build the HTML from the intermediate table
+		add ("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\">");
+		indentLevel++;
+		add ("<tr>");
+		indentLevel++;
+		add ("<td align=\"right\">&nbsp;</td>");
+		add ("<td>&nbsp;</td>");
+		add ("<td align=\"left\"><b>" + manilaSuite.getString ("hosting.siteColumnHeader", pta: @tempTable) + "</b></td>");
+		add ("<td>&nbsp;</td>");
+		add ("<td align=\"right\"><b>" + manilaSuite.getString ("hosting.readsColumnHeader", pta: @tempTable) + "</b></td>");
+		add ("</tr>");
+		indentLevel--;
+		
+		local (adrTable = @config.manila.stats.sites.allTime);
+		local (i, ct = 0);
+		for i = sizeOf (adrSitesTable^) downTo 1 {
+			local (siteName = nameOf (adrSitesTable^ [i]));
+			local (adrItem = @adrTable^.[siteName]);
+			local (displaySiteName, siteUrl, reads);
+			displaySiteName = adrItem^.displaySiteName;
+			siteUrl = adrItem^.siteUrl;
+			reads = adrSitesTable^ [i];
+			local (siteLink = html.getLink (displaySiteName, siteUrl));
+			if defined (adrItem^.flPublic) {
+				if not adrItem^.flPublic {
+					continue}};
+			
+			ct++;
+			add ("<tr>");
+			indentLevel++;
+			add ("<td align=\"right\">" + ct + ".</td>");
+			add ("<td>&nbsp;</td>");
+			add ("<td align=\"left\">" + siteLink + "</td>");
+			add ("<td>&nbsp;</td>");
+			add ("<td align=\"right\">" + reads + "</td>");
+			add ("</tr>");
+			indentLevel--;
+			if ct >= n {
+				break}};
+		
+		add ("</table>");
+		indentLevel--};
+	
+	htmlText = manilaSuite.unTaint (htmlText);
+	
+	return (htmlText)}

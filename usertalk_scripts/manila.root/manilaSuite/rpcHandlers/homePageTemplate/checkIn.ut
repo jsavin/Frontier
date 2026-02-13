@@ -1,0 +1,9 @@
+on checkIn (username, password, siteName) {
+	«Release custody of the home page template.
+		«10/14/00; 2:02:45 PM by PBS
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrObject = @adrSite^.["#homePageTemplate"]);
+	local (itemName = "home page template");
+	
+	return (manilaSuite.rpcUtils.releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName))}

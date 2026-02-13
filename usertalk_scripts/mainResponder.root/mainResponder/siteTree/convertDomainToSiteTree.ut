@@ -1,0 +1,52 @@
+on convertDomainToSiteTree (domainName, adrDomains = @config.mainResponder.domains) {
+	«Changes
+		«8/13/02; 3:48:22 PM by JES
+			«New optional parameter, adrDomains. Compile the siteTree XML if needed, after converting the domain to a siteTree domain.
+		«7/2/02; 12:01:55 AM by JES
+			«Created.
+	local (adrdomain = @adrDomains^.[domainName]);
+	if defined (adrdomain^.siteTree) { //already a siteTree type domain?
+		scriptError ("Can't convert the domain, \"" + domainName + "\" to a siteTree because it already is one.")};
+	on setnomad (adrdomain, adradrglobals=nil) {
+		case typeOf (adrdomain) {
+			addressType;
+			filespecType;
+			stringType {
+				return (adrdomain)};
+			tableType {
+				if defined (adrdomain^.globals) {
+					adradrglobals = @adrdomain^.globals};
+				return (@adrdomain^.docTree)}}};
+	local (adrglobals);
+	local (nomad = setnomad (adrdomain, @adrglobals));
+	local (globals);
+	if adrglobals != nil { //copy to a local table, for re-introduction later
+		globals = adrglobals^};
+	local (xstruct); new (tableType, @xstruct);
+	local (adrtree = xml.addTable (@xstruct, "siteTree"));
+	local (adrsite = xml.addTable (adrtree, "site"));
+	local (adratts = @adrsite^.["/atts"]);
+	new (tableType, adratts);
+	adratts^.name = "";
+	case typeOf (nomad^) {
+		stringType;
+		filespecType {
+			if string.lower (nomad^) beginsWith "http://" { //implement a redirect
+				adratts^.redirect = string (nomad^)}
+			else { //set a folderPath
+				adratts^.folderPath = string (nomad^)}};
+		addressType {
+			adratts^.address = string.popFileFromAddress (nomad^)}};
+	new (tableType, adrdomain);
+	new (tableType, @adrdomain^.siteTree);
+	new (tableType, @adrdomain^.siteTree.directory);
+	local (xtext = xml.decompile (@xstruct));
+	xtext = string.trimWhiteSpace (string.delete (xtext, 1, sizeOf (string.nthField (xtext, "\r", 1) + 1)));
+	op.newOutlineObject (xtext, @adrdomain^.siteTree.directory.outline);
+	if globals != nil {
+		adrdomain^.globals = globals};
+	mainResponder.siteTree.compileIfDirty (adrdomain);
+	return (true)};
+bundle { //testing
+	convertDomainToSiteTree ("default");
+	}«convertDomainToSiteTree ("foo")

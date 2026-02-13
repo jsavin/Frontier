@@ -1,0 +1,207 @@
+on startup () {
+	«Changes:
+		«10/1/05; 3:30:17 AM by JES
+			«Set user.scheduler.tasks.nightlyUpdates.flConfirmAtStartup to false. Don't needlessly interrupt the startup process with a confirmation dialog.
+		«1999-2003
+			«12/17/03; 1:14:06 AM by JES
+				«Turn off automatic nightly updates.
+			«07/29/00; 10:12:31 AM by PBS
+				«Ensure that the everyMinute task, if it already exists, is valid. It's crucial to save databases every minute.
+			«05/15/00; 9:33:03 PM by PBS
+				«Make sure the nightlyUpdates task has been created. This scheduler task handles updating the various Frontier gdbs. It was uncoupled from mainResponder.background.everyNight, as machines were competing on the hour to get updates. Now the times are more dispersed.
+			«12/30/99; 12:16:25 PM by PBS
+				«When creating a new default membership group, set the cookie expiration date to Mon, 01 Apr 2030 07:00:00 GMT.
+			«12/11/99; 5:29:27 AM by AR
+				«Updated the code for hooking into the scheduler: Only create entries in user.scheduler if they don't already exist. Also, use scripts instead of addresses for better portability.
+			«11/15/99; 10:57:16 PM by PBS
+				«On some systems, if any or all of config.root, discuss.root, members.root, and news.root are open before mainResponder's startup script runs, this would cause the startup script to abort with an error. Now the startup script checks to see if a database is open before trying to open it -- if it's already open, it doesn't try to open it.
+			«10/25/99; 2:55:22 PM by PBS
+				«Create callbacks in user.webEditServer.callbacks as scripts, not addresses, since addresses break when Frontier is moved to another machine or folder or the hard drive is renamed. This removes the leading cause of problems with WebEditServer.
+				«Changed default root updates prefs. Server is updates.userland.com, URL is http://frontier.userland.com/updates/mainResponder
+			«3/25/99; 3:11:02 PM by PBS
+				«Don't create an empty news.root if none exists.
+			«3/9/99; 4:14:33 PM by PBS
+				«Call Frontier.getSubFolder rather than mainResponder.getFolder.
+			«?/?/99; 10:07:27 AM
+				«This script is called when Frontier starts up, to get mainResponder ready for another session.
+	
+	on startupmsg (s) {
+		msg ("mainResponder.startup: " + s)};
+	
+	new (tabletype, @system.temp.mainResponder);
+	local (alist = string.parseAddress (this));
+	system.temp.mainResponder.mainResponderRootFile = alist [1];
+	
+	bundle { //get the path to Index.root
+		«Tuesday, January 19, 1999 at 3:52:27 PM by PBS
+		system.temp.mainResponder.indexRootFile = Frontier.getSubFolder ("ops/") + "Index.root"};
+	
+	bundle { //system.temp.mainResponder.search
+		«Tuesday, January 19, 1999 at 3:44:11 PM by PBS
+		new (tableType, @system.temp.mainResponder.search)};
+	
+	bundle { //open config.root
+		startupmsg ("Opening config.root" );
+		local (f = Frontier.getSubFolder ("apps") + "config.root");
+		system.temp.mainResponder.configRootFile = f;
+		if not defined ([f]) { //PBS 11/15/99: open config.root only if it's not already open
+			mainResponder.openFile ("apps", "config.root")};
+		local (adrconfig = @[system.temp.mainResponder.configRootFile].config);
+		if not defined (adrconfig^) {
+			new (tabletype, adrconfig)}};
+	
+	mainResponder.init ();
+	
+	«Init Frontier.root stuff
+	bundle { //add XML-RPC handlers
+		if not defined (user.betty.rpcHandlers.nirvanaServer) {
+			user.betty.rpcHandlers.nirvanaServer = @mainResponder.rpcHandlers};
+		if not defined (user.betty.rpcHandlers.mainResponder) { //PBS 3/16/99: both names are supported
+			user.betty.rpcHandlers.mainResponder = @mainResponder.rpcHandlers}};
+	bundle { //add WebEditServer callbacks needed to support #changes table and search engine indexing.
+		webEditServer.init ();
+		local (scriptCode = "on nirvanaServer (adrObject, username, now, description)\r\treturn (mainResponder.subscriptions.checkInCallback (adrObject, username, now, description))");
+		if not defined (user.webeditserver.callbacks.checkin.nirvanaServer) {
+			script.newScriptObject (scriptCode, @user.webeditserver.callbacks.checkin.nirvanaServer)};
+		if not defined (user.webeditserver.callbacks.sendToServer.nirvanaServer) {
+			if defined (user.webEditServer.callbacks.sendToServer) {
+				script.newScriptObject (scriptCode, @user.webeditserver.callbacks.sendToServer.nirvanaServer)}};
+		scriptCode = "on searchEngineClient (adrObject, username=nil, now=nil, description=nil)\r\treturn (mainResponder.search.client.webEditCallback (adrObject, username, now, description))";
+		if not defined (user.webeditserver.callbacks.checkIn.searchEngineClient) {
+			script.newScriptObject (scriptCode, @user.webeditserver.callbacks.checkIn.searchEngineClient)};
+		if not defined (user.webEditServer.callbacks.sendToServer.searchEngineClient) {
+			if defined (user.webEditServer.callbacks.sendToServer) {
+				script.newScriptObject (scriptCode, @user.webEditServer.callbacks.sendToServer.searchEngineClient)}}};
+	bundle { //init scheduler tasks
+		scheduler.init (); //upgrades user.scheduler if it needs it
+		if not defined (user.scheduler.everyMinute.nirvanaServer) {
+			local (scriptCode = "mainresponder.background.everyminute ()");
+			script.newScriptObject (scriptCode, @user.scheduler.everyMinute.nirvanaServer)}
+		else { //PBS 07/29/00: ensure that the everyMinute task is actually valid: it's crucial to save databases every minute
+			if typeOf (user.scheduler.everyMinute.nirvanaServer) == addressType {
+				if not defined (user.scheduler.everyMinute.nirvanaServer^) {
+					local (scriptCode = "mainresponder.background.everyminute ()");
+					script.newScriptObject (scriptCode, @user.scheduler.everyMinute.nirvanaServer)}}};
+		if not defined (user.scheduler.hourly.nirvanaServer) {
+			local (scriptCode = "mainresponder.background.everyHour ()");
+			script.newScriptObject (scriptCode, @user.scheduler.hourly.nirvanaServer)};
+		if not defined (user.scheduler.hourly.searchEngine) {
+			local (scriptCode = "mainResponder.search.server.indexStoredPages ()");
+			script.newScriptObject (scriptCode, @user.scheduler.hourly.searchEngine)};
+		if not defined (user.scheduler.overnight.nirvanaServer) {
+			local (scriptCode = "mainresponder.background.everynight ()");
+			script.newScriptObject (scriptCode, @user.scheduler.overnight.nirvanaServer)};
+		if not defined (user.scheduler.tasks.nightlyUpdates) {
+			local (adrTable = @user.scheduler.tasks.nightlyUpdates);
+			startupMsg ("Creating nightly updates task.");
+			new (tableType, adrTable);
+			local (scriptCode = "mainResponder.background.nightlyUpdates ()");
+			script.newScriptObject (scriptCode, @adrTable^.script);
+			adrTable^.ctRuns = 0;
+			adrTable^.error = "";
+			adrTable^.minutesBetweenRuns = 1440;
+			
+			«Get a task time that's a random 5 to 55 minutes in the hour after the overnight script runs.
+			local (overnightTaskTime = user.scheduler.tasks.overnight.taskTime);
+			local (minutesPastTime = random (5, 55));
+			local (updatesTaskTime = overnightTaskTime + (minutesPastTime * 60));
+			adrTable^.taskTime = updatesTaskTime};
+		if not defined (user.scheduler.tasks.nightlyUpdates.flConfirmAtStartup) { //don't interrupt startup with dialog
+			user.scheduler.tasks.nightlyUpdates.flConfirmAtStartup = false}};
+	
+	bundle { //init rootUpdates prefs for mainResponder.root.
+		«Wednesday, March 03, 1999 at 11:40:43 AM by PBS
+		local (adrTable = @user.rootUpdates.servers.mainResponder);
+		if not defined (adrTable^) {
+			new (tableType, adrTable)};
+		if not defined (adrTable^.autobackup) {
+			adrTable^.autobackup = true};
+		if not defined (adrTable^.dbname) {
+			adrTable^.dbname = "mainResponder.root"};
+		if not defined (adrTable^.dialogs) {
+			adrTable^.dialogs = true};
+		if not defined (adrTable^.lastUpdate) {
+			adrTable^.lastUpdate = "Sun, 21 Mar 1999 24:00:00 GMT"};
+		if not defined (adrTable^.method) {
+			adrTable^.method = "mainResponder.subscriptions.update"};
+		if not defined (adrTable^.port) {
+			adrTable^.port = 80};
+		if not defined (adrTable^.serialNum) {
+			adrTable^.serialNum = 1};
+		if not defined (adrTable^.server) {
+			adrTable^.server = "updates.userland.com"};
+		if not defined (adrTable^.URL) {
+			adrTable^.URL = "http://frontier.userland.com/updates/mainResponder"}};
+	bundle { //open discuss.root
+		startupmsg ("Opening discuss.root" );
+		local (f = Frontier.getSubFolder ("ops") + "discuss.root");
+		system.temp.mainResponder.discussRootFile = f;
+		if not defined ([f]) { //PBS 11/15/99: open discuss.root only if it's not already open
+			mainResponder.openFile ("ops", "discuss.root")};
+		local (adrdata = @[f].["discuss"]);
+		if not defined (adrdata^) {
+			new (tabletype, adrdata)};
+		if not defined (adrdata^.calendar) {
+			new (tabletype, @adrdata^.calendar)};
+		if not defined (adrdata^.messages) {
+			new (tabletype, @adrdata^.messages)};
+		bundle { //prefs
+			local (adrprefs = @adrdata^.prefs);
+			if not defined (adrprefs^) {
+				new (tabletype, adrprefs)};
+			«if not defined (adrprefs^.auditTrail)  //Fri, 12 Mar 1999 17:43:10 GMT by AR
+				«adrprefs^.auditTrail = true
+			«if not defined (adrprefs^.auditTrailFolder)
+				«local (pc = file.getpathchar ())
+				«adrprefs^.auditTrailFolder = Frontier.getSubFolder ("/ops/discuss/") //PBS 3/9/99
+			if not defined (adrprefs^.nextMsgNum) {
+				adrprefs^.nextMsgNum = 1};
+			if not defined (adrprefs^.url) { //PBS 3/16/99
+				adrprefs^.url = config.mainResponder.urls.discussMsgReader};
+			if not defined (adrprefs^.adrMsgReader) { //PBS 3/16/99
+				local (f = Frontier.getSubFolder ("/www/") + "htmlInterfaces.root");
+				if defined ([f].discussionGroup.msgReader) {
+					adrprefs^.adrMsgReader = @[f].discussionGroup.msgReader}
+				else {
+					adrprefs^.adrMsgReader = nil}}}; //it can be set later: it should exist, at least
+		try {delete (@[f].["item #1"])};
+		filemenu.save (f)};
+	bundle { //open members.root
+		startupmsg ("Opening members.root" );
+		local (f = Frontier.getSubFolder ("ops") + "members.root");
+		system.temp.mainResponder.membersRootFile = f;
+		if not defined ([f]) { //PBS 11/15/99: open members.root only if it's not already open
+			mainResponder.openFile ("ops", "members.root")};
+		local (adrtable = @[f].["default"]);
+		if not defined (adrtable^) {
+			new (tabletype, adrtable)};
+		if not defined (adrtable^.callbacks) {
+			new (tabletype, @adrtable^.callbacks)};
+		if not defined (adrtable^.cookieDomain) {
+			adrtable^.cookieDomain = ""};
+		if not defined (adrtable^.cookieExpires) {
+			«adrtable^.cookieExpires = "Friday, 31-Dec-99 23:59:59 GMT"
+			adrtable^.cookieExpires = "Mon, 01 Apr 2030 07:00:00 GMT"}; //PBS 12/30/99: set the cookie expiration date farther in the future
+		if not defined (adrtable^.cookieName) {
+			adrtable^.cookieName = "Nirvana Server"};
+		if not defined (adrtable^.mailReturnAddress) {
+			adrtable^.mailReturnAddress = user.prefs.mailAddress};
+		if not defined (adrtable^.mailSubject) {
+			adrtable^.mailSubject = "Welcome!"};
+		if not defined (adrtable^.mailTemplate) {
+			adrtable^.mailTemplate = mainResponder.data.mailTemplate};
+		if not defined (adrtable^.openToPublic) {
+			adrtable^.openToPublic = true};
+		if not defined (adrtable^.users) {
+			new (tabletype, @adrtable^.users)};
+		try {delete (@[f].["item #1"])}};
+	bundle { //open news.root
+		local (folder = Frontier.getSubFolder ("/www/"));
+		local (f = folder + "news.root");
+		if file.exists (f) {
+			startupmsg ("Opening news.root" );
+			if not defined ([f]) { //PBS 11/15/99: open news.root only if it's not already open
+				mainResponder.openFile ("www", "news.root")};
+			system.temp.mainResponder.newsRootFile = f}};
+	
+	msg ("")} //wipe out any msg we left behind

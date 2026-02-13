@@ -1,0 +1,38 @@
+on displayPicture (picNum=nil) {
+	«Display one picture.
+		«10/20/99; 10:11:31 AM by PBS
+		«Changes:
+			«Use the !return mechanism to halt processing here, so the rest of the rendering process is bypassed. A small performance gain for serving pictures.
+			«03/01/00; 11:04:21 AM by PBS
+				«If the picture is on disk, and the prefs are set up for static serving, return a redirect.
+			«04/21/00; 3:13:37 AM by JES
+				«localized
+			«05/01/00; 2:51:25 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+	
+	manilaSuite.accesscontrol.checks(); //04.05.22, 18:59:50 by DAB
+	local (pta = html.getPageTableAddress ());
+	if picNum == nil {
+		picNum = pta^.pathArgs};
+	
+	on error () {
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.picNum = picNum;
+		scriptError (manilaSuite.getString ("pictures.pictureDoesntExistError", @replacementTable))}; // 4/21/00 JES: localized
+	
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (picNum));
+	if not defined (adrMsgTable^.image) {
+		error ()};
+	
+	bundle { //PBS 03/01/00: redirect if the image is on disk and the prefs specify static serving
+		if defined (config.manila.prefs.flWritePicturesToStaticServer) {
+			if config.manila.prefs.flWritePicturesToStaticServer {
+				if defined (adrMsgTable^.image.url) {
+					scriptError ("!redirect " + adrMsgTable^.image.url)}}}};
+	
+	pta^.responseHeaders.["Content-Type"] = adrMsgTable^.image.mimeType;
+	«pta^.swapInImage = adrMsgTable^.image.bits //picked up by the finalFilter later
+	pta^.responseBody= adrMsgTable^.image.bits;
+	scriptError ("!return"); //return now, don't do any more processing
+	
+	return ("")}

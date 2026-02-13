@@ -1,0 +1,107 @@
+on listDomains (maxdomains=250) {
+	«Changes
+		«9/26/05; 5:05:41 PM by JES
+			«If an error occurs listing a domain, add it to the page. Make the background color of error rows red, so they're easier to see.
+		«9/26/05; 5:04:08 PM by JES
+			«Fix bug which could mask errors listing a domain.
+		«4/8/04; 2:05:56 AM by JES
+			«List up to 250 domains instead of 100.
+		«9/7/02; 1:26:25 PM by JES
+			«List up to 100 domains instead of 50.
+		«8/21/02; 9:26:30 PM by JES
+			«Only compile the domain's site tree if it's actually a siteTree-domain.
+		«8/5/02; 9:17:32 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	local (flConfirmDomainDelete = false, flConfirmMultiSiteDelete = false, flRedirect = false);
+	if pta^.method == "POST" {
+		«workspace.pt = pta^
+		local (adrargs = @pta^.postargs);
+		if defined (adrargs^.delete) {
+			local (adr);
+			for adr in adrargs {
+				local (name = nameOf (adr^));
+				if name contains ":" {
+					local (dom = string.nthField (name, ":", 1));
+					local (path = string.popTrailing (string.popLeading (string.nthField (name, ":", 2), "/"), "/"));
+					local (adrdom = @config.mainResponder.domains.[dom]);
+					if defined (adrdom^) { //reality check
+						if path == "" { //delete the whole domain -- confirm
+							if defined (adrargs^.confirm) { //already confirmed
+								delete (adrdom);
+								flRedirect = true}
+							else { //add hidden fields and confirmation text
+								if not defined (adrargs^.noConfirm) {
+									add ("<input type=\"hidden\" name=\"" + name + "\" />");
+									flConfirmDomainDelete = true}}}
+						else {
+							try { //in case a parent site has already been deleted
+								on containsSubSites (adrsite) {
+									local (adr);
+									for adr in adrsite {
+										if string.lower (xml.convertToDisplayName (nameOf (adr^))) == "site" {
+											return (true)}};
+									return (false)};
+								local (adrtopsite = @adrdom^.siteTree.directory.structure[1][1]);
+								local (nomad = mainResponder.siteTree.dive (adrtopsite, path));
+								if containsSubSites (nomad) {
+									if defined (adrargs^.confirm) {
+										try {mainResponder.siteTree.removeSiteFromTree (dom, path, true)};
+										flRedirect = true}
+									else {
+										if not defined (adrargs^.noConfirm) {
+											add ("<input type=\"hidden\" name=\"" + name + "\" />");
+											flConfirmMultiSiteDelete = true}}}
+								else {
+									try {mainResponder.siteTree.removeSiteFromTree (dom, path, true)};
+									flRedirect = true}}}}}};
+			if flRedirect {
+				mainResponder.redirect ("http://" + pta^.host + pta^.path + "?" + pta^.searchArgs);
+				return ("")}}};
+	
+	if flConfirmDomainDelete or flConfirmMultiSiteDelete { //confirm text
+		add ("<input type=\"hidden\" name=\"delete\" />");
+		if flConfirmDomainDelete and flConfirmMultiSiteDelete {
+			add ("You have selected both top-level sites and sites which have sub-sites for deletion. Are you sure you want to remove these domains, sites and sub-sites?")}
+		else {
+			if flConfirmDomainDelete {
+				add ("One or more of the sites you have checked for deletion is the top-level site for the domain. Are you sure you want to remove the entire domain(s)?")};
+			if flConfirmMultiSiteDelete {
+				add ("One or more of the sites you have checked for deletion has sub-sites which will also be removed from the site tree. Are you sure you want to remove these sites and sub-sites?")}};
+		add ("<br /><br /><br />");
+		add ("<input type=\"submit\" name=\"confirm\" value=\" Yes \" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"noConfirm\" value=\" No \" />")}
+	else { //list domains
+		bundle { //explanatory text
+			add ("The following domain trees are configured on this server. To remove a site from a domain tree, check the box next to the site, and click the Delete button. This will remove the site from the tree and it will no longer be served, but it will not delete the site's content.")};
+		
+		add ("<table cellpadding=\"3\" cellspacing=\"0\" border=\"0\" width=\"100%\">");
+		
+		local (adrdomain, ctdomains=0);
+		for adrdomain in @config.mainResponder.domains {
+			local (dom = nameOf (adrdomain^));
+			try {
+				if mainResponder.siteTree.domainIsSiteTree (adrdomain) {
+					mainResponder.siteTree.compileIfDirty (adrdomain)};
+				add ("<tr><td></td><td colspan=\"3\" style=\"padding-top:15px;\"><b>" + dom + ":</b></td></tr>");
+				add (mainResponder.adminSite.prefs.renderDomainTree (dom))}
+			else {
+				add ("<tr bgcolor=\"#FFD0D0\"><td colspan=\"4\"><b>Error listing domain " + dom + ":</b><br><i>" + tryerror + "</i></td></tr>")};
+			ctdomains++;
+			if ctdomains >= maxdomains {
+				add ("<tr><td colspan=\"4\" style=\"padding-top:15px;\">(There are more domains installed on this server, but only the first " + maxdomains + " are displayed. To administer the other domains, edit config.mainResponder.domains using the Frontier application. You can still add more domains using the form above.)</td></tr>");
+				break}};
+		
+		add ("</table>");
+		
+		add ("<br /><br />");
+		add ("<input type=\"submit\" name=\"delete\" value=\"Delete\" />")};
+	
+	return (htmltext)};
+
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«listDomains ()

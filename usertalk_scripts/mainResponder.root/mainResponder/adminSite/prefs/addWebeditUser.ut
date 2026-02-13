@@ -1,0 +1,43 @@
+on addWebeditUser () {
+	«Changes
+		«9/4/02; 5:05:05 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	people.init ();
+	
+	local (errorMessage = "");
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.addUser) { //the user clicked the Add User button
+			local (name = adrargs^.name);
+			local (email = adrargs^.email);
+			local (pass = adrargs^.password);
+			local (repeat = adrargs^.repeatPassword);
+			if pass != repeat { //error
+				errorMessage = "Can't grant webedit access to " + name + " because the password and repeat password aren't the same."}
+			else { //no error
+				people.newService ("Custody");
+				people.newService ("WebEdit");
+				people.newUser (name, pass, email);
+				people.setUserEmailAddress (name, email);
+				people.setUserPassword (name, pass);
+				people.attachServiceToUser (name, "Custody");
+				people.attachServiceToUser (name, "WebEdit")}}};
+	
+	on addrow (prompt, name, type="text", value="") {
+		add ("<tr>");
+		add ("<td>" + prompt + ":</td>");
+		add ("<td><input type=\"" + type + "\" name=\"" + name + "\" value=\"" + value + "\" /></td>");
+		add ("</tr>")};
+	if errorMessage != "" { //add error message for the user
+		add ("<tr><td colspan=\"2\"><b>" + errorMessage + "</b></td></tr>")};
+	addrow ("Name", "name");
+	addrow ("Email address", "email");
+	addrow ("Password", "password", "password");
+	addrow ("Repeat", "repeatPassword", "password");
+	add ("<tr><td></td><td><input type=\"submit\" name=\"addUser\" value=\"Add User\" />");
+	return (htmltext)}

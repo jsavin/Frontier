@@ -1,0 +1,26 @@
+on attachEnclosure (username, password, siteName, msgNum, enclosureType, enclosureBits, enclosureAddress) {
+	«Attach an enclosure to a message.
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't attach enclosure to message \"" + msgNum + "\" because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, adrroot:adrDiscuss));
+	
+	manilaSuite.rpcUtils.authorCheck (siteName, username, adrmsg);
+	
+	local (prefix = "application/x-frontier-");
+	if enclosureType beginswith prefix {
+		local (type = string.delete (enclosureType, 1, sizeof (prefix)));
+		local (bits = binary (base64.decode (enclosureBits)));
+		setBinaryType (@bits, type);
+		unpack (@bits, @enclosureBits)};
+	try {delete (@adrmsg^.enclosureBits)}; //it could be a table
+	adrmsg^.enclosureBits = enclosureBits;
+	adrmsg^.enclosureAddress = enclosureAddress;
+	adrmsg^.enclosureType = enclosureType;
+	
+	fileMenu.saveMyRoot (adrmsg);
+	
+	return (string (adrDiscuss^.prefs.msgReaderUrl) + msgNum)}

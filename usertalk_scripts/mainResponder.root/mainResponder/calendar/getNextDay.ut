@@ -1,0 +1,26 @@
+on getNextDay (adrCalendar, d=clock.now ()) {
+	«Tue, May 23, 2000 at 5:45:59 PM by AR
+		«Old code
+			«on getNextDay (adrCalendar, d=clock.now ())
+				«Notes
+					«Thu, 11 Mar 1999 20:12:49 GMT by AR
+						«adrcalendar is the address of a valid calendar structure.
+						«d is an optional date which defaults to clock.now ().
+						«If the address corresponding to d exists, we return it.
+						«Otherwise we walk forwards in time until we find an element and return the corresponding date.
+						«We throw a scriptError if the calendar does not contain elements corresponding to times after d or if adrcalendar does not point to a valid non-empty calendar structure.
+				«local (adrDay, dmax = mainResponder.calendar.getLastDay (adrCalendar))
+				«dmax = date (date.tomorrow (dmax) - 1)
+				«while (d <= dmax)
+					«try
+						«adrDay = mainResponder.calendar.getDayAddress (adrCalendar, d, flcreate:false)
+						«if defined (adrDay^)
+							«local (day, month, year, hour, minute, second)
+							«date.get (d, @day, @month, @year, @hour, @minute, @second)
+							«d = date.set (day, month, year, 0, 0, 0)
+							«return (d)
+					«d = date.tomorrow (d)
+				«scripterror ("Can't get the next day in the calendar because the calendar doesn't contain any elements after " + d + ".")
+	kernel (mrcalendar.getnextday)};
+«bundle  //test code
+	«dialog.notify (getNextDay (@scriptingNews, date ("03/09/99; 12:00:01 AM")))

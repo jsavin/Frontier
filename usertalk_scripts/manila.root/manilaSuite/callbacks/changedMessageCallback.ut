@@ -1,0 +1,9 @@
+on changedMessageCallback (adrMsg) {
+	«Notify the world that a message has changed. This is the website framework context entry point.
+		«04/04/00; 9:38:16 PM by PBS
+	
+	local (adrCallbacks = @manilaSuite.callbacks.changedMessage);
+	local (adrUserCallbacks = @config.manila.callbacks.changedMessage);
+	manilaSuite.callbacks.doWsfCallbacks (adrCallbacks, adrUserCallbacks, adrMsg);
+	
+	return (true)}

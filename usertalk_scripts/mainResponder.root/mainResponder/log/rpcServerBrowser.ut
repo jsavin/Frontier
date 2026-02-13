@@ -1,0 +1,75 @@
+on rpcServerBrowser (lineCount, colors) { //a macro that returns HTML for the log
+	«Render the XML-RPC Server log as HTML.
+		«10/26/99; 4:03:18 AM by AR
+		«Changes:
+			«4/14/00; 5:44:49 PM by JES
+				«localized
+			«11/6/99; 6:10:17 PM by PBS
+				«Removed the HTML caching as it's causing display glitches.
+	
+	local (adrLog = log.getGuestSubTable ("rpcServer"));
+	lineCount = number (lineCount); //I keep getting bit by this, when called thru a macro, it's a string DW
+	
+	local (htmlText = "", indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+	on td (s) {
+		return ("<td><font size=\"-1\">" + s + "</font></td>")};
+	
+	betty.init ();
+	if not user.betty.prefs.flKeepServerLog {
+		add (mainResponder.getString ("log.loggingIsDisabled")); // 4/14/00 JES: localizes
+		return (htmlText)};
+	
+	local (i, j, adrHourTable, adrItem, sizeLog = sizeOf (adrLog^), ixLog, sizeHourTable);
+	if sizeLog == 0 {
+		add (mainResponder.getString ("log.noLogEntriesToday")); // 4/14/00 JES: localizes
+		return (htmlText)};
+	add ("<table border=\"0\" cellpadding=\"5\" cellspacing=\"0\">"); indentLevel++;
+	«add ("<table width=\"92%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">"); indentLevel++
+	
+	adrHourTable = @adrLog^ [sizeLog]; //generate for the most recent hour
+	sizeHourTable = sizeOf (adrHourTable^);
+	ixLog = sizeHourTable - lineCount + 1;
+	if ixLog < 1 {
+		ixLog = 1};
+	for j = sizeHourTable downTo ixLog {
+		adrItem = @adrHourTable^ [j];
+		add ("<!-- " + j + " -->");
+		
+		local (ixHtmlText = sizeOf (htmlText));
+		add ("<tr bgcolor=\"" + colors [(j % sizeOf (colors)) + 1] + "\">"); indentLevel++;
+		add ("<td height=\"28\"></td>"); //a dummy table cell to establish row height
+		with adrItem^ {
+			local (ticksString = "", faultCodeString = "-");
+			try { //get ticks, expressed in a fraction of a second, it's complicated
+				ticksString = string.ratio (ticks, 60, 2);
+				if ticks > 120 { //more than two seconds
+					ticksString = "<b><font color=\"deeppink\">" + ticksString + "</font></b>"}};
+			add (td (string.popLeading (string.nthField (time, ";", 2), ' ')));
+			if defined (faultCode) {
+				faultCodeString = "<b><font color=\"deeppink\">" + faultCode + "</font></b>"};
+			add (td (faultCodeString));
+			add (td (threads));
+			add (td (ticksString));
+			add (td (string.megabyteString (sizeIn)));
+			add (td (string.megabyteString (sizeOut)));
+			bundle { //do a DNS lookup
+				local (client = xml.convertToDisplayName (nameof (adrItem^)));
+				try {client = tcp.dns.getDomainName (client)};
+				add (td (client))};
+			bundle { //add the host
+				if defined (host) {
+					add (td (host))}
+				else {
+					add (td ("&nbsp;"))}};
+			bundle { //add the procedure name
+				if defined (methodName) {
+					add (td (methodName))}
+				else {
+					add (td ("&nbsp;"))}}};
+		add ("</tr>"); indentLevel--};
+	
+	add ("</table>"); indentLevel--;
+	
+	return (htmlText)}

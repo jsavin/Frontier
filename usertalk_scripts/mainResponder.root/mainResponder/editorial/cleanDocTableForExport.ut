@@ -1,0 +1,11 @@
+on cleanDocTableForExport (adrtable) {
+	local (i);
+	for i = sizeOf (adrtable^) downto 1 {
+		if string.lower (nameof (adrtable^[i])) contains "cache" {
+			delete (@adrtable^[i]);
+			continue};
+		if typeOf (adrtable^ [i]) == outlineType or typeOf (adrtable^ [i]) == wpTextType { //convert outlines and wp-text to strings
+			local (s = string (adrtable^ [i]));
+			table.assign (@adrtable^ [i], s)};
+		if typeOf (adrtable^ [i]) == stringType {
+			adrtable^ [i] = base64.encode (string (adrtable^ [i]), 80)}}}

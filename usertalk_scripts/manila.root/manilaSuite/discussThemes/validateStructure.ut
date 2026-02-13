@@ -1,0 +1,72 @@
+on validateStructure (adrTheme) {
+	«Validate the table structure of a DG theme. scriptError if there's a problem. This is a relaxed validator. It detects structural problems, but some details may escape it. One important thing it does do is ensure that there are no scripts objects in the theme.
+		«10/26/00; 10:59:20 PM by JES
+			«Cribbed from manilaSuite.themes.validateStructure
+	«Changes
+		«1/26/05; 2:45:46 PM by LL
+			«Add an exception for the new flNofollowLinkAttributeEnabled item.
+		«4/5/02; 3:03:57 AM by JES
+			«Added responseFullItemTemplate to the items allowed in the discussionGroup sub-table.
+	
+	try { //enclose in a try, for a friendlier error message in the case of unknown errors
+		on checkTable (adrTable, namesList, flTopLevelTable, validTypes) {
+			local (tableName);
+			if flTopLevelTable {
+				tableName = "top level table"}
+			else {
+				tableName = nameOf (adrTable^)};
+			
+			local (oneItem);
+			for oneItem in namesList { //check against the names list
+				if not defined (adrTable^.[oneItem]) {
+					scriptError ("the " + tableName + " table does not contain an item named " + oneItem)}};
+			
+			local (adrItem);
+			for adrItem in adrTable { //check types
+				local (itemName = nameOf (adrItem^));
+				local (objectType = typeOf (adrItem^));
+				if not (validTypes contains objectType) {
+					scriptError (itemName + " in the " + tableName + " table is not a valid type")};
+				if itemName beginsWith "fl" {
+					if not (itemName == "flNofollowLinkAttributeEnabled") {
+						if not (objectType == booleanType) {
+							scriptError (itemName + " in the " + tableName + " table is not a boolean")}}}};
+			
+			return (true)};
+		
+		bundle { //top level table
+			«local (namesList = {"appearance", "flEnabled", "flPublic", "Info", "Pictures"})
+			local (namesList = {"appearance", "flEnabled", "flPublic", "Info"});
+			local (validTypes = {tableType, booleanType});
+			checkTable (adrTheme, namesList, true, validTypes)};
+		
+		bundle { //appearance
+			local (namesList = {"discussionGroup", "flDiscussListByDay", "flNewThreadOnDiscussHome", "numMessagesInDiscussListing"});
+			local (validTypes = {tableType, booleanType, wpTextType, stringType, outlineType, longType, dateType});
+			checkTable (@adrTheme^.appearance, namesList, false, validTypes)};
+		bundle { //discussionGroup
+			local (namesList = {"activeTopicIcon", "dayListFooter", "dayListHeader", "dayListItemTemplate", "dayListTemplate", "dayListTemplateFooter", "dayListTemplateHeader", "daysTopicsActive", "daysTopicsLive", "inactiveTopicIcon", "msgTemplate", "responseIndentTemplate", "responseItemTemplate", "responseListFooter", "responseListHeader", "responseSubThreadEndTemplate", "responseSubThreadStartTemplate", "topicBased", "topicListFooter", "topicListHeader", "topicListItemTemplate", "topicListTemplate", "topicMsgTemplate", "topicTemplate", "userIcon"});
+			local (validTypes = {booleanType, wpTextType, stringType, outlineType, longType, dateType});
+			checkTable (@adrTheme^.appearance.discussionGroup, namesList, false, validTypes)};
+		
+		bundle { //Info
+			local (namesList = {"Author", "AuthorEmail", "CreationDate", "Description", "displayName", "siteUrl"});
+			local (validTypes = {stringType, wpTextType, outlineType, dateType});
+			checkTable (@adrTheme^.Info, namesList, false, validTypes)};
+		
+		bundle { //check whole table for script objects
+			on checkForScripts (adrTable) {
+				local (adrItem);
+				for adrItem in adrTable {
+					local (objectType = typeOf (adrItem^));
+					if objectType == scriptType {
+						scriptError ("Can't validate this theme because " + nameOf (adrItem^) + " is a script object.")};
+					if objectType == tableType {
+						checkForScripts (adrItem)}}};
+			checkForScripts (adrTheme)}}
+	else {
+		scriptError ("Can't validate this theme because " + tryError + ".")};
+	
+	return (true)}; //the theme validated
+«bundle //test code
+	«validateStructure (@workspace.dgTheme)

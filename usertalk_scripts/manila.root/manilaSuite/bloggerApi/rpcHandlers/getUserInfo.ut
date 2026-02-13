@@ -1,0 +1,82 @@
+on getUserInfo (appKey, username, password) {
+	«Monday, July 20, 2009 at 12:25:52 AM by JES
+		«Created.
+	password = string (password); //safety check type
+	local (theHost = "default");
+	if defined (host) {
+		theHost = host}
+	else {
+		try {
+			local (pta = html.getPageTableAddress ());
+			theHost = pta^.host}};
+	
+	local (t); new (tableType, @t);
+	bundle { //set some defaults
+		t.email = "";
+		t.firstname = "";
+		t.nickname = "";
+		t.userid = "";
+		t.url = "";
+		t.lastname = ""};
+	on getMemberInfo (adrSite, adrMember) {
+		t.email = manilaSuite.members.getMemberEmail (adrMember);
+		t.nickname = string.nthField (t.email, '@', 1);
+		local (name = "");
+		if defined (adrMember^.personalInfo.name) {
+			if adrMember^.personalInfo.name != "" {
+				name = adrMember^.personalInfo.name}};
+		t.firstname = string.nthField (name, ' ', 1);
+		t.userid = username;
+		t.url = manilaSuite.getSiteUrl (adrSite);
+		try {t.lastname = string.trimWhitespace (string.delete (name, 1, sizeOf (t.firstname)))}};
+	on memberCheck (adrMember) {
+		if defined (adrMember^) {
+			if defined (adrMember^.blocked) {
+				if adrMember^.blocked {return (false)}};
+			if string (adrMember^.password) == password {
+				return (true)}};
+		return (false)};
+	on getMemberAddress (adrSite) {
+		local (adrMember = manilaSuite.members.getMemberTableFromSiteAddress (adrSite, username));
+		return (adrMember)};
+	
+	local (adrHost, flSiteTreeExists = false);
+	try {adrHost = @config.mainResponder.domains.[theHost]};
+	if not defined (adrHost^) {
+		adrHost = @config.mainResponder.domains.default};
+	
+	if defined (adrHost^.siteTree) {
+		flSiteTreeExists = true};
+	
+	if flSiteTreeExists { //check the siteTree
+		on visitproc (adrNode) {
+			if defined (adrNode^.["/atts"].address) {
+				local (adrSite = @[adrNode^.["/atts"].address]);
+				if defined (adrSite^) {
+					if manilaSuite.isManilaSite (adrSite) {
+						local (flInstalled = false);
+						try {
+							manilaSuite.getCanonicalSiteName (adrSite); //will fail if the site is not installed
+							flInstalled = true};
+						if flInstalled {
+							local (adrMember = getMemberAddress (adrSite));
+							if memberCheck (adrMember) {
+								getMemberInfo (adrSite, adrMember);
+								return (false)}}}}}; //stop now -- we have some data to return
+			return (true)}; //continue visiting sites
+		if mainResponder.siteTree.domainIsSiteTree (adrHost) {
+			mainResponder.siteTree.visit (adrHost, @visitproc)}}
+	else { //try the fast way for top-level sites
+		local (siteName = manilaSuite.rpcHandlers.getSiteName ("http://" + theHost + "/"));
+		local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+		local (flInstalled);
+		local (sites = {});
+		try {
+			manilaSuite.getCanonicalSiteName (adrSite); //will fail if the site is not installed
+			flInstalled = true};
+		if flInstalled {
+			local (adrMember = getMemberAddress (adrSite));
+			if memberCheck (adrMember) {
+				getMemberInfo (adrSite, adrMember)}}};
+	
+	return (t)}

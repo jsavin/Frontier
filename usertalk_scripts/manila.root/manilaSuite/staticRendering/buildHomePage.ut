@@ -1,0 +1,24 @@
+on buildHomePage () {
+	«Build the home page, statically.
+		«03/06/00; 9:55:14 PM by PBS
+		«Changes:
+			«05/01/00; 5:24:48 PM by PBS
+				«Support for news items -- this script knows how to build a news items home page.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
+	
+	bundle { //copy the calendar
+		local (adrStaticSite = pta^.adrSiteRootTable);
+		local (i);
+		for i = 1904 to 2040 {
+			if defined (adrManilaSite^.[i]) {
+				adrStaticSite^.[i] = adrManilaSite^.[i]}};
+		
+		pta^.method = "GET"};
+	
+	msgNum = manilaSuite.getNewsSitePref ("discussLinks.homePageMsgNum", adrManilaSite);
+	
+	if manilaSuite.news.newsItemsEnabled (manilaSuite.getManilaSiteAddress (pta)) {
+		return (manilaSuite.news.renderNewsItemsPage ())};
+	return (manilaSuite.renderNewsPage (msgNum, false, pta))}

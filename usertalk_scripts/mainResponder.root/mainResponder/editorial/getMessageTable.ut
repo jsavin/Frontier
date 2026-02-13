@@ -1,0 +1,2 @@
+on getMessageTable (discussRoot, msgnum) {
+	return mainResponder.news.getMessageTable (discussRoot, msgnum)}

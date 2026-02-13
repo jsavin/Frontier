@@ -1,0 +1,40 @@
+on listChannel (channelname) {
+	«4/12/00; 2:50:21 AM by JES
+		«Localised using mainResponder.getString
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s, align="") {
+		add ("<td nowrap " + align + " valign=\"center\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
+	on shortenstring (s, maxlen=35) {
+		if sizeof (s) <= maxlen {
+			return (s)};
+		return (string.mid (s, 1, maxlen - 3) + "...")};
+	local (f = mainresponder.discuss.openfile ());
+	local (adrmsgs = @[f].discuss.messages);
+	local (i, ct = sizeof (adrmsgs^));
+	add ("<table cellspacing=\"3\">"); indentlevel++;
+	bundle { // 4/13/00 by JES: localized column headings
+		add ("<tr>"); indentlevel++;
+		td ("<b>" + mainResponder.getString ("listHeaders.date") + "</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.subject") + "</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.originator") + "</b>");
+		add ("</tr>"); indentlevel--};
+	for i = ct downto 1 {
+		adrstorage = @adrmsgs^ [i];
+		if defined (adrstorage^.alsoListedIn) {
+			if adrstorage^.alsoListedIn contains channelname {
+				if defined (adrstorage^.topTopicsCache) {
+					add (adrstorage^.topTopicsCache)}
+				else {
+					local (ixhtmltext = sizeof (htmltext));
+					add ("<tr>"); indentlevel++;
+					td (mainResponder.localization.shortDateString (adrstorage^.posttime)); // 4/13/00 by JES: localized date -- was a date.shortString call
+					td (mainresponder.discuss.linkToMessage (adrstorage, 40));
+					td (mainResponder.members.getMemberName (config.mainresponder.globals.defaultMembershipGroup, adrstorage^.member));
+					add ("</tr>"); indentlevel--;
+					
+					local (s = string.delete (htmltext, 1, ixhtmltext));
+					adrstorage^.topTopicsCache = string.delete (s, sizeof (s), 1)}}}};
+	add ("</table>"); indentlevel--;
+	return (htmltext)}

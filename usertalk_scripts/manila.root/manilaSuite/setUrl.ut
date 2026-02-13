@@ -1,0 +1,12 @@
+on setUrl (name, path, adrsite=nil) {
+	«Changes
+		«10/19/05; 6:21:43 PM by JES
+			«If the supplied path contains [[siteRootUrl]], replace it with the site's URL.
+		«4/4/05; 3:53:00 AM by JES
+			«Created. Set a url in the site's #urls table.
+	if adrsite == nil {
+		adrsite = manilaSuite.getAddress ()};
+	local (siteUrl = manilaSuite.getSiteUrl (adrsite));
+	local (adrurls = @adrsite^.["#urls"]);
+	adrurls^.[name] = string.replace (path, "[[siteRootUrl]]", siteUrl, false);
+	return}

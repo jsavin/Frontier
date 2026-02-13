@@ -1,0 +1,65 @@
+on runReports (d) {
+	«Generate the HTML and XML stats reports.
+		«05/10/00; 3:12:42 PM by PBS
+	«Changes:
+		«4/21/01; 2:09:25 AM by JES
+			«Build the most read sites yesterday report from the new storage table at config.manila.stats.sites.today.
+	
+	local (adrTable);
+	if not defined (config.manila.stats.sites.allTime) {
+		return (false)};
+	«if not defined (config.manila.stats.sites.calendar)
+		«return (false)
+	if not defined (config.manila.stats.sites.today) {
+		return (false)};
+	
+	adrTable = @config.manila.stats.sites.allTime;
+	«adrDay = mainResponder.calendar.getDayAddress (@config.manila.stats.sites.calendar, d)
+	adrDay = @config.manila.stats.sites.today;
+	
+	if not defined (config.manila.stats.reports) {
+		new (tableType, @config.manila.stats.reports)};
+	
+	local (sitesTable);
+	new (tableType, @sitesTable);
+	local (sitesTableOneDay);
+	new (tableType, @sitesTableOneDay);
+	bundle { //build and sort intermediate tables
+		on doTable (adrSource, adrDest) {
+			local (adrItem);
+			for adrItem in adrSource {
+				if defined (adrItem^.pageReads) {
+					local (itemName = nameOf (adrItem^));
+					adrDest^.[itemName] = adrItem^.pageReads}};
+			
+			local (oldTarget = target.set (adrDest));
+			table.sortBy ("Value");
+			try {target.set (oldTarget)}};
+		
+		doTable (adrTable, @sitesTable); //sort all time sites
+		doTable (adrDay, @sitesTableOneDay)}; //sort sites for one day
+	
+	bundle { //build XML reports
+		if not defined (config.manila.prefs.flXmlSitesReport) {
+			config.manila.prefs.flXmlSitesReport = false};
+		if config.manila.prefs.flXmlSitesReport {
+			local (url);
+			url = manilaSuite.hosting.saveMostReadSitesXml (@sitesTable, 100, d, "mostReadSites.xml");
+			config.manila.stats.reports.mostReadSitesUrl = url;
+			
+			url = manilaSuite.hosting.saveMostReadSitesXml (@sitesTableOneDay, 100, d, "mostReadSitesToday.xml");
+			config.manila.stats.reports.mostReadSitesYesterdayUrl = url}};
+	
+	bundle { //build HTML reports
+		local (reportText);
+		reportText = manilaSuite.hosting.mostReadSitesReport (@sitesTable, 100, d);
+		wp.newTextObject (reportText, @config.manila.stats.reports.mostReadSites);
+		reportText = manilaSuite.hosting.mostReadSitesReport (@sitesTableOneDay, 100, d);
+		wp.newTextObject (reportText, @config.manila.stats.reports.mostReadSitesYesterday)};
+	
+	bundle { //reset the today table
+		new (tableType, adrDay)};
+	
+	return (true)};
+bundle { //test code
+	manilaSuite.hosting.runReports (date.yesterday (clock.now ()))}

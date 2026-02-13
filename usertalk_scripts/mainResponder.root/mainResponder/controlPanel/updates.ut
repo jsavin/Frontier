@@ -1,0 +1,78 @@
+«Display the most recent sets of updates.
+	«11/23/99; 1:56:13 PM by PBS
+	«Changes:
+		«06/28/00; 11:55:48 AM by PBS
+			«If logging is off, say so, don't say that there haven't been recent updates.
+
+local (pta = html.getPageTableAddress ());
+pta^.title = "Most Recent Updates";
+
+local (adrOutline);
+adrOutline = user.rootUpdates.prefs.adrOutlineForUser;
+
+local (htmlText);
+on add (s) {
+	htmlText = htmlText + s};
+
+on noUpdates () {
+	add ("There have been no recent updates.")};
+
+bundle { //return if there haven't been any updates
+	if not defined (adrOutline^) {
+		«noUpdates ()
+		if not user.rootUpdates.prefs.flShowUpdatesToUser {
+			add ("Root updates logging is not turned on.")} //PBS 06/28/00: if logging is off, say so, don't say that there haven't been recent updates
+		else {
+			noUpdates ()};
+		return (htmlText)};
+	
+	if sizeOf (adrOutline^) < 1 {
+		noUpdates ();
+		return (htmlText)}};
+
+bundle { //render the outline
+	add ("Below are the most recent root updates.");
+	
+	local (oldTarget = target.set (adrOutline));
+	
+	on renderUpdates () {
+		local (level = 0);
+		local (ctHeads = 0, maxHeads = 10);
+		
+		op.firstSummit ();
+		op.fullExpand ();
+		
+		on visit () {
+			loop {
+				local (s = op.getLineText ());
+				
+				case level {
+					0 {
+						ctHeads++;
+						if ctHeads > maxHeads {
+							return};
+						add ("<h4>" + s + "</h4>")}}
+				else {
+					if level > 1 {
+						return};
+					add ("&nbsp;&nbsp;&nbsp;&nbsp;" + s + "<br>")};
+				
+				if level == 0 {
+					if op.go (right, 1) { //cursor has subheads
+						level++;
+						visit ();
+						if ctHeads >= maxHeads {
+							return};
+						level--;
+						op.go (left, 1)}};
+				
+				if not op.go (down, 1) {
+					break}}};
+		visit ();
+		
+		return (true)};
+	
+	renderUpdates ();
+	try {target.set (oldTarget)}};
+
+return (htmlText)

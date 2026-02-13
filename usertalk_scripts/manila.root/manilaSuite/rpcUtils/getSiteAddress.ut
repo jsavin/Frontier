@@ -1,0 +1,5 @@
+on getSiteAddress (sitename) {
+	local (adrSite = config.manila.sites.[sitename]);
+	if not defined (adrSite^) {
+		scriptError ("Can't get address of \"" + sitename + "\" because a Manila site with that name does not exist.")};
+	return (adrSite)}

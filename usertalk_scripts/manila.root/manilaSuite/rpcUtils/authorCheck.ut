@@ -1,0 +1,7 @@
+on authorCheck (sitename, username, adrmsg) {
+	
+	if string.lower (adrmsg^.member) != string.lower (username) {
+		if not manilaSuite.rpcUtils.isManagingEditor (sitename, username) {
+			scriptError ("Can't complete this operation because \"" + username + "\" does not have editorial permission.")}};
+	
+	return (true)}

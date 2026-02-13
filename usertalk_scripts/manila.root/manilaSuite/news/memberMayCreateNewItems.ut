@@ -1,0 +1,53 @@
+on memberMayCreateNewItems (pta=nil, adrSite=nil, adrMember=nil) {
+	«Return true if the member may create news items.
+		«04/25/00; 5:12:10 PM by PBS
+	«Changes:
+		«9/26/03; 12:30:45 PM by JES
+			«Added support for content editor permissions.
+		«8/20/01; 12:27:12 AM by JES
+			«Added new optional parameter, adrSite, which if specified, allows this script to be called from outside the website framework context.
+	
+	local (flManagingEditor, flContentEditor, flEditor, flMember);
+	if adrSite == nil { //assume we're being called from the website framework context (if pta == nil)
+		if pta == nil {
+			pta = html.getPageTableAddress ()};
+		adrSite = manilaSuite.getSiteAddress (pta);
+		flManagingEditor = manilaSuite.editors.managingEditorTest (pta);
+		flContentEditor = manilaSuite.editors.contentEditorTest (pta);
+		flEditor = manilaSuite.editors.editorialTest (pta);
+		flMember = defined (pta^.adrMemberInfo^)}
+	else { //we're being called from an RPC handler or some other script
+		if adrMember == nil {
+			scriptError ("Could not determine if the member may create a news item, because no member table address was specified.")};
+		local (siteName = manilaSuite.getCanonicalSiteName (adrSite));
+		local (username = nameOf (adrMember^));
+		flManagingEditor = manilaSuite.rpcUtils.isManagingEditor (siteName, username);
+		flContentEditor = manilaSuite.rpcUtils.isContentEditor (siteName, username);
+		flEditor = manilaSuite.rpcUtils.isContributingEditor (siteName, username);
+		flMember = manilaSuite.rpcUtils.isMember (siteName, username)};
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+	
+	
+	if not flMember { //must at least be a member
+		return (false)};
+	if flManagingEditor { //MEs are always allowed
+		return (true)};
+	
+	«Check content editors.
+	if flContentEditor {
+		if defined (adrNewsSite^.newsItems.access.flContentEditorsCreate) {
+			if adrNewsSite^.newsItems.access.flContentEditorsCreate {
+				return (true)}}};
+	
+	«Check contributing editors.
+	if flEditor {
+		if defined (adrNewsSite^.newsItems.access.flContributingEditorsCreate) {
+			if adrNewsSite^.newsItems.access.flContributingEditorsCreate {
+				return (true)}}};
+	
+	«Check members.
+	if defined (adrNewsSite^.newsItems.access.flMembersCreate) {
+		if adrNewsSite^.newsItems.access.flMembersCreate {
+			return (true)}};
+	
+	return (false)}

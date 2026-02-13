@@ -1,0 +1,9 @@
+on autoShortcutsEnabled (adrSite) {
+	«Return true if automatic shortcuts are enabled for gems for this site.
+		«04/14/00; 4:38:07 PM by PBS
+	
+	local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));
+	if not defined (adrPrefs^.flAutoShortcuts) {
+		adrPrefs^.flAutoShortcuts = true};
+	
+	return (adrPrefs^.flAutoShortcuts)}

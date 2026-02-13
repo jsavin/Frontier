@@ -1,0 +1,12 @@
+on pleaseNotify (notifyProcedure, port, path, protocol, urllist) {
+	«1/15/02; 4:58:06 PM by PBS
+	local (result);
+	new (tabletype, @result);
+	try {
+		xml.pubsub.pleaseNotify (notifyProcedure, port, path, protocol, urllist, client, @config.manila.rssNotifications);
+		result.flError = false;
+		result.message = "Thanks for registering a notification request."}
+	else {
+		result.flError = true;
+		result.message = tryError};
+	return (result)}

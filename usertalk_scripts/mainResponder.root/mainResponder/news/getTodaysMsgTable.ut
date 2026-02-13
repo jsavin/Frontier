@@ -1,0 +1,37 @@
+on getTodaysMsgTable (sitename, now = clock.now ()) {
+	«Changes:
+		«Wed, 26 May 1999 11:53:19 GMT by AR
+			«Added groupname parameter to call to mainresponder.discuss.addmessage. 
+		«04/16/00; 12:10:43 AM by JES
+			«localized
+			«added optional now parameter which defaults to clock.now ()
+		«05/01/00; 6:48:42 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+		«06/29/00; 1:24:36 AM by JES
+			«After adrdiscusstable is initially set, take account the possibility that it may be an address, or a string coercible to an address.
+	local (adrnewstable = mainResponder.news.openRoot (sitename));
+	local (adrprefs = @adrnewstable^.["#newsSite"]);
+	local (adrdiscusstable = @[system.temp.mainResponder.discussRootFile].[adrprefs^.discussionRoot]);
+	if typeOf (adrdiscusstable^) == addressType or typeOf (adrdiscusstable^) == stringType { //06/29/00; JES
+		if not defined (adrdiscusstable^^) {
+			scriptError ("There is no discussion root named \"" + discussionroot + "\".")};
+		adrdiscusstable = adrdiscusstable^};
+	local (adrday = mainResponder.calendar.getDayAddress (adrnewstable, now, true, tabletype));
+	local (adrmsg, msgnum);
+	if sizeof (adrday^) == 0 { //need to create the outline
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.sitename = sitename;
+		replacementTable.now = mainResponder.localization.shortDateString (now);
+		local (subject = mainResponder.getString ("news.siteOutlineForDate", @replacementTable)); // 4/16/00 JES: localized
+		local (member = adrprefs^.sysopMail);
+		local (body = "<!--" + subject + "-->");
+		msgnum = mainResponder.discuss.addMessage (subject, member, 0, body, true, false, now, adrdiscusstable, flcallback:false, groupname:adrprefs^.sysopMemberOfGroup);
+		adrday^.msgnum = msgnum;
+		adrday^.discussionRoot = adrprefs^.discussionRoot;
+		fileMenu.saveMyRoot (adrday);
+		adrmsg = mainresponder.news.getmessagetable (adrprefs^.discussionRoot, msgnum);
+		adrmsg^.inNewsSite = sitename;
+		fileMenu.saveMyRoot (adrmsg)}
+	else {
+		adrmsg = mainresponder.news.getmessagetable (adrprefs^.discussionRoot, adrday^.msgnum)};
+	return (adrmsg)}

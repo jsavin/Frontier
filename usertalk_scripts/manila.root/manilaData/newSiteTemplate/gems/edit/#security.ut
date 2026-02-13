@@ -1,0 +1,1 @@
+return (manilaSuite.editors.editorsOnly ()) //MEs and CEs only have access

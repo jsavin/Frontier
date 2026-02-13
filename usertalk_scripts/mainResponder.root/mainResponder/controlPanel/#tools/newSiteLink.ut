@@ -1,0 +1,7 @@
+local (linetext = "New Site");
+
+local (pta = html.getPageTableAddress ());
+local (pageName = string.lower (nameOf (adrObject^)));
+if pageName == "newsite" {
+	return (linetext)};
+return ("<a href=\"newsite\">" + linetext + "</a>")

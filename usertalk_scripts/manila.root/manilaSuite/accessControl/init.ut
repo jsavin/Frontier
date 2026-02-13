@@ -1,0 +1,22 @@
+on init (adrSite) {
+	«manilaSuite.AccessControl.init : 04/05/20, 17:18:13 by DAB
+		«manilaFixer.accessControl.init : 04/05/08, 11:49:07 by DAB
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	if not defined(adrNewsSite^.accessControl) {
+		new(tabletype, @adrNewsSite^.accessControl);
+		adrNewsSite^.accessControl.enabled = false;
+		adrNewsSite^.accessControl.siteStructureCohorts= false; //04/05/21, 20:19:34 by DAB
+		adrNewsSite^.accessControl.cohortPopupWanted = false;
+		adrNewsSite^.accessControl.ROcohortPopupWanted = false; //02/09/19, 00:49:02 by DAB
+		adrNewsSite^.accessControl.timePopupWanted = false;
+		adrNewsSite^.accessControl.newsCohortPopupWanted = false; //02/08/24, 11:43:50 by DAB  
+		adrNewsSite^.accessControl.cohortPopupEditors = false; //02/12/17, 01:13:58 by DAB
+		adrNewsSite^.accessControl.newsTimePopupWanted = false; //02/08/24, 11:44:51 by DAB
+		adrNewsSite^.accessControl.timeIsMilitary = true; //02/03/15, 15:41:11 by DAB
+		adrNewsSite^.accessControl.moderated = false; //02/08/03, 23:11:44 by DAB
+		adrNewsSite^.accesscontrol.userDefaultCohortsOK = false; //02/08/04, 11:23:43 by DAB
+		adrNewsSite^.accesscontrol.flTrackAccess = false}; //04/05/21, 20:19:29 by DAB
+	if not defined(adrSite^.accesscontrol) {
+		adrSite^.accesscontrol = manilaData.newSiteTemplate.accesscontrol};
+	
+	return true}

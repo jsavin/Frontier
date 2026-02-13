@@ -1,0 +1,56 @@
+on get (siteName, username, password) {
+	«An external editor wants to open the editorial site outline.
+		«Return a struct with:
+			«siteOutline -- binary of site outline OPML document.
+			«flCheckedOut -- true if someone else has it checked out
+			«editorialRole -- ME, CE, member, unknown
+			«flAcceptsOpml -- a flag which tells editorial clients whether they can save messages as opml
+		«10/12/00; 5:33:13 PM by PBS
+		«11/02/00; 9:41:42 PM by JES
+			«Added flAcceptsOpml flag to the returned struct. flAcceptsOpml is always true because the server is up-to-date if this change exists.
+		«07/13/01; 1:30:19 PM by JES
+			«Added displaySiteName to the returned table.
+	
+	local (editorialRole, flCheckedOut, binarySiteOutline);
+	local (flCanCheckOut = false);
+	local (t);
+	new (tableType, @t);
+	
+	local (adrSite = config.manila.sites.[siteName]);
+	local (adrTable = @adrSite^.["#newsSite"].editorialOutline);
+	if not defined (adrTable^) {
+		scriptError ("Can't return the editorial site outline because it doesn't exist.")};
+	editorialRole = manilaSuite.rpcUtils.getEditorialRole (siteName, username, password);
+	
+	if editorialRole == "Managing Editor" {
+		flCanCheckOut = true};
+	
+	if not defined (adrTable^.flCheckedOut) {
+		adrTable^.flCheckedOut = false};
+	t.flCheckedOut = adrTable^.flCheckedOut;
+	if string.lower (username) == string.lower (adrTable^.checkedOutBy) { //same user has it checked out?
+		t.flCheckedOut = false}
+	else {
+		if adrTable^.flCheckedOut {
+			t.flCheckedOut = true;
+			flCanCheckOut  = false}};
+	if adrTable^.flCheckedOut and flCanCheckOut { //check custody timeout
+		local (lastCheckOut = date (0));
+		if defined (adrTable^.timeCheckedOut) {
+			lastCheckOut = adrTable^.timeCheckedOut};
+		local (timeOut = 60 * 60 * 12); //12 hours is default
+		if defined (adrSite^.["#newsSite"].custody.timeOutMinutes) {
+			timeOut = adrSite^.["#newsSite"].custody.timeOutMinutes * 60};
+		if (clock.now () - lastCheckOut) > timeOut {
+			t.flCheckedOut = false}};
+	if flCanCheckOut {
+		adrTable^.flCheckedOut = true; //it's checked out now
+		adrTable^.checkedOutBy = username};
+	
+	t.editorialRole = editorialRole;
+	t.siteOutline = base64.encode (adrTable^.siteOutline, 0);
+	t.displaySiteName = adrSite^.["#newsSite"].siteName;
+	if not date.versionLessThan (Frontier.version (), "7.0b21") { // only accept ompl if the server is 7.0b21 or later
+		t.flAcceptsOpml = true}; //11/02/00 JES: always true because we know the server is up-to-date
+	
+	return (t)}

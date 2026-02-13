@@ -1,0 +1,15 @@
+on page (pta=nil) {
+	«Build a 404 page and set the return code.
+		«10/15/01; 9:01:21 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	pta^.code = 401;
+	pta^.title = "401 Not Authorized";
+	pta^.template = string (manilaData.notFoundTemplate);
+	return ("You are not authorized to access this page.");
+	
+	pta^.activeUrls = false;
+	
+	return (manilaSuite.unTaint (htmlText))}

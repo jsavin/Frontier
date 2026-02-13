@@ -1,0 +1,16 @@
+on unregister (pluginName, adrLegalMacros=nil, adrRpcHandlers=nil) {
+	«Changes
+		«3/9/06; 2:27:06 AM by JES
+			«Created. Converse of manilaSuite.plugins.register.
+	
+	local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
+	if defined (adrConfig^) {
+		delete (adrConfig)};
+	
+	if adrLegalMacros != nil {
+		manilaSuite.plugins.unregisterLegalMacros (adrLegalMacros)};
+	
+	if adrRpcHandlers != nil {
+		manilaSuite.plugins.unregisterRpcHandlers (pluginName, adrRpcHandlers)};
+	
+	return}

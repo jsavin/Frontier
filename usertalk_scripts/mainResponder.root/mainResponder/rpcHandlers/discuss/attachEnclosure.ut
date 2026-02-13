@@ -1,0 +1,37 @@
+on attachEnclosure (dgname, username, password, msgnum, enclosureType, enclosureBits, enclosureAddress) {
+	«9/6/99; 10:25:02 AM by DW, XML-RPC call to enclose an object to a message
+		«Changes:
+			«10/5/99; 1:47:05 PM by PBS
+				«Added support for addresses and strings that can be coerced to addresses in discuss.root.
+	local (adrlog = log.addtoguestdatabase ("discussXmlRpcInterface"));
+	bundle { //logging code
+		adrlog^.operation = "attachEnclosure";
+		adrlog^.dgname = dgname;
+		adrlog^.username = username;
+		adrlog^.msgnum = msgnum};
+	local (adrroot = @[system.temp.mainResponder.discussRootFile].[dgname]);
+	if not defined (adrroot^) {
+		scriptError ("Can't attach the enclosure because there is no discussion group named \"" + dgname + "\".")};
+	if typeOf (adrroot^) == addressType or typeOf (adrroot^) == stringType { //PBS 10/5/99: support for addresses and strings in discuss.root
+		if defined (adrroot^^) {
+			adrroot = adrroot^} //de-reference to get the address of the discussion group
+		else {
+			scriptError ("Can't attach the enclosure because there is no discussion group named \"" + dgname + "\".")}};
+	local (groupname = adrroot^.editorialPrefs.membershipGroup);
+	local (adruser = mainResponder.members.getMemberTableWithPassword (groupname, username, password));
+	local (adrmsg = @adrroot^.messages.[string.padwithzeros (msgnum, 7)]);
+	if string.lower (adrmsg^.member) != string.lower (username) {
+		scriptError ("Can't attach the enclosure because you do not have editorial permission.")};
+	
+	local (prefix = "application/x-frontier-");
+	if enclosureType beginswith prefix {
+		local (type = string.delete (enclosureType, 1, sizeof (prefix)));
+		local (bits = binary (base64.decode (enclosureBits)));
+		setBinaryType (@bits, type);
+		unpack (@bits, @enclosureBits)};
+	try {delete (@adrmsg^.enclosureBits)}; //it could be a table
+	adrmsg^.enclosureBits = enclosureBits;
+	adrmsg^.enclosureAddress = enclosureAddress;
+	adrmsg^.enclosureType = enclosureType;
+	fileMenu.saveMyRoot (adrmsg);
+	return (adrroot^.prefs.msgReaderUrl + msgnum)}

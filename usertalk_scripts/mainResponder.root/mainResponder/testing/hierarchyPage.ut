@@ -1,0 +1,280 @@
+on hierarchyPage () {
+	«Dive into the XML #hierarchy structure and find and build a page
+		«Changes:
+			«10/13/99; 6:29:53 PM by PBS
+				«Commented out code checking pta^.lastNomad. It appears to be unneeded code -- and actually causes the whole thing not to work on some systems.
+				«Handle default directory items. In other words, http://docserver.userland.com/file/default works the same as http://docserver.userland.com/file/.
+	
+	local (pta = html.getPageTableAddress ());
+	«temp.pt = pta^
+	local (adrTable = pta^.hierarchy);
+	local (adrHierarchy = pta^.hierarchy);
+	local (path = pta^.remainingPath);
+	
+	«First be sure the last nomad pointed to the top of this site: if not, the object really can't be found.
+	«if pta^.lastNomad != pta^.adrSiteRootTable and pta^.lastNomad != pta^.responderAttributes.objectNotFoundHandler //PBS 10/13/99: commented out: appears to be unneeded, in fact it causes a problem with some people's setups.
+		«scriptError ("Can't process the request because there is no object named \"" + string.nthField (pta^.remainingPath, "/", string.countFields (pta^.remainingPath, "/")) + "\".")
+	bundle { //compile the XML outline if needed
+		«The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
+		
+		local (flCompile = true);
+		
+		if defined (adrTable^.structure) {
+			if timeModified (@adrTable^.outline) <= timeModified (@adrTable^.structure) {
+				flCompile = false}};
+		
+		if flCompile {
+			xml.compile (string (adrTable^.outline), @adrTable^.structure)}};
+	
+	local (nomad = @adrTable^.structure [1]); //points to #hierarchy structure
+	
+	on hierarchyDive (nomad, name) { //PBS 6/17/99: dive into an XML hierarchy table
+		local (lowerName = string.lower (name));
+		local (flFound = false);
+		
+		bundle { //find the item pointed to by name
+			local (i);
+			for i = 1 to sizeOf (nomad^) {
+				local (oneName = nameOf (nomad^ [i]));
+				if not (oneName contains "\t") {
+					continue};
+				try {
+					local (itemName = xml.getAttributeValue (@nomad^ [i], "pathname"));
+					if string.lower (itemName) == lowerName {
+						nomad = @nomad^ [i];
+						flFound = true;
+						break}}}};
+		
+		if not flFound { //we didn't find the item
+			local (defaults = list (pta^.responderAttributes.defaultDirectoryItems));
+			local (s = string.trimWhiteSpace (pta^.path));
+			if not (s endswith "/") and (string.lower (defaults) contains string.lower (string.nthField (s, "/", string.countFields (s, "/")))) {
+				return (nomad)};
+			scriptError ("Can't process the request because there is no object named \"" + name + "\".");
+			};«return (nomad) //don't advance, this way we might at least find the right category, if not the right page
+		
+		return (nomad)};
+	
+	bundle { //loop through the remaining path, looking for the object in the #hierarchy structure to serve
+		while (sizeOf (path) > 0) {
+			local (pathPart = string.nthField (path, "/", 1));
+			nomad = hierarchyDive (nomad, pathPart);
+			
+			path = string.delete (path, 1, sizeOf (pathPart));
+			path = string.popLeading (path, '/')};
+		
+		«If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
+		if string.lower (string.nthField (nameOf (nomad^), '\t', 2)) == "category" {
+			if not (pta^.remainingPath endsWith "/") {
+				«PBS 10/13/99: Handle default directory items.
+				local (lowerLastPathPart = string.lower (string.nthField (pta^.path, '/', string.countFields (pta^.path, '/'))));
+				local (i, flDefault = false);
+				for i = 1 to sizeOf (pta^.responderAttributes.defaultDirectoryItems) {
+					if lowerLastPathPart == string.lower (pta^.responderAttributes.defaultDirectoryItems [i]) {
+						flDefault = true;
+						break}};
+				if not flDefault {
+					scriptError ("!redirect " + pta^.path + "/")}}}
+		else { //it's not a category, it must not end with a slash.
+			if pta^.remainingPath endsWith "/" {
+				scriptError ("!redirect " + string.popTrailing (pta^.path, "/"))}}};
+	
+	local (type);
+	type = string.lower (string.nthField (nameOf (nomad^), '\t', 2));
+	if type == "" {
+		type = "category"};
+	
+	local (htmlText);
+	
+	on displayMessage (msgNum) {
+		pta^.flReadMessageProcessMacros = false;
+		pta^.flReadMessageAutoParagraphs = false;
+		pta^.flReadMessageExpandUrls = false;
+		
+		add (mainResponder.discuss.readMessage (msgNum, flResponses:false, flResponseForm:false, flShowMsgNums:false, flShowAuthor:false, flShowPostTime:false, flShowReads:false, flStoryHeaderOnly:false, flEditButtonsInHeader:false, flShowEnclosure:false, editPageUrl:"", flShowCowSkullLink:true));
+		
+		local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+		
+		local (title = adrMsgTable^.subject);
+		title = string.replaceAll (title, "\"", "&quot;");
+		pta^.title = title;
+		
+		pta^.adrMsgTable = adrMsgTable;
+		pta^.msgNum = msgNum;
+		
+		return (true)};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	case string.lower (type) {
+		"category" {
+			local (i);
+			local (categoryDescription);
+			try {categoryDescription = xml.getValue (nomad, "description")};
+			if categoryDescription != nil {
+				add (categoryDescription + "<p>")};
+			
+			try {
+				local (msgNum = xml.getAttributeValue (nomad, "msgnum"));
+				displayMessage (msgNum)}
+			else {
+				for i = 1 to sizeOf (nomad^) {
+					local (adr = @nomad^ [i]);
+					local (oneName = nameOf (adr^));
+					if typeOf (adr^) == tableType {
+						if oneName contains "\t" {
+							local (linetext);
+							try {
+								linetext = xml.getAttributeValue (adr, "name")};
+							local (description);
+							local (itemType = string.lower (string.nthField (nameOf (adr^), '\t', 2)));
+							if itemType == "story" or itemType == "category" {
+								local (url = pta^.path);
+								if not (url endsWith "/") {
+									url = string.popSuffix (url, "/") + "/"};
+								local (name = xml.getAttributeValue (adr, "pathname"));
+								url = url + name;
+								add ("<li>");
+								local (ct);
+								if itemType == "category" {
+									ct = sizeOf (xml.getAddressList (adr, "category"));
+									ct = ct + sizeOf (xml.getAddressList (adr, "link"));
+									ct = ct + sizeOf (xml.getAddressList (adr, "story"));
+									ct = " (" + ct + ")"};
+								add (html.getLink (linetext, url));
+								if ct != nil {
+									add (ct)};
+								if itemType == "story" {
+									try {
+										description = xml.getValue (adr, "description")};
+									if description != nil {
+										add (" - " + description)}};
+								add ("<p>")}}}};
+				
+				local (title);
+				try {title = xml.getAttributeValue (nomad, "name")};
+				title = string.replaceAll (title, "\"", "&quot;");
+				pta^.title = title}};
+		"story" {
+			local (msgNum = xml.getAttributeValue (nomad, "msgNum"));
+			displayMessage (msgNum)}};
+	
+	«Build hierarchy path.
+	bundle {
+		local (pathText);
+		local (adrTable = nomad);
+		
+		local (pathBgColor = "beige");
+		local (flHierarchyPath = true);
+		
+		bundle { //get hierarchy path prefs
+			if defined (adrHierarchy^.prefs.bgcolor) {
+				pathBgColor = adrHierarchy^.prefs.bgcolor}
+			else {
+				pathBgColor = pta^.bgColor};
+			
+			if defined (adrHierarchy^.prefs.outlineColor) {
+				outlineColor = adrHierarchy^.prefs.outlineColor}
+			else {
+				outlineColor = "#CCCCCC"};
+			
+			if defined (adrHierarchy^.prefs.flHierarchyPath) {
+				flHierarchyPath = adrHierarchy^.prefs.flHierarchyPath}};
+		
+		on add (s) {
+			pathText = s + pathText};
+		
+		local (ctPops = 1);
+		if flHierarchyPath {
+			ctPops = 0}
+		else {
+			nomad = parentOf (nomad^)};
+		
+		if not (string.lower (nameOf (nomad^)) endsWith "\thierarchy") {
+			loop {
+				local (url = "");
+				if type == "category" {
+					if ctPops > 0 {
+						url = string.filledString ("../", ctPops)}}
+				else {
+					if ctPops > 1 {
+						url = string.filledString ("../", ctPops - 1) + "./"};
+					if ctPops == 1 {
+						url = "./"}};
+				
+				local (lineText = xml.getAttributeValue (nomad, "name"));
+				add (html.getLink (lineText, url));
+				ctPops++;
+				if ctPops == 2 and not flHierarchyPath {
+					break};
+				nomad = parentOf (nomad^);
+				if string.lower (nameOf (nomad^)) endsWith "\thierarchy" {
+					break};
+				if flHierarchyPath {
+					add (" > ")}}};
+		if pathText != "" {
+			pathText = " | " + pathText};
+		
+		bundle { //was: if ctPops > 0
+			if ctPops == 0 {
+				pathText = ""};
+			local (nextPrevLinks = "Prev | Next");
+			
+			local (ix = 0);
+			local (i);
+			local (adrCategory = parentOf (adrTable^));
+			for i = 1 to sizeOf (adrCategory^) {
+				if nameOf (adrCategory^ [i]) == nameOf (adrTable^) {
+					ix = i;
+					break}};
+			
+			on getNextLink () {
+				local (i);
+				for i = (ix + 1) to sizeOf (adrCategory^) {
+					local (linktype = string.nthField (nameOf (adrCategory^ [i]), "\t", 2));
+					case string.lower (linktype) {
+						"category" {
+							local (url = xml.getAttributeValue (@adrCategory^ [i], "pathname"));
+							local (title = xml.getAttributeValue (@adrCategory^ [i], "name"));
+							if type == "category" {
+								return ("<a href=\"../" + url + "/\" title=\"" + title + "\">Next</a>")};
+							return ("<a href=\"" + url + "/\" title=\"" + title + "\">Next</a>")};
+						"link" {
+							local (url = xml.getValue (@adrCategory^ [i], "url"));
+							local (title = xml.getValue (@adrCategory^ [i], "linetext"));
+							return ("<a href=\"" + url + "\" title=\"" + title + "\">Next</a>")};
+						"story" {
+							local (url = xml.getAttributeValue (@adrCategory^ [i], "pathname"));
+							local (title = xml.getAttributeValue (@adrCategory^ [i], "name"));
+							if type == "category" {
+								return ("<a href=\"../" + url + "\" title=\"" + title + "\">Next</a>")};
+							return ("<a href=\"" + url + "\" title=\"" + title + "\">Next</a>")}}};
+				return ("Next")};
+			on getPrevLink () {
+				local (i);
+				for i = (ix - 1) downTo 1 {
+					local (linktype = string.nthField (nameOf (adrCategory^ [i]), "\t", 2));
+					case string.lower (linktype) {
+						"category" {
+							local (url = xml.getAttributeValue (@adrCategory^ [i], "pathname"));
+							local (title = xml.getAttributeValue (@adrCategory^ [i], "name"));
+							if type == "category" {
+								return ("<a href=\"../" + url + "/\" title=\"" + title + "\">Prev</a>")};
+							return ("<a href=\"" + url + "/\" title=\"" + title + "\">Prev</a>")};
+						"story" {
+							local (url = xml.getAttributeValue (@adrCategory^ [i], "pathname"));
+							local (title = xml.getAttributeValue (@adrCategory^ [i], "name"));
+							if type == "category" {
+								return ("<a href=\"../" + url + "\" title=\"" + title + "\">Prev</a>")};
+							return ("<a href=\"" + url + "\" title=\"" + title + "\">Prev</a>")}}};
+				return ("Prev")};
+			
+			nextPrevLinks = getPrevLink () + " | " + getNextLink ();
+			
+			if pathText != "" {
+				pathText = "<table border=\"0\" cellpadding=\"2\" cellspacing=\"1\" bgcolor=\"" + outlineColor + "\"><tr><td bgcolor=\"" + pathBgColor + "\" align=\"left\"><font size=\"-1\">" + nextPrevLinks +  pathText + "</font></td></tr></table>"};
+			
+			pta^.hierarchyPath = pathText}};
+	
+	return (htmlText)}

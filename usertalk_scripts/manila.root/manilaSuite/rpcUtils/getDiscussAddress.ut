@@ -1,0 +1,5 @@
+on getDiscussAddress (sitename) {
+	local (adrDiscuss, dgName = manilaSuite.rpcUtils.getDiscussGroupName (sitename));
+	if not manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrDiscuss) {
+		scriptError ("Can't complete the operation because a discussion group named \"" + dgname + "\" doesn't exist.")};
+	return (adrDiscuss)}

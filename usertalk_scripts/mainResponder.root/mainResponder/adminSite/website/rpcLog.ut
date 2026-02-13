@@ -1,0 +1,67 @@
+on rpcLog (maxitems=200) {
+	«Changes
+		«9/8/02; 10:57:49 PM by JES
+			«Fixed alignment of column labels.
+		«8/2/02; 2:23:36 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "XML-RPC and SOAP Log";
+	local (colors = {pta^.trbg1, pta^.trbg2});
+	local (columns = {"Time", "Code", "Threads", "Secs", "SizeIn", "SizeOut", "Client", "Host", "Procedure"});
+	local (alignRight = {"Code", "Threads", "Secs", "SizeIn", "SizeOut"});
+	on renderItemCallback (adritem) {
+		local (itemtext = "");
+		on add (s) {
+			itemtext = itemtext + (s + "\r");};
+		on td (s, align="") {
+			if align != "" {
+				align = " align=\"" + align + "\""};
+			return ("<td" + align + "><font size=\"-1\" class=\"small\">" + s + "</font></td>")};
+		with adritem^ {
+			local (secsString = "", faultCodeString = "-");
+			try { //get secsString
+				secsString = string.ratio (ticks, 60, 2);
+				if sizeOf (string.nthField (secsString, ".", 2)) == 1 {
+					secsString = secsString + "0"};
+				if ticks > 120 { //more than two seconds
+					secsString = "<b><font color=\"deeppink\">" + secsString + "</font></b>"}};
+			add (td (string.replaceAll (string.popLeading (string.nthField (time, ";", 2), ' '), " ", "&nbsp;") ));
+			if defined (faultCode) {
+				faultCodeString = "<b><font color=\"deeppink\">" + faultCode + "</font></b>"};
+			add (td (faultCodeString, "right"));
+			add (td (threads, "right"));
+			add (td (secsString, "right"));
+			add (td (string.megabyteString (sizeIn), "right"));
+			add (td (string.megabyteString (sizeOut), "right"));
+			add (td (xml.convertToDisplayName (nameof (adrItem^))));
+			bundle { //add the host
+				if defined (host) {
+					add (td (host))}
+				else {
+					add (td ("&nbsp;"))}};
+			bundle { //add the procedure name
+				if defined (methodName) {
+					add (td (methodName))}
+				else {
+					add (td ("&nbsp;"))}}};
+		return (itemtext)};
+	local (ctitems);
+	local (logtext = mainResponder.log.browseAny ("rpcServer", @renderItemCallback, colors, columns, 3, maxitems, alignRight, @ctitems));
+	if ctitems {
+		on add (s) {
+			logtext = logtext + (s + "\r");};
+		bundle { //add error code descriptions
+			add ("<p><b>RPC Error Codes:</b></p>");
+			add ("<ol>");
+			add ("<li>Could not build the XML-RPC response.");
+			add ("<li>The result returned by the requested method could not be encoded.");
+			add ("<li>The structure of the XML-RPC request was illegal.");
+			add ("<li>A script error occured while executing the requested method.");
+			add ("<li>Not used. (unsupportedReturnTypeError)");
+			add ("<li>The XML-RPC request was not well-formed.");
+			add ("<li>Failed to locate the requested XML-RPC method.");
+			add ("<li>Security fault.");
+			add ("</ol>")};
+		return (logtext)}
+	else {
+		return (logtext + "<p>There are no items to list at this time.</p>")}}

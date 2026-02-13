@@ -1,0 +1,89 @@
+on newMediaObject (blogid, username, password, struct) {
+	«Changes
+		«3/20/05; 12:08:51 AM by JES
+			«Created. Implement metaWeblog.newMediaObject.
+				«http://www.xmlrpc.com/metaWeblogApi#metaweblognewmediaobject
+	local (siteurl = blogid); //these are synonymous for Manila sites
+	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	local (t); new (tableType, @t); //return struct
+	local (flPicture = false);
+	bundle { //set flPicture
+		case struct.type {
+			"image/pjpeg";
+			"image/jpeg" {
+				flPicture = true};
+			"image/gif" {
+				flPicture = true}}};
+	bundle { //massage name
+		if struct.name contains "/" {
+			struct.name = string.nthField (struct.name, "/", string.countFields (struct.name, "/"))};
+		if struct.name beginswith "." {
+			struct.name = string.popLeading (struct.name, ".")}};
+	if flPicture {
+		local (msgdata = manilaSuite.rpcHandlers.message.create (username, password, sitename, struct.name, "", "text/plain", 0, 0, 0));
+		local (adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrsite, msgdata.msgNum));
+		manilaSuite.rpcHandlers.message.attachPicture (username, password, sitename, msgdata.msgNum, struct.type, struct.bits);
+		if defined (config.manila.prefs.flWritePicturesToStaticServer) {
+			if config.manila.prefs.flWritePicturesToStaticServer {
+				if defined (config.manila.prefs.staticFilesFolder) {
+					if defined (config.manila.prefs.staticFilesUrl) {
+						local (baseUrl = config.manila.prefs.staticFilesUrl);
+						if config.manila.prefs.staticFilesFolder != "" {
+							if baseUrl != "" {
+								local (shortSiteName = manilaSuite.getShortSitename (siteName));
+								local (ext = ".gif");
+								local (fname = struct.name);
+								bundle { //massage fname, following conventions in manilaSuite.pictures.writeToDisk
+									fname = string.popSuffix (fname);
+									fname = string.dropNonAlphas (fname);
+									case struct.type {
+										"image/pjpeg";
+										"image/jpeg" {
+											ext = ".jpg"}};
+									fname = fname + ext};
+								local (pc = file.getPathChar ());
+								local (folder = config.manila.prefs.staticFilesFolder + shortSiteName + pc);
+								bundle { //make sure the folder for this site exists
+									if not (file.exists (folder)) {
+										file.sureFilePath (folder + "x")}};
+								
+								local (macType);
+								local (macCreator = 'MOSS');
+								if defined (user.html.prefs.imgFileCreator) {
+									macCreater = user.html.prefs.imgFileCreator};
+								local (f = folder + fname);
+								bundle { //get a unique name if needed
+									if file.exists (f) {
+										if defined (adrmsg^.image.f) {
+											if string.lower (f) != string.lower (adrmsg^.image.f) {
+												f = file.uniqueName (string.popSuffix (string.mid (fname, 1, 20)), folder, 3, ext);
+												fname = file.fileFromPath (f)}}
+										else {
+											f = file.uniqueName (string.popSuffix (string.mid (fname, 1, 20)), folder, 3, ext);
+											fname = file.fileFromPath (f)}}};
+								bundle { //get the Macintosh file type and creator
+									case ext {
+										".gif" {
+											macType = 'GIFf'};
+										".jpg" {
+											macType = 'JPEG'}}};
+								bundle { //write the file to disk and set the url
+									file.writeWholeFile (f, adrmsg^.image.bits, macType, macCreator, clock.now ());
+									bundle { //add f and url to the image subtable for this messages
+										if not (baseUrl endsWith "/") {
+											baseUrl = baseUrl + "/"};
+										local (url = baseUrl + shortSiteName + "/" + fname);
+										
+										adrmsg^.image.f = f;
+										adrmsg^.image.url = url}}}}}}}};
+		if defined (adrmsg^.image.url) {
+			t.url = adrmsg^.image.url};
+		if not defined (t.url) { //it wasn't in the message table -- have to calculate it
+			t.url = adrsite^.["#urls"].imageViewer;
+			if not (t.url endswith "$") {
+				t.url = t.url + "$"};
+			t.url = t.url + msgdata.msgNum}}
+	else { //post as a gem
+		t.url = manilaSuite.rpcHandlers.gems.create (username, password, sitename, struct.name, struct.bits, struct.type)};
+	return (t)}

@@ -1,0 +1,23 @@
+on validMailAddress (mailaddress) { //scriptErrors if invalid
+	«Changes:
+		«10/15/04; 5:52:19 PM by JES
+			«Call through string.isValidEmailAddress, if present.
+		«05/01/00; 6:55:12 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+		«04/14/00; 9:22:21 PM by JES
+			«localized error messages
+	if defined (string.isValidEmailAddress) { //03/01/27, 13:37:37 by DAB
+		try {
+			string.isValidEmailAddress (mailaddress);
+			return}
+		else {
+			scriptError ("Can't send email because the address, " + mailaddress + " is not a valid email address.")}};
+	if not (mailaddress contains "@") {
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.mailaddress = mailaddress;
+		scriptError (mainResponder.getString ("members.validMailAddressNoAtSign", @replacementTable))};
+	local (domain = string.nthfield (mailaddress, '@', 2));
+	if not (domain contains ".") {
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.domain = domain;
+		scriptError (mainResponder.getString ("members.validMailAddressNoDot", @replacementTable))}}

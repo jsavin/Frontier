@@ -1,0 +1,52 @@
+on getCookieDomain (adrGroup) {
+	«Changes
+		«10/11/05; 3:18:20 PM by JES
+			«Send wildcard style cookies with leading '.' character.
+		«10/1/05; 4:55:27 AM by JES
+			«If the group is the admin group, the cookieDomain is the empty string, and admins are always allowed, special case to the most general cookieDomain.
+		«10/1/05; 4:35:19 AM by JES
+			«Get page table in a try block -- makes it possible to call this script outside the website framework. In that case, wildcarded cookie domains always are returned as the empty string.
+		«10/1/05; 4:09:40 AM by JES
+			«Created. Given the address of a membership group, return the proper domain name to use for the client's cookie, based on adrGroup^.cookieDomain.
+				«Supports special wildcard values for cookieDomain. *.* or * means use the most general domain possible -- the last and second-to-last parts of the host name. *.*.* means use three parts. *.*.*.* means use 4, etc.
+				«Examples:
+					«Host for the reuqest is www.foo.com, and cookieDomain is *.* -- we send foo.com.
+					«Host for the request is www.foo.com and cookieDomain is *.*.* -- we send www.foo.com.
+					«Host for the request is me.mydesk.foo.com and cookieDomain is *.*.* -- we send mydesk.foo.com.
+					«Host for the request is 127.0.0.1 and cookieDomain is *.* -- we send 127.0.0.1.
+	local (cookieDomain = adrGroup^.cookieDomain);
+	if cookieDomain == "" { //possible special case for admin group
+		if config.mainResponder.prefs.flAdminGroupAlwaysAllowed {
+			if adrGroup == mainResponder.members.getMembershipTable ("admin") {
+				cookieDomain = "*"}}}; //use most general domain
+	if cookieDomain beginswith "*" { //wildcard case
+		try { //in website framework context, we return a part of the host name in the request -- outside of it, we return the empty string
+			local (pta = html.getPageTableAddress ());
+			local (host = pta^.host);
+			if host contains ":" {
+				host = string.nthField (host, ":", 1)};
+			try { //if IP address, just return the empty string
+				local (lastField = string.nthField (host, ".", string.countFields (host, ".")));
+				lastField = number (lastField);
+				return ("")}; //client will set to host name -- IP address in this case
+			
+			local (ctPartsInHost = string.countFields (host, "."));
+			local (ctPartsToSend = string.countFields (cookieDomain, "."));
+			if ctPartsToSend < 2 { //minimum according to cookie spec
+				ctPartsToSend = 2};
+			
+			if ctPartsToSend >= ctPartsInHost {
+				return ("." + pta^.host); //send wildcard style domain based on request host
+				«return ("") //client will set to full host name
+				};
+			cookieDomain = ""; //we're rebuilting
+			local (i);
+			for i = 1 to ctPartsToSend {
+				cookieDomain = "." + string.nthField (host, ".", ctPartsInHost - i + 1) + cookieDomain};
+			}«cookieDomain = string.popLeading (cookieDomain, ".")
+		else {
+			return ("")}};
+	return (cookieDomain)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«dialog.notify ("\"" + getCookieDomain (@admin) + "\"")

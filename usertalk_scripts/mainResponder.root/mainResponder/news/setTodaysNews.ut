@@ -1,0 +1,12 @@
+on setTodaysNews (username, password, sitename, newstext) {
+	local (adrsite = mainResponder.news.openRoot (sitename));
+	local (adrsiteinfo = @adrsite^.["#newsSite"]);
+	if string.lower (username) != adrsiteinfo^.sysopMail {
+		scriptError (mainResponder.getString ("news.cantSetNewsNotSysop"))}; // 1/16/00 JES: localized
+	local (groupname = adrsiteinfo^.sysopMemberOfGroup);
+	mainresponder.members.getMemberTableWithPassword (groupname, username, password); //scriptErrors if password is incorrect
+	
+	local (adrmsg = mainresponder.news.getTodaysMsgTable (sitename));
+	mainResponder.discuss.setMessageText (adrmsg, newstext);
+	fileMenu.saveMyRoot (adrmsg);
+	return (true)}

@@ -1,0 +1,11 @@
+on memberCheck (sitename, username, password, beginningErrorString) {
+	«Make sure this person is a member. If not, generate the appropriate scriptError.
+		«beginningErrorString should be the beginning of an error string, of the form "Can't xxx because "
+	
+	if not (manilaSuite.rpcUtils.isMember (siteName, username)) { //make sure username is a member
+		scriptError (beginningErrorString + "\"" + username + "\" is not a member.")};
+	
+	if not (manilaSuite.rpcUtils.authenticateMember (siteName, username, password)) { //check the password
+		scriptError (beginningErrorString + "\"" + username + "\" supplied an incorrect password.")};
+	
+	return (true)}

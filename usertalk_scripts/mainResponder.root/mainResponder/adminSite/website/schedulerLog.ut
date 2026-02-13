@@ -1,0 +1,28 @@
+on schedulerLog (maxitems=200) {
+	«Changes
+		«8/3/02; 12:48:59 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Scheduler Log";
+	local (colors = {pta^.trbg1, pta^.trbg2});
+	local (columns = {"Time", "Item"});
+	local (colsToAlignRight = {});
+	on renderItemCallback (adritem) {
+		local (itemtext = "");
+		on add (s) {
+			itemtext = itemtext + (s + "\r");};
+		on td (s, align="") {
+			if align != "" {
+				align = " align=\"" + align + "\""};
+			return ("<td" + align + " valign=\"top\"><font size=\"-1\" class=\"small\">" + s + "</font></td>")};
+		with adritem^ {
+			add (td (string.replaceAll (string.popLeading (string.nthField (xml.convertToDisplayName (nameOf (adrItem^)), ";", 2), ' '), " ", "&nbsp;") ));
+			add (td (html.data.standardMacros.hierarchicTableDisplayer (adritem)))};
+		return (itemtext)};
+	local (ctitems);
+	local (logtext = mainResponder.log.browseAny ("schedulerMonitor", @renderItemCallback, colors, columns, 3, maxitems, colsToAlignRight, @ctitems));
+	if ctitems {
+		return (logtext)}
+	else {
+		return (logtext + "<p>There are no items to list at this time.</p>")};
+	}«return (mainResponder.search.server.logBrowserIndexer (maxitems, colors, 3, "smallAlignTop", false))

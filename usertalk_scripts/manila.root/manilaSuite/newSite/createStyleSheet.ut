@@ -1,0 +1,11 @@
+on createStyleSheet (adrSiteInfo) {
+	local (adrSite = adrSiteInfo^.adrSite);
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	local (adrCss = @adrNewsSite^.cascadingStyleSheet);
+	
+	local (s);
+	s = "<style type=\"text/css\">\r\r  </style>";
+	
+	wp.newTextObject (s, adrCss);
+	
+	return (true)}

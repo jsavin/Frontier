@@ -1,0 +1,2 @@
+on finalFilter (pta) {
+	return (manilaSuite.filters.finalFilter (pta))}

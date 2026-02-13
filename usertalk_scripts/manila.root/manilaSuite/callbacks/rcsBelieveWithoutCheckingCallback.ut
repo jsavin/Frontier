@@ -1,0 +1,12 @@
+on rcsBelieveWithoutCheckingCallback (urllist) {
+	«Changes
+		«8/13/02; 2:42:50 PM by JES
+			«If the site is on this server, return true. This prevents RCS from bothering to read the home page of the site, a performance enhancement.
+	if defined (config.mainResponder.domains.[urllist[2]]) and urllist[3] == "" {
+		return (true)}
+	else { //have to actually dive into the site tree
+		try { //this will fail if the site is not on this server
+			local (url = urllist[1] + urllist[2] + "/" + urllist[3]);
+			manilaSuite.rpcUtils.urlToSiteName (url);
+			return (true)}};
+	return (false)}

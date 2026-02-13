@@ -1,0 +1,36 @@
+on getMessageFromRelativePath (path, adrSite=nil) {
+	«Changes
+		«10/24/05; 2:20:44 AM by JES
+			«Created. Given a relative path and the address of a site, return the address of the message table that corresponds to the path.
+	
+	if adrSite == nil { //get from website framework
+		adrSite = manilaSuite.getSiteAddress ()};
+	manilaSuite.siteStructure.compileIfDirty (adrSite);
+	
+	on error () {
+		scriptError ("Can't get message table because no message is defined for the given path.")};
+	on dive (pathpart, nomad) {
+		pathpart = string.lower (pathpart);
+		
+		local (ct = sizeOf (nomad^));
+		for i = 1 to ct {
+			if typeOf (nomad^[i]) == tableType {
+				try {
+					local (name = xml.getAttributeValue (@nomad^[i], "pathname"));
+					if string.lower (name) == pathpart {
+						return (@nomad^[i])}}}};
+		
+		error ()};
+	
+	path = string.popLeading (path, "/");
+	
+	local (nomad = @adrSite^.["#hierarchy"].structure[1]);
+	while sizeOf (path) > 0 {
+		local (pathpart = string.nthField (path, "/", 1));
+		nomad = dive (pathpart, nomad);
+		path = string.delete (path, 1, sizeOf (pathpart) + 1)};
+	
+	try {
+		return (manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, xml.getAttributeValue (nomad, "msgnum") ))};
+	
+	error ()}

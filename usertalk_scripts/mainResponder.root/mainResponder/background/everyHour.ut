@@ -1,0 +1,15 @@
+«8/15/99; 9:38:34 AM by DW
+	«This script runs once an hour. 
+	«If config.mainresponder.prefs.flLogReopenHourly is true, we close the current log file.
+
+if config.mainresponder.prefs.flLogReopenHourly {
+	local (day, month, year, hour, minute, second);
+	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+	if hour != 0 { //no need to close and reopen at midnight, the log rollover just happened
+		local (f = system.temp.log.lastLogFile);
+		if f != nil {
+			if window.isOpen (f) {
+				fileMenu.save (f);
+				fileMenu.close (f);
+				local (adrtable = log.addToGuestDatabase ("hourlyLogReopen"));
+				adrtable^.msg = "Log file closed and reopened."}}}}

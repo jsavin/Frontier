@@ -1,0 +1,175 @@
+on accesscontrolPage (pta) {
+	«Changes
+		«28/04/05; 8:36:03 AM by PR
+			«bug fix: changed adrStorage^.accessControl.makePublicCohorts to pta^.accessControl.makePublicCohorts
+		«3/30/05; 3:51:53 AM by JES
+			«Made "moderators cohort by default" invisible. Pref is set to false if not defined, but we don't display the option for now.
+			«Modified table style to fit UserLand standard table formatting.
+			«Updated help-text and localizations.
+		«3/1/05; 1:08:25 AM by JES
+			«Fixed issue where titles on prefs pages would be rendered twice at the top of the page -- once by the template, and once in this script.
+		«04/05/21, 18:56:06 by DAB
+			«Created. Start point for ME access to message level access control.
+				«Localization at manilaData.localization.languages.english.strings.accessControl.
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (sitename = manilaSuite.getCanonicalSitename(adrSite));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	manilaSuite.accessControl.init(adrSite);
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (replTbl);
+	bundle { //build replace table 02/03/24, 09:39:55 by DAB
+		new(tabletype, @replTbl);
+		replTbl.sitename = sitename;
+		replTbl.moderators = maniladata.accessControl.moderatorCohort};
+	
+	local (seperatorColor, seperatorTextColor);
+	manilaSuite.html.getSeparatorColors (@seperatorColor, @seperatorTextColor);
+	on separator(msgID, sectionName="") {
+		local (id="");
+		if sectionName!="" {
+			id = " id='" + sectionName + "'"};
+		add("\r<table cellpadding='2' cellspacing='0' width = '100%'" + id + ">");
+		add("\r\t<tr>");
+		add("\r\t\t<td style = 'color:" + seperatorTextColor + ";background-color:" + seperatorColor + "' colspan='2'>");
+		add(manilaSuite.getString("accesscontrol." + msgID, @replTbl, pta:pta));
+		add("</td>");
+		add("\r\t</tr>");
+		add("\r</table>");
+		return true};
+	
+	pta^.title = manilaSuite.getString("accessControl.pageTitle", @replTbl, pta:pta);
+	«add ("<h2>" + pta^.title + "</h2>")
+	add(manilaSuite.getString("accesscontrol.helptext", @replTbl, pta:pta));
+	
+	local (errCntr = 0);
+	on errorReport(errID) {
+		add("<p>");
+		add("<span style = 'color:red'>" + manilaSuite.getString("accessControl." + errID, @replTbl, pta:pta) + "</span>"); //02/04/14, 22:33:27 by DAB
+		add("</p>");
+		errCntr++};
+	
+	local (flInvokeChangeCallbacks=false); //03/08/11, 13:43:29 by DAB
+	if pta^.method == "POST" {
+		if defined(pta^.postArgs.change) {
+			local (flOldenableState = adrNewsSite^.accessControl.enabled);
+			
+			adrNewsSite^.accessControl.enabled = boolean(pta^.postargs.accessenabled );
+			adrNewsSite^.accessControl.cohortPopupWanted = boolean(pta^.postargs.cohortchecked);
+			adrNewsSite^.accessControl.ROcohortPopupWanted = boolean(pta^.postargs.readOnlyCohorts);
+			adrNewsSite^.accessControl.timePopupWanted =boolean(pta^.postargs.timechecked);
+			adrNewsSite^.accessControl.newsCohortPopupWanted = boolean(pta^.postargs.newsCohortchecked);
+			adrNewsSite^.accessControl.newsTimePopupWanted = boolean(pta^.postargs.newsTimechecked);
+			adrNewsSite^.accessControl.cohortPopupEditors = boolean(pta^.postargs.cohortEditorControlchecked);
+			adrNewsSite^.accessControl.timeIsMilitary = boolean(pta^.postargs.militaryTime);
+			if defined (pta^.postargs.moderated) {
+				adrNewsSite^.accessControl.moderated =boolean(pta^.postargs.moderated)}
+			else {
+				if not defined (adrNewsSite^.accessControl.moderated) {
+					adrNewsSite^.accessControl.moderated = false}};
+			adrNewsSite^.accesscontrol.userDefaultCohortsOK = boolean(pta^.postargs.userSetsDefaultCohorts);
+			adrNewsSite^.accesscontrol.siteStructureCohorts =boolean(pta^.postargs.siteStructureCohorts);
+			adrNewsSite^.accessControl.flTrackAccess = boolean(pta^.postargs.TrackControlledAccess);
+			
+			if adrNewsSite^.accessControl.enabled and not flOldenableState {
+				manilaSuite.accessControl.buildDefaultCohorts(adrCohorts); //only if needed
+				flInvokeChangeCallbacks = true};
+			
+			case true { //04/06/04, 14:02:06 by DAB
+				not defined(pta^.postargs.makePublicCohorts) { //04/10/05, 21:59:01 by DAB
+					pta^.postargs.makePublicCohorts = {}; // 27/04/05; 7:35:58 PM by PR
+					};«adrStorage^.accessControl.makePublicCohorts = {}
+				pta^.postargs.makePublicCohorts == "" {
+					adrNewsSite^.accessControl.makePublicCohorts = {"Members Only"}}; //04/06/04, 13:59:05 by DAB
+				typeof(pta^.postargs.makePublicCohorts) != listTYpe {
+					adrNewsSite^.accessControl.makePublicCohorts = {pta^.postargs.makePublicCohorts}}}
+			else {
+				adrNewsSite^.accessControl.makePublicCohorts = pta^.postargs.makePublicCohorts}}};
+	
+	separator("panelTitleGlobals", "globals");
+	bundle { //form for global controls
+		on radioRow(msgID, fieldID, formElementID) {
+			local (checked);
+			
+			add("\r\t<tr>");
+			add("\r\t\t<td>");
+			add(manilaSuite.getString(msgID, @replTbl, pta:pta));
+			add("\r\t\t</td>");
+			add("\r\t\t<td>");
+			checked = "";
+			if adrNewsSite^.accessControl.[fieldID] {
+				checked = " checked"};
+			add("<input type='radio' name='" + formElementID+ "' value='true'" + checked + ">");
+			add(manilaSuite.getString("common.yes", pta:pta));
+			checked = "";
+			if not adrNewsSite^.accessControl.[fieldID] {
+				checked = " checked"};
+			add("<input type='radio' name='" + formElementID + "' value='false'" + checked + ">");
+			add(manilaSuite.getString("common.no", pta:pta));
+			add("\r\t\t</td>");
+			add("\r\t</tr>");
+			
+			return true};
+		
+		add("<form method = 'post' action = '" + pta^.fName + "$accesscontrol#globals' name = 'accessControl'>");
+		add("\r<table>");
+		
+		radioRow("accessControl.checkAccess", "enabled", "accessenabled"); //row to enable/disable access control
+		radioRow("accessControl.AllowSiteStructureCohorts", "siteStructureCohorts", "siteStructureCohorts"); //row for sitestructure cohort enabled 
+		
+		add("\r\t<tr>\r\t\t<td colspan='2'>&nbsp;</td></tr>"); //spacer row
+		
+		radioRow("accessControl.addAccessControls", "cohortPopupWanted", "cohortchecked"); //row for cohort access to stories
+		radioRow("accessControl.AddROCohorts", "ROcohortPopupWanted", "readOnlyCohorts"); //row for add RO cohort access control
+		radioRow("accessControl.addAccessControlsNews", "newsCohortPopupWanted", "newsCohortchecked"); //row for cohort access to newsitems 
+		radioRow("accessControl.addEditorAccessControls", "cohortPopupEditors", "cohortEditorControlchecked"); //row for editors see access control on new/changed form
+		radioRow("accessControl.addAccessControlsDefaultBox", "userDefaultCohortsOK", "userSetsDefaultCohorts"); //row for option to allow user to set their default cohorts
+		
+		bundle { //row for cohort that is allowed to assign into Everyone cohort 04/06/04, 13:51:11 by DAB
+			add("<tr>");
+			add("<td valign='top'>");
+			«Who may make messages Public (visible to Everyone)?
+			add(manilaSuite.getString("accessControl.assignIntoEveryone", pta:pta));
+			add("</td>");
+			add("<td>");
+			local (currCohorts = {"Members Only"});
+			try {currCohorts = adrNewsSite^.accessControl.makePublicCohorts};
+			add(manilaSuite.accessControl.cohortsPopup(pta, "makePublicCohorts", currCohorts, {"Everyone"}, false, 3)); //04/06/04, 13:28:59 by DAB
+			add("</td>");
+			add("</tr>")};
+		
+		add("\r\t<tr>\r\t\t<td colspan='2'>&nbsp;</td></tr>"); //spacer row
+		
+		radioRow("accessControl.addTimeControls", "timePopupWanted", "timechecked"); //row for time access
+		radioRow("accessControl.addTimeControlsNews", "newsTimePopupWanted", "newsTimechecked"); //row for time access newsitems
+		radioRow("accessControl.clock24Hour", "timeIsMilitary", "militaryTime"); //row for time format 
+		
+		add("\r\t<tr>\r\t\t<td colspan='2'>&nbsp;</td></tr>"); //spacer row
+		
+		if false { //moderators cohort wired off for 9.1 release
+			radioRow("accessControl.moderated", "moderated", "moderated")}; //row for moderated 
+		radioRow("accessControl.TrackControlledAccess", "flTrackAccess", "trackControlledAccess"); //row for track controlled messages
+		
+		add("\r\t<tr>");
+		add("\r\t\t<td>&nbsp;</td><td>");
+		add("<input type = 'submit' name = 'change' value ='" + manilaSuite.getString("common.submitButton", pta:pta) + "'>");
+		add("</td>");
+		add("\r\t</tr>");
+		
+		add("\r\t</table>");
+		add("\r</form>")};
+	
+	separator("panelTitleErrors", "maintainErrorPages");
+	add(manilaSuite.accessControl.maintainErrorPages());
+	
+	if flInvokeChangeCallbacks { //03/08/11, 13:43:17 by DAB
+		if defined(adrNewsSite^.accessControl.callbacks) { //03/10/11, 17:11:34 by DAB
+			manilaSuite.accessControl.callbackLoop(@adrNewsSite^.accessControl.Callbacks.changedCohorts, pta:pta)}};
+	
+	return htmltext}

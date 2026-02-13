@@ -1,0 +1,75 @@
+on setPageTemplate (pta=nil) {
+	«Changes 
+		«8/31/05; 2:46:16 AM by JES
+			«Script style changes, no functional differences.
+		«10/05/05; 4:13:46 PM by PR
+			«added support for template=abc search arg, overrides MF_auxTemplate
+		«02/06/07, 22:39:05 by DAB
+			«factor out logic to set the template
+			«see if template already computed and stored in page table 
+		«01/04/20, 14:32:58 by DAB
+			«If default auxiliary template set, use as default
+			«and don't use inheritance to get value of pathatt - look at entry in site structure only
+		«01/04/06, 16:45:23 by DAB
+			«make sure failures are logged to the website
+			«forget about manilasuite.staticrendering.patchlocalurls
+		«00/06/27, 22:45:33 by DAB
+			«Created. Set pta^.template the path attribute.
+				«manilaFixer.templates.setPageTemplate : 00/06/27, 22:45:33 by DAB
+	if not pta {
+		pta = html.getPageTableAddress ()};
+	
+	if pta^.flPrintFriendlyTemplate { //03/07/03, 11:31:49 by DAB
+		return (false)};
+	
+	if defined (pta^.manilaFixer_template) { //02/06/07, 22:40:11 by DAB
+		return (manilaSuite.sitePrefs.auxtemplates.setTemplateTo (pta, pta^.manilaFixer_template))};
+	
+	bundle { //bail out if homepage template applies
+		local (adrSite = manilaSuite.getSiteAddress (pta));
+		if pta^.adrObject == @adrSite^.default {
+			if defined (pta^.newsSite^.flUseHomePageTemplate) {
+				if pta^.newsSite^.flUseHomePageTemplate {
+					«msg ("Applying home page template")
+					return (false)}}};
+		if pta^.adrObject == @adrSite^.["robots.txt"] { //05/04/28, 14:11:20 by DAB
+			return (false)}};
+	
+	if manilaSuite.sitePrefs.utility.isAdminPage (pta) {
+		return (false)};
+	
+	if defined (pta^.searchargs) { //02/07/30, 19:55:25 by DAB 
+		if pta^.searchargs != "" { //02/06/17, 21:29:26 by DAB
+			if not defined (pta^.searchArgTable) {
+				new (tableType, @pta^.searchArgTable);
+				webserver.parseArgs (pta^.searchArgs, @pta^.searchArgTable)};
+			
+			if defined (pta^.searchArgTable) {
+				if defined (pta^.searchArgTable.template) { //10/05/05; 4:13:31 PM by PR
+					return (manilaSuite.sitePrefs.auxtemplates.setTemplateTo (pta, pta^.searchArgTable.template))};
+				if defined (pta^.searchArgTable.["MF_auxTemplate"]) {
+					return (manilaSuite.sitePrefs.auxtemplates.setTemplateTo (pta, pta^.searchArgTable.["MF_auxTemplate"]))}}}};
+	
+	local (defaultAttValue = "", flInherit = true);
+	try {
+		defaultAttValue = pta^.newsSite^.defaultAuxTemplate;
+		flInherit = (defaultAttValue == "")}; //its either use the default supplied or inherit
+	
+	try {
+		«local (templ = manilaSuite.sitePrefs.siteStructure.getPathAttValue ("template", defaultAttValue, flInherit)) 
+		local (templ); //05/05/04, 17:51:11 by DAB 
+		if manilaSuite.sitePrefs.siteStructure.isCategoryPage (pta) { //05/05/04, 17:51:15 by DAB
+			templ = manilaSuite.sitePrefs.siteStructure.getPathAttValue ("templateForIndex", defaultAttValue, flInherit)}
+		else {
+			templ = manilaSuite.sitePrefs.siteStructure.getPathAttValue ("template", defaultAttValue, flInherit)};
+		«msg ("Template for " + pta^.path + " is " + templ + " default " + defaultAttValue)
+		if templ != "" { //02/06/07, 22:44:59 by DAB
+			if manilaSuite.sitePrefs.auxtemplates.applySubTemplate (pta, templ) { //02/09/22, 22:34:53 by DAB
+				return (true)};
+			return (manilaSuite.sitePrefs.auxtemplates.setTemplateTo (pta, templ))}}
+	else {
+		«manilaFixer.logger ("ManilaFixer cannot set template because " + tryError)
+		«manilaFixer.logger ("ManilaFixer cannot set template for " + pta^.path + " because " + tryError) //01/08/09, 23:59:05 by DAB
+		scriptError (tryError)};
+	
+	return (false)}

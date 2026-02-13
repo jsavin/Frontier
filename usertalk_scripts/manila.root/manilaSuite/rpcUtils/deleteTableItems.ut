@@ -1,0 +1,12 @@
+on deleteTableItems (adrTable, adrData) {
+	«Friday, November 19, 1999 at 4:28:46 PM by AR
+		«Delete all items in adrData which exist in adrTable
+	local (adrItem, adrDataItem);
+	for adrItem in adrTable {
+		adrDataItem = @adrData^.[nameOf (adrItem^)];
+		if defined (adrDataItem^) {
+			if (typeOf (adrItem^) == tableType) and (sizeof (adrItem) > 0) {
+				deleteTableItems (adrItem, adrDataItem)}
+			else {
+				delete (adrDataItem)}}};
+	return (true)}

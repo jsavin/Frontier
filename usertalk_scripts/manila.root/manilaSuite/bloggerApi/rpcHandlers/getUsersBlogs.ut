@@ -1,0 +1,83 @@
+on getUsersBlogs (appKey, username, password) {
+	«Changes
+		«4/10/07; 2:30:48 PM by LL
+			«Fix bug when trying to determine which config.mainresponder.domains table to use. If the domains table wasn't defined, it wasn't properly switching to the default domains table.
+		«4/1/07; 11:36:30 AM by LL
+			«If a site tree is defined for a domain, check it for any matching sub-sites.
+			«Check that a site is installed before checking if the user is a member.
+		«3/30/07; 12:19:17 AM by JES
+			«Change blogname to blogName in return struct. Should fix a bug when using Windows Live Writer to edit Manila news items.
+		«3/28/07; 12:48:27 AM by JES
+			«Created. Return a array of structs for each blog owned by the given user.
+				«Each sub-item is a table named for the blogId (Manila site URL), containing the following:
+				«url -- the URL of the blog
+				«blogid -- the blog's ID, for Manila this is the same as the URL
+				«blogName -- the title of the blog (from #newsSite.siteName)
+	password = string (password); //safety check type
+	local (theHost = "default");
+	if defined (host) {
+		theHost = host}
+	else {
+		try {
+			local (pta = html.getPageTableAddress ());
+			theHost = pta^.host}};
+	on getBlogInfo (adrSite) {
+		local (t); new (tableType, @t);
+		t.url = adrSite^.["#ftpSite"].url;
+		t.blogid = t.url;
+		t.blogName = adrSite^.["#newsSite"].siteName;
+		return (t)};
+	on memberCheck (adrSite) {
+		local (adrMember = manilaSuite.members.getMemberTableFromSiteAddress (adrSite, username));
+		if defined (adrMember^) {
+			if defined (adrMember^.blocked) {
+				if adrMember^.blocked {return (false)}};
+			if string (adrMember^.password) == password {
+				return (true)}};
+		return (false)};
+	
+	local (adrHost, flSiteTreeExists = false);
+	try {adrHost = @config.mainResponder.domains.[theHost]};
+	if not defined (adrHost^) {
+		adrHost = @config.mainResponder.domains.default};
+	
+	if defined (adrHost^.siteTree) {
+		flSiteTreeExists = true};
+	
+	if flSiteTreeExists { //check the siteTree
+		local (sites = {});
+		on visitproc (adrNode) {
+			if defined (adrNode^.["/atts"].address) {
+				local (adrSite = @[adrNode^.["/atts"].address]);
+				if defined (adrSite^) {
+					if manilaSuite.isManilaSite (adrSite) {
+						local (flInstalled = false);
+						try {
+							manilaSuite.getCanonicalSiteName (adrSite); //will fail if the site is not installed
+							flInstalled = true};
+						if flInstalled {
+							if memberCheck (adrSite) {
+								local (t = getBlogInfo (adrSite));
+								sites = sites + {t}}}}}};
+			return (true)}; //continue visiting sites
+		if mainResponder.siteTree.domainIsSiteTree (adrHost) {
+			mainResponder.siteTree.visit (adrHost, @visitproc)};
+		if sizeOf (sites) == 0 {return ({})};
+		return (sites)}
+	else { //try the fast way for top-level sites
+		local (siteName = manilaSuite.rpcHandlers.getSiteName ("http://" + theHost + "/"));
+		local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+		local (flInstalled);
+		local (sites = {});
+		try {
+			manilaSuite.getCanonicalSiteName (adrSite); //will fail if the site is not installed
+			flInstalled = true};
+		if flInstalled {
+			if memberCheck (adrSite) {
+				local (t = getBlogInfo (adrSite));
+				return ({t})}};
+		return ({})}};
+«bundle //test code
+	«local (ret = manilaSuite.bloggerApi.rpcHandlers.getUsersBlogs (0, "jake@userland.com", admin.users.["jake@userland.com"].password))
+	«workspace.userBlog1 = ret[1]
+	«edit (@workspace.userBlog1)

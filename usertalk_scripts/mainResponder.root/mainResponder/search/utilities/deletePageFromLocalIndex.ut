@@ -1,0 +1,38 @@
+on deletePageFromLocalIndex (url) {
+	local (indexPath = mainResponder.search.utilities.getIndexPath ());
+	
+	local (adrIndex = @[indexPath].index);
+	local (adrPages = @[indexPath].pageInfo);
+	
+	msg ("Search Engine: De-indexing " + url + "...");
+	
+	«First de-index the page.
+	searchEngine.deIndexPage (url, adrIndex);
+	
+	msg ("Search Engine: Removing page info for " + url + "...");
+	
+	«Then remove the info about the page.
+	if defined (adrPages^.[url]) {
+		delete (@adrPages^.[url])};
+	
+	fileMenu.save (indexPath);
+	
+	return (true)};
+bundle { //test code
+	local (url);
+	loop {
+		if dialog.ask ("Url to delete:", @url) {
+			deletePageFromLocalIndex (url)}
+		else {
+			break}};
+	
+	«Close the index.
+	«msg ("Search Engine: Closing Index.root...")
+	«fileMenu.close (indexPath)
+	«
+	«Re-open the index.
+	«msg ("Search Engine: Opening Index.root...")
+	«fileMenu.open (indexPath, true) //open it hidden
+	
+	msg ("");
+	return (true)}

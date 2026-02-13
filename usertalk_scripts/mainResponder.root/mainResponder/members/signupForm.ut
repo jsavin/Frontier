@@ -1,0 +1,31 @@
+on signupForm () { //a macro, call it from your logon page
+	«Changes:
+		«4/14/00; 9:23:32 PM by JES
+			«localized prompts
+	local (pta = html.getPageTableAddress ());
+	local (formaction = pta^.path); //send the message back to the same place
+	formaction = formaction + "$" + nameof (this^); //add the name of the macro that generated the form to the request
+	local (formname = string (this));
+	local (titlebgcolor = black, titletextcolor = white);
+	local (bodybgcolor = white, bodytextcolor = black);
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	
+	add ("<form name=\"" + formname + "\" action=\"" + formaction + "\" method=\"POST\">"); indentlevel++;
+	add ("<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">"); indentlevel++;
+	
+	add ("<tr bgcolor=\"#" + bodybgcolor + "\">"); indentlevel++;
+	add ("<td><font color=\"#" + bodytextcolor + "\">" + mainResponder.getString ("members.mailAddressPrompt") + "</font></td>"); // 4/14/00 JES localized prompt
+	add ("<td><input name=\"mailAddress\" value=\"\" size=\"30\" maxlength=\"60\"></td>");
+	add ("</tr>"); indentlevel--;
+	
+	add ("<tr bgcolor=\"#" + bodybgcolor + "\">"); indentlevel++;
+	add ("<td>&nbsp;</td>");
+	add ("<td align=\"right\"><input type=\"submit\" value=\"" + mainResponder.getString ("members.enterButton") + "\"></td>"); // 4/14/00 JES: localized
+	add ("</tr>"); indentlevel--;
+	
+	add ("</table>"); indentlevel--;
+	add ("</form>"); indentlevel--;
+	return (htmltext)}

@@ -1,0 +1,303 @@
+on adminPage () {
+	«Changes:
+		«4/10/06; 4:16:54 PM by JES
+			«Fix a bug in the role pop-up on the add multiple members section.
+		«2/22/06; 7:28:15 PM by JES
+			«New bulletin option when adding multiple members. Default is plain-text bulletins.
+			«Reformatted script to match UserLand code style.
+		«2004:
+			«04/05/31, 10:17:10 by DAB
+				«complete rewrite; most fucntions moved or factored out 
+				«messages at manilaData.localization.languages.english.strings.admin
+		«2003:
+			«9/30/03; 1:04:12 PM by JES
+				«Store member passwords as binary values.
+			«5/6/03; 12:51:35 AM by JES
+				«Increased vertical spacing between various functions. Fixed rendering problem in Netscape 4.
+		«2002:
+			«9/10/02; 10:44:39 PM by JES
+				«Added a multi-user signup section.
+			«8/10/02; 8:01:43 PM by JES
+				«New field in the add new member form, Email bulletins -- you can specify none, plain text, or HTML bulletins. The default is retained after posting the form.
+				«Use the localized "Content Editor" string.
+			«1/25/02; 6:09:08 PM by PBS
+				«Performance enhancement in the local "add" routine -- add a trailing semicolon.
+		«2001:
+			«12/10/01; 6:51:46 PM by PBS
+				«When creating a new member, one may create the member as a Content Editor.
+			«07/27/01; 7:14:20 PM by JES
+				«Added two new fields to the Add a Member section: A checkbox for sending a welcome message to the new member, and a popup for choosing to add the member to the contributing or managing editors lists.
+			«03/23/01; 3:47:33 PM by PBS
+				«Lists of stories and pictures on this page now act like the Stories and Pictures pages -- they're broken up into multiple screens. This makes this page far more useable.
+				«This page used to use its own code for generating those lists -- now it calls the same routine that the Stories and Pictures pages call.
+			«03/23/01; 2:51:19 PM by PBS
+				«You can now delete members via the Members section of the Admin page.
+		«2000:
+			«02/12/00; 11:40:59 AM by PBS
+				«Add the Custody section at the bottom of the page.
+			«02/12/00; 12:37:48 PM by PBS
+				«Respect the editor's choice of separator colors.
+			«03/14/00; 3:44:56 PM by PBS
+				«Added support for static rendering -- click a button to render the entire site.
+			«04/17/00; 3:09:16 AM by JES
+				«localized static strings and dates.
+			«05/01/00; 6:29:44 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«05/09/00; 10:33:25 PM by PBS
+				«Check referer to defeat the client side trojan horse.
+			«05/11/00; 5:35:40 PM by JES
+				«merged in Brent's security fix
+			«10/09/00; 10:16:08 PM by PBS
+				«Pass adrSite to routines that promote, demote, and delete messages, so indexes can get properly updated.
+		«1999:
+			«10/28/99; 11:49:06 AM by PBS
+				«Added forms for blocking and unblocking members.
+				«Major code cleanup.
+			«10/30/99; 4:57:41 PM by PBS
+				«Untaint post args, untaint URLs.
+			«?/?/? by PBS
+				«Build the Admin page.
+	local (pta = html.getPageTableAddress ());
+	
+	if not pta^.flManagingEditor { //managing editors only
+		scriptError (manilaSuite.getString ("admin.noAccessPrivilegesError"))}; // 4/17/00 JES: localized
+	
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+	
+	local (adminUrl = manilaSuite.getUrl ("editorialAdmin", pta));
+	if pta^.searchArgs != "" {
+		adminUrl = adminUrl + "?" + pta^.searchArgs};
+	
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	
+	local (separatorColor, separatorTextColor);
+	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+	
+	on addSeparator (text, sectionName="") { //CSS version, with section id 04/05/31, 10:05:53 by DAB
+		local (id="");
+		if sectionName!="" {
+			id = " id=\"" + sectionName + "'"};
+		add ("\r<table cellpadding=\"2\" cellspacing=\"0\" width=\"100%'" + id + ">");
+		add ("\r\t<tr>");
+		add ("\r\t\t<td style=\"color:" + separatorTextColor + ";background-color:" + separatorColor + ";font-weight;bold;\">");
+		add (text);
+		add ("</td>");
+		add ("\r\t</tr>");
+		add ("\r</table>");
+		return true};
+	
+	pta^.title = manilaSuite.getString ("admin.adminPageTitle"); // 4/17/00 JES: localized
+	pta^.autoParagraphs = false;
+	pta^.activeUrls = false;
+	
+	add (manilaSuite.getString ("admin.adminPageInstructions") + "<p>"); // 4/17/00 JES: localized
+	
+	bundle { //membership related 
+		addSeparator (manilaSuite.getString ("accesscontrol.panelTitleUsers"), "membership");
+		
+		if string.lower (pta^.method) == "post" { //check post of multiple members before detail stuff for users processed
+			if defined (pta^.postArgs.addMultipleMembers) {
+				manilaSuite.referer.checkSelf (); //PBS 05/09/00: check referer to defeat client side trojan horse
+				manilaSuite.unTaintPostArgs (); //PBS 10/30/99 must NOT do this generally 04/05/30, 14:44:00 by DAB
+				
+				local (emails = pta^.postArgs.multipleNewMembers);
+				local (memberType = pta^.postArgs.multipleMemberType);
+				local (bulletinSetting = pta^.postArgs.multipleMemberBulletinType);
+				local (flBulletins = false, flHtmlBulletins = false, flSendWelcomeEmail = true);
+				case bulletinSetting {
+					"htmlBulletins" {
+						flBulletins = true;
+						flHtmlBulletins = true};
+					"plainTextBulletins" {
+						flBulletins = true}};
+				thread.callScript (@manilaSuite.members.addMultipleMembers, {emails, adrSite, memberType, flSendWelcomeEmail, flBulletins, flHtmlBulletins})}};
+		
+		add (manilaSuite.accessControl.maintainUsers ());
+		
+		bundle { //bulk add members 
+			addSeparator (manilaSuite.getString ("admin.memberMultipleAddTitle")); // 4/17/00 JES: localized
+			
+			local (newMemberWelcomeEmailChecked = false, newMemberPriviliges = "member");
+			local (newMemberBulletinsType = "plainTextBulletins");
+			
+			on addMenuOption (name, value) {
+				local (s);
+				s = "<option value=\"" + value + "\"";
+				if newMemberPriviliges == value {
+					s = s + " selected"};
+				if newMemberBulletinsType == value {
+					s = s + " selected"};
+				s = s + ">" + name + "</option>";
+				add (s);
+				return true};
+			
+			bundle { //add multiple members form
+				add (manilaSuite.getString ("admin.memberMultipleAddHelp"));
+				
+				add ("<form method=\"POST\" action=\"" + adminUrl + "#membership\" name=\"addmultiplemembers\">");
+				add ("<table>");
+				
+				bundle { //row for email address texbox
+					add ("<tr>");
+					add ("<td colspan=\"2\">");
+					add ("<textarea name=\"multipleNewMembers\" cols=\"50\" rows=\"5\"></textarea>");
+					add ("</td>");
+					add ("</tr>")};
+				
+				bundle { //row for member type dropdown
+					add ("<tr>");
+					add ("<td>" + manilaSuite.getString ("admin.memberPrivilegesPrompt") + "</td>");
+					add ("<td>");
+					add ("<select name=\"multipleMemberType\">");
+					addMenuOption (manilaSuite.getString ("admin.member"), "member");
+					addMenuOption (manilaSuite.getString ("admin.contributingEditor"), "contributingEditor");
+					addMenuOption (manilaSuite.getString ("admin.contentEditor"), "contentEditor");
+					addMenuOption (manilaSuite.getString ("admin.managingEditor"), "managingEditor");
+					add ("</select>");
+					add ("</td>");
+					add ("</tr>")};
+				
+				bundle { //row for bulletin type dropdown
+					add ("<tr>");
+					add ("<td>" + manilaSuite.getString ("admin.memberBulletinsPrompt") + "</td>");
+					add ("<td>");
+					add ("<select name=\"multipleMemberBulletinType\">");
+					addMenuOption (manilaSuite.getString ("admin.noBulletins"), "noBulletins");
+					addMenuOption (manilaSuite.getString ("admin.htmlBulletins"), "htmlBulletins");
+					addMenuOption (manilaSuite.getString ("admin.plainTextBulletins"), "plainTextBulletins");
+					add ("</select>");
+					add ("</td>");
+					add ("</tr>")};
+				
+				bundle { //row for button
+					add ("<tr>");
+					add ("<td align=\"right\" colspan=\"2\">");
+					add ("<input type=\"submit\" name=\"addMultipleMembers\" value=\"Add Members\">");
+					add ("</td>");
+					add ("</tr>")};
+				
+				add ("</table>");
+				add ("</form>")}}};
+	
+	if defined (adrNewsSite^.accesscontrol) { //cohort definition 04/05/28, 09:52:30 by DAB
+		addSeparator (manilaSuite.getString ("accesscontrol.panelTitleCohorts"), "cohorts");
+		local (flInvokeChangeCallbacks=false);
+		add (manilaSuite.accessControl.maintainCohorts (@flInvokeChangeCallbacks));
+		if flInvokeChangeCallbacks {
+			if defined (adrNewsSite^.accessControl.callbacks) {
+				manilaSuite.accessControl.callbackLoop (@adrNewsSite^.accessControl.Callbacks.changedCohorts, pta:pta)}};
+		
+		addSeparator (manilaSuite.getString ("accesscontrol.panelTitleInspect"), "inspector");
+		add (manilaSuite.accessControl.inspector ())};
+	
+	if manilaSuite.staticRendering.isEnabled (adrSite) { //static rendering moved down 04/05/28, 09:39:11 by DAB
+		add ("<p>\r");
+		addSeparator (manilaSuite.getString ("admin.staticRenderingSeparator", pta:pta), "staticRender"); // 4/17/00 JES: localized
+		
+		local (renderInfoTable);
+		new (tableType, @renderInfoTable);
+		local (staticUrl = pta^.newsSite^.staticSite.["#ftpSite"].url);
+		
+		bundle { //handle the post args -- render pages if requested
+			if string.lower (pta^.method) == "post" {
+				if defined (pta^.postArgs.renderWholeSiteConfirm) { //confirm
+					pta^.title = manilaSuite.getString ("admin.renderThisSitePageName"); // 4/17/00 JES: localized
+					htmlText = manilaSuite.getString ("admin.renderThisSiteConfirmation") + "<p>\r"; // 4/17/00 JES: localized
+					replacementTable.url = staticUrl;
+					add (manilaSuite.getString ("admin.urlOfYourStaticSiteIs", @replacementTable) + "<p>\r"); // 4/17/00 JES: localized
+					add ("<form method=\"post\" action=\"" + adminUrl + "\">\r");
+					add ("<input type=\"submit\" name=\"renderWholeSite\" value=\""+ manilaSuite.getString ("admin.renderThisSiteButton") + "\">\r"); // 4/17/00 JES: localized
+					add ("</form>\r");
+					return (htmlText)};
+				if defined (pta^.postArgs.partialRenderConfirm) { //PBS 09/07/01: confirm partial render
+					pta^.title = "Render Home Pages"; // 4/17/00 JES: localized
+					htmlText = "Are you sure you want to render archived home pages for ";
+					case string.lower (pta^.postArgs.partOfSiteToRender) {
+						"thisweek" {
+							htmlText = htmlText + "this week"};
+						"thismonth" {
+							htmlText = htmlText + "this month"};
+						"previousmonth" {
+							htmlText = htmlText + "the previous month"}};
+					htmlText = htmlText + "?<p>";
+					replacementTable.url = staticUrl;
+					add (manilaSuite.getString ("admin.urlOfYourStaticSiteIs", @replacementTable) + "<p>\r"); // 4/17/00 JES: localized
+					add ("<form method=\"post\" action=\"" + adminUrl + "\">\r");
+					add ("<input type=\"submit\" name=\"renderPartialSite\" value=\"Render Home Pages\">\r"); // 4/17/00 JES: localized
+					add ("<input type=\"hidden\" name=\"partOfSiteToRender\" value=\"" + pta^.postArgs.partOfSiteToRender + "\">");
+					add ("</form>\r");
+					return (manilaSuite.unTaint (htmlText))};
+				if defined (pta^.postArgs.renderWholeSite) { //render the entire site
+					if not (manilaSuite.staticRendering.renderInProgress (adrSite, @renderInfoTable)) {
+						local (t);
+						t = manilaSuite.staticRendering.utilities.renderWholeSite (adrSite);
+						htmlText = "";
+						pta^.title = manilaSuite.getString ("admin.staticRenderingReport"); // 4/17/00 JES: localized
+						add (manilaSuite.getString ("admin.staticRenderingReportHeader")); // 4/17/00 JES: localized
+						add ("<ol>");
+						local (oneUrl);
+						for oneUrl in t.renderedUrls {
+							oneUrl = manilaSuite.unTaint (oneUrl);
+							add ("<li>" + html.getLink (oneUrl, oneUrl) + "\r")};
+						add ("</ol>")};
+					return (htmlText)};
+				if defined (pta^.postArgs.renderPartialSite) { //PBS 09/07/01: render home pages
+					temp.pa = pta^.postArgs;
+					if not (manilaSuite.staticRendering.renderInProgress (adrSite, @renderInfoTable)) {
+						local (flWeek = (string.lower (pta^.postArgs.partOfSiteToRender) == "thisweek"));
+						local (flThisMonth = (string.lower (pta^.postArgs.partOfSiteToRender) == "thismonth"));
+						local (flPreviousMonth = (string.lower (pta^.postArgs.partOfSiteToRender) == "previousmonth"));
+						local (t);
+						if flWeek {
+							t = manilaSuite.staticRendering.utilities.renderWholeWeek (adrSite)};
+						if flThisMonth {
+							t = manilaSuite.staticRendering.utilities.renderWholeMonth (adrSite)};
+						if flPreviousMonth {
+							t = manilaSuite.staticRendering.utilities.renderWholeMonth (adrSite, dateInMonth:date.prevMonth (clock.now ()))};
+						htmlText = "";
+						pta^.title = manilaSuite.getString ("admin.staticRenderingReport"); // 4/17/00 JES: localized
+						add (manilaSuite.getString ("admin.staticRenderingReportHeader")); // 4/17/00 JES: localized
+						add ("<ol>");
+						local (oneUrl);
+						for oneUrl in t.renderedUrls {
+							add ("<li>" + html.getLink (oneUrl, oneUrl) + "\r")};
+						add ("</ol>")};
+					return (manilaSuite.unTaint (htmlText))}}};
+		
+		if manilaSuite.staticRendering.renderInProgress (adrSite, @renderInfoTable) {
+			local (flWholeSite = renderInfoTable.flWholeSite);
+			local (url = renderInfoTable.currentUrl);
+			if flWholeSite {
+				add (manilaSuite.getString ("admin.siteIsBeingRendered"))} // 4/17/00 JES: localized
+			else {
+				add (manilaSuite.getString ("admin.aPageIsBeingRendered"))}; // 4/17/00 JES: localized
+			if url != "" {
+				replacementTable.url = html.getLink (url, url);
+				add (manilaSuite.getString ("admin.currentURL", @replacementTable) + "\r")}} // 4/17/00 JES: localized
+		else { //add the render site button
+			add ("" + manilaSuite.getString ("admin.renderThisSitePrompt") + "<p>\r"); // 4/17/00 JES: localized
+			replacementTable.url = staticUrl;
+			add (manilaSuite.getString ("admin.urlOfYourStaticSiteIs", @replacementTable) + "<p>\r"); // 4/17/00 JES: localized
+			add ("<form method=\"post\" action=\"" + adminUrl + "#staticRender\" name=\"staticrendering\">\r");
+			add ("<input type=\"submit\" name=\"renderWholeSiteConfirm\" value=\""+ manilaSuite.getString ("admin.renderThisSiteButton") + "\">\r"); // 4/17/00 JES: localized
+			add ("<p>"); //PBS 09/07/01: render part of site below
+			add ("You can render archived home pages for this week, this month, or the previous month, by choosing from the popup menu and clicking Render Home Pages.<p>");
+			add ("<input type=\"submit\" name=\"partialRenderConfirm\" value=\"Render Home Pages\">\r");
+			add ("<select name=\"partOfSiteToRender\">");
+			add ("<option value=\"thisWeek\">This Week</option>");
+			add ("<option value=\"thisMonth\">This Month</option>");
+			add ("<option value=\"previousMonth\">Previous Month</option>");
+			add ("</select>");
+			add ("</form>");
+			add ("<p>")}};
+	
+	bundle { //custody
+		addSeparator (manilaSuite.getString ("admin.custodySectionName"), "custody");
+		add (manilaSuite.custody.custodyPage (pta))};
+	
+	return (htmlText)}

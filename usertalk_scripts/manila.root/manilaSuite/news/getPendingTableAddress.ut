@@ -1,0 +1,5 @@
+on getPendingTableAddress (adrSite) {
+	«Get the address of the table containing the msgNums of pending news items.
+		«04/19/00; 10:24:53 PM by PBS
+	
+	return (manilaSuite.news.getIndexAddress ("pending", adrSite))}

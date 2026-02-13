@@ -1,0 +1,49 @@
+on changeMessageDeletion (adrMsgTable, adrMember, adrSite, flDeleting, flDeindex=true) {
+	«Changes
+		«1/31/06; 6:26:32 PM by JES
+			«New optional parameter, flDeindex. If false, don't remove deleted messages from indexes. (Default is true, preserving existing behavior.)
+	«manilaSuite.discuss.changeMessageDeletion : 04/06/14, 21:02:27 by DAB
+		«central place to delete or undelete messages
+		«handles custody issues consistently
+		«implements deletemessage callback
+	if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, adrMember, adrSite, true) { //true because it's a message
+		«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+		local (title = adrMsgTable^.subject);
+		title = manilaSuite.unTaint (title);
+		
+		local (replacementTable); new (tableType, @replacementTable);
+		replacementTable.title = title;
+		scriptError (manilaSuite.getString ("discuss.cantEditBecauseSomeoneElseIs", @replacementTable))};
+	
+	manilaSuite.custody.checkOut (adrMsgTable, adrMember, adrSite, true); //true because it's a message
+	if flDeleting {
+		if not defined (adrMsgTable^.inResponseToOld) {
+			adrMsgTable^.inResponseToOld = adrMsgTable^.inResponseTo};
+		adrMsgTable^.flDeleted = true;
+		adrMsgTable^.inResponseTo = -2;
+		if manilaSuite.news.isNewsItem (adrMsgTable) {
+			manilaSuite.news.updateIndexes (adrMsgTable, adrSite)};
+		if flDeindex {
+			manilaSuite.discuss.removeFromAllIndexes (adrSite, adrMsgTable)}; //PBS 10/09/00: remove from indexes
+		manilaSuite.discuss.deleteFromHomePageCalendar (adrMsgTable, adrSite)} //PBS 12/13/01: try to remove from home page calendar
+	else {
+		if defined (adrMsgTable^.inResponseToOld) {
+			adrMsgTable^.inResponseTo = manilaSuite.unTaint (adrMsgTable^.inResponseToOld)};
+		if defined (adrMsgTable^.flDeleted) {
+			delete (@adrMsgTable^.flDeleted)};
+		if manilaSuite.news.isNewsItem (adrMsgTable) {
+			manilaSuite.news.updateIndexes (adrMsgTable, adrSite)};
+		manilaSuite.discuss.addToIndexes (adrSite, adrMsgTable)}; //PBS 10/09/00: add to indexes
+	
+	bundle { //call delete message callbacks, if any 
+		local (t);
+		bundle { //build context data for callback
+			new(tabletype, @t);
+			t.adrSite = adrSite;
+			t.adrMsgTbl = adrMsgTable;
+			t.adrMember = adrMember;
+			t.flDeleting = flDeleting};
+		
+		manilaSuite.callbacks.deleteMessageCallback(@t)};
+	
+	return true}

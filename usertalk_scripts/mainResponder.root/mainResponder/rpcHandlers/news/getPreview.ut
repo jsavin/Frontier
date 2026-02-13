@@ -1,0 +1,2 @@
+on getPreview (sitename) {
+	return (mainresponder.news.getPreview (sitename))}

@@ -1,0 +1,20 @@
+on getRelativePathToMessage (msgNum, adrSite) {
+	«Get the relative path to a message.
+		«03/03/00; 5:53:41 PM by PBS
+	
+	manilaSuite.siteStructure.compileIfDirty (adrSite); //compile the site structure XML if needed
+	
+	local (adrHierarchy = @adrSite^.["#hierarchy"]);
+	if not defined (adrHierarchy^) {
+		return ("")};
+	
+	local (adrPaths = @adrHierarchy^.paths);
+	
+	bundle { //set up paths table if it doesn't exist
+		if not defined (adrPaths^) {
+			manilaSuite.siteStructure.buildPathsTable (adrSite)}};
+	
+	if defined (adrPaths^.[msgNum]) {
+		return (adrPaths^.[msgNum])};
+	
+	return ("")}

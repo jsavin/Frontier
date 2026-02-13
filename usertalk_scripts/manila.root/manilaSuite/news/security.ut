@@ -1,0 +1,76 @@
+on security () {
+	«Allow only people who are allowed to create new news items to enter the editorial newsItems section.
+		«04/25/00; 3:11:00 PM by PBS
+	local (adrNewsSite = responderAttributes.newsSite);
+	
+	local (tempTable);
+	bundle { // 05/04/00 JES: build a fake page table with a language entry for getString
+		new (tableType, @tempTable);
+		local (nomad = responderAttributes.ftpSite);
+		nomad = parentOf (nomad^);
+		if defined (nomad^.["#prefs"].language) {
+			tempTable.language = nomad^.["#prefs"].language}
+		else {
+			if defined (config.mainResponder.globals.language) { // does the server have a default setting?
+				tempTable.language = config.mainResponder.globals.language}
+			else {
+				if defined (user.prefs.language) { // does Frontier have a language setting?
+					tempTable.language = user.prefs.language}
+				else { // fall back to English
+					tempTable.language = "English"}}}};
+	
+	bundle { //the edit page is also a viewer page, it's always okay
+		local (adrSite = parentOf (adrNewsSite^));
+		local (url = "http://" + host + path);
+		url = url + "$";
+		temp.url = url;
+		local (okayUrl = adrSite^.["#urls"].newsItemEditInBrowser);
+		temp.okayUrl = okayUrl;
+		if string.lower (url) == string.lower (okayUrl) {
+			return (true)}};
+	
+	try { //MEs are always okay
+		manilaSuite.editors.managingEditorOnly ();
+		return (true)};
+	
+	«If contributing editors are okay, let them in.
+	try { //is this a contributing editor?
+		manilaSuite.editors.editorsOnly ();
+		if defined (adrNewsSite^.newsItems.access.flContributingEditorsCreate) {
+			if adrNewsSite^.newsItems.access.flContributingEditorsCreate {
+				return (true)}}};
+	
+	try { //is this a member?
+		on error () {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: @tempTable))};
+		if defined (adrNewsSite^.newsItems.access.flMembersCreate) {
+			if adrNewsSite^.newsItems.access.flMembersCreate {
+				local (groupName = adrNewsSite^.sysopMemberOfGroup);
+				local (adrGroup = mainResponder.members.getMembershipTable (groupName));
+				local (cookieName = string.replaceAll (adrGroup^.cookieName, " ", ""));
+				local (cookie, email);
+				
+				if defined (requestHeaders.cookies.[cookieName]) {
+					cookie = requestHeaders.cookies.[cookieName];
+					email = mainResponder.members.getMemberKeyFromCookie (cookie);
+					
+					bundle { //authenticate
+						local (flHashedCookie = mainResponder.members.isHashedCookieFormat (cookie));
+						if flHashedCookie { //PBS 04/10/00: is it a new style cookie?
+							try {
+								local (t = mainResponder.members.cookieStringToTable (cookie));
+								mainResponder.members.getMemberTableWithHash (groupName, email, t.h)} //t.h contains the hashString
+							else {
+								error ()}}
+						else { //it's an old style cookie
+							try {
+								cookie = string.urlDecode (cookie);
+								local (password = string.nthField (cookie, '\t', 2));
+								mainResponder.members.getMemberTableWithPassword (groupName, email, password)}
+							else {
+								error ()}}}}
+				else {
+					error ()};
+				return (true)}}};
+	
+	scriptError (manilaSuite.getString ("news.cantAccessNewsItemsNoPermission", pta: @tempTable))}

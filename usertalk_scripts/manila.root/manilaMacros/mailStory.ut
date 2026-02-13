@@ -1,0 +1,2 @@
+on mailStory (linktext = "Mail This Story") {
+	return (manilaSuite.mail.displayLink (linktext))}

@@ -1,0 +1,23 @@
+local (searchRequest);
+new (tableType, @searchRequest);
+«local (flProfile = true)
+local (flProfile = false);
+
+if flProfile {
+	script.startProfile (true)};
+
+searchRequest.searchString = "\"fat pages\"";
+searchRequest.start = 1;
+searchRequest.maxHitsPerPage = 50;
+searchRequest.fname = "default";
+
+webBrowser.displayText (mainResponder.search.server.doSearch (@searchRequest));
+
+if flProfile {
+	try {delete (@temp.searchProfile)};
+	script.stopProfile (@temp.searchProfile);
+	edit (@temp.searchProfile)};
+
+webBrowser.bringToFront ();
+
+return (true)

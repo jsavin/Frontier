@@ -1,0 +1,8 @@
+local (adrroot = @[system.temp.mainresponder.discussrootfile], ct = sizeof (adrroot^), i, adrgroup);
+for i = 1 to ct {
+	adrgroup = @adrroot^ [i];
+	local (adrmessages = @adrgroup^.messages, ctmessages = sizeof (adrmessages^), j);
+	for j = 1 to ctmessages {
+		msg ("Archiving discussion group \"" + nameof (adrgroup^) + "\", msg#" + j + ".");
+		mainresponder.discuss.archivemessage (@adrmessages^ [j])}};
+msg ("")

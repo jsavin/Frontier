@@ -1,0 +1,3 @@
+«Sometimes you need the email address of just one managing editor, usually for a default preference of some kind.
+local (meList = manilaSuite.editors.getManagingEditorList ());
+return (meList [1])

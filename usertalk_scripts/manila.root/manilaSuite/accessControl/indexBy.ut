@@ -1,0 +1,49 @@
+on indexBy (adrSite, fieldID, adrIndex) {
+	«Changes
+		«1/31/06; 1:48:30 AM by JES
+			«Add support for flPending flag.
+	«manilaSuite.AccessControl.indexBy : 04/05/20, 17:08:05 by DAB
+		«builds an index of the accesscontrol fields called [fieldID] for all messages in the DG
+		«which are not deleted or response messages
+		«was manilaFixer.accessControl.indexBy : 02/05/07, 15:56:22 by DAB
+	local (adrDiscuss = manilaSuite.discuss.getRootFromSiteAddress (adrSite));
+	local (maxMsgNum = adrDiscuss^.prefs.nextMsgNum-1);
+	local (msgNum);
+	local (adrMsg, adrMsgStorage);
+	local (keys, key);
+	
+	new(tabletype, adrIndex);
+	
+	for msgNum = 1 to maxMsgNum {
+		adrMsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss);
+		if not defined(adrMsg^) {
+			continue};
+		if defined(adrMsg^.fldeleted) and adrMsg^.fldeleted {
+			continue};
+		if defined (adrMsg^.flPending) and adrMsg^.flPending {
+			continue};
+		if defined(adrMsg^.inResponseTo) and adrMsg^.inResponseTo > 0 {
+			continue};
+		
+		if not defined(adrMsg^.accessControl) {
+			continue};
+		adrMsgStorage = @adrMsg^.accessControl;
+		
+		if not defined(adrMsgStorage^.[fieldID]) {
+			continue};
+		keys = adrMsgStorage^.[fieldID];
+		if keys == "" {
+			continue};
+		if typeOf(keys) != listType {
+			keys = {keys}};
+		
+		for key in keys {
+			if not defined(adrIndex^.[key]) {
+				new(tabletype, @adrIndex^.[key])};
+			adrIndex^.[key].[msgNum] = adrMsg};
+		
+		thread.sleepfor(0)};
+	
+	return true};
+bundle {
+	indexBy(@myFirstSiteManilawebsite, "permittedCohorts", @temp.indexBy)}

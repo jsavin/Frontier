@@ -1,0 +1,20 @@
+on getRenderingStatus (adrSite) {
+	«Get the current static rendering status of a site. Return a table of info about the current rendering.
+		«03/14/00; 3:56:38 PM by PBS
+	
+	local (t);
+	new (tableType, @t);
+	t.flWholeSite = false;
+	t.currentUrl = "";
+	t.flRenderInProgress = false;
+	t.sessionStart = 0;
+	t.countRenderedPages = 0;
+	
+	local (adrSiteInfo = manilaSuite.staticRendering.getStatusAddress (adrSite));
+	
+	if defined (adrSiteInfo^) {
+		try {
+			t = adrSiteInfo^;
+			t.flRenderInProgress = true}};
+	
+	return (t)}

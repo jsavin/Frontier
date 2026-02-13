@@ -1,0 +1,22 @@
+on rpcGetGroupAddress (dgName, adrAdrRoot) {
+	«Given the name of a discussion group, return its address.
+		«This is designed to run outside the page rendering context.
+		«Return true if found, false otherwise.
+		«If found, then adrAdrRoot^ will contain the address of the dg storage.
+		«10/18/99; 4:28:27 PM by PBS
+	
+	local (adrDiscuss = @[system.temp.mainResponder.discussRootFile]);
+	local (adrRoot = @adrDiscuss^.[dgName]);
+	if not defined (adrRoot^) {
+		return (false)};
+	
+	case typeOf (adrRoot^) { //handle strings and addresses in discuss.root
+		addressType;
+		stringType {
+			if not defined (adrRoot^^) {
+				return (false)};
+			adrRoot = adrRoot^}};
+	
+	adrAdrRoot^ = adrRoot;
+	
+	return (true)}

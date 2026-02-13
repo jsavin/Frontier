@@ -1,0 +1,28 @@
+on getWindowInfoFromOpml (s) {
+	«Return a windowInfo table derived from OPML text.
+		«12/11/00; 4:05:23 PM by PBS
+	
+	local (t);
+	new (tableType, @t);
+	xml.compile (s, @t);
+	local (adrHead);
+	xml.getPathAddress (@t, "opml/head", @adrHead);
+	
+	local (windowTop = xml.getValue (adrHead, "windowTop"));
+	local (windowBottom = xml.getValue (adrHead, "windowBottom"));
+	local (windowLeft = xml.getValue (adrHead, "windowLeft"));
+	local (windowRight = xml.getValue (adrHead, "windowRight"));
+	local (expansionState = xml.getValue (adrHead, "expansionState"));
+	local (scrollState = xml.getValue (adrHead, "vertScrollState"));
+	
+	local (windowInfo);
+	new (tableType, @windowInfo);
+	
+	windowInfo.height = windowBottom - windowTop;
+	windowInfo.width = windowRight - windowLeft;
+	windowInfo.top = windowTop;
+	windowInfo.["left"] = windowLeft;
+	windowInfo.scrollLine = scrollState;
+	windowInfo.expansionState = scrollState;
+	
+	return (windowInfo)}

@@ -1,0 +1,50 @@
+on getHeaders (siteName, ct, username="", password="") {
+	«Changes
+		«3/19/05; 11:30:13 PM by JES
+			«Created. Return headers for the most recent ct gems in the site.
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (t); new (tableType, @t); //fake page table for manilaSuite.editors.editorialPageAccess call
+	t.newsSite = manilaSuite.getNewsSiteAddress (adrsite);
+	if username != "" and password != "" {
+		try {
+			t.adrMemberInfo = manilaSuite.members.getMemberTableFromSiteAddress (adrsite, username);
+			if string (t.adrMemberInfo^.password) != password {
+				scriptError ("Can't get Gems headers because the username or password is incorrect.")}}};
+	if not (manilaSuite.editors.editorialPageAccess ("gems", @t)) {
+		scriptError ("Can't get Gems headers because you don't have sufficient access privileges.")};
+	local (retval);
+	
+	local (flSoap = false);
+	if defined (responder) {
+		if string.upper (responder) == "SOAP" {
+			adrRequest^.customStructType = manilaData.soap.constants.customArrayTypes.messageHeader;
+			adrRequest^.customNamespace = manilaData.soap.constants.manilaNamespace;
+			adrRequest^.customNamespaceURI = manilaData.soap.constants.manilaNamespaceURI;
+			flSoap = true}};
+	local (messageHeaders);
+	if flSoap {
+		retval = {}}
+	else {
+		new (tableType, @retval)};
+	
+	local (adrdata = manilaSuite.gems.getSiteDataAddress (adrsite));
+	local (sizedata = sizeOf (adrdata^));
+	local (ix, adritem);
+	local (ctadded = 0);
+	for ix = sizedata downto 1 {
+		adritem = @adrdata^[ix];
+		if defined (adritem^.flDeleted) {
+			if adritem^.flDeleted {
+				continue}};
+		ctadded++;
+		if flSoap {
+			retval[ctadded] = adritem^;
+			delete (@retval[ctadded].f)}
+		else {
+			local (adrtable = @retval.["gem" + string.padWithZeros (ctadded, 7)]);
+			adrtable^ = adritem^;
+			delete (@adrtable^.f)};
+		if ct == ctadded {
+			break}};
+	
+	return (retval)}

@@ -1,0 +1,441 @@
+on getRssXml () {
+	«Changes:
+		«4/18/07; 7:37:42 AM by LL
+			«Corrected a bug with categories element in the RSS feed displaying as a list of departments instead of multiple category elements.
+		«11/02/06; 12:02:27 PM by LL
+			«Removed title element for traditional sites since they were generating the same title for each item.
+		«9/22/06; 6:32:31 PM by LL
+			«Commented out call to channel-level category element for rssChanges.
+		«2/16/06; 1:55:44 PM by JES
+			«Changed <docs> to link to the RSS 2.0 spec at http://blogs.law.harvard.edu/tech/rss
+			«Removed channel-level <webMaster> and <managingEditor> elements because they include email addresses which could be mined by spammers.
+			«Added item-level <pubDate> elements for both news items and traditional sites. For news item sites, <pubDate> is the date/time the item was posted to the home page. For traditional sites, <pubDate> is the date/time of the last home page update.
+			«Additional changes for <item>s in traditional sites:
+				«Changed <link> to the permanent link to the archive page for this day's home page. It will be identical for all items on a given day.
+					«This also allowed us to simplify the logic for generating these <item>s -- we no longer have to have separate logic for <item>s which contain <link> and those that don't -- all <item>s now have a <link>.
+					«Not only that, but we no longer need to parse for <link>s at all. This removes a large amount of processing burden, but it requires that we generate <title> differently, since we no longer have the text of the links. Instead we call manilaSuite.news.getSummary, which strips markup itself, and limits to however many characters we want -- in this case 80.
+						«Given this change, <title>s will be more meaningful, since often the text of the first link had little or no relationship with the contents of <description>. Now at least we see something at the beginning of a given post, which is much more likely to have real meaning to a human reader.
+				«Added <guid isPermalink="false"> elements. Their value is an md5 hash of the given item. This should prevent repetition for clients which support <guid>, despite our now generating a floating item-level <pubDate> for items in traditional sites.
+				«Added <dc:creator> sub-element.
+		«7/9/05; 5:31:30 AM by JES
+			«Add support for news item summaries in RSS feeds.
+		«3/30/05; 2:18:21 AM by JES
+			«Added support for dc:creator element. This element specifies the author of an item by name, rather than by email address as the RSS 2.0 spec says that the author sub-element of item should.
+			«We don't use the built-in author element because it uses an email address, and we're trying to avoid getting spammed.
+		«3/20/05; 1:46:35 AM by JES
+			«Added support for old style DG enclosures, with enclosure content stored in the message table.
+		«3/12/05; 5:40:58 AM by JES
+			«Added enclosure support.
+		«Changes before 2005
+			«11/13/04, 16:37:28 by JES
+				«Run all text being output in RSS elements through string.iso8859encode. Prevents improper rendering of high-ascii characters in RSS clients.
+			«9/25/03; 4:57:34 PM by JES
+				«Process macros in the <description> element when generating RSS from news items.
+			«8/28/03; 10:02:58 PM by JES
+				«Removed the <author> sub-element of <item>.
+			«8/5/03; 1:05:11 PM by JES
+				«In traditional (non-news-items) sites, don't skip paragraphs which have no links. RSS 2.0 supports <item>s with only a <description> element.
+			«7/25/03; 4:26:17 PM by JES
+				«Only add the <category> sub-element of <item> if the news item has a non-empty department.
+				«Don't add isPermalink="true" attribute to the <guid> element -- the default is true, according to the spec, so isPermalink="true" is redundant.
+					«http://blogs.law.harvard.edu/tech/rss#ltguidgtSubelementOfLtitemgt
+				«Add the <author> sub-element of <item>.
+				«Call string.trimWhiteSpace on the returned XML to ensure that it has no leading whitespace characters, which would cause some XML parsers to fail.
+			«4/19/03; 12:15:16 AM by JES
+				«If Radio Hosting is enabled in a news items site and the news items template contains a {commentLink} macro, add a <comments> element to each <item> with the link to the comments page for the item.
+			«4/9/03; 2:33:05 PM by JES
+				«If the site's rssInfo sub-table defines a ccLicense sub-element, add the Creative Commons license element to the feed.
+			«4/4/03; 1:32:36 PM by JES
+				«Encode high-ascii characters, quote characters and apostrophes as XML entities.
+			«4/1/03; 4:45:34 PM by JES
+				«If a news item specifies a category, add the <category> sub-element of <item>.
+			«2/12/03; 5:34:18 PM by JES
+				«If no url is specified for a news item, use the permalink url for the news item for the value of <link>. Added <guid>s for news-items based feeds.
+			«11/11/02; 1:53:27 PM by JES
+				«For news-items sites, only add the link sub-element of item if the link is non-empty. Fixes a validation error.
+			«11/1/02; 4:46:43 PM by JES
+				«Accept If-None-Match header values either with or without surrounding quote characters.
+			«10/30/02; 9:11:36 PM by JES
+				«Add category sub-element of channel for rssChanges, and generator sub-element of channel.
+			«10/24/02; 12:05:55 PM by JES
+				«Implement ETag support.
+			«1/29/02; 3:51:47 PM by PBS
+				«Add a category element for News Items sites that use departments.
+			«1/28/02; 2:10:59 PM by PBS
+				«The Manila pub-sub handlers are pointed to from user.betty.rpcHandlers.manilaRss now.
+				«XML-RPC method name has changed to manilaRss.pleaseNotify.
+			«1/25/02; 6:31:33 PM by PBS
+				«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+			«1/17/02; 11:04:55 AM by PBS
+				«Create RSS 0.92 feeds if the Manila XML-RPC handlers are enabled.
+			«11/23/01; 3:53:13 PM by PBS
+				«Ampersands were not encoded in the header section: now they are.
+			«10/15/01; 3:51:51 PM by PBS
+				«Don't strip links from the <description> elements.
+				«Don't allow user errors to be fatal with News Items sites.
+				«Do case-insensitive matches for <br> and <p> tags.
+			«02/27/01; 8:53:21 PM by JES
+				«Fixed a bug where the <postTime> header always specified May 24, 2000.
+			«05/01/00; 5:17:35 PM by PBS
+				«Support for news items. If news items is on, news items are stored in separate messages, rather than one home page stored in one message.
+			«04/07/00; 11:04:41 AM by PBS
+				«Build an RSS syndication file.
+	
+	local (pta = html.getPageTableAddress ());
+	«scratchpad.rssinfo = pta^.rssinfo^
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (flpubsub = false); //PBS 01/17/02: will be true if RSS 0.92 pub/sub can be supported
+	bundle { //PBS 01/17/02: can RSS pub/sub be used?
+		if defined (user.betty.rpcHandlers.manilaRss) {
+			if defined (xml.pubsub) {
+				flpubsub = true}}};
+	local (flcategories = false); //PBS 01/29/02: true if this is a news items site
+	
+	pta^.responseHeaders.["Content-Type"] = "text/xml";
+	pta^.autoParagraphs = false;
+	pta^.clayCompatibility = false;
+	pta^.activeUrls = false;
+	wp.newTextObject ("{bodytext}", @pta^.template);
+	
+	on error (errorMessage) {
+		return ("<?xml version=\"1.0\"?>\r<error>" + errorMessage + "</error>\r")};
+	
+	local (flSyndicate = manilaSuite.getNewsSitePref ("flSyndicate", default:true, flCreate:true));
+	if not flSyndicate {
+		return (error ("This site does not support syndication."))};
+	
+	try { //build the XML response
+		on getXmlText (adr) {
+			local (xmlText = "", indent = 0);
+			on add (s) {
+				xmlText = xmlText + (string.filledString ("\t", indent) + s + "\r\n");};
+			on encodeWithAmpersands (s) {
+				try { //04/11/13, 16:37:28 by DAB
+					s = string.iso8859encode (s)};
+				s = string.replaceAll (s, "&", "&amp;");
+				s = string.replaceAll (s, "<", "&lt;");
+				s = string.replaceAll (s, ">", "&gt;");
+				s = string.replaceAll (s, "\"", "&quot;");
+				s = string.replaceAll (s, "\'", "&apos;");
+				s = string.replaceAll (s, "{", "&#123;");
+				s = string.replaceAll (s, "}", "&#125;");
+				s = xml.entityEncode (s, false); //encode any remaining high-ascii characters
+				return (s)};
+			on extractLinks (s, adrLinks, adrLines) {
+				local (links = {}, lines = {}, pat = "<a ", ix, leftHalf);
+				lines [1] = ""; //PBS 10/15/01: default is empty
+				«s = html.processMacros (s, true, pta)
+				«loop
+					«ix = string.patternMatch (pat, s)
+					«if ix == 0
+						«break
+					«leftHalf = string.mid (s, 1, ix - 1)
+					«s = string.delete (s, 1, ix + sizeOf (pat) - 1)
+					«ix = string.patternMatch ("\"", s) //the end of the url
+					«url = string.mid (s, 1, ix - 1)
+					«s = string.delete (s, 1, ix)
+					«if s [1] == ">"
+						«s = string.delete (s, 1, 1)
+					«ix = string.patternMatch ("</a>", s)
+					«lineText = string.mid (s, 1, ix - 1)
+					«s = s - "</a>"
+					«s = leftHalf + s
+					«links = links + url
+					«lines = lines + lineText
+				bundle { //find the first links
+					local (scopy = s);
+					ix = string.patternMatch (pat, string.lower (scopy));
+					if ix > 0 {
+						scopy = string.delete (scopy, 1, ix);
+						ix = string.patternMatch ("href", string.lower (scopy));
+						if ix > 0 {
+							scopy = string.delete (scopy, 1, ix);
+							ix = string.patternMatch ("\"", scopy);
+							if ix > 0 {
+								scopy = string.delete (scopy, 1, ix);
+								ix = string.patternMatch ("\"", scopy);
+								if ix > 0 {
+									local (title = string.mid (scopy, ix, infinity));
+									scopy = string.delete (scopy, ix, infinity);
+									local (lowerscopy = string.lower (scopy));
+									if lowerscopy beginsWith "http://" or lowerscopy beginsWith "ftp://" {
+										links [1] = string.trimWhiteSpace (scopy);
+										ix = string.patternMatch (">", title);
+										if ix > 0 {
+											title = string.delete (title, 1, ix);
+											ix = string.patternMatch ("</a>", string.lower (title));
+											if ix > 0 {
+												title = string.delete (title, ix, infinity);
+												lines [1] = string.trimWhiteSpace (title)}}}}}}}};
+				adrLinks^ = links;
+				adrLines^ = lines;
+				return (s)};
+			on chewOneBit (s) {
+				if s != "" { //skip blank lines
+					local (links, lines); //parallel lists
+					«s = extractLinks (s, @links, @lines)
+					s = html.processMacros (s, true, pta);
+					if true { //sizeOf (links) > 0 //add <item> with <link>
+						add ("<item>"); indent++;
+						«add ("<title>" + encodeWithAmpersands (lines [1]) + "</title>")
+						«add ("<title>" + encodeWithAmpersands (manilaSuite.news.getSummary (adrMsgTable, 80)) + "</title>")
+						«add ("<link>" + encodeWithAmpersands (links [1]) + "</link>")
+						add ("<link>" + encodeWithAmpersands (manilaSuite.getPermalinkUrl (adrSite, adrMsgTable)) + "</link>");
+						add ("<description>" + encodeWithAmpersands (s) + "</description>");
+						add ("<guid isPermalink=\"false\">" + string.hashMd5 (s) + "</guid>");
+						if homePageCreator != "" { //<dc:creator>
+							add ("<dc:creator>" + encodeWithAmpersands (homePageCreator) + "</dc:creator>")};
+						add ("</item>"); indent--};
+					«else //add <item> without <link>
+						«add ("<item>"); indent++
+						«add ("<description>" + encodeWithAmpersands (s) + "</description>")
+						«add ("<pubDate>" + date.netStandardString (pta^.postTime) + "</pubDate>")
+						«add ("</item>"); indent--}};
+			on stringToXML (s) {
+				s = string.replaceAll (s, "\r\n", "\r");
+				local (ix, lineString);
+				while sizeOf (s) > 0 {
+					local (sizePattern);
+					on tryPattern (pattern) { //PBS 03/27/00: routine for looking for a pattern
+						sizePattern = sizeOf (pattern);
+						ix = string.patternMatch (pattern, string.lower (s)); //PBS 10/15/01: case insensitive
+						return (ix > 0)};
+					if not (tryPattern ("\r\r")) {
+						tryPattern ("<br><br>\r")};
+					if ix == 0 {
+						lineString = s;
+						s = ""};
+					if ix > 0 {
+						lineString = string.mid (s, 1, ix - 1);
+						s = string.delete (s, 1, ix + (sizePattern - 1))};
+					chewOneBit (lineString)}};
+			on newsItemsToXml () {
+				«Render the last n news items as XML.
+				local (n = manilaSuite.news.getItemsPerPagePref (adrSite));
+				local (msgList = manilaSuite.news.getLastNMessageNumbers (n));
+				local (flRadioHosting = false);
+				if defined (config.manila.prefs.flRadioHostingEnabled) { //for <comments>
+					«4/19/03; 12:21:10 AM by JES: Radio Hosting must be enabled, and the news items template must have a {commentLink} macro.
+					if config.manila.prefs.flRadioHostingEnabled {
+						if defined (adrSite^.["#newsSite"].radioHosting.flEnabled) {
+							flRadioHosting = adrSite^.["#newsSite"].radioHosting.flEnabled;
+							if flRadioHosting {
+								try {
+									local (newsItemsTemplate = string (adrSite^.["#newsSite"].newsItems.template));
+									if not (string.lower (newsItemsTemplate) contains "{commentlink}") {
+										flRadioHosting = false}}
+								else {
+									flRadioHosting = false}}}}};
+				if sizeOf (msgList) > 0 {
+					local (msgNum);
+					for msgNum in msgList {
+						local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+						local (xmlTable);
+						try { //PBS 10/15/01: don't let user XML errors be fatal errors: skip 'em
+							xmlTable = manilaSuite.news.xmlToTable (string (adrMsgTable^.body))}
+						else {
+							continue};
+						add ("<item>"); indent++;
+						add ("<title>" +  encodeWithAmpersands (adrMsgTable^.subject) + "</title>");
+						local (permalinkurl = "");
+						try { //get permalinkurl. this should never cause the RSS not to render -- prior art is in manilaSuite.news.formatNewsItem
+							local (day, month, year, hour, minute, second);
+							date.get (manilaSuite.news.getPostTime (adrMsgTable, adrSite), @day, @month, @year, @hour, @minute, @second);
+							local (relativeurl = year + "/" + string.padWithZeros (month, 2) + "/" + string.padWithZeros (day, 2) + "#a" + adrMsgTable^.msgNum);
+							permalinkurl = encodeWithAmpersands (adrSite^.["#ftpSite"].url + relativeurl)};
+						local (description = xmlTable.description);
+						if manilaSuite.getNewsSitePref ("newsItems.flSummariesEnabled", adrSite, false) {
+							if manilaSuite.getNewsSitePref ("newsItems.flSummariesInRss", adrSite, false) {
+								local (summary = "");
+								if defined (xmlTable.summary) {
+									summary = xmlTable.summary};
+								if summary == "" {
+									if manilaSuite.getNewsSitePref ("newsItems.flSummariesAutomatic", adrSite, false) {
+										summary = manilaSuite.news.getSummary (adrMsgTable)}};
+								if summary != "" {
+									description = summary;
+									if manilaSuite.getNewsSitePref ("newsItems.flSummariesOnHomePage", adrSite, false) { //link to full item if permalink is to summary
+										xmlTable.url = manilaSuite.getUrl ("newsItemViewFullItem", pta) + "$" + adrMsgTable^.msgNum}}}};
+						bundle { //paragraph expansion
+							description = string.replaceAll (description, "\n", "");
+							description = string.replaceAll (description, "\r\r", "\r<p>")};
+						add ("<description>" + encodeWithAmpersands (html.processMacros (description, true, pta)) + "</description>");
+						if sizeOf (xmlTable.url) > 0 { //JES 11/11/02: Empty link elements are not valid in RSS 2.0
+							add ("<link>" + encodeWithAmpersands (xmlTable.url) + "</link>")}
+						else { //JES 2/12/03: For items whose link element is empty, use the permalink to the item for the link URL.
+							if permalinkurl != "" {
+								add ("<link>" + permalinkurl + "</link>")}};
+						«bundle //<author>
+							«local (memberkey = adrMsgTable^.member)
+							«local (membername)
+							«if manilaSuite.members.getMemberName (memberKey, @membername)
+								«membername = memberKey + " (" + membername + ")"
+							«else
+								«membername = memberkey
+							«add ("<author>" + encodeWithAmpersands (membername) + "</author>")
+						bundle { //<pubDate>
+							if defined (adrMsgTable^.newsitem.postTime) {
+								add ("<pubDate>" + date.netStandardString (adrMsgTable^.newsitem.postTime) + "</pubDate>")}
+							else {
+								add ("<pubDate>" + date.netStandardString (adrMsgTable^.postTime) + "</pubDate>")}};
+						bundle { //<dc:creator>
+							local (memberkey = adrMsgTable^.member);
+							local (membername);
+							if manilaSuite.members.getMemberName (memberKey, @membername) {
+								add ("<dc:creator>" + encodeWithAmpersands (membername) + "</dc:creator>")}};
+						bundle { //add category (department) if defined and non-empty
+							if defined (xmlTable.department) {
+								if sizeOf (xmlTable.department) > 0 {
+									if typeOf (xmlTable.department) == listType {
+										local (cat);
+										for cat in xmlTable.department {
+											add ("<category>" + encodeWithAmpersands (cat) + "</category>")}}
+									else { //single department
+										add ("<category>" + encodeWithAmpersands (xmlTable.department) + "</category>")}}}};
+						if permalinkurl != "" { //use the permalink for the <guid>
+							add ("<guid>" + permalinkurl + "</guid>")};
+						if flRadioHosting { //<comments>
+							local (commentUrl = manilaSuite.news.getCommentUrl (adrMsgTable));
+							add ("<comments>" + encodeWithAmpersands (commentUrl) + "</comments>")};
+						if defined (adrMsgTable^.enclosure) {
+							local (flEnclosureAdded = false);
+							local (adrEnclosure = @adrMsgTable^.enclosure);
+							if defined (adrEnclosure^.length) and defined (adrEnclosure^.type) { //reality check
+								add ("<enclosure url=\"" + adrEnclosure^.url + "\" length=\"" + adrEnclosure^.length + "\" type=\"" + adrEnclosure^.type + "\" />")};
+							if not flEnclosureAdded { //check for old-style DG enclosure
+								if defined (adrMsgTable^.enclosureBits) { //this is an old-style enclosure, with the content and type stored in the message table
+									if typeOf (adrMsgTable^.enclosureBits) == binaryType { //only binary objects are supported here -- all others use a viewer in a browser
+										flEnclosureAdded = true;
+										add ("<enclosure url=\"" + adrsite^.["#urls"].discussHomePage + "enclosures/view$" + adrMsgTable^.msgnum + "\" length=\"" + sizeOf (adrMsgTable^.enclosureBits) + "\" type=\"" + mainResponder.getODBMimeType (@adrMsgTable^.enclosureBits) + "\" />")}}}};
+						add ("</item>"); indent--}}};
+			on addHeader () {
+				add ("<?xml version=\"1.0\"?>");
+				add ("<!-- RSS generated by UserLand Frontier v" + frontier.version () + " on " + date.netStandardString (clock.now ()) + " -->");
+				bundle { //add 2.0 header
+					local (s = "<rss version=\"2.0\"");
+					if defined (pta^.rssInfo^.ccLicense) {
+						s = s + " xmlns:creativeCommons=\"http://backend.userland.com/creativeCommonsRssModule\""};
+					s = s + " xmlns:dc=\"http://purl.org/dc/elements/1.1/\"";
+					s = s + ">";
+					add (s)};
+				«bundle //old 0.91/0.92 header
+					«if flpubsub or flcategories //PBS 01/17/02
+						«add ("<rss version=\"0.92\">")
+					«else
+						«add ("<!DOCTYPE rss PUBLIC \"-//Netscape Communications//DTD RSS 0.91//EN\" \"http://my.netscape.com/publish/formats/rss-0.91.dtd\">")
+						«add ("<rss version=\"0.91\">")
+				indent++;
+				add ("<channel>");
+				indent++;
+				bundle { //add the header info
+					add ("<title>" +  encodeWithAmpersands (pta^.rssInfo^.channelTitle) + "</title>");
+					add ("<link>" +  encodeWithAmpersands (pta^.ftpSite^.url) + "</link>");
+					add ("<description>" +  encodeWithAmpersands (pta^.rssInfo^.channelDescription) + "</description>");
+					if defined (pta^.rssInfo^.ccLicense) { //4/9/03 at 10:56:01 AM by DW
+						add ("<creativeCommons:license>" + pta^.rssInfo^.ccLicense + "</creativeCommons:license>")};
+					add ("<language>" + string.lower (pta^.rssInfo^.userLandExtensions.language) + "</language>");
+					add ("<pubDate>" + date.netStandardString (pta^.posttime) + "</pubDate>");
+					add ("<lastBuildDate>" + date.netStandardString (pta^.postTime) + "</lastBuildDate>");
+					add ("<docs>http://blogs.law.harvard.edu/tech/rss</docs> ");
+					add ("<generator>UserLand Frontier v" + frontier.version () + "</generator>");
+					«add ("<category domain=\"http://www.weblogs.com/rssUpdates/changes.xml\">rssUpdates</category>")
+					«add ("<managingEditor>" +  encodeWithAmpersands (pta^.rssInfo^.userLandExtensions.managingEditor) + "</managingEditor>")
+					«add ("<webMaster>" +  encodeWithAmpersands (pta^.rssInfo^.userLandExtensions.webmaster) + "</webMaster>")
+					if flpubsub { //PBS 01/17/02: add cloud header
+						local (domain = pta^.host);
+						if domain contains ":" {
+							domain = string.popSuffix (domain, ":")};
+						local (port = pta^.port);
+						add (manilaSuite.unTaint ("<cloud domain=\"" + domain + "\" port=\"" + port + "\" path=\"/RPC2\" registerProcedure=\"manilaRss.pleaseNotify\" protocol=\"xml-rpc\" />"))};
+					
+					bundle { //image (optional)
+						local (flIncludeImage = true);
+						local (imageTitle = pta^.rssInfo^.imageTitle);
+						local (imageUrl = pta^.rssInfo^.imageUrl);
+						local (imageCaption = pta^.rssInfo^.userLandExtensions.imageCaption);
+						local (imageHeight = pta^.rssInfo^.userLandExtensions.imageHeight);
+						local (imageWidth = pta^.rssInfo^.userLandExtensions.imageWidth);
+						
+						«If any of the above items are empty, don't add the image.
+						if imageTitle == "" or imageUrl == "" or imageCaption == "" {
+							flIncludeImage = false};
+						if imageWidth == "" or imageHeight == "" {
+							flIncludeImage = false};
+						if imageWidth == 1 and imageHeight == 1 {
+							flIncludeImage = false};
+						
+						if flIncludeImage {
+							add ("<image>");
+							indent++;
+							add ("<title>" +  encodeWithAmpersands (imageTitle) + "</title>");
+							add ("<url>" +  encodeWithAmpersands (imageUrl) + "</url>");
+							add ("<link>" +  encodeWithAmpersands (pta^.ftpSite^.url) + "</link>");
+							add ("<height>" + imageHeight + "</height>");
+							add ("<width>" + imageWidth + "</width>");
+							add ("<description>" +  encodeWithAmpersands (imageCaption) + "</description>");
+							
+							add ("</image>");
+							indent--}}}};
+			
+			addHeader ();
+			
+			if manilaSuite.news.newsItemsEnabled (adrSite) {
+				newsItemsToXml ()}
+			else { //traditional style site -- home page is edited as one piece
+				stringToXML (string (adr^))};
+			
+			add ("</channel>"); indent--;
+			add ("</rss>"); indent--;
+			return (xmlText)};
+		
+		local (homePageMsgNum = pta^.newsSite^.discussLinks.homePageMsgNum);
+		local (adrMsgTable = mainResponder.discuss.getMessageTable (homePageMsgNum, pta));
+		local (homePageMember = adrMsgTable^.member);
+		local (homePageCreator="");
+		manilaSuite.members.getMemberName (homePageMember, @homePageCreator);
+		
+		bundle { //ETag and Last-Modified support
+			local (etag = "");
+			if manilaSuite.news.newsItemsEnabled (adrSite) {
+				local (msgNumList = manilaSuite.news.getLastNMessageNumbers (1));
+				local (adrLastMsg = mainResponder.discuss.getMessageTable (msgNumList[1]));
+				etag = "e" + abs (number (adrLastMsg^.lastUpdate));
+				pta^.responseHeaders.["Last-Modified"] = date.netStandardString (adrLastMsg^.lastUpdate)}
+			else {
+				etag = "e" + abs (number (adrMsgTable^.lastUpdate));
+				pta^.responseHeaders.["Last-Modified"] = date.netStandardString (adrMsgTable^.lastUpdate)};
+			if sizeOf (etag) > 0 {
+				pta^.responseHeaders.["ETag"] = "\"" + etag + "\"";
+				if defined (pta^.requestHeaders.["If-None-Match"] ) {
+					local (ifNoneMatch = pta^.requestHeaders.["If-None-Match"] );
+					local (sizeIfNoneMatch = sizeOf (ifNoneMatch));
+					if ifNoneMatch[1] == '\"' and ifNoneMatch[sizeIfNoneMatch] == '\"' { //strip quote characters
+						ifNoneMatch = string.mid (ifNoneMatch, 2, sizeIfNoneMatch - 2)};
+					if etag == ifNoneMatch { //304 Not Modified
+						pta^.code = 304;
+						pta^.responseHeaders.["Content-Length"] = 0;
+						delete (@pta^.responseHeaders.["Content-Type"]);
+						return ("")}}}};
+		
+		if manilaSuite.news.newsItemsEnabled (adrSite) { //02/27/2001 JES: set pta^.postTime
+			flcategories = true; //PBS 01/29/02: use category elements
+			try {
+				local (msgNumList = manilaSuite.news.getLastNMessageNumbers (1));
+				local (adrLastMsg = mainResponder.discuss.getMessageTable (msgNumList[1]));
+				if defined (adrLastMsg^.newsitem.postTime) {
+					pta^.postTime = adrLastMsg^.newsitem.postTime}
+				else {
+					pta^.postTime = adrLastMsg^.lastUpdate}}}
+		else {
+			pta^.postTime = adrMsgTable^.lastUpdate};
+		local (adr = @adrMsgTable^.body);
+		
+		local (xmlText = getXmlText (adr));
+		
+		«PBS 12/28/99: turn off macros and glossary lookups -- otherwise a second round of processing would happen.
+		pta^.processMacros = false;
+		pta^.expandGlossaryItems = false;
+		
+		return (string.trimWhiteSpace (xmlText))}
+	else {
+		return (manilaSuite.unTaint (error (tryError)))}}

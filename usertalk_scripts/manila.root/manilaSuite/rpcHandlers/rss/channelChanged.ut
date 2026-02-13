@@ -1,0 +1,3 @@
+on channelChanged (url) {
+	manilaSuite.rss.channelChanged (url);
+	return (true)}

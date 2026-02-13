@@ -1,0 +1,29 @@
+on aggregatorPage () {
+	«Changes
+		«4/16/07; 11:29:36 AM by LL
+			«Check if the user can post news items before displaying the post button.
+		«9/20/05; 5:44:52 PM by JES
+			«If logged in as the managing editor, add a link to the subscriptions prefs page to the descriptive text at the top of the aggregator page.
+		«6/13/03; 9:13:44 PM by JES
+			«Pass flPostButtons:true to manilaMacros.viewAggregator.
+		«3/8/03; 1:23:34 AM by JES
+			«Created. Render a Manila site's news aggregator page.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = manilaSuite.getString ("aggregator.title");
+	local (htext = "");
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	bundle { //top-of-page text
+		add (manilaSuite.getString ("aggregator.intro"));
+		if pta^.flManagingEditor { //add link to subscription prefs page
+			local (t); new (tableType, @t);
+			t.subscriptionsPrefsUrl = manilaSuite.getSiteUrl (pta:pta) + "admin/sitePrefs/default$subscriptions";
+			add (manilaSuite.getString ("aggregator.linkToSubscriptions", @t))}};
+	
+	local (flMemberCanCreateNewItems = false);
+	if manilaSuite.news.memberMayCreateNewItems () {
+		flMemberCanCreateNewItems = true};
+	add (manilaMacros.viewAggregator (flPostButtons:flMemberCanCreateNewItems));
+	
+	return (htext)}

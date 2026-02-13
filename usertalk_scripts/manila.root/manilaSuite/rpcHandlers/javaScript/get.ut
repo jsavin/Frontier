@@ -1,0 +1,30 @@
+on get (username, password, siteName) {
+	«Get the JavaScript text.
+	«Changes:
+		«02/21/01; 11:55:10 PM by JES
+			«Convert Mac text to Latin if the server is a Mac.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't get the JavaScript because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject = @adrNewsSite^.javaScript);
+	if not defined (adrObject^) {
+		local (siteInfo);
+		new (tableType, @siteInfo);
+		siteInfo.adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName);
+		manilaSuite.newSite.createJavaScript (@siteInfo)};
+	
+	local (t);
+	new (tableType, @t);
+	t.body = string (string (adrObject^));
+	if system.environment.isMac {
+		t.body = latinToMac.macToLatin (t.body)};
+	bundle { //get window info table
+		new (tableType, @t.windowInfo);
+		local (adrSite = parentOf (adrNewsSite^));
+		local (itemName = "javaScript");
+		manilaSuite.rpcUtils.getWindowInfoTable (itemName, adrSite, @t.windowInfo)};
+	
+	return (t)}

@@ -1,0 +1,5 @@
+on containsTest (pta) {
+	«manilaSuite.AccessControl.genericContainsTest : 04/05/20, 17:00:23 by DAB
+		«copied to appropriate sub-table in Cohorts table and makes sense in that context only
+		«was manilaFixer.accessControl.genericContainsTest : 02/02/21, 18:41:26 by DAB
+	return defined(parentOf(this^)^.memberdata.[nameOf(pta^.adrMemberInfo^)])}

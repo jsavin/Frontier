@@ -1,0 +1,90 @@
+on restoreDefault (username, password, siteName, itemName) {
+	«Restore an advanced pref item to the default.
+		«11/17/00; 8:56:09 PM by JES
+		«Changes:
+			«10/2/01; 2:55:39 PM by PBS
+				«Print friendly template.
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject, adrObjectAsString, adrRestoreScript);
+	
+	on restoreHomepageTemplate (adrSiteInfo) { // this is a special case
+		local (adrSite = adrSiteInfo^.adrSite);
+		local (adrObject = @adrSite^.["#homePageTemplate"]);
+		wp.newTextObject ("", adrObject); //empty it out
+		adrSite^.["#newsSite"].flUseHomePageTemplate = false}; //don't use home page template
+	
+	case string.lower (itemName) {
+		"css" {
+			adrObject = @adrNewsSite^.cascadingStyleSheet;
+			adrRestoreScript = @manilaSuite.themes.restoreStyleSheet;
+			itemName = "cascading style sheet"};
+		"customprefs" {
+			adrObject = @adrNewsSite^.prefsWizard.outline;
+			adrRestoreScript = @manilaSuite.newSite.createCustomPrefsWizard;
+			itemName = "custom prefs"};
+		"homepagetemplate" { // this is a special case
+			adrObject = @adrSite^.["#homePageTemplate"];
+			adrRestoreScript = @restoreHomepageTemplate;
+			itemName = "home page template"};
+		"javascript" {
+			adrObject = @adrNewsSite^.javaScript;
+			adrRestoreScript = @manilaSuite.themes.restoreJavaScript;
+			itemName = "JavaScript"};
+		"joinnowmembersbox" {
+			adrObject = @adrNewsSite^.membersBoxTemplates.signInBox;
+			adrObjectAsString = string (adrObject);
+			adrRestoreScript = @manilaSuite.themes.restoreSignInBox;
+			itemName = "join now members box"};
+		"navigation" {
+			adrObject = @adrSite^.["#navigator"].outline;
+			adrRestoreScript = @manilaSuite.newSite.createNavigator;
+			itemName = "navigation"};
+		"newsdaytemplate" {
+			adrObject = @adrNewsSite^.newsDayTemplate;
+			adrRestoreScript = @manilaSuite.themes.restoreNewsDayTemplate;
+			itemName = "news day template"};
+		"newsitemtemplate" {
+			adrObject = @adrNewsSite^.newsItems.template;
+			adrRestoreScript = @manilaSuite.themes.restoreNewsItemsTemplate;
+			itemName = "news item template"};
+		"signoutmembersbox" {
+			adrObject = @adrNewsSite^.membersBoxTemplates.signOutBox;
+			adrObjectAsString = string (adrObject);
+			adrRestoreScript = @manilaSuite.themes.restoreSignOutBox;
+			itemName = "sign out members box"};
+		"sitestructure" {
+			adrObject = @adrSite^.["#hierarchy"].outline;
+			adrRestoreScript = @manilaSuite.newSite.createHierarchy;
+			itemName = "site structure"};
+		"template" {
+			adrObject = @adrSite^.["#template"];
+			adrRestoreScript = @manilaSuite.themes.restoreTemplate;
+			itemName = "template"}}
+	else {
+		scriptError ("Can't restore the " + itemName + " to the default because it doesn't exist.")};
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't restore the " + itemName + " to the default because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (siteInfo);
+	bundle { //restore the pref to the default
+		if string.lower (itemName) == "printfriendlytemplate" { //PBS 10/02/01
+			table.assign (@adrNewsSite^.alternateTemplates.printFriendly, string (manilaData.printFriendlyTemplates.template))}
+		else {
+			new (tableType, @siteInfo);
+			siteInfo.adrSite = adrSite;
+			adrRestoreScript^ (@siteInfo)}};
+	
+	fileMenu.saveMyRoot (adrSite); //save the root, a change was made
+	
+	local (text);
+	if adrObjectAsString { // kludge for kernel bug (expand for details)
+		«If the parent table of an object whose address is stored in a local is deleted, the address value is hosed. The fix is to keep the address around as a string when necessary, and use the string to find the object, instead of an address.
+		text = string (adrObjectAsString^)}
+	else {
+		text = string (adrObject^)};
+	
+	return (text)}

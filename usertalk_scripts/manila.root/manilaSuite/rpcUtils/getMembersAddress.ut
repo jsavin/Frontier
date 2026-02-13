@@ -1,0 +1,3 @@
+on getMembersAddress (sitename) {
+	local (groupname = manilaSuite.rpcUtils.getMembersGroupName (sitename));
+	return (mainResponder.members.getMembershipTable (groupname))}

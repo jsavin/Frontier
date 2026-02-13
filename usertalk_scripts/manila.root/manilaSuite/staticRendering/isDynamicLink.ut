@@ -1,0 +1,38 @@
+on isDynamicLink (path) {
+	«Return true if this is a dynamic-only link, not to be filtered. Path can be a relative URL or a full URL.
+		«03/13/00; 7:04:51 PM by PBS
+		«Changes:
+			«12/19/01; 9:04:00 PM by PBS
+				«All print-friendly pages are dynamic.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	local (lowerPath = string.lower (path));
+	if lowerPath contains "?print-friendly=true" {
+		return (true)};
+	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
+	local (dynamicUrl = adrManilaSite^.["#ftpSite"].url);
+	local (lowerDynamicUrl = string.lower (dynamicUrl));
+	
+	if lowerPath beginsWith "http://" {
+		if not (lowerPath beginsWith lowerDynamicUrl) {
+			return (false)}; //it's not a local URL
+		lowerPath = string.delete (lowerPath, 1, sizeOf ("http://"));
+		local (serverName = string.nthField (lowerPath, '/', 1));
+		lowerPath = string.delete (lowerPath, 1, sizeOf (serverName))};
+	
+	bundle { //strip the first part of the path that's not inside the site
+		«Path is now relative to the server. We want it relative to the site.
+		local (urlParts = string.urlSplit (dynamicUrl));
+		local (dynamicUri = "/" + urlParts [3]);
+		lowerPath = string.delete (lowerPath, 1, sizeOf (dynamicUri))};
+	
+	bundle { //get the name of the first object in the site
+		local (firstPart = string.nthField (lowerPath, '/', 1));
+		if defined (adrManilaSite^.[firstPart]) {
+			try {
+				number (firstPart); //it might be a calendar page
+				return (false)};
+			return (true)}}; //it's defined in the site, but not a calendar page, so it's dynamic only
+	
+	return (false)}

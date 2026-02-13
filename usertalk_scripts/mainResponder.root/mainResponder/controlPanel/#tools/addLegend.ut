@@ -1,0 +1,47 @@
+on addLegend (legendName) {
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	bundle { //add the legend only if the log is not empty
+		on logIsEmpty (logName) {
+			local (adrLog = log.getGuestSubTable (logName));
+			if sizeOf (adrLog^) == 0 {
+				return (true)};
+			return (false)};
+		
+		«Check the cases where the log is empty.
+		case string.lower (legendName) {
+			"http" {
+				if not (user.betty.prefs.flKeepServerLog) {
+					return ("")}};
+			"rpc" {
+				if not (user.betty.prefs.flKeepServerLog) {
+					return ("")};
+				if logIsEmpty ("rpcServer") {
+					return ("")}};
+			"scheduler" {
+				if logIsEmpty ("SchedulerMonitor") {
+					return ("")}};
+			"webedit" {
+				if logIsEmpty ("Custody") {
+					return ("")}};
+			"search" {
+				if logIsEmpty ("Search Engine") {
+					return ("")}};
+			"indexer" {
+				if logIsEmpty ("Search Engine Indexer") {
+					return ("")}}}};
+	
+	«add ("<br><hr noshade size=\"1\"><br>\r")
+	add ("<p>");
+	add ("<b>What each of these columns mean:</b><p>\r");
+	
+	local (pta = html.getPageTableAddress ());
+	
+	if string.lower (legendName) == "http" {
+		add (string (mainResponder.log.legendText))}
+	else {
+		add (string (pta^.tools^.legends.[legendName]))};
+	
+	return (htmlText)}

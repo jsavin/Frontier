@@ -1,0 +1,91 @@
+on set (username, password, siteName, itemName, s, windowInfoTable) {
+	«Set the text of an advanced pref template.
+		«This script calls through the older RPC handlers.
+		«If advanced prefs items are added in the future, they should do their processing here.
+		«11/17/00; 9:10:50 PM by JES
+		«Changes:
+			«11/20/00; 5:03:29 PM by PBS
+				«Handle directory template.
+			«12/02/00; 7:15:40 PM by PBS
+				«When saving the directory template, call manilaSuite.directory.setTemplateModified, so caches know to clear.
+			«12/18/00; 4:33:25 PM by PBS
+				«Slides template.
+			«01/02/01; 11:43:28 AM by PBS
+				«adrSite wasn't defined, leading to a scriptError for some templates.
+			«02/22/01; 12:06:02 AM by JES
+				«Convert outgoing text from Mac to Latin, if the server is a Mac.
+			«10/2/01; 3:02:48 PM by PBS
+				«Print friendly template.
+	
+	local (adrHandler);
+	local (adrSite = config.manila.sites.[siteName]); //PBS 01/02/00: adrSite must be defined
+	
+	on setPrintFriendlyTemplate () { //PBS 10/02/01
+		local (pageTable, errorstring);
+		manilaSuite.rpcUtils.cleanObjectForImport (@s, flEnableSafeMacros:true);
+		if not defined (adrSite^.["#newsSite"].alternateTemplates) {
+			new (tableType, @adrSite^.["#newsSite"].alternateTemplates)};
+		table.assign (@adrSite^.["#newsSite"].alternateTemplates.printFriendly, s);
+		bundle { //PBS 20/06/00: save the window info table
+			manilaSuite.rpcUtils.setWindowInfoTable (windowInfoTable, "printfriendlytemplate", adrSite)};
+		fileMenu.saveMyRoot (adrSite);
+		return (true)};
+	
+	case string.lower (itemName) {
+		"css" {
+			itemName = "cascading style sheet";
+			adrHandler = @manilaSuite.rpcHandlers.css.set};
+		"customprefs" {
+			itemName = "custom prefs";
+			adrHandler = @manilaSuite.rpcHandlers.customPrefs.set};
+		"directorytemplate" {
+			manilaSuite.rpcUtils.setAdvancedPref (username, password, siteName, itemName, "directory template", s, windowInfoTable);
+			manilaSuite.directory.setTemplateModified (@adrSite^.["#newsSite"]); //PBS 12/02/00: clears cache
+			return (true)};
+		"slidestemplate" {
+			manilaSuite.rpcUtils.setAdvancedPref (username, password, siteName, itemName, "slides template", s, windowInfoTable, false);
+			manilaSuite.slides.setTemplateModified (@adrSite^.["#newsSite"]);
+			return (true)};
+		"homepagetemplate" {
+			itemName = "home page template";
+			adrHandler = @manilaSuite.rpcHandlers.homePageTemplate.set};
+		"javascript" {
+			itemName = "JavaScript";
+			adrHandler = @manilaSuite.rpcHandlers.javaScript.set};
+		"joinnowmembersbox" {
+			itemName = "join now members box";
+			adrHandler = @manilaSuite.rpcHandlers.joinNowMembersBox.set};
+		"navigation" {
+			itemName = "navigation";
+			adrHandler = @manilaSuite.rpcHandlers.navigation.set};
+		"newsdaytemplate" {
+			itemName = "news day template";
+			adrHandler = @manilaSuite.rpcHandlers.newsDayTemplate.set};
+		"newsitemtemplate" {
+			itemName = "news item template";
+			adrHandler = @manilaSuite.rpcHandlers.newsItemTemplate.set};
+		"signoutmembersbox" {
+			itemName = "sign out members box";
+			adrHandler = @manilaSuite.rpcHandlers.signOutMembersBox.set};
+		"sitestructure" {
+			itemName = "site structure";
+			adrHandler = @manilaSuite.rpcHandlers.siteStructure.set};
+		"template" {
+			itemName = "template";
+			adrHandler = @manilaSuite.rpcHandlers.template.set};
+		"printfriendlytemplate" {
+			true}}
+	else {
+		scriptError ("Can't set the text of the " + itemName + " because it doesn't exist.")};
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't set the " + itemName + " because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	if system.environment.isMac {
+		s = latinToMac.convert (s)};
+	
+	if string.lower (itemName) == "printfriendlytemplate" {
+		return (setPrintFriendlyTemplate ())}
+	else {
+		return (adrHandler^ (username, password, siteName, s, windowInfoTable))}}

@@ -1,0 +1,13 @@
+on drawNavigator (name) {
+	«Wrapper for prefsSuite.drawNavigator.
+		«Replaces <p>s with <br>s.
+		«Restores the default pta^.navigator.
+		«11/2/99; 11:09:45 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (htmlText);
+	pta^.navigator = @mainResponder.controlPanel.["#" + name];
+	htmlText = prefsSuite.drawNavigator (flBoldItems:false);
+	htmlText = string.replaceAll (htmlText, "<p>", "<br>");
+	pta^.navigator = @mainResponder.controlPanel.["#navigator"];
+	return (htmlText)}

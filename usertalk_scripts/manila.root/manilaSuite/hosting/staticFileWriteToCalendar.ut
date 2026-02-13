@@ -1,0 +1,25 @@
+on staticFileWriteToCalendar (fileText, fname, d=clock.now ()) {
+	«Write an XML file to disk in a calendar structure.
+		«05/08/00; 9:09:37 PM by PBS
+	
+	local (baseFolder);
+	local (pc = file.getPathChar ());
+	baseFolder = Frontier.getSubFolder ("www") + "admin" + pc + "Manila" + pc;
+	
+	local (baseUrl = "http://" + tcp.myDottedId () + "/admin/Manila/");
+	
+	local (day, month, year, hour, minute, second);
+	date.get (d, @day, @month, @year, @hour, @minute, @second);
+	local (folder);
+	folder = baseFolder + year + pc;
+	folder = folder + string.padWithZeros (month, 2) + pc;
+	folder = folder + string.padWithZeros (day, 2) + pc;
+	local (url);
+	url = baseUrl + year + "/" + string.padWithZeros (month, 2) + "/";
+	url = url + string.padWithZeros (day, 2) + "/";
+	
+	local (f = folder + fname);
+	file.sureFilePath (f);
+	file.writeWholeFile (f, fileText, 'TEXT', 'R*ch', clock.now ());
+	
+	return (url + fname)}

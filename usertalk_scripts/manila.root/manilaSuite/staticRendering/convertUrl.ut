@@ -1,0 +1,14 @@
+on convertUrl (url) {
+	«Pass this a filtered URL minus a suffix, this script will fix the filename and add the suffix.
+		«03/09/00; 12:49:34 AM by PBS
+	
+	if url endsWith "/" {
+		return (url)};
+	
+	local (ctFields = string.countFields (url, '/'));
+	local (fname = string.nthField (url, '/', ctFields));
+	url = string.popSuffix (url, '/');
+	fname = manilaSuite.staticRendering.convertFilename (fname);
+	url = url + "/" + fname;
+	
+	return (url)}

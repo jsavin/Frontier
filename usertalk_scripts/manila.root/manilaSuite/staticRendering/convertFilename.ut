@@ -1,0 +1,36 @@
+on convertFilename (fname) {
+	«Changes
+		«8/8/06; 2:16:30 PM by LL
+			«Fix a bug where links which include an anchor would add the file extension at the wrong location.
+		«8/11/04; 2:43:11 AM by JES
+			«Respect the lowercasefilename website framework directive.
+		«12/11/01; 3:03:48 PM by PBS
+			«Get max length from prefs (config.manila.prefs.staticRenderingMaxFileNameLength). That pref was initialized with the value of user.html.prefs.maxFileNameLength.
+			«If there's a maxFileNameLength value in the page table, it over-rides.
+		«03/08/00; 10:57:26 PM by PBS
+			«Convert a Manila pseudo-filename to a static filename.
+	
+	local (pta = html.getPageTableAddress ());
+	local (suffix = manilaSuite.staticRendering.getSuffix ());
+	local (maxLength = html.getPref ("maxFileNameLength", pta));
+	if maxLength == true {
+		maxLength = 31};
+	if defined (config.manila.prefs.staticRenderingMaxFileNameLength) { //PBS 12/11/01: get from prefs
+		maxLength = config.manila.prefs.staticRenderingMaxFileNameLength};
+	if defined (pta^.maxFileNameLength) { //PBS 12/11/01: value from page table over-rides
+		maxLength = pta^.maxFileNameLength};
+	
+	local (maxLengthMinusSuffix = maxLength - sizeOf (suffix));
+	if sizeOf (fname) > maxLengthMinusSuffix {
+		fname = string.mid (fname, 1, maxLengthMinusSuffix)};
+	«fname = string.lower (fname) + suffix
+	if html.getPref("lowercasefilenames", pta) { //01/02/26, 20:36:00 by DAB
+		fname = string.lower (fname)};
+	if fname contains "#" {
+		anchor = "#" + string.nthField (fname, "#", 2);
+		fname = string.nthField (fname, "#", 1);
+		fname = fName + suffix + anchor}
+	else {
+		fname = fName + suffix};
+	
+	return (fname)}

@@ -1,0 +1,114 @@
+on downloadDatabase () {
+	«Changes
+		«10/28/05; 5:03:42 PM by JES
+			«Add Revert-to-saved command.
+		«7/19/05; 1:11:05 AM by JES
+			«Created. Return a page with a link to download a database, or send a downloaded database to the user.
+			«Make sure the user understands that this involves saving a copy of the database, which will lock up the server, potentially for some time if the database is large.
+	local (pta = html.getPageTableAddress ());
+	local (htext);
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	local (dbRelPath);
+	if pta^.pathArgs {
+		dbRelPath = pta^.pathArgs}
+	else {
+		dbRelPath = string.delete (pta^.path, 1, sizeOf (nameOf (this^)) + 2)};
+	local (f = string.popTrailing (frontier.getSubFolder (dbRelPath), file.getPathChar ()));
+	
+	local (flSwapBack = defined (pta^.searchArgTable.swapBack));
+	local (flSwapBackConfirmed = defined (pta^.searchArgTable.swapBackConfirm));
+	local (flMakeCopy = defined (pta^.searchArgTable.makeCopy));
+	local (makeCopyUrl = "/" + nameOf (this^) + "/" + pta^.pathArgs + "?makeCopy");
+	local (swapBackUrl = "/" + nameOf (this^) + "/" + pta^.pathArgs + "?swapBack");
+	local (flConfirmed = defined (pta^.searchArgTable.download) or flMakeCopy or (pta^.pathArgs == "") or flSwapBackConfirmed);
+	flConfirmed = flConfirmed and (not flSwapBack);
+	local (downloadUrl = "/" + nameOf (this^) + "/" + pta^.pathArgs + "?download");
+	local (tooltip = " title=\"Right-click and choose Save To Disk.\"");
+	
+	on getCopyPath (f) {
+		local (gdbPath = frontier.getSubFolder (""));
+		local (relPath = string.delete (f, 1, sizeOf (gdbPath)));
+		local (copyPath = frontier.pathString + "AdminDownloads" + file.getPathChar () + relPath);
+		return (copyPath)};
+	on copyExists (f, adrDate=nil, adrSize=nil) {
+		local (fdest = getCopyPath (f));
+		if file.exists (fdest) {
+			if adrDate != nil {
+				adrDate^ = file.modified (fdest)};
+			if adrSize != nil {
+				adrSize^ = file.size (fdest)};
+			return (true)};
+		return (false)};
+	on makeCopy (f) {
+		local (fdest = getCopyPath (f));
+		local (oldTarget = target.set (@[f][1]));
+		file.sureFilePath (fdest);
+		fileMenu.saveCopy (fdest);
+		try {target.set (oldTarget)};
+		return (fdest)};
+	
+	if flConfirmed {
+		if flSwapBackConfirmed { //swap in the safe copy
+			local (copyPath = getCopyPath (f));
+			local (flWasOpened = false);
+			if defined ([f]) {
+				flWasOpened = true;
+				target.set (@[f]);
+				fileMenu.save (f);
+				fileMenu.close ()};
+			file.delete (f);
+			file.move (copyPath, file.folderFromPath (f));
+			if flWasOpened {
+				fileMenu.open (f, true)};
+			pta^.title = file.fileFromPath (f) + " Reverted";
+			add ("<p>" + file.fileFromPath (f) + " has been reverted to its last-saved state.</p>")}
+		else { //download database, possibly making a copy first
+			local (fileToServe);
+			if copyExists (f) {
+				if flMakeCopy { //the user asked for a fresh copy
+					fileToServe = makeCopy (f)}
+				else { //use existing copy
+					fileToServe = getCopyPath (f)}}
+			else { //no copy exists -- we have to make one
+				fileToServe = makeCopy (f)};
+			bundle { //serve the copy
+				«pta^.responseHeaders.["Content-Type"] = "application/octet-stream" //may be a bit wonky on Windows
+				pta^.responseHeaders.["Content-Type"] = "text/table"; //gets us the right Mac file type
+				pta^.responseHeaders.["Last-Modified"] = date.netStandardString (date.netStandardString (file.modified (fileToServe)));
+				pta^.responseBody = string (file.readwholefile (fileToServe));
+				scriptError ("!return")}}}
+	else { //double-check with the user that they really want to copy or download the database
+		local (sizeBytes = file.size (f));
+		if flSwapBack { //confirm swap back
+			pta^.title = "Confirm Revert";
+			add ("<form method=\"GET\">");
+			add ("<p><b>The live copy of " + file.fileFromPath (f) + " is " + string.gigabyteString (sizeBytes) + " in size.</b></p>");
+			add ("<p>Are you sure you want to revert to the last saved version of " + file.fileFromPath (f) + "?</p>");
+			add ("<p><b>This operation cannot be undone.</b></p>");
+			add ("<input type=\"submit\" name=\"swapBackConfirm\" value=\"Revert To Last Saved\">");
+			add ("</form>")}
+		else { //confirm download
+			pta^.title = "Confirm Database Download";
+			add ("<p><b>The live copy of " + file.fileFromPath (f) + " is " + string.gigabyteString (sizeBytes) + " in size.</b></p>");
+			local (dateCopy, sizeCopy);
+			if copyExists (f, @dateCopy, @sizeCopy) {
+				add ("<p>A safe copy of this database from " + dateCopy + " already exists, and is " + string.gigabyteString (sizeCopy) + " in size.</p>");
+				add ("<p>You can download the <a href=\"" + downloadUrl + "\"" + tooltip + ">existing copy</a> or create and download a <a href=\"" + makeCopyUrl + "\"" + tooltip + ">fresh copy</a>.</p>");
+				add ("Note: While the copy is being made, the server will not respond to any incoming web requests.</p>");
+				add ("<p><br />You can also <a href=\"" + swapBackUrl + "\" title=\"This operation requires confirmation.\">revert to the safe copy</a>, restoring its last-downloaded state.</p>")}
+			else {
+				add ("<p>No safe copy of this database exists. You can download a <a href=\"" + makeCopyUrl + "\"" + tooltip + ">new safe copy</a>, but while the copy is being made, the server will not respond to any incoming web requests.</p>");
+				case true {
+					file.size (f) > 1024 * 1024 * 50 {
+						add ("<p><b>Important: This is a very large database.</b> Download this database only if you can afford for the server to be unreachable for a long period of time.</p>")};
+					file.size (f) > 1024 * 1024 * 25 {
+						add ("<p><b>Note: This is a large database.</b> Download this database only if you can afford for the server to be unreachable for some time.</p>")};
+					file.size (f) > 1024 * 1024 * 10 {
+						add ("<p><b>This is a large database.</b> Download this database only if you can afford for the server to be unreachable for a short time.</p>")}}}}};
+	
+	return (htext)};
+bundle { //test code
+	html.setPageTableAddress (@workspace.pt);
+	downloadDatabase ()}

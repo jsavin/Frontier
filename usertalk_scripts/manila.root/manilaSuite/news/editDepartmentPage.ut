@@ -1,0 +1,173 @@
+on editDepartmentPage () {
+	«Changes
+		«10/8/03; 12:46:04 PM by JES
+			«Added support for per-department language pref, and picture association.
+		«9/3/03; 12:42:51 PM by JES
+			«Created. UI for editing or creating a department.
+	
+	local (pta = html.getPageTableAddress ());
+	«workspace.pt = pta^
+	
+	bundle { //editorial check
+		if not manilaSuite.editors.managingEditorTest (pta) {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}};
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrdepts = manilaSuite.news.getDepartmentTableAddress (adrsite));
+	
+	local (dept = "");
+	try { //get department name
+		dept = manilaSuite.news.departmentPathToName (adrsite, pta^.pathArgs)};
+	
+	local (flNew = false);
+	if dept == "" { //set flNew
+		flNew = true};
+	
+	bundle { //set page title
+		if flNew {
+			pta^.title = manilaSuite.getString ("news.newDepartment")}
+		else {
+			pta^.title = manilaSuite.getString ("news.editDepartment")}};
+	
+	local (flError = false, errorMessage = "");
+	if pta^.method == "POST" {
+		if defined (pta^.postArgs.submit) {
+			local (newname = manilaSuite.untaint (pta^.postArgs.name));
+			local (newdescription = manilaSuite.untaint (pta^.postArgs.description));
+			if system.environment.isMac { //convert to Mac text
+				newname = string.latinToMac (newname);
+				newdescription = string.latinToMac (newdescription)};
+			if not flNew { //we have to adjust departments for existing news items if the name has changed
+				if string.lower (newname) != string.lower (dept) {
+					if defined (adrdepts^.[newname]) { //error -- the department already exists
+						flError = true;
+						errorMessage = "Can't change the name of this department because a department with the name \"" + newname + "\" already exists.";
+						description = newdescription} //preserve edits
+					else {
+						table.rename (@adrdepts^.[dept], newname);
+						local (lowerdept = string.lower (dept));
+						local (adrdiscuss = manilaSuite.discuss.getDiscussionGroupAddress (adrsite));
+						local (adrmsgs = @adrdiscuss^.messages);
+						local (adr);
+						for adr in adrmsgs { //loop over messages and fix department if present
+							if defined (adr^.newsItem) {
+								if defined (adr^.newsItem.department) {
+									if typeOf (adr^.newsItem.department) == listType { //new style
+										local (ct = sizeOf (adr^.newsItem.department), i);
+										for i = 1 to ct {
+											if string.lower (adr^.newsItem.department [i]) == lowerdept {
+												adr^.newsItem.department [i] = newname}}}
+									else { //old style -- it's a string
+										if string.lower (adr^.newsItem.department) == lowerdept {
+											adr^.newsItem.department = newname}}}}}}}};
+			if not flError {
+				local (adrdept = @adrdepts^.[newname]);
+				if not defined (adrdept^) {
+					new (tableType, adrdept)};
+				if not defined (adrdept^.createdDate) {
+					adrdept^.createdDate = clock.now ()};
+				adrdept^.description = newdescription;
+				adrdept^.language = manilaSuite.untaint (pta^.postArgs.language);
+				try { //set pictureShortcut
+					if pta^.postArgs.pictureShortcut == "0" {
+						if defined (adrdept^.pictureShortcut) {
+							delete (@adrdept^.pictureShortcut)}}
+					else {
+						local (adrmsg = manilaSuite.discuss.getMessageTable (number (pta^.postArgs.pictureShortcut), adrsite));
+						adrdept^.pictureShortcut = adrmsg^.subject}};
+				if defined (pta^.postArgs.referer) { //redirect
+					mainResponder.redirect (pta^.postArgs.referer);
+					return ("")}
+				else { //redirect to the new editor page if the department name changed
+					if string.lower (dept) != string.lower (newname) {
+						mainResponder.redirect (pta^.url + "$" + manilaSuite.news.departmentNameToPath (newname));
+						return ("")}}}}};
+	
+	local (name = dept, description = "", language = "", pictureShortcut = "");
+	if not flNew { //get the description/language if this is an existing department
+		local (adrdept = @adrdepts^.[dept]);
+		if defined (adrdept^.description) {
+			description = adrdept^.description};
+		if defined (adrdept^.language) {
+			language = adrdept^.language};
+		if defined (adrdept^.pictureShortcut) {
+			pictureShortcut = adrdept^.pictureShortcut}};
+	
+	local (htext);
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	bundle { //editing form
+		add ("<form method=\"POST\">");
+		
+		bundle { //descriptive text
+			if flNew {
+				add ("<p>" + manilaSuite.getString ("news.newDepartmentDescription") + "</p>")}
+			else {
+				add ("<p>" + manilaSuite.getString ("news.editDepartmentDescription") + "</p>")}};
+		
+		bundle { //error if appropriate
+			if flError {
+				add ("<p><b>" + errorMessage + "</b></p>")}};
+		
+		add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\">");
+		
+		bundle { //name
+			add ("<tr>");
+			add ("<td valign=\"top\">" + manilaSuite.getString ("news.departmentPrompt") + "</td>");
+			add ("<td valign=\"top\"><input type=\"text\" name=\"name\" value=\"" + name + "\" size=\"50\"></td>");
+			add ("</tr>")};
+		bundle { //description
+			add ("<tr>");
+			add ("<td valign=\"top\">" + manilaSuite.getString ("news.descriptionPrompt") + "</td>");
+			add ("<td valign=\"top\"><textarea name=\"description\" rows=\"7\" cols=\"50\">" + description + "</textarea></td>");
+			add ("</tr>")};
+		bundle { //language
+			local (s = manilaSuite.getString ("common.languagePopup"), defaultLang);
+			if language == "" {
+				defaultLang = "\"none\""}
+			else {
+				defaultLang = "\"" + language + "\""};
+			languagePopup = string.replace (s, defaultLang, defaultLang + " selected");
+			add ("<tr>");
+			add ("<td valign=\"top\">" + manilaSuite.getString ("news.languagePrompt") + "</td>");
+			add ("<td valign=\"top\">" + languagePopup + "</td>");
+			add ("</tr>")};
+		bundle { //associate a picture
+			add ("<tr>");
+			add ("<td valign=\"top\">" + manilaSuite.getString ("news.associatePicturePrompt") + "</td>");
+			add ("<td>");
+			add ("<select name=\"pictureShortcut\">");
+			if pictureShortcut == "" {
+				add ("<option value=\"0\" selected>" + manilaSuite.getString ("news.noPicture") + "</option>")}
+			else {
+				add ("<option value=\"0\">" + manilaSuite.getString ("news.noPicture") + "</option>")};
+			local (category = "pictures");
+			on addOnePicture (adrmsg) {
+				local (selected = "");
+				if string.lower (adrmsg^.subject) == string.lower (pictureShortcut) {
+					if defined (adrSite^.["#glossary"].[pictureShortcut]) {
+						selected = " selected"}};
+				add ("<option value=\"" + adrmsg^.msgnum + "\"" + selected + ">" + adrmsg^.subject + "</option>");
+				return (true)};
+			manilaSuite.discuss.visitIndex (adrsite, category, @addOnePicture, false);
+			add ("</select>");
+			add ("</td>");
+			add ("</tr>")};
+		bundle { //referer as a hidden field
+			if defined (pta^.requestHeaders.referer) {
+				if pta^.requestHeaders.referer != "" {
+					add ("<input type=\"hidden\" name=\"referer\" value=\"" + pta^.requestHeaders.referer + "\">")}}};
+		
+		bundle { //submit button
+			add ("<tr><td></td><td><input type=\"submit\" name=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\"></td></tr>")};
+		
+		add ("</table>");
+		
+		add ("</form>")};
+	
+	return (htext)};
+
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«editDepartmentPage ()

@@ -1,0 +1,25 @@
+«crawl the server structure, add each root file to config.mainresponder.databases
+	«I needed this to get started really using config.mainresponder.databases
+	«10/21/98; 8:10:58 AM by DW
+
+on createRecord (f) {
+	local (name = file.filefrompath (f));
+	local (adrtable = @config.mainresponder.databases.[name]);
+	new (tabletype, adrtable);
+	adrtable^.f = f;
+	adrtable^.backupEveryNight = true;
+	adrtable^.openOnStartup = false;
+	adrtable^.supportsSearch = true;
+	adrtable^.supportsSubscribe = false};
+
+on callback (adr) {
+	if typeof (adr^) == tabletype {
+		local (s = string (adr));
+		if (s beginswith "[") and (s endswith "]") {
+			local (alist = string.parseaddress (adr));
+			if sizeof (alist) == 1 {
+				createRecord (alist [1])}}};
+	return (true)};
+
+window.about ();
+mainresponder.crawler (@config.mainresponder.domains, @callback)

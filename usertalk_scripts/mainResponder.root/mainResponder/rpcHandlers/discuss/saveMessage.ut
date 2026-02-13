@@ -1,0 +1,47 @@
+on saveMessage (dgname, username, password, msgnum, body, title) {
+	«8/19/99; 4:29:28 PM by DW, XML-RPC call to update a message
+		«Changes:
+			«10/5/99; 1:57:08 PM by PBS
+				«Added support for addresses and strings that can be coerced to addresses in discuss.root.
+			«10/9/99; 8:13:14 PM by PBS
+				«Added new callback at config.mainResponder.callbacks.rpcSaveMessage. This callback is called whenever a message is saved via this XML-RPC handler. This allows other applications to do things like send the message to a search engine, send email notification, and so on.
+				«Callbacks in this table are called after the normal processing is complete: they're notification callbacks rather than filter callbacks.
+				«The table in scope for this callback includes the parameters to this script, lastSave, adrMsgTable, URL, and client (if it's defined).
+	local (adrroot = @[system.temp.mainResponder.discussRootFile].[dgname]);
+	if not defined (adrroot^) {
+		scriptError ("Can't add a new story because there is no discussion group named \"" + dgname + "\".")};
+	if typeOf (adrroot^) == addressType or typeOf (adrroot^) == stringType { //PBS 10/5/99: support for addresses and strings in discuss.root
+		if defined (adrroot^^) {
+			adrroot = adrroot^} //de-reference to get the address of the discussion group
+		else {
+			scriptError ("Can't add a new story because there is no discussion group named \"" + dgname + "\".")}};
+	local (groupname = adrroot^.editorialPrefs.membershipGroup);
+	local (adruser = mainResponder.members.getMemberTableWithPassword (groupname, username, password));
+	local (adrmsg = @adrroot^.messages.[string.padwithzeros (msgnum, 7)]);
+	if string.lower (adrmsg^.member) != username {
+		scriptError ("Can't edit this message because you do not have editorial permission.")};
+	mainResponder.discuss.setMessageText (adrmsg, body);
+	if title != "" {
+		adrmsg^.subject = title};
+	local (returnedtable);
+	new (tabletype, @returnedtable);
+	returnedtable.url = adrroot^.prefs.msgReaderUrl + msgnum;
+	returnedtable.lastsave = clock.now ();
+	returnedtable.title = adrmsg^.subject;
+	bundle { //PBS 10/9/99: call the rpcSaveMessage callbacks at config.mainResponder.callbacks.rpcSaveMessage
+		if defined (config.mainResponder.callbacks.rpcSaveMessage) {
+			local (paramTable);
+			new (tableType, @paramTable);
+			paramTable.dgName = dgName;
+			paramTable.username = username;
+			paramTable.password = password;
+			paramTable.title = returnedtable.title;
+			paramTable.body = body;
+			paramTable.msgNum = msgNum;
+			paramTable.url = returnedtable.url;
+			paramTable.adrMsgTable = adrMsg;
+			paramTable.lastSave = returnedtable.lastsave;
+			if defined (client) {
+				paramTable.client = client};
+			try {mainResponder.callbackLoop (@config.mainResponder.callbacks.rpcSaveMessage, @paramTable)}}};
+	return (returnedtable)} //caller is expected to copy any attributes we return into local storage

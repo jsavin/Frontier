@@ -1,0 +1,814 @@
+on firstFilter (pta) {
+	«Changes:
+		«3/28/07; 2:42:03 PM by LL
+			«Site shell upgrade: Delete messages page.
+		«3/19/07; 5:53:25 PM by LL
+			«Site shell upgrade: Setup pending members page.
+		«3/9/07; 11:01:50 AM by LL
+			«Setup login members box template.
+		«2006:
+			«11/16/06; 12:46:28 PM by LL
+				«Site shell upgrade: new legal tags, fieldset and legend.
+			«9/15/06; 7:02:18 PM by LL
+				«Bug fix: Updated conditions to set flHtml to true when requesting from a sub-site. Also, added a new condition to set flHtml to false when requesting the external style sheet.
+			«5/7/06; 3:09:33 PM by JES
+				«Site shell upgrade: new legal tags, noscript and nobr.
+			«4/29/06; 4:20:55 AM by JES
+				«Site shell upgrade: site structure editor
+			«3/24/06; 3:31:58 AM by JES
+				«Add ability to specify member info in search args, mem=member, pwd=password.
+			«1/31/06; 5:07:13 PM by JES
+				«Site shell upgrade: pending posts admin page.
+		«2005:
+			«12/14/05; 1:52:12 AM by JES
+				«Add support for Members Only feature.
+			«10/26/05; 1:53:20 AM by JES
+				«Added support for firstFilter callback at config.manila.callbacks.filters.firstFilter.
+					«Scripts in the firstFilter callbacks table are called in turn, and return values are ignored.
+			«10/17/05; 12:30:07 AM by JES
+				«Update the site's help URL -- #["urls"].editorialHelp -- based on whether it has a stale value, and we know what the new value should be.
+			«10/5/05; 7:38:59 PM by JES
+				«Re-enable older site shell upgrades. Upgrade to 9.55 site shell version, to re-instate now missing DG prefs.
+			«10/3/05; 3:45:19 AM by JES
+				«Install new version of adrsite^.admin.sitePrefs.default, which only calls manilaSuite.sitePrefs.setTemplate if defined.
+			«7/31/05; 2:57:45 AM by JES
+				«Fix error in new sites exposed with last change: summaryTemplate not defined.
+			«7/11/05; 3:22:30 PM by JES
+				«Install adrsite^.newsItems.viewFullItem, if defined.
+			«6/30/05; 3:08:28 AM by JES
+				«Fix bug introduced with last change, which caused advanced prefs to render improperly.
+			«29/06/05; 2:28:17 PM by PR
+				«rolled back the previous change as it was done to fix the processMacros bug
+			«6/23/05; 1:44:34 AM by JES
+				«Change back to calling manilaSuite.admin.sitePrefsPage from adrsite^.admin.sitePrefs.default. The change to calling manilaSuite.sitePrefs.defaultPage broke site prefs if a site was moved from a 9.5 server to a pre 9.5 server.
+			«17/05/05; 7:43:54 PM by PR
+				«run flNineFiveSiteShell block rebuild default cohorts
+			«17/05/05; 11:39:45 AM by PR
+				«in flNineFiveSiteShell block check to make sure #templates is defined
+			«12/05/05; 3:02:09 PM by PR
+				«9.5 siteshell upgrades:
+					«add content-only template
+					«convert path permissions
+					«add new sitepref default script
+			«3/11/05; 4:47:34 AM by JES
+				«Update site shell version to 9.1, and only run 9.1 site shell upgrades once per site.
+			«3/10/05; 4:47:06 AM by JES
+				«Site shell upgrade: two-step member sign-up with email-based confirmation.
+			«2/17/05; 2:13:50 PM by JES
+				«New legal tag: caption.
+			«2/16/05; 3:09:20 AM by JES
+				«Site shell upgrade: Update the site prefs default page to use the new script version, which is capable of setting the page template.
+			«2/16/05; 3:00:21 AM by JES
+				«Moved manilaData.originalDirectoryTemplate to manilaData.legacyObjects.originalDirectoryTemplate.
+		«2004:
+			«12/30/04; 4:13:37 AM by JES
+				«Added support for content-only rendering. If the request has a search arg, content-only=true, then we use a content-only template, which is hard-coded to {bodytext}.
+			«4/2/04; 11:10:32 AM by JES
+				«New legal tag: strike
+		«2003:
+			«10/11/03; 4:04:51 AM by JES
+				«Check for editors only access before checking home page caching. Prevents us from serving content improperly after the site has switched to editors only mode.
+			«9/3/03; 6:46:39 PM by JES
+				«New legal tags: abbr and acronym.
+			«5/21/03; 5:55:10 PM by JES
+				«Site shell upgrade: path-permissions.
+			«5/20/03; 3:41:57 PM by JES
+				«Site shell upgrade: robots.txt.
+			«5/13/03; 6:23:38 PM by JES
+				«Site shell upgrade: events page.
+			«5/12/03; 1:08:13 PM by JES
+				«Site shell upgrade -- discussion group and department RSS feeds.
+			«4/22/03; 11:51:06 PM by JES
+				«Site shell upgrade: news item summaries.
+			«4/21/03; 4:09:07 PM by JES
+				«Site shell upgrade: blogroll editor.
+			«4/20/03; 11:00:37 PM by JES
+				«Site Shell upgrade: spam-free mailto page.
+			«4/20/03; 4:37:03 PM by JES
+				«Site Shell upgrade: external style sheet.
+			«4/8/03; 12:32:36 PM by JES
+				«Only add the mySubscriptions.opml object to the site's gems sub-table if it has a gems sub-table.
+			«4/3/03; 6:13:48 PM by JES
+				«Site shell upgrade -- mySubscriptions.opml.
+			«4/1/03; 3:44:47 PM by JES
+				«Call manilaSuite.discuss.ensureValidHomePageCalendar to fix up the calendar structure if it's been broken, for example the last remaining home page had been deleted.
+			«3/13/03; 2:07:30 AM by JES
+				«Call manilaSuite.aggregator.init only if xml.aggregator is defined. Some very old Frontier installations don't have the xml.aggregator sub-table, which causes manilaSuite.aggregator.init to fail, breaking older Manila installations.
+			«2/25/03; 6:34:40 AM by DW
+				«Initialize manilaSuite.aggregator.
+			«2/21/03; 6:43:36 PM by JES
+				«Don't bother putting any HTML in the page table unless we're serving an object that's actually HTML: performance enhancement for RSS, RSD, scriptingNews2, pictures and comment counter JavaScripts.
+				«Also set pta^.flHtml, so that the other filters know whether to bother doing HTML-ish stuff.
+		«2002:
+			«12/13/02; 1:51:48 PM by JES
+				«Site shell upgrade -- install adrsite^.xml.["rsd.xml"], which calls manilaSuite.xml.getRsdXml.
+			«10/26/02; 10:23:32 AM by JES
+				«If returning only headers for an ETag/If-None-Match request, don't count referers.
+			«10/24/02; 12:03:57 PM by JES
+				«Implement ETag support for Manila RSS and scriptingNews2 feeds.
+			«9/3/02; 2:36:07 AM by JES
+				«Site shell upgrade -- add the change password page to the site.
+			«8/3/02; 10:01:40 PM by JES
+				«Site shell upgrade -- add the search sub-table to the site.
+				«Init the search.indexQueue sub-table of the #newsSite table. This sub-table contains information about a full-site indexing session in progress. Since it's saved along with the Manila site, indexing sessions can be re-started after a crash, and we can also display information about a session in progress, in the admin site.
+				«All this is accomplished through a call to manilaSuite.search.init, which is new.
+			«7/12/02; 3:20:08 PM by JES
+				«Make sure comment preferences are defined.
+			«4/3/02; 11:54:16 PM by JES
+				«Site shell upgrade: Discussion group -- adrNewsSite^.discussionGroup.listNewsItems, adrNewsSite^.discussionGroup.listPictures and adrNewsSite^.discussionGroup.listStories.
+			«2/18/02; 1:52:59 AM by JES
+				«Site shell upgrade: Comments page.
+			«2/8/02; 2:43:06 PM by PBS
+				«Don't run 8.0 site shell upgrades if this is an 8.0 site. Minor performance boost.
+		«2001:
+			«9/6/01; 2:48:54 PM by PBS
+				«Add mail table to a Manila site -- part of the mail-story feature.
+			«9/10/01; 1:42:16 PM by PBS
+				«Site shell upgrade -- /stats/ default page.
+			«9/17/01; 10:37:10 AM by PBS
+				«Support for home page caching.
+			«9/17/01; 2:28:10 PM by PBS
+				«Toss the home page cache whenever there's a post.
+			«9/19/01; 3:15:37 PM by PBS
+				«Support for RSS and scriptingNews2 feed caching.
+			«9/25/01; 4:14:14 PM by PBS
+				«Home page caching bug fix -- the read count for the home page wasn't being updated when it's a cache hit. Fixed.
+			«9/28/01; 11:27:45 AM by PBS
+				«Check to see if the print-friendly template is desired.
+			«12/14/01; 2:26:53 PM by PBS
+				«Site shell upgrade -- custom prefs wizard callbacks
+		«2000:
+			«1/1/2000; 2:11:03 PM by PBS
+				«If there's an empty 1999 table at the top level of the site, delete it.
+			«01/26/00; 3:12:30 PM by PBS
+				«Support for editors-only sites.
+			«02/15/00; 11:57:08 AM by PBS
+				«Added u (underline) as legal tag.
+			«02/28/00; 10:00:11 AM by PBS
+				«If a picture is being requested, skip all the extra processing.
+			«04/07/00; 12:10:15 PM by PBS
+				«Add /xml/rss.xml page -- it builds the RSS syndication file for a site.
+			«04/12/00; 8:42:47 PM by PBS
+				«Site shell upgrade -- add emergency restore template to default page.
+			«04/16/00; 11:37:30 AM by PBS
+				«Site shell upgrade -- gems.
+			«04/25/00; 1:55:59 PM by PBS
+				«Site shell upgade for news items support.
+			«05/14/00; 11:06:39 PM by JES
+				«site shell upgrade for localized flip home page page
+			«06/11/00; 3:58:50 AM by JES
+				«Merged Brent's themes site shell upgrade
+			«06/20/00; 10:19:26 PM by PBS
+				«Only do the site shell upgrade if the site shell version doesn't exist.
+			«06/22/00; 4:56:44 PM by PBS
+				«Slight change of wording in the initial mail to the sysop -- state that the password is for the initial hosting site, not for your new Manila site.
+			«09/11/00; 10:41:02 PM by PBS
+				«Site shell upgrade -- add externalEditorInfo.xml for external editors like Radio UserLand.
+			«10/03/00; 4:46:04 PM by PBS
+				«New legal tags -- thead and tbody.
+			«10/06/00; 11:08:27 PM by PBS
+				«Add the OPML reader.
+			«10/27/00; 3:52:47 AM by JES
+				«Site shell upgrade for downloading DG themes.
+			«11/02/00; 2:56:29 PM by PBS
+				«Site shell upgrade -- add referers page.
+			«11/09/00; 3:21:46 PM by PBS
+				«Site shell upgrade -- hourly hits page.
+			«11/22/00; 10:40:24 AM by PBS
+				«Site shell upgrade -- the new directories feature.
+			«11/26/00; 12:08:51 AM by PBS
+				«Site shell upgrade -- fix default directory template. If a site hasn't changed from the default template, fix the bad HTML in that template. If the site has edited the directory template, don't touch it.
+			«12/19/00; 10:39:32 AM by PBS
+				«Site shell upgrade -- slides.
+			«12/22/00; 9:20:18 PM by JES
+				«Site shell upgrade -- Pike prefs becomes Radio UserLand prefs; newStoryInPike becomes newStoryInRadio
+		«1999:
+			«10/27/99; 3:53:41 PM by PBS
+				«Get color prefs from the template.
+				«Add the address of rssInfo to the page table: it may be in the #newsSite table, and so wouldn't get automatically added.
+			«11/3/99; 10:00:38 AM by PBS
+				«Set up pta^.legalTags so each Manila site can have its own set of legal tags.
+			«12/11/99; 4:06:17 PM by PBS
+				«Create the new /stats/members page if it doesn't exist in the site shell.
+			«12/17/99; 12:32:09 AM by PBS
+				«Add custom cowskull to the page table, so people can set their preferred cowskull graphic.
+			«?/?/99 PBS
+				«Created. A Manila site's first filter.
+	
+	bundle { //call firstFilter callbacks
+		if defined (config.manila.callbacks.filters.firstFilter) {
+			local (adrScript);
+			for adrScript in @config.manila.callbacks.filters.firstFilter {
+				try {
+					while typeOf (adrScript^) == addressType {
+						adrScript = adrScript^};
+					adrScript^ ()}
+				else { //allow special errors destined for mainResponder.respond to flow up the call stack
+					if tryError beginsWith "!" {
+						scriptError (tryError)}}}}};
+	
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (adrNewsSite = pta^.newsSite);
+	
+	«if defined (manilaSuite.pathPermissions) //JES 5/21/03: check access permissions // 11/05/05; 11:25:25 AM by PR
+		«manilaSuite.pathPermissions.checkPermissions (pta)
+	
+	try {manilaSuite.discuss.ensureValidHomePageCalendar (adrSite)}; //JES 4/1/03: fix up the calendar if the user managed to break it
+	
+	bundle { //JES 2/21/03: set pta^.flHtml
+		pta^.flHtml = true;
+		local (lowerUri = string.lower (pta^.uri));
+		case true {
+			lowerUri endsWith ".xml"; //RSS, scriptingNews2, or RSD XML
+			lowerUri endsWith "/gems/stylesheet.txt"; //external style sheet
+			lowerUri beginsWith "/downloadtheme/"; //theme files are .fttb files
+			lowerUri beginsWith "downloaddiscusstheme/"; //so are discussion group themes
+			lowerUri contains "/picture$"; //any pictures
+			lowerUri endsWith ".opml" { //any OPML document?
+				pta^.flHtml = false};
+			lowerUri == "/comments" { //comment counter JavaScript?
+				if pta^.searchArgs contains "c=counts" {
+					pta^.flHtml = false}}}};
+	local (flHtml = pta^.flHtml);
+	
+	if pta^.searchArgs != "" { //create pta^.searchArgTable
+		new (tableType, @pta^.searchArgTable);
+		webserver.parseArgs (pta^.searchArgs, @pta^.searchArgTable)};
+	
+	bundle { //searchArgs, mem and pwd present with member credential? -- set pta^.adrMemberInfo
+		if defined (pta^.searchArgTable.mem) {
+			if defined (pta^.searchArgTable.pwd) {
+				local (member = pta^.searchArgTable.mem);
+				local (adrmember = manilaSuite.members.getMemberTableFromSiteAddress (pta^.adrSiteRootTable, member));
+				if defined (adrmember^) {
+					local (pass = pta^.searchArgTable.pwd);
+					if string (adrmember^.password) == pass {
+						pta^.adrMemberInfo = adrmember}}}}};
+	
+	bundle { //PBS 03/14/01: check editorial status, so scripts can refer to pta^.flEditor and pta^.flManagingEditor
+		manilaSuite.editors.contentEditorTest (pta);
+		manilaSuite.editors.contributingEditorTest (pta); //JES 9/21/05: pre-cache contributing editor status in the page table
+		manilaSuite.editors.editorialTest (pta);
+		manilaSuite.editors.managingEditorTest (pta)};
+	
+	local (flSixTwoSiteShell = false);
+	local (flEightZeroSiteShell = false);
+	local (flNineOneSiteShell = false);
+	local (flNineFiveSiteShell = false);
+	local (flNineFiveOneSiteShell = false);
+	local (flNineFiveTwoSiteShell = false);
+	local (flNineFiveThreeSiteShell = false);
+	local (flNineFiveFourSiteShell = false);
+	local (flNineFiveFiveSiteShell = false);
+	local (flNineFiveSixSiteShell = false);
+	if defined (pta^.newsSite^.siteShellVersion) {
+		flSixTwoSiteShell = (pta^.newsSite^.siteShellVersion >= 6.2);
+		flEightZeroSiteShell = (pta^.newsSite^.siteShellVersion >= 8.0);
+		flNineOneSiteShell = (pta^.newsSite^.siteShellVersion >= 9.1);
+		flNineFiveSiteShell = (pta^.newsSite^.siteShellVersion >= 9.5);
+		flNineFiveOneSiteShell = (pta^.newsSite^.siteShellVersion >= 9.51);
+		flNineFiveTwoSiteShell = (pta^.newsSite^.siteShellVersion >= 9.52);
+		flNineFiveThreeSiteShell = (pta^.newsSite^.siteShellVersion >= 9.53);
+		flNineFiveFourSiteShell = (pta^.newsSite^.siteShellVersion >= 9.54);
+		flNineFiveFiveSiteShell = (pta^.newsSite^.siteShellVersion >= 9.55);
+		flNineFiveSixSiteShell = (pta^.newsSite^.siteShellVersion >= 9.56)};
+	
+	bundle { //PBS 01/20/00: site shell upgrade: editors only access support
+		if not flSixTwoSiteShell {
+			if not defined (pta^.urls^.editorsOnlyMessage) {
+				pta^.urls^.editorsOnlyMessage = pta^.ftpSite^.url + "member/editorsOnly"};
+			if not defined (pta^.adrSiteRootTable^.member.editorsOnly) {
+				if defined (pta^.adrSiteRootTable^.member) {
+					pta^.adrSiteRootTable^.member.editorsOnly = manilaData.newSiteTemplate.member.editorsOnly}};
+			if not defined (pta^.newsSite^.editorsOnlyMessage) {
+				pta^.newsSite^.editorsOnlyMessage = manilaData.newSiteTemplate.["#newsSite"].editorsOnlyMessage};
+			if not defined (pta^.newsSite^.editorsOnlyMessageTitle) {
+				pta^.newsSite^.editorsOnlyMessageTitle = manilaData.newSiteTemplate.["#newsSite"].editorsOnlyMessageTitle}}};
+	
+	bundle { //PBS 09/28/01: check for print-friendly template; JES 12/30/04: and content-only rendering.
+		pta^.flPrintFriendlyTemplate = false;
+		pta^.flContentOnlyTemplate = false;
+		if defined (pta^.searchArgTable.["print-friendly"]) {
+			if pta^.searchArgTable.["print-friendly"] == "true" {
+				pta^.flPrintFriendlyTemplate = true}};
+		if defined (pta^.searchArgTable.["content-only"]) {
+			if pta^.searchArgTable.["content-only"] == "true" {
+				pta^.flContentOnlyTemplate = true}}};
+	
+	bundle { //This site may be restricted to editors or members only.
+		if defined (adrNewsSite^.flEditorsOnlyAccessToSite) {
+			if adrNewsSite^.flEditorsOnlyAccessToSite {
+				manilaSuite.editors.restrictSiteToEditors (pta)}};
+		if defined (adrNewsSite^.flMembersOnlyAccessToSite) {
+			if adrNewsSite^.flMembersOnlyAccessToSite {
+				manilaSuite.editors.restrictSiteToEditors (pta, true)}}};
+	
+	bundle { //PBS 09/17/01: possibly toss home page cache
+		if pta^.method == "POST" {
+			manilaSuite.cache.tossHomePage (pta, adrSite)}};
+	bundle { //PBS 09/17/01: home page caching
+		if (not pta^.flPrintFriendlyTemplate) and (not pta^.flContentOnlyTemplate) { //JES 12/30/04: add flContentOnlyTemplate
+			if not defined (pta^.newsSite^.flCacheHomePage) {
+				pta^.newsSite^.flCacheHomePage = false};
+			if pta^.adrObject == @adrSite^.default { //home page?
+				if not defined (pta^.adrMemberInfo) { //not a logged-in member?
+					if pta^.newsSite^.flCacheHomePage { //pref true?
+						if defined (pta^.newsSite^.cache.homePage) {
+							pta^.responseBody = string (pta^.newsSite^.cache.homePage); //stuff in page table
+							bundle { //PBS 09/25/01: increment read count for home page message
+								local (msgNum);
+								if manilaSuite.news.newsItemsEnabled (adrSite) { //news items
+									msgNum = manilaSuite.news.getMostRecentMessageNumber (adrSite)}
+								else { //traditional home page
+									msgNum = adrNewsSite^.discussLinks.homePageMsgNum};
+								if msgNum > -1 {
+									local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum, pta));
+									if not defined (adrMsgTable^.ctReads) {
+										adrMsgTable^.ctReads = 0};
+									adrMsgTable^.ctReads++}};
+							bundle { //PBS 11/22/00: stats
+								if defined (pta^.requestHeaders.referer) {
+									try {manilaSuite.stats.addReferer (pta)}}; //PBS 11/22/00: use a try; may cause scriptError which shouldn't be fatal
+								try {manilaSuite.stats.addHit (pta)}};
+							scriptError ("!return")}}}}; //return to mainResponder
+			if defined (adrSite^.xml) { //check RSS and scriptingNews2 feeds
+				on checkCachedFeed (feedname) {
+					if pta^.adrObject == @adrSite^.xml.[feedname + ".xml"] {
+						if defined (pta^.newsSite^.cache.[feedname]) {
+							if typeOf (pta^.newsSite^.cache.[feedname]) == tableType {
+								local (s = string (pta^.newsSite^.cache.[feedname].body));
+								if sizeOf (s) > 0 {
+									pta^.responseHeaders = pta^.newsSite^.cache.[feedname].responseHeaders;
+									pta^.responseBody = s; //stuff in page table
+									scriptError ("!return")}} //return to mainResponder
+							else {
+								pta^.responseBody = string (pta^.newsSite^.cache.[feedname]); //stuff in page table
+								pta^.responseHeaders.["Content-Type"] = "text/xml";
+								bundle { //PBS 11/22/00: stats
+									if defined (pta^.requestHeaders.referer) {
+										try {manilaSuite.stats.addReferer (pta)}}; //PBS 11/22/00: use a try; may cause scriptError which shouldn't be fatal
+									try {manilaSuite.stats.addHit (pta)}};
+								scriptError ("!return")}}}}; //return to mainResponder
+				if not defined (pta^.requestHeaders.["If-None-Match"]) {
+					checkCachedFeed ("rss");
+					checkCachedFeed ("scriptingNews2")}}}};
+	bundle { //PBS 11/22/00: stats
+		if defined (pta^.requestHeaders.referer) {
+			try {manilaSuite.stats.addReferer (pta)}}; //PBS 11/22/00: use a try; may cause scriptError which shouldn't be fatal
+		try {manilaSuite.stats.addHit (pta)}};
+	
+	bundle { //PBS 02/28/00: if it's a request for a picture, skip the rest of this script.
+		if defined (pta^.urls^.imageViewer) {
+			local (imageViewerUrl = string.popTrailing (pta^.urls^.imageViewer, '$'));
+			if string.lower (imageViewerUrl) == string.lower (pta^.url) {
+				return (true)}}};
+	
+	«Handle security for the discussion group. It may be limited to MEs and CEs.
+	manilaSuite.discuss.security (pta);
+	
+	bundle { //add cookie if first-time visit and site was created by install process.
+		«This way the managing editor who's just installed Frontier doesn't have to login -- he or she is logged in already.
+		if defined (adrNewsSite^.flFirstTimeVisitAfterInstall) {
+			if adrNewsSite^.flFirstTimeVisitAfterInstall {
+				delete (@adrNewsSite^.flFirstTimeVisitAfterInstall);
+				if not defined (pta^.adrMemberInfo) {
+					local (sysop = manilaSuite.editors.getOneManagingEditor ());
+					local (adrMember = mainResponder.members.getMemberTable (pta^.defaultMembershipGroup, sysop));
+					local (password);
+					password = adrMember^.password;
+					pta^.adrMemberInfo = adrMember;
+					pta^.memberGroupName = pta^.defaultMembershipGroup;
+					mainResponder.members.setCookie (sysop, password);
+					
+					«Email the password to the sysop.
+					bundle {
+						local (subject = "Your new Manila site");
+						local (message = "Your password for your Manila hosting site is " + password);
+						message = message + "\r\n\r\n";
+						message = message + "The home page is " + pta^.urls^.newsHome;
+						manilaSuite.members.sendInitialMailToSysop (sysop, subject, message)}}}}};
+	
+	if flHtml { //PBS 10/14/00: if this is the home page, potentially use home page template
+		if pta^.adrObject == @adrSite^.default {
+			if defined (adrNewsSite^.flUseHomePageTemplate) {
+				if adrNewsSite^.flUseHomePageTemplate {
+					if defined (adrSite^.["#homePageTemplate"]) {
+						if string (adrSite^.["#homePageTemplate"]) contains "{bodytext}" {
+							table.assign (@pta^.template, pta^.homePageTemplate)}}}}}};
+	
+	if flHtml { //PBS 10/27/99: get bgcolor etc. from template
+		try {
+			if string (pta^.template) contains "<body " {
+				manilaSuite.html.getColorsFromTemplate ()}}};
+	
+	bundle { //PBS 10/27/99: add location of rssInfo to the page table
+		if not defined (pta^.rssInfo) {
+			if defined (adrNewsSite^.rssInfo) {
+				pta^.rssInfo = @adrNewsSite^.rssInfo}}};
+	
+	manilaSuite.setUpSafeScripts (pta); //add the standard safe scripts to the page table
+	
+	pta^.readMessageBylineFormat = adrNewsSite^.bylineFormat;
+	
+	if flHtml { //PBS 12/17/99: add cowskull img tag to page table
+		if defined (adrNewsSite^.cowSkullImage) {
+			pta^.cowSkullImage = adrNewsSite^.cowSkullImage}};
+	
+	if defined (adrNewsSite^.legalTags) { //add legal tags to page table
+		pta^.legalTags = @adrNewsSite^.legalTags};
+	
+	if not flSixTwoSiteShell { //PBS 06/20/00: do site shell upgrades only if this is not a 6.2 site
+		bundle { //PBS 02/15/00: site shell upgrade: add to legal tags
+			if defined (pta^.newsSite^.legalTags) {
+				if not defined (pta^.newsSite^.legalTags.u) {
+					pta^.newsSite^.legalTags.u = true}}};
+		bundle { //site shell ugprade: Help link
+			local (helpLink = pta^.urls^.editorialHelp);
+			local (lowerHelpLink = string.lower (helpLink));
+			case lowerHelpLink {
+				"http://manila.userland.com/help/";
+				"http://weblogs.userland.com/manilanewbies/" {
+					pta^.urls^.editorialHelp = "http://manila.userland.com/help"}}};
+		bundle { //PBS 12/11/99: site shell upgrade: Members list page
+			if defined (pta^.adrSiteRootTable^.stats) {
+				if not defined (pta^.adrSiteRootTable^.stats.members) {
+					pta^.adrSiteRootTable^.stats.members = manilaData.newSiteTemplate.stats.members}}};
+		bundle { //PBS 12/17/99: site shell upgrader: downloadMySite table
+			if not defined (pta^.adrSiteRootTable^.downloadMySite) {
+				pta^.adrSiteRootTable^.downloadMySite = manilaData.newSiteTemplate.downloadMySite}};
+		bundle { //PBS 1/1/2000: if there's an empty 1999 table, delete it
+			if defined (pta^.adrSiteRootTable^.["1999"]) {
+				if sizeOf (pta^.adrSiteRootTable^.["1999"]) < 1 {
+					delete (@pta^.adrSiteRootTable^.["1999"])}}};
+		bundle { //PBS 01/17/00: site shell upgrade: Pike support
+			local (adrSite = pta^.adrSiteRootTable);
+			if not defined (adrSite^.admin.sitePrefs.editInPike) {
+				try {adrSite^.admin.sitePrefs.editInPike = manilaData.newSiteTemplate.admin.sitePrefs.editInPike}};
+			if not defined (adrSite^.discuss.edit.editInPike) {
+				try {adrSite^.discuss.edit.editInPike = manilaData.newSiteTemplate.discuss.edit.editInPike}};
+			if not defined (adrSite^.prefs.pike) {
+				try {adrSite^.prefs.pike = manilaData.newSiteTemplate.prefs.pike}};
+			if not defined (adrSite^.stories.newStoryInPike) {
+				try {adrSite^.stories.newStoryInPike = manilaData.newSiteTemplate.stories.newStoryInPike}};
+			if not defined (adrSite^.["#urls"].editInPike) {
+				local (siteRootUrl = pta^.ftpSite^.url);
+				local (editInPikeUrl = siteRootUrl + "discuss/edit/editInPike");
+				adrSite^.["#urls"].editInPike = editInPikeUrl}};
+		bundle { //PBS 02/21/00: site shell upgrade -- <embed> is a legal tag
+			if not (defined (pta^.newsSite^.legalTags.embed)) {
+				pta^.newsSite^.legalTags.embed = false}};
+		bundle { //PBS 03/28/00: site shell upgrade -- /editHomePage page
+			if not defined (adrSite^.editHomePage) {
+				adrSite^.editHomePage = manilaData.newSiteTemplate.editHomePage}};
+		bundle { //PBS 04/07/00: site shell upgrade -- /xml/rss.xml -- RSS support
+			if defined (adrSite^.xml) {
+				if not defined (adrSite^.xml.["rss.xml"]) {
+					adrSite^.xml.["rss.xml"] = manilaData.newSiteTemplate.xml.["rss.xml"]}}};
+		bundle { //PBS 04/12/00: site shell upgrade -- /admin/restoreTemplate -- emergency restore template
+			if defined (adrSite^.admin) {
+				if not defined (adrSite^.admin.restoreTemplate) {
+					adrSite^.admin.restoreTemplate = manilaData.newSiteTemplate.admin.restoreTemplate}}};
+		bundle { //PBS 04/15/00: site shell upgrade -- /gems/ -- support for Gems
+			local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+			if not defined (adrSite^.gems) {
+				manilaSuite.gems.upgradeSite (adrSite)}};
+		bundle { //PBS 04/25/00: site shell upgrade -- news items support
+			manilaSuite.news.siteShellUpgrade (adrSite)};
+		bundle { //JES 05/14/00: site shell upgrade -- localize /admin/flipHomePage, /stories, /pictures, /pictures/edit/newPicture, /bulletins, /member/signOutConfirm
+			«local (adrSite = manilaSuite.getManilaSiteAddress (pta))
+			on upgradePageInSite (adrPage, adrOriginalObject, adrReplacementObject) {
+				if string.trimWhiteSpace (string (adrPage^)) == string.trimWhiteSpace (string (adrOriginalObject^)) {
+					table.assign (adrPage, adrReplacementObject^)}};
+			if defined (adrSite^.admin.flipHomePage) {
+				upgradePageInSite (@adrSite^.admin.flipHomePage, @manilaData.legacyObjects.flipHomePage, @manilaData.newSiteTemplate.admin.flipHomePage)};
+			if defined (adrSite^.stories.default) {
+				upgradePageInSite (@adrSite^.stories.default, @manilaData.legacyObjects.storiesDefaultPage, @manilaData.newSiteTemplate.stories.default)};
+			if defined (adrSite^.pictures.default) {
+				upgradePageInSite (@adrSite^.pictures.default, @manilaData.legacyObjects.picturesDefaultPage, @manilaData.newSiteTemplate.pictures.default)};
+			if defined (adrSite^.bulletins.default) {
+				upgradePageInSite (@adrSite^.bulletins.default, @manilaData.legacyObjects.bulletinsPage, @manilaData.newSiteTemplate.bulletins.default)};
+			if defined (adrSite^.members.signOutConfirm) {
+				upgradePageInSite (@adrSite^.member.signOutConfirm, @manilaData.legacyObjects.signOutConfirmPage, @manilaData.newSiteTemplate.member.signOutConfirm)};
+			if defined (adrSite^.pictures.edit.newPicture) {
+				upgradePageInSite (@adrSite^.pictures.edit.newPicture, @manilaData.legacyObjects.newPicturePage, @manilaData.newSiteTemplate.pictures.edit.newPicture)}};
+		bundle { //PBS 06/06/00: site shell upgrade -- themes download table
+			if not defined (adrSite^.downloadTheme) {
+				adrSite^.downloadTheme = manilaData.newSiteTemplate.downloadTheme}};
+		
+		pta^.newsSite^.siteShellVersion = 6.2}; //now it is a 6.2 site, don't run the checks again
+	
+	if not flEightZeroSiteShell { //PBS 06/20/00: do site shell upgrades only if this is not an 8.0 site
+		bundle { //PBS 07/05/00: new legal tags
+			if defined (adrNewsSite^.legalTags) {
+				local (adrTable = @adrNewsSite^.legalTags);
+				if not defined (adrTable^.big) {
+					adrTable^.big = true};
+				if not defined (adrTable^.small) {
+					adrTable^.small = true};
+				if not defined (adrTable^.cite) {
+					adrTable^.cite = false};
+				if not defined (adrTable^.sub) {
+					adrTable^.sub = true};
+				if not defined (adrTable^.sup) {
+					adrTable^.sup = true};
+				if not defined (adrTable^.["!--"]) {
+					new (tableType, @adrTable^.["!--"]);
+					adrTable^.["!--"].flClose = false;
+					adrTable^.["!--"].flLegal = false};
+				if not defined (adrTable^.tbody) {
+					adrTable^.tbody = true};
+				if not defined (adrTable^.thead) {
+					adrTable^.thead = true}}};
+		bundle { //PBS 10/06/00: add OPML reader page
+			if defined (adrSite^.discuss) {
+				if not defined (adrSite^.discuss.reader) {
+					adrSite^.discuss.reader = manilaData.newSiteTemplate.discuss.reader}}};
+		bundle { //JES 10/11/00: add newsSitePref subtable for discussion group prefs
+			if not defined (adrNewsSite^.discussionGroup) {
+				adrNewsSite^.discussionGroup = manilaData.newSiteTemplate.["#newsSite"].discussionGroup}};
+		bundle { //JES 10/26/00: site shell upgrade -- dgThemes download table
+			if not defined (adrSite^.downloadDiscussTheme) {
+				adrSite^.downloadDiscussTheme = manilaData.newSiteTemplate.downloadDiscussTheme}};
+		bundle { //PBS 11/2/00: site shell upgrade -- stats
+			if defined (adrSite^.stats) {
+				if not defined (adrSite^.stats.referers) {
+					adrSite^.stats.referers = manilaData.newSiteTemplate.stats.referers};
+				if not defined (adrSite^.stats.hourlyHits) {
+					adrSite^.stats.hourlyHits = manilaData.newSiteTemplate.stats.hourlyHits}}};
+		bundle { //PBS 11/22/00: site shell upgrade -- directories
+			if not defined (adrNewsSite^.directory) {
+				adrNewsSite^.directory = manilaData.newSiteTemplate.["#newsSite"].directory};
+			if not defined (adrSite^.directory) {
+				adrSite^.directory = manilaData.newSiteTemplate.directory}};
+		bundle { //PBS 11/25/00: site shell upgrade -- fix default directory template
+			if defined (adrNewsSite^.directory.template) {
+				if string (adrNewsSite^.directory.template) == string (manilaData.legacyObjects.originalDirectoryTemplate) {
+					adrNewsSite^.directory.template = manilaData.newSiteTemplate.["#newsSite"].directory.template;
+					manilaSuite.directory.setTemplateModified (adrNewsSite)}}};
+		bundle { //PBS 12/19/00: site shell upgrade -- slides
+			if not defined (adrSite^.slides) {
+				adrSite^.slides = manilaData.newSiteTemplate.slides};
+			if not defined (adrNewsSite^.slides) {
+				adrNewsSite^.slides = manilaData.newSiteTemplate.["#newsSite"].slides}};
+		bundle { //JES 12/22/00: site shell upgrade -- Pike prefs becomes Radio UserLand prefs
+			if defined (adrSite^.prefs) {
+				if not defined (adrSite^.prefs.radio) {
+					adrSite^.prefs.radio = manilaData.newSiteTemplate.prefs.radio}};
+			if defined (adrSite^.stories) {
+				if not defined (adrSite^.stories.newStoryInRadio) {
+					adrSite^.stories.newStoryInRadio = manilaData.newSiteTemplate.stories.newStoryInRadio}}};
+		bundle { //PBS 09/06/01: site shell upgrade -- mail table, for mail-story feature
+			if not defined (adrSite^.mail) {
+				adrSite^.mail = manilaData.newSiteTemplate.mail}};
+		bundle { //PBS 09/10/01: site shell upgrade -- /stats/ default page
+			if not defined (adrSite^.stats.default) {
+				if defined (adrSite^.stats) {
+					adrSite^.stats.default = manilaData.newSiteTemplate.stats.default}}};
+		bundle { //PBS 12/14/01: site shell upgrade -- custom prefs wizard callbacks
+			if not defined (adrNewsSite^.prefsWizard.callbacks) {
+				if defined (adrNewsSite^.prefsWizard) {
+					adrNewsSite^.prefsWizard.callbacks = manilaData.prefs.wizard.callbacksGlue}}};
+		
+		pta^.newsSite^.siteShellVersion = 8.0}; //now it is an 8.0 site, don't run the checks again
+	
+	if not flNineOneSiteShell {
+		bundle { //JES 02/18/02: comments page site shell upgrade
+			if not defined (adrSite^.comments) {
+				adrSite^.comments = manilaData.newSiteTemplate.comments};
+			if not defined (adrNewsSite^.radioHosting) {
+				manilaSuite.radioHosting.init ()}};
+		bundle { //JES 7/12/02: site shell upgrade -- init comments prefs
+			manilaSuite.radioHosting.init ()};
+		bundle { //JES 8/3/02: site shell upgrade -- search
+			if defined (manilaSuite.search.init) {
+				manilaSuite.search.init (adrsite);
+				if not defined (adrsite^.search) {
+					adrsite^.search = manilaData.newSiteTemplate.search}}};
+		bundle { //JES 9/3/02: site shell upgrade -- change password page
+			if defined (manilaData.newSiteTemplate.member.changePassword) {
+				if not defined (adrsite^.member.changePassword) {
+					adrsite^.member.changePassword = manilaData.newSiteTemplate.member.changePassword}}};
+		bundle { //JES 12/13/02: site shell upgrade -- rsd.xml
+			if defined (adrsite^.xml) {
+				if not defined (adrsite^.xml.["rsd.xml"]) {
+					adrsite^.xml.["rsd.xml"] = manilaData.newSiteTemplate.xml.["rsd.xml"]}}};
+		bundle { //DW 2/25/03: initialize manilaSuite.aggregator.
+			if defined (xml.aggregator) {
+				if defined (manilaSuite.aggregator) {
+					manilaSuite.aggregator.init ()}}};
+		bundle { //JES 4/3/03: site shell upgrade -- mySubscriptions.opml
+			if defined (adrsite^.gems) {
+				if not defined (adrsite^.gems.["mySubscriptions.opml"]) {
+					adrsite^.gems.["mySubscriptions.opml"] = manilaData.newSiteTemplate.gems.["mySubscriptions.opml"]}}};
+		bundle { //JES 4/20/03: site shell upgrade -- external style sheet
+			if not defined (adrNewsSite^.externalStyleSheet) {
+				adrNewsSite^.externalStyleSheet = manilaData.newSiteTemplate.["#newsSite"].externalStyleSheet};
+			if defined (adrSite^.gems) {
+				if not defined (adrSite^.gems.["styleSheet.txt"]) {
+					adrSite^.gems.["styleSheet.txt"] = manilaData.newSiteTemplate.gems.["styleSheet.txt"]}}};
+		bundle { //JES 4/20/03: site shell upgrade -- spam-free mailto page
+			if defined (adrsite^.profiles) {
+				if not defined (adrsite^.profiles.sendMail) {
+					adrsite^.profiles.sendMail = manilaData.newSiteTemplate.profiles.sendMail}}};
+		bundle { //JES 4/21/03: site shell upgrade -- blogroll editor
+			if not defined (adrsite^.admin.editNavigationLinks) {
+				adrsite^.admin.editNavigationLinks = manilaData.newSiteTemplate.admin.editNavigationLinks}};
+		bundle { //JES 4/22/03: site shell upgrade: news item summaries
+			if defined (manilaData.newSiteTemplate.newsItems.viewFullItem) {
+				if defined (adrSite^.newsItems) {
+					if not defined (adrSite^.newsItems.viewFullItem) {
+						adrSite^.newsItems.viewFullItem = manilaData.newSiteTemplate.newsItems.viewFullItem}};
+				«if defined (adrNewsSite^.newsItems)
+					«if not defined (adrNewsSite^.newsItems.summaryTemplate)
+						«if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.summaryTemplate)
+							«adrNewsSite^.newsItems.summaryTemplate = manilaData.newSiteTemplate.["#newsSite"].newsItems.summaryTemplate
+					«if not defined (adrNewsSite^.newsItems.fullTextTemplate)
+						«if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.fullTextTemplate)
+							«adrNewsSite^.newsItems.fullTextTemplate = manilaData.newSiteTemplate.["#newsSite"].newsItems.fullTextTemplate
+					«if not defined (adrNewsSite^.newsItems.prefs)
+						«if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.prefs)
+							«adrNewsSite^.newsItems.prefs = manilaData.newSiteTemplate.["#newsSite"].newsItems.prefs
+							«if defined (adrNewsSite^.newsItems.flCommentsCheckOnEditPage)
+								«adrNewsSite^.newsItems.prefs.flCommentOptionsEnabled = true};
+			if not defined (adrSite^.["#urls"].newsItemViewFullItem) {
+				local (baseUrl = string.popSuffix (adrSite^.["#urls"].newsItemViewDepartment, "/") + "/");
+				adrSite^.["#urls"].newsItemViewFullItem = baseUrl + "viewFullItem"}};
+		bundle { //JES 4/27/03: department list and editor, per department RSS/HTML
+			if defined (adrsite^.newsItems) {
+				if defined (manilaData.newSiteTemplate.newsItems.departments) {
+					if not defined (adrsite^.newsItems.departments) {
+						adrsite^.newsItems.departments = manilaData.newSiteTemplate.newsItems.departments}};
+				if defined (manilaData.newSiteTemplate.newsItems.edit.department) {
+					if not defined (adrsite^.newsItems.edit.department) {
+						adrsite^.newsItems.edit.department = manilaData.newSiteTemplate.newsItems.edit.department}}}};
+		bundle { //JES 4/27/03: site shell upgrade: trackback feature
+			manilaSuite.trackback.init (adrSite);
+			if defined (manilaData.newSiteTemplate.newsItems.trackback) {
+				if defined (adrsite^.newsItems) {
+					if not defined (adrsite^.newsItems.trackback) {
+						adrsite^.newsItems.trackback = manilaData.newSiteTemplate.newsItems.trackback}}}};
+		bundle { //JES 5/12/03: site shell upgrade: discussion group and department RSS feeds.
+			if defined (manilaData.newSiteTemplate.discuss.["rss.xml"]) {
+				if not defined (adrsite^.discuss.["rss.xml"]) {
+					adrsite^.discuss.["rss.xml"] = manilaData.newSiteTemplate.discuss.["rss.xml"]}};
+			if defined (manilaData.newSiteTemplate.discuss.["topicsRss.xml"]) {
+				if not defined (adrsite^.discuss.["topicsRss.xml"]) {
+					adrsite^.discuss.["topicsRss.xml"] = manilaData.newSiteTemplate.discuss.["topicsRss.xml"]}}};
+		bundle { //JES 5/13/03: site shell upgrade: events page
+			if defined (manilaData.newSiteTemplate.admin.events) {
+				if not defined (adrsite^.admin.events) {
+					adrsite^.admin.events = manilaData.newSiteTemplate.admin.events}}};
+		bundle { //JES 5/20/03: site shell upgrade: robots.txt.
+			manilaSuite.robots.init (adrsite)};
+		«bundle //JES 5/20/03: site shell upgrade: path-permissions //28/04/05; 11:42:34 AM by PR no longer required
+			«if defined (manilaSuite.pathPermissions)
+				«manilaSuite.pathPermissions.init (adrsite)
+		bundle { //JES 9/3/03: new legal tags: abbr, acronym and strike
+			if defined (adrNewsSite^.legalTags) {
+				if not defined (adrNewsSite^.legalTags.abbr) {
+					adrNewsSite^.legalTags.abbr = true};
+				if not defined (adrNewsSite^.legalTags.acronym) {
+					adrNewsSite^.legalTags.acronym = true};
+				if not defined (adrNewsSite^.legalTags.strike) {
+					adrNewsSite^.legalTags.strike = true};
+				if not defined (adrNewsSite^.legalTags.caption) {
+					adrNewsSite^.legalTags.caption = true}}};
+		bundle { //03/02/01, 17:26:45 by DAB shell upgrade  -- alphabetical stories/pictures
+			local (adrIndex = manilaSuite.discuss.getIndexAddress (adrSite, "stories"));
+			if not defined(adrIndex^.flValueIsSubject) {
+				manilaSuite.discuss.buildIndex(adrSite, "stories")};
+			adrIndex = manilaSuite.discuss.getIndexAddress (adrSite, "pictures");
+			if not defined(adrIndex^.flValueIsSubject) {
+				manilaSuite.discuss.buildIndex(adrSite, "pictures")}};
+		bundle { //04/08/17, 20:52:14 by DAB shell upgrade  -- url table entries for editing Gems
+			if not defined(adrSite^.["#urls"].gemEditInBrowser) {
+				adrSite^.["#urls"].gemEditInBrowser = string.replace(maniladata.newSiteTemplate.["#urls"].gemEditInBrowser, "[[siteRootUrl]]", adrSite^.["#urls"].newsHome)};
+			if not defined(adrSite^.["#urls"].gemPostEditedMessage) {
+				adrSite^.["#urls"].gemPostEditedMessage = string.replace(maniladata.newSiteTemplate.["#urls"].gemPostEditedMessage, "[[siteRootUrl]]", adrSite^.["#urls"].newsHome)}};
+		bundle { //04.08.21, 09:45:30 by DAB - url table entry discussPostStory
+			if not defined(adrSite^.["#urls"].discussPostStory) {
+				adrSite^.["#urls"].discussPostStory = string.replace(maniladata.newSiteTemplate.["#urls"].discussPostStory, "[[siteRootUrl]]", adrSite^.["#urls"].newsHome)}};
+		bundle { //JES 2/16/05: site shell upgrade -- site prefs default page
+			«This has to be done here, because if we do it in any script called by the default page, the browser will just time out.
+			if defined (adrsite^.admin.sitePrefs.default) {
+				if typeOf (adrsite^.admin.sitePrefs.default) == wptextType {
+					«table.assign (@adrsite^.admin.sitePrefs.default, manilaData.newSiteTemplate.admin.sitePrefs.default)
+					manilaSuite.sitePrefs.shellScript (adrsite)}}};
+		bundle { //JES 3/9/05: site shell upgrade -- two-step member sign-up
+			if not defined (adrnewssite^.confirmationRequiredPage) {
+				adrnewssite^.confirmationRequiredPage = manilaData.newSiteTemplate.["#newsSite"].confirmationRequiredPage};
+			if not defined (adrnewssite^.emailConfirmationRequired) {
+				adrnewssite^.emailConfirmationRequired = manilaData.newSiteTemplate.["#newsSite"].emailConfirmationRequired};
+			if not defined (adrnewssite^.emailConfirmationRequiredSubject) {
+				adrnewssite^.emailConfirmationRequiredSubject = manilaData.newSiteTemplate.["#newsSite"].emailConfirmationRequiredSubject}};
+		
+		pta^.newsSite^.siteShellVersion = 9.1}; //now it is a 9.1 site, don't run the checks again
+	
+	if not flNineFiveSiteShell { // 10/05/05; 6:44:27 PM by PR
+		bundle { // convert path permissions
+			manilaSuite.accessControl.convertPathPermissions (adrSite)};
+		bundle { // install content-only aux template
+			if !defined (adrSite^.["#templates"]) { // 17/05/05; 11:39:28 AM by PR make sure the #templates folder exists
+				new (tableType, @adrSite^.["#templates"])};
+			table.assign (@adrsite^.["#templates"].["content-only"], manilaData.newSiteTemplate.["#templates"].["content-only"])}; // overwrite existing content-only if it exists
+		bundle { // install new sitepref default script
+			table.assign (@adrsite^.admin.siteprefs.default, manilaData.newSiteTemplate.admin.siteprefs.default)};
+		bundle { // 17/05/05; 7:37:18 PM by PR setup the default cohorts 
+			local (adrGroup = mainresponder.members.getMembershipTable(adrNewsSite^.sysopMemberOfGroup));
+			local (adrCohorts = @adrGroup^.cohorts);
+			manilaSuite.accessControl.buildDefaultCohorts(adrCohorts)};
+		
+		pta^.newsSite^.siteShellVersion = 9.5};
+	
+	if not flNineFiveOneSiteShell { // 6/23/05; 1:42:45 AM by JES
+		bundle { // install new sitepref default script -- yes, again
+			table.assign (@adrsite^.admin.siteprefs.default, manilaData.newSiteTemplate.admin.siteprefs.default)};
+		
+		pta^.newsSite^.siteShellVersion = 9.51};
+	if not flNineFiveTwoSiteShell { // 29/06/05; 2:38:00 PM by PR
+		bundle { // install new sitepref default script -- yes, again
+			table.assign (@adrsite^.admin.siteprefs.default, manilaData.newSiteTemplate.admin.siteprefs.default)};
+		
+		pta^.newsSite^.siteShellVersion = 9.52};
+	if not flNineFiveThreeSiteShell { // 6/30/05; 3:09:39 AM by JES
+		bundle { // install new sitepref default script -- yes, again -- really
+			table.assign (@adrsite^.admin.siteprefs.default, manilaData.newSiteTemplate.admin.siteprefs.default)};
+		
+		pta^.newsSite^.siteShellVersion = 9.53};
+	if not flNineFiveFourSiteShell { // 10/3/05; 3:43:31 AM by JES
+		bundle { // install new sitepref default script -- yes, again
+			table.assign (@adrsite^.admin.siteprefs.default, manilaData.newSiteTemplate.admin.siteprefs.default)};
+		pta^.newsSite^.siteShellVersion = 9.54};
+	if not flNineFiveFiveSiteShell { //10/5/05; 7:36:34 PM by JES
+		«Re-implementation of JES 4/3/02: site shell upgrade
+			«New discussion group prefs for listing stories, pictures and news items, and expanding responses.
+		if not defined (adrNewsSite^.discussionGroup.listStories) {
+			adrNewsSite^.discussionGroup.listStories = true};
+		if not defined (adrNewsSite^.discussionGroup.listPictures) {
+			adrNewsSite^.discussionGroup.listPictures = true};
+		if not defined (adrNewsSite^.discussionGroup.listNewsItems) {
+			adrNewsSite^.discussionGroup.listNewsItems = true};
+		if not defined (adrNewsSite^.discussionGroup.listHomePages) {
+			adrNewsSite^.discussionGroup.listHomePages = true};
+		if not defined (adrNewsSite^.discussionGroup.depthToExpandResponses) {
+			adrNewsSite^.discussionGroup.depthToExpandResponses = 0};
+		if not defined (adrNewsSite^.discussionGroup.resetDepthToExpandResponses) { //default should be 0, not 1
+			adrNewsSite^.discussionGroup.depthToExpandResponses = 0;
+			adrNewsSite^.discussionGroup.resetDepthToExpandResponses = true};
+		if not defined (adrNewsSite^.discussionGroup.responseListChronological) {
+			adrNewsSite^.discussionGroup.responseListChronological = false};
+		if not defined (adrNewsSite^.discussionGroup.responseFullItemTemplate) {
+			adrNewsSite^.discussionGroup.responseFullItemTemplate = adrNewsSite^.discussionGroup.responseItemTemplate};
+		pta^.newsSite^.siteShellVersion = 9.55};
+	if not flNineFiveSixSiteShell { //3/9/07; 10:58:28 AM by LL
+		bundle { //JES 7/11/05: site shell upgrade -- summaries feature for news items
+			if defined (adrsite^.newsItems) {
+				if defined (manilaData.newSiteTemplate.newsItems.viewFullItem) {
+					if not defined (adrsite^.newsItems.viewFullItem) {
+						adrsite^.newsItems.viewFullItem = manilaData.newSiteTemplate.newsItems.viewFullItem}}}};
+		bundle { //JES 10/17/05: site shell upgrade -- possibly update help URL
+			if defined (manilaData.constants.helpUrlDefault) { //does Manila have a canonical help URL?
+				local (adrurls = @adrsite^.["#urls"]);
+				if defined (adrurls^.editorialHelp) { //make sure this site has a help URL
+					if defined (manilaData.legacyObjects.helpUrls.[adrurls^.editorialHelp]) { //does it have a stale value?
+						adrurls^.editorialHelp = manilaData.constants.helpUrlDefault}}}};
+		bundle { //JES 1/31/06: site shell upgrade -- pending posts page
+			if defined (adrsite^.admin) {
+				if not defined (adrsite^.admin.pendingPosts) {
+					adrsite^.admin.pendingPosts = manilaData.newSiteTemplate.admin.pendingPosts}}};
+		bundle { //JES 4/29/06: site shell upgrade -- site structure editor
+			if defined (adrsite^.admin) {
+				if not defined (adrsite^.admin.editSiteStructure) {
+					adrsite^.admin.editSiteStructure = manilaData.newSiteTemplate.admin.editSiteStructure}}};
+		bundle { //JES 5/7/06: new legal tags: noscript, nobr
+			if not defined (adrNewsSite^.legalTags.noscript) {
+				adrNewsSite^.legalTags.noscript = true};
+			if not defined (adrNewsSite^.legalTags.nobr) {
+				adrNewsSite^.legalTags.nobr = true}};
+		bundle { //LL 11/16/06: new legal tags: fieldset, legend
+			if not defined (adrNewsSite^.legalTags.fieldset) {
+				adrNewsSite^.legalTags.fieldset = false};
+			if not defined (adrNewsSite^.legalTags.legend) {
+				adrNewsSite^.legalTags.legend = false}};
+		bundle { //LL 3/12/07: site shell upgrade -- login members box
+			if defined (adrNewsSite^.membersBoxTemplates) {
+				adrNewsSite^.membersBoxTemplates.logInBox = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.logInBox}};
+		if not defined (adrNewsSite^.flAlwaysDisplayMembersBox) {
+			adrNewsSite^.flAlwaysDisplayMembersBox = false};
+		pta^.newsSite^.siteShellVersion = 9.56};
+	
+	bundle { //LL 3/19/07: site shell upgrade -- pending members page
+		if defined (adrsite^.admin) {
+			if not defined (adrsite^.admin.pendingMembers) {
+				adrsite^.admin.pendingMembers = manilaData.newSiteTemplate.admin.pendingMembers}}};
+	bundle { //LL 3/28/07: site shell upgrade -- delete messages page
+		if defined (adrsite^.admin) {
+			if not defined (adrsite^.admin.deleteMessages) {
+				adrsite^.admin.deleteMessages = manilaData.newSiteTemplate.admin.deleteMessages}}};
+	
+	if flHtml { //delete pta^.adrMemberInfo if using the print-friendly template // 10/05/05; 6:33:46 PM by PR disabled, interferes with access control
+		if pta^.flPrintFriendlyTemplate or pta^.flContentOnlyTemplate { //JES 12/30/04: add flContentOnlyTemplate
+			if defined (pta^.adrMemberInfo) {
+				delete (@pta^.adrMemberInfo)}}};
+	
+	return (true)}

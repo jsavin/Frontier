@@ -1,0 +1,44 @@
+«Display a sitePrefs popup window.
+
+local (pta = html.getPageTableAddress ());
+
+on getWizardAddress () {
+	if defined (pta^.requestHeaders.cookies.wizard) {
+		if pta^.requestHeaders.cookies.wizard != "" {
+			local (wizardName = pta^.requestHeaders.cookies.wizard);
+			wizardName = string.urlDecode (wizardName);
+			local (adrWizard = @config.mainResponder.controlPanel.wizards.[wizardName]);
+			if defined (adrWizard^) {
+				while (typeOf (adrWizard^) == addressType) {
+					adrWizard = adrWizard^};
+				pta^.wizard = adrWizard}}};
+	return (true)};
+
+local (pathArgs = pta^.pathArgs);
+getWizardAddress ();
+local (adrWizard = pta^.wizard);
+local (panelNum = number (string.nthField (pathArgs, ",", 1)));
+local (itemNum = number (string.nthField (pathArgs, ",", 2)));
+local (panelList = xml.getAddressList (@adrWizard^.structure [1], "panel"));
+local (adrPanel = panelList [panelNum]);
+local (itemList = xml.getAddressList (adrPanel, "item"));
+local (adrItem = itemList [itemNum]);
+
+local (popupText = xml.getValue (adritem, "popuptext"));
+popupText = string.replaceAll (popupText, "\t", "");
+popupText = string.replaceAll (popupText, "\r", "<p>");
+
+delete (@pta^.template); pta^.indirectTemplate = true; pta^.template = "plaintext";
+delete (@pta^.javaScript); //popup windows should not have any JavaScript
+pta^.title = "Popup Text";
+
+local (htmlText = "", indentLevel = 0);
+
+on add (s) {
+	htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+
+add ("<blockquote><font size=\"+1\"><b>"); indentLevel++;
+add (popupText);
+add ("</b></font></blockquote>"); indentLevel++;
+
+return (htmlText)

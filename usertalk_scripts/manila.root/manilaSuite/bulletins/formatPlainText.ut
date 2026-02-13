@@ -1,0 +1,91 @@
+on formatPlainText (s) { //format a bulletin for people receiving plainText email
+	«Changes:
+		«4/27/03; 2:17:27 PM by JES
+			«Call through string.htmlToEmail to format the plain-text version of the bulletin.
+		«11/05/00; 2:22:45 AM by JES
+			«Added asterixes around bold tags. Deal with uppercase anchor tags properly.
+	
+	if defined (string.htmlToEmail) {
+		return (string.htmlToEmail (s))};
+	
+	local (plainText = "");
+	
+	«Pull out the <a href>s, puts links at end
+	on chewOneBit (s) {
+		on extractLinks (s, adrLinks, adrLines) {
+			local (links = {}, lines = {}, pat, endPat, ix, leftHalf);
+			loop {
+				pat = "<a href=\""; endPat = "</a>";
+				ix = string.patternMatch (pat, s);
+				if ix == 0 {
+					pat = "<A href=\"";
+					ix = string.patternMatch (pat, s);
+					if ix == 0 {
+						pat = "<A HREF=\"";
+						ix = string.patternMatch (pat, s);
+						if ix == 0 {
+							break}}};
+				leftHalf = string.mid (s, 1, ix - 1);
+				s = string.delete (s, 1, ix + sizeOf (pat) - 1);
+				ix = string.patternMatch ("\"", s); //the end of the url
+				url = string.mid (s, 1, ix - 1);
+				s = string.delete (s, 1, ix);
+				if s [1] == ">" {
+					s = string.delete (s, 1, 1)};
+				ix = string.patternMatch (endPat, s);
+				if ix == 0 {
+					endPat = "</A>";
+					ix = string.patternMatch (endPat, s)};
+				lineText = string.mid (s, 1, ix - 1);
+				s = s - endPat;
+				s = leftHalf + s;
+				links = links + url;
+				lines = lines + lineText};
+			adrLinks^ = links;
+			adrLines^ = lines;
+			return (s)};
+		
+		local (links, lines);
+		
+		s = extractLinks (s, @links, @lines);
+		bundle { //find all the remaining tags and delete them
+			local (ix, i, ct);
+			loop {
+				ix = string.patternMatch ("<", s);
+				if ix == 0 {
+					break};
+				ct = sizeOf (s);
+				for i = ix to ct {
+					if s [i] == '>' {
+						s = string.delete (s, ix, i - ix + 1);
+						break}}}};
+		
+		s = string.daveNetMassager (2, 60, s);
+		if sizeOf (links) > 0 {
+			local (i);
+			s = s + "\r\r";
+			for i = 1 to sizeOf (links) {
+				s = s + "     " + links [i] + "\r"}}
+		else {
+			s = s};
+		return (string.popLeading (s, "\r"))};
+	
+	local (ix, lineString);
+	
+	while sizeOf (s) > 0 {
+		ix = string.patternMatch ("\r\r", s);
+		if ix == 0 {
+			lineString = s;
+			s = ""}
+		else {
+			lineString = string.mid (s, 1, ix - 1);
+			s = string.delete (s, 1, ix + 1)};
+		plainText = plainText + chewOneBit (lineString) + "\r\r"};
+	
+	plainText = string.popLeading (plainText, "\r");
+	plainText = string.replaceAll (plainText, "<i>", "*");
+	plainText = string.replaceAll (plainText, "</i>", "*");
+	plainText = string.replaceAll (plainText, "<b>", "*"); //11/05/00 JES: stars around bold tags
+	plainText = string.replaceAll (plainText, "</b>", "*");
+	
+	return (plainText)}

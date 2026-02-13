@@ -1,0 +1,25 @@
+on threadScript (adrsite, adrmsg, flnew) {
+	«Changes
+		«7/14/03; 12:01:42 AM by JES
+			«If the news item has a link specified, add the URL for the link to the outgoing pings sub-table before doing any pings.
+		«4/25/03; 7:34:20 AM by DW
+			«Created. The message has changed or is new. If there are new urls, record them in the urls (nested) sub-table. If automatic pinging is enabled, do the ping. Designed to be called in a thread, so the user doesn't have to wait for this to happen before proceeding.
+	local (adrtrackback = manilaSuite.trackback.init (adrsite));
+	if defined (adrmsg^.newsItem.url) { //add the news item's link to the outgoing urls table
+		if sizeOf (adrmsg^.newsItem.url) > 0 {
+			trackback.initOutboundUrl (adrmsg, adrmsg^.newsItem.url)}};
+	trackback.changedPost (adrmsg, flnew, string (adrmsg^.newsItem.description));
+	local (flPingOnPost = adrtrackback^.flPingOnPost);
+	if defined (adrmsg^.newsItem.flAutoSendTrackbackPings) { //JES 7/12/03: news item can override global pref
+		flPingOnPost = adrmsg^.newsItem.flAutoSendTrackbackPings};
+	if flPingOnPost {
+		local (adrurl);
+		for adrurl in @adrmsg^.trackback.outbound.urls {
+			if (not adrurl^.flpinged) and adrurl^.flSupportsTrackback {
+				try {
+					manilaSuite.trackback.ping (adrsite, adrmsg, adrurl)}
+				else {
+					adrurl^.errorstring = tryerror};
+				adrurl^.flpinged = true}}}};
+«bundle //test code
+	«threadScript (@tbtestManilaWebsite, @tbtestManilaWebsite.["#discussionGroup"].messages.["0000005"], false)

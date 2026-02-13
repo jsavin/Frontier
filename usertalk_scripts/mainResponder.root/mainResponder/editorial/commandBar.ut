@@ -1,0 +1,35 @@
+on commandBar (discussRoot, bgcolor="#CCCCCC") {
+	«local (pta = html.getPageTableAddress ())
+	
+	local (authinfo = mainResponder.editorial.getClientUsernamePassword (discussRoot));
+	local (htmlText = "", indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + string.filledString ('\t', indentLevel) + s + cr};
+	
+	on addButton (buttontext, link) {
+		add ("<td valign=\"middle\"><input type=button value=\"" + buttontext + "\" onClick=\"" + link + "\"></td>")};
+	
+	add ("<table border=\"0\" bgcolor=\"" + bgcolor + "\" cellpadding=\"3\"><tr>"); indentLevel++;
+	bundle { //Label
+		local (s, membername);
+		local (group = mainResponder.editorial.getDiscussTableAddress (discussRoot)^.editorialprefs.membershipgroup);
+		membername = mainResponder.members.getMemberName (group, authinfo[1]);
+		if not (membername endsWith 's') {
+			s = membername + "'s Commands"}
+		else {
+			s = membername + "' Commands"};
+		add ("<td align=\"center\" valign=\"middle\"><b>" + s + "</b></td>")};
+	bundle { //List Documents
+		addButton ("List Documents", "")};
+	bundle { //New Document
+		addButton ("New Document", "")};
+	bundle { //Discussion Group
+		addButton ("Discussion Group", "")};
+	bundle { //Preferences
+		addButton ("Preferences", "")};
+	bundle { //Glossary
+		addButton ("View Glossary", "")};
+	bundle { //Help?
+		addButton ("Help", "")};
+	add ("</tr></table>"); indentLevel--;
+	return (htmlText)}

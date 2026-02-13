@@ -1,0 +1,63 @@
+on renewLicense () {
+	«Changes
+		«11/24/06; 5:26:49 PM by LL
+			«Changed some text on the page.
+		«9/17/03; 6:00:50 PM by JES
+			«Created. Source for the renew license page in the Frontier Admin site.
+	local (pta = html.getpagetableaddress ());
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};
+	
+	local (errorMessage = "", flError = false);
+	if pta^.method == "POST" {
+		local (code = string.trimWhiteSpace (string.upper (pta^.postArgs.renewalCode)));
+		if code == "" { //error
+			flError = true;
+			errorMessage = "Can't renew your license because no renewal code was entered."};
+		if not flError {
+			on isValidRenewalCode (code) {
+				try {
+					local (server = "superhonker.userland.com");
+					local (port = 80);
+					local (path = "RPC2");
+					local (method = "digitalRiver.renewLicense");
+					local (params = {string.upper (user.prefs.serialNumber), code} );
+					local (retval = betty.rpc.client (server, port, method, @params, rpcPath:path));
+					local (whenExpires = date (0 - number (base64.decode (retval))) );
+					userland.trialVersion.whenLicenseExpires = whenExpires;
+					return (true)}
+				else { //error
+					errorMessage = tryerror;
+					return (false)}};
+			if isValidRenewalCode (code) { //validate with the server
+				mainResponder.redirect ("http://" + pta^.host + pta^.uri + "?confirm=true");
+				return ("")}
+			else {
+				flError = true;
+				errorMessage = "Can't renew your license because an error occurred: " + errorMessage}}};
+	local (args); new (tableType, @args);
+	webserver.parseArgs (pta^.searchArgs, @args);
+	if defined (args.confirm) { //thank you page
+		pta^.title = "Thank You";
+		add ("<p style=\"padding-top:15px;\">From all of us at UserLand, thank you for renewing your license!</p>");
+		add ("<p>Your license will now expire on " + date.shortString (userland.trialVersion.whenLicenseExpires) + ".");
+		add ("<p>Click the Continue button to return to the Frontier Admin site.</p>");
+		add ("<p style=\"padding-top:15px;\"><form method=\"GET\" action=\"/\">");
+		add ("<input type=\"submit\" value=\"Continue\">");
+		add ("</form></p>")}
+	else { //enter renewal code page
+		pta^.title = "Renew Manila License";
+		bundle { //descriptive text
+			add ("<p>To renew your Manila license, enter the renewal code that was sent to your email address when you purchased your renewal into the form below, and click the Submit button.</p>");
+			add ("<p>If you need to purchase a renewal code, please visit the <a href=\"http://frontier.userland.com/renewLicense?sn=" + user.prefs.serialNumber + "\">store website</a>, obtain a renewal activation code, and then enter it on this page. </p>")};
+		bundle { //add the form
+			add ("<form method=\"POST\">"); indentlevel++;
+			add ("<table cellspacing=\"10\" cellpadding=\"0\">"); indentlevel++;
+			bundle { //form fields, submit button
+				add ("<tr><td>Renewal code:</td><td><input type=text size=\"35\" name=\"renewalCode\" value=\"\"></td><td><input type=\"submit\" value=\"Submit\"></td></tr>")};
+			if flError { //show the error to the user
+				add ("<tr><td>&nbsp;</td><td colspan=\"2\"><font color=\"red\">" + errorMessage + "</font></td></tr>")};
+			add ("</table>"); indentlevel--;
+			add ("</form>"); indentlevel--}};
+	return (htmltext)}

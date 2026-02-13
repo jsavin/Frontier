@@ -1,0 +1,3 @@
+local (pta = html.getPageTableAddress ());
+pta^.title = manilaSuite.getString ("discuss.enclosureRPCerPageTitle"); // 4/19/00 JES: localized
+return (mainResponder.discuss.rpcMessageEnclosure (pta^.client, 80, number (pta^.pathArgs)))

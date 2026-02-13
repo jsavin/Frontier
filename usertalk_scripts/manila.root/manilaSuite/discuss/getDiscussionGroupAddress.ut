@@ -1,0 +1,15 @@
+on getDiscussionGroupAddress (adrSite=nil, discussRoot=nil) {
+	«Changes:
+		«9/4/01; 3:08:29 AM by JES
+			«Deference addresses until we find the address of a table.
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+	local (adrRoot = @[mainResponder.discuss.openFile ()]);
+	
+	if discussRoot == nil {
+		discussRoot = adrNewsSite^.discussionRoot};
+	
+	local (discussionGroupAddress = @adrRoot^.[discussRoot]);
+	while typeOf (discussionGroupAddress^) == addressType {
+		discussionGroupAddress = discussionGroupAddress^};
+	
+	return (discussionGroupAddress)}

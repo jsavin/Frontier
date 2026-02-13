@@ -1,0 +1,258 @@
+on getLegalMacrosForObject (objectName) {
+	«Changes:
+		«3/20/05; 2:14:44 AM by JES
+			«Added support for enclosureLink, enclosureUrl, enclosureName, enclosureSize and enclosureIcon in news item templates.
+		«4/28/04; 1:00:27 AM by JES
+			«Add support for encodedPermalinkUrl pseudo-macro in news item templates.
+			«Add pseudo-macros: msgNum and itemNum (a synonym for msgNum borrowed from Radio).
+		«3/4/04; 1:38:16 AM by JES
+			«Add support for currentItemFormat from navigation appearance.
+		«7/14/03; 5:14:14 PM by JES
+			«Added cases for trackback-related templates.
+		«4/23/03; 3:46:04 PM by JES
+			«Added support for summary and full text news item templates. Added the following legal macros to those templates, and the regular news item template: {summary}, {editButton}, {fullItemUrl}, {fullItemWordCount}, {fullItemCharacterCount}, and {permalinkUrl}.
+		«4/1/03; 3:55:06 PM by JES
+			«Added support for {departmentLink} in news item templates.
+		«3/27/03; 4:16:39 PM by JES
+			«Added support for {commentLink} in news item templates.
+		«2/12/03; 5:12:44 PM by JES
+			«Added support for {permaLink} in news item templates.
+		«4/5/02; 3:02:58 AM by JES
+			«Added support for responseitemfulltemplate.
+		«10/8/01; 3:15:18 PM by PBS
+			«Support for some missing slides and directory templates.
+		«3/6/01; 10:41:36 AM by DW
+			«Allow {subItems} to pass through without neutering.
+		«2000:
+			«06/26/00; 3:37:28 PM by JES
+				«Fixed problem where there was already a legal macro entry which was a table.
+			«07/08/00; 2:12:34 AM by PBS
+				«Support the new {link} macro for the News Items template.
+			«10/25/00; 9:22:32 PM by JES
+				«Support all the legal macros for the discussion group templates.
+			«10/27/00; 9:05:46 PM by JES
+				«Fixed bug where responseItemTemplate macros would get neutered.
+			«11/04/00; 9:08:41 PM by JES
+				«Fixed a bug where the enclosureLink macro was getting neutered.
+			«11/20/00; 5:09:21 PM by PBS
+				«Get legal macros for the directory template.
+			«12/14/2000; 8:13:39 AM by DW
+				«Allow {opmlUrl} to pass through without neutering.
+			«12/18/00; 4:20:25 PM by PBS
+				«Slides template.
+			«06/06/00; 1:49:43 AM by PBS
+				«Return a legal macros table for an object, given its name.
+	
+	objectName = string.dropNonAlphas (objectName);
+	objectName = string.lower (objectName);
+	
+	local (macrosTable = config.mainResponder.prefs.legalMacros);
+	case objectName {
+		"newsdaytemplate" {
+			table.assign (@macrosTable.newsPostTime, true);
+			table.assign (@macrosTable.newsContent, true);
+			table.assign (@macrosTable.newsTitle, true);
+			table.assign (@macrosTable.newsArchiveLink, true)};
+		"signinbox" {
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.bgColor, true);
+			table.assign (@macrosTable.joinNowUrl, true);
+			table.assign (@macrosTable.signUpUrl, true);
+			table.assign (@macrosTable.loginUrl, true);
+			table.assign (@macrosTable.signOnUrl, true)};
+		"signoutbox" {
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.bgColor, true);
+			table.assign (@macrosTable.signOutUrl, true)};
+		"newsdaytemplate" {
+			table.assign (@macrosTable.newsPostTime, true);
+			table.assign (@macrosTable.newsContent, true);
+			table.assign (@macrosTable.newsTitle, true);
+			table.assign (@macrosTable.newsArchiveLink, true)};
+		"newsitemssummarytemplate";
+		"newsitemsfulltexttemplate";
+		"newsitemstemplate" {
+			table.assign (@macrosTable.title, true);
+			table.assign (@macrosTable.url, true);
+			table.assign (@macrosTable.department, true);
+			table.assign (@macrosTable.departmentLink, true);
+			table.assign (@macrosTable.postTime, true);
+			table.assign (@macrosTable.description, true);
+			table.assign (@macrosTable.author, true);
+			table.assign (@macrosTable.discussLink, true);
+			table.assign (@macrosTable.commentLink, true);
+			table.assign (@macrosTable.trackbackLink, true);
+			table.assign (@macrosTable.permaLink, true);
+			table.assign (@macrosTable.permalinkUrl, true);
+			table.assign (@macrosTable.encodedPermalinkUrl, true);
+			table.assign (@macrosTable.msgNum, true);
+			table.assign (@macrosTable.itemNum, true);
+			table.assign (@macrosTable.editLink, true);
+			table.assign (@macrosTable.editButton, true);
+			table.assign (@macrosTable.picture, true);
+			table.assign (@macrosTable.summary, true);
+			table.assign (@macrosTable.fullItemUrl, true);
+			table.assign (@macrosTable.wordCount, true);
+			table.assign (@macrosTable.characterCount, true);
+			table.assign (@macrosTable.link, true); //PBS 07/08/00
+			table.assign (@macrosTable.enclosureLink, true);
+			table.assign (@macrosTable.enclosureUrl, true);
+			table.assign (@macrosTable.enclosureName, true);
+			table.assign (@macrosTable.enclosureIcon, true);
+			table.assign (@macrosTable.enclosureSize, true)};
+		"currentitemformat";
+		"itemformat" {
+			new (tableType, @macrosTable);
+			macrosTable.item = true};
+		"daylistheader";
+		"daylistfooter" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true)};
+		"daylisttemplate" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.date, true);
+			table.assign (@macrosTable.messageList, true);
+			table.assign (@macrosTable.topicListUrl, true)};
+		"daylistitemtemplate" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.messageUrl, true);
+			table.assign (@macrosTable.messageNumber, true);
+			table.assign (@macrosTable.subject, true);
+			table.assign (@macrosTable.author, true);
+			table.assign (@macrosTable.readCount, true);
+			table.assign (@macrosTable.postTime, true)};
+		"msgtemplate" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.author, true);
+			table.assign (@macrosTable.subject, true);
+			table.assign (@macrosTable.topicLink, true);
+			table.assign (@macrosTable.messageNumberLink, true);
+			table.assign (@macrosTable.inResponseToLink, true);
+			table.assign (@macrosTable.previousMessageLink, true);
+			table.assign (@macrosTable.nextMessageLink, true);
+			table.assign (@macrosTable.postTime, true);
+			table.assign (@macrosTable.readCount, true);
+			table.assign (@macrosTable.responseCount, true);
+			table.assign (@macrosTable.editLink, true);
+			table.assign (@macrosTable.responseList, true);
+			table.assign (@macrosTable.messageText, true);
+			table.assign (@macrosTable.responseForm, true);
+			table.assign (@macrosTable.discussLink, true);
+			table.assign (@macrosTable.authorIcon, true);
+			table.assign (@macrosTable.enclosureLink, true)}; //11/04/00 JES
+		"responsefullitemtemplate";
+		"responseitemtemplate" {
+			table.assign (@macrosTable.responseSubject, true);
+			table.assign (@macrosTable.responseAuthor, true);
+			table.assign (@macrosTable.responsePostTime, true);
+			table.assign (@macrosTable.responseMessageNumber, true);
+			table.assign (@macrosTable.responseUrl, true);
+			table.assign (@macrosTable.responseText, true);
+			table.assign (@macrosTable.replyUrl, true)};
+		"topiclistheader";
+		"topiclistfooter" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.date, true);
+			table.assign (@macrosTable.messageList, true);
+			table.assign (@macrosTable.topicListUrl, true)};
+		"topiclisttemplate" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.date, true);
+			table.assign (@macrosTable.messageList, true);
+			table.assign (@macrosTable.dayListUrl, true)};
+		"topiclistitemtemplate" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.messageUrl, true);
+			table.assign (@macrosTable.statusIcon, true);
+			table.assign (@macrosTable.subject, true);
+			table.assign (@macrosTable.author, true);
+			table.assign (@macrosTable.messageCount, true);
+			table.assign (@macrosTable.readCount, true);
+			table.assign (@macrosTable.postTime, true);
+			table.assign (@macrosTable.lastPostTime, true)};
+		"topictemplate" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.previousTopicLink, true);
+			table.assign (@macrosTable.nextTopicLink, true);
+			table.assign (@macrosTable.statusIcon, true);
+			table.assign (@macrosTable.subject, true);
+			table.assign (@macrosTable.author, true);
+			table.assign (@macrosTable.postTime, true);
+			table.assign (@macrosTable.lastPostTime, true);
+			table.assign (@macrosTable.messages, true);
+			table.assign (@macrosTable.responseForm, true)};
+		"topicmsgtemplate" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.headerColor, true);
+			table.assign (@macrosTable.headerTextColor, true);
+			table.assign (@macrosTable.author, true);
+			table.assign (@macrosTable.subject, true);
+			table.assign (@macrosTable.topicLink, true);
+			table.assign (@macrosTable.messageNumberLink, true);
+			table.assign (@macrosTable.inResponseToLink, true);
+			table.assign (@macrosTable.previousMessageLink, true);
+			table.assign (@macrosTable.nextMessageLink, true);
+			table.assign (@macrosTable.postTime, true);
+			table.assign (@macrosTable.readCount, true);
+			table.assign (@macrosTable.responseCount, true);
+			table.assign (@macrosTable.editLink, true);
+			table.assign (@macrosTable.responseList, true);
+			table.assign (@macrosTable.messageText, true);
+			table.assign (@macrosTable.discussLink, true);
+			table.assign (@macrosTable.internalLink, true);
+			table.assign (@macrosTable.authorIcon, true);
+			table.assign (@macrosTable.enclosureLink, true)}; //11/04/00 JES
+		"trackbackitemtemplate" {
+			table.assign (@macrosTable.bgcolor, true);
+			table.assign (@macrosTable.itemLink, true);
+			table.assign (@macrosTable.excerpt, true);
+			table.assign (@macrosTable.weblogTitle, true);
+			table.assign (@macrosTable.trackbackTime, true)};
+		"trackbacktemplate";
+		"trackbackheader";
+		"trackbackfooter" {
+			table.assign (@macrosTable.trackbackUrl, true);
+			table.assign (@macrosTable.postTitle, true);
+			table.assign (@macrosTable.postUrl, true)};
+		"trackbacklinktemplate" {
+			table.assign (@macrosTable.trackbackCount, true)};
+		"directorytemplate" {
+			table.assign (@macrosTable.breadcrumbs, true);
+			table.assign (@macrosTable.directory, true);
+			table.assign (@macrosTable.editor, true);
+			table.assign (@macrosTable.lastModDate, true);
+			table.assign (@macrosTable.hits, true);
+			table.assign (@macrosTable.suggestLink, true);
+			table.assign (@macrosTable.opmlUrl, true); //12/14/2000; 8:13:17 AM by DW
+			table.assign (@macrosTable.subItems, true)}; //3/6/01; 10:40:59 AM by DW
+		"slidestemplate" {
+			table.assign (@macrosTable.slideTitle, true);
+			table.assign (@macrosTable.slideBody, true);
+			table.assign (@macrosTable.slideNum, true);
+			table.assign (@macrosTable.ctSlides, true);
+			table.assign (@macrosTable.homeUrl, true);
+			table.assign (@macrosTable.prevUrl, true);
+			table.assign (@macrosTable.nextUrl, true)};
+		"directorycommenttemplate" { //PBS 10/08/01
+			table.assign (@macrosTable.comment, true)};
+		"directorysuggestalinktemplate" { //PBS 10/08/01
+			table.assign (@macrosTable.url, true)}};
+	
+	return (macrosTable)}

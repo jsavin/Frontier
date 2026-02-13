@@ -1,0 +1,62 @@
+on loadOneTheme (f, adrParent=@config.manila.themes, flEnable=true, flMakePublic=true) {
+	«f is the path to the theme on disk.
+		«First import into a local, then validate the structure, then neuter macros, then copy to the config.manila.themes table. Return the address of the theme.
+		«scriptError if there's a problem.
+		«06/06/00; 5:01:32 PM by PBS
+	«Changes:
+		«Added support for DG themes.
+	
+	if not defined (config.manila.prefs.flLogThemesLoader) {
+		config.manila.prefs.flLogThemesLoader = true};
+	try { //use try so errors can be logged
+		local (flLog = config.manila.prefs.flLogThemesLoader);
+		local (fname = file.fileFromPath (f));
+		local (pageSource = fatPages.readSourceFile (f));
+		local (atts);
+		if not (fatPages.getPageAtts (@pageSource, @atts)) {
+			scriptError ("Can't load theme from " + fname + " because the file does not contain an embedded object.")};
+		local (objectType = 'tabl');
+		if not (fatPages.getObjectType (@atts) == objectType) {
+			scriptError ("Can't load theme from " + fname + " because the embedded object is not a table.")};
+		local (data);
+		data = fatPages.decode (@atts.pageData);
+		delete (@atts.pageData); //we're done with it, free memory now
+		setBinaryType (@data, objectType);
+		local (themeTable);
+		unpack (@data, @themeTable); //unpack the data into a local
+		delete (@data); //free memory
+		
+		try { //try to validate the theme
+			if adrParent == @config.manila.discussionGroupThemes { //JES 10/27/00 -- handle DG themes
+				manilaSuite.discussThemes.validateStructure (@themeTable)}
+			else {
+				manilaSuite.themes.validateStructure (@themeTable)}}
+		else {
+			scriptError ("Can't load theme from " + fname + " because: " + tryError)};
+		
+		bundle { //neuter macros in theme
+			manilaSuite.themes.neuterAllObjects (@themeTable)};
+		
+		local (adrTheme);
+		
+		local (itemName = fname);
+		bundle { //copy theme to parent table (usually, if not always, config.manila.themes)
+			if string.lower (fname) endsWith ".fttb" {
+				itemName = string.popSuffix (fname, '.')};
+			adrTheme = @adrParent^.[itemName];
+			adrTheme^ = themeTable};
+		
+		bundle { //set mod date on table
+			setTimeModified (adrTheme, clock.now ())};
+		
+		bundle { //log successful import
+			local (adrTable = log.addToGuestDatabase ("themesLoader"));
+			adrTable^.f = f;
+			adrTable^.name = itemName;
+			adrTable^.displayName = adrTheme^.info.displayName};
+		
+		return (adrTheme)}
+	else { //log error
+		local (adrTable = log.addToGuestDatabase ("themesLoader"));
+		adrTable^.f = f;
+		adrTable^.error = tryError}}

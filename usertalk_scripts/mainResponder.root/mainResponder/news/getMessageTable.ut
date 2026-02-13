@@ -1,0 +1,11 @@
+on getMessageTable (rootname, msgnum) {
+	«Get the address of a message table.
+		«Changes:
+			«10/15/99; 10:17:25 AM by PBS
+				«Support for addresses, and strings that can be coerced to addresses, in discuss.root was added.
+	local (adrroot = @[system.temp.mainResponder.discussRootFile].[rootname]);
+	if typeOf (adrroot^) == addressType or typeOf (adrroot^) == stringType { //PBS 10/15/99: support for addresses and strings in discuss.root
+		if defined (adrroot^^) {
+			adrroot = adrroot^}}; //de-reference to get the address of the discussion group
+	local (adrmsg = @adrroot^.messages.[string.padwithzeros (msgnum, 7)]);
+	return (adrmsg)}

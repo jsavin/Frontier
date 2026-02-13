@@ -1,0 +1,6 @@
+on getNewsItemTemplate (adrSite) {
+	«Return the news item template as a string.
+		«04/20/00; 6:04:47 PM by PBS
+	
+	local (s = string (adrSite^.["#newsSite"].newsItems.template));
+	return (s)}

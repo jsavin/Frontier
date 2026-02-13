@@ -1,0 +1,15 @@
+on count (username, password, siteName) {
+	«Get the number of messages in message storage.
+		«Changes:
+			«06/21/00; 2:14:31 PM by JES
+				«Changed the name of the script in this object to count. It was named countMessages, which broke the script.
+			«11/26/01; 11:02:02 AM by PBS
+				«Support content editors.
+	
+	bundle { //make sure this person is a managing or content editor of the site.
+		local (beginningErrorString = "Can't count messages because ");
+		manilaSuite.rpcUtils.managingEditorOrContentEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	
+	return (sizeOf (adrDiscuss^.messages))}

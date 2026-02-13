@@ -1,0 +1,45 @@
+on listObjects () {
+	«Changes
+		«9/5/02; 2:45:13 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (bgcolors = {pta^.trbg1, pta^.trbg2});
+	
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.undoCheckout) {
+			local (adr);
+			for adr in adrargs {
+				if adr^ == "x" {
+					local (name = string.urlDecode (nameOf (adr^)));
+					local (adrcheckout = @user.custody.objects.[name]);
+					if defined (adrcheckout^) {
+						delete (adrcheckout)}}}}};
+	
+	bundle { //list checked out objects
+		add ("<table cellpadding=\"3\" cellspacing=\"0\" border=\"0\">");
+		
+		bundle { //headers
+			add ("<tr><td></td><td><b>Object</b></td><td><b>Who</b></td><td><b>When</b></td></tr>")};
+		
+		local (objects = custody.getCheckedOutItems ());
+		local (ct = 0);
+		for item in objects {
+			add ("<tr bgcolor=\"" + bgcolors[ (ct++ % 2) + 1] + "\">");
+			add ("<td><input type=\"checkbox\" name=\"" + string.urlEncode (item["address"]) + "\" value=\"x\" /></td>");
+			add ("<td class=\"small\">" + string.popFileFromAddress (item["address"]) + "</td>");
+			add ("<td class=\"small\" valign=\"top\">" + item["user"] + "</td>");
+			add ("<td class=\"small\" valign=\"top\">" + item["checkedOutDate"] + "</td>");
+			add ("</tr>")};
+		if ct == 0 {
+			add ("<tr><td colspan=\"4\">There are no objects checked out at this time.</td></tr>")}
+		else { //add undo checkout button
+			add ("<tr><td colspan=\"4\"><br /><input type=\"submit\" name=\"undoCheckout\" value=\"Undo Checkout\"></td></tr>")};
+		
+		add ("</table>")};
+	
+	return (htmltext)}

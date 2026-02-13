@@ -1,0 +1,156 @@
+on create (username, password, siteName, title, url, description, department, flPostToHomePage=false) {
+	«Changes:
+		«4/14/07; 5:37:33 PM by LL
+			«Changes to handling of multiple departments.
+			«Check for "homepage and "home page" when determining whether a post should go to the home page.
+			«Check if the user can post to the homepage.
+		«4/11/07; 11:15:44 AM by LL
+			«Bug fix. If no departments are defined and the multiple departments pref is enabled, default to allowing the post to go to the homepage.
+		«2005 and older
+			«12/14/05; 3:22:56 PM by JES
+				«If no departments exist in the site, ignore newsItems.prefs.flMultipleDepartments.
+			«10/18/05; 4:10:13 AM by JES
+				«Accept both "HomePage" and "Home Page" for the Home Page 'department'.
+			«10/17/05; 4:13:04 AM by JES
+				«Bug fix: Don't skip multiple department special handling if not running on Mac.
+			«10/17/05; 4:01:09 AM by JES
+				«Bug fix: Add flOnHomePage to local table for new item creation, not to adrtable^ -- it doesn't exist yet.
+			«10/17/05; 3:40:21 AM by JES
+				«Bug fix: if multiple departments are enabled and department is empty, set flOnHomePage to false and flPostToHomePage to false.
+			«10/17/05; 3:21:46 AM by JES
+				«Add support for multiple departments if department is passed in as a list (array). Add support for Home Page 'department' if multiple departments is enabled in the site.
+			«9/24/03; 2:38:23 AM by JES
+				«Pass flEmptyBodyOk and flEmptySubjectOk to mainResponder.discuss.addMessage as true.
+			«4/21/03; 11:48:39 PM by JES
+				«Only add the client IP address to the message table if client is defined (meaning we're running as an RPC handler, not as called from some other script).
+			«4/8/03; 11:42:00 PM by JES
+				«Add the client's IP address to the message table.
+			«1/15/02; 6:52:43 PM by PBS
+				«Fixed a bug with neutering tags. The script was looking for pta^.newsSite^.legalTags to find the address of the legal tags table for the site. But since this is not a rendering context -- it's an XML-RPC context -- that failed. Instead look for adrNewsSite^.legalTags and use it if found.
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrDepartments = manilaSuite.news.getDepartmentTableAddress (adrsite));
+	local (flDepartmentsExistInSite = (sizeOf (adrDepartments^) > 0) );
+	local (flMultipleDepartmentsEnabled = manilaSuite.getNewsSitePref ("newsItems.prefs.flMultipleDepartments", adrSite, false) and flDepartmentsExistInSite);
+	local (flOnHomePage = true);
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	local (adrdiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (groupname = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+	local (adrmember = mainResponder.members.getMemberTable (groupname, username));
+	if not (manilaSuite.news.memberMayCreateNewItems (adrSite:adrsite, adrMember:adrmember)) {
+		scriptError ("Can't create a news item because \"" + username + "\" does not have permission to create news items.")};
+	if flPostToHomePage { //check to see if the user can post to the home page
+		if not (manilaSuite.news.memberCanPostToHomePage (adrSite:adrsite, adrMember:adrmember)) {
+			scriptError ("Can't edit news item \"" + msgnum + "\" because \"" + username + "\" does not have permission to post to the home page.")}};
+	local (postTime = clock.now ());
+	if defined (adrnewssite^.timeZone) {
+		timeZone = adrnewssite^.timeZone.zone;
+		postTime = manilaSuite.convertTime (postTime, timeZone)};
+	
+	local (pagetable, oldPta = nil);
+	bundle { //set up a pagetable, save old pagetable if it exists
+		new (tabletype, @pagetable);
+		pagetable.enableSafeMacros = true;
+		pagetable.adrsiteRootTable = adrsite;
+		pagetable.adrMemberInfo = adrmember;
+		pagetable.urls = @adrsite^.["#urls"];
+		try {oldPta = html.getPageTableAddress ()};
+		html.setPageTableAddress (@pagetable)};
+	
+	if system.environment.isMac { //convert to Mac text
+		title = latinToMac.convert (title);
+		description = latinToMac.convert (description)};
+	bundle { //handle multiple departments
+		if typeOf (department) == listType {
+			local (ct = sizeOf (department), i);
+			if flMultipleDepartmentsEnabled {
+				if sizeOf (department) != 0 {
+					flOnHomePage = false}};
+			for i = ct downto 1 {
+				if flMultipleDepartmentsEnabled {
+					if string.lower (department[i]) == "homepage" or string.lower (department[i]) == "home page" {
+						delete (@department[i]);
+						flOnHomePage = true;
+						continue}};
+				if system.environment.isMac {
+					department[i] = latinToMac.convert (department[i])}}}
+		else { //single department
+			if string.lower (department) == "homepage" or string.lower (department) == "home page" {
+				department = ""};
+			if system.environment.isMac {
+				department = latinToMac.convert (department)}}};
+	«Old code bundle //handle multiple departments
+		«if typeOf (department) == listType
+			«local (ct = sizeOf (department), i)
+			«if flMultipleDepartmentsEnabled
+				«flOnHomePage = false
+			«for i = ct downto 1
+				«if flMultipleDepartmentsEnabled
+					«if string.lower (department[i]) == "homepage"
+						«delete (@department[i])
+						«flOnHomePage = true
+						«continue
+				«if system.environment.isMac
+					«department[i] = latinToMac.convert (department[i])
+			«if flMultipleDepartmentsEnabled
+				«if sizeOf (department) == 0
+					«if not flOnHomePage
+						«flPostToHomePage = false
+		«else //single department
+			«if flMultipleDepartmentsEnabled
+				«if department != ""
+					«flOnHomePage = false
+					«flPostToHomePage = false
+				«if string.lower (department) == "homepage" or string.lower (department) == "home page"
+					«department = ""
+					«flOnHomePage = true
+			«else
+				«if system.environment.isMac
+					«department = latinToMac.convert (department)
+	
+	description = string.replaceAll (description, "\r\r", "\r\n\r\n");
+	
+	local (t);
+	bundle { //set news item attributes
+		new (tableType, @t);
+		t.title = title;
+		t.url = url;
+		t.department = department;
+		t.description = description;
+		if flMultipleDepartmentsEnabled {
+			t.flOnHomePage = flOnHomePage};
+		
+		bundle { //PBS 07/05/00: neuter tags, so News Items obeys legal tags
+			«It's tricky because this is a case of embedding HTML in XML.
+			local (adrLegalTags = @config.mainResponder.prefs.legalTags);
+			if defined (adrNewsSite^.legalTags) { //PBS 1/15/02: was pta^.newsSite^.legalTags, which was incorrect
+				adrLegalTags = @adrNewsSite^.legalTags};
+			t.description = html.neuterTags (t.description, adrLegalTags);
+			t.description = string.replaceAll (t.description, "&lt;", "&amp;lt;")}};
+	
+	local (inResponseTo = 0);
+	local (body = manilaSuite.news.tableToXml (@t));
+	local (data); new (tableType, @data);
+	if defined (client) {
+		data.ipAddress = client};
+	local (msgnum = mainresponder.discuss.addMessage (title, username, inResponseTo, body, flNeuterMacros:true, flNeuterTags:false, groupName:groupname, postTime:postTime, adrroot:adrdiscuss, adrdata:@data, flEmptyBodyOk:true, flEmptySubjectOk:true));
+	local (adrtable = mainResponder.discuss.getMessageTable (msgnum, adrRoot:adrdiscuss));
+	manilaSuite.news.setMessageAttributes (adrtable, @t);
+	manilaSuite.news.updateIndexes (adrTable, adrSite);
+	
+	if flPostToHomePage { //post the item to the home page, and call the homePageUpdate callbacks
+		manilaSuite.news.postItemToHomePage (adrtable, adrSite);
+		try {manilaSuite.callbacks.rpcHomePageUpdate (adrTable, adrSite, adrnewssite^.siteName, description, username, password)}}
+	else { //release the news item
+		manilaSuite.news.releaseItem (adrTable, adrSite)};
+	
+	bundle { //update indexes
+		manilaSuite.news.updateIndexes (adrTable, adrSite)};
+	
+	bundle { //restore the pagetable
+		if oldPta == nil {
+			html.deletePageTableAddress ()}
+		else {
+			html.setPageTableAddress (oldPta)}};
+	return (msgnum)};
+«bundle //test code
+	«dialog.alert (create ("jake@userland.com", user.prefs.manilaPassword, "blogger", "Test post {clock.now ()}", "http://127.0.0.1/blogger/", "this a news item created and immediately posted to the home page", "default", true))

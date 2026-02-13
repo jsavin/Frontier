@@ -1,0 +1,616 @@
+on getValue (partialAddress, defaultValue) {
+	«Get one value from the prefs for a Manila site.
+		«Changes:
+			«1999:
+				«10/27/99; 10:02:48 PM by PBS
+					«notifySender is the from email address for email notification.
+					«Get the managing editors list from #newsSite.sysopMail.
+					«New prefs for dg and members box background colors: colors.membersBox and colors.discussListings.
+					«Syndication prefs panel support.
+				«10/30/99; 1:58:18 PM by PBS
+					«More color prefs: membersBoxHeader, membersBoxHeaderText, separator, separatorText.
+				«11/1/99; 9:51:30 AM by PBS
+					«New pref: flEditFormOnHomePage controls whether or not to have a text area on the home page.
+				«11/1/99; 11:14:42 AM by PBS
+					«newsRoom.customPreferences is the XML for the prefs page.
+					«newsRoom.flUseCustomPrefsWizard toggles using the custom prefs wizard.
+				«11/1/99; 5:03:59 PM by PBS
+					«Legal tags are site-specific prefs now.
+				«11/6/99; 4:32:39 PM by PBS
+					«If a post, then don't discard the posted custom prefs XML, even if there's an error.
+				«12/10/99; 10:17:32 AM by PBS
+					«numNewsDaysToRender is a new pref that specifies how many days to render on the home page. Default is 1 day, current behavior.
+				«12/13/99; 6:40:58 PM by PBS
+					«New prefs for Admin Box colors, which can be customized on the Appearance panel, in the Colors section.
+				«12/17/99; 11:36:06 AM by PBS
+					«New pref for the cowskull image link.
+			«2000:
+				«1/6/00; 2:42:10 PM by PBS
+					«flMembersListPublic controls the public display of the members list at /stats/members.
+				«1/9/00; 5:04:02 PM by PBS
+					«flHomePageDisplayTitle governs whether or not to display the title on the home page.
+				«01/26/00; 3:14:49 PM by PBS
+					«Support for editors only access.
+				«02/12/00; 11:39:19 AM by PBS
+					«Support for the custody time out preference.
+				«03/14/00; 3:00:40 PM by PBS
+					«Added support for static rendering prefs.
+				«04/03/00; 2:09:05 PM by PBS
+					«Support for time zone pref.
+				«04/09/00; 5:35:41 PM by PBS
+					«Support for turning on and off title display for archived home pages.
+				«04/15/00; 6:30:48 PM by PBS
+					«Added support for gems prefs.
+				«05/01/00; 5:37:00 PM by PBS
+					«Support for news items prefs.
+				«05/20/00; 9:01:45 PM by JES
+					«language preference
+				«06/15/00; 4:34:31 PM by PBS
+					«Support for background picture.
+				«06/15/00; 11:42:09 PM by JES
+					«Merged Brent's background picture pref.
+				«06/29/00; 10:19:05 PM by PBS
+					«If the cowskull image is a wp-text, coerce to a string.
+				«07/08/00; 1:42:46 AM by JES
+					«Support prefs for displaying n messages on the main discussion group listing page.
+				«09/30/00; 4:42:53 PM by PBS
+					«Support for number of topics in topics view.
+				«10/03/00; 3:16:39 PM by PBS
+					«Support editing tool choice.
+				«10/04/00; 10:44:44 AM by PBS
+					«Default editor is now HTML Tags.
+				«10/16/00; 6:35:49 PM by JES
+					«Added support for discussion group template prefs.
+				«10/27/00; 3:30:35 AM by JES
+					«Added DG theme preferences.
+				«10/29/00; 7:11:27 PM by JES
+					«Get the default copyright owner for scriptingNews2.xml renderings.
+				«11/20/00; 2:58:05 PM by PBS
+					«Directories prefs.
+				«11/25/00; 6:49:17 PM by PBS
+					«New pref, directory.flDisplayTitle, turns off title display for directory pages.
+				«12/18/00; 4:09:05 PM by PBS
+					«Slides prefs.
+			«05/23/01; 5:22:57 PM by PBS
+				«Get the flRadioEditingAllowed boolean.
+			«9/10/01; 10:20:47 AM by PBS
+				«Get background picture bug fix -- it was getting the background picture from adrNewsSite^.backgroundPicture, which is bogus. It should come from adrPrefs^.background. (And now it does.)
+			«9/10/01; 5:09:27 PM by PBS
+				«Support for max news items to appear on department pages.
+			«9/12/01; 2:38:23 PM by PBS
+				«Support for stories, pictures, and gems pages access.
+			«9/12/01; 4:45:37 PM by PBS
+				«Support for flCookiesExpireAtEndOfSession.
+			«9/13/01; 2:28:55 PM by PBS
+				«Support for home page date formats.
+			«9/13/01; 5:56:25 PM by PBS
+				«Support for plain template for prefs pages.
+			«9/17/01; 2:44:44 PM by PBS
+				«Support for home page caching pref.
+			«9/18/01; 4:08:34 PM by PBS
+				«Support for margins.
+			«11/26/01; 10:22:00 AM by PBS
+				«Get content editors list.
+			«2/20/02; 4:10:34 AM by JS
+				«Get values for the Radio hosting prefs page.
+	
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
+	local (adrSite = manilaSuite.getSiteAddress ());
+	local (adrPrefs = @adrSite^.["#prefs"]);
+	local (adrDiscussLinks = manilaSuite.getDiscussLinksAddress ());
+	local (pta = html.getPageTableAddress ());
+	
+	on exportOutline (s) {
+		s = string.replaceall (s, "\t", "  ");
+		s = string.replaceall (s, "&", "&amp;");
+		s = string.replaceall (s, "<", "&lt;");
+		s = string.replaceall (s, ">", "&gt;");
+		return (s)};
+	
+	case partialAddress {
+		"newsRoom.autoShortcuts" {
+			return (manilaSuite.getNewsSitePref ("autoShortcuts", default:false, flCreate:true))};
+		"newsRoom.backgroundPicture" {
+			«if defined (adrNewsSite^.backgroundPicture) //PBS 09/10/01: commented out bogus code
+				«return (string (adrNewsSite^.backgroundPicture))
+			if defined (adrPrefs^.background) {
+				return (string (adrPrefs^.background))};
+			return ("")};
+		"newsRoom.bulletins.htmlTemplate" {
+			if not defined (adrNewsSite^.bulletins) {
+				adrNewsSite^.bulletins = manilaData.bulletins};
+			return (exportOutline (string (adrNewsSite^.bulletins.htmlTemplate)))};
+		"newsRoom.bulletins.plainTextTemplate" {
+			if not defined (adrNewsSite^.bulletins) {
+				adrNewsSite^.bulletins = manilaData.bulletins};
+			return (exportOutline (string (adrNewsSite^.bulletins.plainTextTemplate)))};
+		"newsRoom.bulletins.senderEmail" {
+			if not defined (adrNewsSite^.bulletins) {
+				adrNewsSite^.bulletins = manilaData.bulletins;
+				adrNewsSite^.bulletins.senderEmail = adrNewsSite^.sysopMail};
+			return (adrNewsSite^.bulletins.senderEmail)};
+		"newsRoom.bylineFormat" {
+			return (manilaSuite.getNewsSitePref ("bylineFormat", default:"default", flCreate:true))};
+		"newsRoom.colors.adminBoxBackground" {
+			local (color);
+			local (adrDefaultColors = @manilaData.newSiteTemplate.["#newsSite"].colors);
+			color = manilaSuite.getNewsSitePref ("colors.adminBoxBackground", default:adrDefaultColors^.adminBoxBackground, flCreate:true);
+			return (color)};
+		"newsRoom.colors.adminBoxBackgroundText" {
+			local (color);
+			local (adrDefaultColors = @manilaData.newSiteTemplate.["#newsSite"].colors);
+			color = manilaSuite.getNewsSitePref ("colors.adminBoxBackgroundText", default:adrDefaultColors^.adminBoxBackgroundText, flCreate:true);
+			return (color)};
+		"newsRoom.colors.adminBoxHeader" {
+			local (color);
+			local (adrDefaultColors = @manilaData.newSiteTemplate.["#newsSite"].colors);
+			color = manilaSuite.getNewsSitePref ("colors.adminBoxHeader", default:adrDefaultColors^.adminBoxHeader, flCreate:true);
+			return (color)};
+		"newsRoom.colors.adminBoxHeaderText" {
+			local (color);
+			local (adrDefaultColors = @manilaData.newSiteTemplate.["#newsSite"].colors);
+			color = manilaSuite.getNewsSitePref ("colors.adminBoxHeaderText", default:adrDefaultColors^.adminBoxHeaderText, flCreate:true);
+			return (color)};
+		"newsRoom.colors.alink" {
+			return (manilaSuite.unTaint (adrPrefs^.alink))};
+		"newsRoom.colors.bgColor" {
+			return (manilaSuite.unTaint (adrPrefs^.bgColor))};
+		"newsRoom.colors.discussListings" {
+			return (manilaSuite.getNewsSitePref ("colors.discussListings", default:"beige", flCreate:true, flUntaint:true))};
+		"newsRoom.colors.link" {
+			return (manilaSuite.unTaint (adrPrefs^.link))};
+		"newsRoom.colors.membersBox" {
+			return (manilaSuite.getNewsSitePref ("colors.membersBox", default:"ivory", flCreate:true, flUntaint:true))};
+		"newsRoom.colors.membersBoxHeader" {
+			return (manilaSuite.getNewsSitePref ("colors.membersBoxHeader", default:"black", flCreate:true, flUntaint:true))};
+		"newsRoom.colors.membersBoxHeaderText" {
+			return (manilaSuite.getNewsSitePref ("colors.membersBoxHeaderText", default:"ivory", flCreate:true, flUntaint:true))};
+		"newsRoom.colors.separator" {
+			return (manilaSuite.getNewsSitePref ("colors.separator", default:"black", flCreate:true, flUntaint:true))};
+		"newsRoom.colors.separatorText" {
+			return (manilaSuite.getNewsSitePref ("colors.separatorText", default:"ivory", flCreate:true, flUntaint:true))};
+		"newsRoom.colors.text" {
+			return (manilaSuite.unTaint (adrPrefs^.text))};
+		"newsRoom.colors.vlink" {
+			return (manilaSuite.unTaint (adrPrefs^.vlink))};
+		"newsRoom.contributingEditorsList" {
+			local (s = string (adrNewsSite^.contributingEditors));
+			s = string.delete (s, 1, 1); //pop off left curly brace
+			s = string.delete (s, sizeof (s), 1);
+			s = string.replaceall (s, "\"", "");
+			s = string.replaceall (s, " ", "");
+			return (s)};
+		"newsRoom.contentEditorsList" { //PBS 11/26/01
+			if not defined (adrNewsSite^.contentEditors) {
+				adrNewsSite^.contentEditors = {}};
+			local (s = string (adrNewsSite^.contentEditors));
+			s = string.delete (s, 1, 1); //pop off left curly brace
+			s = string.delete (s, sizeof (s), 1);
+			s = string.replaceall (s, "\"", "");
+			s = string.replaceall (s, " ", "");
+			return (s)};
+		"newsRoom.cowSkullImage" {
+			if not defined (adrNewsSite^.cowSkullImage) {
+				adrNewsSite^.cowSkullImage = "<img src=\"" + pta^.responderAttributes.urls^.imageCowSkull + "\" height=\"18\" width=\"22\" border=\"0\">"};
+			return (string (adrNewsSite^.cowSkullImage))}; //PBS 06/29/00: may be wp-text, coerce to string
+		"newsRoom.custody.timeOutMinutes" {
+			return (manilaSuite.getNewsSitePref ("custody.timeOutMinutes", default:4*60, flCreate:true))};
+		"newsRoom.customPreferences" {
+			if not defined (adrNewsSite^.prefsWizard) {
+				local (siteInfo);
+				new (tableType, @siteInfo);
+				siteInfo.adrSite = manilaSuite.getSiteAddress ();
+				manilaSuite.newSite.createCustomPrefsWizard (@siteInfo)};
+			if string.lower (pta^.method) == "post" {
+				return (pta^.postArgs.["newsRoom.customPreferences"])};
+			return (exportOutline (string (adrNewsSite^.prefsWizard.outline)))};
+		"newsRoom.directory.flDisplayTitle" {
+			local (fl = manilaData.newSiteTemplate.["#newsSite"].directory.flDisplayTitle);
+			return (manilaSuite.getNewsSitePref ("directory.flDisplayTitle", default:fl, flCreate:true))};
+		"newsRoom.directory.folderIcon" {
+			local (s = string (manilaData.newSiteTemplate.["#newsSite"].directory.folderIcon));
+			return (manilaSuite.getNewsSitePref ("directory.folderIcon", default:s, flCreate:true, flUntaint:true))};
+		"newsRoom.directory.linkIcon" {
+			local (s = string (manilaData.newSiteTemplate.["#newsSite"].directory.linkIcon));
+			return (manilaSuite.getNewsSitePref ("directory.linkIcon", default:s, flCreate:true, flUntaint:true))};
+		"newsRoom.directory.template" {
+			local (s = string (manilaData.newSiteTemplate.["#newsSite"].directory.template));
+			return (manilaSuite.translateToEntities (manilaSuite.getNewsSitePref ("directory.template", default:s, flCreate:true)))};
+		"newsRoom.directory.suggestALinkTemplate" {
+			local (s = string (manilaData.newSiteTemplate.["#newsSite"].directory.suggestALinkTemplate));
+			return (manilaSuite.translateToEntities (manilaSuite.getNewsSitePref ("directory.suggestALinkTemplate", default:s, flCreate:true)))};
+		"newsRoom.directory.commentTemplate" {
+			local (s = string (manilaData.newSiteTemplate.["#newsSite"].directory.commentTemplate));
+			return (manilaSuite.translateToEntities (manilaSuite.getNewsSitePref ("directory.commentTemplate", default:s, flCreate:true)))};
+		"newsRoom.discussionGroup.dayListFooter" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.dayListFooter)))};
+		"newsRoom.discussionGroup.dayListHeader" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.dayListHeader)))};
+		"newsRoom.discussionGroup.dayListItemTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.dayListItemTemplate)))};
+		"newsRoom.discussionGroup.dayListTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.dayListTemplate)))};
+		"newsRoom.discussionGroup.daysTopicsActive" {
+			return (adrNewsSite^.discussionGroup.daysTopicsActive)};
+		"newsRoom.discussionGroup.daysTopicsLive" {
+			return (adrNewsSite^.discussionGroup.daysTopicsLive)};
+		"newsRoom.discussionGroup.activeTopicIcon" {
+			if not defined (adrNewsSite^.discussionGroup.activeTopicIcon) {
+				adrNewsSite^.discussionGroup.activeTopicIcon = "<img src=\"/mainResponderResources/icons/folder.open2\" height=\"14\" width=\"17\" border=\"0\" alt=\"activeTopic\">"};
+			return (string (adrNewsSite^.discussionGroup.activeTopicIcon))};
+		"newsRoom.discussionGroup.inactiveTopicIcon" {
+			if not defined (adrNewsSite^.discussionGroup.inactiveTopicIcon) {
+				adrNewsSite^.discussionGroup.inactiveTopicIcon = "<img src=\"/mainResponderResources/icons/folder2\" height=\"14\" width=\"17\" border=\"0\" alt=\"inactiveTopic\">"};
+			return (string (adrNewsSite^.discussionGroup.inactiveTopicIcon))};
+		"newsRoom.discussionGroup.msgTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.msgTemplate)))};
+		"newsRoom.discussionGroup.responseListFooter" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.responseListFooter)))};
+		"newsRoom.discussionGroup.responseListHeader" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.responseListHeader)))};
+		"newsRoom.discussionGroup.responseListIndentTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.responseIndentTemplate)))};
+		"newsRoom.discussionGroup.responseListItemTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.responseItemTemplate)))};
+		"newsRoom.discussionGroup.responseListThreadEndTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.responseSubThreadEndTemplate)))};
+		"newsRoom.discussionGroup.responseListThreadStartTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.responseSubThreadStartTemplate)))};
+		"newsRoom.discussionGroup.topicBased" {
+			return (adrNewsSite^.discussionGroup.topicBased)};
+		"newsRoom.discussionGroup.topicListFooter" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.topicListFooter)))};
+		"newsRoom.discussionGroup.topicListHeader" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.topicListHeader)))};
+		"newsRoom.discussionGroup.topicListItemTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.topicListItemTemplate)))};
+		"newsRoom.discussionGroup.topicListTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.topicListTemplate)))};
+		"newsRoom.discussionGroup.topicMsgTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.topicMsgTemplate)))};
+		"newsRoom.discussionGroup.topicTemplate" {
+			return (exportOutline (string (adrNewsSite^.discussionGroup.topicTemplate)))};
+		"newsRoom.discussionGroup.userIcon" {
+			if not defined (adrNewsSite^.discussionGroup.userIcon) {
+				adrNewsSite^.discussionGroup.userIcon = "<img src=\"/mainResponderResources/icons/user\" height=\"14\" width=\"17\" border=\"0\" alt=\"user\">"};
+			return (string (adrNewsSite^.discussionGroup.userIcon))};
+		"newsRoom.discussLinks.channelGraphicMsgNum" {
+			return (manilaSuite.getNewsSitePref ("discussLinks.channelGraphicMsgNum", default:-1, flCreate:true))};
+		"newsRoom.editingToolName" {
+			local (editingToolName);
+			if defined (adrPrefs^.editingToolName) {
+				editingToolName = adrPrefs^.editingToolName}
+			else {
+				editingToolName = "HTML Tags"};
+			local (okayNames = {"wysiwyg", "html tags", "none"});
+			if not (okayNames contains string.lower (editingToolName)) { //normalize name
+				editingToolName = "HTML Tags"};
+			return (editingToolName)};
+		"newsRoom.editorialHelpMsgNum" {
+			return (adrDiscussLinks^.editorialHelpMsgNum)};
+		"newsRoom.editorialPagesAccess.gems" { //PBS 09/12/01: pref for Stories access
+			return (manilaSuite.getNewsSitePref ("editorialPagesAccess.gems", default:"public", flCreate:true, flUntaint:true))};
+		"newsRoom.editorialPagesAccess.pictures" { //PBS 09/12/01: pref for Pictures access
+			return (manilaSuite.getNewsSitePref ("editorialPagesAccess.pictures", default:"public", flCreate:true, flUntaint:true))};
+		"newsRoom.editorialPagesAccess.stories" { //PBS 09/12/01: pref for Gems access
+			return (manilaSuite.getNewsSitePref ("editorialPagesAccess.stories", default:"public", flCreate:true, flUntaint:true))};
+		"newsRoom.editorProfileMessageNumber" {
+			return ("")};
+		"newsRoom.editorsOnlyMessage" { //PBS 01/26/00
+			if not defined (pta^.newsSite^.editorsOnlyMessage) {
+				pta^.newsSite^.editorsOnlyMessage = manilaData.newSiteTemplate.["#newsSite"].editorsOnlyMessage};
+			return (string (pta^.newsSite^.editorsOnlyMessage))};
+		"newsRoom.editorsOnlyMessageTitle" { //PBS 01/26/00
+			if not defined (pta^.newsSite^.editorsOnlyMessageTitle) {
+				pta^.newsSite^.editorsOnlyMessageTitle = manilaData.newSiteTemplate.["#newsSite"].editorsOnlyMessageTitle};
+			return (string (pta^.newsSite^.editorsOnlyMessageTitle))};
+		"newsRoom.emailConfirmation" {
+			if not defined (adrNewsSite^.emailConfirmation) {
+				wp.newTextObject (string (manilaData.newSiteTemplate.["#newsSite"].emailConfirmation), @adrNewsSite^.emailConfirmation)};
+			return (string (adrNewsSite^.emailConfirmation))};
+		"newsRoom.emailConfirmationSender" {
+			if not defined (adrNewsSite^.emailConfirmationSender) {
+				adrNewsSite^.emailConfirmationSender = manilaSuite.editors.getOneManagingEditor ()};
+			return (string (adrNewsSite^.emailConfirmationSender))};
+		"newsRoom.emailConfirmationSubject" {
+			return (manilaSuite.getNewsSitePref ("emailConfirmationSubject", default:"Welcome!", flCreate:true))};
+		"newsRoom.flBackIssueDisplayTitle" {
+			return (boolean (manilaSuite.getNewsSitePref ("flBackIssueDisplayTitle", default:true, flCreate:true)))};
+		"newsRoom.flBylinesOnHomePage" {
+			return (manilaSuite.getNewsSitePref ("flBylinesOnHomePage", default:false, flCreate:true))};
+		"newsRoom.flBylinesOnStories" {
+			return (manilaSuite.getNewsSitePref ("flBylinesOnStories", default:true, flCreate:true))};
+		"newsRoom.flCacheHomePage" {
+			if not defined (adrNewsSite^.flCacheHomePage) {
+				adrNewsSite^.flCacheHomePage = false};
+			return (boolean (adrNewsSite^.flCacheHomePage))};
+		"newsRoom.flCalendar" {
+			return (manilaSuite.getNewsSitePref ("flCalendarOnHomePage", default:true, flCreate:true))};
+		"newsRoom.flCookiesExpireAtEndOfSession" { //PBS 09/12/01
+			if not defined (adrNewsSite^.flCookiesExpireAtEndOfSession) {
+				adrNewsSite^.flCookiesExpireAtEndOfSession = manilaData.newSiteTemplate.["#newsSite"].flCookiesExpireAtEndOfSession};
+			return (boolean (adrNewsSite^.flCookiesExpireAtEndOfSession))};
+		"newsRoom.flDiscussListByDay" { //JES 07/07/00
+			return (boolean (manilaSuite.getNewsSitePref ("flDiscussListByDay", default:true, flCreate:true)))};
+		"newsRoom.flEditFormOnHomePage" {
+			return (manilaSuite.getNewsSitePref ("flEditFormOnHomePage", default:false, flCreate:true))};
+		"newsRoom.flEditorsOnlyAccessToSite" { //PBS 01/26/00
+			return (boolean (manilaSuite.getNewsSitePref ("flEditorsOnlyAccessToSite", default:false, flCreate:true)))};
+		"newsRoom.flHomePageDisplayTitle" {
+			return (boolean (manilaSuite.getNewsSitePref ("flHomePageDisplayTitle", default:true, flCreate:true)))};
+		"newsRoom.flMembership" {
+			return (manilaSuite.getNewsSitePref ("flMembership", default:false, flCreate:true))};
+		"newsRoom.flMembersListPublic" {
+			«For existing sites, it should be true -- no breakage. For new sites it will be false, since it's false in the new site template.
+			return (manilaSuite.getNewsSitePref ("flMembersListPublic", default:true, flCreate:true))};
+		"newsRoom.flNewsItemSite" {
+			if not defined (adrNewsSite^.flNewsItemSite) {
+				adrNewsSite^.flNewsItemSite = false};
+			return (boolean (adrNewsSite^.flNewsItemSite))};
+		"newsRoom.flNewThreadOnDiscussHome" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNewThreadOnDiscussHome", default:false, flCreate:true)))};
+		"newsRoom.flNotifyChangedMessages" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNotifyChangedMessages", default:false, flCreate:true)))};
+		"newsRoom.flNotifyChangedStories" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNotifyChangedStories", default:false, flCreate:true)))};
+		"newsRoom.flNotifyEditedNewsItems" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNotifyEditedNewsItems", default:false, flCreate:true)))};
+		"newsRoom.flNotifyNewMessages" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNotifyNewMessages", default:true, flCreate:true)))};
+		"newsRoom.flNotifyNewNewsItems" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNotifyNewNewsItems", default:true, flCreate:true)))};
+		"newsRoom.flNotifyNewStories" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNotifyNewStories", default:true, flCreate:true)))};
+		"newsRoom.flNotifyPostedNewsItems" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNotifyPostedNewsItems", default:false, flCreate:true)))};
+		"newsRoom.flNotifyReleasedNewsItems" {
+			return (boolean (manilaSuite.getNewsSitePref ("flNotifyReleasedNewsItems", default:true, flCreate:true)))};
+		"newsRoom.flPlainPrefsTemplate" {
+			if not defined (adrNewsSite^.flPlainPrefsTemplate) {
+				adrNewsSite^.flPlainPrefsTemplate = false};
+			return (adrNewsSite^.flPlainPrefsTemplate)};
+		"newsRoom.flPublicMembersDgAccess" {
+			return (boolean (manilaSuite.getNewsSitePref ("flPublicMembersDgAccess", default:false, flCreate:true)))};
+		"newsRoom.flPublicReadDgAccess" {
+			local (adrDiscuss = @html.getPageTableAddress ()^.adrSiteRootTable^.discuss);
+			if not defined (adrDiscuss^) {
+				adrDiscuss = pta^.adrSiteRootTable};
+			if not defined (adrDiscuss^.edit) {
+				return (false)};
+			if defined (adrDiscuss^.["#members"]) {
+				return (false)};
+			return (true)};
+		"newsRoom.flRadioEditingAllowed" { //PBS 05/23/01
+			if not defined (adrNewsSite^.flRadioEditingAllowed) {
+				adrNewsSite^.flRadioEditingAllowed = true}; //default is true
+			return (adrNewsSite^.flRadioEditingAllowed)};
+		"newsRoom.flSearchable" {
+			if not defined (adrNewsSite^.flSearchable) {
+				adrNewsSite^.flSearchable = false};
+			return (adrNewsSite^.flSearchable)};
+		"newsRoom.flStaticRenderingButton" {
+			if not defined (adrNewsSite^.flStaticRenderingButton) {
+				adrNewsSite^.flStaticRenderingButton = false};
+			return (boolean (adrNewsSite^.flStaticRenderingButton))};
+		"newsRoom.flStaticRenderingEnabled" {
+			if not defined (adrNewsSite^.flStaticRenderingEnabled) {
+				adrNewsSite^.flStaticRenderingEnabled = false};
+			return (boolean (adrNewsSite^.flStaticRenderingEnabled))};
+		"newsRoom.flStaticRenderingOnChange" {
+			if not defined (adrNewsSite^.flStaticRenderingOnChange) {
+				adrNewsSite^.flStaticRenderingOnChange = false};
+			return (boolean (adrNewsSite^.flStaticRenderingOnChange))};
+		"newsRoom.flSyndicate" {
+			return (manilaSuite.getNewsSitePref ("flSyndicate", default:true, flCreate:true))};
+		"newsRoom.gems.autoShortcuts" {
+			return (manilaSuite.gems.autoShortcutsEnabled (adrSite))};
+		"newsRoom.headerMsgnum" {
+			return (adrDiscussLinks^.headerMsgNum)};
+		"newsRoom.homePageDateFormat" {
+			if not defined (adrNewsSite^.homePageDateFormat) {
+				adrNewsSite^.homePageDateFormat = manilaData.newSiteTemplate.["#newsSite"].homePageDateFormat};
+			return (manilaSuite.unTaint (adrNewsSite^.homePageDateFormat))};
+		"newsRoom.marginLeft" {
+			if defined (adrPrefs^.leftMargin) {
+				return (manilaSuite.unTaint (adrPrefs^.leftMargin))};
+			return ("")};
+		"newsRoom.marginTop" {
+			if defined (adrPrefs^.topMargin) {
+				return (manilaSuite.unTaint (adrPrefs^.topMargin))};
+			return ("")};
+		"newsRoom.navigationLinks" {
+			return (exportOutline (string (manilaSuite.getSiteAddress ()^.["#navigator"].outline)))};
+		"newsRoom.newsItems.newDepartment" {
+			return ("")};
+		"newsRoom.newsItems.template" {
+			if not defined (adrNewsSite^.newsItems) {
+				adrNewsSite^.newsItems = manilaData.newSiteTemplate.["#newsSite"].newsItems};
+			return (manilaSuite.translateToEntities (string (adrNewsSite^.newsItems.template)))};
+		"newsRoom.notifyList" {
+			local (myList = manilaSuite.getNewsSitePref ("notifyList"));
+			if typeOf (myList) == listType {
+				local (val);
+				local (i);
+				for i = 1 to sizeOf (myList) {
+					val = val + myList [i] + ","};
+				val = string.popTrailing (val, ',');
+				return (val)};
+			return (myList)};
+		"newsRoom.notifySender" { //PBS 10/27/99: from address for email notification
+			return (manilaSuite.getNewsSitePref ("notifySender", default:"", flCreate:true))};
+		"newsRoom.numMessagesInDiscussListing" { //JES 07/07/00
+			return (manilaSuite.getNewsSitePref ("numMessagesInDiscussListing", default:50, flCreate:true))};
+		"newsRoom.numMessagesInDiscussTopicsListing" { //PBS 09/30/00
+			return (manilaSuite.getNewsSitePref ("numMessagesInDiscussTopicsListing", default:10, flCreate:true))};
+		"newsRoom.numNewsDaysToRender" {
+			return (manilaSuite.getNewsSitePref ("numNewsDaysToRender", default:1, flCreate:true))};
+		"newsRoom.numNewsItemsToRender" {
+			if not defined (adrNewsSite^.numNewsItemsToRender) {
+				adrNewsSite^.numNewsItemsToRender = 5};
+			return (number (adrNewsSite^.numNewsItemsToRender))};
+		"newsRoom.numNewsItemsToRenderDepartment" { //PBS 09/10/01
+			if not defined (adrNewsSite^.numNewsItemsToRenderDepartment) {
+				adrNewsSite^.numNewsItemsToRenderDepartment = 100};
+			return (number (adrNewsSite^.numNewsItemsToRenderDepartment))};
+		"newsRoom.pageTemplate" {
+			return (exportOutline (string (manilaSuite.getSiteAddress ()^.["#template"])))};
+		"newsRoom.permanentLinkImage" {
+			if not defined (adrNewsSite^.permanentLinkImage) {
+				adrNewsSite^.permanentLinkImage = manilaData.newSiteTemplate.["#newsSite"].permanentLinkImage};
+			return (string (adrNewsSite^.permanentLinkImage))};
+		"newsRoom.radioHosting.flEnabled" {
+			return (boolean (adrNewsSite^.radioHosting.flEnabled))};
+		"newsRoom.radioHosting.commentsTemplate" {
+			return (exportOutline (string (adrNewsSite^.radioHosting.comments.template)))};
+		"newsRoom.radioHosting.commentsHeader" {
+			return (exportOutline (string (adrNewsSite^.radioHosting.comments.header)))};
+		"newsRoom.radioHosting.commentsItemTemplate" {
+			return (exportOutline (string (adrNewsSite^.radioHosting.comments.itemTemplate)))};
+		"newsRoom.radioHosting.commentsFooter" {
+			return (exportOutline (string (adrNewsSite^.radioHosting.comments.footer)))};
+		"newsRoom.radioHosting.commentsBgcolor1" {
+			return (string (adrNewsSite^.radioHosting.comments.colors.bgcolor1))};
+		"newsRoom.radioHosting.commentsBgcolor2" {
+			return (string (adrNewsSite^.radioHosting.comments.colors.bgcolor2))};
+		"newsRoom.rssInfo.channelDescription" {
+			local (adrPrefs = manilaSuite.xml.getRssPrefsAddress ());
+			if string (adrPrefs^.channelDescription) == "" {
+				adrPrefs^.channelDescription = string (pta^.newsSite^.tagLine)};
+			return (string (adrPrefs^.channelDescription))};
+		"newsRoom.rssInfo.channelTitle" {
+			local (adrPrefs = manilaSuite.xml.getRssPrefsAddress ());
+			return (string (adrPrefs^.channelTitle))};
+		"newsRoom.rssInfo.userlandExtensions.imageCaption" {
+			local (adrPrefs = manilaSuite.xml.getRssPrefsAddress ());
+			return (string (adrPrefs^.userlandExtensions.imageCaption))};
+		"newsRoom.rssInfo.userlandExtensions.managingEditor" {
+			local (adrPrefs = manilaSuite.xml.getRssPrefsAddress ());
+			return (string (adrPrefs^.userlandExtensions.managingEditor))};
+		"newsRoom.search.flIndex" {
+			if not defined (adrNewsSite^.search) {
+				new (tableType, @adrNewsSite^.search)};
+			if not defined (adrNewsSite^.search.flIndex) {
+				adrNewsSite^.search.flIndex = false};
+			return (boolean (adrNewsSite^.search.flIndex))};
+		"newsRoom.search.flIndexDgMessages" {
+			return (manilaSuite.getNewsSitePref ("search.flIndexDgMessages", default:false, flCreate:true))};
+		"newsRoom.search.serverDomain" {
+			return (manilaSuite.getNewsSitePref ("search.serverDomain", default:"", flCreate:true))};
+		"newsRoom.search.serverPort" {
+			return (manilaSuite.getNewsSitePref ("search.serverPort", default:80, flCreate:true))};
+		"newsRoom.search.serverProcedureName" {
+			return (manilaSuite.getNewsSitePref ("search.serverProcedureName", default:"mainResponder.search.index", flCreate:true))};
+		"newsRoom.search.serverRpcPath" {
+			return (manilaSuite.getNewsSitePref ("search.serverRpcPath", default:user.betty.prefs.rpcClientDefaultPath, flCreate:true))};
+		"newsRoom.search.siteName" {
+			return (manilaSuite.getNewsSitePref ("search.siteName", default:nameOf (pta^.adrSiteRootTable^), flCreate:true))};
+		"newsRoom.search.siteUrl" {
+			return (manilaSuite.getNewsSitePref ("search.siteUrl", default:pta^.ftpSite^.url, flCreate:true))};
+		"newsRoom.siteName" {
+			if not defined (adrNewsSite^.siteName) {
+				local (siteName = nameOf (adrSite^));
+				siteName = manilaSuite.getShortSiteName (siteName);
+				adrNewsSite^.siteName = siteName};
+			return (manilaSuite.getNewsSitePref ("siteName", flUntaint:true))};
+		"newsRoom.slides.indentString" {
+			return (manilaSuite.translateToEntities (manilaSuite.getNewsSitePref ("slides.indentString", default:"<blockquote>", flCreate:true, flUntaint:true)))};
+		"newsRoom.slides.outdentString" {
+			return (manilaSuite.translateToEntities (manilaSuite.getNewsSitePref ("slides.outdentString", default:"<blockquote>", flCreate:true, flUntaint:true)))};
+		"newsRoom.slides.template" {
+			local (s = string (adrNewsSite^.slides.template));
+			s = manilaSuite.translateToEntities (s);
+			return (s)};
+		"newsRoom.sysopMail" {
+			local (s = string (adrNewsSite^.sysopMail));
+			if s beginsWith "{" {
+				s = string.delete (s, 1, 1)}; //pop off left curly brace
+			if s endsWith "}" {
+				s = string.delete (s, sizeof (s), 1)};
+			s = string.replaceall (s, "\"", "");
+			s = string.replaceall (s, " ", "");
+			return (s)};
+		"newsRoom.tagLine" {
+			return (string.replaceAll (string (adrNewsSite^.tagline), "\"", "&quot;"))};
+		"newsRoom.timeZone.zone" { //PBS 04/03/00: time zone pref
+			if not defined (adrNewsSite^.timeZone.zone) {
+				return ("server")};
+			local (zone); //convert to zone number
+			zone = adrNewsSite^.timeZone.zone;
+			zone = (zone / 60) / 60;
+			zone = zone - 0.5;
+			zone = zone + 13;
+			zone = zone * 2;
+			zone = long (zone);
+			return (zone)};
+		"newsRoom.urls.baseUrl" { //PBS 7/14/99: get the base URL of the site
+			return (pta^.ftpSite^.url)};
+		"newsRoom.urls.login" {
+			return (manilaSuite.getUrl ("memberLogon"))};
+		"newsRoom.urls.prefsHome" { //PBS 11/9/99
+			return (manilaSuite.getUrl ("prefsHome"))};
+		"newsRoom.urls.profiles" { //PBS 8/5/99
+			return (manilaSuite.getUrl ("profilesHome"))};
+		"newsRoom.urls.signOut" {
+			return (manilaSuite.getUrl ("memberLogoff"))};
+		"newsRoom.urls.signUp" {
+			return (manilaSuite.getUrl ("memberSignUp"))};
+		"newsRoom.welcomePage" {
+			if not defined (adrNewsSite^.welcomePage) {
+				wp.newTextObject (string (manilaData.newSiteTemplate.["#newsSite"].welcomePage), @adrNewsSite^.welcomePage)};
+			return (string (adrNewsSite^.welcomePage))};
+		"prefs.language" {
+			local (languageTableAdr = manilaSuite.getLanguageTableAddress (pta));
+			return (nameOf (languageTableAdr^))};
+		"newsRoom.discussTheme.flCloneable" {
+			if not defined (adrNewsSite^.discussTheme) {
+				new (tableType, @adrNewsSite^.discussTheme)};
+			if not defined (adrNewsSite^.discussTheme.flCloneable) {
+				adrNewsSite^.discussTheme.flCloneable = false};
+			return (boolean (adrNewsSite^.discussTheme.flCloneable))};
+		"newsRoom.discussTheme.name" {
+			if not defined (adrNewsSite^.discussTheme) {
+				new (tableType, @adrNewsSite^.discussTheme)};
+			if not defined (adrNewsSite^.discussTheme.name) {
+				local (defaultName = pta^.newsSite^.siteName);
+				adrNewsSite^.discussTheme.name = defaultName};
+			return (adrNewsSite^.discussTheme.name)};
+		"newsRoom.discussTheme.author" {
+			if not defined (adrNewsSite^.discussTheme) {
+				new (tableType, @adrNewsSite^.discussTheme)};
+			if not defined (adrNewsSite^.discussTheme.authorName) {
+				local (defaultAuthor = "");
+				if defined (pta^.adrMemberInfo^.personalInfo.name) {
+					defaultAuthor = pta^.adrMemberInfo^.personalInfo.name};
+				adrNewsSite^.discussTheme.authorName = defaultAuthor};
+			return (adrNewsSite^.discussTheme.authorName)};
+		"newsRoom.discussTheme.authorEmail" {
+			if not defined (adrNewsSite^.discussTheme) {
+				new (tableType, @adrNewsSite^.discussTheme)};
+			if not defined (adrNewsSite^.discussTheme.authorEmail) {
+				local (authorEmail = adrNewsSite^.sysopMail);
+				if typeOf (authorEmail) == listType {
+					authorEmail = authorEmail[1]};
+				adrNewsSite^.discussTheme.authorEmail = authorEmail};
+			return (adrNewsSite^.discussTheme.authorEmail)};
+		"newsRoom.discussTheme.description" {
+			if not defined (adrNewsSite^.discussTheme) {
+				new (tableType, @adrNewsSite^.discussTheme)};
+			if not defined (adrNewsSite^.discussTheme.description) {
+				adrNewsSite^.discussTheme.description = ""};
+			return (string (adrNewsSite^.discussTheme.description))};
+		"newsRoom.rssInfo.userlandExtensions.copyrightOwner" {
+			if defined (adrNewsSite^.rssInfo.userLandExtensions.copyrightOwner) {
+				return (adrNewsSite^.rssInfo.userLandExtensions.copyrightOwner)}
+			else { // base copyright info on site info
+				local (numEditors = 1, sysopMail);
+				if typeOf (adrNewsSite^.sysopMail) == listType {
+					numEditors = sizeOf (adrNewsSite^.sysopMail);
+					sysopMail = adrNewsSite^.sysopMail[1]}
+				else {
+					sysopMail = pta^.newsSite^.sysopMail};
+				if numEditors == 1 { // copyright owner is the managing editor
+					return (mainResponder.members.getMemberName (pta^.memberGroupName, sysopMail))}
+				else { // copyright owner is based on the site name
+					return (manilaSuite.getNewsSitePref ("search.siteName", default:nameOf (pta^.adrSiteRootTable^), flCreate:true))}}}};
+	
+	return (defaultvalue)}

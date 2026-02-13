@@ -1,0 +1,60 @@
+on editHomePagePage (pta=nil) {
+	«A page that always displays an edit form for the current home page. Very useful with static rendering -- just bookmark this page.
+		«03/19/00; 12:41:57 PM by PBS
+		«Changes:
+			«03/20/00; 2:25:06 PM by PBS
+				«Add a meta tag that makes sure the page is never cached.
+			«4/19/00 at 3:22:07 PM by JES
+				«localized
+			«05/09/00; 10:39:35 PM by PBS
+				«Check the referer to defeat the client side trojan horse.
+			«05/11/00; 7:49:38 PM by JES
+				«merged in Brent's security fix for the client side trojan horse attack.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	bundle { //must be member
+		if not defined (pta^.adrMemberInfo) {
+			scriptError (manilaSuite.getString ("discuss.cantEditHomepageNoPermission", pta: pta))}}; // 4/19/00 JES: localized
+	
+	local (flPost = string.lower (pta^.method) == "post");
+	
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	bundle { //add a meta tag
+		«This is an editing page, so it should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.
+		
+		local (s = "<META HTTP-EQUIV=\"Expires\" CONTENT=\"Mon, 01 Jan 1990 01:00:00 GMT\">");
+		
+		if defined (pta^.meta) {
+			pta^.meta = pta^.meta + "\r" + s} //add to existing meta info
+		else {
+			pta^.meta = s}}; //create new meta info in the page table
+	
+	local (msgNum);
+	msgNum = pta^.newsSite^.discussLinks.homePageMsgNum; //home page message number
+	local (title = manilaSuite.getString ("discuss.editHomePageTitle", pta: pta)); // 4/19/00 JES: localized
+	
+	if flPost { //handle updating the message and re-render the home page to a static server
+		manilaSuite.referer.checkSelf (); //PBS 05/09/00: check referer to defeat client side trojan horse
+		pta^.postArgs.referer = pta^.ftpSite^.url;
+		manilaSuite.discuss.postEditedMsg (); //bottleneck script that does pretty much everything
+		
+		«Redirect. If auto-rendering, redirect to static home page. Else redirect to editorial home page.
+		local (adrSite = pta^.adrSiteRootTable);
+		if manilaSuite.staticRendering.isEnabled (adrSite) {
+			if manilaSuite.staticRendering.isAutoRenderingEnabled (adrSite) {
+				scriptError ("!redirect " + pta^.newsSite^.staticSite.["#ftpSite"].url)}};
+		
+		«Redirect to the editorial home page.
+		scriptError ("!redirect " + pta^.ftpSite^.url)}
+	else { //display the edit form
+		pta^.activeUrls = false;
+		pta^.addLineFeeds = false;
+		pta^.autoParagraphs = false;
+		local (flLinkToReferer = true);
+		local (actionUrl = pta^.url);
+		return (manilaSuite.discuss.editInBrowser (msgNum, title, flLinkToReferer, actionUrl))}} //takes care of other editorial permissions

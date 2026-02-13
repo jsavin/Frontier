@@ -1,0 +1,8 @@
+on isReleased (adrMsgTable) {
+	«Return true if this news item has been released.
+		«04/20/00; 1:27:56 AM by PBS
+	
+	if defined (adrMsgTable^.newsItem.flReleased) {
+		return (adrMsgTable^.newsItem.flReleased)};
+	
+	return (false)}

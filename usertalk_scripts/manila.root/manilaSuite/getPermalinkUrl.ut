@@ -1,0 +1,75 @@
+on getPermalinkUrl (adrsite, adrmsg, department=nil) {
+	«Changes
+		«2/3/06; 3:54:05 PM by JES
+			«Bug fix: For stories with no path, we sometimes incorrectly returned true. Now always return the storyReader URL for stories which have no site structure path.
+		«1/31/06; 5:25:28 PM by JES
+			«Permalinks to deleted or pending messages are always the DG reader page.
+		«10/18/05; 4:38:16 AM by JES
+			«New optional parameter, department. If we're getting the permalink for a news item, and department is specified, return the permalink for the news item on its department archive page, instead of in the home page archives.
+		«10/19/04; 3:22:05 PM by JES
+			«Bug fix: Call string.iso8859encode, not html.iso8859encode. When running on MacOS, use the mac iso8859 table, not the windows one.
+		«7/29/03; 2:32:05 PM by JES
+			«Added support for traditional non-news-item home pages, stories and DG messages.
+		«4/24/03; 8:13:46 AM by DW
+			«Created. This functionality is replicated all over the place. I needed it in manilaSuite.trackback.ping, and couldn't bear the thought of replicating it yet another time.
+	on encodeWithAmpersands (s) {
+		s = string.replaceall (s, "&", "&amp;");
+		s = string.replaceall (s, "<", "&lt;");
+		s = string.replaceall (s, ">", "&gt;");
+		local (adrtable);
+		if system.environment.isMac {
+			adrtable = @html.data.iso8859.mac}
+		else {
+			adrtable = @html.data.iso8859.win};
+		if defined (html.iso8859encode) {
+			s = html.iso8859encode (s, adrtable)}
+		else {
+			s = string.iso8859encode (s, adrtable)};
+		return (s)};
+	local (flDeleted = false, flPending = false);
+	if defined (adrmsg^.flDeleted) and adrmsg^.flDeleted {
+		flDeleted = true};
+	if defined (adrmsg^.flPending) and adrmsg^.flPending {
+		flPending = true};
+	if manilaSuite.news.isNewsItem (adrmsg) and not (flDeleted or flPending) {
+		local (day, month, year, hour, minute, second);
+		date.get (manilaSuite.news.getPostTime (adrmsg, adrsite), @day, @month, @year, @hour, @minute, @second);
+		local (relativeurl = year + "/" + string.padWithZeros (month, 2) + "/" + string.padWithZeros (day, 2) + "#a" + adrmsg^.msgNum);
+		if department == nil {
+			return (encodeWithAmpersands (adrsite^.["#ftpSite"].url + relativeurl))}
+		else {
+			return (encodeWithAmpersands (manilaSuite.news.getDepartmentUrl (adrsite, department) + "/" + relativeurl))}}
+	else { //home page, story page or DG message
+		local (siteurl = adrsite^.["#ftpSite"].url);
+		local (flHomePage = manilaSuite.discuss.isHomePage (adrmsg, adrsite));
+		bundle { //work around a bug where the alsoListedIn field didn't exist for some home page messages
+			local (msgyear = date.year (adrmsg^.postTime));
+			local (msgmonth = string.padWithZeros (date.month (adrmsg^.postTime), 2));
+			local (msgday = string.padWithZeros (date.day (adrmsg^.postTime), 2));
+			if defined (adrsite^.[msgyear].[msgmonth].[msgday].msgNum) {
+				if adrsite^.[msgyear].[msgmonth].[msgday].msgNum == adrmsg^.msgNum {
+					flHomePage = true}}};
+		if flHomePage and not (flDeleted or flPending) { //daily archive page
+			local (whenposted = manilaSuite.convertTime (adrmsg^.postTime));
+			local (relativeurl = date.year (whenposted) + "/" + string.padWithZeros (date.month (whenposted), 2) + "/" + string.padWithZeros (date.day (whenposted), 2));
+			return (encodeWithAmpersands (siteurl + relativeurl))}
+		else { //story or DG message
+			if manilaSuite.discuss.isStory (adrmsg, adrsite) and not (flDeleted or flPending) {
+				local (relativePath = "");
+				try { //try to get the relative path to the story
+					relativePath = manilaSuite.siteStructure.getRelativePathToMessage (adrMsg^.msgNum, adrSite)};
+				if relativePath == "" { //no path?
+					local (storyreaderurl = adrsite^.["#urls"].storyReader);
+					if not (storyreaderurl endswith "$") {
+						storyreaderurl = storyreaderurl + "$"};
+					return (encodeWithAmpersands (storyreaderurl + adrmsg^.msgnum))}
+				else { //there's a path, use the relative URL
+					return (encodeWithAmpersands (siteurl + relativePath))}}
+			else { //DG message
+				local (discussurl = adrsite^.["#urls"].discussMsgReader);
+				if not (discussurl endswith "$") {
+					discussurl = discussurl + "$"};
+				return (encodeWithAmpersands (discussUrl + adrmsg^.msgnum))}}}};
+«bundle //test code
+	«local (adrsite = @homeManilaWebsite)
+	«dialog.alert (getPermalinkUrl (adrsite, @adrsite^.["#discussionGroup"].messages[33], "Dept 2"))

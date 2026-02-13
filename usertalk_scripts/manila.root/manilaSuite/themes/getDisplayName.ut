@@ -1,0 +1,5 @@
+on getDisplayName (adrTheme) {
+	«Return a theme's display name, given its address.
+		«06/05/00; 10:55:29 PM by PBS
+	
+	return (adrTheme^.info.displayName)}

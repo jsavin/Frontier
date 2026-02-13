@@ -1,0 +1,16 @@
+on editorialPageAccess (pageName, pta) {
+	«Check access privileges for an editorial page.
+		«9/12/01; 2:46:54 PM by PBS
+	
+	if not defined (pta^.newsSite^.editorialPagesAccess) {
+		pta^.newsSite^.editorialPagesAccess = manilaData.newSiteTemplate.["#newsSite"].editorialPagesAccess};
+	
+	local (prefString = pta^.newsSite^.editorialPagesAccess.[pageName]);
+	
+	case string.lower (prefString) {
+		"public" { //everyone may view the page
+			return (true)};
+		"members" { //must be a member
+			return (defined (pta^.adrMemberInfo))};
+		"editors" { //must be an editor
+			return (manilaSuite.editors.editorialTest (pta))}}}

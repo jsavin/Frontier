@@ -1,0 +1,11 @@
+on channelChanged (url) {
+	«Changes
+		«1/6/2001; 11:06:54 AM by DW
+			«Created. Called from manilaSuite.rpcHandlers.rss.channelChanged.
+	local (adrservice = @user.xml.rss.cache.[url]);
+	try {delete (@adrservice^.xmltext)};
+	try {new (tabletype, @adrservice^.compilation.itemHistory)};
+	try {new (tabletype, @adrservice^.compilation.items)};
+	adrservice^.timeExpires = date (0);
+	local (adrlogtable = log.addtoguestdatabase ("channelChanged"));
+	adrlogtable^.adrservice = adrservice}

@@ -1,0 +1,45 @@
+on logonForm (bgcolor = ivory) { //a macro, call it from your logon page
+	«Changes
+		«4/14/00; 9:09:39 PM by JES
+			«localized prompts for mail address and password
+		«Wed, 26 May 1999 01:40:21 GMT by AR
+			«Eliminated some dead code.
+	local (pta = html.getPageTableAddress ());
+	«local (formaction = pta^.path) //send the message back to the same place
+	
+	local (formaction = pta^.responderattributes.urls^.memberHome); //send the user to the home page
+	formaction = formaction + "$" + nameof (this^); //add the name of the macro that generated the form to the request
+	local (formname = string (this));
+	local (titlebgcolor = black, titletextcolor = white);
+	local (bodybgcolor = bgcolor, bodytextcolor = black);
+	local (defaultmailaddress = "");
+	try {defaultmailaddress = pta^.pathargs};
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	
+	add ("<table border=\"0\"><tr><td>"); indentlevel++;
+	add ("<form name=\"" + formname + "\" action=\"" + formaction + "\" method=\"POST\">"); indentlevel++;
+	add ("<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">"); indentlevel++;
+	
+	add ("<tr bgcolor=\"#" + bodybgcolor + "\">"); indentlevel++;
+	add ("<td><font color=\"#" + bodytextcolor + "\">" + mainResponder.getString ("members.mailAddressPrompt") + "</font></td>"); // 4/14/00 JES: localized
+	add ("<td><input name=\"mailAddress\" value=\"" + defaultmailaddress + "\" size=\"30\" maxlength=\"60\"></td>");
+	add ("</tr>"); indentlevel--;
+	
+	add ("<tr bgcolor=\"" + bodybgcolor + "\">"); indentlevel++;
+	add ("<td><font color=\"#" + bodytextcolor + "\">" + mainResponder.getString ("members.passwordPrompt") + "</font></td>"); // 4/14/00 JES: localized
+	add ("<td><input type=\"password\" name=\"password\" size=\"30\" maxlength=\"60\"></td>");
+	add ("</tr>"); indentlevel--;
+	
+	add ("<tr bgcolor=\"#" + bodybgcolor + "\">"); indentlevel++;
+	add ("<td>&nbsp;</td>");
+	add ("<td align=\"right\"><input type=\"submit\" value=\"" + mainResponder.getString ("members.enterButton") + "\"></td>"); // 4/14/00 JES: localized
+	add ("</tr>"); indentlevel--;
+	
+	add ("</table>"); indentlevel--;
+	add ("</form>"); indentlevel--;
+	add ("</td></tr></table>"); indentlevel--;
+	
+	return (htmltext)}

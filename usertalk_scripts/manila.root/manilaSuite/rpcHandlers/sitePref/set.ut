@@ -1,0 +1,24 @@
+on set (username, password, siteName, prefName, prefdata) {
+	«Set the contents of one site pref.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't set the site pref \"" + prefName + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrPref = address (string (adrNewsSite + "." + string (prefName))));
+	
+	manilaSuite.rpcUtils.cleanObjectForImport (@prefdata);
+	
+	if defined (adrPref^) {
+		case typeOf (adrPref^) {
+			wptextType {
+				wp.newTextObject (adrPref, prefdata)};
+			outlineType {
+				op.newOutlineObject (adrPref, prefdata)}}
+		else {
+			table.assign (adrPref, prefdata)}}
+	else {
+		table.assign (adrPref, prefdata)};
+	
+	return (true)}

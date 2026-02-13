@@ -1,0 +1,21 @@
+on getPageType (adrMsg, adrSite) {
+	«Return a string, the type of page: Message, Story, Picture, or Home Page.
+		«04/04/00; 10:56:01 PM by PBS
+		«Changes:
+			«04/25/00; 2:04:56 PM by PBS
+				«Support for news items.
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	
+	local (type = "Message"); //default type
+	
+	if manilaSuite.discuss.isStory (adrMsg, adrSite) {
+		type = "Story"};
+	if manilaSuite.discuss.isPicture (adrMsg, adrSite) {
+		type = "Picture"};
+	if adrMsg^.msgNum == adrNewsSite^.discussLinks.homePageMsgNum { //home page?
+		type = "Home Page"};
+	if manilaSuite.news.isNewsItem (adrMsg) {
+		type = "News Item"};
+	
+	return (type)}

@@ -1,0 +1,19 @@
+on getRandomStoryUrl (adrSite=nil) {
+	«Get the URL for a random story.
+	
+	local (storyList = manilaSuite.discuss.getStoriesList (adrSite:adrSite));
+	local (adrDiscussionGroup = manilaSuite.discuss.getDiscussionGroupAddress (adrSite));
+	
+	local (storyReaderUrl = adrDiscussionGroup^.prefs.url);
+	
+	local (i);
+	
+	for i = 1 to 20 { //don't try more than 20 times
+		local (max = sizeOf (storyList));
+		local (randomNumber = random (0, max - 1));
+		
+		local (adrMsgTable = manilaSuite.discuss.getMessageTable (randomNumber, adrSite));
+		if manilaSuite.discuss.isStory (adrMsgTable) {
+			return (storyReaderUrl + randomNumber)}};
+	
+	return (storyReaderUrl + "1")}

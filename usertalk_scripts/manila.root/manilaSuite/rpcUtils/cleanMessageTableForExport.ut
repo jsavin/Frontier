@@ -1,0 +1,5 @@
+on cleanMessageTableForExport (adrmsg) {
+	for i = sizeOf (adrmsg^) downto 1 {
+		if string.lower (nameof (adrmsg^[i])) endswith "cache" {
+			delete (@adrmsg^[i])}};
+	return (manilaSuite.rpcUtils.cleanObjectForExport (adrmsg))}

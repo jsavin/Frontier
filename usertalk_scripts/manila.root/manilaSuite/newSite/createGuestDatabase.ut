@@ -1,0 +1,56 @@
+on createGuestDatabase (adrSiteInfo) {
+	«Create a guest database for this site. When this script returns, the gdb is empty, but it exists.
+		«If specified, the gdb is added to the user.databases table.
+		«10/21/99; 11:34:32 AM by PBS
+	
+	bundle { //check for non-alphas in site name
+		local (i);
+		for i = 1 to sizeOf (adrSiteInfo^.siteName) {
+			local (ch);
+			ch = adrSiteInfo^.siteName [i];
+			if not (string.isAlpha (ch)) {
+				if not (string.isNumeric (ch)) {
+					scriptError ("Can't create site \"" + adrSiteInfo^.shortSiteName + "\" because the name contains a character that is neither a letter nor a number.")}}}};
+	
+	local (fname);
+	local (folder = Frontier.getSubFolder ("www/"));
+	
+	if adrSiteInfo^.flUseExistingGdb {
+		if adrSiteInfo^.existingGdbName == nil {
+			scriptError ("Can't create site \"" + adrSiteInfo^.shortSiteName + "\" because the name of the existing guest database wasn't specified.")};
+		fname = adrSiteInfo^.existingGdbName}
+	else {
+		fname = adrSiteInfo^.shortSiteName + ".root"};
+	
+	local (f = folder + fname);
+	
+	if adrSiteInfo^.flUseExistingGdb { //make sure the gdb already exists
+		if not (file.exists (f)) {
+			scriptError ("Can't create site \"" + adrSiteInfo^.shortSiteName + "\" because the guest database \"" + adrSiteInfo^.existingGdbName + "\" doesn't exist.")}}
+	else { //make sure the gdb doesn't already exist
+		if file.exists (f) { //make sure the gdb doesn't already exist
+			scriptError ("Can't create site \"" + adrSiteInfo^.shortSiteName + "\" because a guest database named \"" + fname + "\" already exists.")}};
+	
+	if not (adrSiteInfo^.flUseExistingGdb) { //create a new gdb if not using an existing gdb
+		bundle { //create a new gdb
+			fileMenu.new (f); //new
+			window.hide (@[f]); //hide it
+			fileMenu.save (f)}}; //save it
+	
+	bundle { //add to user.databases table if specified
+		if adrSiteInfo^.flAddToUserDatabases {
+			local (adrTable = @user.databases.[fname]);
+			if not defined (adrTable^) {
+				new (tableType, adrTable);
+				adrTable^.f = f;
+				adrTable^.openOnStartup = true;
+				adrTable^.runStartupScript = false;
+				adrTable^.supportsSubscribe = false;
+				adrTable^.supportsIndexing = true}}};
+	
+	bundle { //add the address of the site to the site info table
+		adrSiteInfo^.adrSite = @[f].[adrSiteInfo^.siteName]};
+	
+	adrSiteInfo^.f = f; //store the file path in the site info table
+	
+	return (true)}

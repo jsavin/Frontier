@@ -1,0 +1,32 @@
+on callbacks (adrSite, adrMember, whichCallback) {
+	«manilaSuite.members.callbacks : 05/03/24, 22:39:44 by DAB]
+		«Call membershipgroup  callbacks, these live in membership sub-table callbacks. 
+		«A callback receives parameters adrSite,  adrMemberGroup, adrMember and language  
+		«values for whichCallback is  called by Manila after performing the operation are 
+			«signup (also called for manual and rpchandler member create operations)
+			«login
+			«block 
+			«unblock
+		«values for whichCallback is  called by Manila before performing the operation are 
+			«signout
+			«delete   (from admin page)
+	
+	local (adrMemberGroup = manilasuite.members.getGroupFromSiteAddress(adrSite));
+	if not defined(adrMemberGroup^.callbacks.[whichCallback]) {
+		return false};
+	
+	local (language);
+	if defined (adrSite^.["#prefs"].language) {
+		language = adrSite^.["#prefs"].language};
+	
+	local (t);
+	new(tabletype, @t);
+	t. membershipOperation = whichCallback;
+	
+	local (adrCallback);
+	for adrCallback in @adrMemberGroup^.callbacks.[whichCallback] {
+		while typeof(adrCallback^) == addressType { «chase address chains 
+			adrCallback = adrCallback^};
+		try { callscript(adrCallback, {adrSite,  adrMemberGroup, adrMember ,  language}, @ t) }};
+	
+	return true}

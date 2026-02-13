@@ -1,0 +1,88 @@
+on domains () {
+	«Display the list of domains on this server.
+		«Changes:
+			«06/10/00; 10:53:10 PM by PBS
+				«Domains can be tables.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Domains";
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s + "\r"};
+	
+	if not defined (user.webserver.prefs.flDomainStats) {
+		user.webserver.prefs.flDomainStats = false};
+	local (flShowStats = user.webserver.prefs.flDomainStats);
+	
+	local (infoTable);
+	new (tableType, @infoTable);
+	bundle { //build a table of information about the domains
+		local (i, adrStats = @user.webserver.stats.domains);
+		for i = 1 to sizeOf (config.mainResponder.domains) {
+			local (adrItem = @config.mainResponder.domains [i]);
+			
+			«Get info about this domain.
+			local (domainName = nameOf (adrItem^));
+			local (domainValue);
+			if typeOf (adrItem^) == tableType { //PBS 06/10/00: domains can be tables
+				domainValue = "Table"}
+			else {
+				domainValue = adrItem^};
+			local (bytes = 0, hits = 0, ticks = 0);
+			
+			«Look up stats for this domain.
+			if defined (adrStats^.[domainName]) {
+				bytes = adrStats^.[domainName].bytes;
+				hits = adrStats^.[domainName].hits;
+				ticks = adrStats^.[domainName].ticks};
+			
+			«Create a new table entry for this domain.
+			local (adrEntry = @infoTable.[domainName]);
+			new (tableType, adrEntry);
+			
+			«Populate the table entry.
+			adrEntry^.name = domainName;
+			try {
+				adrEntry^.documentsRoot = domainValue}
+			else {
+				adrEntry^.documentsRoot = ""};
+			adrEntry^.bytes = bytes;
+			adrEntry^.hits = hits;
+			adrEntry^.ticks = ticks}};
+	
+	local (adrTable = html.table.new (border:0, cellspacing:8, cellpadding:3));
+	bundle { //build the table that will be rendered as HTML
+		html.table.addColumn (adrTable, "Domain");
+		if flShowStats {
+			html.table.addColumn (adrTable, "Hits", align:"right");
+			html.table.addColumn (adrTable, "Bytes", align:"right")};
+		html.table.addColumn (adrTable, "Folder or Address");
+		
+		local (i);
+		for i = 1 to sizeOf (infoTable) {
+			local (adrItem = @infoTable [i]);
+			
+			local (url = "http://" + adrItem^.name + "/");
+			if string.lower (adrItem^.name) == "default" {
+				url = "http://127.0.0.1"};
+			local (link = html.getLink (adrItem^.name, url));
+			local (docsRoot = adrItem^.documentsRoot);
+			if typeOf (docsRoot) == addressType {
+				docsRoot = string.popFileFromAddress (docsRoot)}
+			else {
+				docsRoot = string.replaceAll (docsRoot, "\\", "\\\\")};
+			
+			with adrItem^ {
+				if flShowStats {
+					html.table.addRow (adrTable)^.cells = {link, string.addCommas (hits), string.megabyteString (bytes), docsRoot}}
+				else {
+					html.table.addRow (adrTable)^.cells = {link, docsRoot}}}}};
+	
+	«add ("Shown here are the domains hosted on this server, and the ")
+	«if flShowStats
+		«add ("hits, bytes served, and ")
+	«add ("document root for each.<p>")
+	add (html.table.render (adrTable));
+	html.table.delete (adrTable);
+	
+	return (htmlText)}

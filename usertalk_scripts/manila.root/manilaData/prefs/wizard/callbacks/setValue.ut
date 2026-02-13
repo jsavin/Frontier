@@ -1,0 +1,66 @@
+on setValue (partialAddress, adrVal) {
+	«Changes
+		«12/30/04; 3:33:23 PM by JES
+			«Untaint all strings which enter through the member prefs system.
+		«12/14/01; 1:38:32 PM by PBS
+			«Created. Set a value in a member's prefs. Handle the issue with bulletins prefs not specifying the subtable. (Each site gets a subtable in the member's bulletins table, this way multiple sites can share a membership group.)
+	
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
+	local (adrSite = manilaSuite.getSiteAddress ());
+	local (pta = html.getPageTableAddress ());
+	
+	on getPrefAddress (partialAddress) { //takes a partial address, returns an address into user's member table
+		local (nomad = pta^.adrMemberInfo, s);
+		loop {
+			if not (partialAddress contains ".") {
+				nomad = @nomad^.[partialAddress];
+				break};
+			s = string.nthField (partialAddress, '.', 1);
+			nomad = @nomad^.[s];
+			if not defined (nomad^) {
+				new (tableType, nomad)};
+			partialAddress = string.delete (partialAddress, 1, sizeOf (s) + 1)};
+		return (nomad)};
+	
+	case string.lower (partialAddress) {
+		"bulletins.enabled" {
+			if not defined (pta^.adrMemberInfo^.bulletins) {
+				new (tableType, @pta^.adrMemberInfo^.bulletins)};
+			if defined (adrNewsSite^.bulletinsPrefName) {
+				local (subtableName = string.trimWhiteSpace (adrNewsSite^.bulletinsPrefName));
+				if subtableName != "" {
+					if not defined (pta^.adrMemberInfo^.bulletins.[subtableName]) {
+						new (tableType, @pta^.adrMemberInfo^.bulletins.[subtableName])};
+					pta^.adrMemberInfo^.bulletins.[subtableName].enabled = boolean (adrVal^);
+					return}};
+			pta^.adrMemberInfo^.bulletins.enabled = boolean (adrVal^)};
+		"bulletins.inhtml" {
+			if not defined (pta^.adrMemberInfo^.bulletins) {
+				new (tableType, @pta^.adrMemberInfo^.bulletins)};
+			if defined (adrNewsSite^.bulletinsPrefName) {
+				local (subtableName = string.trimWhiteSpace (adrNewsSite^.bulletinsPrefName));
+				if subtableName != "" {
+					if not defined (pta^.adrMemberInfo^.bulletins.[subtableName]) {
+						new (tableType, @pta^.adrMemberInfo^.bulletins.[subtableName])};
+					pta^.adrMemberInfo^.bulletins.[subtableName].inhtml = boolean (adrVal^);
+					return}};
+			pta^.adrMemberInfo^.bulletins.inhtml = boolean (adrVal^)}}
+	else {
+		local (adrpref = getPrefAddress (partialAddress));
+		on untaint (adr) {
+			case typeOf (adr^) {
+				stringType {
+					adrpref^ = manilaSuite.untaint (adrpref^)};
+				outlineType {
+					op.newOutlineObject (manilaSuite.untaint (string (adrpref^)), adrpref)};
+				wpTextType {
+					wp.newTextObject (manilaSuite.untaint (string (adrpref^)), adrpref)};
+				tableType {
+					local (adritem);
+					for adritem in adr {
+						untaint (adritem)}}};
+			return};
+		if defined (adrpref^) {
+			untaint (adrpref)}};
+	
+	return (true)}

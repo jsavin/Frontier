@@ -1,0 +1,9 @@
+on rpcChangedMessageCallback (adrMsg) {
+	«Notify the world that a message has changed. This is the XML-RPC context entry point.
+		«04/04/00; 9:42:16 PM by PBS
+	
+	local (adrCallbacks = @manilaSuite.callbacks.changedMessage);
+	local (adrUserCallbacks = @config.manila.callbacks.changedMessage);
+	manilaSuite.callbacks.doRpcCallbacks (adrCallbacks, adrUserCallbacks, adrMsg);
+	
+	return (true)}

@@ -1,0 +1,12 @@
+on callbackLoop (adrcallbacktable, adrparamtable) {
+	«7/5/99; 1:34:45 PM by DW
+		«If the table isn't defined, do nothing.
+		«Ignore objects that aren't scripts. (This should cut down on the number of "item #1" errors that come when people leave callback tables open.)
+	if defined (adrcallbacktable^) {
+		local (i);
+		for i = 1 to sizeof (adrcallbacktable^) {
+			local (adrscript = @adrcallbacktable^ [i]);
+			while typeof (adrscript^) == addresstype {
+				adrscript = adrscript^};
+			if typeof (adrscript^) == scriptType {
+				callScript (adrscript, {}, adrparamtable)}}}} //scriptError to kill request

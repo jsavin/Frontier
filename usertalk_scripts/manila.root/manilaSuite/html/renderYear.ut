@@ -1,0 +1,67 @@
+on renderYear (adrTable, category=nil) {
+	«Render a stories list for an entire year. Formatting is like DaveNet stories lists.
+		«Changes:
+			«07/01/02; 1:55:52 AM by JES
+				«Localized month names.
+			«03/28/00; 12:43:32 AM by PBS
+				«Support for static rendering.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrRoot = mainResponder.discuss.openRoot ());
+	local (yearName = nameOf (adrTable^));
+	local (adrYear = @pta^.adrSiteRootTable^.[yearName]);
+	local (htmlText);
+	local (baseUrl = manilaSuite.getSiteUrl (pta:pta));
+	
+	if category == nil {
+		category = manilaSuite.discuss.getStoriesCategory ()};
+	
+	pta^.title = yearName;
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	add ("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\">");
+	
+	local (i);
+	
+	for i = sizeOf (adrYear^) downTo 1 {
+		local (adrMonth = @adrYear^ [i]);
+		local (month = nameOf (adrMonth^));
+		local (monthName = date.monthToString (number (month)));
+		try {monthName = mainResponder.getString ("date.monthNames." + month)};
+		local (j);
+		local (flFound = false);
+		for j = sizeOf (adrMonth^) downTo 1 {
+			local (adrDay = @adrMonth^ [j]);
+			local (k);
+			for k = sizeOf (adrDay^) downTo 1 {
+				local (adrStory = @adrDay^ [k]);
+				if typeOf (adrStory^) != tableType {
+					continue};
+				if not flFound {
+					flFound = true;
+					add ("<tr><td valign=\"top\"><b>" + monthName + " " + yearName + "</b></td>\r");
+					add ("<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>\r");
+					add ("<td>\r")};
+				local (name = nameOf (adrStory^));
+				local (msgNum = adrStory^.msgNum);
+				local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+				local (title = adrMsgTable^.subject);
+				local (url = baseUrl + yearName + "/" + month + "/" + nameOf (adrDay^) + "/" + name);
+				if manilaSuite.staticRendering.isStaticRendering () {
+					url = baseUrl + yearName + "/" + month + "/" + nameOf (adrDay^) + "/";
+					name = manilaSuite.staticRendering.convertFileName (name);
+					«if sizeOf (name) > 26
+						«name = string.mid (name, 1, 26)
+					url = url + name};
+				local (link = html.getLink (title, url));
+				add ("<b>" + link + "</b><p>")}};
+		add ("</td>\r");
+		add ("</tr>\r")};
+	
+	add ("</table>");
+	
+	htmlText = manilaSuite.unTaint (htmlText); //no curly brace macros in this text
+	
+	return (htmlText)}

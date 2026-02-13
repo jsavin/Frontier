@@ -1,0 +1,49 @@
+on buildSignUpStructure (adrPrefsWizard, adrDest, adrRequiredStructure=nil) {
+	«Build the sign-up wizard structure.
+		«11/19/99; 10:44:38 AM by PBS
+		«Changes:
+			«05/30/00; 6:18:22 PM by JES
+				«added adrRequiredStructure parameter for localization support
+	local (adrStructure = @adrPrefsWizard^.structure);
+	local (structureCopy);
+	structureCopy = adrStructure^;
+	
+	«First, delete the name element from the structure copy.
+	local (adrPanel = @structureCopy [1] [1]);
+	bundle {
+		local (i);
+		for i = sizeOf (adrPanel^) downTo 1 {
+			local (adrItem = @adrPanel^ [i]);
+			local (itemName = nameOf (adrItem^));
+			itemName = xml.convertToDisplayName (itemName);
+			if string.lower (itemName) != "item" {
+				continue};
+			if defined (adrItem^.["/atts"].adr) {
+				local (adrName = adrItem^.["/atts"].adr);
+				if string.lower (adrName) == "personalinfo.name" {
+					delete (adrItem)}}}};
+	
+	«Delete the panel atts and description because these will be substituted.
+	bundle {
+		try {
+			delete (@adrPanel^.["/atts"])};
+		local (i);
+		for i = sizeOf (adrPanel^) downTo 1 {
+			local (adrItem = @adrPanel^ [i]);
+			local (itemName = nameOf (adrItem^));
+			itemName = xml.convertToDisplayName (itemName);
+			if string.lower (itemName) == "description" {
+				delete (adrItem)}}};
+	
+	«Pre-pend the Required Info section to the top of the structure copy.
+	bundle {
+		if adrRequiredStructure == nil {
+			adrRequiredStructure = @manilaData.SignUpPanelStructure};
+		for i = 1 to sizeOf (adrRequiredStructure^) {
+			local (adrItem = @adrRequiredStructure^ [i]);
+			local (itemName = nameOf (adrItem^));
+			structureCopy [1] [1].[itemName] = adrItem^}};
+	
+	adrDest^ = structureCopy;
+	
+	return (true)}

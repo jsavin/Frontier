@@ -1,0 +1,15 @@
+on register (pluginName, adrVirginConfig, adrLegalMacros=nil, adrRpcHandlers=nil) {
+	«Register a plugin on the server. The plugin's install script should call this script to register it with Manila. This script returns the address of the config table for this plugin.
+		«02/23/00; 2:24:13 PM by PBS
+	
+	local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
+	if not defined (adrConfig^) {
+		adrConfig^ = adrVirginConfig^};
+	
+	if adrLegalMacros != nil {
+		manilaSuite.plugins.registerLegalMacros (adrLegalMacros)};
+	
+	if adrRpcHandlers != nil {
+		manilaSuite.plugins.registerRpcHandlers (pluginName, adrRpcHandlers)};
+	
+	return (adrConfig)}

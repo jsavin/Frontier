@@ -1,0 +1,14 @@
+on getCurrentThemeAddress (adrAdrTheme, pta=nil) {
+	«adrAdrTheme^ gets the address of the table containing the theme currently applied to this site. Return true if the table was found, false otherwise.
+		«06/05/00; 4:52:08 PM by PBS
+	
+	local (name = "default");
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	if defined (pta^.themes^.lastThemeApplied) {
+		name = pta^.themes^.lastThemeApplied};
+	local (adrTheme = @config.manila.themes.[name]);
+	if defined (adrTheme^) {
+		adrAdrTheme^ = adrTheme;
+		return (true)};
+	return (false)}

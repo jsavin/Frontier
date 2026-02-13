@@ -1,0 +1,15 @@
+on addExpiresMetaTag (pta=nil) {
+	«Add a meta tag that says the page expired a long time ago, so it won't be cached.
+		«04/24/00; 3:15:34 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (s = "<META HTTP-EQUIV=\"Expires\" CONTENT=\"Mon, 01 Jan 1990 01:00:00 GMT\">");
+	
+	if defined (pta^.meta) {
+		pta^.meta = pta^.meta + "\r" + s} //add to existing meta info
+	else {
+		pta^.meta = s}; //create new meta info in the page table
+	
+	return (true)}

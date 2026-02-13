@@ -1,0 +1,16 @@
+on delete (username, password, siteName, shortcutName) {
+	«Delete a shortcut named shortcutName.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't delete shortcut \"" + shortcutName + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrGlossary = @adrSite^.["#glossary"]);
+	
+	if not defined (adrGlossary) {
+		new (tableType, adrGlossary)};
+	
+	try {delete (@adrGlossary^.[manilaSuite.untaint (string.trimWhiteSpace (shortcutName))])};
+	
+	return (true)}

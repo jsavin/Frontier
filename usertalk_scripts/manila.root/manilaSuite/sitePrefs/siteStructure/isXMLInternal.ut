@@ -1,0 +1,5 @@
+on isXMLInternal(adr) {
+	local (nme = string.lower(nameof(adr^)));
+	«return  ((nme endswith "atts") or (nme endswith "pcdata"))
+	«return (not (nme contains "\t"))
+	return not ((nme endswith "\tcategory") or (nme endsWith "\tstory"))} //description i internal now 01/08/05, 15:46:45 by DAB

@@ -1,0 +1,54 @@
+on relativeUrl (path) {
+	«Changes
+		«3/22/06; 2:54:55 AM by JES
+			«Add support for shortcut sharing.
+		«3/22/06; 1:52:18 AM by JES
+			«Bug fix when path is a shortcut to a gem -- adrsite, not siteUrl.
+		«3/21/06; 9:29:41 PM by JES
+			«Path can now be any shortcut name.
+		«4/4/03; 3:22:24 PM by JES
+			«Return the URL to a page on a site, given its relative path.
+	local (pta = html.getPageTableAddress ());
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (siteUrl = manilaSuite.getSiteUrl (adrsite));
+	
+	if not (path contains "/") { //found a shortcut?
+		on myGlossRef (s, adrUrl) {
+			case s[1] {
+				"<" { //HTML snippet?
+					if s beginswith "<img " {
+						s = string.insert ("/", s, sizeOf (s))}; //add closing slash so it can be compiled
+					try {
+						local (xtable, url);
+						xml.compile (s, @xtable);
+						if defined (xtable[1].["/atts"].href) {
+							url = xtable[1].["/atts"].href};
+						if defined (xtable[1].["/atts"].src) {
+							url = xtable[1].["/atts"].src};
+						if url beginswith "http://" {
+							adrUrl^ = url;
+							return (true)}};
+					if url != "" {
+						adrUrl^ = url;
+						return (true)}};
+				"{" { //gem macro?
+					try {
+						local (msgnum = number (string.popSuffix (string.nthField (s, "(", 2), ")")));
+						local (adrgem = manilaSuite.gems.getGemAddress (adrsite, msgnum));
+						adrUrl^ = adrgem^.url;
+						return (true)}}}};
+		local (adrGlossary = pta^.glossary);
+		if defined (adrGlossary^.[path]) {
+			local (s = adrGlossary^.[path], url = "");
+			if myGlossRef (s, @url) {
+				return (url)}}
+		else { //check sub and parent sites, if configured, via refGlossary callback
+			local (callbackResult = manilaSuite.callbacks.refGlossary (path));
+			if typeOf (callbackResult) == stringType {
+				local (url);
+				if myGlossRef (callbackResult, @url) {
+					return (url)}}}};
+	
+	«Didn't find a shortcut -- use the path as a url
+	path = string.popLeading (path, '/');
+	return (siteUrl + path)}

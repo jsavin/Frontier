@@ -1,0 +1,5 @@
+on handler (pta, adrObject) {
+	«manilaSuite.sitePrefs.handlers.RobotsTxt.handler : 04/05/16, 12:42:35 by DAB
+		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	«messages at manilaData.localization.languages.english.strings.admin
+	return manilaSuite.robots.editor(false, pta^.fname + "$" + pta^.pathArgs)}

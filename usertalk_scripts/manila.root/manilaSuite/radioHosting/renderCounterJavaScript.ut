@@ -1,0 +1,210 @@
+on renderCounterJavaScript (flTrackbackReturn = false) {
+	«Changes
+		«1/31/06; 1:34:42 AM by JES
+			«Updated comment counter to handle new flPending flag.
+		«22/10/04; 4:49:56 PM by PR
+			«allow the option to return one file for trackback and one for comments, default is two files
+		«23/09/04; 8:27:07 PM by PR
+			«one return for both trackback comment counters
+				«make a double of everything and when we loop check for both trackback and comments
+		«02/09/04; 9:58:28 AM by PR
+			«added etag & last modified headers. added start post and end post support. fixed a bug in countmessages and added countTrackback
+		«7/22/03; 4:44:40 PM by JES
+			«Addd support for trackback counters.
+		«7/12/02; 4:39:43 PM by JES
+			«Upgrade comment data to the new table-based storage format.
+		«2/28/02; 4:23:17 PM by JES
+			«If there's no comments data for the user, return the empty string.
+		«2/23/02; 1:22:56 AM by JS
+			«Return some JavaScript that returns a comment count, given a postId.
+	local (pta = html.getPageTableAddress ());
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	
+	local (args); new (tableType, @args);
+	webserver.parseArgs (pta^.searchArgs, @args);
+	
+	local (flOneFile = false);
+	if defined (args.oneFile) { // 22/08/04; 4:36:06 PM by PR check to see if we got a request for the new one file counter
+		if args.oneFile == "true" {
+			flOneFile = true}};
+	local (userid = string.padWithZeros (args.u, 7));
+	
+	local (adrdata = manilaSuite.radioHosting.init ());
+	local (adrStats = manilaSuite.radioHosting.initUserStats(userid, adrdata)); // 03/09/04; 10:30:07 AM by PR: init the user stats
+	local (adrTrackBackUser = @adrdata^.trackback.users.[userid]); // storage for trackback
+	local (adrCommentUser = @adrdata^.comments.users.[userid]); // storage for comments
+	
+	local (trackbackReturn = "", commentReturn = "", flComment = true, flTrackback = true);
+	bundle { // decide wether we are doing comment counts, trackback counts or both
+		if !flOneFile && flTrackbackReturn {
+			flComment = false};
+		if flComment {
+			if not defined (adrCommentUser^) {
+				commentReturn = "function commentCounter (postid) {document.write ('0')}";
+				flComment = false}};
+		if !flOneFile && !flTrackbackReturn {
+			flTrackback = false};
+		if flTrackback {
+			if not defined (adrTrackBackUser^) {
+				trackbackReturn = "function trackbackCounter (postid) {document.write ('0')}";
+				flTrackback = false}}};
+	
+	if !flTrackback && !flComment { // no comments or trackback
+		return (trackbackReturn + "\n" + commentReturn)};
+	
+	if !defined (adrStats^.whenLastModified) { //01/09/04; 1:20:37 PM by PR: check for whenLastModified, if it doesn't exist, initialize it to now
+		adrStats^.whenLastModified = clock.now ()};
+	
+	bundle { // setup the last modified and etag headers, possibly return 304 not modified
+		pta^.responseHeaders.["Last-Modified"] = date.netStandardString(adrStats^.whenLastModified);
+		local (etag = "\"" + long(adrStats^.whenLastModified) + "\"");
+		pta^.responseHeaders.["ETag"] = etag;
+		if defined (pta^.requestHeaders.["If-None-Match"]) {
+			if pta^.requestHeaders.["If-None-Match"] == etag {
+				pta^.code = 304;
+				pta^.responseHeaders.["Content-Length"] = 0;
+				delete (@pta^.responseHeaders.["Content-Type"]);
+				delete (@pta^.responseBody);
+				return ("")}}};
+	
+	on countMessages (msgnum) { // 01/09/04; 12:59:40 PM by PR: added flDeleted checking
+		if msgnum == 0 {
+			return (0)};
+		local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite));
+		local (ct = 1);
+		local (responsenum);
+		if defined (adrmsg^.fldeleted) { // 01/09/04; 1:00:05 PM by PR: if deleted, set ct to 0
+			if adrmsg^.fldeleted {
+				ct = 0}};
+		if defined (adrmsg^.flPending) {
+			if adrmsg^.flPending {
+				ct = 0}};
+		for responsenum in adrmsg^.responses {
+			ct = ct + countMessages (responsenum)};
+		return (ct)};
+	on countTrackbacks (adrUrls) { // 02/09/04; 9:10:53 AM by PR: added flPosted checking
+		local (ct = 0);
+		if defined (adrUrls) {
+			for adrUrl in adrUrls {
+				if adrUrl^.flPosted {
+					ct++}}};
+		return (ct)};
+	
+	local (postids = "", tbpostids = "");
+	local (counts = "", tbCounts = "");
+	local (end = 0, tbend = 0);
+	if defined (args.sp) && defined (args.ep) { // 01/09/04; 1:24:08 PM by PR: check for start post and end post
+		«New method checks for the count variable for each post, if the count doesn't exist it is created
+		local (startPost = args.sp);
+		local (endPost = args.ep);
+		for post = startPost to endPost {
+			bundle { // comments
+				if flComment {
+					if defined (adrCommentUser^.[post]) {
+						local (adrPost = @adrCommentUser^.[post]);
+						if typeOf (adrPost^) != tableType { //update data storage to new format
+							local (n = adrPost^);
+							new (tableType, adrPost);
+							adrPost^.link = "";
+							adrPost^.msgnum = n;
+							adrPost^.count = countmessages (n)};
+						if !defined (adrPost^.count) {
+							adrPost^.count = countMessages (adrUser^.[post].msgnum)};
+						counts = counts + ("\"" + adrPost^.count + "\", ");
+						postids = postids + ("\"" + post + "\", ");
+						end++}}};
+			bundle { // trackback
+				if flTrackback {
+					if defined (adrTrackBackUser^.[post]) {
+						local (adrPost = @adrTrackBackUser^.[post]);
+						«if typeOf (adrPost^) != tableType // Jake: was trackback ever stored like this?
+							«local (n = adrPost^)
+							«new (tableType, adrPost)
+							«adrPost^.link = ""
+							«adrPost^.msgnum = n
+							«adrPost^.count = adrTrackBackUser (n)
+						if !defined (adrPost^.count) {
+							if defined (adrPost^.trackback.inbound.urls) {
+								adrPost^.count = countTrackbacks (@adrPost^.trackback.inbound.urls)}
+							else {
+								adrPost^.count = 0}};
+						tbCounts = tbCounts + ("\"" + adrPost^.count + "\", ");
+						tbpostids = tbpostids + ("\"" + post + "\", ");
+						tbend++}}}};
+		end++;
+		tbend++}
+	else { // old method
+		«24/09/04; 8:21:49 AM by PR need two loops with the old method to check all posts...
+		local (adr);
+		if flComment {
+			for adr in adrCommentUser {
+				if typeOf (adr^) != tableType { //update data storage to new format
+					local (n = adr^);
+					new (tableType, adr);
+					adr^.link = "";
+					adr^.msgnum = n};
+				local (postid = nameOf (adr^));
+				local (ct = 0);
+				if !defined (adr^.count) {
+					local (msgnum = adr^.msgnum);
+					adr^.count = countMessages (msgnum)};
+				ct = adr^.count;
+				counts = counts + ("\"" + ct + "\", ");;
+				postids = postids + ("\"" + postid + "\", ");;
+				end++};
+			end++};
+		if flTrackback {
+			for adr in adrTrackBackUser {
+				«if typeOf (adr^) != tableType // Jake: was trackback ever stored like this?
+					«local (n = adr^)
+					«new (tableType, adr)
+					«adr^.link = ""
+					«adr^.msgnum = n
+				local (postid = nameOf (adr^));
+				local (ct = 0);
+				if !defined (adr^.count) {
+					if defined (adr^.trackback.inbound.urls) {
+						adr^.count = countTrackbacks (@adr^.trackback.inbound.urls)} // 02/09/04; 9:17:38 AM by PR: use the count script, now checks for deleted items
+					else {
+						adr^.count = 0}};
+				ct = adr^.count;
+				tbcounts = tbcounts + ("\"" + ct + "\", ");;
+				tbpostids = tbpostids + ("\"" + postid + "\", ");;
+				tbend++};
+			tbend++}};
+	postids = "[" + postids + "\"\"]";
+	tbpostids = "[" + tbpostids + "\"\"]";
+	counts = "[" + counts + "\"\"]";
+	tbcounts = "[" + tbcounts + "\"\"]";
+	
+	«24/09/04; 8:22:17 AM by PR build the return for comments and trackback individually
+	if flComment {
+		commentReturn = string (manilaSuite.radioHosting.data.counterScript);
+		bundle { // comment return 
+			commentReturn = string.replace (commentReturn, "[[postids]]", postids);
+			commentReturn = string.replace (commentReturn, "[[counts]]", counts);
+			commentReturn = string.replace (commentReturn, "[[end]]", end);
+			commentReturn = string.trimWhiteSpace (commentReturn)}};
+	if flTrackback {
+		trackbackReturn = string (manilaSuite.radioHosting.data.counterScript);
+		bundle { // trackback return
+			trackbackReturn = string.replace (trackbackReturn, "[[postids]]", tbpostids);
+			trackbackReturn = string.replace (trackbackReturn, "[[counts]]", tbcounts);
+			trackbackReturn = string.replace (trackbackReturn, "[[end]]", tbend);
+			trackbackReturn = string.replaceAll (trackbackReturn, "commentCounter", "trackbackCounter", false);
+			trackbackReturn = string.replaceAll (trackbackReturn, "postids", "tbpostids", false);
+			trackbackReturn = string.replaceAll (trackbackReturn, "counts", "tbcounts", false);
+			trackbackReturn= string.replaceAll (trackbackReturn, "start", "tbstart", false);
+			trackbackReturn = string.replaceAll (trackbackReturn, "end", "tbend", false);
+			trackbackReturn = string.trimWhiteSpace (trackbackReturn)}};
+	
+	if (flOneFile) {
+		return (commentReturn + "\n" + trackbackReturn)} // return both
+	else {
+		if flTrackbackReturn {
+			return (trackbackReturn)}
+		else {
+			return (commentReturn)}}};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«renderCounterJavaScript ()

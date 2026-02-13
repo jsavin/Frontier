@@ -1,0 +1,27 @@
+on set (username, password, siteName, cohort, members) {
+	«manilaSuite.rpcHandlers.accesscontrol.configure.cohorts.set : 04/05/21, 09:55:13 by DAB
+		«adds to the  list of members in cohort for sitename
+		«was manilaFixer.rpcHandlers.accesscontrol.configure.cohorts.set : 02/03/15, 15:02:32 by DAB
+	local (errStr = "Can't set members of cohort " + cohort + " because ");
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, errStr);
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	local (adrCohort = @adrCohorts^.[cohort]);
+	if not defined(adrCohort) {
+		new(tabletype, adrCohort)};
+	if not defined(adrCohort^.memberdata) {
+		new(tabletype, @adrCohort^.memberdata)};
+	
+	local (adr, memberKey);
+	local (nonMembers = {});
+	for memberKey in members {
+		if not defined(adrGroup^.users.[memberKey]) {
+			nonMembers[0] = memberKey;
+			continue};
+		adrCohort^.memberdata.[memberKey] = clock.now()};
+	
+	if nonMembers != {} {
+		scriptError("Can't add " + string(nonMembers) + " to  " + cohort + " because they are not members.")};
+	
+	return true}

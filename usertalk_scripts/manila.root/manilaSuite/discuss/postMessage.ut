@@ -1,0 +1,133 @@
+on postMessage (alsoListedIn="") {
+	«Post a message.
+	«Changes:
+		«4/12/07; 3:20:25 PM by LL
+			«Support a new site level preference to support a limited set of HTML tags for members.
+		«3/25/07; 4:26:22 PM by LL
+			«Update to the messageSubmit callback to allow the callback to return an error message to the user.
+		«2/21/07; 9:59:51 AM by LL
+			«Added support for a new or changed message submit callback.
+		«2005 and earlier
+			«7/22/05; 4:09:48 PM by JES
+				«Only call manilaSuite.log.add if defined.
+			«7/6/05; 2:43:51 AM by JES
+				«Log an event when a new message is posted. (Restore an older change which had been overwritten with 9.5 changes.)
+			«10/26/99; 11:16:32 AM by PBS
+				«Respect the alsoListedIn parameter, don't enforce that alsoListedIn be the stories category.
+				«The call to the newStoryCallback script was failing because it had been moved. The call has been fixed.
+			«10/26/99; 11:25:09 AM by PBS
+				«Don't call the newStoryCallback script: now we're getting double email notifications. It appears to be unneeded.
+			«12/26/99; 5:18:27 PM by PBS
+				«Commented-out a redundant call to fileMenu.saveMyRoot, which increases performance when messages are posted.
+			«04/03/00; 11:15:44 AM by PBS
+				«Time zone support for Manila -- convert post time to use the site's time zone prefs.
+			«04/19/00 at 6:35:57 PM by JES
+				«localized
+			«05/09/00; 10:40:09 PM by PBS
+				«Check the referer to defeat the client side trojan horse.
+			«05/11/00; 7:53:40 PM by JES
+				«merged in Brent's security fix for the client side trojan horse attack.
+			«10/09/00; 10:18:26 PM by PBS
+				«Make sure indexes get updated -- pass adrSite to add-category script.
+			«05/30/01; 11:23:02 PM by JES
+				«Added error handling for when the subject is left empty. Now we give the user a second chance at posting the message, instead of discarding their edits. This is important because the WYSIWYG editor would lose the content of the message, when the user hits the browser's back button.
+	
+	bundle { //PBS 05/09/00: check referers to defeat client side trojan horse
+		local (flOkayReferer = false);
+		try { //msgReader referer
+			manilaSuite.referer.checkNew ("discussMsgReader");
+			flOkayReferer = true};
+		if not flOkayReferer { //new thread referer
+			try {
+				«manilaSuite.referer.checkNew ("discussNewThread")
+				manilaSuite.referer.checkNew ("discussNewThread", "discussPostMessage"); //04.06.23, 14:55:27 by DAB
+				flOkayReferer = true}};
+		if not flOkayReferer { //new story referer
+			try {
+				«manilaSuite.referer.checkNew ("editorialNewStory")
+				manilaSuite.referer.checkNew ("editorialNewStory", "discussPostStory"); //04.06.23, 14:55:43 by DAB
+				flOkayReferer = true}};
+		if not flOkayReferer {
+			manilaSuite.referer.checkSelf ()}};
+	
+	local (pta = html.getPageTableAddress ());
+	on forbiddenPage () {
+		pta^.template = string (manilaData.notFoundTemplate);
+		pta^.title = "403 Forbidden";
+		pta^.code = 403;
+		pta^.activeUrls = false;
+		return ("Request Forbidden.")};
+	on errorHandler (bodyText) {
+		local (lowerListedIn = string.lower (alsoListedIn));
+		case true {
+			lowerListedIn contains "stories" {
+				return (manilaSuite.discuss.newStory ())}}
+		else { //DG message
+			return (manilaSuite.discuss.newThread ())}};
+	bundle { //call messageSubmit callbacks
+		local (adrcallbacks = @config.manila.callbacks.messageSubmit);
+		if not defined (adrcallbacks^) {
+			new (tableType, adrcallbacks)};
+		for adr in adrcallbacks {
+			local (adrscript = adr);
+			try {
+				while typeOf (adrscript^) == addressType { //follow addresses
+					adrscript = adrscript^};
+				if nameOf (adrscript^) != "item #1" {
+					if not adrscript^ (pta) {
+						return (forbiddenPage ())}}}
+			else {
+				pta^.errorText = tryError;
+				local (pendingBodyText = "");
+				if defined (pta^.postArgs.subject) {
+					pta^.subject = manilaSuite.untaint (string (pta^.postArgs.subject))};
+				if defined (pta^.postArgs.text) {
+					pendingBodyText = manilaSuite.untaint (string (pta^.postArgs.text));
+					pta^.messageBody = pendingBodyText};
+				return (errorHandler (pendingBodyText))}}};
+	
+	bundle { //see if any pre post validation is requested, 04.06.23, 00:14:59 by DAB
+		local (adrValidator, htmltext, urlname = "discussPostMessage");
+		if string.lower(alsoListedIn) contains "stories" {
+			urlname = "discussPostStory"};
+		if manilaSuite.plugins.ETPoverride.getScriptAddress(urlName, @adrValidator) { //04.06.20, 13:14:14 by DAB
+			if not adrValidator^(@htmltext) { //validator saw error, so returns whatever it says (repeat form)
+				return htmltext}}};
+	
+	
+	pta^.title = manilaSuite.getString ("discuss.messageReceiverPageTitle"); // 4/19/00 JES: localized
+	local (postTime = manilaSuite.convertTime ()); //PBS 04/02/00: time zone support
+	local (msgNum);
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	bundle { //check legal tags for member
+		if not (pta^.flEditor == true) {
+			if not defined (config.manila.prefs.flRestrictHtmlForMembers) {
+				config.manila.prefs.flRestrictHtmlForMembers = true};
+			
+			if config.manila.prefs.flRestrictHtmlForMembers {
+				if manilaSuite.getNewsSitePref ("discussionGroup.flRestrictHtmlForMembers", adrSite, true) {
+					if defined (pta^.postArgs.subject) {
+						pta^.postArgs.subject = searchEngine.stripMarkup (string (pta^.postArgs.subject))};
+					if defined (pta^.postArgs.text) {
+						pta^.postArgs.text = manilaSuite.html.stripHtmlAttributes (string (pta^.postArgs.text))}}}}};
+	try {
+		local (startticks = clock.ticks ());
+		msgNum = mainResponder.discuss.postMessage (flAcceptFileUploads:true, postTime:postTime); //PBS 04/03/00: send post time converted with time zone
+		if defined (manilaSuite.log) { //log the event
+			local (t); new (tableType, @t);
+			t.msglink = manilaSuite.getUrl ("discussMsgReader") + msgNum;
+			t.msgnum = msgNum;
+			manilaSuite.log.addWithAttribution ("newMessage", startticks, @t)}}
+	else {
+		if defined (pta^.errorText) {
+			return (errorHandler (pta^.messageBody))}};
+	local (adrTable = mainResponder.discuss.getMessageTable (msgNum));
+	manilaSuite.discuss.setTimeZoneForMessage (adrTable); //PBS 04/03/00: store time zone info with message
+	if alsoListedIn != "" {
+		manilaSuite.discuss.addCategoryToMessage (adrTable, alsoListedIn, adrSite)}; //PBS 10/26/99
+	if defined (pta^.postArgs.redirect) {
+		local (redirectUrl = manilaSuite.unTaint (pta^.postArgs.redirect + msgNum));
+		mainResponder.redirect (redirectUrl)};
+	«try {manilaSuite.callbacks.newStoryCallback (adrTable)}
+	
+	return ("")}

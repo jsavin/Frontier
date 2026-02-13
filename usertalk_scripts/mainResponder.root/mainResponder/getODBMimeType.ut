@@ -1,0 +1,19 @@
+on getODBMimeType (adr) { //get the MIME type of a database object
+	«Cache mime types, so we only do the lookup once per file.
+	local (adrCache = @system.temp.mainResponder.mimeTypeCache);
+	
+	if not defined (adrCache^) {
+		new (tableType, adrCache)}
+	else {
+		try {return (adrCache^.[adr])}}; //the mime type may be cached
+	
+	local (mimeType = "text/html");
+	local (objectType = typeOf (adr^));
+	
+	if objectType == binaryType {
+		objectType = getBinaryType (adr^)};
+	try {mimeType = user.webserver.prefs.type2MIME.[objectType]};
+	
+	adrCache^.[adr] = mimeType; //cache the mime type
+	
+	return (mimeType)}

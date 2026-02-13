@@ -1,0 +1,19 @@
+on relativeLink (lineText, path, style="", onmouseover="", onmouseout="") {
+	«Changes
+		«3/21/06; 9:18:09 PM by JES
+			«Call through manilaMacros.relativeUrl to get the URL for the link.
+		«10/26/00; 1:50:45 AM by PBS
+			«Return a link to a page on a site. Similar to the homePageLink macro, but you supply a relative path.
+	
+	local (pta = html.getPageTableAddress ());
+	local (url = manilaMacros.relativeUrl (path));
+	local (link);
+	link = "<a href=\"" + url + "\"";
+	if style != "" {
+		link = link + " style=\"" + style + "\""};
+	if onmouseover != "" {
+		link = link + " onmouseover=\"" + onmouseover + "\""};
+	if onmouseout != "" {
+		link = link + " onmouseout=\"" + onmouseout + "\""};
+	link = link + ">" + lineText + "</a>";
+	return (manilaSuite.unTaint (link))}

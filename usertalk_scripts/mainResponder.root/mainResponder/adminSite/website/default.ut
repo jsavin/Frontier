@@ -1,0 +1,44 @@
+on default () {
+	«Changes
+		«11/11/05; 3:37:30 AM by JES
+			«When rendering the admin page for a single site, only collect data needed to manage the site, not data for all the sites on the server. (mainResponder.adminSite.macros.initSiteListCacheForSite)
+		«6/6/02; 12:05:18 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Sites on this server";
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledString ("\t", indentlevel) + s + "\r\n");};
+	
+	if defined (pta^.searchArgTable.site) { //manage one site
+		«local (adrcache = mainResponder.adminSite.macros.initSiteListCache ())
+		«local (adrinfo = @adrcache^.sites.[pta^.searchArgTable.site])
+		«add (mainResponder.adminSite.macros.manageSite (adrinfo))
+		
+		local (adrsite);
+		try {
+			if defined ([pta^.searchArgTable.site]) {
+				adrsite = @[pta^.searchArgTable.site]}
+			else {
+				if defined ([pta^.searchArgTable.site + "ManilaWebsite"]) {
+					adrsite = @[pta^.searchArgTable.site + "ManilaWebsite"]}
+				else {
+					adrsite = manilaSuite.rpcUtils.getSiteAddress (pta^.searchArgTable.site)}}}
+		else {
+			adrsite = manilaSuite.rpcUtils.getSiteAddress (pta^.searchArgTable.site + "ManilaWebsite")};
+		local (canonicalSiteName = nameOf (adrsite^));
+		local (shortSiteName = manilaSuite.getShortSiteName (canonicalSiteName));
+		local (siteinfo);
+		mainResponder.adminSite.macros.initSiteListCacheForSite (adrsite, @siteinfo, canonicalSiteName, shortSiteName);
+		
+		add (mainResponder.adminSite.macros.manageSite (@siteinfo))}
+	else { //list sites
+		table.assign (@pta^.template, string (pta^.homeTemplate^));
+		add (mainresponder.adminSite.macros.listSites ())};
+	
+	return (htmltext)};
+
+«bundle //test code
+	«html.setpagetableaddress (@workspace.pt)
+	«default ()

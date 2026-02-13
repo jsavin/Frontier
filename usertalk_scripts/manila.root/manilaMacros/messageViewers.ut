@@ -1,0 +1,72 @@
+on messageViewers (itemTemplate = "{count}</td><td>{name}</td><td>{lastaccess}", listprefix = "<table>", listSuffix = "</table>", itemPrefix = "<tr><td>", itemSuffix="</td></tr>", cohortToView="", noAccessesMessage="No tracked accesses") {
+	«Changes
+		«05/04/10, 14:36:27 by DAB
+			«use access control tracking data to see who has read current message
+				«just builds a list of member names
+				«template "macros" are
+					«count
+					«name
+					«lastAcess
+					«firstaccess
+			«was ManilaExtras.messageViewers : 02/09/28, 15:22:26 by DAB
+	local (pta = html.getPageTableAddress());
+	local (adrMsg = manilaSuite.discuss.getCurrentMessageTable (pta:pta));
+	if not defined(adrMsg^) {
+		delete(@pta^.adrMsgTable); //stupid I have to do this
+		return noAccessesMessage};
+	if not defined(adrMsg^.accessControl) { //02/09/28, 15:08:50 by DAB
+		return noAccessesMessage};
+	local (adrTrackedAccess= @adrMsg^.accessControl.trackAccess);
+	if not defined(adrTrackedAccess^) {
+		return noAccessesMessage};
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (groupName = manilaSuite.members.getGroupNameFromSiteAddress (adrSite));
+	
+	local (htmltext="");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (Cnt=0, attsTbl);
+	on noteAccess(adrInfoTable) {
+		Cnt++;
+		if cnt == 1 {
+			add(listprefix)};
+		new(tabletype, @attsTbl);
+		attsTbl.count = Cnt;
+		attsTbl.firstAccess = timeCreated(adrInfoTable);
+		attsTbl.lastAccess = adrInfoTable^.lastaccess;
+		local (memberKey = nameof(adrInfoTable^));
+		try {
+			attsTbl.name = mainResponder.members.getMemberTable (groupName, memberKey)^.personalInfo.name}
+		else {
+			attsTbl.name = memberKey};
+		add(itemprefix);
+		add(string.multipleReplaceAll(itemTemplate, @attsTbl, false, "{", "}"));
+		add(itemSuffix);
+		return true};
+	
+	if cohortToView != "" {
+		local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+		local (adrCohorts = @adrGroup^.cohorts);
+		if not defined(adrCohorts^) {
+			return noAccessesMessage};
+		local (adrCohort = @adrCohorts^.[cohortToView]);
+		if not defined(adrCohort^) {
+			return noAccessesMessage};
+		local (memberList = adrCohort^);
+		if memberList == {} {
+			return noAccessesMessage};
+		
+		for memberKey in memberList {
+			if defined(adrTrackedAccess^.[memberKey]) {
+				noteAccess(@adrTrackedAccess^.[memberKey])}}}
+	else {
+		for adr in adrTrackedAccess {
+			noteAccess(adr)}};
+	
+	if cnt == 0 {
+		add(noAccessesMessage)}
+	else {
+		add(listSuffix)};
+	
+	return htmltext}

@@ -1,0 +1,10 @@
+on getRegisteredPluginsAddress () {
+	«Return the address of the table containing the config tables for registered plugins.
+		«02/23/00; 3:54:39 PM by PBS
+	
+	if not defined (config.manila.plugins) {
+		new (tableType, @config.manila.plugins)};
+	if not defined (config.manila.plugins.registered) {
+		new (tableType, @config.manila.plugins.registered)};
+	
+	return (@config.manila.plugins.registered)}

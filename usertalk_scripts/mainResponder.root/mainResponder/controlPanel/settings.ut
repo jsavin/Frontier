@@ -1,0 +1,3 @@
+local (pta = html.getPageTableAddress ());
+webserver.util.setCookie (pta, "wizard", "");
+return (prefsSuite.browser (flIncludeTitle:false, separatorColor:"#DCDCFF", separatorTextColor:black))

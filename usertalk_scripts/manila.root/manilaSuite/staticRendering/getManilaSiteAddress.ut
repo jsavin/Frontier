@@ -1,0 +1,7 @@
+on getManilaSiteAddress (pta=nil) {
+	«Get the address of the current Manila site.
+		«03/06/00; 9:29:00 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	return (pta^.adrManilaSite)}

@@ -1,0 +1,76 @@
+on accessTimestampString () {
+	«Changes
+		«14/05/05; 9:18:04 AM by PR
+			«do extra error checking, and correction to getstring call
+		«02/07/23, 07:56:17 by DAB
+			«Created. Return a message describing the times when a message is accessible after a request and example from David Davies 02/07/22.
+				«was ManilaExtras.accessTimestampString : 02/07/23, 07:56:17 by DAB
+	local (pta = html.getPageTableAddress());
+	local (adrMsgTable);
+	bundle { //establish current message
+		«based on mainResponder.discuss.getMessageTable
+			«but works with new messages
+		case true {
+			defined (pta^.adrMsgTable) {
+				adrMsgTable = pta^.adrMsgTable};
+			defined (pta^.adrNewMsg) {
+				adrMsgTable = pta^.adrNewMsg};
+			defined (pta^.adrEditedMsg) {
+				adrMsgTable = pta^.adrEditedMsg}}
+		else {
+			local (msgnum);
+			if defined (pta^.msgNum) {
+				msgNum = pta^.msgNum}
+			else {
+				if pta^.pathArgs != "" {
+					try {msgNum = number (pta^.pathArgs)}}}; // 14/05/05; 9:18:26 AM by PR pathArg could be a non-coerceable string, such as 'advanced_template'
+			if msgnum != 0 {
+				adrMsgTable = mainResponder.discuss.getMessageTable (msgNum)}}};
+	
+	if not defined(adrMsgTable^) {
+		return ""};
+	adrMsgTable = manilaSuite.accessControl.goToOriginal(pta, adrMsgTable); //establish adrMsgTable as top of thread 
+	
+	local(now, releaseDate, expiryDate);
+	try {releaseDate = adrMsgTable^.accessControl.releaseDate};
+	try {expiryDate = adrMsgTable^.accessControl.expiryDate};
+	local (replTbl);
+	bundle {
+		new(tabletype, @replTbl);
+		replTbl.releaseDate= releaseDate;
+		replTbl.expiryDate = expiryDate};
+	
+	local (msgID);
+	if releaseDate == nil {
+		if expiryDate == nil {
+			msgID = "alwaysAccessible"} //is unrestricted
+		else {
+			if now < expiryDate {
+				msgID = "willExpireAt"} //will expire at [[expiryDate]]
+			else {
+				msgID = "hasExpiredAt"}}} //expired at [[expiryDate]]
+	else {
+		if expiryDate == nil {
+			if now < releaseDate {
+				msgID = "willBeReleasedAt"} //will be released at [[releaseDate]]
+			else {
+				msgID = "wasreleasedAt"}} //was released on [[releaseDate]]
+		else {
+			if now < releaseDate {
+				msgID = "willBeAccessibleAt"} //will be accessible from [[releaseDate]] to [[expirydate]]
+			else {
+				if now < expiryDate {
+					msgID = "isAccessible"} // is accessible until [[expirydate]]
+				else {
+					msgID = "wasAccessible"}}}}; // was accessible between [[releaseDate]] and [[expirydate]]
+	
+	«return manilaSuite.getString("accesscontrol.timeState." + msgID, @replTbl, pta)
+	return manilaSuite.getString("accesscontrol.timeState." + msgID, @replTbl, pta:pta)}; // 14/05/05; 11:38:56 AM by PR we were passing pta as the languagetableaddress...
+«bundle // testing
+	«local (pt)
+	«new (tabletype, @pt)
+	«pt.pathargs = "3"
+	«pt.discussionRoot = "homeManilaWebsiteDiscuss"
+	«pt.manilaLanguageTableAddress = @manilaData.localization.languages.english
+	«html.setpagetableaddress(@pt)
+	«dialog.alert (accessTimestampString ())

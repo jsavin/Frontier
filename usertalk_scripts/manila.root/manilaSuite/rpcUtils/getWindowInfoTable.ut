@@ -1,0 +1,17 @@
+on getWindowInfoTable (itemName, adrSite, adrTable) {
+	«Get the window info table for an advanced item, such as the template, cascading style sheet, and so on.
+		«02/06/00; 3:15:28 PM by PBS
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	local (adrPikePrefs = @adrNewsSite^.pike);
+	if not defined (adrPikePrefs^) {
+		new (tableType, adrPikePrefs)};
+	local (adrWindowInfoPrefs = @adrPikePrefs^.windowInfoTables);
+	if not defined (adrWindowInfoPrefs^) {
+		new (tableType, adrWindowInfoPrefs)};
+	local (adrWindowInfoForThisItem = @adrWindowInfoPrefs^.[itemName]);
+	if defined (adrWindowInfoForThisItem^) {
+		adrTable^ = adrWindowInfoForThisItem^; //copy the prefs
+		return (true)};
+	
+	return (false)}

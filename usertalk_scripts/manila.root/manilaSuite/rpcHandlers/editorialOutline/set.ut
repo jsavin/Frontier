@@ -1,0 +1,24 @@
+on set (siteName, username, password, binaryOpmlText) {
+	«Save a Manila site outline. Don't check it in -- that's handled elsewhere.
+		«10/12/00; 9:36:25 PM by PBS
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't save the editorial outline because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = config.manila.sites.[siteName]);
+	local (adrTable = @adrSite^.["#newsSite"].editorialOutline);
+	if not defined (adrTable^) {
+		new (tableType, adrTable)};
+	
+	if not defined (adrTable^.flCheckedOut) {
+		adrTable^.flCheckedOut = false};
+	if adrTable^.flCheckedOut { //already checked out?
+		if string.lower (adrTable^.checkedOutBy) != string.lower (username) { //not checked out by this user?
+			scriptError ("Can't save editorial outline because another editor has checked it out.")}};
+	adrTable^.flCheckedOut = true;
+	adrTable^.checkedOutBy = username;
+	adrTable^.timeCheckedOut = clock.now (); //refresh on each save
+	adrTable^.siteOutline = base64.decode (binaryOpmlText);
+	
+	return (true)}

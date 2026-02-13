@@ -1,0 +1,15 @@
+on isPicture (username, password, siteName, msgNum) {
+	«Determine if a message is in the pictures list.
+		«Changes:
+			«11/26/01; 11:05:51 AM by PBS
+				«Support content editors.
+	
+	bundle { //make sure this person is a managing or content editor of the site.
+		local (beginningErrorString = "Can't determine if message \"" + msgNum + "\" is a picture because ");
+		manilaSuite.rpcUtils.managingEditorOrContentEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss));
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	return (manilaSuite.discuss.isPicture (adrmsg, adrSite))}

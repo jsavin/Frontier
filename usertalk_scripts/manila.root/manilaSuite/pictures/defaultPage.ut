@@ -1,0 +1,102 @@
+on defaultPage () {
+	«05/22/00; 6:08:12 PM by JES -- localized version of the pictures list page
+		«Changes:
+			«9/12/01; 2:57:30 PM by PBS
+				«Support for access privileges.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	
+	pta^.title = manilaSuite.getString ("pictures.defaultPageTitle");
+	
+	local (htmltext="", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledString ('\t', indentlevel) + s + "\r");};
+	
+	local (replacementTable); //04/05/28, 07:51:44 by DAB
+	bundle { //replacement table 04/05/28, 07:51:37 by DAB
+		new (tableType, @replacementTable);
+		replacementTable.editorialPrefs= string.popSuffix(pta^.urls^.editorialPrefs, "$")};
+	
+	on error(errid) { //04/05/28, 08:13:54 by DAB
+		add("<p style='color:red'>" + manilaSuite.getString(errid, @replacementTable, pta:pta)+"</p>");
+		return true};
+	
+	bundle { //PBS 09/12/01: check access privileges for pictures page
+		if not (manilaSuite.editors.editorialPageAccess ("pictures", pta)) {
+			«return ("Can't display the Pictures page because you don't have sufficient access privileges.")
+			return manilaSuite.getString ("discuss.cantDisplayPicturesPage", @replacementTable, pta:pta)}}; //04/06/14, 22:58:16 by DAB
+	
+	on checkMessageOut(adrMsgTable) { //04/06/14, 22:39:48 by DAB
+		if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, pta^.adrMemberInfo, adrSite, true) { //true because it's a message
+			«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+			local (title = adrMsgTable^.subject);
+			title = manilaSuite.unTaint (title);
+			
+			s = s + manilaSuite.getString ("discuss.cantEditBecauseSomeoneElseIs", @replacementTable, pta:pta);
+			return false};
+		manilaSuite.custody.checkOut (adrMsgTable,  pta^.adrMemberInfo, adrSite, true); //true because it's a message
+		return true};
+	
+	on cancelCheckout(adrMsgTable) { //04/06/14, 22:39:53 by DAB
+		return manilasuite.custody.undoCheckOut(adrMsgTable, pta^.adrMemberInfo, adrSite, true)};
+	
+	on checkMessageIn(adrMsgTable) { //04/06/14, 22:39:53 by DAB
+		return manilasuite.custody.CheckIn(adrMsgTable, pta^.adrMemberInfo, adrSite, true)};
+	
+	if pta^.method == "POST" { //04/05/27, 17:05:51 by DAB
+		local (picturesCategory = manilaSuite.discuss.getPicturesCategory (adrSite));
+		manilaSuite.referer.checkSelf (); //PBS 05/09/00: check referer to defeat client side trojan horse
+		manilaSuite.unTaintPostArgs (); //PBS 10/30/99
+		case true {
+			defined(pta^.postargs.promotePicture) {
+				local (msgNum = string.trimWhiteSpace (pta^.postArgs.msgNumStory));
+				try {msgnum = number(msgnum)};
+				if msgnum < 1 or msgnum >= manilaSuite.discuss.getDiscussionGroupAddress(adrSite)^.prefs.nextMsgNum {
+					error("pictures.messageNotValidNumber")}
+				else {
+					local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+					if defined(adrMsgTable^.image) {
+						if checkMessageOut(adrMsgTable) { //04/06/14, 23:03:15 by DAB
+							manilaSuite.discuss.addCategoryToMessage (adrMsgTable, pta^.newsSite^.picturesListedIn, adrSite); //10/09/00: pass adrSite parameter
+							checkMessageIn(adrMsgTable)}} //04/06/14, 23:03:20 by DAB
+					else {
+						error("pictures.messageNotPictureError")}}};
+			defined(pta^.postargs.demotePicture) {
+				local (ix);
+				for ix = 1 to sizeOf (pta^.postArgs) {
+					local (oneArg = nameOf (pta^.postArgs [ix]));
+					local (msgNum);
+					oneArg = string.lower (oneArg);
+					if oneArg beginsWith "delete" { //delete from the pictures list
+						msgNum = string.popLeading (oneArg - "delete", '0');
+						local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+						if checkMessageOut(adrMsgTable) { //04/06/14, 23:03:15 by DAB
+							manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, picturesCategory, adrSite); //PBS 10/09/00: update indexes
+							checkMessageIn(adrMsgTable)}}}}; //04/06/14, 23:03:20 by DAB
+			defined(pta^.postargs.deleteMessage) {
+				delete(@pta^.postargs.deleteMessage); //04.08.21, 12:02:23 by DAB
+				local (ix);
+				for ix = 1 to sizeOf (pta^.postArgs) {
+					local (oneArg = nameOf (pta^.postArgs [ix]));
+					local (msgNum);
+					oneArg = string.lower (oneArg);
+					if oneArg beginsWith "delete" { //delete from the stories list
+						msgNum = string.popLeading (oneArg - "delete", '0');
+						«mainResponder.discuss.deleteMessage (msgNum)
+						local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+						«manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, picturesCategory, adrSite) //PBS 10/09/00: update indexes
+						manilaSuite.discuss.changeMessageDeletion(adrMsgTable, pta^.adrMemberInfo, adrSite, true)}}}}};
+	
+	add (manilaSuite.getString ("pictures.defaultPageDescription", @replacementTable, pta:pta) + "\r");
+	
+	«add (manilaSuite.storyList ("pictures"))
+	add ("<form method='POST' action='" + manilaSuite.getUrl ("editorialPictures", pta) + "'>");
+	add (manilaSuite.storyList ("pictures", true,  20, flIncludeCheckBox:true,  boxPrefix:"delete", flUseSiteStructurePaths:false)); //04/05/27, 16:35:45 by DAB
+	if pta^.flEditor { //add to pictures list form 04/05/28, 07:58:39 by DAB
+		add (manilaSuite.getString ("admin.addDGMessageNumber"));
+		add ("<input name='msgNumStory' value='' size='10'>");
+		add ("<input type='submit' name = 'promotePicture' value='" + manilaSuite.getString ("admin.addDGMessageToPictures") + "'>")};
+	add ("</form>"); //04/05/27, 16:54:42 by DAB
+	
+	return htmltext}

@@ -1,0 +1,19 @@
+on editButton (discussRoot, msgnum) {
+	local (pta = html.getPageTableAddress ());
+	if not mainResponder.editorial.clientIsMessageAuthor (discussRoot, msgnum) {
+		return ("")};
+	local (htmltext = "", indentLevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString (tab, indentLevel) + s + cr};
+	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+	local (category = adrmsg^.category);
+	local (adrroot = mainResponder.editorial.getDiscussTableAddress (discussRoot));
+	local (adrcategory = @adrroot^.editorialprefs.categories.[category]);
+	add ("<p align=\"center\"><form method=post action=\"" + adrcategory^.editURL + "\">"); indentLevel++;
+	add ("<input type=hidden name=\"discussRoot\" value=\"" + discussRoot + "\">");
+	add ("<input type=hidden name=\"msgnum\" value=\"" + msgnum + "\">");
+	add ("<input type=hidden name=\"referer\" value=\"" + pta^.url + "\">");
+	add ("<input type=submit value=\"Edit\">");
+	«add ("<input type=button value=\"Edit\" onClick=\"window.open('" + adrcategory^.editURL + "', 'Edit " + adrcategory^.displayname + "', 'width=350,height=400,scrollbars=yes')\">")
+	add ("</form></p>"); indentLevel--;
+	return (htmltext)}

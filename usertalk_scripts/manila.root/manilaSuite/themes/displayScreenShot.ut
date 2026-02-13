@@ -1,0 +1,18 @@
+on displayScreenShot (themeName=nil, pta=nil) {
+	«Return a screen shot for a theme.
+		«05/26/00; 1:14:53 AM by PBS
+	
+	if pta == nil {
+		pta = parentOf (code)};
+	if themeName == nil {
+		themeName = string.nthField (pta^.searchArgs, '=', 2);
+		themeName = string.urlDecode (themeName)};
+	
+	local (adrTheme = @config.manila.themes.[themeName]);
+	local (adrPictureTable = @adrTheme^.screenShot);
+	local (adrData = @adrPictureTable^.data);
+	local (adrMimeType = @adrPictureTable^.mimeType);
+	
+	pta^.responseHeaders.["Content-Type"] = adrMimeType^;
+	
+	return (adrData^)}

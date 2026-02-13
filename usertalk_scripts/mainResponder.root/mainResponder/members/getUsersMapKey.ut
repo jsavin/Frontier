@@ -1,0 +1,49 @@
+on getUsersMapKey (memberKey, adrMembershipGroup=nil) {
+	«Changes
+		«12/13/05; 1:39:47 AM by JES
+			«Only rebuild the usersMap table when usersMapNextKey is undefined, if its size is different from the size of the membership group's users table.
+		«8/4/05; 3:18:43 AM by JES
+			«If the key for the given member doesn't match the email address for the member's key, delete both and create a new mapping.
+			«This should gradually correct bad data in the usersMap and member records.
+		«11/24/04; 6:19:32 PM by JES
+			«Created. Given a memberKey, get the numeric usersMap key associated with the member.
+	if adrMembershipGroup == nil {
+		local (pta = html.getPageTableAddress ());
+		local (groupName = pta^.defaultMembershipGroup);
+		adrMembershipGroup = mainResponder.members.getMembershipTable (groupName)};
+	if not defined (adrMembershipGroup^.usersMapNextKey) {
+		bundle { //rebuild usersMap before the first time we set this value
+			local (flRebuild = false);
+			if not defined (adrmembershipGroup^.usersMap) {
+				flRebuild = true}
+			else { //usersMap is defined, but a different size than the membership group
+				if sizeOf (adrmembershipGroup^.usersMap) != sizeOf (adrmembershipGroup^.users) {
+					flRebuild = true}};
+			if flRebuild {
+				local (adr);
+				local (adrusers = @adrmembershipGroup^.users);
+				for adr in adrusers {
+					if defined (adr^.usersMapKey) {
+						delete (@adr^.usersMapKey)}};
+				new (tableType, @adrmembershipGroup^.usersMap)}};
+		adrMembershipGroup^.usersMapNextKey = sizeOf (adrMembershipGroup^.usersMap) + 1};
+	
+	if not defined (adrMembershipGroup^.usersMap) {
+		new (tableType, @adrMembershipGroup^.usersMap)};
+	local (adrmember = @adrMembershipGroup^.users.[memberKey]);
+	on createKey () {
+		adrMember^.usersMapKey = adrMembershipGroup^.usersMapNextKey;
+		adrMembershipGroup^.usersMap.[adrMembershipGroup^.usersMapNextKey] = nameOf (adrMember^);
+		adrMembershipGroup^.usersMapNextKey++};
+	if not defined (adrMember^.usersMapKey) {
+		createKey ()};
+	bundle { //check for invalid key, re-creating if necessary
+		if defined (adrMembershipGroup^.usersMap.[adrMember^.usersMapKey]) {
+			if string.lower (adrMembershipGroup^.usersMap.[adrMember^.usersMapKey]) != string.lower (nameOf (adrMember^)) {
+				delete (@adrMembershipGroup^.usersMap.[adrMember^.usersMapKey]);
+				delete (@adrMember^.usersMapKey);
+				createKey ()}}
+		else { //key record not defined -- re-create
+			delete (@adrMember^.usersMapKey);
+			createKey ()}};
+	return (adrMember^.usersMapKey)}

@@ -1,0 +1,12 @@
+on setToDoList (username, password, workgroupList, encodedOutline) {
+	local (adrmember = mainResponder.members.getMemberTableWithPassword ("default", username, password));
+	local (adrworkgroup = @adrmember^.workgroup);
+	if not defined (adrworkgroup^) {
+		new (tabletype, adrworkgroup)};
+	
+	local (bits = binary (base64.decode (encodedOutline)));
+	setBinaryType (@bits, outlinetype);
+	unpack (@bits, @adrworkgroup^.todolist);
+	
+	adrworkgroup^.workgroupList = workgroupList;
+	return (true)}

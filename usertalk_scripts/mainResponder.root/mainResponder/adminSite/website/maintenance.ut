@@ -1,0 +1,143 @@
+on maintenance () {
+	«Changes
+		«5/16/07; 11:28:30 AM by LL
+			«Added new maintenance command to clean referer stats on the server.
+		«3/14/07; 11:24:43 PM by LL
+			«Add new command to reset site preferences for membership related settings.
+			«Removed Updates command.
+		«11/24/06; 5:32:39 PM by LL
+			«Corrected some text on the page.
+		«9/8/02; 4:46:12 PM by JES
+			«Fixed a typo. Implemented the Reset search enging index function, with a confirmation page.
+		«8/18/02; 10:08:53 PM by JES
+			«Created. Render a page of server maintenance functions.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Maintenance";
+	
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	local (editorialModeConfirmText = "", backupConfirmText = "", searchConfirmText = "", cleanRefererStatsText = "");
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		case true { //figure out which button the user clicked
+			defined (adrargs^.backupNow) {
+				thread.callScript (@manilaSuite.backups.backupAllSites, {});
+				local (notificationlist = config.manila.backups.notifyList);
+				if typeOf (notificationlist) == listType {
+					notificationlist = "";
+					local (oneaddr);
+					for oneaddr in config.manila.backups.notifyList {
+						notificationlist = notificationlist + oneaddr + ", "};
+					notificationlist = string.delete (notificationlist, sizeOf (notificationlist) - 1, 2)};
+				backupConfirmText = "Manila site backups have been started. When the backups are complete, an email notification will be sent to " + notificationlist + " when the backup operation is complete."};
+			defined (adrargs^.cleanRefererStats) {
+				thread.callScript (@manilaSuite.stats.cleanAllReferers, {});
+				cleanRefererStatsText = "The referer stats tables for all Manila sites on this server are now being cleaned."};
+			defined (adrargs^.resetEditorialMode) {
+				if defined (adrargs^.editorialMode) {
+					local (editorialMode = adrargs^.editorialMode);
+					thread.callScript (@manilaSuite.sitePrefs.modifySites, {editorialMode});
+					local (notificationlist = config.manila.backups.notifyList);
+					if typeOf (notificationlist) == listType {
+						notificationlist = "";
+						local (oneaddr);
+						for oneaddr in config.manila.backups.notifyList {
+							notificationlist = notificationlist + oneaddr + ", "};
+						notificationlist = string.delete (notificationlist, sizeOf (notificationlist) - 1, 2)};
+					editorialModeConfirmText = "The Manila editorial mode reset has been started. An email notification will be sent to " + notificationlist + " when the operation is complete."}};
+			defined (adrargs^.indexNow) {
+				local (adr);
+				for adr in @config.manila.sites {
+					local (adrsite = adr^);
+					try {adrsite^.["#newsSite"].search.indexQueue.flRunning = true}};
+				searchConfirmText = "All Manila sites on this server have been scheduled to be re-indexed by the Search Engine Server."};
+			defined (adrargs^.resetIndex) {
+				add ("<form method=\"POST\">");
+				add ("<p>Are you sure you want to completely reset the entire search engine index?</p><p>This operation cannot be undone.</p>");
+				add ("<p><br /><input type=\"submit\" name=\"cancel\" value=\"Cancel\" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"resetIndexConfirm\" value=\"Reset Index\" /></p>");
+				add ("</form>");
+				return (htmltext)};
+			defined (adrargs^.resetIndexConfirm) {
+				mainResponder.search.utilities.assureIndex ();
+				local (indexpath = mainResponder.search.utilities.getIndexPath ());
+				local (adrindex = @[indexpath].index);
+				local (adrpageinfo = @[indexpath].pageInfo);
+				new (tableType, adrindex);
+				new (tableType, adrpageinfo);
+				fileMenu.saveMyRoot (adrindex);
+				searchConfirmText = "The search engine index has been completely reset. Sites for which indexing is enabled will have new or changed pages indexed."}}};
+	
+	bundle { //explanatory text
+		add ("<p>This page provides access to server-wide maintenance functions like Backups, Search Engine Indexing options.</p>")};
+	
+	«bundle //database update options
+		«add ("<h4><a name=\"updates\"></a>Updates</h4>")
+		«add ("<form method=\"POST\">")
+		«bundle //explanatory text
+			«add ("<p>Manila can automatically connect to a server at UserLand, to get new features and bug fixes. Only those parts that have changed since the last update will be installed. To update your databases now, click the Update Now button.</p>")
+		«add (mainResponder.adminSite.prefs.updateNowButton (false))
+		«add ("</form>")
+	bundle { //reset site membership preferences
+		add ("<h4><a name=\"manilaMembershipSettings\"></a>Reset Manila Sites Editorial Settings</h4>");
+		add ("<form method=\"POST\">");
+		bundle { //explanatory text
+			add ("<p>You can use this command to change the <a href=\"http://maniladocs.userland.com/stories/storyReader$6\">editorial settings</a> for all installed Manila sites to match your selected mode.</p>");
+			add ("<p>Note: Selecting the Members Only option will restrict only members from viewing a site.</p>")};
+		bundle { //Reset Editorial Mode form
+			local (levels = {"Public", "Public, Moderated membership", "Public, No comments/discussion group", "Members Only"});
+			local (formNameLevels = {"public", "publicmoderated", "publicrestricted", "membersonly"});
+			add ("<select name=\"editorialMode\">");
+			local (i);
+			for i = 1 to 4 {
+				local (selectedtext = "");
+				add ("<option value=\"" + formNameLevels[i] + "\">" + levels[i] + "</option>")};
+			add ("</select>");
+			add ("<p><br /><input type=\"submit\" name=\"resetEditorialMode\" value=\"Reset Editorial Settings\" /></p>")};
+		if editorialModeConfirmText != "" {
+			add ("<br /><b>" + editorialModeConfirmText + "</b></p>")};
+		add ("</form>")};
+	
+	add ("<br /><hr size=\"1\">");
+	bundle { //backup options
+		add ("<h4><a name=\"manilaBackups\"></a>Backup Manila Sites</h4>");
+		add ("<form method=\"POST\">");
+		bundle { //explanatory text
+			add ("<p>To make an immediate backup of all sites which have automatic backups enabled, click the Backup Now button.</p>")};
+		bundle { //Backup Now and Backup All Sites buttons
+			add ("<p><br /><input type=\"submit\" name=\"backupNow\" value=\"Backup Now\" /></p>")};
+		if backupConfirmText == "" {
+			add ("<p><br />You can enable backups for any site by clicking the site's name on the <a href=\"" + mainResponder.adminSite.urls.home + "\">home page</a>, and then clicking the enable link, in the Backups section.</p>")}
+		else {
+			add ("<br /><b>" + backupConfirmText + "</b></p>")};
+		add ("</form>")};
+	
+	add ("<br /><hr size=\"1\">");
+	bundle { //clean referer stats
+		add ("<h4><a name=\"cleanRefererStats\"></a>Clean Referer Stats</h4>");
+		add ("<form method=\"POST\">");
+		bundle { //explanatory text
+			add ("<p>You can cleanup the referer stats for all the Manila sites on the server.</p>")};
+		bundle { //Clean Referer Stats buttons
+			add ("<p><br /><input type=\"submit\" name=\"cleanRefererStats\" value=\"Clean Referer Stats\" /></p>")};
+		if cleanRefererStatsText != "" {
+			add ("<br /><b>" + cleanRefererStatsText + "</b></p>")};
+		add ("</form>")};
+	
+	add ("<br /><hr size=\"1\">");
+	bundle { //search engine indexing options
+		add ("<h4><a name=\"searchEngine\"></a>Search Engine</h4>");
+		if config.mainResponder.prefs.flSearchEngine {
+			add ("<form method=\"POST\">");
+			bundle { //explanatory text
+				add ("<p>To re-index all Manila sites for which Search Engine Indexing is enabled, click the Index Now button. To clear the Search Engine index completely, click the Reset Index button.</p>")};
+			bundle { //Index Now and Reset Index buttons
+				add ("<p><br /><input type=\"submit\" name=\"indexNow\" value=\"Index Now\" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"resetIndex\" value=\"Reset Index\" /></p>")};
+			add ("</form>");
+			if searchConfirmText != "" {
+				add ("<b><br /><b>" + searchConfirmText + "</b></p>")}}
+		else { //disabled -- let the admin know
+			add ("<p>Search Engine Indexing options are unavailable because the Search Engine is currently disabled. To turn on the Search Engine, use the Search Engine settings page.</p>")}};
+	
+	return (htmltext)}

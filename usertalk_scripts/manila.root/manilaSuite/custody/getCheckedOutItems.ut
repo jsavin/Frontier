@@ -1,0 +1,13 @@
+on getCheckedOutItems (adrSite, flMessages=false) {
+	«Return a copy of the table containing all the checked out items.
+		«02/08/00; 10:57:22 PM by PBS
+	
+	local (adrTable = manilaSuite.custody.getObjectsTableAddress (adrSite, flMessages));
+	local (objectsTable = adrTable^);
+	local (i);
+	for i = sizeOf (objectsTable) downTo 1 {
+		local (adrItem = @objectsTable [i]);
+		if manilaSuite.custody.hasLockTimedOut (adrItem, adrSite) {
+			delete (@objectsTable [i])}};
+	
+	return (objectsTable)}

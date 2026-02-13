@@ -1,0 +1,1 @@
+return (manilaSuite.renderNewsPage (manilaSuite.getDiscussLinksAddress ()^.homePageMsgnum, flShowFlipButton:true))

@@ -1,0 +1,12 @@
+on checkIn (username, password, siteName, msgNum) {
+	«Release custody of this message.
+		«02/11/00; 3:40:09 PM by PBS
+	
+	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
+	local (adrMembers = @adrGroup^.users);
+	local (adrMember = @adrMembers^.[username]);
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMsgTable = @adrDiscuss^.messages.[string.padWithZeros (msgNum, 7)]);
+	
+	return (manilaSuite.custody.checkIn (adrMsgTable, adrMember, adrSite, true))} //true because it's a message

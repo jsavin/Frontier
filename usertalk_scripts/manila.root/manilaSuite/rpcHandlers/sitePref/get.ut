@@ -1,0 +1,13 @@
+on get (username, password, siteName, prefName) {
+	«Get the contents of one site pref.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't get the site pref \"" + prefName + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (prefdata = address (string (adrNewsSite + "." + string (prefName)))^);
+	
+	manilaSuite.rpcUtils.cleanObjectForExport (@prefdata);
+	
+	return (prefdata)}

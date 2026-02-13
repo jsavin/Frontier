@@ -1,0 +1,21 @@
+on check (urlName) {
+	«Changes:
+		«7/14/05; 3:30:50 PM by JES
+			«Add support for referer checking pref.
+		«07/16/01; 9:59:43 AM by PBS
+			«There have been problems with trailing slashes -- either missing or extra. Ignore trailing slashes when comparing.
+		«05/09/00; 7:31:08 PM by PBS
+			«Created. Make sure the referer is the page it's supposed to be.
+	if not manilaSuite.referer.checkIsEnabled () {
+		return (true)};
+	manilaSuite.referer.mustNotBeEmpty ();
+	local (pta = html.getPageTableAddress ());
+	local (referer = pta^.requestHeaders.referer);
+	local (expectedReferer = pta^.urls^.[urlName]);
+	referer = string.popSuffix (referer, '$');
+	referer = string.popTrailing (referer, '/'); //PBS 07/16/01
+	expectedReferer = string.popSuffix (expectedReferer, '$');
+	expectedReferer = string.popTrailing (expectedReferer, '/'); //PBS 07/16/01
+	if not (string.lower (expectedReferer) == string.lower (referer)) {
+		scriptError (manilaSuite.getString ("admin.refererDoesntMatchError"))};
+	return (true)}

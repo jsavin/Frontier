@@ -1,0 +1,53 @@
+on getCalendarLocalization (adrFirstDow, adrMonthNamesList, adrAbbrevDowList, pta=nil) {
+	«4/18/00; 2:00:36 PM by JES
+		«Gets localized string lists of month-names and abbreviated day-names, and the day to start calendar rows with.
+		«adrFirstDow
+			«address of a number to be assigned the first day of week
+		«adrMonthNamesList
+			«address to assign to the list of month-names
+		«adrAbbrevDowList
+			«address to assign to the list of abbreviated day of week names
+		«Changes:
+			«06/05/01; 2:14:38 PM by PBS
+				«Use direct assignment rather than list addition for a performance boost.
+			«9/26/01; 6:36:28 PM by PBS
+				«Use caching for performance boost.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (langTableAdr = mainResponder.localization.getLanguageTableAddress (pta));
+	local (langName = nameOf (langTableAdr^));
+	
+	bundle { //PBS 09/26/01: try to get from cache
+		if defined (temp.mainResponder.localizationCache.[langName].calendar) {
+			local (adrTable = @temp.mainResponder.localizationCache.[langName].calendar);
+			adrFirstDow^ = adrTable^.firstDow;
+			adrMonthNamesList^ = adrTable^.monthNamesList;
+			adrAbbrevDowList^ = adrTable^.AbbrevDowList;
+			return (true)}};
+	
+	try { // if we can't get localized strings, return false
+		adrFirstDow^ = number (mainResponder.getString ("date.firstDayOfWeek", pta: pta));
+		adrMonthNamesList^ = {};
+		adrAbbrevDowList^ = {};
+		
+		local (i);
+		for i = 1 to 12 { // get month names
+			«adrMonthNamesList^ = adrMonthNamesList^ + mainResponder.getString ("date.monthNames." + string.padWithZeros (i, 2), pta: pta)
+			adrMonthNamesList^ [i] = mainResponder.getString ("date.monthNames." + string.padWithZeros (i, 2), pta: pta)}; //PBS 06/05/01: direct assignment is faster
+		for i = 1 to 7 { // get abbrev DOW names
+			«adrAbbrevDowList^ = adrAbbrevDowList^ + mainResponder.getString ("date.abbrevDayOfWeekNames." + i, pta: pta)
+			adrAbbrevDowList^ [i] = mainResponder.getString ("date.abbrevDayOfWeekNames." + i, pta: pta)}; //PBS 06/05/01: direct assignment is faster
+		
+		bundle { //09/26/01: cache
+			if defined (temp.mainResponder.localizationCache.[langName]) {
+				local (adrTable = @temp.mainResponder.localizationCache.[langName].calendar);
+				new (tableType, adrTable);
+				adrTable^.firstDow = adrFirstDow^;
+				adrTable^.monthNamesList = adrMonthNamesList^;
+				adrTable^.AbbrevDowList = adrAbbrevDowList^}};
+		
+		return (true)}
+	else {
+		return (false)}}

@@ -1,0 +1,25 @@
+on rpcGetSiteAddress (dgName, adrAdrSite) {
+	«Given the name of a discussion group, get the address of the site.
+		«Return true if the lookup succeeds, false otherwise.
+		«Put the address of the site in adrAdrSite^.
+		«This script runs in an XML-RPC context.
+		«10/18/99; 4:20:26 PM by PBS
+	
+	local (adrRoot);
+	
+	if not (manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrRoot)) {
+		return (false)}; //couldn't find the group
+	
+	if not defined (adrRoot^.prefs.adrMsgReader) {
+		return (false)}; //rely on the adrMsgReader pref to find the site
+	
+	local (nomad = adrRoot^.prefs.adrMsgReader);
+	loop { //find the Manila site. It's presumed to be a top-level table.
+		nomad = parentOf (nomad^);
+		if sizeOf (string.parseAddress (nomad)) == 2 { //is this a top-level table?
+			adrAdrSite^ = nomad;
+			return (true)};
+		if sizeOf (string.parseAddress (nomad)) < 2 {
+			return (false)}};
+	
+	return (false)}

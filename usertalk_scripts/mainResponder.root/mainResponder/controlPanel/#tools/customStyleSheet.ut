@@ -1,0 +1,4 @@
+local (pta = html.getPageTableAddress ());
+if defined (pta^.adrMemberInfo^.controlPanel.styleSheet) {
+	return (string (pta^.adrMemberInfo^.controlPanel.styleSheet))};
+return ("")

@@ -1,0 +1,8 @@
+on isPosted (adrMsgTable) {
+	«Return true if this news item has been posted to the home page.
+		«04/20/00; 1:28:45 AM by PBS
+	
+	if defined (adrMsgTable^.newsItem.flPosted) {
+		return (adrMsgTable^.newsItem.flPosted)};
+	
+	return (false)}

@@ -1,0 +1,21 @@
+on getSiteFragmentUrl (pluginName, adrSite=nil) {
+	«Get the base URL to the site fragment for a plugin.
+		«02/24/00; 1:05:31 AM by PBS
+	
+	local (relativePath);
+	if adrSite == nil {
+		local (pta = html.getPageTableAddress ());
+		adrSite = pta^.adrSiteRootTable};
+	
+	relativePath = adrSite^.["#plugins"].enabled.[pluginName];
+	
+	local (siteUrl = adrSite^.["#ftpSite"].url);
+	
+	relativePath = string.popLeading (relativePath, '/');
+	if not (relativePath endsWith "/") {
+		relativePath = relativePath + "/"};
+	
+	return (siteUrl + relativePath)};
+bundle { //test code
+	manilaSuite.plugins.getSiteFragmentUrl ("Surveys", @myFirstSiteManilaWebsite)
+		«"http://rex.userland.com/MyFirstSite/surveys/"}

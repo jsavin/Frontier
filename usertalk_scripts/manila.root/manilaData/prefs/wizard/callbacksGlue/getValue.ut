@@ -1,0 +1,2 @@
+on getValue (partialAddress, defaultValue) {
+	return (manilaData.prefs.wizard.callbacks.getValue (partialAddress, defaultValue))}

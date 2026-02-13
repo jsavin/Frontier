@@ -1,0 +1,23 @@
+«PBS 11/6/99: the navigator now must be maintained by hand, because of the legalTags panel, which doesn't use prefs.root.
+
+«Old code:
+	«local (pta = html.getpagetableaddress ())
+	«local (pagename = nameof (pta^.adrobject^))
+	«local (adrwizard = pta^.wizard)
+	«local (adrstructure = @adrwizard^.structure)
+	«local (adroutline = @pta^.navigator^.outline)
+	«
+	«local (xmltext = "", indentlevel = 0)
+	«on add (s)
+		«xmltext = xmltext + string.filledString ("\t", indentlevel) + s + "\r"
+	«add ("<navigator>"); indentlevel++
+	«local (panellist = xml.getaddresslist (@adrwizard^.structure [1], "panel"))
+	«local (i, ct = sizeof (panellist), s)
+	«for i = 1 to ct
+		«s = xml.getattribute (panellist [i], "title")^
+		«local (innerCase = string.innerCaseName (s))
+		«add ("<item name=\"" + s + "\" pagename=\"" + pagename + "$" + innerCase + "\"/>")
+	«add ("</navigator>"); indentlevel--
+	«op.newOutlineObject (xmltext, adroutline)
+
+return (true)

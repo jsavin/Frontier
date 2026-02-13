@@ -1,0 +1,54 @@
+on getRsdXml () {
+	«Changes
+		«12/18/02; 9:23:44 AM by JES
+			«RSD 0.6 -> 1.0. (The version attribute of rsd changed from 0.6, rpcLink changed to apiLink, and default namespace declaration is fixed.)
+		«12/13/02; 3:48:16 PM by JES
+			«Generate an rsd.xml file.
+	local (pta = html.getPageTableAddress ());
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (blogid = manilaSuite.getCanonicalSiteName (adrsite));
+	local (siteurl = manilaSuite.getSiteUrl (adrsite, pta));
+	local (urlparts = string.urlSplit (siteurl));
+	local (server = urlparts[2]);
+	bundle { //tack on the port if non-80
+		if defined (user.inetd.config.http.apparentPort) {
+			if user.inetd.config.http.apparentPort != 80 {
+				server = server + ":" + user.inetd.config.http.apparentPort}}
+		else {
+			if user.inetd.config.http.port != 80 {
+				server = server + ":" + user.inetd.config.http.port}}};
+	local (endpoint = "http://" + server + "/RPC2");
+	
+	bundle { //set up the pagetable to return some XML instead of HTML
+		pta^.responseHeaders.["Content-Type"] = "text/xml";
+		pta^.autoParagraphs = false;
+		pta^.clayCompatibility = false;
+		pta^.activeUrls = false;
+		wp.newTextObject ("{bodytext}", @pta^.template)};
+	
+	local (xtext = "", indentlevel = 0);
+	on add (s) {
+		xtext = xtext + (string.filledString ("\t", indentlevel) + s + "\r\n");};
+	
+	add ("<?xml version=\"1.0\"?>");
+	add ("<rsd version=\"1.0\" xmlns=\"http://archipelago.phrasewise.com/rsd\">"); indentlevel++;
+	add ("<service>"); indentlevel++;
+	add ("<engineName>" + frontier.getProgramName () + "</engineName>");
+	add ("<engineLink>http://frontier.userland.com/</engineLink>");
+	add ("<homePageLink>" + siteurl + "</homePageLink>");
+	add ("<apis>"); indentlevel++;
+	local (preferred = "true");
+	if defined (user.betty.rpcHandlers.metaWeblog) { //MetaWeblog API is enabled
+		add ("<api name=\"MetaWeblog\" preferred=\"" + preferred + "\" apiLink=\"" + endpoint + "\" blogID=\"" + siteurl + "\"/>");
+		preferred = "false"};
+	if defined (user.betty.rpcHandlers.manila) { //Manila RPC interface is enabled
+		add ("<api name=\"Manila\" preferred=\"" + preferred + "\" apiLink=\"" + endpoint + "\" blogID=\"" + blogid + "\"/>");
+		preferred = "false"};
+	if defined (user.betty.rpcHandlers.blogger) { //Blogger API is enabled
+		add ("<api name=\"Blogger\" preferred=\"" + preferred + "\" apiLink=\"" + endpoint + "\" blogID=\"" + siteurl + "\"/>");
+		preferred = "false"};
+	add ("</apis>"); indentlevel--;
+	add ("</service>"); indentlevel--;
+	add ("</rsd>"); indentlevel--;
+	
+	return (xtext)}

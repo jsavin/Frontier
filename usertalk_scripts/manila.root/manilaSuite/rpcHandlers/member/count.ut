@@ -1,0 +1,10 @@
+on count (username, password, siteName) {
+	«Count the number of members a site has.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't count the numbers of members because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
+	
+	return (sizeOf (adrGroup^.users))}

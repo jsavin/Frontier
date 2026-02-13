@@ -1,0 +1,14 @@
+on getMessageTable (msgNum, pta=nil, adrRoot=nil) {
+	«Get the address of a message table, given a msgNum.
+		«Changes:
+			«8/2/1999; 3:05:28 PM by PBS
+				«New optional parameter pta, the address of the current page table.
+				«New optional parameter adrRoot, the address of this discussion group.
+	
+	if adrRoot == nil { //get the address of this discussion group
+		if pta == nil { //get the address of the page table
+			try {pta = html.getPageTableAddress ()}};
+		
+		adrRoot = mainResponder.discuss.openRoot (pta)}; //get the address of this discussion group
+	
+	return (@adrRoot^.messages.[string.padWithZeros (msgNum, 7)])} //return the address of this message

@@ -1,0 +1,25 @@
+«11/11/98; 4:25:20 AM by DW
+	«convert all the messages in discussiongroup.root into tickets
+
+local (f = mainresponder.tickets.openfile ());
+local (adrprefs = @[f].["#data"].prefs);
+
+local (adrsource = @["d:\\Nirvana Server\\www\\discussionGroup.root"].["#messages"]);
+local (i, ticket);
+window.about ();
+for i = 1 to sizeof (adrsource^) {
+	adrmsg = @adrsource^ [i];
+	new (tabletype, @ticket);
+	ticket.title = nameof (adrmsg^);
+	ticket.postTime = adrmsg^.posttime;
+	ticket.notifyList = {"discussionGroup"};
+	ticket.ticketNum = adrprefs^.nextTicketNumber++;
+	«these fields are specific to dg msgs
+	ticket.subject = adrmsg^.subject;
+	ticket.member = adrmsg^.author;
+	ticket.ctReads = adrmsg^.readCount;
+	try {ticket.inReplyTo = adrmsg^.inReplyTo} else {ticket.inReplyTo = 0};
+	try {ticket.responses = adrmsg^.responses} else {ticket.responses = {}};
+	ticket.body = string (adrmsg^.text);
+	msg (adrmsg);
+	mainresponder.tickets.addticket (@ticket)}

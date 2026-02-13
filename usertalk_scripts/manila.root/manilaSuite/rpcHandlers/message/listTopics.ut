@@ -1,0 +1,25 @@
+on listTopics (username, password, siteName) {
+	«Get a struct containing the top-level topics in message storage.
+		«Changes:
+			«06/21/00; 2:24:25 PM by JES
+				«The script was broken because 1- it tried to create a table at a nil address, 2- the fields it looked up in the message table were incorrect.
+			«01/02/01; 1:39:23 AM by JES
+				«On Macs, convert the subject to Latin text.
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't list topics because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMessages = @adrDiscuss^.messages);
+	
+	local (adrmsg, messagedata);
+	new (tableType, @messagedata);
+	for adrmsg in adrMessages {
+		if adrmsg^.inResponseTo == 0 {
+			local (subject = string (adrmsg^.subject));
+			if system.environment.isMac { //01/02/01 JES: convert subject to latin text
+				subject = latinToMac.macToLatin (subject)};
+			messagedata.[nameOf (adrmsg^)] = {subject, string (adrmsg^.member)}}};
+	
+	return (messagedata)}

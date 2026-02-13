@@ -1,0 +1,12 @@
+on getCacheTable () {
+	local (f = Frontier.getSubFolder ("/ops/") + "cache.root"); //PBS 3/9/99
+	if not window.isopen (f) {
+		try {
+			filemenu.open (f)}
+		else {
+			filemenu.new (f)};
+		window.hide (f)};
+	local (adrtable = @[f].cache);
+	if not defined (adrtable^) {
+		new (tabletype, adrtable)};
+	return (adrtable)}

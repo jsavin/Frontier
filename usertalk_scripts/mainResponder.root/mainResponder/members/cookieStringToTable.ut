@@ -1,0 +1,8 @@
+on cookieStringToTable (cookieString) {
+	«Take a cookie string and return a table. The cookie string is in the same format as search args and post args -- foo=value1&bar=value2...
+		«04/10/00; 11:56:20 AM by PBS
+	
+	local (t);
+	new (tableType, @t);
+	webserver.parseArgs (cookieString, @t);
+	return (t)}

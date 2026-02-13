@@ -1,0 +1,15 @@
+on initSiteInfo (adrsite, flEnabled = false) {
+	«Changes
+		«6/26/02; 8:30:39 PM by JES
+			«Created.
+	local (sitename = manilaSuite.getCanonicalSiteName (adrsite));
+	local (adrconfig = @config.manila.backups.sites.[sitename]);
+	if not defined (adrconfig^) {
+		new (tableType, adrconfig)};
+	if not defined (adrconfig^.adrsite) {
+		adrconfig^.adrsite = adrsite};
+	if not defined (adrconfig^.whenLastBackedUp) {
+		adrconfig^.whenLastBackedUp = date (0)};
+	if not defined (adrconfig^.flEnabled) {
+		adrconfig^.flEnabled = flEnabled};
+	return (adrconfig)}

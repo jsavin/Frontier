@@ -1,0 +1,8 @@
+on linkToMessage (adrstorage, url=nil, maxsubjectchars=infinity) {
+	if url == nil {
+		local (pta = html.getPageTableAddress ());
+		url = pta^.responderattributes.urls^.discussMsgReader};
+	local (subject = adrstorage^.subject);
+	if sizeof (subject) > maxsubjectchars {
+		subject = string.mid (subject, 1, maxsubjectchars - 3) + mainResponder.getString ("common.elipses")};
+	return ("<a href=\"" + url + adrstorage^.msgnum + "\">" + subject + "</a>")}

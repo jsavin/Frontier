@@ -1,0 +1,108 @@
+on addMappingToSiteTree () {
+	«Changes
+		«6/27/02; 5:25:57 PM by JES
+			«Created. UI for adding a site to a site tree mapping in config.mainResponder.domains.
+				«The form has three fields, domain, path, and object to serve.
+	local (pta = html.getPageTableAddress ());
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	on munge (s) {
+		s = string.replaceAll (s, "\"", "&quot;");
+		return (s)};
+	
+	«bundle //explanatory text
+		«add ("To add a site to the domains served on this server, type the domain name and path, enter the object to serve, and click the Add Site button. If the domain already exists, the site will be added to its site tree. If the domain does not exist, a new domain will be created.")
+	
+	on sureDomain (domain) {
+		local (adrdom = @config.mainResponder.domains.[domain]);
+		if not defined (adrdom^) {
+			new (tableType, adrdom);
+			new (tableType, @adrdom^.siteTree);
+			new (tableType, @adrdom^.siteTree.directory);
+			op.newOutlineObject ("<siteTree></siteTree>", @adrdom^.siteTree.directory.outline);
+			mainResponder.siteTree.compileIfDirty (adrdom)};
+		return (true)};
+	on validatePath (domain, path, adrerror) {
+		local (adrdom = @config.mainResponder.domains.[domain]);
+		if not defined (adrdom^) {
+			if path contains "/" {
+				adrerror^ = "Can't create a sub-site for a site which does not exist.";
+				return (false)}}
+		else {
+			if mainResponder.siteTree.domainIsSiteTree (adrdom) {
+				if string.countFields (path, "/") > 2 {
+					local (lastpart = string.nthField (path, "/", string.countFields (path, "/")));
+					try {
+						local (adrtopsite = @adrdom^.siteTree.directory.structure[1][1]);
+						local (adrparent = mainResponder.siteTree.dive (adrtopsite, parentpath));
+						if not defined (adrparent^) {
+							adrerror^ = "Can't create a sub-site for a site which does not exist.";
+							return (false)}}
+					else {
+						adrerror^ = "Can't create a sub-site for a site which does not exist.";
+						return (false)}}}
+			else {
+				if string.countFields (path, "/") > 2 {
+					adrerror^ = "Can't create a sub-site for a site which does not exist.";
+					return (false)}}};
+		return (true)};
+	
+	local (errormessage="", domain="", path="", object="");
+	if pta^.method == "POST" {
+		«workspace.pt = pta^
+		local (adrargs = @pta^.postargs);
+		if defined (adrargs^.addSite) {
+			domain = adrargs^.domain;
+			path = adrargs^.path;
+			object = adrargs^.object;
+			local (cleanpath = string.popLeading (string.popTrailing (path, "/"), "/"));
+			if object beginsWith "http://" { //redirect
+				if validatePath (domain, cleanpath, @errormessage) {
+					local (cleanobj = string.popTrailing (object, "/"));
+					sureDomain (domain);
+					mainResponder.siteTree.addSiteToTree (domain, cleanpath, cleanobj, true, true)}}
+			else {
+				if file.exists (object) { //folder or database
+					if validatePath (domain, cleanpath, @errormessage) {
+						sureDomain (domain);
+						mainResponder.siteTree.addSiteToTree (domain, cleanpath, object, true, true)}}
+				else {
+					if defined (object^) { //address
+						if validatePath (domain, cleanpath, @errormessage) {
+							sureDomain (domain);
+							mainResponder.siteTree.addSiteToTree (domain, cleanpath, address (object), true, true)}}
+					else { //error -- object does not exist
+						errormessage = "Can't create the site because the object \"" + object + "\" does not exist."}}}}};
+	
+	add ("<br /><br />");
+	if errormessage != "" {
+		add ("<b>" + errormessage + "</b><br /><br />")};
+	add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\">");
+	bundle { //domain field
+		add ("<tr>");
+		add ("<td>Domain:</td>");
+		add ("<td><input name=\"domain\" type=\"text\" size=\"40\" maxlength=\"500\" value=\"" + munge (domain) + "\" /></td>");
+		add ("</tr>")};
+	bundle { //path field
+		add ("<tr>");
+		add ("<td>Path:</td>");
+		add ("<td><input name=\"path\" type=\"text\" size=\"70\" maxlength=\"500\" value=\"" + munge (path) + "\" /></td>");
+		add ("</tr>")};
+	bundle { //object field
+		add ("<tr>");
+		add ("<td>Object:</td>");
+		add ("<td><input name=\"object\" type=\"text\" size=\"70\" maxlength=\"500\" value=\"" + munge (object) + "\" /></td>");
+		add ("</tr>")};
+	bundle { //add site button
+		add ("<tr>");
+		add ("<td></td>");
+		add ("<td><br /><input type=\"submit\" name=\"addSite\" value=\"Add Site\" /></td>");
+		add ("</tr>")};
+	add ("</table>");
+	
+	return (htmltext)};
+
+bundle { //test code
+	html.setPageTableAddress (@workspace.pt);
+	addMappingToSiteTree ()}

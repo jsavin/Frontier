@@ -1,0 +1,5 @@
+local (pt);
+new (tableType, @pt);
+manilaSuite.pike.testing.fakePageTable (@pt);
+
+manilaSuite.pike.sendToPike.editStory (@MyFirstSiteManilaWebsite.["#discussionGroup"].messages.["0000002"], @pt)

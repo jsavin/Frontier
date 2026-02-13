@@ -1,0 +1,68 @@
+on updateChangesTable (adrtable, flBackground=false) {
+	«Changes
+		«6/19/05; 2:42:18 AM by JES
+			«Fixed handling of addresses.
+		«6/17/05; 7:10:25 PM by JES
+			«Created. Update a changes table to include the actual objects referenced in the table.
+				«If flBackground is true, then we've been called by mainResponder.init, and we're going to loop slowly, yielding some processor time so the server will remain responsive.
+				«Otherwise we've been called by mainResponder.subscriptions.server, and we need to return as fast as possible to respond to the client.
+	case true { //criteria for updating the table
+		not defined (adrtable^[1].data);
+		typeOf (adrtable^[1].what) == addressType {
+			local (addressParts = string.parseAddress (adrtable));
+			local (f = addressParts[1]);
+			local (lowerfname = string.lower (file.fileFromPath (f)));
+			local (sizetable = sizeOf (adrtable^), i);
+			for i = sizetable downto 1 { //loop backwards in case we're interrupted
+				local (adritem = @adrtable^[i]);
+				if typeOf (adritem^.what) == addressType {
+					local (what = string (adritem^.what));
+					local (parts = string.parseAddress (what));
+					local (part1 = parts[1]);
+					case true {
+						file.exists (part1); //native platform file-based address
+						string.mid (part1, 2, 2) == ":\\"; //windows file-based address
+						string.lower (part1) endswith (":" + lowerfname) { //mac file-based address
+							local (sAdr = string (adritem^.what));
+							local (ix = string.patternMatch ("\"].", sAdr));
+							if ix > 0 {
+								adritem^.what = string.delete (sAdr, 1, ix + 2)}}}
+					else {
+						adritem^.what = string.popFileFromAddress (adritem^.what)}};
+				if not defined (adritem^.data) {
+					if defined (adritem^.what^) {
+						adritem^.data = adritem^.what^}};
+				if defined (adrtable^[1].data) and (typeOf (adrtable^[1].what) == stringType) { //another thread completed the update
+					break};
+				if flBackground {
+					thread.sleepTicks (2)}}}};
+	«bundle //old version
+		«if not defined (adrtable^[1].data) //this is the criteria for updating the table
+			«local (addressParts = string.parseAddress (adrtable))
+			«local (f = addressParts[1])
+			«local (lowerfname = string.lower (file.fileFromPath (f)))
+			«local (sizetable = sizeOf (adrtable^), i)
+			«for i = sizetable downto 1 //loop backwards in case we're interrupted
+				«local (adritem = @adrtable^[i])
+				«if not defined (adritem^.data)
+					«local (what = string.popFileFromAddress (adritem^.what))
+					«local (parts = string.parseAddress (what))
+					«local (part1 = parts[1])
+					«case true
+						«file.exists (part1) //native platform file-based address
+						«string.mid (part1, 2, 2) == ":\\" //windows file-based address
+						«string.lower (part1) endswith (":" + lowerfname)
+							«local (sAdr = string (adritem^.what))
+							«local (ix = string.patternMatch ("\"].", sAdr))
+							«if ix > 0
+								«adritem^.what = string.delete (sAdr, 1, ix + 2)
+					«if defined (adritem^.what^)
+						«adritem^.data = adritem^.what^
+				«if flBackground
+					«thread.sleepTicks (2)
+					«if defined (adrtable^[1].data) //another thread completed the update
+						«break};
+«bundle //test code
+	«local (adrroot = parentOf (mainResponder))
+	«local (adrchanges = @adrroot^.["#changes"])
+	«updateChangesTable (adrchanges)

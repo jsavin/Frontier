@@ -1,0 +1,316 @@
+on indexMessage (adrMsgTable, adrSite=nil) {
+	«Changes:
+		«1/31/06; 3:03:13 AM by JES
+			«Don't index pending messages.
+		«8/13/04; 2:10:30 AM by JES
+			«Instead of walking the site structure XML hierarchy here, call through manilaSuite.siteStructure.compileIfDirty first, and then look in the site's #hierarchy.paths table, for the matching entry for the given msgNum.
+			«This gets us to the URL for the page being indexed, without having to walk the site structure XML hierarchy for every message in this site that's being indexed.
+		«08/03/02; 9:22:17 PM by JES
+			«Respect config.mainresponder.search.prefs.flLogNoIndex, config.mainResponder.search.prefs.flLogIndex and config.mainResponder.search.prefs.flLogEnabled.
+		«03/23/01; 6:24:54 PM by PBS
+			«Commented out a typo.
+		«10/29/00; 7:49:56 PM by JES
+			«Index news items by indexing the text of the homepage that contains the edited or posted news item.
+		«09/02/00; 1:29:19 PM by PBS
+			«Fix for paths with illegal characters -- url-encode each path part.
+		«04/07/00; 5:09:10 PM by PBS
+			«Indexing wasn't happening in some cases due to an error -- if the site address was passed to the script, then adrPrefsTable was never set. But: this was a good time to stop looking in the dg prefs table and instead look in the site itself for the msgReader and storyReader URLs. So now the script works better than before.
+		«04/04/00; 9:56:00 PM by PBS
+			«adrSite is a new optional parameter -- if supplied, no need to look at adrMsgReader in the discussion group's prefs table -- an item which is often wrong.
+		«10/8/99; 3:40:17 PM by PBS
+			«Created. Index a new or changed discussion group message.
+				«Since all textual content is in dg storage, this means index everything.
+				«All this script gets is the address of the message table in discussion group storage.
+				«From that starting point, derive the data the search engine indexing server needs:
+					«URL
+					«text
+					«title
+					«createdDate
+					«lastModDate
+					«siteName
+					«siteUrl
+				«This script may run outside the page rendering context.
+				«This script is designed to be launched in another thread.
+				«Return true if the page was sent to the search engine for indexing, false otherwise.
+	
+	local (title, url, text, siteName, siteUrl, createdDate, lastModDate); //page info
+	local (flStory = false, flHierarchyPage = false, flCalendarPage = false, flNewsItem = false); //Manila-specific info; 10/29/00 JES: added flNewsItem
+	local (msgNum = adrMsgTable^.msgNum); //the message number of this message
+	local (adrPrefsTable); //the address of the prefs table in the dg storage
+	local (adrConfig); //the address of the search config table in the #newsSite table for this site
+	local (domain, port, methodName, rpcPath); //info about the search engine indexing server
+	local (flIndex = false); //flag for indexing or not
+	
+	sys.systemTask ();
+	on logNoIndex (message) { //log the fact that this page can't be indexed
+		if defined (config.mainResponder.search.prefs.flLogEnabled) {
+			if not config.mainResponder.search.prefs.flLogEnabled {
+				return (true)}};
+		if defined (config.mainresponder.search.prefs.flLogNoIndex) {
+			if not config.mainresponder.search.prefs.flLogNoIndex {
+				return (true)}};
+		local (adrLog = log.addToGuestDatabase ("Manila Search Engine Indexer Errors"));
+		adrLog^.what = adrMsgTable;
+		adrLog^.error = message;
+		return (true)};
+	
+	bundle { //get the address of this Manila site
+		on getSiteAddress () {
+			«We can get the address of the Manila site by looking in the prefs table for this dg.
+			local (adrMessages = parentOf (adrMsgTable^));
+			local (adrRoot = parentOf (adrMessages^));
+			adrPrefsTable = @adrRoot^.prefs;
+			
+			if defined (adrPrefsTable^.adrMsgReader) {
+				if not defined (adrPrefsTable^.adrMsgReader^) {
+					return (false)};
+				adrMsgReader = adrPrefsTable^.adrMsgReader;
+				adrSite = parentOf (adrMsgReader^);
+				while (sizeOf (string.parseAddress (adrSite)) > 2) { //Manila sites must be top-level items in a gdb
+					adrSite = parentOf (adrSite^)};
+				return (true)};
+			
+			return (false)}; //couldn't get the address of the site
+		
+		if adrSite == nil {
+			if not (getSiteAddress ()) { //can't index this page if this script can't find the address of the Manila site
+				logNoIndex ("Can't index this message because adrMsgReader is not defined or is incorrect in the discussion group prefs table, so the address of this site can't be found.");
+				return (false)}}}; //return now, there's no way to index this page
+	
+	bundle { //get basic info about the page
+		«Get title, text, createdDate, lastModDate, siteName, and siteUrl.
+		
+		if defined (adrMsgTable^.flDeleted) {
+			if adrMsgTable^.flDeleted {
+				logNoIndex ("Can't index this page because it has been deleted.")};
+			return (false)};
+		if defined (adrMsgTable^.flPending) and adrMsgTable^.flPending {
+			logNoIndex ("Can't index this page because it's pending editorial approval.")};
+		
+		title = adrMsgTable^.subject;
+		text = string (adrMsgTable^.body);
+		createdDate = adrMsgTable^.postTime;
+		
+		if defined (adrMsgTable^.lastUpdate) {
+			lastModDate = adrMsgTable^.lastUpdate}
+		else {
+			lastModDate = createdDate};
+		
+		«Get siteName and siteUrl from the Manila site itself.
+		if not defined (adrSite^.["#newsSite"].search) {
+			logNoIndex ("Can't index this page because the site at " + adrSite + " is not a Manila site or is not set up to be indexed.");
+			return (false)};
+		adrConfig = @adrSite^.["#newsSite"].search;
+		siteName = adrConfig^.siteName;
+		siteUrl = adrConfig^.siteUrl};
+	
+	bundle { //get the URL of this page
+		«It's either a dg message, story, #hierarchy page, news item, or in the calendar structure (a present or former home page).
+		
+		«Assume it's a message.
+		if not defined (adrSite^.["#urls"].discussMsgReader) {
+			logNoIndex ("Can't index this message because the message reader URL is not defined in the #urls table for this site.");
+			return (false)};
+		url = adrSite^.["#urls"].discussMsgReader;
+		if not (url endsWith "$") {
+			url = url + "$"};
+		url = url + msgNum;
+		
+		«Find out if it's a story.
+			«Stories have an xxxStories item in the alsoListedIn table.
+		if defined (adrMsgTable^.alsoListedIn) {
+			local (oneItem);
+			for oneItem in adrMsgTable^.alsoListedIn {
+				if string.lower (oneItem) endsWith "stories" {
+					url = adrSite^.["#urls"].storyReader;
+					if not (url endsWith "$") {
+						url = url + "$"};
+					url = url + msgNum;
+					flStory = true;
+					break}}};
+		
+		«Find out if it's a hierarchy page.
+		local (adrHierarchy = @adrSite^.["#hierarchy"]);
+		«if defined (adrHierarchy^)
+			«local (adrHierarchyPage)
+			«on doTable (adrTable)
+				«Loop through all the items in a table looking for the msgNum that matches the msgNum for this message.
+				«local (i)
+				«for i = 1 to sizeOf (adrTable^)
+					«sys.systemTask ()
+					«local (adrItem = @adrTable^ [i])
+					«if defined (adrItem^.["/atts"].msgNum)
+						«if adrItem^.["/atts"].msgNum == msgNum
+							«adrHierarchyPage = adrItem
+							«break
+					«local (itemName = xml.convertToDisplayName (nameOf (adrItem^)))
+					«if string.lower (itemName) == "category"
+						«doTable (adrItem)
+				«if adrHierarchyPage != nil
+					«return (true)
+			«if defined (adrHierarchy^.structure)
+				«doTable (@adrHierarchy^.structure [1])
+				«if adrHierarchyPage != nil //it was found in the hierarchy? Then calculate the URL.
+					«Walk backwards to get the path to this page.
+					«local (relativePath)
+					«local (flEndsWithSlash = false)
+					«local (pageTypeName = xml.convertToDisplayName (nameOf (adrHierarchyPage^)))
+					«if string.lower (pageTypeName) == "category"
+						«flEndsWithSlash = true
+					«local (nomad = adrHierarchyPage)
+					«loop
+						«local (nomadName = nameOf (nomad^))
+						«if string.lower (xml.convertToDisplayName (nomadName)) == "hierarchy"
+							«break
+						«local (encodedPathName = string.urlEncode (nomad^.["/atts"].pathname))
+						«relativePath = encodedPathName + "/" + relativePath //PBS 09/02/00: fix for paths with illegal characters
+						«relativePath = nomad^.["/atts"].pathname + "/" + relativePath
+						«nomad = parentOf (nomad^)
+					«relativePath //PBS 03/22/01: commented out a typo
+					«if flEndsWithSlash
+						«if not (relativePath endsWith "/")
+							«relativePath = relativePath + "/"
+					«else
+						«if relativePath endsWith "/"
+							«relativePath = string.popTrailing (relativePath, "/")
+					«if relativePath beginsWith "/"
+						«relativePath = string.popLeading (relativePath, "/")
+					«
+					«url = adrSite^.["#ftpSite"].url
+					«if not (url endsWith "/")
+						«url = url + "/"
+					«url = url + relativePath
+					«flHierarchyPage = true
+		if defined (adrHierarchy^) { //JES 8/13/04: implement optimization, factoring from 02/06/17, 14:55:23 by DAB
+			manilaSuite.siteStructure.compileIfDirty (adrSite);
+			if defined (adrHierarchy^.paths.[msgNum]) {
+				url = adrSite^.["#ftpSite"].url + string.popLeading (adrHierarchy^.paths.[msgNum], "/");
+				flHierarchyPage = true}};
+		
+		«Find out if it's a posted news item, get the URL, and fix text and lastModDate
+		bundle {
+			if defined (adrMsgTable^.newsItem) {
+				if defined (adrMsgTable^.newsItem.postTime) {
+					url = manilaSuite.news.getHomepageArchiveUrl (adrMsgTable^.msgNum, adrSite);
+					text = manilaSuite.news.getHomepageArchiveText (adrMsgTable^.msgNum, adrSite);
+					if lastModDate < adrMsgTable^.newsItem.postTime {
+						lastModDate = adrMsgTable^.newsItem.postTime};
+					flNewsItem = true}}};
+		
+		«Find out if it's in the calendar structure
+		if not flNewsItem { //10/29/00 JES: we already know the URL of newsitem-based homepages
+			local (start = 1904, stop = 2040); //from the dawn of time to the end of time
+			local (i);
+			for i = stop downTo start {
+				if flCalendarPage {
+					break};
+				local (adrItem = @adrSite^.[i]);
+				if not defined (adrItem^) {
+					continue};
+				on doYear (adrYear) {
+					local (j);
+					if flCalendarPage {
+						return};
+					for j = sizeOf (adrYear^) downTo 1 {
+						local (adrMonth = @adrYear^ [j]);
+						local (k);
+						if flCalendarPage {
+							break};
+						for k = sizeOf (adrMonth^) downTo 1 {
+							local (adrDay = @adrMonth^ [k]);
+							local (m);
+							if flCalendarPage {
+								break};
+							for m = 1 to sizeOf (adrDay^) { //DaveNet-style URLs
+								local (adrDayItem = @adrDay^ [m]);
+								if typeOf (adrDayItem^) != tableType {
+									continue};
+								if defined (adrDayItem^.msgNum) {
+									if adrDayItem^.msgNum == msgNum {
+										flCalendarPage = true;
+										url = adrSite^.["#ftpSite"].url + nameOf (adrYear^) + "/" + nameOf (adrMonth^) + "/" + nameOf (adrDay^) + "/" + nameOf (adrDayItem^);
+										break}}};
+							if flCalendarPage {
+								break};
+							if defined (adrDay^.msgNum) { //traditional no-filename URLs
+								if adrDay^.msgNum == msgNum {
+									url = adrSite^.["#ftpSite"].url + nameOf (adrYear^) + "/" + nameOf (adrMonth^) + "/" + nameOf (adrDay^);
+									flCalendarPage = true;
+									break}}}}};
+				doYear (adrItem)}}};
+	
+	bundle { //decide whether or not index this page
+		if defined (adrConfig^.flIndex) {
+			flIndex = adrConfig^.flIndex};
+		
+		if flIndex { //check the settings for indexing dg messages
+			if not flStory and not flHierarchyPage and not flCalendarPage and not flNewsItem { //if it's just a dg message
+				if defined (adrConfig^.flIndexDgMessages) {
+					flIndex = adrConfig^.flIndexDgMessages}
+				else {
+					flIndex = false}}}; //by default, don't index dg messages, just stories and hierarchy pages
+		
+		if not flIndex {
+			return (false)}}; //false means the page wasn't sent to the search engine indexer server
+	
+	bundle { //get info about the search engine indexing server
+		«Get the port.
+		if defined (adrConfig^.serverPort) {
+			port = adrConfig^.serverPort}
+		else {
+			port = 80};
+		
+		«Get the domain name or IP address.
+		if not defined (adrConfig^.serverDomain) {
+			logNoIndex ("Can't index this page because the domain name or IP address of the server has not been configured.");
+			return (false)}; //false means the page wasn't sent to the indexer
+		domain = adrConfig^.serverDomain;
+		if domain == "" {
+			logNoIndex ("Can't index this page because the domain name or IP address of the server is empty.");
+			return (false)}; //false means the page wasn't sent to the indexer
+		
+		«Get the XML-RPC procedure name. 
+		if defined (adrConfig^.serverProcedureName) {
+			methodName = adrConfig^.serverProcedureName}
+		else {
+			methodName = "mainResponder.search.index"};
+		
+		«Get the RPC path.
+		if defined (adrConfig^.serverRpcPath) {
+			rpcPath = adrConfig^.serverRpcPath}
+		else {
+			rpcPath = user.betty.prefs.rpcClientDefaultPath}};
+	
+	bundle { //send the page to the search engine indexing server
+		«Use asynchronous XML-RPC.
+		local (base64text = base64.encode (text, 0));
+		local (params);
+		params = {title, url, base64text, siteName, siteUrl, createdDate, lastModDate};
+		sys.systemTask ();
+		betty.rpc.client (domain, port, methodName, @params, rpcPath:rpcPath, flAsynch:true, adrErrorCallback:@manilaSuite.search.errorCallback)};
+	
+	bundle { //log the fact that the page was sent to the indexing server
+		local (flLogIndex = false);
+		if defined (config.mainResponder.search.prefs.flLogEnabled) {
+			if config.mainResponder.search.prefs.flLogEnabled {
+				flLogIndex = true}};
+		if defined (config.mainresponder.search.prefs.flLogIndex) {
+			if config.mainresponder.search.prefs.flLogIndex {
+				flLogIndex = true}};
+		if flLogIndex {
+			local (adrLog = log.addToGuestDatabase ("Manila Search Engine Indexer"));
+			adrLog^.what = adrMsgTable; //the address of the message table
+			adrLog^.rpcPath = rpcPath; //the RPC path used
+			adrLog^.methodName = methodName; //the name of the remote procedure
+			adrLog^.domain = domain; //the domain or IP address of the search engine indexing server
+			adrLog^.port = port; //the port the search engine indexing server is listening on
+			adrLog^.adrManilaSite = adrSite; //the address of the Manila site containing this page
+			adrLog^.url = url; //the URL of the page to be indexed
+			adrLog^.title = title; //the title of the page to be indexed
+			adrLog^.createdDate = createdDate; //the creation date of the page to be indexed
+			adrLog^.lastModDate = lastModDate; //the modification date of the page to be indexed
+			adrLog^.siteName = siteName; //the siteName of the site containing the page to be indexed
+			adrLog^.siteUrl = siteUrl}; //the URL of the home page of the site containing the page to be indexed
+		return (true)};
+	
+	return (true)}

@@ -1,0 +1,15 @@
+on changedGemCallback (adrContextTable) {
+	«manilaSuite.callbacks.changedGemCallback : 04/06/30, 14:47:09 by DAB
+		«Notify the world that a gem has changed. This is the website framework context entry point.
+	
+	local (adrUserCallbacks = @config.manila.callbacks.changedGem);
+	if defined (adrUserCallbacks^) { //loop through the callbacks
+		local (adrScript);
+		for adrScript in adrUserCallbacks {
+			try { //scriptErrors can't stop callbacks
+				while typeOf (adrScript^) == addressType {
+					adrScript = adrScript^};
+				if typeOf (adrScript^) == scriptType {
+					callScript (adrScript, {}, adrContextTable)}}}};
+	
+	return (true)}

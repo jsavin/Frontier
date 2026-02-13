@@ -1,0 +1,10 @@
+on sendMessageToClient (msgnum, client, port) {
+	if client == "127.0.0.1" {
+		client = "localhost"};
+	local (adrtable = mainResponder.discuss.getMessageTable (msgnum));
+	local (adrmemberinfo = html.getpagetableaddress ()^.adrmemberinfo);
+	local (cookie = mainResponder.discuss.getchecksum (msgnum, adrmemberinfo));
+	local (params = {base64.encode (mainResponder.discuss.tableToXml (adrtable, cookie), infinity)});
+	return (betty.rpc.client (client, port, "editorial.receiveMessage", @params))};
+«bundle //test code
+	«sendMessageToClient (800, "pebbles.userland.com")

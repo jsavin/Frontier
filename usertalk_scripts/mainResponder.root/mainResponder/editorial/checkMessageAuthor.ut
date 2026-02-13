@@ -1,0 +1,7 @@
+on checkMessageAuthor (discussRoot, msgnum, userName) {
+	
+	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+	if string.lower (adrmsg^.member) != string.lower (userName) {
+		return false};
+	
+	return true}

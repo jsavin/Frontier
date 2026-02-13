@@ -1,0 +1,187 @@
+on statusCenter () {
+	«Changes
+		«11/24/06; 5:05:19 PM by LL
+			«Add Manila license status to the status center.
+		«3/22/06; 12:42:38 AM by JES
+			«Add support for MacOS X specific RAM usage via unix ps command.
+		«1/5/06; 4:25:41 AM by JES
+			«Update URL style for control panel add-ins so that they can use Radio prefs-outline style wizards.
+		«9/22/05; 3:20:25 AM by JES
+			«Add Manila version to the software versions listed in the status center.
+		«7/15/04; 5:00:47 PM by JES
+			«Updated trial version notice.
+		«5/19/04; 6:31:44 PM by JES
+			«Added support for control panel add-ins. They appear below Tools.
+		«6/7/02; 2:57:43 PM by JES
+			«Created.
+	
+	local (pta = html.getPageTableAddress ());
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledString ("\t", indentlevel) + s + "\r\n");};
+	on addSubItem (s) {
+		add ("<div class=\"small\" style=\"padding-left: 5px; padding-bottom: 5px;\">"); indentlevel++;
+		add (s);
+		add ("</div>"); indentlevel--};
+	
+	«Notes -- to do?
+		«Add "web server" and "xml-rpc/soap" sections?
+		«Support center? (probably not yet)
+	bundle { //license status
+		if defined (userland.trialVersion.flTrialVersion) {
+			if userland.trialVersion.flTrialVersion {
+				add ("<div class=\"small\" style=\"padding-bottom: 5px;\"><b>Manila Trial</b></div>");
+				local (storeurl = mainResponder.adminSite.urls.store);
+				local (ctdays = 60 - ((number (clock.now ()) - number (userland.trialVersion.whenInstalled)) /  (24 * 60 * 60)) );
+				local (serialNumberUrl = "http://127.0.0.1:" + user.inetd.config.http2.port + mainResponder.adminSite.urls.serialNumber);
+				add ("<div class=\"small\" style=\"padding-bottom: 5px;\"><b><a href=\"" + storeUrl + "\">Trial version</a></b></div>");
+				addSubItem (ctdays + " days remaining. Click <a href=\"" + serialNumberUrl + "\">here</a> to enter your serial number. A license costs $1,099, and an academic license costs $499. We accept all major credit cards. Why delay? <i>Get yours today!</i>")}
+			else {
+				if defined (userland.trialVersion.whenLicenseExpires) {
+					add ("<div class=\"small\" style=\"padding-bottom: 5px;\"><b>Manila License</b></div>");
+					addSubItem ("Manila license expires on: " + date.longString (userland.trialVersion.whenLicenseExpires));
+					local (now = clock.now ());
+					local (whenExpires = date (userland.trialVersion.whenLicenseExpires));
+					local (daysRemaining = (number (whenExpires) - number (now)) /  (24 * 60 * 60));
+					if daysRemaining < 61 and daysRemaining > -1 {
+						addSubItem ("<b>Note:</b> You have " +  daysRemaining + " days left in your license.  To renew your license please visit the <a href=\"http://manila.userland.com/renewLicense\">store website</a>.")}}}}};
+	bundle { //server status
+		on tooltip (s) {
+			return ("title=\"Click this link for a detailed readout of " + s + " on this server.\"")};
+		bundle { //header-link
+			add ("<div class=\"small\" style=\"padding-bottom: 5px;\"><b><a href=\"" + mainResponder.adminSite.urls.readouts + "\">Server Status</a></b></div>")};
+		bundle { //IP address, host name
+			local (ipaddress = "unknown");
+			try {ipaddress = tcp.dns.getMyDottedId ()};
+			local (hostname = "unknown");
+			try {hostname = tcp.dns.getMyDottedId ()};
+			addSubItem ("IP Address " + ipaddress + "<br>Host Name " + hostname)};
+		bundle { //up-since, hits
+			local (uphours = (number (clock.now ()) - number (user.webserver.stats.upsince)) / 3600);
+			addSubItem ("Up for " + uphours + " hours; " + string.addCommas (user.webserver.stats.hits) + " total <a href=\"" + mainResponder.adminSite.urls.http + "\" " + tooltip ("hits") + ">hits</a>; " + user.webserver.stats.maxConnections + " max connections.")};
+		bundle { //RAM usage
+			local (s);
+			if defined (system.environment.isCarbon) and system.environment.isCarbon { //the way RAM works on MacOS X is totally different
+				local (programName = file.fileFromPath (frontier.getProgramPath ()));
+				programName = string.replaceAll (programName, "™", "");
+				local (psout = sys.unixShellCommand ("ps -auxww | grep \"" + programName + "\"") );
+				while psout contains "  " {
+					psout = string.replaceAll (psout, "  ", " ")};
+				local (memUsage = double (string.nthField (psout, " ", 5)) * 1024);
+				local (resident = double (string.nthField (psout, " ", 6)) * 1024);
+				s = "Total memory usage:&nbsp;" + string.gigabyteString (memUsage) + "; Resident:&nbsp;" + string.gigabyteString (resident) + "."}
+			else { //original Windows and Mac Classic behavior
+				s = "Available RAM: " + string.gigabytestring (memavail ()) + "; ";
+				s = s + "Smallest:&nbsp;" + string.megabytestring (user.webserver.stats.minMemAvail) + "; ";
+				s = s + "Largest:&nbsp;" + string.megabytestring (user.webserver.stats.maxMemAvail) + "."};
+			addSubItem (s)};
+		bundle { //databases
+			local (totalSizeDouble = double (file.size (Frontier.getFilePath ())));
+			local (adr);
+			for adr in @system.compiler.files {
+				totalSizeDouble = totalSizeDouble + file.size (nameOf (adr^))};
+			addSubItem ((sizeOf (system.compiler.files) + 1) + " open <a href=\"" + mainResponder.adminSite.urls.databases + "\" " + tooltip ("open databases") + ">databases</a>, total size " + string.gigabyteString (totalSizeDouble) + ".")};
+		bundle { //disk usage
+			local (nomad = Frontier.pathString);
+			local (pc = file.getPathChar ());
+			while string.countFields (nomad, pc) > 1 {
+				nomad = file.folderFromPath (nomad)};
+			local (homeVolSize = file.volumeSizeDouble (nomad));
+			local (homeVolFree = file.freeSpaceOnVolumeDouble (nomad));
+			local (percentFree = (number (homeVolFree / homeVolSize * 1000)) / 10.0);
+			addSubItem (string.gigabyteString (homeVolFree) + " of " + string.gigaByteString (homeVolSize) + " available on <a href=\"" + mainResponder.adminSite.urls.disk + "\" " + tooltip ("disk status") + ">disk</a>. (" + percentFree + "%)")};
+		«bundle //license status
+			«if defined (userland.trialVersion.flTrialVersion)
+				«if not (userland.trialVersion.flTrialVersion)
+					«if defined (userland.trialVersion.whenLicenseExpires)
+						«addSubItem ("Manila license expires on: " + date.longString (userland.trialVersion.whenLicenseExpires))
+						«local (now = clock.now ())
+						«local (whenExpires = date (userland.trialVersion.whenLicenseExpires))
+						«local (daysRemaining = (number (whenExpires) - number (now)) /  (24 * 60 * 60))
+						«daysRemaining = 40
+						«if daysRemaining < 61 and daysRemaining > -1
+							«addSubItem ("<b>Note:</b> You have " +  daysRemaining + " day(s) left in your license.  To renew your license please visit the <a href=\"http://manila.userland.com/renewLicense\">store website</a>.")};
+	bundle { //tools status
+		local (adr, cttools = 0);
+		for adr in @user.tools.databases {
+			try {
+				if adr^.flInstalled {
+					local (adrtool = @[adr^.path]);
+					if defined (adrtool^) { //is the database opened?
+						local (toolname = Frontier.tools.cleanToolName (file.fileFromPath (adr^.path)));
+						local (adrsuite = @adrtool^.[toolname + "Suite"]);
+						if defined (adrsuite^) { //tools aren't required to have a suite sub-table
+							if defined (adrsuite^.statusCenterMessage) {
+								local (displayname = toolname + " Tool");
+								local (adrinfo = @adrtool^.[toolname + "Info"]);
+								bundle { //get displayname
+									if defined (adrinfo^) {
+										if defined (adrinfo^.name) {
+											if sizeOf (adrinfo^.name) > 0 {
+												if adrinfo^.name != toolname {
+													displayname = adrinfo^.name}}}}};
+								local (s);
+								s = adrsuite^.statusCenterMessage ();
+								local (toollink = displayname);
+								local (host = pta^.host);
+								bundle { //set host
+									host = pta^.host;
+									if host contains ":" {
+										host = string.nthField (host, ":", 1)};
+									local (adrlisten);
+									if defined (adrinfo^.localUrl) {
+										adrlisten = @user.inetd.config.http}
+									else {
+										if defined (user.inetd.config.http2) {
+											adrlisten = @user.inetd.config.http2}};
+									local (port = adrlisten^.port);
+									if defined (adrlisten^.apparentPort) {
+										port = adrlisten^.apparentPort};
+									if port != 80 {
+										host = host + ":" + port}};
+								if defined (adrinfo^) and defined (adrinfo^.localUrl) {
+									if adrinfo^.localUrl beginsWith "http://" {
+										toollink = html.getLink (toollink, adrinfo^.localUrl)}
+									else {
+										local (url = adrinfo^.localUrl);
+										if not (url beginsWith "/") {
+											url = "/" + url};
+										toollink = html.getLink (toollink, "http://" + host + adrinfo^.localUrl)}}
+								else { //default link to the Tool's website
+									if defined (adrtool^.[toolname + "Website"]) {
+										toollink = html.getLink (toollink, "http://" + host + "/" + toolname + "/")}};
+								add ("<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td class=\"small\" style=\"padding-bottom:5px;\"><b>" + toollink + "</b><br />" + s + "</td></tr></table>");
+								cttools++}}}}}}};
+	bundle { //addins
+		if defined (config.mainResponder.controlPanel.wizards) {
+			local (adr);
+			for adr in @config.mainResponder.controlPanel.wizards {
+				local (addinlink);
+				addinlink = html.getLink (nameOf (adr^) + " add-in", "addIns"  + "$" + nameOf (adr^));
+				add ("<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td class=\"small\" style=\"padding-bottom:5px;\"><b>" + addinlink + "</b></td></tr></table>")}}};
+	bundle { //version info
+		local (osname = system.environment.osFullNameForDisplay, osversion);
+		if system.environment.isMac {
+			if defined (system.environment.isCarbon) and system.environment.isCarbon {
+				osname = "MacOS X";
+				bundle { //set osversion
+					«JES 8/4/02: MacOS X returns a version string in decimal, but the visual representation is actually the hexadecimal version -- we get something like 16.1.5, but that really should be displayed as 10.1.5. 0x10 == 16. Strange, but true...
+					local (firstpart = string.nthField (system.environment.osVersionString, ".", 1));
+					osversion = string.delete (system.environment.osVersionString, 1, sizeOf (firstpart));
+					osversion = number (string.nthField (string.hex (firstpart), "x", 2)) + osversion}}
+			else {
+				osname = "MacOS";
+				osversion = system.environment.osVersionString}}
+		else { //windows -- add service pack name
+			osversion = system.environment.osVersionString;
+			if defined (system.environment.winServicePackNumber) {
+				osversion = osversion + " " + string.trimWhiteSpace (system.environment.winServicePackNumber)}};
+		local (manilaVersion = "");
+		if defined (manilaData.constants.manilaVersion) {
+			manilaVersion = "Manila v" + manilaData.constants.manilaVersion + "<br />"};
+		add ("<div class=\"small\">" + manilaVersion + "Kernel v" + Frontier.version () + "<br />" + osname + " v" + string.trimWhiteSpace (osversion) + "</div>")};
+	
+	return (htmltext)};
+
+«bundle //test code
+	«statusCenter ()

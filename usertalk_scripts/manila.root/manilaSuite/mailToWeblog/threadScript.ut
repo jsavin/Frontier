@@ -1,0 +1,14 @@
+on threadScript () {
+	«Changes
+		«5/8/03; 5:40:34 PM by JES
+			«Created. Loop over all Manila sites installed on the server, and if the mail-to-weblog feature is enabled, check for new mail messages to post to the site.
+	local (adr);
+	for adr in @config.manila.sites {
+		try { //skip sites that have been deleted but not uninstalled
+			local (adrsite = adr^);
+			local (adrdata = manilaSuite.mailToWeblog.initSite (adrsite));
+			if adrdata^.flEnabled {
+				try {manilaSuite.mailToWeblog.checkMail (adrsite)}}}};
+	return};
+«bundle //test code
+	«threadScript ()

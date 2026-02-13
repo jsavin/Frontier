@@ -1,0 +1,23 @@
+on openRoot (rootName) {
+	«Return the address of a news site, given the site's name.
+		«Changes:
+			«06/01/00; 5:55:25 PM by PBS
+				«Allow an entry in news.root be an address or string (that can be coerced to an address) that points to a table in another database. Bug 
+	
+	on error () {
+		scriptError ("There is no news root named \"" + rootName + "\".")};
+	
+	local (f, adr);
+	try { //newsRoot may be defined in the page table
+		local (pta = html.getPageTableAddress ());
+		if defined (pta^.newsRoot) {
+			rootName = pta^.newsRoot}};
+	adr = @[system.temp.mainResponder.newsRootFile].[rootName];
+	if (typeOf (adr^) == addressType) or (typeOf (adr^) == stringType) { //06/01/00 PBS: allow item in news.root to point to a table in another database
+		if not defined (adr^^) { //make sure this address points somewhere
+			error ()};
+		adr = adr^}; //de-reference the address
+	if not defined (adr^) {
+		error ()};
+	
+	return (adr)}

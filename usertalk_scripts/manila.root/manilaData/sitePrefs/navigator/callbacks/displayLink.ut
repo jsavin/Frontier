@@ -1,0 +1,61 @@
+on displayLink (name) {
+	«Changes:
+		«12/10/06; 1:52:56 PM by LL
+			«Only display the link to the Search Engine prefs page if the feature is available on the server.
+		«2003 and earlier
+			«7/14/03; 5:30:36 PM by JES
+				«Only display the link to the Trackback prefs page if the feature is available on the server.
+			«5/9/03; 6:11:25 PM by JES
+				«Only display the link to the Mail-to-Weblog prefs page if the feature is available on the server.
+			«3/18/03; 5:19:33 PM by JES
+				«If config.manila.prefs.flAggregatorAllowAnyRssUrl is true and the aggregator is enabled, display the link to the Subscriptions prefs page even if there are no feeds subscribed.
+			«3/10/03; 6:58:29 PM by JES
+				«Only display the Subscriptions link if the aggregator is enabled, and there are feeds available on the server.
+			«2/20/02; 4:15:26 AM by JES
+				«Don't display the Radio Hosting link if Radio Hosting is not enabled on the server.
+			«2/20/02; 11:22:56 AM by PBS
+				«Use a try in case the radioHosting panel name isn't localized yet.
+			«03/14/00; 12:25:26 AM by PBS
+				«Created. Callback that can specify whether or not to display a link.
+	
+	local (pta = html.getPageTableAddress ());
+	local (lowerName = string.lower (string.innerCaseName (name)));
+	
+	if lowerName == string.lower (manilaSuite.admin.getSitePrefsPanelName ("rendering")) {
+		if manilaSuite.staticRendering.isAvailable (pta^.adrSiteRootTable) {
+			return (true)};
+		return (false)};
+	try { //Radio Hosting
+		if lowerName == string.lower (manilaSuite.admin.getSitePrefsPanelName ("radioHosting")) {
+			if config.manila.prefs.flRadioHostingEnabled {
+				return (true)};
+			return (false)}};
+	try { //Subscriptions (news aggregator)
+		if lowerName == string.lower (manilaSuite.admin.getSitePrefsPanelName ("subscriptions")) {
+			if not defined (aggregatorData) {
+				return (false)};
+			if not aggregatorData.prefs.enabled {
+				return (false)};
+			if (sizeOf (aggregatorData.services) == 0) and (not config.manila.prefs.flAggregatorAllowAnyRssUrl) {
+				return (false)}}};
+	try { //Mail-to-Weblog
+		if lowerName == string.lower (manilaSuite.admin.getSitePrefsPanelName ("mail-to-weblog")) {
+			if not defined (config.manila.prefs.flMailToWeblogEnabled) {
+				return (false)};
+			if not config.manila.prefs.flMailToWeblogEnabled {
+				return (false)}}};
+	try { //Trackback
+		if lowerName == string.lower (manilaSuite.admin.getSitePrefsPanelName ("trackback")) {
+			if not defined (config.manila.prefs.flTrackbackEnabled) {
+				return (false)};
+			if not config.manila.prefs.flTrackbackEnabled {
+				return (false)}}};
+	try { //Searching
+		if lowerName == string.lower (manilaSuite.admin.getSitePrefsPanelName ("searching")) {
+			if not defined (config.mainresponder.prefs.flSearchEngine) {
+				return (false)};
+			if not config.mainresponder.prefs.flSearchEngine {
+				return (false)}}};
+	
+	
+	return (true)}

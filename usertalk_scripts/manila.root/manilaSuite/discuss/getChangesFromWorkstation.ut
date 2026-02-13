@@ -1,0 +1,7 @@
+local (pta = html.getPageTableAddress ());
+local (msgNum = pta^.postArgs.msgNum);
+mainResponder.discuss.getMessageFromClient (pta^.client, 80);
+local (redirectUrl = pta^.responderAttributes.urls^.discussMsgReader + msgNum);
+if defined (pta^.postArgs.referer) {
+	redirectUrl = pta^.postArgs.referer};
+mainResponder.redirect (redirectUrl)

@@ -1,0 +1,7 @@
+local (pta = html.getPageTableAddress ());
+pta^.title = manilaSuite.getString ("discuss.topLevelTopicsPageTitle"); // 4/19/00 JES: localized
+pta^.activeUrls = false;
+pta^.oneMonthTopicList = true;
+local (htmlText = mainResponder.discuss.listTopics ());
+htmlText = manilaSuite.unTaint (htmlText);
+return (htmlText)

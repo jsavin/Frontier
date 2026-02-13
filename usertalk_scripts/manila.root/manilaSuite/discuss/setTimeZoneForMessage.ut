@@ -1,0 +1,11 @@
+on setTimeZoneForMessage (adrTable, timeZone=nil, pta=nil) {
+	«Store the time zone with the message, in case a conversion needs to happen later.
+		«04/02/00; 11:13:27 PM by PBS
+	
+	if typeOf (timeZone) == unknownType {
+		if defined (pta^.newsSite^.timeZone) {
+			timeZone = pta^.newsSite^.timeZone.zone}};
+	if typeOf (timeZone) != unknownType {
+		adrTable^.timeZone = timeZone};
+	
+	return (true)}

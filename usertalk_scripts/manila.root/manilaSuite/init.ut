@@ -1,0 +1,480 @@
+«Initialize Manila.
+	«Changes:
+		«2/14/11; 10:40:34 AM by JES
+			«Update the "This Is A Manila Site" macro to use the image from UserLand, not the one from scripting.com.
+				«Takes traffic off of Dave's server, and prevents Manila sites from getting slow if Dave is down.
+		«6/10/07; 12:58:08 PM by LL
+			«Support a new server level preference to override the URL used for the Help link in the Editors Only menu.
+		«4/12/07; 3:55:11 PM by LL
+			«Support a new server level preference for the legal tags for members feature.
+		«2/21/07; 11:28:30 AM by LL
+			«Create config.manila.callbacks.messageSubmit.
+		«11/22/06; 3:01:47 PM by LL
+			«Init config.manila.prefs.flLogReferersEnabled to true.
+		«9/19/06; 12:29:05 PM by LL
+			«Clear beta rootupdate checkpoints when new Manila versions are released.
+		«3/22/06; 1:32:47 AM by JES
+			«Init prefs for shortcut lookups in sub-sites, parent sites, and the "global glossary". Default is to preserve existing behavior in all cases.
+			«Register Manila's refGlossary callback at user.html.callbacks.refGlossary.manila.
+		«3/7/06; 1:58:58 AM by JES
+			«Set config.manila.prefs.flRobotsTxtRecursive to true.
+		«2/19/06; 3:51:32 AM by JES
+			«Create config.manila.callbacks.isThemeAvailable.
+		«2005
+			«11/1/05; 4:04:49 AM by JES
+				«Init config.manila.prefs.flUsernameMustBeEmail to true.
+			«10/26/05; 1:58:44 AM by JES
+				«Create filter callback tables at config.manila.callbacks.filters.
+			«10/11/05; 5:03:48 AM by JES
+				«Change default gems storage limit to 100MB.
+			«10/11/05; 4:12:48 AM by JES
+				«Init config.manila.prefs.flManagingEditorCanSetPassword to false. If true, then managing editors get a password field in the add user form on Manila's Admin page.
+			«9/22/05; 2:05:45 AM by JES
+				«Delete config.manila.prefs.flAdminSuperUser if defined.
+			«8/1/05; 7:08:25 PM by JES
+				«Create system.temp.manila if not defined.
+			«1/28/05; 12:35:27 AM by JES
+				«Delete manilaData.newSiteTemplate.["#newsSite"].discussionGroup.nofollowLinkAttributeEnabled if defined. The pref was supposed to be called flNofollowLinkAttributeEnabled, (note the added "fl").
+			«21/01/05; 3:52:35 PM by LL
+				«Initialize a new local variable flNewInstall that gets set to true if this is a new Manila install.
+				«Initialize config.manila.prefs.flNofollowLinkAttributeEnabled.
+		«2004
+			«11/23/04; 1:28:45 PM by JES
+				«Initialize config.manila.callbacks.commentSubmit.
+			«10/31/04; 2:40:48 PM by EDS
+				«incorporating
+					«6/23/04, 05:16:28 by DAB
+						«delteMessage callback
+			«10/25/04; 6:47:11 AM by EDS
+				«added preference default for maxRecipientsPerMessage
+			«9/9/04; 1:37:13 AM by JES
+				«Ensure that config.manila.plugins and config.manila.plugins.registered exist before attempting to initialize sub-items of these tables.
+			«8/25/04; 12:57:25 PM by JES
+				«Initialize config.manila.prefs.flPluginsVisibleByDefault to true.
+			«3/18/04; 3:06:05 PM by JES
+				«Radio hosting now defaults to enabled, so news items sites have less configuration to do, to support comments.
+		«Changes before 1/1/2004
+			«8/25/03; 7:21:55 AM by DW
+				«Initialize config.manila.callbacks.commentPost.
+			«5/13/03; 6:07:36 PM by JES
+				«Initialize config.manila.prefs.flEventsLoggingEnabled to false.
+			«5/12/03; 12:22:28 PM by JES
+				«Initialize config.manila.prefs.flDiscussRssEnabled to false.
+			«5/8/03; 6:17:41 PM by JES
+				«Initialize config.manila.prefs.flMailToWeblogEnabled and config.manila.prefs.mailToWeblogSecsBetwChecks.
+			«5/8/03; 1:19:59 PM by JES
+				«Initialize config.manila.callbacks.addReferer.
+			«5/2/03; 3:04:28 PM by EDS
+				«Initialize server-level prefs for FTP filewriter for static rendering.
+			«5/1/03; 2:57:41 PM by JES
+				«Initialize config.manila.prefs.flTrackbackEnabled to false.
+			«4/28/03; 7:57:50 PM by JES
+				«Initialize config.manila.prefs.gemsLimit, if not defined.
+			«3/15/03; 4:51:59 PM by JES
+				«Set config.manila.prefs.flAggregatorAllowAnyRssUrl and config.manila.prefs.flAggregatorSubAllSitesOnServer to false if not defined.
+			«9/5/02; 11:31:41 PM by JES
+				«Initialize config.manila.prefs.flSendUpdateNoticesToUserLand.
+			«8/13/02; 4:17:00 PM by JES
+				«If RCS is installed, register Manila's believeWithoutChecking callback for weblog updates.
+			«8/3/02; 10:53:29 PM by JES
+				«Init config.manila.prefs.flRestartSearchEngineIndexSessions to false.
+			«6/26/02; 6:59:13 PM by JES
+				«Init config.manila.backups.
+			«2/19/02; 11:10:11 PM by JES
+				«Initialize config.manila.prefs.flRadioHostingEnabled to false.
+			«12/11/01; 2:31:21 PM by PBS
+				«Added max file name length prefs for gems and static rendering.
+			«2/26/01; 8:34:03 PM by DW
+				«Initialize config.manila.callbacks.getEmailNotificationAdText.
+			«02/06/01; 1:51:20 AM by JES
+				«Initialize site download preferences.
+			«02/06/01; 10:32:19 AM by PBS
+				«Create the table of callbacks at config.manila.callbacks.finalFilter, config.manila.callbacks.applyTheme, config.manila.callbacks.releasedNewsItem, config.manila.callbacks.postedNewsItem.
+			«10/27/00; 3:11:42 PM by JES
+				«Copy DG themes to Copy themes to config.manila.themes.
+			«06/22/00; 4:11:33 PM by PBS
+				«Initialize hosting preferences.
+			«06/07/00; 5:33:32 PM by PBS
+				«Copy themes to config.manila.themes.
+			«05/11/00; 4:56:39 PM by PBS
+				«Init config.manila.stats.
+				«Install Manila postFilter.
+				«Install Manila thread.
+				«Make Manila macros safe.
+			«04/05/00; 10:16:18 AM by PBS
+				«Initialize the new config.manila.callbacks.homePageUpdate table. Scripts in this table are called when a home page is updated.
+				«Initialize the new Manila new and changed message callbacks. These are called when a message is new or changed.
+				«Also initialize prefs for static pictures and static rendering.
+
+local (flNewInstall = false);
+bundle { //config.manila
+	if not defined (config.manila) {
+		new (tableType, @config.manila);
+		flNewInstall = true}};
+
+bundle { //config.manila.backups
+	if not defined (config.manila.backups) {
+		new (tableType, @config.manila.backups)};
+	if not defined (config.manila.backups.notifyList) {
+		config.manila.backups.notifyList = user.prefs.mailAddress};
+	if not defined (config.manila.backups.whenLastBackedUp) {
+		config.manila.backups.whenLastBackedUp = date (0)};
+	if not defined (config.manila.backups.backupFolder) {
+		config.manila.backups.backupFolder = frontier.pathstring + "Manila Backups" + file.getPathChar ()};
+	if not defined (config.manila.backups.sites) {
+		new (tableType, @config.manila.backups.sites)};
+	if not defined (config.manila.backups.hourToBackUp) {
+		config.manila.backups.hourToBackUp = 1};
+	if not defined (config.manila.backups.flEnabled) {
+		config.manila.backups.flEnabled = true}};
+
+bundle { //config.manila.callbacks
+	if not defined (config.manila.callbacks) {
+		new (tableType, @config.manila.callbacks)};
+	if not defined (config.manila.callbacks.changedMessage) { //PBS 04/05/00
+		new (tableType, @config.manila.callbacks.changedMessage)};
+	if not defined (config.manila.callbacks.homePageUpdate) { //PBS 04/05/00
+		new (tableType, @config.manila.callbacks.homePageUpdate)};
+	if not defined (config.manila.callbacks.newMessage) { //PBS 04/05/00
+		new (tableType, @config.manila.callbacks.newMessage)};
+	if not defined (config.manila.callbacks.newSite) {
+		new (tableType, @config.manila.callbacks.newSite)};
+	if not defined (config.manila.callbacks.finalFilter) { //PBS 02/06/01
+		new (tableType, @config.manila.callbacks.finalFilter)};
+	if not defined (config.manila.callbacks.applyTheme) { //PBS 02/06/01
+		new (tableType, @config.manila.callbacks.applyTheme)};
+	if not defined (config.manila.callbacks.releasedNewsItem) { //PBS 02/06/01
+		new (tableType, @config.manila.callbacks.releasedNewsItem)};
+	if not defined (config.manila.callbacks.postedNewsItem) { //PBS 02/06/01
+		new (tableType, @config.manila.callbacks.postedNewsItem)};
+	if not defined (config.manila.callbacks.getEmailNotificationAdText) { //DW 2/26/01
+		new (tableType, @config.manila.callbacks.getEmailNotificationAdText)};
+	if not defined (config.manila.callbacks.addReferer) { //JES 5/8/03
+		new (tableType, @config.manila.callbacks.addReferer)};
+	if not defined (config.manila.callbacks.commentPost) { //8/25/03 DW
+		new (tableType, @config.manila.callbacks.commentPost)};
+	if not defined (config.manila.callbacks.commentSubmit) { //11/23/04 JES
+		new (tableType, @config.manila.callbacks.commentSubmit)};
+	if not defined (config.manila.callbacks.deleteMessage) { //04/06/23, 05:10:20 by DAB
+		new (tableType, @config.manila.callbacks.deleteMessage)};
+	if not defined (config.manila.callbacks.newGem) { //04.06.30, 15:10:12 by DAB
+		new (tableType, @config.manila.callbacks.newGem)};
+	if not defined (config.manila.callbacks.changedGem) { //04.06.30, 15:10:15 by DAB
+		new (tableType, @config.manila.callbacks.changedGem)};
+	if not defined (config.manila.callbacks.deleteGem) { //04.06.30, 15:10:17 by DAB
+		new (tableType, @config.manila.callbacks.deleteGem)};
+	if not defined (config.manila.callbacks.filters) {
+		new (tableType, @config.manila.callbacks.filters)};
+	if not defined (config.manila.callbacks.filters.firstFilter) {
+		new (tableType, @config.manila.callbacks.filters.firstFilter)};
+	if not defined (config.manila.callbacks.filters.pageFilter) {
+		new (tableType, @config.manila.callbacks.filters.pageFilter)};
+	if not defined (config.manila.callbacks.filters.finalFilter) {
+		new (tableType, @config.manila.callbacks.filters.finalFilter)};
+	if not defined (config.manila.callbacks.isThemeAvailable) {
+		new (tableType, @config.manila.callbacks.isThemeAvailable)};
+	if not defined (config.manila.callbacks.messageSubmit) {
+		new (tableType, @config.manila.callbacks.messageSubmit)}};
+
+bundle { //config.manila.sites
+	«This table is the central registry of Manila sites on this server.
+		«The name of each item in this table is the name of a Manila site.
+		«Its address is the address of the site.
+		«Given a site name, you can find out everything about the site because you can look up its address in config.manila.sites.
+	if not defined (config.manila.sites) {
+		new (tableType, @config.manila.sites)}};
+
+bundle { //config.manila.prefs
+	if not defined (config.manila.prefs) {
+		new (tableType, @config.manila.prefs)};
+	if not defined (config.manila.prefs.baseUrl) {
+		local (server = tcp.myDottedId ());
+		try {
+			local (domainName);
+			domainName = tcp.dns.getMyDomainName ();
+			if domainName contains "." {
+				server = domainName}};
+		config.manila.prefs.baseUrl = "http://" + server + "/"};
+	if not defined (config.manila.prefs.flDiscussAllowEmailSubscriptions) { //PBS 05/11/00
+		config.manila.prefs.flDiscussAllowEmailSubscriptions = false};
+	if not defined (config.manila.prefs.flGemsEnabled) { //PBS 05/11/00
+		config.manila.prefs.flGemsEnabled = false};
+	if not defined (config.manila.prefs.flSiteDownloadsEnabled) { //JES 02/06/01
+		config.manila.prefs.flSiteDownloadsEnabled = false};
+	if not defined (config.manila.prefs.flGemsEnabled) { //PBS 05/11/00
+		config.manila.prefs.flGemsEnabled = false};
+	if not defined (config.manila.prefs.flStaticRenderingEnabled) { //PBS 04/05/00
+		config.manila.prefs.flStaticRenderingEnabled = false};
+	if not defined (config.manila.prefs.flWritePicturesToStaticServer) { //PBS 04/05/00
+		config.manila.prefs.flWritePicturesToStaticServer = false};
+	if not defined (config.manila.prefs.flXmlSitesReport) { //PBS 05/11/00
+		config.manila.prefs.flXmlSitesReport = false};
+	if not defined (config.manila.prefs.gemsFolder) { //PBS 05/11/00
+		config.manila.prefs.gemsFolder = ""};
+	if not defined (config.manila.prefs.gemsUrl) { //PBS 05/11/00
+		config.manila.prefs.gemsUrl = ""};
+	if not defined (config.manila.prefs.staticFilesFolder) { //PBS 04/05/00
+		config.manila.prefs.staticFilesFolder = ""};
+	if not defined (config.manila.prefs.staticFilesUrl) { //PBS 04/05/00
+		config.manila.prefs.staticFilesUrl = ""};
+	if not defined (config.manila.prefs.staticRenderingDefaultFilename) { //PBS 04/05/00
+		config.manila.prefs.staticRenderingDefaultFilename = "index.html"};
+	if not defined (config.manila.prefs.staticRenderingFolder) { //PBS 04/05/00
+		config.manila.prefs.staticRenderingFolder = ""};
+	if not defined (config.manila.prefs.staticRenderingUrl) { //PBS 04/05/00
+		config.manila.prefs.staticRenderingUrl = ""};
+	if not defined (config.manila.prefs.siteDownloadFolder) { //JES 02/06/01
+		config.manila.prefs.siteDownloadFolder = ""};
+	if not defined (config.manila.prefs.siteDownloadUrl) { //JES 02/06/01
+		config.manila.prefs.siteDownloadUrl = ""};
+	if not defined (config.manila.prefs.flFrontierServesDownloadedSites) { //JES 02/06/00
+		config.manila.prefs.flFrontierServesDownloadedSites = false};
+	if not defined (config.manila.prefs.gemsMaxFileNameLength) { //PBS 12/11/01
+		if defined (user.html.prefs.maxFileNameLength) {
+			config.manila.prefs.gemsMaxFileNameLength = user.html.prefs.maxFileNameLength}
+		else {
+			config.manila.prefs.gemsMaxFileNameLength = 31}};
+	if not defined (config.manila.prefs.staticRenderingMaxFileNameLength) { //PBS 12/11/01
+		if defined (user.html.prefs.maxFileNameLength) {
+			config.manila.prefs.staticRenderingMaxFileNameLength = user.html.prefs.maxFileNameLength}
+		else {
+			config.manila.prefs.staticRenderingMaxFileNameLength = 31}};
+	if not defined (config.manila.prefs.flRadioHostingEnabled) { //JES 02/19/02
+		config.manila.prefs.flRadioHostingEnabled = true}; //JES 3/18/04: default to true, not false
+	if not defined (config.manila.prefs.flRestartSearchEngineIndexSessions) {
+		config.manila.prefs.flRestartSearchEngineIndexSessions = false};
+	if not defined (config.manila.prefs.flRcsUpdatesListsManilaSites) {
+		config.manila.prefs.flRcsUpdatesListsManilaSites = true};
+	if not defined (config.manila.prefs.flRcsStatsCountManilaSites) {
+		config.manila.prefs.flRcsStatsCountManilaSites = true};
+	if not defined (config.manila.prefs.flRcsReferersCountManilaSites) {
+		config.manila.prefs.flRcsReferersCountManilaSites = true};
+	if not defined (config.manila.prefs.flSendUpdateNoticesToUserLand) {
+		config.manila.prefs.flSendUpdateNoticesToUserLand = false};
+	if not defined (config.manila.prefs.flAggregatorAllowAnyRssUrl) {
+		config.manila.prefs.flAggregatorAllowAnyRssUrl = false};
+	if not defined (config.manila.prefs.flAggregatorSubAllSitesOnServer) {
+		config.manila.prefs.flAggregatorSubAllSitesOnServer = false};
+	if not defined (config.manila.prefs.gemsLimit) {
+		config.manila.prefs.gemsLimit = 1024.0 * 1024 * 100};
+	if not defined (config.manila.prefs.flTrackbackEnabled) {
+		config.manila.prefs.flTrackbackEnabled = false};
+	if not defined (config.manila.prefs.flStaticRenderingFileEnabled) {
+		config.manila.prefs.flStaticRenderingFileEnabled = config.manila.prefs.flStaticRenderingEnabled};
+	if not defined (config.manila.prefs.flStaticRenderingFTPEnabled) {
+		config.manila.prefs.flStaticRenderingFTPEnabled = false};
+	if not defined (config.manila.prefs.flMailToWeblogEnabled) {
+		config.manila.prefs.flMailToWeblogEnabled = false};
+	if not defined (config.manila.prefs.mailToWeblogSecsBetwChecks) {
+		config.manila.prefs.mailToWeblogSecsBetwChecks = 60 * 5}; //every 5 minutes
+	if not defined (config.manila.prefs.flDiscussRssEnabled) {
+		config.manila.prefs.flDiscussRssEnabled = true};
+	if not defined (config.manila.prefs.flEventsLoggingEnabled) {
+		config.manila.prefs.flEventsLoggingEnabled = false};
+	if not defined (config.manila.prefs.flPluginVisibilityScriptsEnabled) {
+		config.manila.prefs.flPluginVisibilityScriptsEnabled = false};
+	if not defined(config.manila.prefs.maxEmailRecipients) {
+		config.manila.prefs.maxEmailRecipients = 10};
+	if not defined (config.manila.plugins) {
+		new (tableType, @config.manila.plugins)};
+	if not defined (config.manila.plugins.registered) {
+		new (tableType, @config.manila.plugins.registered)};
+	if not defined (config.manila.plugins.prefs) {
+		new (tableType, @config.manila.plugins.prefs)};
+	if not defined (config.manila.prefs.flPluginsVisibleByDefault) {
+		if defined (config.manila.prefs.flPluginInvisibleByDefault) {
+			config.manila.prefs.flPluginsVisibleByDefault = not config.manila.prefs.flPluginInvisibleByDefault;
+			delete (@config.manila.prefs.flPluginInvisibleByDefault)}
+		else {
+			config.manila.prefs.flPluginsVisibleByDefault = true};
+		bundle { //move per-plugin prefs to sub-tables in config.manila.plugins.registered from config.manilaPlugins
+			if defined (config.manilaPlugins) {
+				local (adr);
+				for adr in @config.manilaPlugins {
+					local (name = nameOf (adr^));
+					if not defined (config.manila.plugins.prefs.[name]) {
+						new (tableType, @config.manila.plugins.prefs.[name])};
+					config.manila.plugins.prefs.[name].alwaysVisibleToSites = adr^}}}};
+	for adr in @config.manila.plugins.registered { //ensure alwaysVisibleToSites sub-table for registered plugins
+		local (name = nameOf (adr^));
+		if not defined (config.manila.plugins.prefs.[name]) {
+			new (tableType, @config.manila.plugins.prefs.[name])};
+		if not defined (config.manila.plugins.prefs.[name].alwaysVisibleToSites) {
+			new (tableType, @config.manila.plugins.prefs.[name].alwaysVisibleToSites)}};
+	if not defined (config.manila.prefs.flNofollowLinkAttributeEnabled) {
+		if flNewInstall {
+			config.manila.prefs.flNofollowLinkAttributeEnabled = true}
+		else {
+			config.manila.prefs.flNofollowLinkAttributeEnabled = false}};
+	if not defined (config.manila.prefs.flManagingEditorCanSetPassword) {
+		config.manila.prefs.flManagingEditorCanSetPassword = false};
+	if not defined (config.manila.prefs.flUsernameMustBeEmail) {
+		config.manila.prefs.flUsernameMustBeEmail = true};
+	if not defined (config.manila.prefs.flRobotsTxtEnabled) {
+		config.manila.prefs.flRobotsTxtEnabled = true};
+	if not defined (config.manila.prefs.flRobotsTxtRecursive) {
+		config.manila.prefs.flRobotsTxtRecursive = true};
+	if not defined (config.manila.prefs.flShortcutLookupInSubSites) {
+		config.manila.prefs.flShortcutLookupInSubSites = false};
+	if not defined (config.manila.prefs.flShortcutLookupInParentSites) {
+		config.manila.prefs.flShortcutLookupInParentSites = false};
+	if not defined (config.manila.prefs.flShortcutLookupGlobal) {
+		config.manila.prefs.flShortcutLookupGlobal = true};
+	if not defined (config.manila.prefs.flLogReferersEnabled) {
+		config.manila.prefs.flLogReferersEnabled = true};
+	if not defined (config.manila.prefs.flRestrictHtmlForMembers) {
+		config.manila.prefs.flRestrictHtmlForMembers = true};
+	if not defined (config.manila.prefs.flCustomHelpUrlEnabled) {
+		config.manila.prefs.flCustomHelpUrlEnabled = false};
+	if not defined (config.manila.prefs.customHelpUrl) {
+		config.manila.prefs.customHelpUrl = ""}};
+
+bundle { //config.manila.stats
+	local (adrTable = @config.manila.stats);
+	if not defined (adrTable^) {
+		new (tableType, adrTable)};
+	if not defined (adrTable^.sites) {
+		new (tableType, @adrTable^.sites)};
+	if not defined (adrTable^.sites.allTime) {
+		new (tableType, @adrTable^.sites.allTime)};
+	if not defined (adrTable^.sites.calendar) {
+		new (tableType, @adrTable^.sites.calendar)};
+	if not defined (adrTable^.reports) {
+		new (tableType, @adrTable^.reports)}};
+
+bundle { //system.temp
+	if not defined (system.temp.manila) {
+		new (tableType, @system.temp.manila)}};
+
+bundle { //Manila post filter
+	if not defined (user.webserver.postFilters.manila) {
+		local (s);
+		s = "on manila (pta)\r\treturn (manilaSuite.hosting.postFilter (pta))";
+		script.newScriptObject (s, @user.webserver.postFilters.manila)}};
+
+bundle { //install Manila thread
+	user.scheduler.threads.Manila = @manilaThread};
+
+bundle { //make Manila macros safe
+	manilaSuite.makeManilaMacrosSafe ()};
+
+bundle { //copy themes to config.manila.themes
+	if not defined (config.manila.themes) {
+		new (tableType, @config.manila.themes)};
+	local (adrItem);
+	for adrItem in @manilaData.themes {
+		local (itemName = nameOf (adrItem^));
+		if not defined (config.manila.themes.[itemName]) {
+			config.manila.themes.[itemName] = adrItem^}};
+	
+	«Write themes to disk first time.
+	if not defined (config.manila.flThemesInitialized) {
+		config.manila.flThemesInitialized = false};
+	if not config.manila.flThemesInitialized {
+		local (adrItem, adrTable = @config.manila.themes);
+		for adrItem in adrTable {
+			local (itemName = nameOf (adrItem^));
+			itemName = string.mid (itemName, 1, 26);
+			local (folder = Frontier.getSubFolder ("/ops/themes/"));
+			local (fname = itemName + ".fttb");
+			local (f = folder + fname);
+			export.sendObject (string (adrItem), f)}};
+	config.manila.flThemesInitialized = true};
+
+bundle { //copy DG themes to config.manila.discussionGroupThemes
+	if not defined (config.manila.discussionGroupThemes) {
+		new (tableType, @config.manila.discussionGroupThemes)};
+	if not defined (manilaData.discussionGroupThemes) {
+		new (tableType, @manilaData.discussionGroupThemes)};
+	local (adrItem);
+	for adrItem in @manilaData.discussionGroupThemes {
+		local (itemName = nameOf (adrItem^));
+		if not defined (config.manila.discussionGroupThemes.[itemName]) {
+			config.manila.discussionGroupThemes.[itemName] = adrItem^}};
+	
+	«Write themes to disk first time.
+	if not defined (config.manila.flDiscussThemesInitialized) {
+		config.manila.flDiscussThemesInitialized = false};
+	if not config.manila.flDiscussThemesInitialized {
+		local (adrItem, adrTable = @config.manila.discussionGroupThemes);
+		for adrItem in adrTable {
+			local (itemName = nameOf (adrItem^));
+			itemName = string.mid (itemName, 1, 26);
+			local (folder = Frontier.getSubFolder ("/ops/discussion group themes/"));
+			local (fname = itemName + ".fttb");
+			local (f = folder + fname);
+			export.sendObject (string (adrItem), f)}};
+	config.manila.flDiscussThemesInitialized = true};
+
+bundle { //set up hosting prefs -- config.manila.hosting
+	if not defined (config.manila.hosting) {
+		new (tableType, @config.manila.hosting)};
+	if not defined (config.manila.hosting.sites) {
+		new (tableType, @config.manila.hosting.sites)};
+	if not defined (config.manila.hosting.sites.default) {
+		new (tableType, @config.manila.hosting.sites.default)};
+	local (adrPrefs = @config.manila.hosting.sites.default);
+	if not defined (adrPrefs^.baseDomain) {
+		local (s = config.manila.prefs.baseUrl);
+		if string.lower (s) beginsWith "http://" {
+			s = string.delete (s, 1, sizeOf ("http://"))};
+		s = string.popSuffix (s, '/');
+		adrPrefs^.baseDomain = s};
+	if not defined (adrPrefs^.canonicalSiteName) {
+		adrPrefs^.canonicalSiteName = ""};
+	if not defined (adrPrefs^.flEditorsOnlyCreateSites) {
+		adrPrefs^.flEditorsOnlyCreateSites = false};
+	if not defined (adrPrefs^.flSubSites) {
+		adrPrefs^.flSubSites = true};
+	if not defined (config.manila.prefs.hostingGdbName) { //PBS 06/23/00: initialize hosting gdb name
+		config.manila.prefs.hostingGdbName = "manilaWebsites.root"}};
+
+bundle { //install other callbacks
+	if not defined (user.html.callbacks.refGlossary) {
+		new (tableType, @user.html.callbacks.refGlossary)};
+	if not defined (user.html.callbacks.refGlossary.manila) {
+		user.html.callbacks.refGlossary.manila = @manilaSuite.callbacks.refGlossary}};
+
+bundle { //initialize or update "This is a Manila Site" global glossary item
+	local (adrItem = @user.html.glossary.["This is a Manila Site"]);
+	local { //set strings
+		snew = "<a href=\"http://www.manilasites.com/\" title=\"Manila is an Internet server application that allows groups of writers, designers and graphics people to manage full-featured, high performance web sites through an easy-to-use browser interface.\"><img src=\"/mainResponderResources/userlandIcons/thisIsAManilaSite2\" width=\"88\" height=\"31\" border=\"0\" alt=\"This is a Manila site.\"></a>";
+		sold = "<a href=\"http://manila.userland.com/\" title=\"Create your own Manila site in minutes. Everyone's doing it!\"><img src=\"http://www.scripting.com/images/thisIsAManilaSite2.gif\" width=\"88\" height=\"31\" border=\"0\" alt=\"Create your own Manila site in minutes. Everyone's doing it!\"></a>"};
+	if defined (adrItem^) {
+		if adrItem^ == sold {
+			delete (adrItem)}};
+	if not defined (adrItem^) {
+		adrItem^ = snew}};
+
+bundle { //RCS integration
+	if defined (radioCommunityServerData.weblogUpdates.callbacks.believeWithoutChecking) {
+		if not defined (radioCommunityServerData.weblogUpdates.callbacks.believeWithoutChecking.manila) {
+			radioCommunityServerData.weblogUpdates.callbacks.believeWithoutChecking.manila = @manilaSuite.callbacks.rcsBelieveWithoutCheckingCallback}}};
+
+bundle { // clear beta rootupdates checkpoints
+	if defined (manilaData.constants.lastCheckpointVersion) {
+		with manilaData.constants { //possibly clear flIgnoreCheckpoint flags in user.rootUpdates
+			if date.versionLessThan (lastCheckpointVersion, manilaVersion) {
+				on clearCheckpointFlag (db) {
+					if defined (user.rootUpdates.servers.[db].flIgnoreCheckpoint) {
+						if (user.rootUpdates.servers.[db].flIgnoreCheckpoint) {
+							delete (@user.rootUpdates.servers.[db].flIgnoreCheckpoint)}}};
+				clearCheckpointFlag ("prefs");
+				clearCheckpointFlag ("mainResponder");
+				clearCheckpointFlag ("manila");
+				lastCheckpointVersion = manilaVersion}}}};
+
+bundle { //delete obsolete stuff
+	if defined (manilaData.newSiteTemplate.["#newsSite"].discussionGroup.nofollowLinkAttributeEnabled) {
+		delete (@manilaData.newSiteTemplate.["#newsSite"].discussionGroup.nofollowLinkAttributeEnabled);
+		manilaData.newSiteTemplate.["#newsSite"].discussionGroup.flNofollowLinkAttributeEnabled = "default"};
+	if defined (manilaSuite.sitePrefs.["readMe! New Handlers"]) {
+		delete (@manilaSuite.sitePrefs.["readMe! New Handlers"])};
+	if defined (manilaSuite.sitePrefs.["readMe! Notes for Jake"]) {
+		delete (@manilaSuite.sitePrefs.["readMe! Notes for Jake"])};
+	if defined (manilaData.localization.languages.english.strings.admin.auxTemplates.helpText) {
+		delete (@manilaData.localization.languages.english.strings.admin.auxTemplates.helpText)};
+	if defined (config.manila.prefs.flAdminSuperUser) {
+		delete (@config.manila.prefs.flAdminSuperUser)}};
+
+return (true)

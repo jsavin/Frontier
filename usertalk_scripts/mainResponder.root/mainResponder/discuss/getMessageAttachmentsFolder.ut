@@ -1,0 +1,43 @@
+on getMessageAttachmentsFolder (adrMsgTable, adrUrl=nil, pta=nil) {
+	«Get the path to the folder on disk where uploads attached to this message get stored. This is code factored out from mainResponder.discuss.editMessageForm, postAttachedFile, and postEditedMessage. adrUrl^, if not nil, will contain the url of the folder.
+		«03/15/00; 4:53:20 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrDiscuss = mainResponder.discuss.openRoot ());
+	local (dgName = nameOf (adrDiscuss^));
+	local (groupName);
+	
+	bundle { //get the real name of the dg (it might be an address in discuss.root)
+		«Why not just use pta^.discussionRoot -- since that should be the real name? Because some static servers have case sensitive file systems. So get the name from discuss.root, so it's always the same. The same thing is done for the membership group name.
+		local (adr = @[system.temp.mainResponder.discussRootFile]);
+		if defined (adr^.[pta^.discussionRoot]) {
+			dgName = nameOf (adr^.[pta^.discussionRoot])}};
+	bundle { //get the real name of the membership group (it might be an address in members.root)
+		if defined (pta^.members) {
+			groupName = pta^.members}
+		else {
+			groupName = pta^.defaultMembershipGroup};
+		
+		local (adr = @[system.temp.mainResponder.membersRootFile]);
+		if defined (adr^.[groupName]) {
+			groupName = nameOf (adr^.[groupName])}};
+	
+	local (folderPath = adrDiscuss^.prefs.binaryServerFolder);
+	local (url = adrDiscuss^.prefs.binaryServerURL);
+	local (pc = file.getPathChar ());
+	on addToPath (s) { //append sub-folders to folderpath
+		folderPath = folderPath + s + pc;
+		url = url + s + "/";
+		return (true)};
+	
+	addToPath (groupName);
+	addToPath (adrMsgTable^.member);
+	addToPath (dgName);
+	addToPath (adrMsgTable^.msgNum);
+	
+	if adrUrl != nil { //put the URL in adrUrl^ if wanted
+		adrUrl^ = url};
+	
+	return (folderPath)}

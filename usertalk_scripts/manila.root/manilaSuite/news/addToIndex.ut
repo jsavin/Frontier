@@ -1,0 +1,9 @@
+on addToIndex (indexName, adrMsgTable, adrSite) {
+	«Add to an index.
+		«04/20/00; 1:33:29 AM by PBS
+	
+	local (adrIndex = manilaSuite.news.getIndexAddress (indexName, adrSite));
+	local (msgNum = adrMsgTable^.msgNum);
+	msgNum = string.padWithZeros (msgNum, 7);
+	adrIndex^.[msgNum] = adrMsgTable^.subject;
+	return (true)}

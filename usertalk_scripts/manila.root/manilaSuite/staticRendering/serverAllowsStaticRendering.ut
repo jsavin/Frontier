@@ -1,0 +1,22 @@
+on serverAllowsStaticRendering () {
+	«Return true if static rendering is on at the server level and the prefs are set. Otherwise, return false.
+		«03/13/00; 9:47:51 PM by PBS
+	
+	bundle { //assure prefs
+		if not defined (config.manila.prefs.flStaticRenderingEnabled) {
+			config.manila.prefs.flStaticRenderingEnabled = false};
+		if not defined (config.manila.prefs.staticRenderingFolder) {
+			config.manila.prefs.staticRenderingFolder = ""};
+		if not defined (config.manila.prefs.staticRenderingUrl) {
+			config.manila.prefs.staticRenderingUrl = ""};
+		if not defined (config.manila.prefs.staticRenderingDefaultFilename) {
+			config.manila.prefs.staticRenderingDefaultFilename = "index.html"}};
+	
+	if not (config.manila.prefs.flStaticRenderingEnabled) {
+		return (false)};
+	if config.manila.prefs.staticRenderingFolder == "" {
+		return (false)};
+	if config.manila.prefs.staticRenderingUrl == "" {
+		return (false)};
+	
+	return (true)}

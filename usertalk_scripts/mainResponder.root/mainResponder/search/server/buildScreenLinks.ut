@@ -1,0 +1,71 @@
+on buildScreenLinks (adrSearch, adrScreen, adrSearchRequest) {
+	«Build links to more screens.
+		«Changes:
+			«10/1/99; 1:51:31 PM by PBS
+				«Support for searching multiple sites.
+	
+	local (htmlText);
+	local (i);
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	adrScreen^.totalScreens = ((adrScreen^.totalHits - 1) / adrSearchRequest^.maxHitsPerPage) + 1;
+	adrScreen^.totalScreens = number (adrScreen^.totalScreens);
+	
+	local (replacer = "");
+	if adrSearch^.ignoredList != {} {
+		if sizeOf (adrSearch^.ignoredList) == 1 {
+			replacer = replacer + "<font size=1>Ignored common word:"}
+		else {
+			replacer = replacer + "<font size=1>Ignored common words:"};
+		for i = 1 to sizeOf (adrSearch^.ignoredList) {
+			replacer = replacer + " " + adrSearch^.ignoredList [i];
+			if i != sizeOf (adrSearch^.ignoredList) {
+				replacer = replacer + ";"}};
+		replacer = replacer + "</font><p>\r"};
+	
+	if adrScreen^.totalScreens == 1 {
+		adrScreen^.returnText = searchEngine.replaceAll (adrScreen^.returnText, "<<replaceNumHits>>", replacer, true);
+		return (false)};
+	if adrScreen^.totalScreens > 1 {
+		replacer = replacer + "<<start>> to <<end>> of <<totalHits>> total matches found.<p>\r";
+		replacer = searchEngine.replaceAll (replacer, "<<start>>", adrSearchRequest^.start, true);
+		replacer = searchEngine.replaceAll (replacer, "<<end>>", adrScreen^.end, true);
+		replacer = searchEngine.replaceAll (replacer, "<<totalHits>>", adrScreen^.totalHits, true);
+		adrScreen^.returnText = searchEngine.replaceAll (adrScreen^.returnText, "<<replaceNumHits>>", replacer, true)};
+	
+	adrScreen^.thisScreen = number (adrSearchRequest^.start / adrSearchRequest^.maxHitsPerPage);
+	
+	add ("<p>\rMore matches...<p>\r<font size=-1>");
+	
+	local (site);
+	if defined (adrSearchRequest^.site) and adrSearchRequest^.site != "" {
+		local (sitesList = adrSearchRequest^.site); //PBS 10/1/99: support for multiple sites
+		if typeOf (sitesList) != listType {
+			sitesList = {sitesList}};
+		local (i);
+		for i = 1 to sizeOf (sitesList) {
+			if i > 1 {
+				site = site + "&"};
+			site = site + "site=" + string.replaceAll (sitesList [i], " " ,"+")}};
+	
+	for i = 0 to adrScreen^.totalScreens - 1 {
+		if i == adrScreen^.thisScreen {
+			add (i + 1)}
+		else {
+			local (q = string.urlEncode (adrSearchRequest^.searchString));
+			q = string.replaceAll (q, "%20", "+");
+			local (url = adrSearchRequest^.fname + "?");
+			url = url + "m=" + adrSearchRequest^.maxHitsPerPage + "&s=" + ((i * adrSearchRequest^.maxHitsPerPage) + 1);
+			url = url + "&q=" + q;
+			if site != "" {
+				url = url + "&" + site};
+			add ("<a href=\"" + url + "\">" + (i + 1) + "</a>")};
+		
+		if i != adrScreen^.totalScreens - 1 {
+			add (" - ")}};
+	add ("</font>");
+	adrScreen^.returnText = adrScreen^.returnText + htmlText;
+	
+	return (true)}

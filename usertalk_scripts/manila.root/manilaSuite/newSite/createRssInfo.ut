@@ -1,0 +1,16 @@
+on createRssInfo (adrSiteInfo) {
+	«Create the empty rssInfo syndication prefs.
+		«10/27/99; 10:20:27 PM by PBS
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	local (adrPrefs = @adrSite^.["#newsSite"].rssInfo);
+	local (siteName = adrSiteInfo^.shortSiteName);
+	
+	adrPrefs^.channelLink = adrSite^.["#ftpSite"].url;
+	adrPrefs^.imageLink = adrSite^.["#ftpSite"].url;
+	adrPrefs^.channelTitle = siteName + " News";
+	adrPrefs^.imageTitle = siteName;
+	adrPrefs^.userlandExtensions.managingEditor = adrSiteInfo^.sysopEmail + " (" + adrSiteInfo^.sysopName + ")";
+	adrPrefs^.userLandExtensions.webmaster = adrPrefs^.userlandExtensions.managingEditor;
+	
+	return (true)}

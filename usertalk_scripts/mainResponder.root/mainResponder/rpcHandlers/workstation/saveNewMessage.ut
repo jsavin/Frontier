@@ -1,0 +1,55 @@
+on saveNewMessage (discussRoot, userName, password, docTable) {
+	
+	bundle { //base64 decode all strings in the message table
+		local (i);
+		for i = 1 to sizeOf (docTable) {
+			if typeOf (docTable [i]) == stringType {
+				docTable [i] = base64.decode (docTable [i])}}};
+	
+	«Create the message
+	local (msgnum);
+	msgnum = mainResponder.editorial.addMessage (discussRoot, userName, password, doctable.body, doctable.subject);
+	
+	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+	«If the text contains any tabs, assume it was edited as an outline. Otherwise, it's plain text.
+	if docTable.body contains "\t" {
+		op.newOutlineObject (adrmsg^.body, @adrmsg^.body);
+		filemenu.saveMyRoot (adrmsg)};
+	
+	«Add enclosures
+	if defined (docTable.enclosureBits) and (docTable.enclosureBits) == tableType {
+		local (ix, binaryfolder = mainResponder.editorial.getMessageBinaryFolder (discussRoot, msgnum));
+		for ix = 1 to sizeof (docTable.enclosureBits) {
+			if typeof (docTable.enclosureBits [ix]) == binaryType {
+				f = binaryfolder + string.replaceAll (nameof (docTable.enclosureBits [ix]), file.getPathChar (), "");
+				file.sureFilePath (f);
+				file.writeWholeFile (f, docTable.enclosureBits [ix])}}};
+	«if defined (docTable.enclosureBits) and (docTable.enclosureBits) == tableType
+		«if not defined (adrmsg^.enclosureBits)
+			«adrmsg^.enclosureBits = docTable.enclosureBits
+		«else
+			«table.copyContents (@docTable.enclosureBits, @adrmsg^.enclosureBits)
+		«filemenu.saveMyRoot (adrmsg)
+	
+	«Return the message table
+	doctable = adrmsg^;
+	doctable.previewURL = mainResponder.editorial.getMessageURL (discussRoot, msgnum);
+	doctable.binaryServerURL = mainResponder.editorial.getMessageBinaryURL (discussRoot, msgnum);
+	bundle { //add binaryNames
+		new (tableType, @docTable.binaryNames);
+		local (f, binaryfolder = mainResponder.editorial.getMessageBinaryFolder (discussRoot, msgnum));
+		if file.exists (binaryfolder) {
+			fileloop (f in binaryfolder, 1) {
+				docTable.binaryNames.[file.fileFromPath (f)] = file.size (f)}}};
+	«doctable.binaryServerURL = mainResponder.editorial.getDiscussTableAddress (discussRoot)^.editorialprefs.binaryServerURL
+	«if defined (doctable.enclosureBits)  //add table of enclosure names
+		«if typeof (doctable.enclosureBits) == tableType
+			«local (ix)
+			«new (tableType, @doctable.enclosures)
+			«for ix = 1 to sizeof (doctable.enclosureBits)
+				«if typeof (doctable.enclosureBits [ix]) == binaryType
+					«doctable.enclosures.[nameOf (doctable.enclosureBits [ix])] = getBinaryType (doctable.enclosureBits [ix])
+		«delete (@doctable.enclosureBits)
+	mainResponder.editorial.cleanDocTableForExport (@doctable);
+	
+	return (docTable)} //send it to the workstation

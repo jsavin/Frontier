@@ -1,0 +1,23 @@
+on getSiteHitsTable (adrSite, adrAdrTable) {
+	«Get the address of the table containing the hourly hits for this site. Return false if we can't get the table. (It's not a fatal error.)
+		«11/09/00; 2:02:04 PM by PBS
+	
+	try {
+		local (canonicalSiteName);
+		canonicalSiteName = manilaSuite.getCanonicalSiteName (adrSite);
+		local (adrStats = @config.manila.stats);
+		if not defined (adrStats^) {
+			new (tableType, adrStats)};
+		local (adrSites = @adrStats^.sites);
+		if not defined (adrSites^) {
+			new (tableType, adrSites)};
+		local (adrHourly = @adrSites^.hourly);
+		if not defined (adrHourly^) {
+			new (tableType, adrHourly)};
+		local (adrSiteTable = @adrHourly^.[canonicalSiteName]);
+		if not defined (adrSiteTable^) {
+			new (tableType, adrSiteTable)};
+		adrAdrTable^ = adrSiteTable;
+		return (true)};
+	
+	return (false)}

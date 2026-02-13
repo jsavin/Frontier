@@ -1,0 +1,259 @@
+on setupFrontier () {
+	«Changes
+		«8/21/02; 7:17:33 PM by JES
+			«Fixed a bug which would prevent the setup from succeeding on Windows and MacOS Classic.
+		«4/11/02; 10:27:06 PM by JES
+			«Created. Cribbed from radio.html.setupFrontier.
+	
+	local (flOpenAdminSite = true); //set to false to open the first Manila site instead.
+	
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "It Worked!";
+	
+	local (htmltext, indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r"};
+	
+	bundle { //set up a temp table to save messages for redirected pages
+		if not defined (system.temp.frontier.setupFrontier) {
+			new (tableType, @system.temp.frontier.setupFrontier)}};
+	
+	local (errorMessage = "", confirmMessage = "", postedSection = "", flError = false, flConfirmPage = false, flPortForwardPage = false);
+	if pta^.method == "POST" {
+		«workspace.pt = pta^; edit (@workspace.pt)
+		local (adrargs = @pta^.postArgs);
+		
+		on getInitials (s) {
+			local (initials = "");
+			bundle { //strip off parentheticals
+				if s contains "(" {
+					s = string.nthField (s, "(", 1)};
+				if s contains "[" {
+					s = string.nthField (s, "[", 1)};
+				if s contains "{" {
+					s = string.nthField (s, "{", 1)}};
+			s = string.trimWhiteSpace (s);
+			initials = string.upper (s[1]);
+			local (i, ct = sizeOf (s));
+			if sizeOf (s) > 1 {
+				local (flNextCharIsInitial = false);
+				for i = 2 to ct {
+					if flNextCharIsInitial {
+						if string.isAlpha (s[i]) {
+							initials = initials + string.upper (s[i])};
+						flNextCharIsInitial = false};
+					if not string.isAlpha (s[i]) {
+						flNextCharIsInitial = true}}};
+			return (initials)};
+		on setName (name) {
+			user.prefs.name = name;
+			bundle { //set user.prefs.initials
+				user.prefs.initials = getInitials (name)}};
+		on setEmail (email) {
+			user.prefs.mailAddress = email};
+		
+		local (flFinishSetup = false);
+		if defined (adrargs^.setupFrontier) { //personalization
+			postedSection = "setupFrontier";
+			local (name = adrargs^.name);
+			local (organization = adrargs^.organization);
+			local (serverDomain = adrargs^.serverDomain);
+			local (email = adrargs^.email);
+			local (mailhost = adrargs^.mailHost);
+			local (password = adrargs^.password);
+			local (repeat = adrargs^.repeatPassword);
+			if system.environment.isMac { //convert name, organization to Mac text
+				name = latinToMac.convert (name);
+				organization = latinToMac.convert (organization)};
+			setName (name);
+			setEmail (email);
+			user.prefs.organization = organization;
+			user.prefs.mailHost = mailhost;
+			config.manila.prefs.baseUrl = "http://" + serverDomain + "/";
+			bundle { //check that the password is ok, and that it matches the repeat password
+				if sizeOf (password) < 4 {
+					errorMessage = "Can't continue setting up Frontier because the password you supplied is not at least four characters long.";
+					flError = true};
+				if not flError {
+					if password != repeat {
+						errorMessage = "Can't continue setting up Frontier because the password you supplied does not match the repeat password.";
+						flError = true}}};
+			bundle { //set up Admin member for access to control panel
+				bundle { //create the Admin membership group if needed
+					local (adrRoot = @[system.temp.mainResponder.membersRootFile]);
+					local (adrGroup = @adrRoot^.admin);
+					if not defined (adrGroup^) {
+						new (tableType, adrGroup)};
+					if not defined (adrGroup^.callbacks) {
+						new (tableType, @adrGroup^.callbacks)};
+					if not defined (adrGroup^.cookieDomain) {
+						adrGroup^.cookieDomain = ""};
+					if not defined (adrGroup^.cookieExpires) {
+						adrGroup^.cookieExpires = "Mon, 01 Apr 2030 07:00:00 GMT"};
+					if not defined (adrGroup^.cookieName) {
+						adrGroup^.cookieName = "Admin"};
+					if not defined (adrGroup^.mailReturnAddress) {
+						adrGroup^.mailReturnAddress = user.prefs.mailAddress};
+					if not defined (adrGroup^.mailSubject) {
+						adrGroup^.mailSubject = "Admin"};
+					if not defined (adrGroup^.mailTemplate) {
+						wp.newTextObject ("", @adrGroup^.mailTemplate)};
+					if not defined (adrGroup^.openToPublic) {
+						adrGroup^.openToPublic = false};
+					if not defined (adrGroup^.users) {
+						new (tableType, @adrGroup^.users)}};
+				
+				local (adrMember = mainResponder.members.getMemberTable ("Admin", user.prefs.mailAddress));
+				if not defined (adrMember^) {
+					new (tableType, adrMember)};
+				adrMember^.password = password;
+				if not defined (adrMember^.personalInfo) {
+					new (tableType, @adrMember^.personalInfo)};
+				if not defined (adrMember^.personalInfo.name) {
+					adrMember^.personalInfo.name = user.prefs.name}};
+			if not flError { //complete the setup
+				try { //trap network errors
+					if system.environment.isCarbon { //we need to run the port forwarding page now
+						flPortForwardPage = true}
+					else { //Windows and Classic don't need to deal with port forwarding
+						local (urlParts = string.urlSplit (config.manila.prefs.baseUrl));
+						userland.completeSetup (urlParts[2], password);
+						flConfirmPage = true;
+						system.temp.Frontier.setupFrontier.flAllowLocalAccessToSetupPage = false}} //require login from now on
+				else { //network or other error
+					errorMessage = tryError;
+					flError = true}}};
+		if defined (adrargs^.proxy) { //set proxy settings
+			postedSection = "proxy";
+			try { //convert port to a number -- if not, it's an error
+				adrargs^.port = number (adrargs^.port)}
+			else {
+				errorMessage = "Can't set your proxy settings because the port you entered is not valid.";
+				adrargs^.enabled = false;
+				flError = true};
+			user.webBrowser.proxy.domain = adrargs^.domain;
+			user.webBrowser.proxy.username = adrargs^.username;
+			user.webBrowser.proxy.password = binary (adrargs^.password);
+			user.webBrowser.proxy.enabled = false;
+			if not flError {
+				user.webBrowser.proxy.port = adrargs^.port};
+			if defined (adrargs^.enabled) {
+				if adrargs^.enabled {
+					user.webBrowser.proxy.enabled = true}}; //PBS 12/31/01: *true*, not false (that was a bug)
+			if flError { //redirect to the proxy settings section of the page
+				mainResponder.redirect ("http://" + pta^.host + pta^.uri + "#proxy")}
+			else {
+				confirmMessage = "Your proxy server information has been set.";
+				mainResponder.redirect ("http://" + pta^.host + pta^.uri)}};
+		if defined (adrargs^.portForward) { //set port forwarding preferences
+			local (adminPassword = adrargs^.password);
+			local (flRememberAdminPassword = defined (adrargs^.enabled));
+			if flRememberAdminPassword {
+				user.prefs.portForwardingAdminPassword = binary (adminPassword)};
+			local (password = mainResponder.members.getMemberTable ("Admin", user.prefs.mailAddress)^.password);
+			local (urlparts = string.urlSplit (config.manila.prefs.baseUrl));
+			userland.completeSetup (urlparts[2], password, user.prefs.portForwardingAdminPassword, flRememberAdminPassword);
+			flConfirmPage = true;
+			system.temp.Frontier.setupFrontier.flAllowLocalAccessToSetupPage = false}; //require login from now on
+		«if defined (adrargs^.confirmSetup) //redirect to the Control Panel home page
+			«mainResponder.redirect ("http://" + pta^.host + "/")
+		bundle { //if redirecting, set messages in the temp table, and don't bother to finish rendering
+			if defined (pta^.responderAttributes.redirectUrl) {
+				temp.frontier.postedSection = postedSection;
+				temp.frontier.setupFrontier.flError = flError;
+				temp.frontier.setupFrontier.errorMessage = errorMessage;
+				temp.frontier.setupFrontier.message = confirmMessage;
+				return ("")}
+			else { //no redirect -- make sure messages are cleared
+				temp.frontier.postedSection = "";
+				temp.frontier.setupFrontier.flError = false;
+				temp.frontier.setupFrontier.errorMessage = "";
+				temp.frontier.setupFrontier.message = ""}}};
+	
+	if flConfirmPage and (not flError) { //render the confirmation page
+		if flOpenAdminSite { //see the first line of this script above
+			local (port, adminSiteUrl);
+			port = user.inetd.config.http2.port;
+			if port == 80 {
+				adminSiteUrl = "http://127.0.0.1/"}
+			else {
+				adminSiteUrl = "http://127.0.0.1:" + port + "/"};
+			mainResponder.redirect (adminSiteUrl)}
+		else {
+			local (myManilaServerSiteUrl = manilaSuite.getSiteUrl (@myManilaServerManilaWebsite));
+			mainResponder.redirect (myManilaServerSiteUrl)};
+		return ("");
+		«Confirmation page wired off for now.
+			«pta^.title = "Congratulations!"
+			«local (t); new (tableType, @t)
+			«t.myManilaServerSiteUrl = myManilaServerSiteUrl
+			«add (mainResponder.getString ("setupFrontier.newUserConfirmMessage", @t))
+			«bundle //add the Continue button
+				«add ("<form method=\"POST\" action=\"http://" + myManilaServerSiteUrl + "/\">")
+				«add ("<input type=\"submit\" value=\"Continue\">")
+				«add ("</form>")}
+	else { //render the welcome/setup form
+		bundle { //change the template to the setup template, which doesn't have navigation links to the rest of the control panel
+			table.assign (@pta^.template, "setup");
+			pta^.indirectTemplate = true};
+		if flPortForwardPage { //oops -- unix: we have to deal with port forwarding
+			local (t); new (tableType, @t);
+			t.adminPassword = "";
+			t.rememberAdminPassword = "checked";
+			if defined (user.prefs.portForwardingAdminPassword) {
+				t.adminPassword = string (user.prefs.portForwardingAdminPassword)};
+			add (mainResponder.getString ("setupFrontier.portForward", @t))}
+		else { //the main setup form and proxy settings
+			local (name = user.prefs.name, email = user.prefs.mailAddress, organization = user.prefs.organization, mailHost = user.prefs.mailHost);
+			if system.environment.isMac { //convert name, organization to latin text
+				name = latinToMac.macToLatin (name);
+				organization = latinToMac.macToLatin (organization)};
+			bundle { //render the new user page
+				local (t); new (tabletype, @t);
+				bundle { //add personal info to replacement table
+					t.username = name;
+					t.useremail = email;
+					t.userorganization = organization;
+					t.userpassword = "";
+					local (urlparts = string.urlSplit (config.manila.prefs.baseUrl));
+					t.serverdomain = urlparts[2];
+					try { //try to get the admin password from the Admin membership group
+						local (adrMember = mainResponder.members.getMemberTable ("Admin", user.prefs.mailAddress));
+						if defined (adrMember^) {
+							t.userpassword = adrMember^.password}};
+					t.mailhost = mailHost};
+				bundle { //add proxy settings to replacement table
+					with user.webBrowser.proxy {
+						t.proxydomain = user.webBrowser.proxy.domain;
+						t.proxyusername = user.webBrowser.proxy.username;
+						t.proxypassword = string (user.webBrowser.proxy.password);
+						t.proxyport = user.webBrowser.proxy.port;
+						if user.webBrowser.proxy.enabled {
+							t.proxyenabled = "checked"}
+						else {
+							t.proxyenabled = ""}}};
+				bundle { //add error or confirmation messages to replacement table
+					t.proxyConfirm = "";
+					t.setupError = "";
+					t.proxyError = "";
+					if defined (system.temp.frontier.postedSection) { //only defined after the first POST
+						if defined (system.temp.frontier.setupFrontier.flError) { //only defined after the first POST
+							if temp.frontier.setupFrontier.flError {
+								case temp.frontier.postedSection {
+									"setupFrontier" {
+										t.setupError = "<p><font color=\"red\">" + temp.frontier.setupFrontier.errorMessage + "</font></p>"};
+									"proxy" {
+										t.proxyError = "<p><font color=\"red\">" + temp.frontier.setupFrontier.errorMessage + "</font></p>"}}}
+							else {
+								case temp.frontier.postedSection {
+									"proxy" {
+										t.proxyConfirm = "<p><font color=\"navy\">" + temp.frontier.setupFrontier.message + "</font></p>"}}}}}};
+				add (mainResponder.getString ("setupFrontier.main", @t))}}};
+	
+	return (htmltext)};
+«bundle //testing
+	«local (pagetable); new (tableType, @pagetable)
+	«pagetable.method = "GET"
+	«html.setPageTableAddress (@pagetable)
+	«setupFrontier ()
+	«html.deletePageTableAddress ()

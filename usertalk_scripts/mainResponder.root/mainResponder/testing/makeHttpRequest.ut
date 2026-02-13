@@ -1,0 +1,8 @@
+«10/3/99; 6:48:39 PM by DW
+	«Cleaned up, no longer displays the text in the web browser, uses tcp.httpReadUrl to do the HTTP request.
+mainresponder.init ();
+if dialog.ask ("Enter URL for page you want to get:", @config.mainresponder.prefs.lasturl) {
+	local (s = tcp.httpReadUrl (config.mainresponder.prefs.lasturl));
+	wp.newTextObject (s, @scratchpad.httpResult);
+	edit (@scratchpad.httpresult);
+	wp.go (up, infinity)}

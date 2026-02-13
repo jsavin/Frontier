@@ -1,0 +1,22 @@
+on getSiteFragmentAddress (pluginName, adrSite) {
+	«Get the address of the location where the plugin should place its website fragment in a Manila site. If the website fragment already exists in a Manila site, return the address of the existing fragment.
+		«02/22/00; 2:01:21 PM by PBS
+	
+	local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
+	
+	local (relativePath = adrConfig^.relativePath);
+	if defined (adrSite^.["#plugins"].enabled.[pluginName]) {
+		relativePath = adrSite^.["#plugins"].enabled.[pluginName]};
+	
+	local (adrSiteFragment = manilaSuite.plugins.relativePathToAddress (relativePath, adrSite));
+	
+	bundle { //sanity check -- there's a good chance the plug-in is going to delete the site fragment -- no mistakes allowed here -- be very careful
+		if adrSiteFragment == nil {
+			scriptError ("Can't get the address of the site fragment for \"" + pluginName + "\" because it's nil.")};
+		if manilaSuite.isManilaSite (adrSiteFragment) {
+			scriptError ("Can't get the address of the site fragment for \"" + pluginName + "\" because it appears to point to the Manila site itself.")};
+		if (defined (adrSiteFragment^)) and (sizeOf (adrSiteFragment^) > 0) { //if it exists and isn't an empty table
+			if not defined (adrSiteFragment^.["#pluginName"]) { //all site fragments must have a #pluginName element
+				scriptError ("Can't get the address of the site fragment for \"" + pluginName + "\" because there is no #pluginName element in the table.")}}};
+	
+	return (adrSiteFragment)}

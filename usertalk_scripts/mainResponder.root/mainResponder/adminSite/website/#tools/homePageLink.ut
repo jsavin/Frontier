@@ -1,0 +1,7 @@
+local (linetext = "Home");
+
+local (pta = html.getPageTableAddress ());
+local (pageName = string.lower (nameOf (adrObject^)));
+if pageName == "default" {
+	return (linetext)};
+return ("<a href=\"default\">" + linetext + "</a>")

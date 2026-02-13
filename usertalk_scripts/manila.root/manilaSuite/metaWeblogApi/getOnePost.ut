@@ -1,0 +1,44 @@
+on getOnePost (adrmsg, postid, flAlwaysIncludeHomePageCat=false) {
+	«Changs
+		«10/18/05; 4:10:47 AM by JES
+			«Change "HomePage" category to "Home Page".
+		«10/18/05; 4:01:11 AM by JES
+			«Only include the Home Page 'category' is the news item is posted. Always include categories array in return struct.
+		«10/17/05; 2:53:00 AM by JES
+			«Optional param, flAlwaysIncludeHomePageCat. If true, we include the HomePage pseudo category, regardless of whether the message has it set or not.
+		«10/17/05; 2:48:28 AM by JES
+			«Add support for Home Page 'department'.
+		«2/6/03; 11:47:30 AM by JES
+			«Fixed a typo in the sizeOf-check of adrmsg^.newsItem.department.
+		«1/27/03; 2:00:10 PM by JES
+			«Add the news item department to the categories array in the returned struct, per bug report from Brent Simmons.
+		«1/9/03; 6:40:35 PM by JES
+			«Created. Called from the getRecentPosts and getPost RPC handlers.
+	if not defined (adrmsg^.newsItem) { //reality check
+		scriptError ("Can't get the post because the message doesn't contain a news item.")};
+	local (t); new (tableType, @t);
+	t.userid = adrmsg^.member;
+	t.dateCreated = adrmsg^.postTime;
+	if sizeOf (adrmsg^.newsItem.title) > 0 {
+		t.title = adrmsg^.newsItem.title};
+	if sizeOf (adrmsg^.newsItem.url) > 0 {
+		t.link = adrmsg^.newsItem.url};
+	if sizeOf (adrmsg^.newsItem.description) > 0 {
+		t.content = adrmsg^.newsItem.description};
+	t.categories = {};
+	if defined (adrmsg^.newsItem.department) {
+		if sizeOf (adrmsg^.newsItem.department) > 0 {
+			if typeOf (adrmsg^.newsItem.department) == listType {
+				t.categories = adrmsg^.newsItem.department}
+			else {
+				t.categories = {adrmsg^.newsItem.department}}}};
+	bundle { //handle Home Page 'category'
+		local (flOnHomePage = true);
+		local (flIncludeHomePageCat = flAlwaysIncludeHomePageCat or defined (adrmsg^.newsItem.flOnHomePage) );
+		if defined (adrmsg^.newsItem.flOnHomePage) {
+			flOnHomePage = adrmsg^.newsItem.flOnHomePage};
+		if flIncludeHomePageCat {
+			if flOnHomePage and manilaSuite.news.isPosted (adrmsg) {
+				t.categories = {"Home Page"} + t.categories}}};
+	t.postid = postid;
+	return (t)}

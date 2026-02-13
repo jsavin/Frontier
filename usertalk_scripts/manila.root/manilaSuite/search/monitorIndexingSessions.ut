@@ -1,0 +1,39 @@
+on monitorIndexingSessions () {
+	«Changes
+		«8/3/02; 10:24:02 PM by JES
+			«Created. Monitors all indexing sessions, kicking off any that hve been interrupted.
+				«Modeled after scheduler.monitorThreads.
+	if not config.manila.prefs.flRestartSearchEngineIndexSessions {
+		return (0)};
+	local (ctthreads = 0);
+	local (adradrsite, ctsites = 0);
+	for adradrsite in @config.manila.sites {
+		ctsites++;
+		if ctsites % 100 == 0 { //sleep for 0.1 sec every 100 sites
+			thread.sleepTicks (6)};
+		local (adrsite = adradrsite^);
+		if defined (adrsite^.["#newsSite"].search.indexQueue) {
+			if defined (adrsite^.["#newsSite"].search.indexQueue) {
+				if adrsite^.["#newsSite"].search.indexQueue.flRunning {
+					local (adrdata = manilaSuite.search.init (adrsite));
+					local (idThread = adrdata^.indexQueue.threadId);
+					local (flRun = not (thread.exists (idThread)) );
+					if not flRun {
+						flRun = (idThread == 0)};
+					if flRun { //this one died or we restarted -- kick it off again
+						local (s = string.popFileFromAddress (@manilaSuite.search.threadedSiteIndex));
+						s = s + " (@" + string.replaceAll (string.popFileFromAddress (adrsite), "\"", "\\\"") + ")";
+						idThread = thread.evaluate (s);
+						ctthreads++;
+						adrdata^.indexQueue.threadId = idThread}}}}};
+	return (ctthreads)};
+bundle { //test code
+	«bundle //1000 runs
+		«local (ticks = clock.ticks ())
+		«for i = 1 to 1000
+			«monitorIndexingSessions ()
+		«dialog.alert (double (clock.ticks () - ticks) / 60)
+	bundle { //1 run
+		local (ticks = clock.ticks ());
+		monitorIndexingSessions ();
+		dialog.alert (double (clock.ticks () - ticks) / 60)}}

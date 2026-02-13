@@ -1,0 +1,194 @@
+on themesPage (pta=nil) {
+	«Changes:
+		«3/27/06; 5:11:12 PM by JES
+			«Don't show all themes to admin. Callbacks can override, but the admin should see the cleaner list by default.
+		«2/19/06; 3:45:14 AM by JES
+			«Add callback for theme availability. Makes it possible to customize theme availability on a site-by-site basis. Callbacks return -1 to force a theme to be listed, 0 to force a theme to not be listed, and 1 (true) to do the default behavior.
+				«Callbacks are at config.manila.callbacks.isThemeAvailable. Each is called with a single parameter -- the address of a theme table in config.manila.themes.
+				«We use 1 for default behavior, since this is what scripts that don't have an explicit return value return. It's minimum-impact if a mistake is made. One can just return true for normal behavior, and false to hide a theme. The -1 return value is a special case, used to display a theme regardless of whether it's enabled in the server prefs or not.
+			«Make all themes available to server admins, unless a callback overrides it.
+		«10/1/05; 2:45:09 AM by JES
+			«Fix double-display of page title.
+		«1/25/02; 6:30:56 PM by PBS
+			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		«06/10/00; 6:50:45 PM by JES
+			«localized
+		«06/05/00; 3:53:41 PM by PBS
+			«The selected radio button should be the last theme applied. If none, use default.
+			«The theme name should be a link to the site it comes from, if any.
+		«05/25/00; 10:55:10 PM by PBS
+			«Created. Implement the themes-chooser page on a Manila site.
+	
+	if not defined (config.manila.themes) {
+		manilaSuite.init ()};
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	pta^.title = manilaSuite.getString ("themes.themesPageTitle", pta: pta);
+	
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (htmlText = "", indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + (string.filledString ("\t", indentLevel) + s + "\r");};
+	
+	bundle { //apply the theme if this is a post
+		local (flPost = (string.lower (pta^.method) == "post"));
+		if flPost and (not (defined (pta^.postArgs.no))) {
+			local (themeName = string.urlDecode (pta^.postArgs.theme));
+			if defined (pta^.postArgs.needConfirm) { //do a confirmation
+				if defined (config.manila.themes.[themeName]) {
+					local (s = "");
+					manilaSuite.referer.checkSelf (); //check referer to defeat client side trojan horse
+					local (displayName = config.manila.themes.[themeName].info.displayName);
+					local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
+					manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor);
+					bundle { //build the top of the table
+						local (action = pta^.fname + "$" + pta^.pathArgs + "?confirmed");
+						s = "\r<table border=\"0\" cellpadding=\"3\" cellspacing=\"1\" bgcolor=\"" + headerColor + "\" width=\"350\">";
+						s = s + "\r<tr bgcolor=\"" + headerColor + "\"><td align=\"left\"><b><font color=\"" + headerTextColor + "\">" + manilaSuite.getString ("admin.confirmBoxHeader", pta: pta) + "</font></b></td></tr>\r<tr bgcolor=\"" + backgroundColor + "\"><td><font color=\"" + backgroundTextColor + "\">";
+						s = s + "\r<form method=\"POST\" action=\"" + action + "\">"};
+					bundle { //build the middle of the table
+						local (replacementTable); new (tableType, @replacementTable);
+						replacementTable.displayName = displayName;
+						s = s + manilaSuite.getString ("themes.applyThemeConfirm", @replacementTable, pta: pta)}; // 06/10/00 JES: localized
+					bundle { //build the bottom of the table
+						s = s + "\r</font>";
+						s = s + "\r<input type=\"hidden\" name=\"theme\" value=\"" + pta^.postArgs.theme + "\">";
+						s = s + "\r<p align=\"right\">";
+						s = s + "\r<input type=\"submit\" name=\"no\" value=\"" + manilaSuite.getString ("common.noButton", pta: pta) + "\">&nbsp;&nbsp;";
+						s = s + "\r<input type=\"submit\" name=\"yes\" value=\"" + manilaSuite.getString ("common.yesButton", pta: pta) + "\">&nbsp;&nbsp;</p></form>";
+						s = s + "\r</td></tr></table><br><br>"};
+					return (manilaSuite.unTaint (s))}} //no curly brace macros should be evaluated in this page text
+			else {
+				if defined (config.manila.themes.[themeName]) {
+					manilaSuite.referer.checkSelf (); //check referer to defeat client side trojan horse
+					if defined (pta^.postArgs.yes) {
+						manilaSuite.themes.apply (adrSite, themeName, false);
+						«Refresh page.
+						mainResponder.redirect (pta^.fname + "$" + pta^.pathArgs + "?refresh");
+						return ("")}}
+				else {
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.themeName = themeName;
+					scriptError (manilaSuite.getString ("themes.nonexistantThemeError", @replacementTable, pta: pta))}}}};
+	
+	«bundle //site shell upgrade -- add script that displays the screen shot
+		«if not defined (adrSite^.admin.sitePrefs.themes)
+			«adrSite^.admin.sitePrefs.themes = manilaData.newSiteTemplate.admin.sitePrefs.themes
+	
+	bundle { //add title and page description
+		«add ("<h2>" + pta^.title + "</h2>")
+		add (manilaSuite.getString ("themes.themesPageDescription", pta: pta))};
+	
+	bundle { //create the form
+		local (lastThemeName = "default");
+		if defined (pta^.themes^.lastThemeApplied) {
+			lastThemeName = pta^.themes^.lastThemeApplied};
+		local (adrThemes = @config.manila.themes);
+		local (adrLastThemeApplied = @adrThemes^.[lastThemeName]);
+		local (radioButtonName = "theme");
+		local (previewLink = "themes/screenShot" + "?name=");
+		add ("<form method=\"post\" action=\"" + pta^.fname + "$" + pta^.pathArgs + "\">");
+		indentLevel++;
+		add ("<table border=\"0\" cellspacing=\"0\" cellpadding=\"6\">");
+		indentLevel++;
+		local (adrItem);
+		on addTheme (canonicalName, name, description, author, authorEmail, creationDate, url, flChecked) {
+			add ("<tr>");
+			indentLevel++;
+			add ("<td valign=\"top\" width=\"10\">");
+			indentLevel++;
+			add ("<input type=\"radio\" name=\"" + radioButtonName + "\" value=\"" + string.urlEncode (canonicalName) + "\"");
+			if flChecked {
+				add (" checked")};
+			add (">");
+			add ("</td>");
+			indentLevel--;
+			add ("<td valign=\"top\">");
+			indentLevel++;
+			if url == "" {
+				add ("<b>" + name + "</b><br>")}
+			else {
+				add ("<b><a href=\"" + url + "\">" + name + "</a></b><br>")};
+			add ("<font size=\"-1\">");
+			add (description);
+			local (authorLink = author);
+			if authorEmail != "" {
+				authorLink = "<a href=\"mailto:" + authorEmail + "\">" + author + "</a>"};
+			bundle { // add the created by message
+				local (replacementTable); new (tableType, @replacementTable);
+				replacementTable.authorLink = authorLink;
+				replacementTable.creationDate = creationDate;
+				add ("<br>" + manilaSuite.getString ("themes.createdByMessage", @replacementTable, pta: pta))};
+			add ("</font>");
+			add ("</td>");
+			indentLevel--;
+			«add ("<td valign=\"top\">")
+			«indentLevel++
+			«local (url = previewLink + string.urlEncode (name))
+			«local (link)
+			«link = "<a href=\"" + url + "\" target=\"screenshot\">Screen Shot</a>"
+			«if url != ""
+				«link = "<a href=\"" + url + "\">Site</a>"
+			«add (link)
+			«add ("</td>")
+			«indentLevel--
+			add ("</tr>");
+			indentLevel--};
+		
+		local (flServerAdmin = false);
+		if defined (pta^.flServerAdmin) {
+			flServerAdmin = pta^.flServerAdmin};
+		
+		for adrItem in adrThemes {
+			local (flListTheme = false);
+			«if flServerAdmin
+				«flListTheme = true
+			if adrItem^.flPublic and adrItem^.flEnabled {
+				flListTheme = true};
+			bundle { //call callbacks -- if any returns false, don't list the theme
+				if not defined (config.manila.callbacks.isThemeAvailable) {
+					new (tableType, @config.manila.callbacks.isThemeAvailable)};
+				local (adrcallback);
+				for adrcallback in @config.manila.callbacks.isThemeAvailable {
+					try {
+						while typeOf (adrcallback^) == addressType {
+							adrcallback = adrcallback^};
+						case adrcallback^ (adrItem) {
+							-1 { //always list
+								flListTheme = true;
+								break}; //no need for further checking
+							0 { //never list
+								flListTheme = false;
+								break}; //no need for further checking
+							1 { //do default
+								}}}}};// NOP
+			if not flListTheme {
+				continue};
+			
+			local (themeCanonicalName = nameOf (adrItem^));
+			local (themeDisplayName = themeCanonicalName);
+			if defined (adrItem^.info.displayName) {
+				themeDisplayName = adrItem^.info.displayName};
+			local (description = string (adrItem^.info.description));
+			local (author = string (adrItem^.info.author));
+			local (creationDate = mainResponder.localization.dateTimeString (adrItem^.info.CreationDate, pta)); // 06/10/00 JES: localized
+			local (url);
+			if defined (adrItem^.Info.siteUrl) {
+				url = string.trimWhiteSpace (adrItem^.Info.siteUrl)};
+			local (flChecked = (adrItem == adrLastThemeApplied));
+			local (authorEmail = "");
+			if defined (adrItem^.info.authorEmail) {
+				authorEmail = adrItem^.info.authorEmail};
+			addTheme (themeCanonicalName, themeDisplayName, description, author, authorEmail, creationDate, url, flChecked)};
+		
+		add ("</table>");
+		indentLevel--;
+		add ("<p><input name=\"needConfirm\" type=\"submit\" value=\"" + manilaSuite.getString ("themes.applyThemeButton") + "\">");
+		add ("</form>");
+		indentLevel--};
+	
+	return (manilaSuite.unTaint (htmlText))}; //no curly brace macros should be evaluated in this page text
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«themesPage (@workspace.pt)

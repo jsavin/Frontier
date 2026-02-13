@@ -1,0 +1,9 @@
+on getSiteGemsAddress (adrSite) {
+	«Return the address of the gems table for a site. The gems table contains two subtables, data and prefs.
+		«04/14/00; 1:59:31 PM by PBS
+	
+	local (adrGems = @adrSite^.["#newsSite"].gems);
+	if not defined (adrGems^) {
+		new (tableType, adrGems)};
+	
+	return (adrGems)}

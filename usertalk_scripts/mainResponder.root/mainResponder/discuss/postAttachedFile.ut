@@ -1,0 +1,99 @@
+on postAttachedFile (adrFileArgs, msgNum, memberGroup) {
+	«Store an attached file, either on disk or inside the discussion group.
+		«Changes:
+			«Thu, 20 May 1999 16:39:55 GMT by AR
+				«First implementation. Based on screenshotsSite.postCatcher in screenshots.root.
+			«10/15/99; 1:13:09 AM by PBS
+				«Added support for addresses, and strings that can be coerced to addresses, in discuss.root.
+			«10/20/99; 12:16:56 PM by PBS
+				«If an image is attached, store it in the dg in an image subtable.
+				«Only do so if flDiscussStoreImages is true, otherwise write even images to disk.
+			«03/15/00; 5:26:21 PM by PBS
+				«When computing the path to the attachments folder for this message, it now calls mainResponder.discuss.getMessageAttachmentsFolder -- a new bottleneck script.
+			«3/13/07; 12:11:08 PM by LL
+				«Add support for PNG images.
+	
+	bundle { //error checking
+		if not defined (adrFileArgs^.filename) {
+			return (false)};
+		if not defined (adrFileArgs^.data) {
+			return (false)};
+		if string.length (adrFileArgs^.filename) == 0 {
+			return (false)};
+		if string.length (adrFileArgs^.data) == 0 {
+			return (false)}};
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum));
+	local (flStoredInDg = false, f);
+	
+	bundle { //possibly store this image in the dg, not to disk
+		if defined (pta^.responderAttributes.flDiscussStoreImages) {
+			if pta^.responderAttributes.flDiscussStoreImages {
+				if defined (adrFileArgs^.["Content-type"]) {
+					local (mimeType = adrFileArgs^.["Content-type"]);
+					local (flGif = false, flJpeg = false, flPng = false);
+					
+					case string.lower (mimeType) { //is it a GIF, JPEG or PNG?
+						"image/gif" {
+							flGif = true};
+						"image/jpeg";
+						"image/pjpeg" {
+							flJpeg = true};
+						"image/png";
+						"image/x-png" {
+							flPng = true}};
+					
+					if flGif or flJpeg or flPng { //store GIFs, JPEGs and PNGs in the dg
+						if not defined (adrMsg^.image) {
+							new (tableType, @adrMsg^.image)};
+						adrMsg^.image.bits = binary (adrFileArgs^.data);
+						adrMsg^.image.mimeType = mimeType;
+						local (hwList);
+						if flGif {
+							hwList = html.getGifHeightWidth (@adrMsg^.image.bits);
+							setBinaryType (@adrMsg^.image.bits, 'GIFf')};
+						if flJpeg {
+							hwList = html.getJpegHeightWidth (@adrMsg^.image.bits);
+							setBinaryType (@adrMsg^.image.bits, 'JPEG')};
+						if flPng {
+							hwList = html.getPngHeightWidth (@adrMsg^.image.bits);
+							setBinaryType (@adrMsg^.image.bits, 'PNGf')};
+						adrMsg^.image.height = hwList [1];
+						adrMsg^.image.width = hwList [2];
+						flStoredInDg = true}}}}};
+	
+	if not flStoredInDg { //write to disk
+		local (fname, folderPath, s = adrFileArgs^.filename, i, ch);
+		local (pc = file.getPathChar ());
+		bundle { //compute folderPath
+			folderPath = mainResponder.discuss.getMessageAttachmentsFolder (adrMsg);
+			
+			«PBS 03/15/00: old code, now factored out
+				«local (adrDiscuss = mainResponder.discuss.openRoot ())
+				«local (dgName = nameOf (adrDiscuss^))
+				«try //PBS 10/15/99: get the real name of the dg (it might be an address in discuss.root)
+					«local (adr = @[system.temp.mainResponder.discussRootFile])
+					«if defined (adr^.[pta^.discussionRoot])
+						«dgName = nameOf (adr^.[pta^.discussionRoot])
+				«local (discussionFolderName = nameOf (adrDiscuss^)) //PBS 10/15/99
+				«if discussionFolderName beginsWith "#"
+					«discussionFolderName = string.popLeading (discussionFolderName, '#')
+				«on add (s) //append sub-folders to folderpath
+					«folderPath = folderPath + s + pc
+				«folderPath = adrDiscuss^.prefs.binaryServerFolder
+				«add (memberGroup)
+				«add (adrMsg^.member)
+				«add (dgName)
+				«add (msgNum)};
+		for i = sizeOf (s) downTo 1 { //pop off everything but the file name
+			ch = s [i];
+			if not (string.isAlpha (ch) or string.isNumeric (ch) or (ch == ".") or (ch == " ")) {
+				s = string.delete (s, 1, i);
+				break}};
+		fname = s;
+		f = folderPath + fname;
+		file.sureFilePath (f);
+		file.writeWholeFile (f, adrFileArgs^.data)};
+	
+	return (f)}

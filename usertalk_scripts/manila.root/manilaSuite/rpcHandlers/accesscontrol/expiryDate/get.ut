@@ -1,0 +1,5 @@
+on get (username, password, siteName, msgNum) {
+	«manilaSuite.rpcHandlers.accesscontrol.expiryDate.get : 04/05/21, 09:57:19 by DAB
+		«returns the expiry date, if any of the message at msgnum
+		«manilaFixer.rpcHandlers.accesscontrol.expiryDate.get 02/02/27, 14:41:26 by DAB
+	manilaSuite.accessControl.rpcHandlers.get(username, password, siteName, msgNum, "expiryDate")}

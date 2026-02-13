@@ -1,0 +1,6 @@
+on getIndexPath (indexName=nil) {
+	if indexName == nil { //it's the default main index
+		if not defined (temp.mainResponder.indexRootFile) {
+			temp.mainResponder.indexRootFile = frontier.getSubFolder ("ops/") + "Index.root"};
+		return (temp.mainResponder.indexRootFile)};
+	return (frontier.getSubFolder ("ops/") + indexName)}

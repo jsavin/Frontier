@@ -1,0 +1,49 @@
+on cleanText (s) {
+	«Prepare text to be indexed.
+		«Replace whitespace characters and punctuation with spaces.
+		«(Don't replace #, <, >, {, and } characters.)
+		«Then strip HTML tags and macros.
+	«Changes
+		«8/2/02; 5:18:49 PM by JES
+			«Use string.multipleReplaceAll, if available.
+	
+	if defined (string.multipleReplaceAll) {
+		local (replchars = "\r\n\t.-\\/:?!;@$%^&*)([]");
+		local (t); new (tableType, @t);
+		local (i, ch, ct=sizeOf (replchars));
+		for i = 1 to ct {
+			t.[replchars[i]] = " "};
+		s = string.multipleReplaceAll (s, @t)}
+	else { //replace characters one at a time -- original behavior
+		s = string.replaceAll (s, "\r", " ");
+		s = string.replaceAll (s, "\n", " ");
+		s = string.replaceAll (s, "\t", " ");
+		s = string.replaceAll (s, ".", " ");
+		s = string.replaceAll (s, "-", " ");
+		s = string.replaceAll (s, "\\", " ");
+		s = string.replaceAll (s, "/", " ");
+		s = string.replaceAll (s, ":", " ");
+		s = string.replaceAll (s, "?", " ");
+		s = string.replaceAll (s, "!", " ");
+		s = string.replaceAll (s, ";", " ");
+		s = string.replaceAll (s, "@", " ");
+		s = string.replaceAll (s, "$", " ");
+		s = string.replaceAll (s, "%", " ");
+		s = string.replaceAll (s, "^", " ");
+		s = string.replaceAll (s, "&", " ");
+		s = string.replaceAll (s, "*", " ");
+		s = string.replaceAll (s, ")", " ");
+		s = string.replaceAll (s, "(", " ");
+		s = string.replaceAll (s, "[", " ");
+		s = string.replaceAll (s, "]", " ")};
+	
+	s = searchEngine.stripMarkup (s); //strip HTML tags and macros
+	
+	if system.environment.isMac {
+		s = latinToMac.convert (s)}; //convert Latin to Mac characters
+	
+	return (s)};
+
+«bundle //test code
+	«mainResponder.search.utilities.cleanText ("foo-bar's bim!")
+		«"foo bar's bim "

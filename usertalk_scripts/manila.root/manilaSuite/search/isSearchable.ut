@@ -1,0 +1,7 @@
+on isSearchable (adrSite=nil) {
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+	
+	if defined (adrNewsSite^.flSearchable) {
+		return (adrNewsSite^.flSearchable)};
+	
+	return (false)}

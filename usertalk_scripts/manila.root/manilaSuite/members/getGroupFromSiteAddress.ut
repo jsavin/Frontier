@@ -1,0 +1,8 @@
+on getGroupFromSiteAddress (adrSite) {
+	«Get the address of the membership group for this site.
+		«This script may run outside the page rendering context.
+		«10/19/99; 3:08:01 PM by PBS
+	
+	local (groupName = manilaSuite.members.getGroupNameFromSiteAddress (adrSite));
+	local (adrRoot = mainResponder.members.getMembershipTable (groupName));
+	return (adrRoot)}

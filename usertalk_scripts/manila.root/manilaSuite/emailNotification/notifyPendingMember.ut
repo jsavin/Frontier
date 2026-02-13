@@ -1,0 +1,30 @@
+on notifyPendingMember (recipient, sender, subject, name, emailAddress, comment, pendingMembersUrl, siteUrl) {
+	«Changes:
+		«4/7/07; 1:22:26 PM by LL
+			«Include site URL with member approval notification email.
+		«3/19/07; 5:51:45 PM by LL
+			«Created
+	local (msgtext = "", indentlevel = 0);
+	on add (s) {
+		msgtext = msgtext + string.filledstring ("\t", indentlevel) + s + "\r"};
+	
+	bundle { //start HTML mail
+		add ("<html>"); indentlevel++;
+		add ("<body>"); indentlevel++;
+		add ("<blockquote>"); indentlevel++};
+	add ("<p>The following person would like to join the site and requires approval by a managing editor via the <a href=\"" + pendingMembersUrl + "\">Pending Members</a> page.</p>");
+	bundle { //new member data in an HTML table
+		add ("<table>"); indentlevel++;
+		add ("<tr><td>Site URL:&nbsp;</td><td>" + siteUrl + "</td></tr>");
+		add ("<tr><td>Name:&nbsp;</td><td>" + name + "</td></tr>");
+		add ("<tr><td>Email&nbsp;address:&nbsp;</td><td><a href=\"mailto:" + emailAddress + "\">" + emailAddress + "</a></td></tr>");
+		add ("</table>"); indentlevel--;
+		add ("<table>"); indentlevel++;
+		add ("<tr><td><p>Comment: " + comment + "</p></td></tr>");
+		add ("</table>"); indentlevel--};
+	bundle { //close out the HTML
+		add ("</blockquote>"); indentlevel--;
+		add ("</body>"); indentlevel--;
+		add ("</html>"); indentlevel--};
+	bundle { //send the email in its own thread
+		thread.callScript (@manilaSuite.sendmail, {recipient, subject, msgtext, sender, "", "", user.prefs.mailHost, "text/html"})}}

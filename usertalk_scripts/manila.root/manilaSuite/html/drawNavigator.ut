@@ -1,0 +1,348 @@
+on drawNavigator (pta=nil) {
+	«Changes:
+		«10/7/05; 3:45:43 AM by JES
+			«Fix bug in last optimization.
+		«10/7/05; 3:33:39 AM by JES
+			«Re-instate the span, class navigatorLinkCurrent around current page (disabled) links. Removed old commented code.
+			«Optimization: When checking cohorts, get the address of the membership group from the page table.
+		«9/28/05; 12:23:57 PM by JES
+			«Bug fix: Don't check timeModified on the navigator's structure table if it doesn't exist. Cleaned up compile-if-dirty logic to make script more readable.
+		«19/09/05; 6:33:12 PM by PR
+			«changed the accesscontrol check from checkMemberCohorts to checkMemberCohortsFromGroup to bypass the pta^.adrMemberInfo call...
+		«9/8/05; 4:54:46 PM by JES
+			«Ensure that the compiled navigator is not empty.
+		«13/07/05; 5:51:58 PM by PR
+			«check to to see if navigator items are restricted to cohorts
+		«27/04/05; 7:18:12 PM by PR
+			«string.iso8859encode requires two parameters, a string (name, not linetext) and a table 
+		«3/17/05; 4:06:26 PM by JES
+			«If the html pref is set, escape link text using string.iso8859encode.
+		«2004
+			«10/23/04; 1:57:18 PM by JES
+				«If itemFormat is based on lists, then strip out the list tags when adding the edit button.
+			«3/2/04; 1:39:02 PM by JES
+				«Added support for currentItemFormat -- used to specify the appearance of the current page link.
+		«2003
+			«4/28/03; 12:55:52 PM by JES
+				«Respect the flNavigatorEditButton news site pref. (It defaults to true, and is changed using a checkbox next to the navigation links XML on the Advanced prefs page.)
+			«4/21/03; 5:22:10 PM by JES
+				«Add an Edit button below the links if we're not doing static rendering. Only add <br> tags to links that appear in the Prefs system, not to links on the public pages.
+		«2002
+			«10/24/02; 11:37:18 PM by JES
+				«Wrap the navigator link for the current item in a span tag with a class of navigatorLinkCurrent.
+			«6/30/02; 2:49:32 PM by JES
+				«Improved algorithm for determining whether the navigator is rendered vertically or horizontally. Added CSS class, navigatorLink, to the <a href> elements. Use the XHTML-compatible <br /> instead of <br>.
+			«1/25/02; 6:06:27 PM by PBS
+				«Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		«2001
+			«03/20/01; 2:26:26 PM by PBS
+				«If the name attribute doesn't exist for an item in the navigator, it should not be a fatal error which prevents rendering the rest of the items in the navigator and the rest of the page.
+		«2000
+			«10/28/00; 12:57:52 AM by PBS
+				«Differentiate between vertical and horizontal navbars. Add <br> tag only if it's a vertical navbar.
+			«05/05/00; 4:39:31 PM by JES
+				«localized prefs navigator
+					«we figure out if the navigator is the prefs navigator, find the localized one if we can, and then set pta^.navigator to point at that one before we call manilaSuite.html.drawNavigator
+			«04/03/00; 12:30:48 AM by PBS
+				«Support for callbacks -- a callback can specify whether or not to display a link.
+			«02/24/00; 6:54:31 PM by PBS
+				«Remove support for plugins menuScript -- it's not needed.
+			«02/23/00; 4:31:17 PM by PBS
+				«Support for plug-ins that may have a menuScript defined.
+			«1/12/00; 6:07:55 PM by PBS
+				«In the JavaScript rollover code, replace dots with underscores, so the JavaScript will continue to work even if the images have extensions. (For instance, they may be coming from a static server.)
+			«1/7/00; 5:27:53 PM by PBS
+				«Support for pictures in navigation: picture, rollover, and disabled attributes are now supported.
+		«1999
+			«12/13/99; 3:11:06 PM by PBS
+				«A blank line was being left between navigator items which would sometimes get translated to a paragraph tag. Now fixed.
+			«12/12/99; 5:58:32 PM by PBS
+				«Respect the formatting preferences the managing editor has set up. Navigation can now be horizontal, or use separators, and so on.
+			«11/10/99; 1:45:58 PM by PBS
+				«Fixed a bug: if the pagename in the XML text starts with http://[servername]/, then the current page wouldn't be disabled. Now it will be disabled.
+			«10/27/99; 2:30:23 PM by PBS
+				«If a link has editorsOnly="true" as an attribute, then its displayed only if the person viewing the page is a contributing or managing editor.
+			«?/?/99 by PBS
+				«Created. Draw the navigator links. The current page should be disabled.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	bundle { // 05/05/00 JES: localize the prefs navigator (the wizard is localized in manilaSuite.admin.sitePrefsPage)
+		«The wizard and the navigator must have the same names for panels, or prefsBrowser won't work.
+		if address (pta^.navigator) == @manilaData.sitePrefs.navigator {
+			local (adrLanguageTable = manilaSuite.getLanguageTableAddress (pta: pta));
+			if defined (adrLanguageTable^.navigators.sitePrefs) { // is there a localized wizard?
+				pta^.navigator = @adrLanguageTable^.navigators.sitePrefs}
+			else { // no localized navigator exists -- find server/Frontier default wizard, or use the one in manilaData instead.
+				local (adrLanguagesTable = parentOf (adrLanguageTable^));
+				if defined (config.mainResponder.globals.language) { // is there a default language for the server?
+					if defined (adrLanguagesTable^.[config.mainResponder.globals.language].navigators.sitePrefs) {
+						pta^.navigator = @adrLanguagesTable^.[config.mainResponder.globals.language].navigators.sitePrefs}};
+				if address (pta^.navigator) == @manilaData.sitePrefs.navigator { // no server default, what about Frontier?
+					if defined (user.prefs.language) {
+						if defined (adrLanguagesTable^.[user.prefs.language].navigators.sitePrefs) {
+							pta^.navigator = @adrLanguagesTable^.[user.prefs.language].navigators.sitePrefs}}};
+				if address (pta^.navigator) == @manilaData.sitePrefs.navigator { // no server or Frontier default, use manilaData.sitePrefs.wizard
+					pta^.navigator = @manilaData.sitePrefs.navigator}}}};
+	
+	«bundle //PBS 02/24/00: support for plug-ins that have a menuScript defined.
+		«if defined (pta^.pluginName) //are we in a plug-in's website fragment?
+			«local (pluginName = pta^.pluginName)
+			«local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName))
+			«if defined (adrConfig^.menuScript)
+				«local (adrMenuScript = @adrConfig^.menuScript)
+				«if typeOf (adrConfig^.menuScript) == addressType
+					«adrMenuScript = adrConfig^.menuScript
+				«return (manilaSuite.unTaint (adrMenuScript^ ()))
+	
+	local (htmlText = "");
+	local (i);
+	local (adrNavigator = pta^.navigator);
+	local (lowerUri = string.lower (pta^.uri));
+	local (flEditor = manilaSuite.editors.editorialTest (pta));
+	local (itemFormat, currentItemFormat, separatorFormat);
+	local (itemCt = 0);
+	local (flJavaScriptUsed = false);
+	local (picturePreLoader);
+	local (flVertical = false);
+	
+	bundle { //get the format for items and separators
+		itemFormat = manilaSuite.getNewsSitePref ("navigation.itemFormat", default:"<b>{item}</b>", flCreate:true);
+		currentItemFormat = manilaSuite.getNewsSitePref ("navigation.currentItemFormat", default:itemFormat);
+		separatorFormat = manilaSuite.getNewsSitePref ("navigation.separatorFormat", default:"<p>", flCreate:true)};
+	
+	bundle { //PBS 10/27/00: figure out if it's a vertical or horizontal navbar
+		local (lowerItemFormat = string.lower (itemFormat));
+		local (lowerCurrentItemFormat = string.lower (currentItemFormat));
+		local (lowerSeparatorFormat = string.lower (separatorFormat));
+		if lowerItemFormat contains "<br" or lowerItemFormat contains "<p" or lowerItemFormat contains "<div" {
+			flVertical = true};
+		if lowerCurrentItemFormat contains "<br" or lowerCurrentItemFormat contains "<p" or lowerCurrentItemFormat contains "<div" {
+			flVertical = true};
+		if lowerSeparatorFormat contains "<br" or lowerSeparatorFormat contains "<p" or lowerSeparatorFormat contains "<div" {
+			flVertical = true}};
+	
+	on add (s) {
+		htmlText = htmlText + (s + "\r");};
+	
+	on addLink (url, linetext, adrItem) { //add a link, enabling or disabling as needed
+		local (strippedPageName = string.lower (url));
+		local (strippedUri = lowerUri);
+		itemCt++;
+		
+		on addDisabledLink () {
+			local (item = string.replaceAll (currentItemFormat, "{item}", lineText , true));
+			try {
+				local (disabledPicture = xml.getAttributeValue (adrItem, "disabled"));
+				local (pictureRef = html.refGlossary (manilaSuite.unTaint (disabledPicture)));
+				item = string.replaceAll (currentItemFormat, "{item}", pictureRef, true)};
+			add ("<span class=\"navigatorLinkCurrent\">" + item + "</span>" + separatorFormat);
+			return (true)};
+		
+		if strippedPageName beginsWith "http://" {
+			local (serverName = string.nthField (strippedPageName, '/', 3));
+			serverName = string.lower (serverName);
+			if string.lower (serverName) == string.lower (pta^.host) {
+				strippedUri = "http://" + serverName + strippedUri}};
+		
+		if strippedUri == strippedPageName {
+			addDisabledLink ();
+			return (true)};
+		
+		if strippedPageName endsWith "/default" {
+			strippedPageName = string.mid (strippedPageName, 1, sizeOf (strippedPageName) - 7)};
+		
+		if defined (pta^.pathArgs) and pta^.pathArgs != "" {
+			strippedUri = strippedUri + "$" + string.lower (pta^.pathArgs)};
+		
+		if strippedUri endsWith "/default" {
+			strippedUri = string.mid (strippedUri, 1, sizeOf (strippedUri) - 7)};
+		
+		if strippedUri contains "/" and not (strippedPageName contains "/") {
+			strippedPageName = string.popSuffix (strippedUri, "/") + "/" + strippedPageName};
+		
+		«Add the link, enabled or disabled.
+		if strippedUri == strippedPageName { // was: if pta^.uri == pagename: PBS 5/21/99
+			addDisabledLink ();
+			return (true)}
+		else {
+			local (link);
+			try {
+				local (pictureName = xml.getAttributeValue (adrItem, "picture"));
+				local (pictureRef = html.refGlossary (manilaSuite.unTaint (pictureName)));
+				link = "<a href=\"" + url + "\" class=\"navigatorLink\">" + pictureRef + "</a>";
+				try {
+					on urlFromImgTag (imgTag) {
+						local (url = string.nthField (imgTag, '\"', 2));
+						return (url)};
+					on dimensionsFromImgTag (imgTag) {
+						on getAtt (attName) {
+							local (ix);
+							ix = string.patternMatch (string.lower (attName), string.lower (imgTag));
+							if ix < 1 {
+								return ("")};
+							local (s = string.delete (imgTag, 1, ix));
+							local (att = string.nthField (s, '"', 2));
+							return (att)};
+						local (height = getAtt ("height"));
+						local (width = getAtt ("width"));
+						return ({height, width})};
+					
+					local (rolloverName = xml.getAttributeValue (adrItem, "rollover"));
+					local (rolloverRef = html.refGlossary (manilaSuite.unTaint (rolloverName)));
+					local (rolloverUrl = urlFromImgTag (rolloverRef));
+					local (pictureUrl = urlFromImgTag (pictureRef));
+					local (ctFields = string.countFields (pictureUrl, '/'));
+					local (fname = string.nthField (pictureUrl, '/', ctFields));
+					local (javaScriptImageName = fname);
+					javaScriptImageName = string.replaceAll (javaScriptImageName, ".", "_"); //PBS 01/12/00: dots confuses the JavaScript code: remove dots, replace with underscores.
+					pictureRef = string.replace (pictureRef, ">", " name=\"" + javaScriptImageName + "\">");
+					link = "<a href=\"" + url + "\" onmouseover=\"rollImage ('" + javaScriptImageName + "')\" onmouseout=\"unRollImage ('" + javaScriptImageName + "')\" class=\"navigatorLink\">" + pictureRef + "</a>";
+					flJavaScriptUsed = true;
+					local (pictureHwList = dimensionsFromImgTag (pictureRef));
+					local (rolloverHwList = dimensionsFromImgTag (rolloverRef));
+					picturePreLoader = picturePreLoader + javaScriptImageName + " = new Image (" + pictureHwList [2] + ", " + pictureHwList [1] + ");\r";
+					picturePreLoader = picturePreLoader + javaScriptImageName + ".src = \"" + pictureUrl + "\";\r";
+					picturePreLoader = picturePreLoader + javaScriptImageName + "highlighted = new Image (" + rolloverHwList [2] + ", " + rolloverHwList [1] + ");\r";
+					picturePreLoader = picturePreLoader + javaScriptImageName + "highlighted.src = \"" + rolloverUrl + "\";\r"}}
+			else {
+				link = "<a href=\"" + url + "\" class=\"navigatorLink\">" + linetext + "</a>"};
+			local (oneItem = string.replaceAll (itemFormat, "{item}", link, true));
+			add (oneItem + separatorFormat)};
+		return (true)};
+	
+	on addEditButton (textBefore="") {
+		bundle { //find reasons not to add the Edit button
+			if not manilaSuite.getNewsSitePref ("flNavigatorEditButton", pta^.adrSiteRootTable, default:true, flCreate:true) {
+				return ("")};
+			if not manilaSuite.editors.managingEditorTest () {
+				if not manilaSuite.editors.contentEditorTest () {
+					return ("")}};
+			if manilaSuite.staticRendering.isStaticRendering (pta) {
+				return ("")};
+			if adrNavigator != @pta^.adrSiteRootTable^.["#navigator"] {
+				return ("")}};
+		local (editurl = pta^.ftpSite^.url + "admin/editNavigationLinks");
+		local (editbutton = "<form type=\"link\" action=\"" + editurl + "\"><input type=\"button\" onclick=\"window.location='" + editurl + "';\" value=\"" + manilaSuite.getString ("common.editButton") + "\" /></form>");
+		local (s = string.replaceAll (itemFormat, "{item}", editbutton) + separatorFormat);
+		if (s contains "<li>") or (s contains "<LI>") {
+			s = string.replaceAll (s, "<li>", "", false);
+			s = string.replaceAll (s, "</li>", "", false);
+			s = "<br />" + s};
+		add (s)};
+	
+	bundle { //compile the xml text if it's been modified
+		«If the structure table is not defined or the outline has been modified more recently than the structure table, compile.
+		local (flCompile = false);
+		if defined (adrNavigator^.structure) { //structure exists -- verify not empty and not stale
+			if sizeOf (adrNavigator^.structure) == 0 { //empty
+				flCompile = true};
+			if timeModified (@adrNavigator^.structure) < timeModified (@adrNavigator^.outline) { //stale
+				flCompile = true}}
+		else { //structure not defined -- always compile
+			flCompile = true};
+		if flCompile {
+			xml.compile (string (adrNavigator^.outline), @adrNavigator^.structure)}};
+	
+	for i = 1 to sizeOf (adrNavigator^.structure [1]) { //loop through the links table
+		local (lineText, secondWord, thirdWord);
+		local (adrItem, name, pageName);
+		
+		adrItem = @adrNavigator^.structure [1] [i]; //address of the current link
+		if not (string.lower (nameOf (adrItem^)) endsWith "\titem") {
+			continue};
+		
+		try { //PBS 03/20/01: if the name attribute doesn't exist, it should not be a fatal error
+			name = xml.getAttributeValue (adrItem, "name")} //name of the current link
+		else {
+			continue};
+		
+		if defined (adrNavigator^.callbacks.displayLink) { //PBS 04/02/00: a callback can specify not to display a link
+			if not (adrNavigator^.callbacks.displayLink (name)) {
+				continue}};
+		
+		if html.getPref ("isoFilter", pta) { //escape for double byte settings etc
+			if system.environment.isWindows {
+				lineText = string.iso8859encode (name, @html.data.iso8859.win)};
+			if system.environment.isMac {
+				lineText = string.iso8859encode (name, @html.data.iso8859.mac)}}
+		else { //no escaping
+			lineText = name};
+		
+		bundle { //add a <br> as necessary, in case the link is too long: it should wrap to a second line
+			if adrNavigator != @pta^.adrSiteRootTable^.["#navigator"] { //only do this on the prefs page
+				if flVertical {
+					if sizeOf (name) > 10 {
+						thirdWord = string.nthField (name, " ", 3);
+						
+						if thirdWord != "" { //break before the third word in the link
+							lineText = string.replace (lineText, " " + thirdWord, "<br />" + thirdWord)}
+						else { //maybe break before the second word in the link
+							secondWord = string.nthField (name, " ", 2);
+							if secondWord != "" {
+								lineText = string.replace (lineText, " " + secondWord, "<br />" + secondWord)}}}}}};
+		
+		try { //find out of this is an editors-only link
+			local (flEditorsOnly);
+			flEditorsOnly = xml.getAttributeValue (adrItem, "editorsOnly");
+			if flEditorsOnly and not flEditor { //is it an editors-only link but this person is not an editor?
+				continue}}; //don't display this link
+		try { //13/07/05; 5:51:36 PM by PR check to see if the item is restricted to a specific cohort
+			local (adrgroup);
+			if defined (pta^.membershipGroup) {
+				adrgroup = pta^.membershipGroup}
+			else {
+				local (adrsite = manilaSuite.getSiteAddress (pta));
+				adrgroup = manilaSuite.members.getGroupFromSiteAddress (adrsite)};
+			if not manilaSuite.accessControl.checkMemberCohortsFromGroup (pta, {xml.getAttributeValue (adrItem, "cohort")}, adrgroup) {
+				continue}};
+		
+		try { //get the pageName attribute: it's a relative or absolute URL
+			pageName = xml.getAttributeValue (adrItem, "pagename");
+			addLink (pageName, linetext, adrItem)}
+		else { //instead of a pagename there may be a shortcut: PBS 5/31/99
+			try { //get the shortcut name
+				local (shortcut = xml.getAttributeValue (adrItem, "shortcut"));
+				pageName = html.refGlossary (manilaSuite.unTaint (shortcut));
+				pageName = string.delete (pageName, 1, sizeOf ("<a href=\""));
+				pageName = string.nthField (pageName, '\"', 1);
+				
+				addLink (pageName, linetext, adrItem)}
+			else { //instead of a shortcut there may be a msgNum: PBS 5/21/99
+				try { //get the msgNum
+					local (msgNum = xml.getAttributeValue (adritem, "msgNum"));
+					local (msgUrl = pta^.responderAttributes.urls^.storyReader + msgNum);
+					addLink (msgUrl, lineText, adrItem)}}}};
+	
+	addEditButton ();
+	
+	bundle { //remove the last separator
+		local (sizeSeparator = sizeOf (separatorFormat));
+		local (sizeText = sizeOf (htmlText));
+		local (ix = sizeText - sizeSeparator);
+		if ix < 1 {
+			ix = 1};
+		htmlText = string.delete (htmlText, ix, sizeSeparator)};
+	
+	htmlText = manilaSuite.unTaint (htmlText); //there should be curly brace macros here
+	
+	bundle { //strip in the rollover JavaScript
+		if flJavaScriptUsed {
+			local (s = picturePreLoader);
+			s = s + "function rollImage (imageName) {\r";
+			s = s + "\thighlightedImage = eval (imageName + \"highlighted.src\");\r";
+			s = s + "\tdocument[imageName].src = highlightedImage;\r";
+			s = s + "\t} //rollImage\r";
+			
+			s = s + "function unRollImage (imageName) {\r";
+			s = s + "\tregularImage = eval (imageName + \".src\");\r";
+			s = s + "\tdocument[imageName].src = regularImage;\r";
+			s = s + "\t} //unRollImage\r";
+			
+			s = "\r<script language=\"JavaScript\"><!--\r" + s + "\r\//--></script>\r";
+			htmlText = s + htmlText}};
+	
+	htmlText = string.popTrailing (htmlText, '\r'); //PBS 10/27/00: trailing \r not needed
+	
+	return (htmlText)}

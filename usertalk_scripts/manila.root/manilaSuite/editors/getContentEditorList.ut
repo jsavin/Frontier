@@ -1,0 +1,13 @@
+on getContentEditorList (pta=nil) {
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if not defined (pta^.newsSite^.contentEditors) {
+		return ({})};
+	
+	local (ceList = pta^.newsSite^.contentEditors);
+	
+	if typeOf (ceList) != listType {
+		ceList = {ceList}};
+	
+	return (ceList)}

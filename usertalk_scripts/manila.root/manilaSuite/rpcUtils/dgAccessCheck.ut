@@ -1,0 +1,30 @@
+on dgAccessCheck (sitename, username, password, beginningErrorString) {
+	«Make sure this person has access to the discussion group. Generate a scriptError if the person does not have access.
+		«beginningErrorString is the start of an error message. The string should be of the form "Can't do xxx because " -- this script fills in the rest before calling scriptError.
+		«Changes:
+			«11/26/01; 11:03:47 AM by PBS
+				«Support content editors.
+	
+	bundle { //make sure this person is a member and the password is correct
+		if not (manilaSuite.rpcUtils.isMember (siteName, username)) { //check for membership
+			scriptError (beginningErrorString + "\"" + username + "\" is not a member.")};
+		
+		if not (manilaSuite.rpcUtils.authenticateMember (siteName, username, password)) { //check password
+			scriptError (beginningErrorString + "\"" + username + "\" supplied an incorrect password.")}};
+	
+	bundle { //if the person is an editor, they always have access
+		if manilaSuite.rpcUtils.isManagingEditor (sitename, username) { //is this person a managing editor?
+			return (true)};
+		if manilaSuite.rpcUtils.isContentEditor (sitename, username) { //PBS 11/26/01: is this person a content editor?
+			return (true)};
+		if manilaSuite.rpcUtils.isContributingEditor (sitename, username) { //is this person a contributing editor?
+			return (true)}};
+	
+	bundle { //members who aren't editors may or may not have access: check the site prefs
+		local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (sitename));
+		if not defined (adrNewsSite^.flPublicMembersDgAccess) {
+			adrNewsSite^.flPublicMembersDgAccess = false};
+		if not adrNewsSite^.flPublicMembersDgAccess {
+			scriptError (beginningErrorString + "only editors have access to this discussion group.")}};
+	
+	return (true)}

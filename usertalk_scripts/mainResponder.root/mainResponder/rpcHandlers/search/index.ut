@@ -1,0 +1,25 @@
+on index (title, url, base64text, siteName, siteUrl, createdDate=nil, lastModDate=nil) {
+	«Changes
+		«8/7/02; 9:51:25 PM by JES
+			«Respect config.mainResponder.search.prefs.flStoreFullText.
+	«Store the page in the indexing queue.
+		«Params:
+			«title -- The title of the page.
+			«url -- The URL of the page.
+			«base64text -- The text of the page, base64-encoded.
+			«siteName -- The name of the site the page is in.
+			«siteUrl -- The URL of the home page of the site the page is in.
+	local (clientIp);
+	msg ("Search Engine: Received " + url + " for indexing.");
+	
+	if defined (client) {
+		clientIp = client};
+	
+	local (flStoreText = config.mainResponder.search.prefs.flStoreFullText);
+	
+	«Store the page for later indexing.
+	mainResponder.search.server.storePageForIndexing (title, url, base64.decode (base64text), siteName, siteUrl, clientIp, flStoreText, createdDate:createdDate, lastModDate:lastModDate);
+	
+	msg ("");
+	
+	return (true)}

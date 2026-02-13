@@ -1,0 +1,6 @@
+on getGroupNameFromSiteAddress (adrSite) {
+	«Get the name of the membership group for a given site.
+		«This script can run outside the page rendering context.
+		«10/19/99; 2:54:24 PM by PBS
+	
+	return (adrSite^.["#prefs"].defaultMembershipGroup)}

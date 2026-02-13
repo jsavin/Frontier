@@ -1,0 +1,166 @@
+on getMultiple (userName, password, siteName,  minDate, maxDate, type, flHeadersOnly, flTopLevelOnly) {
+	«Changes
+		«2/1/06; 1:48:05 AM by JES
+			«Add support for flPending messages.
+		«1/30/04; 5:31:38 PM by JES
+			«Remove the site name from the alsoListedIn values.
+		«1/29/04; 4:20:07 PM by JES
+			«Add alsoListedIn to the return struct if present in the message table.
+		«1/26/04; 11:54:02 PM by JES
+			«When setting the type for a message, homePage takes precident over story.
+		«10/18/03;11:15 AM by John Crane
+			«Removed local variable flOneday because it was defined but not referenced
+			«Removed checking for numMessages
+			«Changed variable names startDate and endDate to minDate and MaxDate
+			«If message create date is less than minDate, exit loop
+		«9/29/03; 11:37:55 PM by JES
+			«New optional parameter, flTopLevelOnly. If true, only return top-level messages. If false, return all messages.
+			«Added responses and inResponseTo to the returned sub-structs for each message.
+		«9/21/03;8:15:00 PM by John Crane
+			«Filter out messages which are responses to prior messages
+		«9/15/03; 1:31:31 PM by JES
+			«Created by John Crane of SocialDynamX. Based on manilaSuite.rpcHandlers.message.getHeaders.
+			«Values for type:
+				«"" = all
+				«"messages" = messages
+				«"newsItems" = newsItems
+				«"stories" = stories
+				«"pictures" = pictures
+				«"homePages" = homePages
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get messages because ");
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMsgs = @adrDiscuss^.messages);
+	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+	local (adrCal = @adrDiscuss^.calendar);
+	local (adrSite = config.manila.sites.[siteName]);
+	local (msgReaderUrl = adrSite^.["#urls"].discussMsgReader);
+	«local (numMessages = manilaSuite.getNewsSitePref ("numMessagesInDiscussListing", default:50, flCreate:true, adrSite:adrSite))
+	«local (flOneDay = manilaSuite.getNewsSitePref ("flDiscussListByDay", default:true, flCreate:true, adrSite:adrSite))
+	
+	bundle { // handle null dates as defaults
+		if (minDate == "1/1/1904; 12:00:00 PM") {
+			startDate = date(0)};
+		if (maxDate == "1/1/1904; 12:00:00 PM") {
+			endDate = date(0)}};
+	local (theDay);
+	theDay = mainResponder.calendar.getLastAddress (adrCal);
+	
+	local (flSoap = false);
+	local (messageHeaders);
+	new (tableType, @messageHeaders);
+	
+	on addMessage (adrItem, flHeadersOnly) {
+		bundle { //was this message deleted? If so, skip it.
+			if defined (adrItem^.flDeleted) {
+				«The flDeleted flag may not exist: it's necessary to test for existence before testing whether it's true or false.
+				if adrItem^.flDeleted {
+					return (false)}}; // this message was deleted
+			if defined (adrItem^.flPending) and adrItem^.flPending {
+				return (false)}};
+		
+		bundle { // Reject 'inResponseTo' messages
+			if flTopLevelOnly {
+				local (responseMsgNum = number(adrItem^.inResponseTo));
+				if (not responseMsgNum == 0) {
+					return (false)}}}; // this message was not at the top of its thread
+		local (header); new (tableType, @header);
+		bundle { // Filter by message type
+			case true {
+				manilaSuite.news.isNewsItem(adrItem) {
+					if type == "" or type == "newsItems" {
+						header.type = "newsItem";
+						if not flHeadersOnly {
+							header.newsItem = adrItem^.newsItem}}
+					else {
+						return (false)}};
+				manilaSuite.discuss.isHomePage(adrItem, adrSite) {
+					if type == "" or type == "homePages" {
+						header.type = "homePage"}
+					else {
+						return (false)}};
+				manilaSuite.discuss.isStory(adrItem, adrSite) {
+					if type == "" or type == "stories" {
+						header.type = "story"}
+					else {
+						return (false)}};
+				manilaSuite.discuss.isPicture(adrItem, adrSite) {
+					if type == "" or type == "pictures" {
+						header.type = "picture"}
+					else {
+						return (false)}}}
+			else {
+				if type == "" or type == "messages" {
+					header.type = "message"}
+				else {
+					return (false)}}};
+		
+		local (nextMsgNum = adrItem^.msgNum);
+		nextMsgNum = string.padWithZeros (nextMsgNum, 7);
+		
+		header.url = msgReaderUrl + adrItem^.msgNum;
+		header.msgNum = adrItem^.msgNum;
+		header.postTime = adrItem^.postTime;
+		header.ctReads = adrItem^.ctReads;
+		header.memberName = mainResponder.members.getMemberName (groupName, adrItem^.member);
+		header.member = adrItem^.member;
+		header.subject = adrItem^.subject;
+		if defined (adrItem^.inResponseTo) {
+			header.inResponseTo = adrItem^.inResponseTo}
+		else {
+			header.inResponseTo = 0};
+		if defined (adrItem^.responses) {
+			header.responses = adrItem^.responses}
+		else {
+			header.responses = {}};
+		if defined (adrItem^.alsoListedIn) {
+			header.alsoListedIn = adrItem^.alsoListedIn}
+		else {
+			header.alsoListedIn = {}};
+		bundle { //remove site name from alsoListedIn elements
+			local (ix);
+			for ix = 1 to sizeOf (header.alsoListedIn) {
+				case true {
+					header.alsoListedIn[ix] endsWith "HomePages" {
+						header.alsoListedIn[ix] = "homePages"};
+					header.alsoListedIn[ix] endsWith "Stories" {
+						header.alsoListedIn[ix] = "stories"};
+					header.alsoListedIn[ix] endsWith "Pictures" {
+						header.alsoListedIn[ix] = "pictures"}}}};
+		if (flHeadersOnly == false) {
+			header.body = adrItem^.body};
+		header.rpcPath = "/RPC2";
+		header.rpcServer = tcp.dns.getMyDomainName (); //it does caching
+		header.rpcPort = user.inetd.config.http.port;
+		
+		local (adrHeader = @messageHeaders.["msg" + nextMsgNum]);
+		adrHeader^ = header;
+		
+		return (true)}; // this message wasn't deleted
+	on dateFilter (test, lo, hi) {
+		if (lo != date(0)) {
+			if (test < lo) {
+				return (-1)}};
+		if (hi != date(0)) {
+			if (test > hi) {
+				return (1)}};
+		return (0)};
+	local (sizeTable = sizeOf (adrMsgs^));
+	local (msgNum = adrMsgs^ [sizeTable].msgNum); //PBS 07/08/00: get the message number of the most recent message. It's not necessarily the size of the table.
+	local (adrMsg, postTime);
+	loop {
+		adrMsg = manilaSuite.discuss.getMessageTable (msgNum, adrSite);
+		postTime = adrMsg^.postTime;
+		local (ret = dateFilter(postTime, minDate, maxDate));
+		if (ret == 0) {
+			 addMessage (adrMsg, flHeadersOnly)}
+		else {
+			if (ret == -1) {
+				break}};
+		msgNum--;
+		if msgNum == 0 {
+			break}};
+	
+	return (messageHeaders)};
+«bundle //test code
+	«scratchpad.getMultiple = getMultiple ("jcrane2@austin.rr.com", "zionsgl", "homeManilaWebsite", date("Oct 1, 2003"), date("Oct 30, 2003"), "", false, false)

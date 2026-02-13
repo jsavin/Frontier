@@ -1,0 +1,114 @@
+on exportGdb (adrSite) {
+	«Export a guest database, minus member passwords and custom preferences.
+		«Changes:
+			«04/03/00; 11:31:46 PM by PBS
+				«The loop through the membership group is more server-friendly now: a call to sys.systemTask was added.
+			«02/02/01; 12:29:28 PM by JES
+				«Copy the website in parts to be more friendly to servers. Read the file in 1MB blocks instead of using file.readWholeFile, since file.read locks up the machine.
+			«02/06/01; 2:51:13 AM by JES
+				«Just export the database, and return the URL to the file, instead of returning the bits of the file.
+			«05/28/01; 3:55:49 PM by JES
+				«Fixed a bug where an error would occur if the checkouts sub-table did not exist in the site's discussion group.
+	local (startTime = clock.now ());
+	local (siteName = nameOf (adrSite^));
+	local (shortSiteName = manilaSuite.getShortSiteName (siteName));
+	local (flFrontierIsStaticServer = config.manila.prefs.flFrontierServesDownloadedSites);
+	local (downloadUrl = config.manila.prefs.siteDownloadUrl);
+	local (folder = config.manila.prefs.siteDownloadFolder);
+	local (pc = file.getPathChar ());
+	
+	if not (folder endsWith pc) {
+		folder = folder + pc};
+	if not (file.exists (folder)) {
+		file.newFolder (folder)};
+	
+	if not (downloadUrl endsWith "/") {
+		downloadUrl = downloadUrl + "/"};
+	downloadUrl = downloadUrl + shortSiteName + ".root";
+	
+	local (path);
+	if flFrontierIsStaticServer {
+		path = folder + "#" + shortSiteName + ".root"}
+	else {
+		path = folder + shortSiteName + ".root"};
+	
+	local (flPackSite = true);
+	if file.exists (path) {
+		local (yesterday = date.yesterday (clock.now ()));
+		if file.modified (path) < yesterday {
+			file.delete (path)}
+		else { //the site has already been packed
+			flPackSite = false}};
+	if flPackSite {
+		if not defined ([path]) {
+			if file.exists (path) {
+				fileMenu.open (path, true)}
+			else {
+				fileMenu.new (path);
+				window.hide (@[path]);
+				fileMenu.save (path)}};
+		bundle { //copy the site into the guest database, a piece at a time
+			local (adrNewSite = @[path].[siteName]);
+			new (tableType, adrNewSite);
+			local (adrItem);
+			for adrItem in adrSite {
+				local (name = nameOf (adrItem^));
+				local (lowerName = string.lower (name));
+				case lowerName {
+					"#discussiongroup" {
+						local (adrNewDg = @adrNewSite^.["#discussionGroup"]);
+						new (tableType, adrNewDg);
+						bundle { //copy the calendar one year at a time
+							local (adrCalendar = @adrItem^.calendar);
+							local (adrNewCalendar = @adrNewDg^.calendar);
+							new (tableType, adrNewCalendar);
+							local (adrYear);
+							for adrYear in adrCalendar {
+								local (year = nameOf (adrYear^));
+								adrNewCalendar^.[year] = adrYear^;
+								sys.systemTask ()}};
+						if defined (adrItem^.checkouts) { //05/28/2001 JES: this is not defined in new sites
+							adrNewDg^.checkouts = adrItem^.checkouts}
+						else {
+							new (tableType, @adrNewDg^.checkouts)};
+						adrNewDg^.editorialPrefs = adrItem^.editorialPrefs;
+						bundle { //copy the messages one at a time
+							local (adrMessages = @adrItem^.messages);
+							local (adrNewMessages = @adrNewDg^.messages);
+							new (tableType, adrNewMessages);
+							local (adrMsg, ct = 0);
+							for adrMsg in adrMessages {
+								if (++ct % 100) == 0 { //save every 100 messages
+									fileMenu.save (path)};
+								if (ct % 10) == 0 { //sleep for 1 tick every 10 messages
+									thread.sleepTicks (1)};
+								local (tableName = nameOf (adrMsg^));
+								adrNewMessages^.[tableName] = adrMsg^}};
+						adrNewDg^.prefs = adrItem^.prefs;
+						adrNewDg^.stats = adrItem^.stats}}
+				else {
+					adrNewSite^.[name] = adrItem^;
+					if string.isNumeric (name[1]) { //save after each year in the calendar
+						fileMenu.save (path)}};
+				sys.systemTask ()}};
+		if defined ([path].[siteName].["#membershipGroup"]) {
+			local (adrMembers = @[path].[siteName].["#membershipGroup"].users);
+			local (adrMember);
+			for adrMember in adrMembers {
+				if defined (adrMember^.password) {
+					delete (@adrMember^.password)};
+				if defined (adrMember^.personalInfo) { // delete personal prefs, but keep the user's name
+					local (memberName = nameOf (adrMember^));
+					if defined (adrMember^.personalInfo.name) {
+						memberName = adrMember^.personalInfo.name};
+					new (tableType, @adrMember^.personalInfo);
+					adrMember^.personalInfo.name = memberName};
+				sys.systemTask ()}}; //PBS 04/03/00: make the loop friendlier to servers
+		fileMenu.save (path);
+		local (oldTarget = target.set (@[path]));
+		fileMenu.close (path);
+		try {target.set (oldTarget)}};
+	
+	return (downloadUrl)};
+«bundle //testing
+	«manilaSuite.admin.exportGdb (@testManilaWebsite)

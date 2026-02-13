@@ -1,0 +1,130 @@
+on legalTagsPage () {
+	«Display the legal tags form and handle the POST.
+		«Here's the original sitePrefs panel.
+			«<panel title="Legal Tags">
+				«<description>You can specify which HTML tags are legal in messages and stories on your site.</description>
+				«<item title="a" type="boolean" adr="newsRoom.legalTags.a"/>
+				«<item title="applet" type="boolean" adr="newsRoom.legalTags.applet"/>
+				«<item title="area" type="boolean" adr="newsRoom.legalTags.area"/>
+				«<item title="b" type="boolean" adr="newsRoom.legalTags.b"/>
+				«<item title="blockquote" type="boolean" adr="newsRoom.legalTags.blockquote"/>
+				«<item title="br" type="boolean" adr="newsRoom.legalTags.br"/>
+				«<item title="button" type="boolean" adr="newsRoom.legalTags.button"/>
+				«<item title="center" type="boolean" adr="newsRoom.legalTags.center"/>
+				«<item title="code" type="boolean" adr="newsRoom.legalTags.code"/>
+				«<item title="dd" type="boolean" adr="newsRoom.legalTags.dd"/>
+				«<item title="div" type="boolean" adr="newsRoom.legalTags.div"/>
+				«<item title="dl" type="boolean" adr="newsRoom.legalTags.dt"/>
+				«<item title="em" type="boolean" adr="newsRoom.legalTags.em"/>
+				«<item title="font" type="boolean" adr="newsRoom.legalTags.font"/>
+				«<item title="form" type="boolean" adr="newsRoom.legalTags.form"/>
+				«<item title="h1" type="boolean" adr="newsRoom.legalTags.h1"/>
+				«<item title="h2" type="boolean" adr="newsRoom.legalTags.h2"/>
+				«<item title="h3" type="boolean" adr="newsRoom.legalTags.h3"/>
+				«<item title="h4" type="boolean" adr="newsRoom.legalTags.h4"/>
+				«<item title="h5" type="boolean" adr="newsRoom.legalTags.h5"/>
+				«<item title="h6" type="boolean" adr="newsRoom.legalTags.h6"/>
+				«<item title="hr" type="boolean" adr="newsRoom.legalTags.hr"/>
+				«<item title="i" type="boolean" adr="newsRoom.legalTags.i"/>
+				«<item title="iframe" type="boolean" adr="newsRoom.legalTags.iframe"/>
+				«<item title="img" type="boolean" adr="newsRoom.legalTags.img"/>
+				«<item title="input" type="boolean" adr="newsRoom.legalTags.input"/>
+				«<item title="label" type="boolean" adr="newsRoom.legalTags.li"/>
+				«<item title="map" type="boolean" adr="newsRoom.legalTags.map"/>
+				«<item title="object" type="boolean" adr="newsRoom.legalTags.object"/>
+				«<item title="ol" type="boolean" adr="newsRoom.legalTags.ol"/>
+				«<item title="option" type="boolean" adr="newsRoom.legalTags.option"/>
+				«<item title="p" type="boolean" adr="newsRoom.legalTags.p"/>
+				«<item title="param" type="boolean" adr="newsRoom.legalTags.param"/>
+				«<item title="pre" type="boolean" adr="newsRoom.legalTags.pre"/>
+				«<item title="script" type="boolean" adr="newsRoom.legalTags.script"/>
+				«<item title="select" type="boolean" adr="newsRoom.legalTags.select"/>
+				«<item title="span" type="boolean" adr="newsRoom.legalTags.span"/>
+				«<item title="strong" type="boolean" adr="newsRoom.legalTags.strong"/>
+				«<item title="style" type="boolean" adr="newsRoom.legalTags.style"/>
+				«<item title="table" type="boolean" adr="newsRoom.legalTags.table"/>
+				«<item title="td" type="boolean" adr="newsRoom.legalTags.td"/>
+				«<item title="textarea" type="boolean" adr="newsRoom.legalTags.textarea"/>
+				«<item title="th" type="boolean" adr="newsRoom.legalTags.th"/>
+				«<item title="tr" type="boolean" adr="newsRoom.legalTags.tr"/>
+				«<item title="ul" type="boolean" adr="newsRoom.legalTags.ul"/>
+				«</panel>
+		«11/6/99; 2:35:48 AM by PBS
+		«Changes:
+			«4/18/00; 3:05:31 PM by JES
+				«localized
+			«11/6/99; 10:44:11 AM by PBS
+				«Checkboxes come to the left of the text.
+			«1/25/02; 6:16:00 PM by PBS
+				«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+	
+	local (pta = html.getPageTableAddress ());
+	pta^.title = manilaSuite.getString ("admin.legalTagsPageTitle"); // 4/18/00 JES: localized
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + (s + "\r");};
+	
+	add ("<h2>" + pta^.title + "</h2>");
+	add (manilaSuite.getString ("admin.legalTagsPageDescription") + "<p>"); // 4/18/00 JES: localized
+	
+	bundle { //build the form and handle the POST args
+		add ("<form method=\"POST\" action=\"" + pta^.fname + "$legalTags\">");
+		add ("<table cellpadding=\"7\" cellspacing=\"0\" border=\"0\">");
+		
+		local (adrTags = @pta^.newsSite^.legalTags);
+		
+		if not defined (adrTags^) {
+			adrTags^ = manilaData.newSiteTemplate.["#newsSite"].legalTags};
+		
+		local (adrArgs);
+		local (flPost = (string.lower (pta^.method) == "post"));
+		if flPost {
+			adrArgs = @pta^.postArgs};
+		
+		local (i);
+		for i = 1 to sizeOf (adrTags^) {
+			local (adrTag = @adrTags^ [i]);
+			local (objType = typeOf (adrTag^));
+			local (tagName = nameOf (adrTag^));
+			
+			
+			on addTag (flChecked) {
+				add ("<tr>");
+				if flChecked {
+					add ("<td><input type=\"checkbox\" name=\"" + tagName + "\" checked></td>")}
+				else {
+					add ("<td><input type=\"checkbox\" name=\"" + tagName + "\"></td>")};
+				
+				return (true)};
+			
+			if flPost {
+				if defined (adrArgs^.[tagName]) { //turn this tag on
+					case objType {
+						booleanType {
+							adrTag^ = true};
+						tableType {
+							adrTag^.flLegal = true}};
+					addTag (true)}
+				else { //turn this tag off
+					case objType {
+						booleanType {
+							adrTag^ = false};
+						tableType {
+							adrTag^.flLegal = false}};
+					addTag (false)}}
+			else {
+				case objType {
+					booleanType {
+						addTag (adrTag^)};
+					tableType {
+						addTag (adrTag^.flLegal)}}};
+			
+			add ("<td>" + tagName + "</td>");
+			add ("</tr>")};
+		
+		add ("<tr><td colspan=\"2\" align=\"right\"><input type=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\"></td></tr>"); // 4/18/00 JES: localized
+		add ("</table>");
+		add ("</form>")};
+	
+	return (htmlText)}

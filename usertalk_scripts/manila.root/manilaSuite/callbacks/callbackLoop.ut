@@ -1,0 +1,32 @@
+on callbackLoop (adrCallbacks, adrUserCallbacks, adrMsg, adrSite, url, adrMember, text=nil) {
+	«Call internal and user callbacks. Each callback has adrMsg, adrSite, url, adrMember, text, and language in its context table. Callbacks are called via mainResponder.callbackLoop.
+		«04/04/00; 9:45:01 PM by PBS
+		«Changes:
+			«05/19/00; 8:53:17 PM by JES
+				«Localization support. Language is an additional context item. It may be nil.
+			«9/17/01; 2:31:21 PM by PBS
+				«Clear the home page cache.
+	
+	local (params);
+	bundle { //set up context table
+		new (tableType, @params);
+		params.adrMsg = adrMsg;
+		params.adrSite = adrSite;
+		if defined (adrSite^.["#prefs"].language) { // 05/19/00 JES: localization support
+			params.language = adrSite^.["#prefs"].language}
+		else {
+			params.language = nil};
+		params.url = url;
+		params.adrMember = adrMember;
+		
+		if text == nil {
+			params.text = string (adrMsg^.body)}
+		else {
+			params.text = text}};
+	
+	try {mainResponder.callbackLoop (adrCallbacks, @params)}; //call internal callbacks
+	try {mainResponder.callbackLoop (adrUserCallbacks, @params)}; //call user callbacks
+	
+	manilaSuite.cache.tossHomePage (adrSite:adrSite); //PBS 09/17/01: toss home page cache
+	
+	return (true)}

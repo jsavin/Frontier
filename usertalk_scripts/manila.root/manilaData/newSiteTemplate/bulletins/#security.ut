@@ -1,0 +1,1 @@
+return (manilaSuite.editors.managingEditorOnly ()) //only the managing editor can send bulletins

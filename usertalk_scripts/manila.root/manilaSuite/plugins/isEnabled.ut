@@ -1,0 +1,14 @@
+on isEnabled (pluginName, adrSite) {
+	«Return true if a plugin is enabled for a given site.
+		«02/22/00; 1:59:23 PM by PBS
+	
+	if not defined (adrSite^.["#plugins"]) {
+		return (false)};
+	local (adrEnabledTable = @adrSite^.["#plugins"].enabled);
+	if defined (adrEnabledTable^.[pluginName]) {
+		return (true)};
+	
+	return (false)};
+bundle { //test code
+	manilaSuite.plugins.isEnabled ("surveys", @myFirstSiteManilaWebsite)
+		«false}

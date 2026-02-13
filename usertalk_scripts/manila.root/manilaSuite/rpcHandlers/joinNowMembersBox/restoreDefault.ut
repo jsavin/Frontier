@@ -1,0 +1,26 @@
+on restoreDefault (username, password, siteName) {
+	«Restore the join now members box to the default.
+		«01/16/00; 6:18:12 PM by PBS
+		«Changes:
+			«06/06/00; 4:35:02 PM by PBS
+				«Call the themes restore script.
+			«06/22/00; 3:34:58 PM by JES
+				«Fixed error returning the template -- the address was getting mangled.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't restore the join now members box to the default because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrSite = parentOf (adrNewsSite^));
+	local (adrTemplate = @adrNewsSite^.membersBoxTemplates.signInBox);
+	«adrTemplate^ = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signInBox
+	local (siteInfo);
+	new (tableType, @siteInfo);
+	siteInfo.adrSite = adrSite;
+	manilaSuite.themes.restoreSignInBox (@siteInfo);
+	
+	fileMenu.saveMyRoot (adrSite); //save the root, a change was made
+	
+	«return (string (adrTemplate^))
+	return (string (adrNewsSite^.membersBoxTemplates.signInBox))} // 06/22/00 JES: bug fix.

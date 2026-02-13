@@ -1,0 +1,39 @@
+on getInclusionFromCache (adrmsg, opmlUrl) {
+	«Changes
+		«11/25/2000; 8:42:39 AM by DW
+			«Created. Look in the xmstructs cache for the message, and if we find the OPML document, just return an address to the cache element.
+			«If it's not there, or if it's an error string, try to read it and compile it into the cache.
+		«11/25/2000; 12:52:44 PM by DW
+			«Now if the cached table is more than one hour old throw it out. 
+			«This saves the author of the original table a bunch of trouble, and we don't have to implement a complex XML-RPC protocol right now.
+		«11/28/2000; 1:44:08 PM by DW
+			«Fix breakage that made included directories not work. I had made a change, but apparently had not checked it in. Now we call manilaSuite.directory.initDirectoryTable to find out where the directoryInfo is stored. The cache is one of the elements of the table it creates/manages.
+		«12/17/2000; 4:33:26 PM by DW
+			«Allow for URLs that specify a port, for example:
+				«http://www.iutc3.unicaen.fr:9673/users/stincs/Research/Agents/index.opml
+		«05/22/01; 7:07:44 PM by PBS
+			«Save and restore the page table around the httpClient call -- since it may be a call to the same server, which would wipe out the current page table.
+	local (adrdirectoryinfo = manilaSuite.directory.initDirectoryTable (adrmsg));
+	local (adrincache = @adrdirectoryinfo^.cache.xmlstructs.[opmlUrl]);
+	local (flread = true);
+	if defined (adrincache^) { //see if we don't have to read it
+		if typeof (adrincache^) == tabletype {
+			if timeCreated (adrincache) > (clock.now () - (60 * 60)) { //more than 1 hour old
+				flread = false}}};
+	if flread {
+		try {
+			local (urllist = string.urlsplit (opmlUrl));
+			local (server = urllist [2], port = 80);
+			if server contains ":" {
+				port = number (string.nthfield (server, ":", 2));
+				server = string.nthfield (server, ":", 1)};
+			local (currentPta);
+			try {currentPta = html.getPageTableAddress ()}; //PBS 05/22/01: save current page table
+			local (opmltext = string.httpResultSplit (tcp.httpClient (server:server, port:port, path:urllist [3])));
+			if currentPta != nil { //PBS 05/22/01: restore current page table
+				html.setPageTableAddress (currentPta)};
+			opmltext = manilasuite.untaint (opmltext);
+			xml.compile (opmltext, adrincache)}
+		else {
+			adrincache^ = manilasuite.untaint (tryError)}}; //a string, not a table
+	return (adrincache)}

@@ -1,0 +1,49 @@
+on editAdvancedItemInPikePage (pta=nil) {
+	«Edit an item from the Advanced panel in Pike.
+		«01/13/00; 8:52:48 PM by PBS
+		«Changes:
+			«02/11/00; 2:39:41 PM by PBS
+				«Make sure the item isn't being edited by somebody else. If it's okay to edit, then check it out.
+			«04/21/00; 2:39:37 PM by JES
+				«localized
+			«05/01/00; 2:38:56 PM by JES
+				«getString calls now pass the address of a replacement table instead of a list.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (itemName = pta^.searchArgs);
+	itemName = string.urlDecode (itemName);
+	itemName = manilaSuite.unTaint (itemName);
+	
+	try { //try to send an edit message to Pike
+		local (adrSite = pta^.adrSiteRootTable);
+		local (adrMember = pta^.adrMemberInfo);
+		local (adrObject = manilaSuite.custody.getAdvancedItemAddress (itemName, adrSite));
+		
+		bundle { //PBS 02/11/00: make sure the object is available to be checked out
+			if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, adrMember, adrSite, false)) { //false because it's an advanced item
+				local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+				replacementTable.displayName = string.lower (itemName);
+				scriptError (manilaSuite.getString ("admin.cantEditCheckedOutItemError", @replacementTable, pta: pta))}}; // 4/21/00 JES: localized
+		
+		manilaSuite.pike.sendToPike.editAdvancedItem (itemName, pta); //send the new story command to Pike
+		
+		bundle { //PBS 02/11/00: check out the object
+			manilaSuite.custody.checkOut (adrObject, adrMember, adrSite, false)}; //false because it's an advanced item, not a message
+		
+		local (referer);
+		if defined (pta^.requestHeaders.referer) {
+			referer = pta^.requestHeaders.referer}
+		else {
+			referer = pta^.urls^.editorialStories};
+		mainResponder.redirect (referer);
+		
+		return ("")}
+	else { //display the error
+		pta^.title = manilaSuite.getString ("discuss.itDidntWorkPageTitle", pta: pta); // 4/21/00 JES: localized
+		local (htmlText);
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.name = itemName;
+		replacementTable.error = tryError;
+		return (manilaSuite.getString ("pike.sendMessageToPikeError", @replacementTable, pta: pta))}} // 4/21/00 JES: localized

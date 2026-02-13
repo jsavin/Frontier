@@ -1,0 +1,22 @@
+on stripHomePageTitle (pta=nil) {
+	«The editor may not want a title to appear on the home page. Broken out from manilaSuite.news.renderNewsPage. This script checks the prefs, and doesn't strip the title if not desired. There's no need to check the prefs before calling this script.
+		«04/24/00; 3:17:52 PM by PBS
+		«Changes:
+			«11/25/00; 6:28:53 PM by PBS
+				«Was manilaSuite.html.stripTitleFromTemplate. This script is only called from a script rendering the home page. It calls manilaSuite.html.stripTitle, which has been broken out from this script.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (flDisplayTitle = true);
+	
+	if pta^.adrObject == @pta^.adrSiteRootTable^.default or pta^.adrObject == @pta^.adrSiteRootTable^.index { //if this is the home page
+		flDisplayTitle = manilaSuite.getNewsSitePref ("flHomePageDisplayTitle", default:true, flCreate:true)}
+	else { //PBS 04/0/099: support for turning off the title on back issues (archived home pages)
+		flDisplayTitle = manilaSuite.getNewsSitePref ("flBackIssueDisplayTitle", default:true, flCreate:true)};
+	
+	if not flDisplayTitle {
+		if typeOf (pta^.template) == stringType { //the template should be a string
+			manilaSuite.html.stripTitle (pta)}};
+	
+	return (true)}

@@ -1,0 +1,44 @@
+on webEditLogBrowser (linecount, colors) { //a macro that returns HTML for the log
+	linecount = number (linecount); //I keep getting bit by this, when called thru a macro, it's a string DW
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s, align="left") {
+		return ("<td valign=\"top\" align=\"" + align + "\"><font size=\"-1\">" + s + "</font></td>")};
+	
+	local (logName = "Custody");
+	local (adrLog = log.getGuestSubTable (logName));
+	
+	if sizeOf (adrLog^) < 1 {
+		add ("There have been no recent check-ins or check-outs.");
+		return (htmlText)};
+	
+	local (i, j, adritem, sizelog = sizeof (adrlog^), ixlog, sizehourtable);
+	add ("<table width=\"100%\" border=\"0\" cellpadding=\"4\" cellspacing=\"0\">"); indentlevel++;
+	ixlog = sizelog - linecount;
+	if ixlog < 1 {
+		ixlog = 1};
+	for j = sizelog downto ixlog {
+		adritem = @adrLog^ [j];
+		add ("<!-- " + j + " -->");
+		local (ixhtmltext = sizeof (htmltext));
+		add ("<tr bgcolor=\"" + colors [(j % sizeof (colors)) + 1] + "\">"); indentlevel++;
+		add ("<td height=\"28\"></td>"); //a dummy table cell to establish row height
+		with adritem^ {
+			local (time = nameOf (adrItem^));
+			time = string.nthField (time, ';', 2);
+			time = string.trimWhiteSpace (time);
+			time = string.replaceAll (time, " ", "&nbsp;");
+			local (adr = item);
+			local (ix);
+			ix = string.patternMatch (".root\"].", string.lower (adr));
+			if ix > 0 {
+				adr = string.delete (adr, 1, ix + 7)};
+			add (td (time));
+			add (td (adr))};
+		add ("</tr>"); indentlevel--};
+	
+	add ("</table>"); indentlevel--;
+	
+	return (htmltext)}

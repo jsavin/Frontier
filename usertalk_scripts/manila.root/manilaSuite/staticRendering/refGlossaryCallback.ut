@@ -1,0 +1,15 @@
+on refGlossaryCallback (adr, adrText) {
+	«Filter one glossary entry.
+		«03/07/00; 1:33:57 PM by PBS
+		«Changes:
+			«07/05/00; 5:16:29 PM by PBS
+				«Process macros in glossary items that are macros when doing static rendering. This fixes the problem with Gems shortcuts not working on statically rendered sites.
+	
+	local (s = string (adr^));
+	if (s beginsWith "{") and (s endsWith "}") {
+		local (pta = html.getPageTableAddress ());
+		s = html.processMacros (s, false, pta);
+		adrText^ = s};
+	s =  manilaSuite.staticRendering.patchLocalUrls (s);
+	adrText^ = s;
+	return (true)}

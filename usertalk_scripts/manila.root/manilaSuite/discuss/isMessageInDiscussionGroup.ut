@@ -1,0 +1,22 @@
+on isMessageInDiscussionGroup (adrmsg, adrsite=nil) {
+	«Changes
+		«2/28/07; 4:06:10 PM by LL
+			«Don't list pending news items.
+		«4/4/02; 12:06:29 AM by JES
+			«Created. Return true if the message should appear in the DG interface, or false if not.
+	if adrsite == nil {
+		adrsite = manilaSuite.getSiteAddress ()};
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	if manilaSuite.discuss.isHomePage (adrmsg, adrsite) {
+		return (adrNewsSite^.discussionGroup.listHomePages)};
+	if manilaSuite.discuss.isStory (adrmsg, adrsite) {
+		return (adrNewsSite^.discussionGroup.listStories)};
+	if manilaSuite.discuss.isPicture (adrmsg, adrsite) {
+		return (adrNewsSite^.discussionGroup.listPictures)};
+	if manilaSuite.news.isNewsItem (adrmsg) { //never list pending news items
+		if not manilaSuite.news.isReleased (adrmsg) {
+			return (false)}};
+	if manilaSuite.news.isNewsItem (adrmsg) {
+		return (adrNewsSite^.discussionGroup.listNewsItems)};
+	if manilaSuite.discuss.isModule (adrmsg, adrsite) { //never list modules
+		return (false)}}

@@ -1,0 +1,50 @@
+on checkIn (username, password, siteName, itemName) {
+	«Release custody of an advanced pref item.
+		«11/17/00; 7:37:37 PM by JES
+		«Changes:
+			«10/2/01; 2:52:35 PM by PBS
+				«Print friendly template.
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject);
+	case string.lower (itemName) {
+		"css" {
+			adrObject = @adrNewsSite^.cascadingStyleSheet;
+			itemName = "cascading style sheet"};
+		"customprefs" {
+			adrObject = @adrNewsSite^.prefsWizard.outline;
+			itemName = "custom prefs"};
+		"homepagetemplate" {
+			adrObject = @adrSite^.["#homePageTemplate"];
+			itemName = "home page template"};
+		"javascript" {
+			adrObject = @adrNewsSite^.javaScript;
+			itemName = "JavaScript"};
+		"joinnowmembersbox" {
+			adrObject = @adrNewsSite^.membersBoxTemplates.signInBox;
+			itemName = "join now members box"};
+		"navigation" {
+			adrObject = @adrSite^.["#navigator"].outline;
+			itemName = "navigation"};
+		"newsdaytemplate" {
+			adrObject = @adrNewsSite^.newsDayTemplate;
+			itemName = "news day template"};
+		"newsitemtemplate" {
+			adrObject = @adrNewsSite^.newsItems.template;
+			itemName = "news item template"};
+		"signoutmembersbox" {
+			adrObject = @adrNewsSite^.membersBoxTemplates.signOutBox;
+			itemName = "sign out members box"};
+		"sitestructure" {
+			adrObject = @adrSite^.["#hierarchy"].outline;
+			itemName = "site structure"};
+		"template" {
+			adrObject = @adrSite^.["#template"];
+			itemName = "template"};
+		"printfriendlytemplate" { //PBS 10/02/01
+			adrObject = @adrNewsSite^.alternateTemplates.printFriendly}}
+	else {
+		scriptError ("Can't release custody of the " + itemName + " because it doesn't exist.")};
+	
+	return (manilaSuite.rpcUtils.releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName))}

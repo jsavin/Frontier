@@ -1,0 +1,76 @@
+on setPathForMessage (path, adrMsgTable, adrSite) {
+	«Set the site structure path to this message. Return the address of the item added or changed in the site structure. Do an xml de-compile to re-build the outline.
+		«03/03/00; 8:36:57 PM by PBS
+		«Changes:
+			«03/19/00; 12:00:40 AM by PBS
+				«The name attribute now gets the subject from the dg message.
+			«06/19/00; 4:30:59 PM by PBS
+				«If the structure is an empty string, handle this case, make it a table -- this way we don't get errors when adding an item.
+			«10/09/00; 10:14:36 PM by PBS
+				«When promoting to story, supply the adrSite param, so the indexes can get updated.
+	
+	local (adrHierarchy = @adrSite^.["#hierarchy"]);
+	if typeOf (adrHierarchy^.structure [1]) != tableType {
+		new (tableType, @adrHierarchy^.structure);
+		xml.addTable (@adrHierarchy^.structure, "hierarchy")};
+	local (adrStructure = @adrHierarchy^.structure [1]);
+	local (origPath = path);
+	local (nomad = adrStructure);
+	path = string.trimWhiteSpace (path);
+	
+	while sizeOf (path) > 0 {
+		path = string.popLeading (path, '/');
+		local (pathPart = string.nthField (path, '/', 1));
+		local (lowerPathPart = string.lower (pathPart));
+		path = string.delete (path, 1, sizeOf (pathPart));
+		local (flCategory = true);
+		local (flLastPart = false);
+		if path == "" {
+			flCategory = false; //it's a story
+			flLastPart = true};
+		if path == "/" {
+			flLastPart = true;
+			path = ""};
+		local (i);
+		local (flFound = false);
+		for i = sizeOf (nomad^) downTo 1 {
+			local (adrItem = @nomad^ [i]);
+			if nameOf (adrItem^) == "/pcdata" {
+				delete (adrItem);
+				continue};
+			if defined (adrItem^.["/atts"].pathname) {
+				local (itemPathName = adrItem^.["/atts"].pathname);
+				if string.lower (itemPathName) == lowerPathPart {
+					if flLastPart {
+						adrItem^.["/atts"].msgNum = adrMsgTable^.msgNum};
+					flFound = true;
+					nomad = adrItem;
+					break}}};
+		if not flFound {
+			local (tableName = "category");
+			if not flCategory {
+				tableName = "story"};
+			if string.lower (xml.convertToDisplayName (nameOf (nomad^))) == "story" {
+				scriptError ("Can't add \"" + pathPart + "\" to \"" + nomad^.["/atts"].pathname + "\" because a story can't contain a story.")};
+			local (adrTable = xml.addTable (nomad, tableName));
+			new (tableType, @adrTable^.["/atts"]);
+			adrTable^.["/atts"].name = pathPart;
+			if flLastPart {
+				adrTable^.["/atts"].msgNum = adrMsgTable^.msgNum;
+				adrTable^.["/atts"].name = adrMsgTable^.subject}; //PBS 03/18/00: the name should be the dg subject
+			adrTable^.["/atts"].pathname = pathPart;
+			nomad = adrTable}};
+	
+	bundle { //re-build the outline, re-build the paths table
+		local (s = xml.decompile (adrStructure));
+		local (xmlHeader = string.nthField (s, '\r', 1));
+		s = string.delete (s, 1, sizeOf (xmlHeader));
+		s = string.trimWhiteSpace (s);
+		wp.newTextObject (s, @adrHierarchy^.outline);
+		manilaSuite.siteStructure.buildPathsTable (adrSite)};
+	
+	bundle { //make this message a story
+		local (storiesCategory = manilaSuite.discuss.getStoriesCategory (adrSite));
+		manilaSuite.discuss.addCategoryToMessage (adrMsgTable, storiesCategory, adrSite)};
+	
+	return (nomad)}

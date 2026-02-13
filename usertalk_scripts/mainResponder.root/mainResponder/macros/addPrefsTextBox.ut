@@ -1,0 +1,23 @@
+on addPrefsTextBox (label, name, defaultvalue="", flTextArea=false, boxSize=50, maxLength=100, ctRows=12, ctCols=65) {
+	«1/18/99; 6:16:31 AM by DW
+		«Add a table row containing a textbox for one of the prefs on the user preferences page.
+		«See htmlInterfaces.root, people/#tools for calls.
+		«The calling environment may have a #formBackgroundColor attribute
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + s};
+	bundle { //add <tr>
+		local (s = "<tr");
+		if defined (pta^.formBackgroundColor) {
+			s = s +  "bgcolor=\"" + pta^.formBackgroundColor + "\""};
+		s = s + ">";
+		add (s)};
+	add ("<td valign=\"top\">" + label + ":</td>");
+	if flTextArea {
+		add ("<td><textarea name=\"" + name + "\" rows=\"" + ctRows + "\" cols=\"" + ctCols + "\" wrap=\"soft\">" + defaultvalue + "</textarea></td>")}
+	else {
+		add ("<td><input type=\"text\" name=\"" + name + "\" size=\"" + boxSize + "\" maxlength=\"" + maxLength + "\" value=\"" + defaultvalue + "\"></td>")};
+	add ("</tr>");
+	return (htmltext)};
+«bundle //test code
+	«dialog.alert (addPrefsTextBox ("Organization", "org", "New York Times"))

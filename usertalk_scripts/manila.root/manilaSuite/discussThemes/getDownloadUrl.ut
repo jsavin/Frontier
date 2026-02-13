@@ -1,0 +1,14 @@
+on getDownloadUrl (adrSite) {
+	«Given the address of a site, return the URL for downloading the DG theme from the site.
+		«10/27/00; 2:58:45 AM by JES
+			«Cribbed from manilaSuite.themes.getDownloadUrl
+	
+	local (url);
+	local (baseUrl = adrSite^.["#ftpSite"].url);
+	url = baseUrl + "downloadDiscussTheme/";
+	if not defined (adrSite^.["#newsSite"].discussTheme.name) {
+		scriptError ("Can't get the URL for download this theme because the theme doesn't have a name.")};
+	local (fname = adrSite^.["#newsSite"].discussTheme.name);
+	fname = string.dropNonAlphas (string.innerCaseName (fname));
+	url = url + fname + ".fttb"; //it's a Frontier table
+	return (url)}

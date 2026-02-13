@@ -1,0 +1,17 @@
+on updateShortcut (adrMsgTable) {
+	«A new or edited picture has just been uploaded. Update the shortcut. The shortcut may have been deleted -- in that case, do nothing.
+	
+	if manilaSuite.pictures.shortcutWasDeleted (adrMsgTable) {
+		return (true)}; //didn't update anything, but that's fine, the shortcut was deleted
+	
+	local (shortcut);
+	
+	if (manilaSuite.pictures.findShortcut (adrMsgTable, @shortcut)) {
+		local (imgTag = mainResponder.discuss.buildImageTag (adrMsgTable^.msgNum));
+		local (pta = html.getPageTableAddress ());
+		pta^.glossary^.[shortcut] = imgTag;
+		manilaSuite.pictures.setShortcutInImageTable (adrMsgTable, shortcut);
+		return (true)}
+	else {
+		manilaSuite.pictures.createNewShortcut (adrMsgTable);
+		return (true)}}

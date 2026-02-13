@@ -1,0 +1,5 @@
+on getUrl (adrTheme) {
+	«Return a theme's URL, given its address.
+		«06/05/00; 10:53:34 PM by PBS
+	
+	return (adrTheme^.info.siteUrl)}

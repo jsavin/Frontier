@@ -1,0 +1,210 @@
+on listSites (flSearchable=true, sitesPerPage=25, start=1, actionUrl="", searchString="") {
+	«List the sites on this server. The list may be searchable. When you do a search, you're matching against site name, site URL, ME name, ME email address.
+		«07/17/00; 6:44:44 PM by PBS
+		«Changes:
+			«Fixed bug where sitesPerPage-1 sites were listed on each page, meaning that between pages one site was missed for each page break.
+			«06/05/01; 11:07:23 AM by PBS
+				«Don't generate a fatal error if there's a problem getting info about an ME.
+			«1/25/02; 6:25:04 PM by PBS
+				«Performance enhancement in the local "add" routine -- add a trailing semicolon.
+	
+	«local (pta = html.getPageTableAddress ())
+	
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	on getSiteUrls (adrSite) {
+		«Return the dynamic and static URLs as a list, as {dynamicUrl, staticUrl}. If staticUrl doesn't exist, just make it "".
+		local (url = adrSite^.["#ftpSite"].url);
+		local (staticUrl = "");
+		if manilaSuite.staticRendering.isEnabled (adrSite) {
+			try { //get the static site URL
+				staticUrl = adrSite^.["#newsSite"].staticSite.["#ftpSite"].url}};
+		return ({url, staticUrl})};
+	on getSiteName (adrSite) {
+		«Get the name of the site.
+		if defined (adrSite^.["#newsSite"].siteName) {
+			return (string (adrSite^.["#newsSite"].siteName))};
+		return ("Untitled")};
+	on getManagingEditorInfo (adrSite) {
+		«Return info about the ME as a list, {name, email}. If no name, then name is "".
+		local (meList = adrSite^.["#newsSite"].sysopMail);
+		if typeOf (meList) != listType {
+			meList = {meList}};
+		local (editor = meList [1]);
+		«Get adrMember.
+		try { //PBS /06/05/01: don't generate fatal error if there's an error here
+			local (groupName = adrSite^.["#prefs"].defaultMembershipGroup);
+			local (adrMember = mainResponder.members.getMemberTable (groupName, editor));
+			if not defined (adrMember^) {
+				return ({"", ""})};
+			if defined (adrMember^.personalInfo.name) {
+				return ({adrMember^.personalInfo.name, nameOf (adrMember^)})};
+			return ({"", nameOf (adrMember^)})}
+		else {
+			return ({"", editor})}};
+	on getAllMeInfo (adrSite) {
+		«Get all the managing editor's names and email addresses in a big string.
+			«This routine was originally called getAllManagingEditorNamesAndEmailAddressesInABigString, but that was a bit long.
+		local (meList = adrSite^.["#newsSite"].sysopMail);
+		if typeOf (meList) != listType {
+			meList = {meList}};
+		local (s); //this is the big string
+		local (groupName = adrSite^.["#prefs"].defaultMembershipGroup);
+		local (oneEditor);
+		for oneEditor in meList {
+			local (adrMember = mainResponder.members.getMemberTable (groupName, oneEditor));
+			if not defined (adrMember^) {
+				continue};
+			if defined (adrMember^.personalInfo.name) {
+				s = s + " " + adrMember^.personalInfo.name};
+			s = s + " " + nameOf (adrMember^)};
+		return (s)};
+	on getLastModDate (adrSite) {
+		«Get the date the last time someone added a message.
+		local (dgName = adrSite^.["#prefs"].discussionRoot);
+		local (adrDiscuss);
+		manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrDiscuss);
+		local (adrMessages = @adrDiscuss^.messages);
+		local (ctMessages = sizeOf (adrMessages^));
+		local (adrMostRecentMessage = @adrMessages^ [ctMessages]);
+		local (lastModDate = adrMostRecentMessage^.postTime);
+		return (lastModDate)};
+	
+	on buildOneSiteEntry (adrItem, ct) {
+		«Build an HTML entry for one site. It's just a link.
+		
+		local (url = adrItem^.url);
+		local (siteName = adrItem^.siteName);
+		local (displaySiteName = string.ellipsize (siteName, 50));
+		local (s = "\r<tr>");
+		«s = s + "<td align=\"right\">" + ct + ".&nbsp;</td>"
+		s = s + "<td>" + html.getLink (displaySiteName, url) + "</td>";
+		local (meName = adrItem^.editorName);
+		if string.trimWhiteSpace (meName) == "" {
+			meName = adrItem^.editorEmail};
+		s = s + "<td>" + meName + "</td>";
+		s = s + "<td>" + adrItem^.lastModDate + "</td>";
+		s = s + "</tr>";
+		
+		return (s)};
+	
+	local (totalSitesMeetingCriteria = 0);
+	on getSearchResults (adrTable, min, max, searchString) {
+		«Create a table of info about the sites.
+		local (ct = 0);
+		local (adrItem);
+		local (adrSites = @config.manila.sites);
+		local (lowerSearchString = string.lower (searchString));
+		for adrItem in adrSites {
+			if defined (adrItem^^) {
+				local (adrSite = adrItem^);
+				local (siteName = getSiteName (adrSite));
+				local (urlList = getSiteUrls (adrSite));
+				local (flMatch = false);
+				if not flSearchable {
+					flMatch = true};
+				if not flMatch { //see if there's a match on site name, canonical site name, URL, ME name, ME email address
+					if string.lower (siteName) contains lowerSearchString {
+						flMatch = true}
+					else {
+						if string.lower (nameOf (adrItem^)) contains lowerSearchString {
+							flMatch = true}
+						else {
+							if string.lower (string (urlList)) contains lowerSearchString {
+								flMatch = true}
+							else {
+								local (meInfo = getAllMeInfo (adrSite));
+								if string.lower (meInfo) contains lowerSearchString {
+									flMatch = true}}}}};
+				if not flMatch { //still no match? continue
+					continue};
+				ct++;
+				if (ct < min) or (ct > max) {
+					continue};
+				
+				local (adrEntry = xml.addTable (adrTable, siteName));
+				adrEntry^.siteName = siteName;
+				adrEntry^.url = urlList [1];
+				if urlList [2] != "" {
+					adrEntry^.url = urlList [2]};
+				local (meInfoList = getManagingEditorInfo (adrSite));
+				adrEntry^.editorName = meInfoList [1];
+				adrEntry^.editorEmail = meInfoList [2];
+				adrEntry^.lastModDate = getLastModDate (adrSite)}};
+		totalSitesMeetingCriteria = ct};
+	
+	local (max = start + (sitesPerPage - 1));
+	
+	local (t);
+	new (tableType, @t);
+	getSearchResults (@t, start, max, searchString);
+	local (numSitesFound = sizeOf (t));
+	local (formSearchString = "");
+	if flSearchable { //build a form
+		add ("<form method=\"get\" action=\"" + actionUrl + "\">");
+		add ("<b>Enter search terms:</b><p>");
+		if searchString != "" {
+			formSearchString = manilaSuite.translateToEntities (searchString)};
+		add ("<input type=\"text\" name=\"q\" value=\"" + formSearchString + "\" size=\"30\">&nbsp;<input type=\"submit\" value=\"Search\">");
+		add ("<input type=\"hidden\" name=\"m\" value=\"" + sitesPerPage + "\">");
+		add ("<input type=\"hidden\" name=\"s\" value=\"1\">");
+		
+		add ("</form>")};
+	if numSitesFound > 0 { //build search results
+		local (flMultipleScreens = false);
+		if numSitesFound < totalSitesMeetingCriteria {
+			flMultipleScreens = true};
+		if flMultipleScreens { //if there is more than one screen
+			local (s = "Displaying " + start + " through " + (start + (numSitesFound - 1)) + " of " + totalSitesMeetingCriteria);
+			if (not flSearchable) or (searchString == "") {
+				s = s + " total sites."}
+			else {
+				s = s + " found sites."};
+			add (s)};
+		«add ("<p>[[screens]]")
+		add ("<table border=\"0\" cellpadding=\"3\" cellspacing=\"3\"\r>");
+		«add ("<tr><td>&nbsp;</td><td><b>Site</b><td><b>Managing Editor</b><td><b>Modified</b></td></tr>")
+		add ("<tr><td><b>Site</b><td><b>Managing Editor</b><td><b>Modified</b></td></tr>");
+		bundle { //format search results
+			local (adrItem);
+			local (ct = start - 1);
+			for adrItem in @t {
+				ct++;
+				add (buildOneSiteEntry (adrItem, ct));
+				add ("\r")};
+			add ("</table>")};
+		add ("<p>[[screens]]");
+		
+		bundle { //strip in screens jumpers
+			if flMultipleScreens {
+				local (numScreens);
+				numScreens = double (totalSitesMeetingCriteria) / double (sitesPerPage);
+				local (num = totalSitesMeetingCriteria / sitesPerPage);
+				if numScreens > num {
+					numScreens = num + 1};
+				local (currentScreenNum);
+				currentScreenNum = (start / sitesPerPage) + 1;
+				local (i);
+				local (screensHtml = "More: ");
+				local (encodedSearchString = "");
+				if formSearchString != "" {
+					encodedSearchString = string.urlEncode (searchString)};
+				for i = 1 to numScreens {
+					if i == currentScreenNum {
+						screensHtml = screensHtml + i + " ";
+						continue};
+					local (screenStart = ((i - 1) * sitesPerPage) + 1);
+					local (s);
+					local (url = actionUrl + "?");
+					if encodedSearchString != "" {
+						url = url + "q=" + encodedSearchString + "&amp;"};
+					url = url + "s=" + screenStart + "&amp;m=" + sitesPerPage;
+					s = html.getLink (i, url);
+					screensHtml = screensHtml + s + " "};
+				htmlText = string.replaceAll (htmlText, "[[screens]]", screensHtml)}
+			else {
+				htmlText = string.replaceAll (htmlText, "[[screens]]", "")}}};
+	
+	return (manilaSuite.unTaint (htmlText))}

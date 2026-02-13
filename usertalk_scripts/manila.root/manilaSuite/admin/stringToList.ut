@@ -1,0 +1,55 @@
+on stringToList (s) {
+	«Convert a string to a list.
+		«Rules: delimiters are \r \t \n [space] ,
+		«One or more delimiters in a row equals one delimiter.
+		«This is used when translating an editors list from a sitePrefs page to a Frontier list.
+		«11/11/99; 4:21:59 PM by PBS
+	
+	local (theList = {});
+	local (currItem = "");
+	local (i);
+	local (sizeList = sizeOf (s));
+	local (flWhiteSpace = false);
+	
+	for i = 1 to sizeList {
+		local (ch = s [i]);
+		
+		case ch {
+			' ';
+			',';
+			'\r';
+			'\n';
+			'\t' {
+				if not flWhiteSpace {
+					if currItem != "" {
+						theList = theList + currItem;
+						currItem = ""}};
+				flWhiteSpace = true}}
+		else {
+			currItem = currItem + ch;
+			flWhiteSpace = false};
+		
+		if i == sizeList {
+			if not flWhiteSpace {
+				theList = theList + currItem}}};
+	
+	return (theList)};
+«bundle //test code
+	«manilaSuite.admin.stringToList ("foo\r\nbar")
+		«{"foo", "bar"}
+	«manilaSuite.admin.stringToList ("foo\r\nbar,       ")
+		«{"foo", "bar"}
+	«manilaSuite.admin.stringToList ("   ,  \t  ,foo\r,,,,\nbar,,,,    ,")
+		«{"foo", "bar"}
+	«manilaSuite.admin.stringToList ("foo bar")
+		«{"foo", "bar"}
+	«manilaSuite.admin.stringToList ("foo")
+		«{"foo"}
+	«manilaSuite.admin.stringToList ("brent@userland.com,andre@userland.com,dave@userland.com")
+		«{"brent@userland.com", "andre@userland.com", "dave@userland.com"}
+	«manilaSuite.admin.stringToList ("brent@userland.com\r\r\nandre@userland.com,dave@userland.com")
+		«{"brent@userland.com", "andre@userland.com", "dave@userland.com"}
+	«manilaSuite.admin.stringToList ("brent@userland.com\r\r\nandre@userland.com,,,,,,,dave@userland.com")
+		«{"brent@userland.com", "andre@userland.com", "dave@userland.com"}
+	«manilaSuite.admin.stringToList ("\r\r\r\r\r\r\r,,, ,,, ,,,\r\r\t\r\t\r\t\brent@userland.com\r\r\nandre@userland.com,,,,,,,dave@userland.com")
+		«{"brent@userland.com", "andre@userland.com", "dave@userland.com"}

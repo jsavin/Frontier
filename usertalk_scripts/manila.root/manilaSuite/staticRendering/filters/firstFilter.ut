@@ -1,0 +1,118 @@
+on firstFilter (pta) {
+	«Declare that this is a static rendering to all who care.
+		«Changes:
+			«10/16/04; 12:31:14 AM by JES
+				«Added support for indirectTemplate.
+					«Change recommended by David Bayly.
+			«9/29/01; 2:50:10 PM by PBS
+				«Set flPrintFriendlyTemplate to false.
+			«10/14/00; 2:26:31 PM by PBS
+				«Support alternate home page template.
+			«07/19/00; 4:04:09 PM by PBS
+				«Respect the pref for the cowskull icon -- use what's defined in the site, not the generic.
+				«If the discussion group is not open to members, don't display a cowskull at all.
+			«05/24/00; 8:08:20 PM by JES
+				«Localized.
+	pta^.flManilaStaticRendering = true;
+	
+	bundle { //get prefs from Manila site
+		manilaSuite.staticRendering.getPrefsFromManilaSite ()};
+	
+	pta^.flPrintFriendlyTemplate = false; //PBS 09/29/01: print friendly template support
+	
+	local (adrNewsSite = parentOf (pta^.adrSiteRootTable^));
+	local (adrManilaSite = parentOf (adrNewsSite^));
+	local (s = string (adrManilaSite^.["#template"]));
+	if defined(pta^.indirectTemplate) and pta^.indirectTemplate { //01/01/01, 22:33:07 by DAB
+		s = string(adrManilaSite^.["#templates"].[pta^.template]);
+		pta^.indirectTemplateID = pta^.template; //name is useful to macros
+		pta^.indirectTemplate = false};
+	
+	bundle { //PBS 10/14/00: site may be using a home page template
+		if string (pta^.adrObject^) contains "manilaSuite.staticRendering.buildHomePage ()" { //hack -- we need a better way of detecting the home page a static rendering site
+			if defined (adrNewsSite^.flUseHomePageTemplate) {
+				if (adrNewsSite^.flUseHomePageTemplate) {
+					if defined (adrManilaSite^.["#homePageTemplate"]) {
+						s = string (adrManilaSite^.["#homePageTemplate"])}}}}};
+	
+	bundle { //meta tags, CSS, javaScript
+		pta^.javaScript = "";
+		if defined (pta^.newsSite^.javaScript) {
+			pta^.javaScript = string (pta^.newsSite^.javaScript)};
+		
+		if defined (pta^.newsSite^.cascadingStyleSheet) {
+			pta^.cascadingStyleSheet = pta^.newsSite^.cascadingStyleSheet}
+		else {
+			pta^.cascadingStyleSheet = ""};
+		
+		if not defined (pta^.meta) {
+			pta^.meta = ""}};
+	
+	bundle { //membership box -- always empty string, because we don't know if the person is logged in or not
+		pta^.membershipBox = ""};
+	
+	bundle { //dates and times -- 05/25/00 JES: use site's time zone
+		pta^.day = date.day (manilaSuite.convertTime (pta: pta));
+		pta^.dayName = date.dayOfWeekToString (date.dayOfWeek (manilaSuite.convertTime (pta: pta)));
+		
+		pta^.month = date.month (manilaSuite.convertTime (pta: pta));
+		pta^.monthName = date.monthToString (date.month (manilaSuite.convertTime (pta: pta)));
+		
+		pta^.year = date.year (manilaSuite.convertTime (pta: pta));
+		
+		pta^.now = manilaSuite.convertTime (pta: pta);
+		
+		pta^.postTime = manilaSuite.convertTime (timeCreated (pta^.adrObject), pta: pta);
+		pta^.lastUpdate = manilaSuite.convertTime (timeModified (pta^.adrObject), pta: pta);
+		};«pta^.lastUpdateString = "[[lastUpdateString]]"// 05/25/00 JES -- this was redundant
+	
+	bundle { //body tag
+		«pta^.body = html.data.standardMacros.bodyTag ()
+		pta^.body = manilaSuite.html.bodyTag ();
+		pta^.prefsBasedBodyTag = pta^.body};
+	
+	bundle { //tagLine, last update, siteName, editorial menu, etc.
+		pta^.tagLine = manilaSuite.unTaint (string (pta^.newsSite^.tagLine));
+		pta^.tagLine = manilaSuite.staticRendering.patchLocalUrls (pta^.tagLine);
+		bundle { //replace the last update string with the last update time -- 05/25/00 JES: localized
+			local (lastUpdateString);
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.date = mainResponder.localization.longDateString (manilaSuite.convertTime (pta: pta));
+			replacementTable.time = mainResponder.localization.timeString (manilaSuite.convertTime (pta: pta));
+			lastUpdateString = manilaSuite.getString ("common.lastUpdateString", @replacementTable);
+			pta^.lastUpdateString = lastUpdateString};
+		pta^.siteName = manilaSuite.unTaint (pta^.newsSite^.siteName);
+		pta^.siteName = manilaSuite.staticRendering.patchLocalUrls (pta^.siteName);
+		pta^.editorialMenu = "";
+		pta^.whoAmI = "";
+		pta^.hierarchyPath = ""};
+	
+	bundle { //07/19/00 PBS: dg read access, cow skull
+		if defined (adrNewsSite^.flPublicMembersDgAccess) {
+			pta^.flDgReadAccess = adrNewsSite^.flPublicMembersDgAccess};
+		if defined (adrNewsSite^.cowSkullImage) {
+			pta^.cowSkullImage = adrNewsSite^.cowSkullImage}};
+	
+	s = string.replace (s, "<title>", "<Title>", false);
+	«s = string.replaceAll (s, adrManilaSite^.["#ftpSite"].url, pta^.ftpSite^.url, false)
+	
+	pta^.calendar = "";
+	
+	bundle { //host
+		local (urlParts = string.urlSplit (pta^.ftpSite^.url));
+		pta^.host = urlParts [2]};
+	bundle { //navigator
+		«s = string.replaceAll (s, "{navigatorLinks}", "", false)
+		local (urlParts);
+		urlParts = string.urlSplit (pta^.url);
+		pta^.uri = "/" + urlParts [3];
+		pta^.navigatorLinks = manilaSuite.staticRendering.drawNavigatorWithFiltering ()};
+	
+	s = manilaSuite.staticRendering.patchLocalUrls (s);
+	table.assign (@pta^.template, s);
+	
+	bundle { //set up the html.refGlossary callback which filters local URLs
+		pta^.refGlossaryCallback = @manilaSuite.staticRendering.refGlossaryCallback};
+	
+	
+	return (true)}

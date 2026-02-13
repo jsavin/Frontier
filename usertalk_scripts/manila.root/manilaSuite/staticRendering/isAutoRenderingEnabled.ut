@@ -1,0 +1,9 @@
+on isAutoRenderingEnabled (adrSite) {
+	«Is automatic rendering turned on for this site?
+		«03/14/00; 5:30:40 PM by PBS
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	if not defined (adrNewsSite^.flStaticRenderingOnChange) {
+		adrNewsSite^.flStaticRenderingOnChange = false};
+	
+	return (adrNewsSite^.flStaticRenderingOnChange)}

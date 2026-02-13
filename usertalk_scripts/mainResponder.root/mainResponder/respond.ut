@@ -1,0 +1,1036 @@
+on respond (adrparamtable, fldebug=false) {
+	«Changes:
+		«1/29/06; 11:52:04 PM by JES
+			«When returning an error page to the browser, iso8859-encode the error string, so curly-quotes and other so-called high-ascii characters will display properly.
+		«9/26/05; 6:52:17 PM by JES
+			«When doing a siteTree redirect, redirect to the same path as the incoming request, including any search args.
+			«Preserve searchArgs and pathArgs in pathMustEndWithSlash and pathMustNotEndWithSlash redirects.
+		«9/22/05; 12:58:58 AM by JES
+			«Fix a bug which could mask errors when a custom error handler script is registered. Only call membership group callbacks if the memberGroupName attribute is defined.
+		«5/29/05; 1:44:46 AM by JES
+			«If an error handler is registered in the paramtable, allow it to override the default HTML for errors returned by mainResponder.
+			«Error handlers are registered by placing an address value named adrErrorHandler in the paramtable (page table), or setting an address value at config.mainResponder.globals.adrErrorHandler. Error handler scripts take a single parameter which is the value of tryError at the time the error occurs.
+		«3/17/05; 3:57:45 PM by JES
+			«Make call to tcp.equalNames in a try block, since this can fail on servers which aren't connected to the Internet.
+		«10/23/04; 1:17:48 AM by JES
+			«Respect config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites. If false, then do not map the first level of the path in incoming requests to Manila sites. Default is to preserve existing behavior in existing installs, and to not map to Manila sites in new installs. (See mainResponder.init and mainResponder.install.)
+		«9/16/04; 2:11:44 AM by JES
+			«Fix a bug in latin-to-mac translation when parsing POST args where more than one argument has the same name.
+				«Single arguments were handled fine, but subsequent same-name ones weren't.
+			«Fix bug where high-ascii characters in the path were not handled properly on MacOS.
+			«Fix a bug in If-Modified-Since handling, which prevented it from working properly unless mainResponder debugging was turned on.
+		«11/5/02; 2:47:14 PM by JES
+			«Handle HEAD requests according to the HTTP 1.1 specification. Saves bandwidth when responding to clients which support the HEAD method.
+			«http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.4
+		«9/16/02; 2:43:53 AM by JES
+			«Fix a bug which causes sites on the last leaf of an XML siteTree to return an error, by de-referencing the address attribute of the site in the tableDive sub-function of the responder.
+				«Previously, the address of an XML table would be returned, and this table was not a valid website. Nobody was following the address on the last leaf of the siteTree.
+				«Now we dereference the address attribute, and return the address for the value of "nomad". This is normally a valid website, as long as the siteTree is valid, and the site still exists.
+		«9/10/02; 5:01:56 PM by JES
+			«Call userland.trialVersionCheck to find out if the trial has expired, instead of checking userland.trialVersion.flTrialVersion and userland.trialVersion.flExpired directly.
+		«7/2/02; 1:43:28 AM by JES
+			«New XML siteTree type, redirect. Implements the same functionality as redirect strings for old-style config.mainResponder.domains records.
+		«1/7/02; 12:38:55 PM by PBS
+			«Don't serve any objects whose name begins with . (dot). This prevents the server from, for example, serving .DS_Store files on Mac OS X.
+		«10/1/01; 3:34:37 PM by PBS
+			«Manila sites with names like 123test couldn't be found because 123test, when it's an address, needs to be in quotes and bracketted. Fixed.
+		«01/03/01; 2:44:11 AM by JES
+			«Fixed a text conversion problem: On Macintosh, convert both searchArgs and pathArgs to Mac text, even if no postArgs are specified.
+		«2000:
+			«05/11/00; 5:19:40 PM by PBS
+				«If the manilaMacros table in manila.root is defined, add that to the search path for macro evaluation.
+			«06/10/00; 5:05:24 PM by PBS
+				«Support for XML siteTree feature, which allows one to specify a hierarchy of sites in XML. siteTrees are legal in config.mainResponder.domains and config.mainResponder.sites.
+			«06/14/00; 4:31:26 PM by PBS
+				«Added /mainResponderResources/ as a system website, so the Pike button and other icons have a constant path despite the settings at config.mainResponder.domains.
+			«06/27/00; 12:56:31 PM by JES
+				«Bug fix -- make sure an XML siteTree outline exists if the structure exists.
+			«07/05/00; 12:47:57 PM by PBS
+				«If an entry in config.mainResponder.domains is a string containing a URL to redirect to, and the request contains path args, make sure the path args are added to the URL that the browser is redirected to.
+			«07/06/00; 5:48:03 PM by PBS
+				«If the domain is set up as an XML siteTree domain, but the site we're looking for isn't in the XML outline, check the config.manila.sites and config.mainResponder.sites tables. This makes it work the same way as when your default domain points to Guest Databases/www/ -- which is how people expect this to work. This should cut way down, or eliminate entirely, the reports about not being able to figure out how to make one's sites accessible.
+			«07/22/00 at 4:06:35 AM by AR
+				«Re-enabled the controlAccess callback loop.
+			«08/09/00; 12:43:44 PM by PBS
+				«Closed security hole. Certain combinations of characters could, in some circumstances, allow one to get outside the static files folder.
+			«08/31/00; 8:01:51 PM by PBS
+				«Fixed a bug in serving tables -- the last line of the serveTable handler now references adrTable. See Matt Neuburg's diagnosis: http://frontier.userland.com/discuss/msgReader$5439
+			«10/27/00; 11:32:10 AM by PBS
+				«Changed profiling prefix from /profile to /profile/.
+			«10/31/00; 5:16:54 PM by JES
+				«Fixed bug where redirecting using the scriptError ("!redirect [url]") method wouldn't redirect to URLs longer than 254 characters. To use the fix properly, first call mainResponder.redirect to set the redirect URL in adrParamTable^.responderAttributes, and then call scriptError with the same URL to short-circuit rendering and force redirection.
+			«11/08/00; 3:02:42 PM by PBS
+				«Fixed a problem when serving from the file system on Windows. (When serving Gems, for example.) Folder paths would have doubled backslash characters in the path, which had to be collapsed when turning a path to a filespec.
+		«1999:
+			«7/29/99 by DW
+				«If you have a #redirect directive in a website, when the responder dives into the table it will remap the url thru the string value of #redirect. It's smart, so it will keep the partial URL intact.
+			«7/30/99; 10:51:13 by PBS
+				«If a table is being rendered as a page via the #renderTableWith mechanism, don't add a trailing slash. If a trailing slash is present, redirect to remove the trailing slash. New subroutine: pathMustNotEndWithSlash, it's the opposite of pathMustEndWithSlash.
+				«If the host ends with the port, as in nirvana.userland.com:81, find nirvana.userland.com in the config.mainResponder.domains table if nirvana.userland.com:81 is not present in that table. Also handle cases where a trailing period is present, such as nirvana.userland.com. or nirvana.userland.com.:81.
+				«If an object isn't found in a website, the website can over-ride mainResponder.respond's built-in behavior, which is to scriptError with a message about the object not being found. A website can have a page -- script, wpText, whatever -- called #objectNotFoundHandler. This is what gets called if the object isn't found. It's rendered or called with regard to the standard rules -- allowScriptsToRun, flRender, etc. are all obeyed, so there are no suprises. This adds a potentially powerful feature: a script can be defined which implements a virtual hierarchy -- in other words, you could write a script which dives into an outline: you could create an entire website, or part of a site, from a single outline. There are many possibilities.
+			«8/1/99; 1:13:33 by PBS
+				«Error pages are now iso8859-encoded. This is because some Frontier error messages may contain characters which should be translated to HTML entities.
+				«Macintosh file uploading fixed -- post args are not converted from Latin to Mac text for attached files -- only "regular" post args are converted.
+			«8/11/99; 2:56:17 PM by PBS
+				«Folded in Dave's fixes for #redirect feature. Check to be sure objectName and path are defined.
+				«Fix for custom scripts for tableToHTML and FolderToHTML -- the scripts should be found now. Previously an error was generated. Previous error: "Can't call folderToHTML because it isn't a script." De-referencing solves this problem.
+			«8/25/99; 12:09:37 PM by PBS
+				«Call html.deletePageTableAddress at the end -- there is no need to keep the dangling pta in the system.temp.pageTableAddresses table. In fact, not deleting it can lead to crashes in certain circumstances.
+				«Added pathEvaluation callback. Scripts in the config.mainResponder.callbacks.pathEvaluation table can over-ride mainResponder's normal path evaluation.
+					«The param table is in scope for these callbacks. There are two special items:
+						«domainPath -- this is the path for this domain, as specified in config.mainResponder.domains. It may be any value that's legal in config.mainResponder.domains.
+						«adrObjectToServe -- this is nil. If a callback places a value here, then that's the object that will be served. The value can be any type that mainResponder.respond knows how to handle.
+					«Note: attributes will be gathered at the level of adrObjectToServe^. If you want to gather more attributes, you'll have to do it in your callback or in a filter. This is because mainResponder's normal attribute-gathering routine is circumvented when a callback handles path evaluation.
+					«Also note: if there is a scriptError in any of these callbacks, that scriptError will be reflected in the page. These callbacks must be coded carefully. This is an advanced feature, and one is responsible for one's own code.
+					«This was originally requested by Seth Dillingham on the Frontier-Server list.
+				«Added serveFromCache callback.
+					«When mainResponder wants to serve an object from the cache, the scripts in config.mainResponder.callbacks.serveFromCache are called.
+					«The param table is in scope. It contains a special boolean, flServeFromCache, set to true.
+					«If any callback sets this to false, then mainResponder.respond will build the object rather than use the cache.
+					«This was originally requested by Matt Daw on the Frontier-Server list.
+				«Macintosh file uploading, which was thought to be fixed earlier, is now fixed completely. The final problem was a hard-to-see typo:
+					«if typeOf (adrPostTable^ [i] == stringType)
+					«...should have read...
+					«if typeOf (adrPostTable^ [i]) == stringType
+					«You can now turn on Mac text conversion at config.mainResponder.prefs.flConvertToMacText and have files that are uploaded remain unconverted.
+			«9/25/99; 5:44:51 PM by PBS
+				«A serveFromCacheCallback can get the address of the requested object that's been cached. It's at adrParamTable^.adrCachedObject. This callback can also get the address of the cached version, in cache.root. It's at adrParamTable^.adrCacheItem.
+			«10/25/99; 3:53:16 PM by PBS
+				«Fixed two minor bugs in supporting the controlPanel system website. Changed the scope of flsystemwebsite and check the existence of config.mainResponder.prefs.flControlPanel before checking its value.
+			«11/9/99; 8:37:55 PM by PBS
+				«Short URLs for Manila sites. If the domain points to the www folder, and the first part of the path is a name in config.manila.sites, then short-circuit the walk -- set nomad to point to the Manila site. This way, instead of URLs like http://myserver.com/mySite/mySite/, you can have URLs like http://myserver.com/mySite/, even though the website is at [mySite.root].mySite, even though the domain points to the www folder. This change is compatible with 6.0: if you don't have a config.manila.sites table, then nothing special happens.
+			«12/16/99; 2:50:24 PM by PBS
+				«Short URLs for mainResponder sites: if a table at config.mainResponder.sites exists, and the first part of the path matches a name in that table, and the domain points to the www folder, then follow the address in config.mainResponder.sites. This works similarly to config.manila.sites. However, items in config.mainResponder.sites can also be tables or filespecs.
+			«12/16/99; 3:36:36 PM by PBS
+				«Fix a #redirect bug. When requesting /x, the redirected URL might be /x/x -- part of the path was being doubled.
+		«1998:
+			«9/26/98; 10:54:02 AM by DW
+				«Created. A clean fresh start for the user.webserver.responders table.
+					«Build a fast kernelizable responder that supports a very high level concept of a website.
+	on core () {
+		mainResponder.callbackLoop (@config.mainresponder.callbacks.controlAccess, adrparamtable);
+		
+		local (flCallbackParsedPath = false); //PBS 8/25/99: a callback may evaluate the path, then this gets set to true
+		local (flprofile = false); //if true, we return the text of the profile, not the page
+		if config.mainresponder.prefs.flProfiling {
+			local (prefix = "/profile/"); //PBS 10/27/00: prefix changed from /profile to /profile/ -- to avoid conflict with Manila's profiles and any other URL that begins with /profile
+			if adrparamtable^.path beginswith prefix {
+				adrparamtable^.path = string.delete (adrparamtable^.path, 1, sizeof (prefix));
+				adrparamtable^.path = "/" + adrparamtable^.path;
+				script.startProfile (true);
+				flprofile = true}};
+		
+		local (adrdebuglog = nil); //it stays nil if debugging isn't on
+		on addDebugLog (name, val) {
+			xml.addvalue (adrdebuglog, name, val)};
+		local (fldebug = config.mainresponder.prefs.flDebug);
+		if fldebug {
+			if adrparamtable^.requestHeaders.["User-Agent"] == "Testing in Debugger" {
+				fldebug = false}
+			else {
+				if not defined (config.mainresponder.debugLog) {
+					new (tabletype, @config.mainresponder.debugLog)};
+				adrdebuglog = xml.addtable (@config.mainresponder.debugLog, string.timestring ());
+				addDebugLog ("paramsIn", adrparamtable^);
+				addDebugLog ("path", adrparamtable^.path);
+				addDebugLog ("client",  tcp.dns.getDomainName (adrparamtable^.client))}};
+		
+		adrparamtable^.responseHeaders.["Content-Type"] = "text/html"; //the most common value
+		
+		bundle { //for debugging, save a copy of the param table in a global
+			if config.mainresponder.prefs.flKeepParamTable {
+				try { //might not have a User-Agent field
+					if adrparamtable^.requestHeaders.["User-Agent"] != "Testing in Debugger" {
+						scratchpad.paramtable = adrparamtable^}}}};
+		
+		local (adratts = @adrparamtable^.responderAttributes);
+		adratts^ = config.mainresponder.globals;
+		on noFolderError (f) {
+			scriptError ("There is no folder or object database named \"" + (file.filefrompath (f) - file.getpathchar ()) + "\" in the folder \"" + file.folderfrompath (f) + "\".")};
+		on gatherAttributes (adrtable) { //copy all #attributes from the table into adratts^
+			«this does something different from html.buildPageTable
+				«it adds them one level at a time, we don't care how we got here
+				«in html.buildPageTable we pop all the way out to the top of the website.
+				«that would be incorrect for the web server
+			
+			local (adrsecurityscript = @adrtable^.["#security"]);
+			if defined (adrsecurityscript^) { //great! the sysop is using a cool feature
+				callScript (adrsecurityscript, {}, adrparamtable)}; //scriptError to kill request
+			
+			local (i, ct = sizeof (adrtable^), adritem, name);
+			for i = 1 to ct {
+				adritem = @adrtable^ [i];
+				name = nameof (adritem^);
+				if not (name beginswith "#") {
+					break};
+				name = string.delete (name, 1, 1); //pop off the #
+				case string.lower (name) {
+					"redirect" {
+						«DW 7/29/99: If you have a #redirect directive in a website, when the responder dives into the table it will remap the url thru the string value of #redirect. It's smart, so it will keep the partial URL intact.
+						
+						local (url = string (adritem^));
+						if defined (path) { //make sure path is defined
+							if sizeof (path) > 0 {
+								if not (url endswith "/") {
+									url = url + "/"};
+								url = url + path}};
+						scriptError ("!redirect " + url)}};
+				case typeof (adritem^) {
+					tabletype {
+						if string.lower (name) == "prefs" {
+							local (i, ct = sizeof (adritem^), adrprefsitem, name);
+							for i = 1 to ct {
+								adrprefsitem = @adritem^ [i];
+								name = nameof (adrprefsitem^);
+								if name beginswith "#" {
+									name = string.delete (name, 1, 1)};
+								adratts^.[name] = adrprefsitem^}}
+						else { //copy the address of the table
+							try {delete (@adrAtts^.[name])}; //work around an apparent kernel bug
+							adratts^.[name] = adritem}};
+					outlinetype;
+					scripttype;
+					menubartype;
+					binarytype;
+					wptexttype {
+						adratts^.[name] = adritem}} //copy the address
+				else {
+					adratts^.[name] = adritem^}}};
+		on attMustBeTrue (attname) {
+			on attError () {
+				scriptError ("The attribute \"" + attname + "\" must be true.")};
+			local (adratt = @adratts^.[attname]);
+			if defined (adratt^) {
+				if not adratt^ { //it's false
+					attError ()}}
+			else {
+				attError ()};
+			return (true)};
+		on attIsTrue (attname) {
+			local (adratt = @adratts^.[attname]);
+			if defined (adratt^) {
+				return (boolean (adratt^))}
+			else {
+				return (false)}};
+		
+		on serveAsXml (folder) {
+			if not file.isFolder (folder) {
+				scriptError ("Can't serve \"" + folder + "\" as XML because it isn't a folder.")};
+			local (xmltext = "", indentlevel = 0, f, pc = file.getpathchar ());
+			on add (s) {
+				xmltext = xmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+			add ("<?xml version=\"1.0\"?>");
+			add ("<directory>"); indentlevel++;
+			fileloop (f in folder) {
+				local (name = file.filefrompath (f));
+				if name endswith pc {
+					name = string.delete (name, sizeof (name), 1)};
+				add ("<file>"); indentlevel++;
+				add ("<name>" + name + "</name>");
+				bundle { //add type
+					local (mimetype);
+					if file.isfolder (f) {
+						mimeType = "folder"}
+					else {
+						if name endswith ".root" {
+							mimetype = "application/x-frontier-database"}
+						else {
+							local (objectType = file.type (f));
+							case sys.os () { // decide what the MIME type is
+								"Win95";
+								"WinNT" {
+									local (extension = objectType);
+									extension = string.replaceAll (extension, " ", ""); // strip spaces
+									if defined (user.webserver.prefs.ext2MIME.[extension]) {
+										mimeType= user.webserver.prefs.ext2MIME.[extension]}
+									else {
+										mimeType = "text/plain"}};
+								"MacOS" {
+									if defined (user.webserver.prefs.type2MIME.[objectType]) {
+										mimeType = user.webserver.prefs.type2MIME.[objectType]}
+									else {
+										mimeType = "text/plain"}}}}};
+					add ("<type>" + mimeType + "</type>")};
+				add ("<creationDate>" + date.netStandardString (file.created (f)) + "</creationDate>");
+				add ("<modificationDate>" + date.netStandardString (file.modified (f)) + "</modificationDate>");
+				add ("<size>" + file.size (f) + "</size>");
+				add ("</file>"); indentlevel--};
+			add ("</directory>"); indentlevel--;
+			adrparamtable^.responseHeaders.["Content-Type"] = "text/xml";
+			adrparamtable^.responseBody = xmltext};
+		on serveFile (f) {
+			adrparamtable^.responseBody = string (file.readwholefile (f));
+			adrparamtable^.responseHeaders.["Content-Type"] = mainResponder.getFileMimeType (f);
+			adrparamtable^.responseHeaders.["Last-Modified"] = date.netStandardString (file.modified (f))};
+		on serveScript (adrscript) {
+			adrparamtable^.responseBody = string (callScript (adrscript, {}, adrparamtable))};
+		on serveObject (adr) {
+			bundle { //set up the URLs table
+				if not defined (adratts^.urls) { //there's no #urls server attribute
+					adratts^.urls = @config.mainresponder.urls}};
+			mainResponder.members.checkMembership (adr, adrparamtable); //scriptErrors if redirecting
+			if (adratts^.flrender) and (typeof (adr^) != binaryType) { //pass it thru the website framework
+				local (adrcacheitem = nil);
+				if defined (adratts^.flRenderingCache) and (adratts^.flRenderingCache) { //this page can be cached
+					local (adrcache = mainResponder.cache.getCacheTable ());
+					adrcacheitem = @adrcache^.[string (adr)];
+					if defined (adrcacheitem^) {
+						if timeModified (adrcacheitem) >= timeModified (adr) { //the cache is still good
+							if typeof (adr^) != scripttype {
+								«PBS 8/25/99: call a callback that can decide whether or not to serve this from the cache.
+								adrParamTable^.flServeFromCache = true;
+								if defined (config.mainResponder.callbacks.serveFromCache) {
+									adrParamTable^.adrCachedObject = adr; //PBS 9/25/99: allow callback to get the address of the object being requested
+									adrParamTable^.adrCacheItem = adrCacheItem; //PBS 9/25/99: allow callback to get the address of the cached version, in cache.root
+									mainResponder.callbackLoop (@config.mainResponder.callbacks.serveFromCache, adrParamTable)};
+								
+								if adrParamTable^.flServeFromCache == true {
+									adrparamtable^.responseBody =  string (adrcacheitem^.text);
+									adrcacheitem^.hits++;
+									return}}}}};
+				if defined (manilaMacros) { //PBS 05/11/00: if defined, add manilaMacros to macro evaluation path
+					with manilaMacros {
+						adrparamtable^.responseBody =  html.buildObject (adr, adrparamtable)}}
+				else {
+					adrparamtable^.responseBody =  html.buildObject (adr, adrparamtable)};
+				if adrcacheitem != nil { //caching is enabled
+					if not defined (adrcacheitem^) {
+						new (tabletype, adrcacheitem)};
+					adrcacheitem^.hits = 0;
+					wp.newtextobject (adrparamtable^.responseBody, @adrcacheitem^.text);
+					fileMenu.saveMyRoot (adrcacheitem)};
+				local (adrredirecturl = @adrparamtable^.responderAttributes.redirectUrl);
+				if defined (adrredirecturl^) {
+					scriptError ("!redirect " + adrredirecturl^)}}
+			else {
+				case typeof (adr^) {
+					scripttype {
+						serveScript (adr)}}
+				else {
+					if defined (adratts^.rawTextPreformatted) and (adratts^.rawTextPreformatted) {
+						local (s = string.replaceall (string (adr^), "<", "&lt;"));
+						adrparamtable^.responseBody = "<html><body><pre>\r" + s + "\r</pre></body></html>"}
+					else {
+						adrparamtable^.responseBody = string (adr^)};
+					adrparamtable^.responseHeaders.["Content-Type"] = mainResponder.getODBMimeType (adr);
+					local (moddate = timeModified (adr));
+					if typeof (moddate) == booleantype {
+						moddate = clock.now ();
+						try { //JES 9/16/04: use mod date of parent table
+							if typeOf (parentOf (adr^)^) == tabletype {
+								moddate = timeModified (parentOf (adr^))}}};
+					adrparamtable^.responseHeaders.["Last-Modified"] = date.netStandardString (moddate)}}};
+		on folderToHTML (folder) {
+			attMustBeTrue ("allowDirectoryListings");
+			bundle { //set up the URLs table; Fri, 12 Mar 1999 00:50:44 GMT by AR
+				if not defined (adratts^.urls) { //there's no #urls server attribute
+					adratts^.urls = @config.mainresponder.urls}};
+			local (adrscript = @mainResponder.folderToHTML);
+			if defined (adratts^.folderToHTML) {
+				adrscript = @adratts^.folderToHTML;
+				if typeOf (adrScript^) == addressType { //PBS 8/11/99: if adrScript^ is an address, de-reference
+					adrScript = adrScript^}};
+			return (adrscript^ (folder, adrparamtable))};
+		on tableToHTML (adrtable) {
+			gatherAttributes (adrtable);
+			attMustBeTrue ("allowDirectoryListings");
+			bundle { //set up the URLs table; Fri, 12 Mar 1999 00:50:40 GMT by AR
+				if not defined (adratts^.urls) { //there's no #urls server attribute
+					adratts^.urls = @config.mainresponder.urls}};
+			local (adrscript = @mainResponder.tableToHTML);
+			if defined (adratts^.tableToHTML) {
+				adrscript = @adratts^.tableToHTML;
+				if typeOf (adrScript^) == addressType { //PBS 8/11/99: if adrScript^ is an address, de-reference
+					adrScript = adrScript^}};
+			return (adrscript^ (adrtable, adrparamtable))};
+		on openRootFile (f) {
+			if not window.isOpen (f) {
+				if file.filefrompath (f) beginswith "#" {
+					scriptError ("Can't open the file \"" + f + "\" because its name begins with a pound-sign.")};
+				fileMenu.open (f, hidden:true);
+				if config.mainResponder.prefs.flLogDatabaseOpens {
+					«you may want to add this file to user.databases
+					local (adrtable = @system.temp.mainResponder.databaseOpensLog);
+					if not defined (adrtable^) {
+						new (tabletype, adrtable)};
+					adrtable^.[f] = clock.now ()}}};
+		on checkPoundsign (name) { //scriptErrors if the name begins with a #
+			if name beginswith "#" {
+				scriptError ("Can't serve \"" + name + "\" because its name begins with a pound-sign.")}};
+		on tableDive (nomad, name) {
+			bundle { //handle siteTree XML structures in config.root
+				if inSiteTreeXmlTable (nomad) {
+					local (name = string.lower (name));
+					local (adrItem);
+					for adrItem in nomad {
+						local (itemName = string.lower (xml.convertToDisplayName (nameOf (adrItem^))));
+						if itemName == "site" {
+							local (siteName = string.lower (adrItem^.["/atts"].name));
+							«if siteName == name
+								«if defined (adrItem^.["/atts"].address) //JES 9/16/02: dereference the last address in the siteTree
+									«return (address (adrItem^.["/atts"].address))
+									«return (dereferenceXmlTable (adrItem))
+								«return (adrItem)
+							if siteName == name { // 03/03/03 JTC installed workaround by Tom Clifton
+								local (xmlAddress);
+								try {
+									xmlAddress = xml.getAddress (adrItem, "site")}
+								else {
+									if defined (adrItem^.["/atts"].address) { //JES 9/16/02: dereference the last address in the siteTree
+										«return (address (adrItem^.["/atts"].address))
+										return (dereferenceXmlTable (adrItem))}};
+								return (adrItem)}}};
+					«Check config.manila.sites and config.mainResponder.sites. PBS 07/06/00.
+					if defined (stack) and sizeOf (stack) == 0 {
+						local (flMapFirstLevelOfUrlsToManilaSites = true);
+						if defined (config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites) {
+							flMapFirstLevelOfUrlsToManilaSites = config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites};
+						if flMapFirstLevelOfUrlsToManilaSites and defined (config.manila.sites.[objectName]) { // 10/22/04; 4:27:33 PM by EDS added pref 
+							return (config.manila.sites.[objectName])}
+						else {
+							if defined (config.mainResponder.sites) {
+								if defined (config.mainResponder.sites.[objectName]) {
+									nomad = @config.mainResponder.sites.[objectName];
+									if defined (config.mainResponder.sites.[objectName].siteTree.directory) {
+										return (initialXmlSiteTreeDive (nomad))};
+									return(nomad)}}}}; // 10/22/04; 4:01:55 PM by EDS need to return the nomad even if it's not a site tree. 
+					«De-reference current nomad, site not found.
+					nomad = dereferenceXmlTable (nomad);
+					if typeOf (nomad) == fileSpecType {
+						return (folderDive (nomad, name))}}};
+			gatherAttributes (nomad); //get the attributes before we dive
+			checkPoundsign (name); //scriptErrors if the name begins with a #
+			if not defined (nomad^.[name]) {
+				if (string.lower (name) == "images") and (defined (nomad^.["#images"])) {
+					name = "#images"}
+				else {
+					if table.tableContains (@config.mainResponder, nomad) and defined (nomad^.siteTree.directory) { //PBS 06/10/00: support for XML siteTree in config.mainResponder.sites
+						return (initialXmlSiteTreeDive (nomad))}
+					else {
+						if defined (adrAtts^.objectNotFoundHandler) { //PBS 7/30/99: a website can define an object -- page, script, whatever -- to handle object not found conditions. It will be called via the standard rules, based on the website's preferences (allowScriptsToRun, etc.)
+							return (adrAtts^.objectNotFoundHandler)}
+						else {
+							scriptError ("Can't process the request because there is no object named \"" + name + "\".")}}}};
+			return (@nomad^.[name])};
+		on folderDive (f, name) {
+			local (pc = file.getpathchar ());
+			if not file.exists (f) { //allow URLs to reference odbs without including ".root"
+				local (name = file.filefrompath (f) - pc); //for error message
+				f = f + ".root";
+				if not file.exists (f) {
+					noFolderError (f)}};
+			if file.isfolder (f) {
+				if not (f endswith pc) {
+					f = f + pc};
+				return (filespec (f + name))}
+			else { //it might be a guest database
+				if not (string.lower (f) endsWith ".root") {
+					scriptError ("Can't dive into \"" + f + "\" because its name doesn't end with \".root\".")};
+				openRootFile (f);
+				return (tableDive (@[f], name))}};
+		on pathMustEndWithSlash () {
+			local (s = string.trimWhiteSpace (adrparamtable^.path));
+			local (args = "");
+			if defined (adrparamtable^.pathArgs) {
+				if adrparamtable^.pathArgs != "" {
+					args = "$" + adrparamtable^.pathArgs}};
+			if defined (adrparamtable^.searchArgs) {
+				if adrparamtable^.searchArgs != "" {
+					args = args + "?" + adrparamtable^.searchArgs}};
+			if not (s endswith "/") {
+				scriptError ("!redirect " + s + "/" + args)}};
+		on pathMustNotEndWithSlash () { //PBS 7/30/99: tables rendered as pages must not end with a slash
+			local (s = string.trimWhiteSpace (adrparamtable^.path));
+			if s endsWith "/" {
+				s = string.delete (s, sizeOf (s), 1);
+				local (args = "");
+				if defined (adrparamtable^.pathArgs) {
+					if adrparamtable^.pathArgs != "" {
+						args = "$" + adrparamtable^.pathArgs}};
+				if defined (adrparamtable^.searchArgs) {
+					if adrparamtable^.searchArgs != "" {
+						args = args + "?" + adrparamtable^.searchArgs}};
+				scriptError ("!redirect " + s + args)}};
+		on serveTable (adrtable) {
+			bundle { //PBS 06/09/00: de-reference XML siteTree table
+				adrTable = dereferenceXmlTable (adrTable);
+				if typeOf (adrTable) == fileSpecType {
+					return (serveFolder (adrTable))}}; //it's really a filespec
+			
+			local (defaults = list (adratts^.defaultDirectoryItems), item, adritem, flnotfound = true);
+			
+			if defined (adrTable^.["#defaultDirectoryItems"]) { //Fri, 12 Mar 1999 01:24:15 GMT by AR
+				defaults = list (adrTable^.["#defaultDirectoryItems"])};
+			if defined (adrTable^.["#prefs"].defaultDirectoryItems) {
+				defaults = list (adrTable^.["#prefs"].defaultDirectoryItems)};
+			
+			for item in defaults {
+				adritem = @adrtable^.[item];
+				if defined (adritem^) {
+					gatherattributes (adrtable);
+					pathMustEndWithSlash (); //possibly redirect
+					serveObject (adritem);
+					flnotfound = false;
+					break}};
+			
+			if flnotfound {
+				if defined (adratts^.renderTableWith) {
+					pathMustNotEndWithSlash (); //PBS 7/30/99: this table is a page: it must not end in a slash
+					serveObject (adrtable)}
+				else {
+					pathMustEndWithSlash (); //possibly redirect
+					adrparamtable^.responseBody = tableToHTML (adrTable)}}}; //PBS 08/31/00: adrTable, not nomad, is correct here
+		on serveFolder (folder) {
+			pathMustEndWithSlash (); //possibly redirect
+			local (pc = file.getpathchar ());
+			if not (folder endswith pc) {
+				folder = folder + pc};
+			local (defaults = list (adratts^.defaultDirectoryItems), item, f, flnotfound = true);
+			for item in defaults {
+				f = folder + item;
+				if file.exists (f) {
+					serveFile (f);
+					flnotfound = false;
+					break}};
+			if flnotfound {
+				«adrparamtable^.responseBody = folderToHTML (nomad)
+				adrparamtable^.responseBody = folderToHTML (folder)}};
+		on compileXmlIfNeeded (adrTable) { //PBS 06/09/00: compile an XML siteTree structure if needed
+			if defined (adrTable^.structure) {
+				if timeModified (@adrTable^.outline) <= timeModified (@adrTable^.structure) {
+					return (true)}}; //no need to compile
+			xml.compile (string (adrTable^.outline), @adrTable^.structure); //compile needed
+			return (true)};
+		on inSiteTreeXmlTable (adrTable) { //PBS 06/09/00: is adrTable in an XML siteTree structure?
+			if nameOf (adrTable^) contains "\t" {
+				if table.tableContains (@config, adrTable) {
+					return (true)}};
+			return (false)};
+		on dereferenceXmlTable (adrTable) { //PBS 06/09/00: get an address or filespec from an XML siteTree entry
+			if inSiteTreeXmlTable (adrTable) {
+				if defined (adrTable^.["/atts"].address) {
+					try {
+						return (address (adrTable^.["/atts"].address))}
+					else { //PBS 10/01/01: the address might be a name like 123test, which needs to be in quotes
+						return (address ("[\"" + adrTable^.["/atts"].address + "\"]"))}}
+				else {
+					if defined (adrTable^.["/atts"].folderPath) {
+						«return (fileSpec (string (fileSpec (adrTable^.["/atts"].folderPath))))
+						local (path = adrTable^.["/atts"].folderPath);
+						if system.environment.isWindows { //PBS 11/08/00: fix problem with folder paths in the siteTree XML on Windows
+							path = string.replaceAll (path, "\\\\", "\\")};
+						return (fileSpec (path))}
+					else {
+						if defined (adrTable^.["/atts"].redirect) {
+							local (redirectUrl = adrTable^.["/atts"].redirect);
+							if redirectUrl endswith "/" {
+								redirectUrl = string.popSuffix (redirectUrl, "/")};
+							local (thepath = string.nthField (adrparamtable^.firstLine, " ", 2));
+							scriptError ("!redirect " + redirectUrl + thePath)}}}};
+			return (adrTable)};
+		on gatherGlobals (adrGlobals) { //PBS 06/09/00: broken out into a subroutine for siteTree support
+			local (i, ct = sizeOf (adrGlobals^), adritem);
+			for i = 1 to ct {
+				adritem = @adrGlobals^ [i];
+				adratts^.[nameof (adritem^)] = adritem^};
+			return (true)};
+		on initialXmlSiteTreeDive (adrTable) { //PBS 06/10/00: XML siteTree support, broken out because used in two places -- this routine dives into the XML structure, first re-compiling if necessary
+			if defined (adrTable^.siteTree.globals) {
+				gatherGlobals (@adrTable^.siteTree.globals)};
+			if not defined (adrTable^.siteTree.directory) {
+				scriptError ("Server configuration error. siteTree table must contain an element named directory.")};
+			if not defined (adrTable^.siteTree.directory.outline) {
+				if defined (adrTable^.siteTree.directory.structure) { // 06/27/00 JES: make sure an outline exists if an XML structure does
+					local (xmlText, xmlWpText);
+					xmlText = xml.decompile (@adrTable^.siteTree.directory.structure);
+					local (xmlHeader = string.nthField (xmlText, '\r', 1));
+					xmlText = string.delete (xmlText, 1, sizeOf (xmlHeader));
+					xmlText = string.trimWhiteSpace (xmlText);
+					wp.newTextObject (xmlText, @xmlWpText);
+					table.assign (@adrTable^.siteTree.directory.outline, xmlWpText)}
+				else {
+					scriptError ("Server configuration error. A siteTree's directory table must contain an element named outline.")}};
+			compileXmlIfNeeded (@adrTable^.siteTree.directory);
+			if not defined (adrTable^.siteTree.directory.structure [1]) {
+				scriptError ("Server configuration error. A siteTree's XML structure must not be empty.")};
+			return (@adrTable^.siteTree.directory.structure [1] [1])}; //return a new value for nomad
+		
+		case string.upper (adrparamtable^.method) { //initialization based on method
+			"POST" {
+				if string.lower (adrparamtable^.requestHeaders.["Content-type"]) beginsWith "multipart/form-data" {
+					mainResponder.parseMultipart (adrparamtable)} //parse multipart form into adrparamtable^.postArgs
+				else {
+					local (adrtable = @adrparamtable^.postArgs);
+					new (tabletype, adrtable);
+					webserver.parseArgs (adrparamtable^.requestBody, adrtable)}}};
+		
+		local (nomad);
+		bundle { //JES 4/8/02: handle expired trials -- load the serial number page or error
+			if defined (userland.trialVersionCheck) {
+				if userland.trialVersionCheck (false) {
+					local (domain = adrparamtable^.host, lowerpath = string.lower (adrparamtable^.path));
+					if domain contains ":" {
+						domain = string.nthField (domain, ":", 1)};
+					local (flRedirectToSerialNumberPage = false);
+					bundle { //if serving to a the same machine, or viewing a control panel page, redirect to the serial number page
+						local (flThisMachine = false);
+						try {flThisMachine = tcp.equalNames (domain, "127.0.0.1")};
+						if flThisMachine {
+							flRedirectToSerialNumberPage = true};
+						if (lowerpath beginsWith "/controlpanel/") {
+							flRedirectToSerialNumberPage = true};
+						if (lowerpath == "/controlpanel/serialnumber") {
+							flRedirectToSerialNumberPage = false};
+						if (lowerpath beginsWith "/mainresponderresources/") {
+							flRedirectToSerialNumberPage = false};
+						if defined (mainResponder.adminSite.urls.serialNumber) {
+							if lowerpath beginsWith string.lower (mainResponder.adminSite.urls.serialNumber) {
+								flRedirectToSerialNumberPage = false}}};
+					if flRedirectToSerialNumberPage {
+						if defined (mainResponder.adminSite.urls.serialNumber) {
+							scriptError ("!redirect http://" + adrparamtable^.host + mainResponder.adminSite.urls.serialNumber)}
+						else {
+							scriptError ("!redirect http://" + adrparamtable^.host + "/controlPanel/serialNumber")}}
+					else {
+						local (flerror = true);
+						if lowerpath == "/controlpanel/serialnumber" {
+							flerror = false};
+						if lowerpath beginsWith "/mainresponderresources/" {
+							flerror = false};
+						if defined (mainResponder.adminSite.urls.serialNumber) {
+							if lowerpath == string.lower (mainResponder.adminSite.urls.serialNumber) {
+								flerror = false}};
+						if flerror {
+							scriptError ("Can't respond to the request because this trial installation of Frontier has expired.")}}}}};
+		bundle { //convert text from latin to Mac character sets, if this is a Mac
+			«Sat, Mar 20, 1999 at 4:54:21 PM by PBS
+			if system.environment.isMac { //PBS 3/20/99: convert Mac text
+				if config.mainResponder.prefs.flConvertToMacText {
+					if defined (adrParamTable^.postArgs) {
+						on convertTable (adrPostTable) { //PBS 8/1/99: convert post args tables, recursively.
+							«Don't convert uploaded files.
+							
+							local (i);
+							local (flAttachedFile = defined (adrPostTable^.["Content-Type"]));
+							for i = 1 to sizeOf (adrPostTable^) {
+								if not flAttachedFile {
+									if typeOf (adrPostTable^ [i]) == stringType {
+										adrPostTable^ [i] = latinToMac.convert (adrPostTable^ [i])};
+									if typeOf (adrPostTable^ [i]) == listType { //JES 9/16/04: fix bug with multiple same-name arguments
+										adrPostTable^ [i] = list (latinToMac.convert (adrPostTable^ [i]))}};
+								if typeOf (adrPostTable^ [i]) == tableType {
+									convertTable (@adrPostTable^ [i])}};
+							return (true)};
+						
+						convertTable (@adrParamTable^.postArgs);
+						};
+					if defined (adrParamTable^.searchArgs) { //01/03/01 JES: convert to Mac text even if postArgs aren't present
+						if adrParamTable^.searchArgs != "" {
+							adrparamtable^.searchArgs = latinToMac.convert (adrparamtable^.searchArgs)}};
+					if defined (adrParamTable^.pathArgs) { //01/03/01 JES: convert to Mac text even if postArgs aren't present
+						if adrParamTable^.pathArgs != "" {
+							adrparamtable^.pathArgs = latinToMac.convert (adrparamtable^.pathArgs)}}}}};
+		bundle { //initialize nomad, this is where virtual hosting is implemented
+			local (adrDomain = @config.mainResponder.domains.default);
+			if defined (adrParamTable^.host) {
+				
+				on lookUpHost (hostName) { //PBS 7/30/99: look up a host in config.mainResponder.domains and set adrDomain
+					if defined (config.mainResponder.domains.[hostName]) {
+						adrDomain = @config.mainResponder.domains.[hostName];
+						return (true)};
+					return (false)};
+				
+				if not (lookUpHost (adrParamTable^.host)) { //first do the standard lookup
+					«PBS 7/30/99: The standard look up wasn't found. Try removing the port and any trailing dots.
+					local (hostName = adrParamTable^.host);
+					if hostName contains ":" {
+						hostName = string.popSuffix (hostName, ":")}; //PBS 7/30/99: remove trailing port
+					hostName = string.popTrailing (hostName, '.'); //PBS 7/30/99: remove trailing dot
+					
+					lookUpHost (hostName)}};
+			
+			bundle { //based on type, initialize nomad
+				on setnomad (adrdomain) {
+					case typeOf (adrdomain^) {
+						tabletype {
+							if defined (adrDomain^.siteTree) { //PBS 06/09/00: handle XML siteTree tables
+								nomad = initialXmlSiteTreeDive (adrDomain);
+								return (true)}
+							else { //look for a docTree item
+								if not defined (adrdomain^.doctree) {
+									scriptError ("Server configuration error. Domain table must contain an element named docTree.")}};
+							if defined (adrdomain^.globals) { //add the elements of this table to the responder attributes table
+								gatherGlobals (@adrDomain^.globals); //PBS 06/09/00: code below was broken out, since it was used in multiple places
+								«local (i, ct = sizeof (adrdomain^.globals), adritem)
+								«for i = 1 to ct
+									«adritem = @adrdomain^.globals [i]
+									«adratts^.[nameof (adritem^)] = adritem^};
+							setnomad (@adrdomain^.doctree)}; //recurse
+						stringtype {
+							local (s = adrdomain^);
+							if string.lower (s) beginsWith "http://" { //redirect!
+								scriptError ("!redirect " + s + string.nthField (adrparamtable^.firstLine, ' ', 2))}; //JES 07/04/00: if the path contains path args, make sure they're part of the URL redirected to
+							nomad = filespec (adrdomain^)};
+						addresstype;
+						filespectype {
+							nomad = adrdomain^}}
+					else {
+						scriptError ("Server configuration error. The type of a domain doctree must be either table, string or filespec.")}};
+				setnomad (adrdomain)};
+			if fldebug {
+				addDebugLog ("home", nomad)}};
+		bundle { //PBS 8/25/99: give callbacks a chance to override standard path evaluation
+			local (adrCallbacks = @config.mainResponder.callbacks.pathEvaluation);
+			if defined (adrCallbacks^) {
+				adrParamTable^.domainPath = nomad; //this might be an address or filespec
+				adrParamTable^.adrObjectToServe = nil; //callback places a value here if it wants to over-ride standard path evaluation
+				mainResponder.callbackLoop (adrCallbacks, adrParamTable); //call the callbacks
+				if defined (adrParamTable^.adrObjectToServe) and adrParamTable^.adrObjectToServe != nil { //did a callback evaluate the path?
+					nomad = adrParamTable^.adrObjectToServe; //set nomad to the callback-specified value
+					flCallbackParsedPath = true}}}; //this is so the rest of this script knows that the callback handle path evaluation
+		bundle { //leave nomad pointing to the object to be served
+			if not flCallbackParsedPath { //PBS 8/25/99: if callback evaluated path, skip this bundle
+				local (stack = {}, path, objectname);
+				«path = string.lower (string.urlDecode (adrparamtable^.path))
+				if system.environment.isMac { //JES 9/16/04: handle high-ascii in URL properly
+					path = string.lower (string.latinToMac (string.urlDecode (adrparamtable^.path)))}
+				else { //not MacOS -- just do string.lower, without character translation
+					path = string.lower (string.urlDecode (adrparamtable^.path))};
+				if path beginswith "/" {
+					path = string.delete (path, 1, 1)};
+				bundle { //when Frontier is running behind a web server like WebSTAR or IIS, ignore .wsf extensions
+					if defined (adrparamtable^.wsfSuffixRequired) {
+						if adrparamtable^.wsfSuffixRequired {
+							if string.lower (path) endsWith ".wsf" {
+								path = string.mid (path, 1, sizeof (path) - 4)}}}};
+				while sizeof (path) > 0 {
+					local (flsystemwebsite = false); //PBS 10/25/99: moved this declaration so it gets set false for the next part of the path. Otherwise URLs inside the system website won't work.
+					objectname = string.nthField (path, '/', 1);
+					bundle { //check for system websites, like controlPanel
+						if sizeof (stack) == 0 { //check for special mainResponder-implemented websites
+							flsystemwebsite = false;
+							case string.lower (objectname) {
+								"controlpanel" {
+									if defined (config.mainResponder.prefs.flControlPanel) and config.mainResponder.prefs.flControlPanel { //PBS 10/25/99: flControlPanel may not exist; check that it exists before checking its value
+										nomad = @mainResponder.controlPanel;
+										flsystemwebsite = true}};
+								"mainresponderresources" { //PBS 06/14/00: /mainResponderResources/ is now a system website pointing to mainResponder.resources, which contains various icons, including Pike buttons. This way the Pike button (etc.) will show up regardless of the settings at config.mainResponder.domains.
+									nomad = @mainResponder.resources;
+									flsystemwebsite = true}}
+							else { //PBS 11/9/99: short URLs for Manila sites: if the first part of the path points to an item in config.manila.sites, set nomad to config.manila.sites.[objectName].
+								if string.lower (nomad) == string.lower (Frontier.getSubFolder ("www")) {
+									«10/22/04; 4:08:36 PM by EDS
+										«not changing this, since in this one case, this is the best behavior for the manila site name short curcuit behavior. 
+									if defined (config.manila.sites.[objectName]) {
+										nomad = config.manila.sites.[objectName];
+										flsystemwebsite = true};
+									if not flsystemwebsite { //PBS 12/16/99: short URLs for mainResponder sites. The mechanism works similarly to the mechanism for Manila sites, except that the table is at config.mainResponder.sites. However, an entry at config.mainResponder sites can be a table itself or a filespec, it doesn't have to be an address
+										if defined (config.mainResponder.sites) {
+											if defined (config.mainResponder.sites.[objectName]) {
+												nomad = @config.mainResponder.sites.[objectName];
+												if defined (config.mainResponder.sites.[objectName].siteTree.directory) {
+													nomad = initialXmlSiteTreeDive (nomad)};
+												flsystemwebsite = true}}}}}}};
+					if not flsystemwebsite {
+						if objectname == ".." { //pop the stack
+							local (sizestack = sizeof (stack));
+							if sizestack == 0 {
+								scriptError ("Can't surface beyond the root of the website.")};
+							nomad = stack [sizestack];
+							delete (@stack [sizestack]);
+							continue};
+						bundle { //PBS 08/09/00: close security hole
+							if objectName beginsWith ".." { //DW 08/09/00: close security hole
+								scriptError ("Can't process objects with names beginning with \"..\".")};
+							if objectName contains "\\" {
+								scriptError ("Can't process objects with names containing \"\\\".")};
+							if objectName contains ":" {
+								scriptError ("Can't process objects with names containing \":\".")}};
+						bundle { //PBS 01/07/02: don't serve files or folders whose name begins with a dot.
+							if objectName beginsWith "." {
+								scriptError ("Can't process objects with names beginning with a dot.")}};
+						case typeof (nomad) {
+							addresstype {
+								while (typeof (nomad^) == addresstype) {nomad = nomad^};
+								case typeof (nomad^) {
+									tabletype { //diving into a table
+										nomad = tableDive (nomad, objectname)};
+									filespectype { //nomad now becomes a filespec
+										nomad = folderDive (nomad^, objectname)}}};
+							filespectype {
+								nomad = folderDive (nomad, objectname)}}};
+					if fldebug {
+						addDebugLog ("step", nomad)};
+					
+					«PBS 7/30/99: if the object wasn't found, and the website wants to handle this condition itself, it can over-ride mainResponder.respond's built-in behavior.
+						«Break out of this loop: there's no point to continue walking the path, since we know the current object wasn't found.
+					if defined (adrAtts^.objectNotFoundHandler) and nomad == adrAtts^.objectNotFoundHandler {
+						«Hints for the object not found handler: stuff the remaining path in the page table and the last good nomad.
+						adrParamTable^.lastNomad = nomad;
+						if sizeOf (stack) > 0 {
+							adrParamTable^.lastNomad = stack [sizeOf (stack)]};
+						adrParamTable^.remainingPath = path;
+						break};
+					
+					path = string.delete (path, 1, sizeof (objectname) + 1);
+					stack = stack + nomad}}
+			else { //PBS 8/25/99: callback handled path parsing, but we need to gather attributes
+				if typeOf (nomad) == addressType {
+					if typeOf (nomad^) == tableType {
+						gatherAttributes (nomad)}
+					else {
+						gatherAttributes (parentOf (nomad^))}}}};
+		bundle { //serve the object nomad points to
+			on serveFilespec (nomad) {
+				if file.exists (nomad) {
+					if file.isFolder (nomad) {
+						serveFolder (nomad)}
+					else {
+						if string.lower (nomad) endswith ".root" {
+							openRootFile (nomad);
+							serveAddress (@[nomad])}
+						else {
+							serveFile (nomad)}}}
+				else { //the file doesn't exist
+					try { //see if there's an odb with the name, open it and serve from it
+						local (f = nomad + ".root");
+						openRootFile (f);
+						nomad = @[f];
+						serveAddress (nomad)}
+					else {
+						if tryError beginswith "!" { //it's a redirect, rethrow it
+							scriptError (tryError)};
+						on error () {
+							noFolderError (nomad)};
+						local (f = file.folderfrompath (nomad) + "#" + file.filefrompath (nomad));
+						if file.exists (f) {
+							serveFile (f)}
+						else {
+							if string.lower (nomad) endswith ".xml" { //try to serve it as XML
+								local (f = string.delete (nomad, sizeof (nomad) - 3, 4)); //pop off the .xml
+								if not file.exists (f) {
+									error ()};
+								serveAsXml (f)}
+							else {
+								error ()}}}}};
+			on serveAddress (nomad) {
+				case typeof (nomad^) {
+					addresstype {
+						serveAddress (nomad^)};
+					filespectype {
+						serveFileSpec (nomad^)};
+					scripttype {
+						if adratts^.flrender {
+							serveObject (nomad)}
+						else {
+							if attIsTrue ("allowScriptsToRun") {
+								serveScript (nomad)}
+							else {
+								if attMustBeTrue ("allowScriptListings") {
+									local (s = string.replaceall (string (nomad^), "<", "&lt;"));
+									«local (s = mainResponder.neuterText (string (nomad^), false, true))
+									adrparamtable^.responseBody = "<html><body><pre>\r" + s + "\r</pre></body></html>"}}}};
+					tabletype {
+						serveTable (nomad)}}
+				else {
+					serveObject (nomad)}};
+			case typeof (nomad) {
+				filespectype {
+					serveFilespec (nomad)};
+				addresstype {
+					serveAddress (nomad)}}};
+		bundle { //compare If-Modified-Since with, maybe we can avoid serving it
+			try {
+				local (cachedate = date (adrparamtable^.requestHeaders.["If-Modified-Since"]));
+				local (localdate = date (adrparamtable^.responseHeaders.["Last-Modified"]));
+				if flDebug { //JES 9/16/04: debug calls only work if debugging is on, so this code probably never worked properly
+					addDebugLog ("cachedate", cachedate);
+					addDebugLog ("localdate", localdate)};
+				if cachedate >= localdate { //the cached object is fresh, so don't send it again
+					adrParamTable^.code = 304;
+					adrparamtable^.responseBody = ""}}};
+		bundle { //call the lightweightMacros routines
+			mainResponder.callbackLoop (@config.mainresponder.callbacks.lightweightMacros, adrparamtable)};
+		bundle { //for debugging, save a copy of the param table in a global
+			if fldebug {
+				addDebugLog ("paramsOut", adrparamtable^)};
+			«if config.mainresponder.prefs.flKeepParamTable 
+				«if adrparamtable^.requestHeaders.["User-Agent"] != "Testing in Debugger"
+					«scratchpad.paramtable = adrparamtable^};
+		bundle { //if profile, return that text instead of the text of the request
+			if flprofile {
+				local (info);
+				script.stopProfile (@info);
+				local (oldtarget = target.set (@info)); table.sortby ("Value"); target.set (oldtarget);
+				local (htmltext = "", indentlevel = 0);
+				on add (s) {
+					htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+				add ("<html>"); indentlevel++;
+				add ("<head>"); indentlevel++;
+				local (title = "Profiling results for \"" + adrparamtable^.path + "\"", adritem);
+				add ("<title>" + title + "</title>");
+				add ("</head>"); indentlevel--;
+				add ("<body>"); indentlevel++;
+				add ("<blockquote>"); indentlevel++;
+				add ("<h2>" + title + "</h2>");
+				add ("<blockquote>"); indentlevel++;
+				add ("<table cellspacing=\"5\">"); indentlevel++;
+				add ("<tr><td><b>" + "Procedure" + "</b></td><td><b>" + "Ticks" + "</b></td></tr>");
+				for i = sizeof (info) downto 1 {
+					adritem = @info [i];
+					add ("<tr><td><font size=\"-1\">" + nameof (adritem^) + "</font></td><td><center><font size=\"-1\">" + adritem^ + "</font></center></td></tr>")};
+				add ("</table>"); indentlevel--;
+				add ("</blockquote>"); indentlevel--;
+				add ("</blockquote>"); indentlevel--;
+				add ("</body>"); indentlevel--;
+				add ("</html>"); indentlevel--;
+				adrparamtable^.responseBody = htmltext}};
+		bundle { //for membership info, if a callback is defined, call it
+			if defined (adrparamtable^.adrMemberInfo) { //we had a member record for this user
+				if defined (adrparamtable^.memberGroupName) {
+					local (groupname = adrparamtable^.memberGroupName);
+					local (adrmembers = mainResponder.members.getMembershipTable (groupname));
+					local (adrcallbacks = @adrmembers^.callbacks);
+					if defined (adrcallbacks^) { //there's a callbacks table in the membership table
+						local (adrcallback = @adrcallbacks^.closeMemberTable);
+						if defined (adrcallback^) {
+							adrcallback^ (adrparamtable^.adrMemberInfo)}}}}};
+		return (true)};
+	if fldebug {
+		core ()}
+	else {
+		try { //everything happens in the context of this try
+			core ()}
+		else { //some code threw a scriptError, catch it
+			local (s = tryError);
+			if s [1] == "!" { //it's a faked error
+				local (command = string.nthfield (s, ' ', 1));
+				local (args = string.delete (s, 1, sizeof (command) + 1));
+				case command {
+					"!redirect" {
+						adrparamtable^.code = 302; //non-permanent redirect
+						adrparamtable^.responseBody = webserver.util.buildErrorPage ("302 FOUND", "Found the page.");
+						if defined (adrparamtable^.responderAttributes.redirectUrl) { // 10/31/00 JES: fixed problem redirecting to urls longer than 245 characters
+							«For this to work, first call mainResponder.redirect to set the redirect URL, and then scriptError ("!redirect " + url).
+							if adrparamtable^.responderAttributes.redirectUrl beginsWith args {
+								args = adrparamtable^.responderAttributes.redirectUrl}};
+						adrparamtable^.responseHeaders.location = args;
+						adrparamtable^.responseHeaders.URI = args;
+						try {delete (@adrparamtable^.responseHeaders.["Content-Type"])}}}}
+			else { //show the error to the user
+				local (adrErrorHandler, htmltext = "");
+				if defined (config.mainResponder.globals.adrErrorHandler) {
+					adrErrorHandler = config.mainResponder.globals.adrErrorHandler};
+				if defined (adrparamtable^.adrErrorHandler) {
+					try {
+						if defined (adrparamtable^.adrErrorHandler^) {
+							adrErrorHandler = adrparamtable^.adrErrorHandler}}};
+				on builtInError () {
+					local (msgForSysop = s);
+					try {msgForSysop = string.iso8859Encode (msgForSysop)};
+					local (title = "UserLand Frontier Server Error");
+					local (indentlevel = 0);
+					on add (s) {
+						htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+					add ("<html>"); indentlevel++;
+					add ("<head>"); indentlevel++;
+					add ("<title>" + title + "</title>");
+					add ("</head>"); indentlevel--;
+					add ("<body>"); indentlevel++;
+					add ("<blockquote>"); indentlevel++;
+					add ("<blockquote>"); indentlevel++;
+					add ("<font size=\"+2\" face=\"helvetica,arial\">"); indentlevel++;
+					add ("<br><b>" + "<i>Sorry!</i> There was an error: </b>" + msgForSysop);
+					add ("</font>"); indentlevel--;
+					«add ("<blockquote>"); indentlevel++
+					add ("<font size=\"+0\" face=\"helvetica,arial\">"); indentlevel++;
+					«add ("<p>Object: " + nomad + ".")
+					add ("<p>The error was detected by "+ "Frontier " + Frontier.version ());
+					add (" in " + "mainResponder.respond" + ".");
+					add (" Webmaster: " + user.prefs.mailaddress + ".");
+					add (" Time: " + date.netstandardstring (clock.now ()) + ".");
+					add ("</font>"); indentlevel--;
+					«add ("</blockquote>"); indentlevel--
+					add ("</blockquote>"); indentlevel--;
+					add ("</blockquote>"); indentlevel--;
+					add ("</body>"); indentlevel--;
+					add ("</html>"); indentlevel--};
+				if adrErrorHandler == nil { //use the built-in error code
+					builtInError ()}
+				else { //we found an error handler
+					try {
+						if typeOf (adrErrorHandler^) == tableType {
+							local (adritem, i, ct = sizeOf (adrErrorHandler^));
+							for i = 1 to ct {
+								adritem = @adrErrorHandler^[i];
+								try {
+									while typeOf (adritem^) == addressType {
+										adritem = adritem^};
+									local (retval = adritem^(tryerror));
+									if typeOf (retval) == stringType {
+										htmltext = retval;
+										break}}}}
+						else { //address or script
+							try {
+								while typeOf (adrErrorHandler^) == addressType {
+									adrErrorHandler = adrErrorHandler^};
+								local (retval = adrErrorHandler^(tryerror));
+								if typeOf (retval) == stringType {
+									htmltext = retval}
+								else {
+									builtInError ()}}
+							else {
+								builtInError ()}}}
+					else {
+						builtInError ()}};
+				
+				bundle { //PBS 8/1/99: iso8859 encode the error page. Some error messages may contain characters which should be translated to HTML entities.
+					if system.environment.isWindows {
+						htmltext = string.iso8859encode (htmltext, @html.data.iso8859.win)};
+					if system.environment.isMac {
+						htmltext = string.iso8859encode (htmltext, @html.data.iso8859.mac)}};
+				
+				adrparamtable^.responseBody = htmltext}};
+		try { //logging code, we want to log everything, including errors
+			if config.mainresponder.prefs.flLog {
+				mainResponder.log.add (adrparamtable)};
+			}};«note: for the log timing stats to be meaningful, the log code must be called as late as possible
+	bundle { //JES 11/5/02: handle HTTP 1.1 HEAD requests
+		if adrparamtable^.method == "HEAD" {
+			adrparamtable^.responseHeaders.["Content-Length"] = sizeOf (adrparamtable^.responseBody);
+			adrparamtable^.responseBody = ""}};
+	html.deletePageTableAddress (); //PBS 8/25/99: don't leave a dangling pta in the temp table
+	return (true)};
+bundle { //test code
+	if dialog.ask ("URL:", @config.mainResponder.prefs.lastPath) {
+		local (parts = string.urlsplit (config.mainResponder.prefs.lastPath));
+		local (paramtable = mainresponder.testing.testparams);
+		paramtable.path = parts [3];
+		paramtable.uri = paramtable.path;
+		paramtable.host = parts [2];
+		if paramtable.host contains ":" {
+			paramtable.port = string.nthField (paramtable.host, ":", 2)};
+		mainResponder.respond (@paramtable, true);
+		temp.z = paramtable}};
+«bundle //old test code
+	«local (fltiming = false)
+	«if fltiming
+		«local (olddebug = config.mainresponder.prefs.flDebug)
+		«config.mainresponder.prefs.flDebug = false
+		«local (ctloops = 100, i, s, ticks, tickspercall)
+		«mainResponder.testing.paramTableFixed.requestHeaders.["User-Agent"] = "Testing in Debugger"
+		«ticks = clock.ticks ()
+		«for i = 1 to ctloops
+			«respond (@mainResponder.data.paramTableFixed)
+		«tickspercall = double (clock.ticks () - ticks) / ctloops
+		«config.mainresponder.prefs.flDebug = olddebug
+		«if not defined (mainResponder.data.timingOutline)
+			«new (outlinetype, @mainResponder.data.timingOutline)
+		«edit (@mainResponder.data.timingOutline)
+		«op.firstsummit ()
+		«op.insert (tickspercall + " ticks per call at " + string.timeString (), up)
+	«else
+		«local (params = table.getcursoraddress ()^) //put cursor on param table you want to run
+		«params.requestHeaders.["User-Agent"] = "Testing in Debugger"
+		«try {delete (@params.paramtable.responderAtts)}
+		«respond (@params)

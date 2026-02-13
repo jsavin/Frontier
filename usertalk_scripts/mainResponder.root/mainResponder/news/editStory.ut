@@ -1,0 +1,34 @@
+on editStory (username, password, sitename, pathToStory, storytitle, storytext) {
+	«3/9/99; 4:14:31 AM by DW
+		«return the address of the story, common code for new story and edit story
+	local (now = clock.now ());
+	local (adrnewstable = mainResponder.news.openRoot (sitename));
+	local (adrprefs = @adrnewstable^.["#newsSite"]);
+	bundle { //check that username is the sysop and password is correct
+		if string.lower (username) != adrprefs^.sysopMail {
+			scriptError (mainResponder.getString ("news.cantSetNewsNotSysop"))}; // 4/16/00 JES: localized
+		local (groupname = adrprefs^.sysopMemberOfGroup);
+		mainresponder.members.getMemberTableWithPassword (groupname, username, password)}; //scriptErrors if password is incorrect
+	local (adrstory);
+	bundle { //navigate to the storage location for the story
+		local (nomad = @adrnewstable^.stories);
+		local (path = pathToStory, s);
+		loop {
+			s = string.nthField (path, '/', 1);
+			nomad = @nomad^.[s];
+			path = string.delete (path, 1, sizeof (s) + 1);
+			if sizeof (path) == 0 {
+				break}};
+		adrstory = nomad;
+		if not defined (adrstory^) {
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.pathToStory = pathToStory;
+			scriptError (mainResponder.getString ("news.cantEditNonexistantStory", @replacementTable))}};
+	
+	local (adrmsg = mainresponder.news.getmessagetable (adrstory^.discussionRoot, adrstory^.msgnum));
+	mainResponder.discuss.setMessageText (adrmsg, storytext);
+	adrmsg^.subject = mainresponder.neutertext (storytitle);
+	fileMenu.saveMyRoot (adrmsg);
+	return (pathToStory)};
+«bundle //test code
+	«editStory ("dave@userland.com", "xxx", "scriptingNews", "1999/03/thisIsATestMessage", "Hello Bay Area", "blah blah, YAH!")

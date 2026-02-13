@@ -1,0 +1,39 @@
+on getMessagesRss (adrsite=nil, maxitems=50) {
+	«Changes
+		«10/17/05; 2:00:49 AM by JES
+			«If the feed is being read by an authenticating client, list all messages, not just the ones set in the DG listing prefs.
+		«4/10/04; 2:02:20 AM by JES
+			«Respect prefs for whether to list home pages, stories, news items and pictures in the DG.
+		«10/11/03; 10:50:53 PM by JES
+			«Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
+		«5/9/03; 9:13:18 PM by JES
+			«Created.
+	if adrsite == nil {
+		adrsite = manilaSuite.getSiteAddress ()};
+	local (flEnabled = config.manila.prefs.flDiscussRssEnabled);
+	local (flAuthenticated = false);
+	if defined (adrsite^.["#newsSite"].flDiscussRssAlwaysEnabled) {
+		flEnabled = (flEnabled or adrsite^.["#newsSite"].flDiscussRssAlwaysEnabled)};
+	if flEnabled {
+		flEnabled = manilaSuite.getNewsSitePref ("flSyndicateDiscussionGroup", default:true, flCreate:true)};
+	if manilaSuite.getNewsSitePref ("flEditorsOnlyAccessToSite", adrsite, false) {
+		local (pta = html.getPageTableAddress ());
+		local (flEditor = manilaSuite.editors.editorialTest (pta));
+		if not flEditor {
+			local (groupname = manilaSuite.members.getGroupNameFromSiteAddress (adrsite));
+			if not mainResponder.security.httpAuthentication (pta^.newsSite^.siteName, pta, groupname) {
+				return (manilaSuite.notFound.page ())};
+			flAuthenticated = true}};
+	if not flEnabled { //404 page
+		return (manilaSuite.notFound.page ())};
+	local (title = adrsite^.["#newsSite"].siteName + " Messages");
+	local (link = adrsite^.["#urls"].discussHomePage);
+	on includeCallback (adrmsg) {
+		if flAuthenticated {
+			return (true)}
+		else { //non-authenticated -- just list what the prefs tell us to list
+			return (manilaSuite.discuss.isMessageInDiscussionGroup (adrmsg, adrsite))}};
+	return (manilaSuite.discuss.rss.getRss (adrsite, @includeCallback, title:title, link:link, maxitems:maxitems))};
+«bundle //test code
+	«wp.newTextObject (getMessagesRss (@jaketest2ManilaWebsite), @workspace.rssText)
+	«edit (@workspace.rssText)

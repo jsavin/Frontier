@@ -1,0 +1,27 @@
+on get (username, password, siteName) {
+	«Get the home page template text.
+		«10/14/00; 2:03:31 PM by PBS
+	«Changes:
+		«02/21/01; 11:55:10 PM by JES
+			«Convert Mac text to Latin if the server is a Mac.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't get the home page template because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	local (t);
+	new (tableType, @t);
+	local (adrObject = @adrSite^.["#homePageTemplate"]);
+	if not defined (adrObject^) {
+		wp.newTextObject ("", adrObject)};
+	t.body = string (string (adrObject^));
+	if system.environment.isMac {
+		t.body = latinToMac.macToLatin (t.body)};
+	bundle { //get window info table
+		new (tableType, @t.windowInfo);
+		local (itemName = "home page template");
+		manilaSuite.rpcUtils.getWindowInfoTable (itemName, adrSite, @t.windowInfo)};
+	
+	return (t)}

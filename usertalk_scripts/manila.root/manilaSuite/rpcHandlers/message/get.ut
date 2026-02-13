@@ -1,0 +1,9 @@
+on get (username, password, siteName, msgNum) {
+	«Changes:
+		«11/20/00; 4:26:59 PM by JES
+			«If the transport is SOAP, convert & to &amp;, since & characters were causing op.xmlToOutline to fail on the client.
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get message \"" + msgNum + "\" because ");
+	if string.upper (responder) == "SOAP" { // if the responder is SOAP, tell getMessageContent to replace & with &amp;
+		return (manilaSuite.rpcUtils.getMessageContent (siteName, msgNum, true))}
+	else {
+		return (manilaSuite.rpcUtils.getMessageContent (siteName, msgNum))}}

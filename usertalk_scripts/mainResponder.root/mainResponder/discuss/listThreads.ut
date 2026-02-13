@@ -1,0 +1,249 @@
+on listThreads (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, headerColor="black", headerTextColor=nil, cssPrefix="", threadAliveDays=5, threadActiveDays=1, adrTemplate=nil, adrItemTemplate=nil, adrTemplateHeader=nil, adrTemplateFooter=nil, activeThreadIcon=nil, inactiveThreadIcon=nil, userIcon=nil, adrInDgCallback=nil, flUseMappedMemberKeys=false) {
+	«List current discussion threads
+		«10/09/00; 7:59:29 PM by JES
+	«Changes:
+		«9/24/04; 3:27:18 AM by JES
+			«Call string.ellipsize instead of the locally declared shortenString. Shorten subjects to 60 characters instead of to 35 characters.
+		«4/18/03; 5:26:51 PM by JES
+			«New optional parameter, flUseMappedMemberKeys -- if true, we use the newer style numeric member keys instead of the older email address style member keys.
+		«10/3/02; 2:33:49 AM by JES
+			«Added preliminary support for the {fullSubject} psuedo-macro.
+		«4/4/02; 12:55:24 AM by JES
+			«New optional paramter, adrInDgCallback. Passed to mainResponder.discuss.getThreadData.
+		«1/25/02; 6:04:26 PM by PBS
+			«Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		«10/17/01; 10:43:48 AM by PBS
+			«Don't use IP address when constructing the URL to a built-in icon. This fixes a bug with servers that have multiple IP addresses.
+		«9/26/01; 6:32:45 PM by PBS
+			«Pass adrMembers to mainResponder.members routines for performance enhancement.
+		«??? by JES
+			«Added template support.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrData = mainResponder.discuss.openRoot (pta));
+	local (adrCal = @adrData^.calendar);
+	local (adrMsgs = @adrData^.messages);
+	local (htmlText = "");
+	local (i, j);
+	local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+	local (msgReaderUrl = pta^.responderAttributes.urls^.discussMsgReader);
+	if not (msgReaderUrl endsWith "$") {
+		msgReaderUrl = msgReaderUrl + "$"};
+	local (flCss = (cssPrefix != "")); //if true, emit CSS classes, otherwise don't
+	local (yr = date.year (d), mo = date.month (d), day = date.day (d)); // the year, month and day which save state for the thread-reader
+	local (template, itemTemplate, templateHeader, templateFooter);
+	local (adrMembers = mainResponder.members.getMembershipTable (membershipGroup)); //PBS 09/26/01: get adrMembers, address of membership group
+	
+	local (nameTable);
+	new (tableType, @nameTable);
+	
+	on add (s) {
+		htmlText = htmlText + (s + "\r");};
+	
+	on td (s, align="", class="", height="", bgcolor="", fontColor="") {
+		local (fontClass = "");
+		if (flCss) and (class != "") {
+			class = cssPrefix + class;
+			fontClass = " class=\"" + class + "Font\"";
+			class = " class=\"" + class + "\""};
+		if height != "" {
+			height = " height=\"" + height + "\""};
+		if align != "" {
+			align = " " + align};
+		if bgcolor != "" {
+			bgcolor = " " + bgcolor};
+		add ("<td nowrap" + align + " valign=\"middle\"" + class + height + bgcolor + "><font size=\"-1\"" + fontClass + fontColor + ">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
+	
+	«on shortenString (s, maxLen=35)
+		«if defined (string.ellipsize)
+			«return (string.ellipsize (s, maxLen))
+		«if sizeOf (s) > maxLen
+			«return (string.mid (s, 1, maxLen - 3) + "...")
+		«return (s)
+	
+	local (activeThreadImgUrl, inactiveThreadImgUrl, threadStatusIconWidth = 17, threadStatusIconHeight = 14);
+	local (userIconUrl, userIconHeight = 16, userIconWidth = 16);
+	bundle { // build image data for topic status icons and dailyLink icon
+		«local (myDottedId = tcp.myDottedId ())
+		«local (myDottedId = tcp.dns.getMyDottedId ()) //PBS 09/26/01: 
+		«local (myPort = user.inetd.config.http.port)
+		«local (portString = "")
+		«if myPort != 80
+			«portString = ":" + myPort
+		«local (resourcesUrl = "http://" + myDottedId + portString + "/mainResponderResources/")
+		local (resourcesUrl = "/mainResponderResources/"); //PBS 10/16/01: don't use IP address
+		activeThreadImgUrl = resourcesUrl + "icons/folder.open2";
+		inactiveThreadImgUrl = resourcesUrl + "icons/folder2";
+		userIconUrl = resourcesUrl + "icons/user";
+		
+		if inactiveThreadIcon == nil {
+			inactiveThreadIcon = "<img src=\"" + inactiveThreadImgUrl + "\" height=\"" + threadStatusIconHeight + "\" width=\"" + threadStatusIconWidth + "\" border=\"0\" alt=\"inactiveThread\">"};
+		if activeThreadIcon == nil {
+			activeThreadIcon = "<img src=\"" + activeThreadImgUrl + "\" height=\"" + threadStatusIconHeight + "\" width=\"" + threadStatusIconWidth + "\" border=\"0\" alt=\"activeThread\">"};
+		if userIcon == nil {
+			userIcon = "<img src=\"" + userIconUrl + "\" height=\"" + userIconHeight + "\" width=\"" + userIconWidth + "\" border=\"0\" alt=\"user\">"}};
+	
+	bundle { // get templates
+		bundle { // get the header
+			if typeOf (adrTemplateHeader) == addressType and defined (adrTemplateHeader^) {
+				templateHeader = string (adrTemplateHeader^)}
+			else {
+				if flCss {
+					templateHeader = "<table cellpadding=\"0\" cellspacing=\"1\" border=\"0\" class=\"" + cssPrefix + "Table\">"}
+				else {
+					templateHeader = "<table cellpadding=\"0\" cellspacing=\"1\" border=\"0\">"}};
+			templateHeader = string.trimWhiteSpace (templateHeader)};
+		bundle { // get the template
+			if typeOf (adrTemplate) == addressType and defined (adrTemplate^) {
+				template = string (adrTemplate^)}
+			else {
+				on addToTemplate (s) {
+					template = template + s + "\r"};
+				if flCss {
+					addToTemplate ("<tr bgcolor=\"{headerColor}\" class=\"" + cssPrefix + "SeparatorRow\">");
+					addToTemplate ("<td colspan=\"6\" height=\"28\" width=\"100%\">");
+					addToTemplate ("<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr>");
+					addToTemplate ("<td>&nbsp;&nbsp;<font color=\"{headerTextColor}\" class=\"" + cssPrefix + "SeparatorFont\"><b>Recent Topics</b></font></td>");
+					addToTemplate ("<td align=\"right\"><a href=\"{dayListUrl}\" style=\"color: {headerTextColor};\"><font size=\"-1\" color=\"{headerTextColor}\" class=\"" + cssPrefix + "DayLinkFont\">Chronological View</font></a>&nbsp;&nbsp;</td>");
+					addToTemplate ("</tr></table>");
+					addToTemplate ("</td>");
+					addToTemplate ("</tr>");
+					
+					addToTemplate ("<tr bgcolor=\"{bgcolor}\" class=\"" + cssPrefix + "TitleRow\">");
+					addToTemplate ("<td nowrap align=\"center\" height=\"28\" class=\"" + cssPrefix + "StatusIconTitle\">&nbsp;</td>");
+					addToTemplate ("<td nowrap class=\"" + cssPrefix + "MessageLinkTitle\">&nbsp;&nbsp;<b>Topic</b>&nbsp;&nbsp;</td>");
+					addToTemplate ("<td nowrap class=\"" + cssPrefix + "AuthorTitle\">&nbsp;&nbsp;<b>Originator</b>&nbsp;&nbsp;</td>");
+					addToTemplate ("<td nowrap align=\"right\" class=\"" + cssPrefix + "CountMessagesTitle\">&nbsp;&nbsp;<b>Msgs</b>&nbsp;&nbsp;</td>");
+					addToTemplate ("<td nowrap align=\"right\" class=\"" + cssPrefix + "CountReadsTitle\">&nbsp;&nbsp;<b>Reads</b>&nbsp;&nbsp;</td>");
+					addToTemplate ("<td nowrap align=\"right\" class=\"" + cssPrefix + "PostedTitle\">&nbsp;&nbsp;<b>Last Post</b>&nbsp;&nbsp;</td>")}
+				else {
+					addToTemplate ("<tr bgcolor=\"{headerColor}\">");
+					addToTemplate ("<td colspan=\"6\" height=\"28\" width=\"100%\">");
+					addToTemplate ("<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr>");
+					addToTemplate ("<td>&nbsp;&nbsp;<font color=\"{headerTextColor}\"><b>Recent Topics</b></font></td>");
+					addToTemplate ("<td align=\"right\"><a href=\"{dayListUrl}\" style=\"color: {headerTextColor};\"><font size=\"-1\" color=\"{headerTextColor}\">Chronological View</font></a>&nbsp;&nbsp;</td>");
+					addToTemplate ("</tr></table>");
+					addToTemplate ("</td>");
+					addToTemplate ("</tr>");
+					addToTemplate ("<tr bgcolor=\"{bgcolor}\">");
+					addToTemplate ("<td nowrap align=\"center\" height=\"28\">&nbsp;</td>");
+					addToTemplate ("<td nowrap>&nbsp;&nbsp;<b>Topic</b>&nbsp;&nbsp;</td>");
+					addToTemplate ("<td nowrap>&nbsp;&nbsp;<b>Originator</b>&nbsp;&nbsp;</td>");
+					addToTemplate ("<td nowrap align=\"right\">&nbsp;&nbsp;<b>Msgs</b>&nbsp;&nbsp;</td>");
+					addToTemplate ("<td nowrap align=\"right\">&nbsp;&nbsp;<b>Reads</b>&nbsp;&nbsp;</td>");
+					addToTemplate ("<td nowrap align=\"right\">&nbsp;&nbsp;<b>Last Post</b>&nbsp;&nbsp;</td>")};
+				addToTemplate ("</tr>");
+				addToTemplate ("{messageList}")};
+			template = string.trimWhiteSpace (template)};
+		bundle { // get the item template
+			if typeOf (adrItemTemplate) == addressType and defined (adrItemTemplate^) {
+				itemTemplate = string (adrItemTemplate^)}
+			else {
+				on addToItemTemplate (s) {
+					itemTemplate = itemTemplate + s + "\r"};
+				if flCss {
+					addToItemTemplate ("<tr bgcolor=\"{bgcolor}\" class=\"" + cssPrefix + "MessageRow\">");
+					addToItemTemplate ("<td nowrap align=\"center\" height=\"28\" class=\"" + cssPrefix + "StatusIcon\">&nbsp;&nbsp;<a href=\"{messageUrl}\">{statusIcon}</a>&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap class=\"" + cssPrefix + "MessageLink\">&nbsp;&nbsp;<a href=\"{messageUrl}\">{subject}</a>&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap class=\"" + cssPrefix + "Author\">&nbsp;&nbsp;{author}&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap align=\"right\" class=\"" + cssPrefix + "CountMessages\">&nbsp;&nbsp;{messageCount}&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap align=\"right\" class=\"" + cssPrefix + "CountReads\">&nbsp;&nbsp;{readCount}&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap align=\"right\" class=\"" + cssPrefix + "Posted\">&nbsp;&nbsp;{lastPostTime}&nbsp;&nbsp;</td>")}
+				else {
+					addToItemTemplate ("<tr bgcolor=\"{bgcolor}\">");
+					addToItemTemplate ("<td nowrap align=\"center\" height=\"28\">&nbsp;&nbsp;<a href=\"{messageUrl}\">{statusIcon}</a>&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap>&nbsp;&nbsp;<a href=\"{messageUrl}\">{subject}</a>&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap>&nbsp;&nbsp;{author}&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap align=\"right\">&nbsp;&nbsp;{messageCount}&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap align=\"right\">&nbsp;&nbsp;{readCount}&nbsp;&nbsp;</td>");
+					addToItemTemplate ("<td nowrap align=\"right\">&nbsp;&nbsp;{lastPostTime}&nbsp;&nbsp;</td>")};
+				addToItemTemplate ("</tr>")};
+			itemTemplate = string.trimWhiteSpace (itemTemplate)};
+		bundle { // get the footer
+			if typeOf (adrTemplateFooter) == addressType and defined (adrTemplateFooter^) {
+				templateFooter = string (adrTemplateFooter^)}
+			else {
+				templateFooter = "</table>"};
+			templateFooter = string.trimWhiteSpace (templateFooter)}};
+	
+	bundle { // replace color macros in the templates
+		template = string.replaceAll (template, "{bgColor}", otherColor, false);
+		template = string.replaceAll (template, "{headerColor}", headerColor, false);
+		template = string.replaceAll (template, "{headerTextColor}", headerTextColor, false);
+		
+		itemTemplate = string.replaceAll (itemTemplate, "{bgColor}", otherColor, false);
+		itemTemplate = string.replaceAll (itemTemplate, "{headerColor}", headerColor, false);
+		itemTemplate = string.replaceAll (itemTemplate, "{headerTextColor}", headerTextColor, false);
+		
+		templateHeader = string.replaceAll (templateHeader, "{bgColor}", otherColor, false);
+		templateHeader = string.replaceAll (templateHeader, "{headerColor}", headerColor, false);
+		templateHeader = string.replaceAll (templateHeader, "{headerTextColor}", headerTextColor, false);
+		
+		templateFooter = string.replaceAll (templateFooter, "{bgColor}", otherColor, false);
+		templateFooter = string.replaceAll (templateFooter, "{headerColor}", headerColor, false);
+		templateFooter = string.replaceAll (templateFooter, "{headerTextColor}", headerTextColor, false)};
+	
+	add (templateHeader);
+	
+	local (msgData); // a temporary table for storing thread-message data
+	mainResponder.discuss.getThreadData (@msgData, d, threadAliveDays, pta, adrInDgCallback);
+	
+	local (ct = sizeOf (msgData), oldestActiveThreadDate);
+	oldestActiveThreadDate = date (clock.now () - (3600 * 24 * threadActiveDays));
+	
+	local (listHtml);
+	for i = ct downTo 1 {
+		local (s = itemTemplate, adrMsgData = @msgData[i]);
+		
+		bundle { // replace messageUrl
+			local (messageUrl = msgReaderUrl + adrMsgData^.adrThread^.msgNum + "?mode=topic&y=" + yr + "&m=" + mo + "&d=" + day);
+			s = string.replaceAll (s, "{messageUrl}", messageUrl, false)};
+		bundle { // replace statusIcon
+			if adrMsgData^.lastPost < oldestActiveThreadDate { // inactive thread
+				s = string.replaceAll (s, "{statusIcon}", inactiveThreadIcon, false)}
+			else { // active thread
+				s = string.replaceAll (s, "{statusIcon}", activeThreadIcon, false)}};
+		bundle { // replace authorIcon
+			s = string.replaceAll (s, "{authorIcon}", userIcon, false)};
+		bundle { // replace subject
+			«s = string.replaceAll (s, "{subject}", shortenString (adrMsgData^.adrThread^.subject), false)
+			s = string.replaceAll (s, "{subject}", string.ellipsize (adrMsgData^.adrThread^.subject, 60), false)};
+		bundle { // replace fullSubject
+			s = string.replaceAll (s, "{fullSubject}", string.replaceAll (adrMsgData^.adrThread^.subject, "\"", "&quot;"))};
+		bundle { // replace author
+			local (author = mainResponder.members.linkToMember (membershipGroup, adrMsgData^.adrThread^.member, hideEmail: true, adrMembers:adrMembers, useMap:flUseMappedMemberKeys));
+			s = string.replaceAll (s, "{author}", author, false)};
+		bundle { // add msg count
+			s = string.replaceAll (s, "{messageCount}", adrMsgData^.msgCount, false)};
+		bundle { // add read count
+			s = string.replaceAll (s, "{readCount}", adrMsgData^.adrThread^.ctReads, false)};
+		bundle { // add last post date
+			s = string.replaceAll (s, "{lastPostTime}", adrMsgData^.lastPost, false)};
+		bundle { // add post date
+			s = string.replaceAll (s, "{postTime}", adrMsgData^.adrThread^.postTime, false)};
+		
+		listHtml = listHtml + s};
+	
+	bundle { // process the main template
+		htmlText = templateHeader + template + templateFooter;
+		bundle { // replace dayListUrl
+			local (linkToDay = false, isLastDay = false);
+			local (dateLinkUrl = pta^.urls^.discussHomePage);
+			linkToDay = defined (adrCal^.[date.year (d)].[string.padWithZeros (date.month (d), 2)].[string.padWithZeros (date.day (d), 2)]);
+			bundle { // is this the last day in the calendar?
+				local (lastDate = mainResponder.calendar.getLastDay (adrCal));
+				isLastDay = (lastDate == date.set (date.day (d), date.month (d), date.year (d), 0, 0, 0))};
+			if linkToDay and (not isLastDay) {
+				dateLinkUrl = dateLinkUrl + "$" + date.year (d) + "/" + string.padWithZeros (date.month (d), 2) + "/" + string.padWithZeros (date.day (d), 2)};
+			dateLinkUrl = dateLinkUrl + "?mode=day&y=" + yr + "&m=" + mo + "&d=" + day;
+			htmlText = string.replaceAll (htmlText, "{dayListUrl}", dateLinkUrl, false)};
+		bundle { // replace date
+			htmlText = string.replaceAll (htmlText, "{date}", mainResponder.localization.longDateString (d, pta), false)};
+		bundle { // replace messageList
+			htmlText = string.replaceAll (htmlText, "{messageList}", listHtml, false)}};
+	
+	«add (templateFooter)
+	
+	return (htmlText)}

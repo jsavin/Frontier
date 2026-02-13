@@ -1,0 +1,31 @@
+local (pta = html.getPageTableAddress ());
+pta^.title = "System Status";
+
+local (htmlText = "");
+on add (s) {
+	htmlText = htmlText + s + "\r"};
+
+add ("<h2>" + pta^.title + "</h2>");
+
+add (mainResponder.macros.serverStats ());
+add ("<p>");
+
+local (adrTable = html.table.new (border:0, cellspacing:0, cellpadding:5));
+html.table.addColumn (adrTable, "Disk", align:"center");
+html.table.addColumn (adrTable, "Capacity", align:"right");
+html.table.addColumn (adrTable, "Free Space", align:"right");
+
+local (f);
+fileloop (f in "") {
+	if string.lower (f) beginsWith "a:" { //PBS 11/1/99: skip floppy drive to avoid modal dialog
+		continue};
+	
+	local (freeSpace, totalSpace);
+	freeSpace = string.megabyteString (file.freeSpaceOnVolume (f));
+	totalSpace = string.megabyteString (file.volumeSize (f));
+	html.table.addRow (adrTable)^.cells = {f, totalSpace, freeSpace}};
+
+add (html.table.render (adrTable));
+html.table.delete (adrTable);
+
+return (htmlText)

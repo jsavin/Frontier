@@ -1,0 +1,113 @@
+on getAdvancedItemAddress (itemName, adrSite) {
+	«Return the address of the advanced item specified by itemName.
+		«02/11/00; 2:43:06 PM by PBS
+		«Changes:
+			«3/12/07; 2:05:57 PM by LL
+				«Added login members box template.
+			«04/05/15, 16:30:01 by DAB
+				«added external style sheet, print-friendly template, colors, navigation appearance, calendar appearance, theme, templates, robots, legal tags
+				«add general interface for plugins
+			«05/01/00; 5:26:13 PM by PBS
+				«This script knows about the news item template now.
+			«10/14/00; 3:55:57 PM by PBS
+				«Added home page template support.
+			«11/20/00; 7:30:45 PM by PBS
+				«Added the directory template.
+			«12/18/00; 4:27:09 PM by PBS
+				«Slides template.
+			«10/2/01; 2:48:28 PM by PBS
+				«Print friendly template.
+	
+	local (lowerItemName = string.lower (itemName));
+	lowerItemName = string.dropNonAlphas (lowerItemName);
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	
+	case lowerItemName {
+		"template" {
+			return (@adrSite^.["#template"])};
+		"auxiliarytemplates" { //04/05/16, 10:40:33 by DAB
+			if not defined (adrSite^.["#templates"]) {
+				new(tabletype, @adrSite^.["#templates"])};
+			return (@adrSite^.["#templates"])};
+		"navigation" {
+			return (@adrSite^.["#navigator"].outline)};
+		"cascadingstylesheet" {
+			return (@adrNewsSite^.cascadingStyleSheet)};
+		"javascript" {
+			return (@adrNewsSite^.javascript)};
+		"sitestructure" {
+			return (@adrSite^.["#hierarchy"].outline)};
+		"customprefs" {
+			if not defined (adrNewsSite^.prefsWizard) {
+				return (nil)};
+			return (@adrNewsSite^.prefsWizard.outline)};
+		"newsdaytemplate" {
+			return (@adrNewsSite^.newsDayTemplate)};
+		"joinnowmembersbox" {
+			if not defined (adrNewsSite^.membersBoxTemplates) {
+				return (nil)};
+			return (@adrNewsSite^.membersBoxTemplates.signInBox)};
+		"loginmembersbox" {
+			if not defined (adrNewsSite^.membersBoxTemplates) {
+				return (nil)};
+			return (@adrNewsSite^.membersBoxTemplates.loginBox)};
+		"signoutmembersbox" {
+			if not defined (adrNewsSite^.membersBoxTemplates) {
+				return (nil)};
+			return (@adrNewsSite^.membersBoxTemplates.signOutBox)};
+		"newsitemtemplate" {
+			if not defined (adrNewsSite^.newsItems.template) {
+				return (nil)};
+			return (@adrNewsSite^.newsItems.template)};
+		"homepagetemplate" {
+			if not defined (adrSite^["#homePageTemplate"]) {
+				wp.newTextObject ("", @adrSite^.["#homePageTemplate"])};
+			return (@adrSite^.["#homePageTemplate"])};
+		"directorytemplate" {
+			return (@adrSite^.["#newsSite"].directory.template)};
+		"slidestemplate" {
+			return (@adrSite^.["#newsSite"].slides.template)};
+		"printfriendlytemplate" { //PBS 10/02/01
+			if not defined (adrNewsSite^.alternateTemplates) {
+				new (tableType, @adrNewsSite^.alternateTemplates)};
+			if not defined (adrNewsSite^.alternateTemplates.printFriendly) {
+				adrNewsSite^.alternateTemplates.printFriendly = string (manilaData.printFriendlyTemplates.template)};
+			return (@adrNewsSite^.alternateTemplates.printFriendly)};
+		"externalstylesheet" { //04/05/15, 16:25:37 by DAB
+			if not defined (adrNewsSite^.externalStyleSheet) {
+				adrNewsSite^.externalStyleSheet = string (manilaData.newSiteTemplate.["#newsSite"].externalStyleSheet)};
+			return (@adrNewsSite^.externalStyleSheet)};
+		"colors" { //04/05/15, 18:25:48 by DAB
+			return (@adrNewsSite^.colors)};
+		"navigationappearance" { //04/05/15, 20:17:23 by DAB
+			return (@adrNewsSite^.navigation)};
+		"calendarappearance" { //04/05/15, 21:02:36 by DAB
+			return (@adrNewsSite^.calendarTemplates)};
+		"theme" { //04/05/16, 10:34:17 by DAB
+			return (@adrNewsSite^.theme)};
+		"robotstxt" { //04/05/16, 12:44:35 by DAB
+			return manilaSuite.robots.init (adrsite)}; //initialise side-effect
+		"legaltags" { //04/05/17, 13:30:55 by DAB
+			return (@adrNewsSite^.legalTags)}}
+	else { //try plugins
+		«local (n = string.countFields(itemname, "."))
+		local (n = string.countFields(itemname, " ")); //04.06.23, 15:27:08 by DAB
+		if N  > 1 {
+			«local (str = string.nthField(itemName, ".", 1))
+			local (str = string.nthField(itemName, " ", 1)); //04.06.23, 15:27:04 by DAB
+			if defined(adrSite^.["#plugins"].data.[str]) {
+				local (adr = @adrSite^.["#plugins"].data.[str]);
+				local (ix = 2);
+				loop {
+					if ix > N {
+						return adr};
+					«str = string.nthField(itemName, ".", ix)
+					str = string.nthField(itemName, " ", ix); //04.06.23, 15:26:55 by DAB
+					if not defined(adr^.[str]) {
+						break};
+					adr = @adr^.[str];
+					ix++}}}};
+	
+	return (nil)};
+manilaSuite.custody.getItemNameFromAddress(manilaSuite.custody.getAdvancedItemAddress ("cornerShop.newbaskets", @baylysManilaWebsite), @baylysManilaWebsite)
+	«"cornerShop newbaskets"

@@ -1,0 +1,8 @@
+on getConfigAddress (pluginName) {
+	«Get the address of the config table for this plugin.
+		«02/22/00; 1:43:18 PM by PBS
+	
+	local (adrPlugins = manilaSuite.plugins.getRegisteredPluginsAddress ());
+	local (adrConfig = @adrPlugins^.[pluginName]);
+	
+	return (adrConfig)}

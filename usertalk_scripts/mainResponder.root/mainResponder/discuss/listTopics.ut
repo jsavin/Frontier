@@ -1,0 +1,93 @@
+on listTopics (channelname="", url=nil) {
+	«Changes
+		«2/14/07; 11:48:40 AM by LL
+			«Don't display pending news items.
+		«2000 and earlier
+			«05/22/00; 5:01:30 PM by JES
+				«work around problem with cached table rows -- when you change the language, they needed to be re-rendered.
+			«04/12/00; 12:56:00 PM by JES
+				«Localized using mainResponder.getString
+				«Localized date display
+			«Mon, 01 Mar 1999 15:15:05 GMT by AR
+				«Minor optimizations in the for loop for the flonemonth==true case
+				«Also changed valign=center to valign=middle
+			«Wed, 26 May 1999 01:22:21 GMT by AR
+				«Real names of message authors are now looked up in the membership group specified thru pta^.responderAttributes.defaultMembershipGroup instead of formerly config.mainresponder.globals.defaultMembershipGroup, allowing greater flexibility while retaining backwards-compatibility.
+			«Saturday, August 21, 1999 at 9:14:02 PM by PBS
+				«Undeclared local variable adrStorage now declared.
+	local (pta = html.getPageTableAddress ());
+	if url == nil {
+		url = pta^.responderattributes.urls^.discussMsgReader};
+	local (flTopLevelTopics = channelname == "");
+	local (htmltext = "", indentlevel = 0);
+	local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s, align="") {
+		add ("<td nowrap " + align + " valign=\"middle\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
+	on shortenstring (s, maxlen=35) {
+		if sizeof (s) <= maxlen {
+			return (s)};
+		return (string.mid (s, 1, maxlen - 3) + "...")};
+	local (adrroot = mainresponder.discuss.openroot ());
+	local (adrmsgs = @adrroot^.messages);
+	local (i, ct = sizeof (adrmsgs^), fllist);
+	local (flonemonth = false, firstdate = nil, firstmonth);
+	if defined (pta^.oneMonthTopicList) {
+		flonemonth = pta^.oneMonthTopicList};
+	add ("<table cellspacing=\"3\">"); indentlevel++;
+	bundle { //column headings; 4/13/00 JES: localized headings
+		add ("<tr>"); indentlevel++;
+		td ("<b>" + mainResponder.getString ("listHeaders.date") + "</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.subject") + "</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.originator") + "</b>");
+		add ("</tr>"); indentlevel--};
+	local (sitelanguage = nameOf (mainResponder.localization.getLanguageTableAddress ()^)); // 05/22/00 JES: get the current rendering language
+	for i = ct downto 1 {
+		local (adrstorage); //PBS 8/21/99
+		adrstorage = @adrmsgs^ [i];
+		if flonemonth { //break if we're in the next month
+			if firstdate == nil {
+				firstdate = adrstorage^.posttime;
+				firstmonth = date.month (firstdate)};
+			if firstmonth != date.month (adrstorage^.posttime) {
+				break}};
+		fllist = false;
+		if flTopLevelTopics { //list all top level topics
+			fllist = adrstorage^.inResponseTo == 0}
+		else {
+			if defined (adrstorage^.alsoListedIn) {
+				fllist = adrstorage^.alsoListedIn contains channelname}};
+		if defined (adrstorage^.flDeleted) {
+			if adrstorage^.flDeleted {
+				fllist = false}};
+		if defined (adrstorage^.flPending) {
+			if adrstorage^.flPending {
+				fllist = false}};
+		if manilaSuite.news.isNewsItem (adrstorage) {
+			flInclude = manilaSuite.news.isReleased (adrstorage)};
+		if fllist {
+			local (adrcache, adrcachelanguage);
+			if flTopLevelTopics {
+				adrcache = @adrstorage^.topTopicsCache;
+				adrcachelanguage = @adrstorage^.topTopicsCacheLanguage}
+			else {
+				adrcache = @adrstorage^.[channelname + "Cache"];
+				adrcachelanguage = @adrstorage^.[channelname + "CacheLanguage"]};
+			if not defined (adrcachelanguage^) {
+				adrcachelanguage^ = sitelanguage};
+			if defined (adrcache^) and (string.lower (adrcachelanguage^) == string.lower (sitelanguage)) {
+				add (adrcache^)}
+			else {
+				local (ixhtmltext = sizeof (htmltext));
+				add ("<tr>"); indentlevel++;
+				td (mainResponder.localization.shortDateString (adrstorage^.posttime)); // 4/13/00 JES: localized
+				td (mainresponder.discuss.linkToMessage (adrstorage, url, 40));
+				td (mainResponder.members.getMemberName (membershipGroup, adrstorage^.member));
+				add ("</tr>"); indentlevel--;
+				
+				local (s = string.delete (htmltext, 1, ixhtmltext));
+				adrcache^ = string.delete (s, sizeof (s), 1);
+				adrcachelanguage^ = sitelanguage}}};
+	add ("</table>"); indentlevel--;
+	return (htmltext)}

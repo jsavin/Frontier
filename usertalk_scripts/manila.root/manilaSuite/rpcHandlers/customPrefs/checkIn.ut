@@ -1,0 +1,9 @@
+on checkIn (username, password, siteName) {
+	«Release custody of the custom prefs.
+		«02/11/00; 11:15:17 AM by PBS
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject = @adrNewsSite^.prefsWizard.outline);
+	local (itemName = "custom prefs");
+	
+	return (manilaSuite.rpcUtils.releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName))}

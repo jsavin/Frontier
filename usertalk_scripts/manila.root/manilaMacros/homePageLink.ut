@@ -1,0 +1,16 @@
+on homePageLink (lineText, style="", onmouseover="", onmouseout="") {
+	«Return a link to the home page of the site.
+		«06/05/00; 4:48:52 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (siteUrl = pta^.ftpSite^.url);
+	local (link);
+	link = "<a href=\"" + siteUrl + "\"";
+	if style != "" {
+		link = link + " style=\"" + style + "\""};
+	if onmouseover != "" {
+		link = link + " onmouseover=\"" + onmouseover + "\""};
+	if onmouseout != "" {
+		link = link + " onmouseout=\"" + onmouseout + "\""};
+	link = link + ">" + lineText + "</a>";
+	return (manilaSuite.unTaint (link))}

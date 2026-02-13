@@ -1,0 +1,88 @@
+on updateNowButton (flInTable=true) {
+	«Changes
+		«2/7/07; 2:44:11 PM by LL
+			«Minor changes to the text.
+		«12/16/03; 3:41:23 AM by JES
+			«If the user updates their databases without error, clear the pending updates table so we don't show them stuff they've already seen.
+		«6/26/02; 11:07:31 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + s;};
+	
+	local (confirmText = "", totalNewParts = 0, flError = false);
+	if pta^.method == "POST" {
+		if defined (pta^.postArgs.updateNow) { //catch the submit button
+			on addToConfirmText (ctNewParts, databaseName) {
+				confirmText = confirmText + ctNewParts + " new part";
+				if ctNewParts != 1 {
+					confirmText = confirmText + "s"};
+				confirmText = confirmText + " added to " + databaseName + ".root.<br />"};
+			on addErrorToConfirmText (databaseName) {
+				confirmText = confirmText + "<b>Couldn't update " + databaseName + ".root because the server didn't respond within 2 minutes.</b><br />"};
+			on updateOneRoot (nameInRoot, adrCtNewParts) {
+				local (scriptText);
+				scriptText = "local (params = {@" + nameInRoot + ", true, @system.temp.Frontier.ctNewParts});\r";
+				scriptText = scriptText + "thread.callScript (@rootUpdates.update, params)";
+				local (adr = @system.temp.Frontier.doThreadedUpdate);
+				new (scriptType, adr);
+				local (oldtarget = target.set (adr));
+				op.setLineText (scriptText);
+				try {target.set (oldtarget)};
+				script.getcode (adr, adr); //use script.getcode to avoid dialogs asking if you want to compile before closing
+				adr^ ();
+				local (now = clock.now (), flTimeout = false);
+				while not defined (system.temp.Frontier.ctNewParts) { //loop until the update is complete, or we time out
+					thread.sleepTicks (6); //0.1 seconds
+					if clock.now () - now > 120 { //2 minute timeout
+						flTimeout = true;
+						break}};
+				if not flTimeout { //udpate completed -- set confirmation message, delete temporary objects
+					adrCtNewParts^ = system.temp.Frontier.ctNewParts;
+					delete (@system.temp.Frontier.ctNewParts)};
+				return (not flTimeout)};
+			local (ctNewParts);
+			if updateOneRoot ("root", @ctNewParts) {
+				addToConfirmText (ctNewParts, "Frontier");
+				totalNewParts = totalNewParts + ctNewParts}
+			else {
+				addErrorToConfirmText ("Frontier");
+				flError = true};
+			if updateOneRoot ("mainResponder", @ctNewParts) {
+				addToConfirmText (ctNewParts, "mainResponder");
+				totalNewParts = totalNewParts + ctNewParts}
+			else {
+				addErrorToConfirmText ("mainResponder");
+				flError = true};
+			if updateOneRoot ("manilaSuite", @ctNewParts) {
+				addToConfirmText (ctNewParts, "manila");
+				totalNewParts = totalNewParts + ctNewParts}
+			else {
+				addErrorToConfirmText ("manila");
+				flError = true};
+			if updateOneRoot ("prefsSuite", @ctNewParts) {
+				addToConfirmText (ctNewParts, "prefs");
+				totalNewParts = totalNewParts + ctNewParts}
+			else {
+				addErrorToConfirmText ("prefs");
+				flError = true};
+			msg ("");
+			
+			if not flError { //empty out the pending updates table
+				try {new (tableType, @config.mainResponder.stats.pendingUpdates)}}}};
+	
+	add ("<input type=\"submit\" name=\"updateNow\" value=\"Update Now\" />");
+	if confirmText != "" { //render the confirm text
+		if totalNewParts > 0 or flError {
+			add ("<p><b>Thanks for updating. " + totalNewParts + " new or changed parts were installed. ");
+			if flError {
+				add ("At least one error occurred.")};
+			add ("The number of new parts installed in each database is listed below:</b></p>");
+			add (confirmText)}
+		else {
+			add ("<p><b>There are no new features or fixes at this time. Your copy of Manila is up to date.</b></p>")}};
+	if flInTable {
+		return ("<tr><td colspan=\"2\">" + htmltext + "</td></tr>")}
+	else {
+		return (htmltext)}}

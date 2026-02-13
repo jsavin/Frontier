@@ -1,0 +1,25 @@
+on generate () {
+	«manilaSuite.passwords.generate : 05/02/13, 11:29:38 by DAB
+		«was the passwordmaker suite in bayly.root
+	local (sep = manilaSuite.passwords.data.seperators[random ( 1, sizeOf (manilaSuite.passwords.data.seperators))]);
+	on getWord(except = "") {
+		local (ix);
+		loop {
+			ix = random(1, 26);
+			if sizeOf(manilaSuite.passwords.data.words[ix]) > 0 {
+				break}};
+		local (adrSubTbl = @manilaSuite.passwords.data.words[ix]);
+		local (words = sizeOf(adrSubTbl^));
+		local (nme);
+		loop {
+			ix = random (1, words);
+			nme = nameof(adrSubTbl^[ix]);
+			if nme != except {
+				return nme}}};
+	
+	local (word1 = getWord());
+	local (word2 = getWord(word1));
+	
+	return word1 + sep +  word2};
+manilaSuite.passwords.generate ()
+	«"sulks.dolls"

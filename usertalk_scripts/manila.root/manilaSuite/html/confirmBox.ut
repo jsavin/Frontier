@@ -1,0 +1,365 @@
+on confirmBox (pta=nil) {
+	«Add the Admin confirmation box.
+	«Changes:
+		«10/05/06; 4:07:54 PM by LL
+			«When setting a path for a message, render the page if static rendering is enabled.
+		«1/31/06; 2:37:18 AM by JES
+			«Add support for new editorial approval and revert to pending commands.
+		«9/21/05; 2:13:07 AM by JES
+			«When setting a path for a message, also add it to the stories list.
+		«9/26/03; 12:57:50 PM by JES
+			«Do referer checks after checking to see if an admin command is present in the postArgs table.
+		«9/23/03; 1:46:07 PM by JES
+			«Added the Admin box for Content Editors. Required for static rendering.
+		«5/13/03; 6:49:03 PM by JES
+			«Log events.
+		«12/16/02; 9:04:49 PM by JES
+			«Allow POSTs from storyReader pages.
+		«11/2/02; 1:07:39 AM by JES
+			«Added support for admin boxes on hierarchy and story pages.
+		«12/13/01; 9:34:55 PM by PBS
+			«When deleting a dg message, call manilaSuite.discuss.deleteFromHomePageCalendar -- there may be a day in the home page calendar to delete.
+		«9/6/01; 2:08:56 PM by PBS
+			«When setting a relative path for a story, update the shortcut.
+		«10/09/00; 9:56:54 PM by PBS
+			«Update indexes when info about a message changes.
+		«07/01/00; 12:27:45 AM by JES
+			«Localized confirmation messages for turning on or off story bylines.
+		«06/29/00; 10:12:16 PM by PBS
+			«You can turn on and off bylines for a story.
+		«05/30/00; 11:26:51 AM by JES
+			«Fixed localization bug -- permanent url of newly made homepages was wrong.
+		«05/11/00; 7:59:40 PM by JES
+			«merged in Brent's security fix for the client side trojan horse attack.
+		«05/09/00; 10:49:54 PM by PBS
+			«Check referer to defeat client side trojan horse.
+		«05/01/00; 3:12:06 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+		«04/25/00; 1:26:15 PM by PBS
+			«Support news items. If a news item is deleted, update the news items indexes.
+		«04/21/00; 12:58:11 AM by JES
+			«localized
+		«01/27/00; 10:58:53 AM by PBS
+			«Get the editors preferred colors for the Admin box.
+		«11/8/99; 1:47:11 PM by PBS
+			«Now you can add and remove pictures from the pictures list.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	if not (manilaSuite.editors.managingEditorTest (pta)) { //MEs only
+		if not (manilaSuite.editors.contentEditorTest (pta)) { //...or content editor
+			return ("")}};
+	
+	if string.lower (pta^.method) != "post" { //only confirm for POSTs
+		return ("")};
+	
+	if not defined (pta^.postArgs.adminCommand) { //make sure admin command exists
+		return ("")};
+	
+	bundle { //referer checks
+		try {
+			manilaSuite.referer.checkSelf ()} //PBS 05/09/00: check referer to defeat client side trojan horse
+		else {
+			try {
+				manilaSuite.referer.check ("discussMsgReader")} //JES 10/08/00: check edit referer
+			else {
+				try {
+					manilaSuite.referer.check ("discussEditInBrowser")} //JES 10/08/00: check edit referer
+				else {
+					manilaSuite.referer.check ("storyReader")}}}}; //JES 12/16/02: check story referer
+	
+	local (s = "");
+	local (flSubmit = false);
+	local (command);
+	
+	local (lowerCommand);
+	lowerCommand = string.lower (pta^.postArgs.adminCommand);
+	
+	if lowerCommand == "delete" or lowerCommand == "makehomepage" {
+		flSubmit = true};
+	
+	local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
+	
+	bundle { //PBS 01/27/00:get the color preferences
+		manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor)};
+	
+	bundle { //build the top of the table
+		local (action = pta^.fname);
+		if action beginsWith "#objectNotFoundHandler" {
+			action = pta^.uri}
+		else {
+			«local (action = pta^.urls^.discussMsgReader)
+			if not (action endsWith "$") {
+				action = action + "$"};
+			if pta^.pathArgs != "" {
+				action = action + pta^.pathArgs}
+			else {
+				action = action + adrMsgTable^.msgNum}};
+		action = manilaSuite.unTaint (action);
+		
+		s = "\r<table border=\"0\" cellpadding=\"3\" cellspacing=\"1\" bgcolor=\"" + headerColor + "\" width=\"350\">";
+		s = s + "\r<tr bgcolor=\"" + headerColor + "\"><td align=\"left\"><b><font color=\"" + headerTextColor + "\">" + manilaSuite.getString ("html.confirm", pta: pta) + "</font></b></td></tr>\r<tr bgcolor=\"" + backgroundColor + "\"><td><font color=\"" + backgroundTextColor + "\">"; // 4/21/00 JES: localized
+		if flSubmit {
+			s = s + "<form method=\"POST\" action=\"" + action + "\">"}};
+	
+	local (adrMsgTable);
+	adrMsgTable = manilaSuite.discuss.getCurrentMessageTable (pta:pta);
+	
+	on getStoryURL () {
+		local (storyUrl);
+		local (currentPath = manilaSuite.siteStructure.getRelativePathToMessage (adrMsgTable^.msgNum, pta^.adrSiteRootTable));
+		if currentPath != "" {
+			currentPath = string.popLeading (currentPath, '/');
+			storyUrl = pta^.ftpSite^.url + currentPath}
+		else {
+			storyUrl = pta^.urls^.storyReader;
+			if not (storyUrl endsWith "$") {
+				storyUrl = storyUrl + "$"};
+			storyUrl = storyUrl + adrMsgTable^.msgNum};
+		«local (storyUrl = html.getLink ("story", storyUrl))
+		return (storyUrl)};
+	
+	on logEvent (eventType, startticks) {
+		if defined (manilaSuite.log) {
+			local (t); new (tableType, @t);
+			t.msgnum = adrMsgTable^.msgnum;
+			t.msgurl = manilaSuite.getUrl ("discussMsgReader") + adrMsgTable^.msgNum;
+			t.memberlink = manilaSuite.members.linkToMember (pta^.defaultMembershipGroup, nameOf (pta^.adrMemberInfo^));
+			manilaSuite.log.add (manilaSuite.getString ("log.type." + eventType), manilaSuite.getString ("log.text." + eventType, @t), startticks)}};
+	
+	bundle { //build the middle of the table
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		
+		on checkMessageOut() { //04/06/14, 22:39:48 by DAB
+			if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, pta^.adrMemberInfo, adrSite, true) { //true because it's a message
+				«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+				local (title = adrMsgTable^.subject);
+				title = manilaSuite.unTaint (title);
+				
+				s = s + manilaSuite.getString ("discuss.cantEditBecauseSomeoneElseIs", @replacementTable, pta:pta);
+				return false};
+			manilaSuite.custody.checkOut (adrMsgTable,  pta^.adrMemberInfo, adrSite, true); //true because it's a message
+			return true};
+		
+		on cancelCheckout() { //04/06/14, 22:39:53 by DAB
+			return manilasuite.custody.undoCheckOut(adrMsgTable, pta^.adrMemberInfo, adrSite, true)};
+		
+		on checkMessageIn() { //04/06/14, 22:39:53 by DAB
+			return manilasuite.custody.CheckIn(adrMsgTable, pta^.adrMemberInfo, adrSite, true)};
+		
+		local (startticks = clock.ticks ());
+		case lowerCommand {
+			"delete" {
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					s = s + manilaSuite.getString ("html.sureYouWantToDeleteThisMessage", pta: pta); // 4/21/00 JES: localized
+					command = "doDelete"}};
+			"undelete" {
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					s = s + manilaSuite.getString ("html.messageHasBeenUndeleted", pta: pta); // 4/21/00 JES: localized
+					«bundle    //factored out 04/06/14, 21:45:00 by DAB
+						«if defined (adrMsgTable^.inResponseToOld)
+							«adrMsgTable^.inResponseTo = manilaSuite.unTaint (adrMsgTable^.inResponseToOld)
+						«if defined (adrMsgTable^.flDeleted)
+							«delete (@adrMsgTable^.flDeleted)
+						«if manilaSuite.news.isNewsItem (adrMsgTable)
+							«manilaSuite.news.updateIndexes (adrMsgTable, adrSite)
+						«manilaSuite.discuss.addToIndexes (adrSite, adrMsgTable) //PBS 10/09/00: add to indexes
+					manilaSuite.discuss.changeMessageDeletion(adrMsgTable, pta^.adrMemberInfo, adrSite, false);
+					checkMessageIn();
+					logEvent ("msgUndelete", startticks)}};
+			"approve" {
+				s = s + manilaSuite.getString ("html.messageHasBeenApproved");
+				if defined (adrMsgTable^.flPending) {
+					delete (@adrMsgTable^.flPending)};
+				local (catname = manilaSuite.discuss.getCategoryName ("pending", adrsite));
+				manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, catname, adrSite)};
+			"makepending" {
+				s = s + manilaSuite.getString ("html.messageHasBeenMadePending");
+				adrMsgTable^.flPending = true;
+				local (catname = manilaSuite.discuss.getCategoryName ("pending", adrsite));
+				manilaSuite.discuss.addCategoryToMessage (adrMsgTable, catname, adrSite)};
+			"makestory" {
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					local (url);
+					url = manilaSuite.getUrl ("storyReader");
+					url = url + adrMsgTable^.msgNum;
+					url = manilaSuite.unTaint (url);
+					replacementTable.url = url; // 05/01/00 JES
+					s = s + manilaSuite.getString ("html.messageHasBeenMadeAStory", @replacementTable, pta: pta); // 4/21/00 JES: localized
+					
+					local (storiesCategory = manilaSuite.discuss.getStoriesCategory ());
+					manilaSuite.discuss.addCategoryToMessage (adrMsgTable, storiesCategory, adrSite);
+					
+					checkMessageIn();
+					logEvent ("makeStory", startticks)}};
+			"makepicture" {
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					local (url);
+					url = manilaSuite.getUrl ("pictureReader");
+					url = url + adrMsgTable^.msgNum;
+					url = manilaSuite.unTaint (url);
+					replacementTable.url = url; // 05/01/00 JES
+					s = s + manilaSuite.getString ("html.messageHasBeenMadeAPicture", @replacementTable, pta: pta); // 4/21/00 JES: localized
+					
+					local (picturesCategory = manilaSuite.discuss.getPicturesCategory ());
+					manilaSuite.discuss.addCategoryToMessage (adrMsgTable, picturesCategory, adrSite);
+					checkMessageIn();
+					logEvent ("makePicture", startticks)}};
+			"unmakestory" {
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					s = s + manilaSuite.getString ("html.messageRemovedFromStoriesList", pta: pta); // 4/21/00 JES: localized
+					local (storiesCategory = manilaSuite.discuss.getStoriesCategory ());
+					manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, storiesCategory, adrSite);
+					checkMessageIn();
+					logEvent ("unmakeStory", startticks)}};
+			"unmakepicture" {
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					s = s + manilaSuite.getString ("html.messageRemovedFromPicturesList", pta: pta); // 4/21/00 JES: localized
+					local (picturesCategory = manilaSuite.discuss.getPicturesCategory ());
+					manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, picturesCategory, adrSite);
+					checkMessageIn();
+					logEvent ("unmakePicture", startticks)}};
+			"makehomepage" {
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					s = s + manilaSuite.getString ("html.sureYouWantToMakeThisTheHomepage", pta: pta); // 4/21/00 JES: localized
+					command = "doMakeHomePage"}};
+			"dodelete" {
+				if not defined (pta^.postArgs.yes) {
+					return ("")};
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					s = s + manilaSuite.getString ("html.thisPageHasBeenDeleted", pta: pta); // 4/21/00 JES: localized
+					«bundle    //factored out 04/06/14, 21:45:42 by DAB
+						«if not defined (adrMsgTable^.inResponseToOld)
+							«adrMsgTable^.inResponseToOld = adrMsgTable^.inResponseTo
+						«mainResponder.discuss.deleteMessage (adrMsgTable^.msgNum)
+						«if manilaSuite.news.isNewsItem (adrMsgTable)
+							«manilaSuite.news.updateIndexes (adrMsgTable, adrSite)
+						«manilaSuite.discuss.removeFromAllIndexes (adrSite, adrMsgTable) //PBS 10/09/00: remove from indexes
+						«manilaSuite.discuss.deleteFromHomePageCalendar (adrMsgTable, adrSite) //PBS 12/13/01: try to remove from home page calendar
+					manilaSuite.discuss.changeMessageDeletion(adrMsgTable, pta^.adrMemberInfo, adrSite, true);
+					checkMessageIn();
+					logEvent ("msgDelete", startticks);
+					return ("")}};
+			"domakehomepage" {
+				if not defined (pta^.postArgs.yes) {
+					return ("")};
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					local (url = manilaSuite.getUrl ("newsHome"));
+					replacementTable.url = url; // 05/01/00 JES
+					s = s + manilaSuite.getString ("html.thisPageIsNowTheHomepage", @replacementTable, pta: pta); // 4/21/00 JES: localized
+					local (adrStory);
+					adrStory = manilaSuite.admin.promoteToHomePage (adrMsgTable^.msgNum, pta^.adrSiteRootTable);
+					local (permanentUrl = pta^.ftpSite^.url);
+					local (postTime = adrMsgTable^.postTime);
+					
+					local (day, month, year, hour, minute, second);
+					date.get (postTime, @day, @month, @year, @hour, @minute, @second);
+					permanentUrl = permanentUrl + year + "/" + string.padWithZeros (month, 2) + "/" + string.padWithZeros (day, 2) + "/" + nameOf (adrStory^);
+					permanentUrl = manilaSuite.unTaint (permanentUrl);
+					replacementTable.url = permanentUrl; // 05/01/00 JES
+					s = s + "<p>" + manilaSuite.getString ("html.permanentUrlIs", @replacementTable, pta: pta); // 4/21/00 JES: localized
+					local (homePagesCategory = manilaSuite.discuss.getHomePagesCategory (adrSite));
+					manilaSuite.discuss.addCategoryToMessage (adrMsgTable, homePagesCategory, adrSite);
+					checkMessageIn();
+					logEvent ("makeHomePage", startticks)}};
+			"makepathforpage" {
+				if defined (pta^.postArgs.path) {
+					local (path = pta^.postArgs.path);
+					path = string.trimWhiteSpace (path);
+					if path != "" {
+						if path != "/" {
+							if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+								try {
+									if string.lower (path) beginsWith "http://" {
+										scriptError (manilaSuite.getString ("html.pathIsAbsoluteError", pta: pta))}; // 4/21/00 JES: localized
+									if path contains " " {
+										scriptError (manilaSuite.getString ("html.pathContainsSpaceError", pta: pta))}; // 4/21/00 JES: localized
+									bundle { //make sure it's not relative to the server
+										local (urlParts);
+										urlParts = string.urlSplit (pta^.ftpSite^.url);
+										local (sitePath = urlParts [3]);
+										if sitePath != "" {
+											local (lowerPath = string.lower (path));
+											lowerPath = string.popLeading (lowerPath, '/');
+											if lowerPath beginsWith string.lower (sitePath) {
+												scriptError (manilaSuite.getString ("html.pathRelativeToServerError", pta: pta))}}}; // 4/21/00 JES: localized
+									manilaSuite.siteStructure.setPathForMessage (path, adrMsgTable, pta^.adrSiteRootTable);
+									local (url = pta^.ftpSite^.url);
+									path = string.popLeading (path, '/');
+									url = url + path;
+									link = manilaSuite.unTaint (url);
+									replacementTable.url = url; // 05/01/00 JES
+									s = s + manilaSuite.getString ("html.thePathHasBeenSetYouCanJumpToIt", @replacementTable, pta: pta); // 4/21/00 JES: localized
+									
+									if not manilaSuite.discuss.isStory (adrMsgTable, adrSite) {
+										local (storiesCategory = manilaSuite.discuss.getStoriesCategory ());
+										manilaSuite.discuss.addCategoryToMessage (adrMsgTable, storiesCategory, adrSite)};
+									
+									if pta^.newsSite^.autoShortcuts { //PBS 09/06/01: update or add to glossary
+										manilaSuite.addToGlossary (adrMsgTable^.subject, url, pta)};
+									
+									bundle { //render the message
+										if manilaSuite.staticRendering.isEnabled (adrSite) {
+											local (relativePath, flRenderable = false);
+											bundle { //determine if this is a render-able page and get the path
+												relativePath = manilaSuite.siteStructure.getRelativePathToMessage (adrMsgTable^.msgNum, adrSite);
+												relativePath = string.popLeading (relativePath, '/');
+												if relativePath == "" {
+													flRenderable = true}
+												else {
+													local (firstPart = string.nthField (relativePath, '/', 1));
+													try {
+														number (firstPart); //it might be a calendar page
+														flRenderable = true};
+													if not flRenderable {
+														if not defined (pta^.adrSiteRootTable^.[firstPart]) {
+															flRenderable = true}}}};
+											
+											if flRenderable {
+												local (startticks = clock.ticks ());
+												local (oldPta = pta);
+												html.deletePageTableAddress ();
+												local (pt);
+												try {
+													pt = manilaSuite.staticRendering.renderPage (relativePath, pta^.adrSiteRootTable);
+													html.setPageTableAddress (oldPta)}
+												else {
+													html.setPageTableAddress (oldPta);
+													s = string.replace (s, manilaSuite.getString ("html.thePathHasBeenSetYouCanJumpToIt", @replacementTable, pta: pta) , "");
+													s = s + manilaSuite.unTaint (tryError)}}}};
+									
+									checkMessageIn ()}
+								else {
+									s = string.replace (s, "Confirm", "Error");
+									s = s + manilaSuite.unTaint (tryError);
+									cancelCheckout ()}}}}}};
+			"setbylinetofalse" { //PBS 06/29/00: turn bylines off for a story
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					adrMsgTable^.flByline = false;
+					local (storyUrl = getStoryUrl ());
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.storyUrl = storyUrl;
+					s = s + manilaSuite.getString ("admin.bylineWillNotAppear", @replacementTable, pta: pta); // 06/31/00 JES: localized
+					checkMessageIn()}};
+			"setbylinetotrue" { //PBS 06/29/00: turn bylines on for a story
+				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
+					adrMsgTable^.flByline = true;
+					local (storyUrl = getStoryUrl ());
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.storyUrl = storyUrl;
+					s = s + manilaSuite.getString ("admin.bylineWillAppear", @replacementTable, pta: pta); // 06/31/00 JES: localized
+					checkMessageIn()}}}};
+	
+	bundle { //build the bottom of the table
+		if flSubmit {
+			s = s + "</font>";
+			s = s + "<p align=\"right\">";
+			s = s + "<input type=\"hidden\" name=\"adminCommand\" value=\"" + command + "\">";
+			s = s + "<input type=\"submit\" name=\"no\" value=\"" + manilaSuite.getString ("common.noButton", pta: pta) + "\">&nbsp;&nbsp;";
+			s = s + "<input type=\"submit\" name=\"yes\" value=\"" + manilaSuite.getString ("common.yesButton", pta: pta) + "\">&nbsp;&nbsp;</p></form>"}
+		else {
+			s = s + "<br>&nbsp;"};
+		s = s + "</td></tr></table><br><br>"};
+	
+	return (s)}

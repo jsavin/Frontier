@@ -1,0 +1,25 @@
+on updatePostedList (adrMsgTable, adrSite) {
+	«Changes
+		«1/31/06; 2:47:13 AM by JES
+			«Delete flPending flag at top level of message table, when updating index for posted news items.
+	«Update the posted list, if this is a posted news item.
+		«04/20/00; 1:37:48 AM by PBS
+	
+	local (flDelete = false);
+	
+	if defined (adrMsgTable^.flDeleted) {
+		if adrMsgTable^.flDeleted {
+			flDelete = true}};
+	
+	if not flDelete {
+		if not (manilaSuite.news.isPosted (adrMsgTable)) {
+			flDelete = true}};
+	
+	if not flDelete {
+		manilaSuite.news.addToIndex ("posted", adrMsgTable, adrSite);
+		if defined (adrMsgTable^.flPending) {
+			delete (@adrMsgTable^.flPending)}}
+	else {
+		manilaSuite.news.deleteFromIndex ("posted", adrMsgTable, adrSite)};
+	
+	return (true)}

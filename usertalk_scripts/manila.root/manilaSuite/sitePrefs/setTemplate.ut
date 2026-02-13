@@ -1,0 +1,22 @@
+on setTemplate () {
+	«manilaSuite.sitePrefs.setTemplate : 04/05/14, 07:20:12 by DAB
+		«called as script to set title; does template as side-effect
+		«we need to do this rather than returning the name of the template
+		«in the obvious way because then we'd alway have to return a value
+		«in fact, we only want to change the template if we do the iframe
+	local (pta = html.getPageTableAddress ());
+	case true {
+		pta^.searchargs contains "iframe=yes";
+		pta^.method == "POST" and (string.lower(pta^.pathargs) beginsWith "advanced") {
+			pta^.template =  manilaSuite.sitePrefs.data.iFrameTemplate;
+			pta^.indirectTemplate = false;
+			pta^.processMacros = false;
+			pta^.expandGlossaryItems = false;
+			pta^.activeUrls = false;
+			pta^.autoParagraphs = false;
+			pta^.clayCompatibility = false;
+			return (true)}};
+	return (false)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«setTemplate ()

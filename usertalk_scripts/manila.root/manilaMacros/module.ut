@@ -1,0 +1,15 @@
+on module (moduleName) {
+	«Include a named dg message.
+		«11/13/00; 3:17:11 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (msgNum);
+	
+	on error () {
+		scriptError (manilaSuite.unTaint ("Can't display the \"" + moduleName + "\" module because it doesn't exist."))};
+	
+	if not defined (pta^.newsSite^.modules.[moduleName].msgNum) {
+		error ()};
+	
+	msgNum = pta^.newsSite^.modules.[moduleName].msgNum;
+	return (manilaSuite.unTaint (manilaMacros.includeMessage (msgNum, flEditButton:true, flDgLink:false, flProcessMacros:true, flExternalEditorButton:true)))}

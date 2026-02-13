@@ -1,0 +1,560 @@
+on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime=true, flShowReadCount=true, flShowResponseCount=true, flShowEnclosures=true, flShowResponseForm=true, flShowCowSkullLink=false, editPageUrl="", adrData=nil, bgColor="ivory", otherColor="beige", headerColor="black", headerTextColor="ivory", adrGetBodyCallback=nil, adrGetTimeCallback=nil, cssPrefix="", y=nil, m=nil, d=nil, defaultMode="day", responseItemTemplate=nil, responseListHeader=nil, responseListFooter=nil, responseIndentTemplate=nil, responseSubThreadStartTemplate=nil, responseSubThreadEndTemplate=nil, pta=nil, userIcon=nil, adrInDgCallback=nil, depthToExpandResponses=0, flResponsesInChronologicalOrder=false, responseFullItemTemplate=nil, flUseMappedMemberKeys=false) {
+	«Changes:
+		«4/11/06; 6:45:59 PM by JES
+			«Address cross-site scripting issue, where the mode searchArg was rendered verbatim into the page. Now we restrict to valid values, either "topic" or "day".
+		«4/8/03; 11:43:18 PM by JES
+			«Added support for the {ipAddress} pseudo-macro in the template.
+		«4/4/02; 1:07:05 AM by JES
+			«New optional parameter, adrInDgCallback, is the address of a callback which determines whether a message should be included in the rendering. If the callback returns true, add the message. If it returns false, don't add the message.
+			«More new optional params: depthToExpandResponses, flResponsesInChronologicalOrder and responseFullItemTemplate, used for displaying the full text of responses in the response list. These support the Slashdot-style discussion group renderings.
+		«10/18/01; 11:11:11 AM by PBS
+			«Don't use IP address when constructing URLs to built-in icons. Fixes a bug with machines with multiple IP addresses.
+		«11/21/00; 6:04:09 PM by PBS
+			«Use new bottleneck for displaying edit message in Pike button.
+		«10/18/00; 10:48:50 PM by JES
+			«Commented out code that adds the Edit in Frontier button.
+		«10/14/00; 2:29:42 PM by JES
+			«Added 'in response to xxx' to the msg number when rendered in a template.
+		«10/13/00; 12:05:00 AM by JES
+			«Added support for template-based rendering.
+		«10/11/00; 10:30:27 PM by JES
+			«Created. Render a single message in a thread, flowing through a template if specified.
+	
+	bundle { // get pta, adrData, y, m and d
+		if pta == nil {
+			pta = html.getPageTableAddress ()};
+		if adrData == nil {
+			adrData = mainResponder.discuss.openRoot (pta)};
+		if y == nil {
+			y = date.year ()};
+		if m == nil {
+			m = date.month ()};
+		if d == nil {
+			d = date.day ()}};
+	bundle { //increment read stats on the top message
+		adrMsgTable^.ctReads++;
+		config.mainResponder.stats.ctDiscussionGroupReads++};
+	
+	local (flMember = defined (pta^.adrMemberInfo));
+	local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+	local (flCss = (cssPrefix != ""));
+	local (msgReaderUrl = pta^.urls^.discussMsgReader);
+	if not (msgReaderUrl endsWith "$") {
+		msgReaderUrl = msgReaderUrl + "$"};
+	
+	on buildSearchArgs (adrArgTable) {
+		local (ct = sizeOf (adrArgTable^), i, s = "?");
+		for i = 1 to ct {
+			s = s + nameOf (adrArgTable^[i]) + "=" + adrArgTable^[i] + "&"};
+		s = string.mid (s, 1, sizeOf (s) - 1);
+		return (s)};
+	
+	local (mode, thisModeSearchArgs, otherModeSearchArgs, replyToThisSearchArgs, flShowResponses=true);
+	bundle { // get the mode, and the search args for preserving and switching the mode
+		local (searchArgs = "", argTable);
+		new (tableType, @argTable);
+		bundle { //parse search args
+			if defined (pta^.searchArgs) {
+				searchArgs = pta^.searchArgs};
+			webserver.parseArgs (searchArgs, @argTable)};
+		if not defined (argTable.mode) {
+			argTable.mode = defaultMode};
+		bundle { //cross-site scripting bug fix
+			if argTable.mode != "day" and argTable.mode != "topic" {
+				argTable.mode = defaultMode}};
+		bundle { //user-specifiable search args
+			if defined (argTable.showResponses) {
+				flShowResponses = boolean (argTable.showResponses)};
+			if defined (argTable.expandToDepth) {
+				depthToExpandResponses = number (argTable.expandToDepth)};
+			if defined (argTable.newestFirst) {
+				flResponsesInChronologicalOrder = not boolean (argTable.newestFirst)}};
+		bundle { //this mode search args
+			argTable.mode = string.lower (argTable.mode);
+			mode = argTable.mode;
+			thisModeSearchArgs = buildSearchArgs (@argTable)};
+		bundle { //reply to this search args
+			local (replyArgsTable = argTable);
+			replyArgsTable.showResponses = false;
+			replyToThisSearchArgs = buildSearchArgs (@replyArgsTable)};
+		bundle { //other mode search args
+			local (otherModeArgsTable = argTable);
+			if otherModeArgsTable.mode == "day" {
+				otherModeArgsTable.mode = "topic"}
+			else {
+				otherModeArgsTable.mode = "day"};
+			otherModeSearchArgs = buildSearchArgs (@otherModeArgsTable)}};
+	
+	local (htmltext);
+	local (msgnum = adrMsgTable^.msgnum);
+	local (template);
+	if adrTemplate != nil {
+		template = string (adrTemplate^)};
+	
+	local (userIconUrl, userIconHeight = 16, userIconWidth = 16);
+	local (internalLinkImgUrl, internalLinkImgWidth = 11, internalLinkImgHeight = 9, internalLinkUrl);
+	bundle { // build image data for internal link arrows and message status icons
+		«local (myDottedId = tcp.myDottedId ())
+		«local (myPort = user.inetd.config.http.port)
+		«local (portString = "")
+		«if myPort != 80
+			«portString = ":" + myPort
+		«local (resourcesUrl = "http://" + myDottedId + portString + "/mainResponderResources/")
+		local (resourcesUrl = "/mainResponderResources/");
+		
+		internalLinkImgUrl = resourcesUrl + "icons/leftArrow";
+		internalLinkUrl = pta^.responderAttributes.urls^.discussMsgReader;
+		if not (internalLinkUrl endsWith '$') {
+			internalLinkUrl = internalLinkUrl + "$"};
+		«internalLinkUrl = internalLinkUrl + msgNum + "#"
+		userIconUrl = resourcesUrl + "icons/user";
+		
+		«msgIconUrl = resourcesUrl + "icons/message"
+		if userIcon == nil {
+			userIcon = "<img src=\"" + userIconUrl + "\" height=\"" + userIconHeight + "\" width=\"" + userIconWidth + "\" border=\"0\" alt=\"user\">"}};
+	
+	local (cowskullImg = mainResponder.discuss.cowSkullImage (pta), cowskullLink);
+	bundle { // get the cowskull link html
+		cowskullLink = "<a href=\"" + pta^.responderAttributes.urls^.discussMsgReader + msgNum + otherModeSearchArgs + "\">" + cowskullImg + "</a>"};
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	on countResponses (adrMsgTable) { // count all the responses in a thread
+		local (responseCount);
+		local (i, ct = sizeOf (adrMsgTable^.responses));
+		responseCount = ct;
+		for i = 1 to ct {
+			local (adrResponse = @adrData^.messages.[string.padWithZeros (adrMsgTable^.responses[i], 7)]);
+			if sizeOf (adrResponse^.responses) {
+				responseCount = responseCount + countResponses (adrResponse)}};
+		return (responseCount)};
+	on getBody (adrMsgTable) { // get the body of the message, calling callbacks if necessary
+		local (body, flCallbackReturnedBody = false);
+		if adrGetBodyCallback != nil {
+			body = adrGetBodyCallback^ (adrMsgTable);
+			if body != "" {
+				«add (body)
+				flCallbackReturnedBody = true}};
+		if not flCallbackReturnedBody {
+			bundle { //PBS 10/20/99: if an image is attached to this message, display it above the body
+				if defined (adrMsgTable^.image) {
+					if defined (pta^.responderAttributes.urls^.imageViewer) { //must be defined: it's the link to the imageViewer script
+						«The imageViewer script takes a msgNum as pathArgs and displays the picture attached to that dg message.
+						body = body + mainResponder.discuss.buildImageTag (adrMsgTable^.msgNum);
+						body = body + "<p>"}}};
+			if typeOf (adrMsgTable^.body) == outlineType { //outlines get passed through an outline renderer
+				local (oldRenderOutlineWith = nil);
+				
+				if defined (pta^.renderOutlineWith) {
+					oldRenderOutlineWith = pta^.renderOutlineWith};
+				if defined (pta^.renderDiscussOutlinesWith) {
+					pta^.renderOutlineWith = pta^.renderDiscussOutlinesWith};
+				
+				if defined (pta^.flReadMessageProcessMacros) and pta^.flReadMessageProcessMacros {
+					try {body = body + html.processMacros (html.tenderRender (@adrMsgTable^.body), false, pta)}}
+				else {
+					if defined (pta^.flReadMessageExpandUrls) and not pta^.flReadMessageExpandUrls {
+						try {body = body + html.tenderRender (@adrMsgTable^.body)}}
+					else { //default, original behavior
+						try {body = body + html.expandURLs (html.tenderRender (@adrMsgTable^.body))}}};
+				
+				if oldRenderOutlineWith != nil {
+					pta^.renderOutlineWith = oldRenderOutlineWith}}
+			else { //it's not an outline
+				local (s = string (adrMsgTable^.body));
+				s = string.replaceAll (s, "\n", ""); //2/15/99 DW, inside <pre>s these cause extra line-skips
+				
+				if not (defined (pta^.flReadMessageAutoParagraphs)) or pta^.flReadMessageAutoParagraphs {
+					s = string.replaceAll (s, "\r\r", "\r\r<p>")};
+				if not (defined (pta^.flReadMessageProcessMacros)) or pta^.flReadMessageProcessMacros {
+					s = html.processMacros (s, false, pta)};
+				body = body + s}};
+		return (body)};
+	on getEditButtons () { //add Edit button (or buttons) to the page
+		local (s, editableInFrontier = false);
+		
+		«s = s + "<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\" bgcolor=\"white\"><tr>"
+		«if defined (pta^.adrMemberInfo^.isFrontierSixAlpha) //edit in Frontier button
+			«local (url = pta^.responderAttributes.urls^.discussEditInFrontier + msgNum)
+			«
+			«Build the Edit in Frontier button.
+			«s = s + "<td valign=\"baseline\">"
+			«s = s + "<form method=\"POST\" action=\"" + url + "\">"
+			«s = s + "<input name=\"msgnum\" type=\"hidden\" value=\"" + msgNum + "\">"
+			«s = s + "&nbsp;<input type=\"submit\" value=\"" + mainResponder.getString ("discuss.editInFrontier") + "\">"
+			«s = s + "</form>"
+			«s = s + "</td>"
+			«
+			«editableInFrontier = true
+		bundle { //edit in web browser button
+			if editPageURL == "" {
+				editPageURL = pta^.responderAttributes.urls^.discussEditInBrowser};
+			
+			«s = s + "<td valign=\"baseline\">"
+			
+			s = s + "<form method=\"POST\" action=\"" + editPageURL + msgNum + "\">";
+			s = s + "<input name=\"msgnum\" type=\"hidden\" value=\"" + msgNum + "\">";
+			local (buttonValue = "&nbsp;" + mainResponder.getString ("discuss.editThisPage") + "&nbsp;");
+			
+			if editableInFrontier {
+				buttonValue = mainResponder.getString ("discuss.editInBrowser"); //change button name from Edit this Page to Edit in Browser
+				s = s + "&nbsp;"};
+			
+			s = s + "&nbsp;<input type=\"submit\" value=\"" + buttonValue + "\">";
+			s = s + "</form>";
+			
+			};«s = s + "</td>"
+		bundle { //PBS 01/13/00: Add the Edit in Pike button
+			«if defined (pta^.responderAttributes.urls^.editInPike)
+				«Pike support is a feature not of mainResponder but of Manila. However, this script, which displays the discussion group messages and the Edit this Page button, needs to be Pike-aware enough to display the Pike button.
+				«if manilaSuite.pike.memberHasPike (pta)
+					«local (editInPikeUrl = pta^.responderAttributes.urls^.editInPike)
+					«if not (editInPikeUrl endsWith "$")
+						«editInPikeUrl = editInPikeUrl + "$"
+					«editInPikeUrl = editInPikeUrl + msgNum
+					«local (adrSite = pta^.adrSiteRootTable)
+					«local (adrMember = pta^.adrMemberInfo)
+					«
+					«s = s + "<td valign=\"baseline\">"
+					«s = s + "&nbsp;" + manilaSuite.pike.pikeButton (editInPikeUrl, adrMsgTable, adrMember, adrSite, true, mainResponder.getString ("discuss.editThisStoryInPikeOutline"), pta) //true because this is a message
+					«s = s + "</td>"
+			s = s + "&nbsp;" + manilaSuite.pike.editMessageButton (adrMsgTable, pta:pta)}; //PBS 11/21/00: use new bottleneck for displaying edit message in Pike button
+		«s = s + "</tr></table>"
+		
+		return (s)};
+	on getTopicMsgTable () {
+		local (nomad = adrMsgTable);
+		while nomad^.inResponseTo > 0 {
+			«nomad = @adrData^.messages.[string.padWithZeros (nomad^.inResponseTo, 7)]
+			nomad = mainResponder.discuss.getMessageTable (nomad^.inResponseTo, pta, adrData)};
+		return (nomad)};
+	on getNextMsgNum () {
+		local (lastMsgNum = adrData^.prefs.nextMsgNum - 1);
+		local (nomad, nextMsgNum = msgNum + 1);
+		while nextMsgNum <= lastMsgNum {
+			nomad = mainResponder.discuss.getMessageTable (nextMsgNum, pta, adrData);
+			if not (mainResponder.discuss.isMessageDeleted (nextMsgNum, nomad, pta:pta)) {
+				if adrInDgCallback == nil {
+					return (nextMsgNum)}
+				else {
+					local (adrmsg = mainResponder.discuss.getMessageTable (nextMsgNum, pta));
+					if adrInDgCallback^ (adrmsg) {
+						return (nextMsgNum)}}};
+			nextMsgNum++};
+		return (0)};
+	on getPrevMsgNum () {
+		local (nomad, prevMsgNum = msgNum - 1);
+		while prevMsgNum > 0 {
+			nomad = mainResponder.discuss.getMessageTable (prevMsgNum, pta, adrData);
+			if not (mainResponder.discuss.isMessageDeleted (prevMsgNum, nomad, pta:pta)) {
+				if adrInDgCallback == nil {
+					return (prevMsgNum)}
+				else {
+					local (adrmsg = mainResponder.discuss.getMessageTable (prevMsgNum, pta));
+					if adrInDgCallback^ (adrmsg) {
+						return (prevMsgNum)}}};
+			prevMsgNum--};
+		return (prevMsgNum)};
+	on obscureEmail (s, link=false) {
+		if s contains '@' {
+			local (part1 = string.nthField (s, '@', 1));
+			local (part2 = string.nthField (s, '@', 2));
+			if link {
+				return ("<a href=\"mailto:" + s + "\">" + part1 + "&#64;" + part2[1] + "...</a>")}
+			else {
+				return (part1 + "&#64;" + part2[1] + "...")}};
+		return (s)};
+	
+	if mainResponder.discuss.isMessageDeleted (msgNum, adrMsgTable, pta) {
+		return ("")};
+	
+	bundle { //calculate enclosure and edit buttons display flags
+		flShowEnclosures = flShowEnclosures and (defined (adrMsgTable^.enclosureAddress) and (adrMsgTable^.enclosureAddress != ""));
+		flShowEditButtons = (flMember and (mainResponder.discuss.memberCanEdit (adrMsgTable, pta^.adrMemberInfo, pta)))};
+	
+	if adrTemplate == nil { //render the message in default fashion
+		bundle { //add member, internal link, read count and date
+			if flCss { // the header row and cell
+				add ("<tr class=\"" + cssPrefix + "HeaderRow\">");
+				add ("<td class=\"" + cssPrefix + "AuthorCell\">")}
+			else {
+				add ("<tr><td>")};
+			
+			bundle { // the header table
+				add ("<table bgcolor=\"" + othercolor + "\" cellpadding=\"5\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr><td>");
+				
+				if flShowAuthor {
+					add (mainResponder.members.linkToMember (membershipGroup, adrMsgTable^.member, hideEmail: true, useMap:flUseMappedMemberKeys))}
+				else {
+					add ("&nbsp;")};
+				bundle { // add internal link
+					add ("<a name=\"" + msgNum + "\">&nbsp;</a>");
+					add ("<a href=\"" + internalLinkUrl + msgNum + "?y=" + y + "&amp;m=" + m + "&amp;d=" + d + "\" title=\"Permanent link to this message in archives.\">");
+					add ("<img src=\"" + internalLinkImgUrl + "\" height=\"" + internalLinkImgHeight + "\" width=\"" + internalLinkImgWidth + "\" border=\"0\" alt=\"blueArrow\"></a>")};
+				
+				if flShowReadCount or flShowResponseCount {
+					local (s = "&nbsp;(");
+					if flShowReadCount {
+						s = s + adrMsgTable^.ctReads + "&nbsp;read";
+						if adrMsgTable^.ctReads != 1 {
+							s = s + "s"};
+						if flShowResponseCount {
+							s = s + ",&nbsp;"}};
+					if flShowResponseCount {
+						local (responses = countResponses (adrMsgTable));
+						s = s + responses + "&nbsp;response";
+						if responses != 1 {
+							s = s + "s"}};
+					s = s + ")";
+					add ("<font size=\"-1\">" + s + "</font>")};
+				add ("</td>");
+				
+				if flCss { // the post time cell and font
+					add ("<td class=\"" + cssPrefix + "DateCell\" align=\"right\"><font size=\"-1\">")}
+				else {
+					add ("<td align=\"right\" width=\"100%\"><font size=\"-1\">")};
+				if flShowPostTime {
+					local (postTime = adrMsgTable^.postTime);
+					if adrGetTimeCallback != nil {
+						postTime = adrGetTimeCallback^ (postTime)};
+					add (mainResponder.localization.abbrevDateString (postTime, pta) + " " + mainResponder.localization.timeString (postTime, pta))}
+				else {
+					add ("&nbsp;")};
+				add ("</font></td>");
+				
+				add ("</table>")};
+			
+			add ("</td></tr>");
+			
+			};«add ("</font></td></tr>")
+		bundle { //add the body of the message
+			if flCss { // the row and cell containing the body of the message
+				add ("<tr bgcolor=\"white\" class=\"" + cssPrefix + "BodyRow\">");
+				add ("<td class=\"" + cssPrefix + "BodyCell\">")}
+			else {
+				add ("<tr bgcolor=\"white\"><td>")};
+			
+			bundle { // the body table
+				add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr><td>");
+				
+				add (getBody (adrMsgTable));
+				
+				if flShowEditButtons {
+					add (getEditButtons ())};
+				
+				if flShowCowSkullLink { //add cowskull link to standard msgReader page
+					«The cowskull link is a link to the discussion group interface version of this page.
+					add ("<p>" + cowskullLink + "</p>")};
+				
+				add ("</td></tr></table>")};
+			
+			add ("</td></tr>")}}
+	else { //flow the message through the template, and add it
+		local (s = template, lowerTemplate = string.lower (template));
+		
+		bundle { // replace bgcolor, headerColor and headerTextColor
+			s = string.replaceAll (s, "{bgcolor}", otherColor, false);
+			s = string.replaceAll (s, "{headerColor}", headerColor, false);
+			s = string.replaceAll (s, "{headerTextColor}", headerTextColor, false)};
+		bundle { // replace author
+			local (memberLink = mainResponder.members.linkToMember (membershipGroup, adrMsgTable^.member, hideEmail: true, useMap:flUseMappedMemberKeys));
+			s = string.replaceAll (s, "{author}", memberLink, false)};
+		bundle { // replace authorIcon
+			s = string.replaceAll (s, "{authorIcon}", userIcon, false)};
+		bundle { // replace subject
+			s = string.replaceAll (s, "{subject}", adrMsgTable^.subject, false)};
+		bundle { // replace topic link -- this does a mode flip
+			local (topicLink, topicMsgTable = getTopicMsgTable ());
+			topicLink = "<a href=\"" + msgReaderUrl + topicMsgTable^.msgNum + otherModeSearchArgs + "\"";
+			if flCss {
+				topicLink = topicLink + " class=\"" + cssPrefix + "TopicLink\""};
+			topicLink = topicLink + ">" + topicMsgTable^.subject + "</a>";
+			s = string.replaceAll (s, "{topicLink}", topicLink, false)};
+		bundle { // replace messageNumberLink -- this doea a mode flip
+			local (msgNumLink = "<a href=\"" + msgReaderUrl + msgNum + otherModeSearchArgs + "\"");
+			if flCss {
+				msgNumLink = msgNumLink + " class=\"" + cssPrefix + "MessageNumberLink\""};
+			msgNumLink = msgNumLink + ">" + msgNum + "</a>";
+			s = string.replaceAll (s, "{messageNumberLink}", msgNumLink, false)};
+		bundle { // replace inResponseToLink
+			local (inResponseToLink);
+			if adrMsgTable^.inResponseTo > 0 {
+				local (replacementTable); new (tableType, @replacementTable);
+				replacementTable.msglink = "<a href=\"" + msgReaderUrl + adrMsgTable^.inResponseTo + thisModeSearchArgs + "\">" + adrMsgTable^.inResponseTo + "</a>";
+				inResponseToLink = mainResponder.getString ("discuss.inResponseTo", @replacementTable, pta: pta)}
+			else {
+				inResponseToLink = mainResponder.getString ("discuss.topMsgInThread", pta: pta)};
+			s = string.replaceAll (s, "{inResponseToLink}", inResponseToLink, false)};
+		bundle { // replace previousMessageLink
+			local (prevMsgNum = getPrevMsgNum (), msgNumLink = "");
+			if prevMsgNum {
+				msgNumLink = "<a href=\"" + msgReaderUrl + prevMsgNum + thisModeSearchArgs + "\"";
+				if flCss {
+					msgNumLink = msgNumLink + " class=\"" + cssPrefix + "PreviousMessageLink\""};
+				msgNumLink = msgNumLink + ">" + prevMsgNum + "</a>"};
+			s = string.replaceAll (s, "{previousMessageLink}", msgNumLink, false)};
+		bundle { // replace nextMessageLink
+			local (nextMsgNum = getNextMsgNum (), msgNumLink = "");
+			if nextMsgNum {
+				msgNumLink = "<a href=\"" + msgReaderUrl + nextMsgNum + thisModeSearchArgs + "\"";
+				if flCss {
+					msgNumLink = msgNumLink + " class=\"" + cssPrefix + "NextMessageLink\""};
+				msgNumLink = msgNumLink + ">" + nextMsgNum + "</a>"};
+			s = string.replaceAll (s, "{nextMessageLink}", msgNumLink, false)};
+		bundle { // replace postTime
+			local (d = adrMsgTable^.postTime);
+			if adrGetTimeCallback != nil {
+				d = adrGetTimeCallback^ (d)};
+			s = string.replaceAll (s, "{postTime}", d, false)};
+		bundle { // replace readCount
+			s = string.replaceAll (s, "{readCount}", adrMsgTable^.ctReads, false)};
+		bundle { // replace response count
+			if lowerTemplate contains "{responsecount}" { // this may be time-consuming if there are lots of responses
+				s = string.replaceAll (s, "{responseCount}", countResponses (adrMsgTable), false)}};
+		bundle { // replace editLink 
+			if flShowEditButtons {
+				s = string.replaceAll (s, "{editLink}", getEditButtons (), false)}
+			else { // replace with the empty string
+				s = string.replaceAll (s, "{editLink}", "", false)}};
+		bundle { // replace discussLink -- this is the cowskull, and it's a mode flip
+			if flShowCowSkullLink {
+				s = string.replaceAll (s, "{discussLink}", cowskullLink, false)}
+			else { // replace with the empty string
+				s = string.replaceAll (s, "{discussLink}", "", false)}};
+		bundle { // replace internal link
+			local (internalLink);
+			internalLink = internalLink + "<a name=\"" + msgNum + "\">&nbsp;</a>";
+			internalLink = internalLink + "<a href=\"" + internalLinkUrl + msgNum + "?y=" + y + "&amp;m=" + m + "&amp;d=" + d + "\" title=\"Permanent link to this message in archives.\">";
+			internalLink = internalLink + "<img src=\"" + internalLinkImgUrl + "\" height=\"" + internalLinkImgHeight + "\" width=\"" + internalLinkImgWidth + "\" border=\"0\" alt=\"blueArrow\"></a>";
+			s = string.replaceAll (s, "{internalLink}", internalLink, false)};
+		bundle { // replace responseList
+			if lowerTemplate contains "{responselist}" { // short circuit if the template doesn't include a responseList macro because it may be time-consuming
+				local (responseList = "");
+				if flShowResponses {
+					bundle { // set default templates, headers, etc.
+						«It's not ideal, but we check to see if the value of mini-templates equals nil, and also that the type == typeOf (nil). That way we can tell the difference between the empty string and not having passed in a value. This is because the empty string equals nil, but its type is stringType, not typeOf (nil)
+						if responseListHeader == nil and typeOf (responseListHeader) == typeOf (nil) {
+							responseListHeader = "<p><hr><b>" + mainResponder.getString ("discuss.thereAreResponsesToThisMsg") + "</b></p>"};
+						if responseSubThreadStartTemplate == nil and typeOf (responseSubThreadStartTemplate) == typeOf (nil) {
+							responseSubThreadStartTemplate = "<ul>"};
+						if responseSubThreadEndTemplate == nil and typeOf (responseSubThreadEndTemplate) == typeOf (nil) {
+							responseSubThreadEndTemplate = "</ul>"};
+						if responseItemTemplate == nil and typeOf (responseItemTemplate) == typeOf (nil) {
+							responseItemTemplate = "<li><p><a href=\"{responseUrl}\">{responseSubject}</a>, {responseAuthor}, {responsePostTime}</p></li>"};
+						if responseFullItemTemplate == nil and typeOf (responseFullItemTemplate) == typeOf (nil) {
+							responseFullItemTemplate = responseItemTemplate}};
+					local (stack = {}); // keep track of which messages have been added to aviod infinite recursion
+					on addResponses (adrItem, level = 0) {
+						local (adrTable, msgNum, responseMember, i, ct = sizeOf (adrItem^.responses), itemHtml);
+						local (flFullMessage = level <= (depthToExpandResponses - 1) ); //level is zero-based but the pref is 1-based
+						
+						if not flFullMessage { //add threadSubStartTemplate
+							responseList = responseList + responseSubThreadStartTemplate};
+						
+						on addResponse () {
+							msgNum = adrItem^.responses [i];
+							if stack contains msgNum { //avoid infinite recursion
+								continue;
+								};
+							adrTable = mainResponder.discuss.getMessageTable (msgNum, pta, adrData);
+							if not defined (adrTable^) {
+								continue};
+							
+							local (flAddMessage = not mainResponder.discuss.isMessageDeleted (msgNum, adrTable, pta) );
+							«if flAddMessage
+								«if adrInDgCallback != nil
+									«flAddMessage = adrInDgCallback^ (adrTable)
+							if flAddMessage {
+								responseMember = mainResponder.members.getMemberName (membershipGroup, adrTable^.member);
+								
+								if flFullMessage {
+									itemHtml = responseFullItemTemplate;
+									if string.lower (responseFullItemTemplate) contains "{responsetext}" { //bump read count
+										adrTable^.ctReads++;
+										config.mainResponder.stats.ctDiscussionGroupReads++};
+									itemHtml = string.replaceAll (itemHtml, "{responseText}", adrTable^.body, false)}
+								else {
+									itemHtml = responseItemTemplate;
+									itemHtml = string.replaceAll (itemHtml, "{responseText}", "", false)};
+								itemHtml = string.replaceAll (itemHtml, "{replyUrl}", msgReaderUrl + msgNum + replyToThisSearchArgs, false);
+								itemHtml = string.replaceAll (itemHtml, "{responseUrl}", msgReaderUrl + msgNum + thisModeSearchArgs, false);
+								itemHtml = string.replaceAll (itemHtml, "{responseSubject}", adrTable^.subject, false);
+								itemHtml = string.replaceAll (itemHtml, "{responseAuthor}", obscureEmail (responseMember), false);
+								itemHtml = string.replaceAll (itemHtml, "{responsePostTime}", mainResponder.localization.dateTimeString (adrTable^.postTime, pta: pta), false);
+								itemHtml = string.replaceAll (itemHtml, "{responseMessageNumber}", adrTable^.msgNum, false);
+								
+								if responseIndentTemplate != "" { // work around kernel bug on windows: string.filledString ("", n) == crash.
+									responseList = responseList + string.filledString (responseIndentTemplate, level)};
+								responseList = responseList + itemHtml;
+								
+								if sizeof (adrTable^.responses) > 0 {
+									stack = stack + {adrTable^.msgNum};
+									addResponses (adrTable, level + 1);
+									delete (@stack [sizeof (stack)])}}};
+						if flResponsesInChronologicalOrder {
+							for i = 1 to ct {
+								addResponse ()}}
+						else {
+							for i = ct downTo 1 {
+								addResponse ()}};
+						
+						if not flFullMessage { //add subThreadEntTemplate
+							responseList = responseList + responseSubThreadEndTemplate};
+						};
+					if sizeOf (adrMsgTable^.responses) {
+						responseList = responseListHeader;
+						addResponses (adrMsgTable); //it's recursive
+						responseList = responseList + responseListFooter}};
+				s = string.replaceAll (s, "{responseList}", responseList, false)}};
+		bundle { // replace messageText
+			s = string.replaceAll (s, "{messageText}", getBody (adrMsgTable), false)};
+		bundle { // replace responseForm
+			local (responseForm = "", responseFormHeader = "<p><hr>", responseFormFooter = "");
+			if flMember and flShowResponseForm {
+				local (subject = adrMsgTable^.subject);
+				if not (string.lower (subject) beginswith string.lower (string.trimWhiteSpace (mainResponder.getString ("discuss.rePrefix")))) {
+					subject = mainResponder.getString ("discuss.rePrefix") + subject};
+				local (subjectprompt, buttontext, bodyprompt);
+				subjectprompt = mainResponder.getString ("discuss.responseSubjectPrompt");
+				buttontext = mainResponder.getString ("discuss.postResponseButtonText");
+				bodyprompt = mainResponder.getString ("discuss.responseBodyPrompt");
+				responseForm = responseFormHeader + mainResponder.discuss.newMessageForm (msgNum, subject, subjectprompt, buttontext, bodyprompt: bodyprompt, pta:pta) + responseFormFooter};
+			s = string.replaceAll (s, "{responseForm}", responseForm, false)};
+		bundle { // 11/03/00 JES: replace enclosureLink
+			if flShowEnclosures {
+				local (viewingUrl = pta^.responderAttributes.urls^.discussEnclosureViewer + msgNum);
+				local (listingLink = "<a href=\"" + viewingUrl + "\">" + mainResponder.getString ("discuss.viewEnclosure") + "</a>");
+				local (fatPageLink = "<a href=\"" + pta^.responderAttributes.urls^.discussEnclosureDownloader + msgNum + "\">" + mainResponder.getString ("discuss.fatPageEnclosure") + "</a>");
+				local (rpcLink = "<a href=\"" + pta^.responderAttributes.urls^.discussEnclosureRPCer + msgNum + "\">" + mainResponder.getString ("discuss.RPCenclosure") + "</a>");
+				
+				s = string.replaceAll (s, "{enclosureLink}", listingLink + ", " + fatPageLink + ", " + rpcLink, false)}
+			else {
+				s = string.replaceAll (s, "{enclosureLink}", "", false)}};
+		bundle { //replace ipAddress
+			local (ipAddress = "");
+			if defined (adrMsgTable^.ipAddress) {
+				ipAddress = adrMsgTable^.ipAddress};
+			s = string.replaceAll (s, "{ipAddress}", ipAddress, false)};
+		
+		add (s)};
+	
+	bundle { //set member info
+		«For every member, store the highest message read for the current discussion group.
+			«First make sure the discussionGroupInfo table exists for this member, then make sure there's a table for this dg, then set highestMessageRead for this dg for this member.
+		if flMember { //is this a member?
+			local (adrMember = pta^.adrMemberInfo);
+			
+			if not defined (adrMember^.discussionGroupInfo) {
+				new (tabletype, @adrmember^.discussionGroupInfo)};
+			
+			local (rootName = nameOf (adrData^));
+			local (adrTable = @adrMember^.discussionGroupInfo.[rootName]);
+			
+			if not defined (adrTable^) {
+				new (tableType, adrTable)};
+			if not defined (adrTable^.highestMessageRead) {
+				adrTable^.highestMessageRead = 0};
+			if msgNum > adrTable^.highestMessageRead {
+				adrTable^.highestMessageRead = msgNum}}};
+	
+	return (htmltext)}

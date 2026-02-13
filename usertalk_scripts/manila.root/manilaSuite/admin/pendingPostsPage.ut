@@ -1,0 +1,113 @@
+on pendingPostsPage () {
+	«Changes
+		«1/31/06; 4:24:43 PM by JES
+			«Created. List pending posts, with radio buttons to approve or delete.
+			«Only managing editors and content editors are allowed.
+	local (pta = html.getpagetableaddress ());
+	«bundle //testing
+		«workspace.pt = pta^; edit (@workspace.pt)
+	bundle { //managing/content editor test
+		if not manilaSuite.editors.managingEditorTest () {
+			if not manilaSuite.editors.contentEditorTest () {
+				scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}}};
+	
+	pta^.title = manilaSuite.getString ("admin.pendingPostsPageTitle");
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	
+	local (htext = "");
+	on add (s) {
+		htext = (htext + s + "\r");};
+	
+	add ("<p>" + manilaSuite.getString ("admin.pendingPostsPageDescription") + "</p>");
+	
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.submit) {
+			delete (@adrargs^.submit);
+			local (adr, ctApproved=0, ctDeleted=0);
+			for adr in adrargs {
+				«bundle //testing
+					«add (nameOf (adr^) + "=" + adr^ + "<br/>")
+				case adr^[1] {
+					'a' { //approve
+						local (msgnum = number (string.delete (adr^, 1, 1)));
+						local (adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrsite, msgnum));
+						if defined (adrmsg^.flPending) {
+							delete (@adrmsg^.flPending)};
+						local (catname = manilaSuite.discuss.getCategoryName ("pending", adrsite));
+						manilaSuite.discuss.removeCategoryFromMessage (adrmsg, catname, adrSite);
+						ctApproved++};
+					'd' { //delete
+						local (msgnum = number (string.delete (adr^, 1, 1)));
+						local (adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrsite, msgnum));
+						manilaSuite.discuss.changeMessageDeletion (adrmsg, pta^.adrMemberInfo, adrsite, true, false);
+						ctDeleted++}}};
+			local (replTable); new (tableType, @replTable);
+			replTable.ctDeleted = ctDeleted;
+			replTable.ctApproved = ctApproved;
+			add ("<p><b><i>" + manilaSuite.getString ("admin.approveDeleteConfirm", @replTable) + "</i></b></p>")}};
+	
+	add ("<form method=\"POST\">");
+	
+	bundle { //top-of-page submit button
+		add ("<p><input type=\"submit\" name=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\"></p>")};
+	
+	add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+	
+	«bundle //JavaScript to handle approve/delete all
+		«add ("<script language=\"javascript\">function toggle(s, v) {objs = document.getElementsByName(s); for(var i in objs) {objs[i].checked = v;}}</script>")
+	
+	bundle { //column headers
+		add ("<tr><td colspan=\"2\" align=\"center\"><b>" + manilaSuite.getString ("admin.approveDeleteHeader") + "</b></td><td><b>" + manilaSuite.getString ("admin.contentHeader") + "</b></td><td><b>" + manilaSuite.getString ("common.typeColumnName") + "</b></td></tr>")};
+	
+	local (ctPending = 0);
+	on radioButton (cmd, msgnum, label, onclick="") {
+		if onclick != "" {
+			onclick = " onclick=\"" + onclick + "\""};
+		cmd = cmd + msgnum;
+		return ("<nobr><input type=\"radio\" name=\"" + msgnum + "\" id=\"" + cmd + "\" value=\"" + cmd + "\" + onclick>&nbsp;<label for=\"" + cmd + "\">" + label + "</label></nobr>")};
+	
+	«bundle //approve/delete all radio buttons
+		«add ("<tr>")
+		«add ("<td>" + radioButton ("_a", 0, "(all)", "toggle('a',true);toggle('d',false)") + "</td>")
+		«add ("<td>" + radioButton ("_d", 0, "(all)", "toggle('d',true);toggle('a',false)") + "</td>")
+		«add ("</tr>")
+	
+	on renderOnePost (adrmsg) {
+		add ("<tr>");
+		
+		local (msgnum = adrmsg^.msgnum);
+		add ("<td valign=\"top\">" + radioButton ("a", msgnum, manilaSuite.getString ("common.approveButton")) + "</td>");
+		add ("<td valign=\"top\">" + radioButton ("d", msgnum, manilaSuite.getString ("common.deleteButton")) + "</td>");
+		«add ("</td>")
+		
+		add ("<td valign=\"top\">");
+		local (tooltip = manilaSuite.getString ("discuss.permalinkToMessage"));
+		local (msgUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsg));
+		local (msgLink = "<a href=\"" + msgUrl + "\" title=\"" + tooltip + "\">" + adrmsg^.subject + "</a>");
+		local (memberLink = manilaSuite.members.linkToMember (pta^.defaultMembershipGroup, adrmsg^.member));
+		add (msgLink + " (" + memberLink + ")<br />");
+		add (manilaSuite.news.getSummary (adrmsg, 300));
+		add ("</td>");
+		
+		add ("</tr>");
+		
+		ctPending++;
+		
+		return (true)};
+	manilaSuite.discuss.visitIndex (adrsite, "pending", @renderOnePost, flReverse:true);
+	
+	add ("</table>");
+	
+	if ctPending == 0 { //no pending posts message
+		add ("<p>" + manilaSuite.getString ("admin.noPendingPosts") + "</p>")}
+	else { //submit button
+		add ("<p><input type=\"submit\" name=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\"></p>")};
+	
+	add ("</form>");
+	
+	return (htext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«pendingPostsPage ()

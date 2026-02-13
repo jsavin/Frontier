@@ -1,0 +1,27 @@
+«Changes
+	«4/11/02; 1:05:46 AM by JES
+		«Removed "out of a possible" connection limit text. Added support for actual RAM and VRAM usage on M
+local (htmltext = "");
+on add (s) {
+	htmltext = htmltext + s};
+with user.webserver.stats {
+	add ("<b>Server up since: " + upsince + "; Hits: " + hits + ".</b><br>");
+	add ("Domain: " + tcp.dns.getMyDomainName () + "; IP Address: " + tcp.addressDecode (tcp.myAddress ()) + ".<br>");
+	bundle { //Frontier 6.1b14; Windows NT; Version: 5.0.2128.
+		add ("Frontier " + Frontier.version () + "; " + system.environment.osFullNameForDisplay);
+		if defined (system.environment.winServicePackNumber) {
+			add (" " + string.trimWhiteSpace (system.environment.winServicePackNumber) + "; ")}; //PBS 11/9/99: fixed white space formatting problem: sometimes winServicePackNumber has no white space, sometimes it does
+		add ("version " + system.environment.osVersionString + ".<br> ")};
+	add ("Maximum number of connections: " + maxConnections + ".<br>");
+	if defined (system.environment.isCarbon) and system.environment.isCarbon { //the way RAM works on MacOS X is totally different
+		local (psout = sys.unixShellCommand ("ps -auxww | grep \"" + file.fileFromPath (frontier.getProgramPath ()) + "\"") );
+		while psout contains "  " {
+			psout = string.replaceAll (psout, "  ", " ")};
+		local (memUsageMegabytes = double (string.nthField (psout, " ", 4)));
+		local (vram = number (string.nthField (psout, " ", 5)));
+		add ("Current memory usage: " + memUsageMegabytes + "MB; Virtual memory size: " + string.megabyteString (vram) + ".")}
+	else { //original Windows and Mac Classic behavior
+		add ("Current memavail: " + string.gigabytestring (memavail ()) + "; "); //PBS 11/9/99: get Frontier's available memory, not the available memory on the system. This makes it consistent with the smallest and largest, which both refer to Frontier's memory
+		add ("Smallest: " + string.megabytestring (minMemAvail) + "; ");
+		add ("Largest: " + string.megabytestring (maxMemAvail) + ".<br>")}};
+return (htmltext)

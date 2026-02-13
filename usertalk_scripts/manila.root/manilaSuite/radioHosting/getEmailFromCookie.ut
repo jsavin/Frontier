@@ -1,0 +1,26 @@
+on getEmailFromCookie (adremail) {
+	«Changes
+		«2/19/02; 6:46:33 PM by JS
+			«Created. Return true if we got the email address from the cookie, or false if not. Set adremail^ to the email address.
+	local (pta = html.getPageTableAddress ());
+	«workspace.pt = pta^; edit (@workspace.pt)
+	if not defined (pta^.requestHeaders.cookies) {
+		return (false)};
+	local (groupname = pta^.defaultMembershipGroup);
+	local (adrmembers = mainResponder.members.getMembershipTable (groupname));
+	local (cookieName = string.innerCaseName (adrmembers^.cookieName + "RadioComments"));
+	if not defined (pta^.requestHeaders.cookies.[cookieName]) {
+		return (false)};
+	local (adrusers = @adrmembers^.users);
+	local (cookieString = pta^.requestHeaders.cookies.[cookieName]);
+	local (s = string.urlDecode (cookieString));
+	if s != "" {
+		if defined (adrusers^.[s]) {
+			adremail^ = s;
+			return (true)}};
+	return (false)};
+«bundle //testing
+	«html.setPageTableAddress (@workspace.pt)
+	«if getEmailFromCookie (@email)
+		«dialog.alert (email)
+	«html.deletePageTableAddress ()

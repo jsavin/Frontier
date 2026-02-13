@@ -1,0 +1,12 @@
+«Changes
+	«Mon, 01 Mar 1999 13:13:46 GMT by AR
+		«This code was used all over the place.
+on dateToPathArgs (d) {
+	local (day, month, year, hour, minute, second);
+	date.get (d, @day, @month, @year, @hour, @minute, @second);
+	year = string (year);
+	month = string.padwithzeros (month, 2);
+	day = string.padwithzeros (day, 2);
+	return (year + '/' + month + '/' + day)};
+«bundle //test code
+	«dialog.alert (dateToPathArgs (clock.now ()))

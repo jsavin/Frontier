@@ -1,0 +1,41 @@
+on callbackLoop (adrCallbacks, adrparamtable, adrEarlyTerminate=nil) {
+	«manilaSuite.accessControl.callbackLoop : 04/05/21, 19:58:07 by DAB
+		«01/09/04, 09:45:56 by DAB - revised version to permit string values
+			«If the table isn't defined, do nothing.
+			«Ignore objects that aren't scripts. (This should cut down on the number of "item #1" errors that come when people leave callback tables open.)
+		«02/05/08, 17:10:58 by DAB  
+			«if the earlyTerminate script exists, call it with name of the callback entry global
+		«was manilaFixer.callbackLoop 
+	if defined (adrCallbacks^) {
+		local (adrScript);
+		local (infoTbl); //02/05/08, 17:09:56 by DAB
+		new(tabletype, @infoTbl);
+		local (callbackID); //02/05/08, 17:10:01 by DAB
+		local (sitename = ""); //mostly not needed
+		for adrScript in adrCallbacks {
+			try {
+				callbackID = nameOf(adrScript^); //02/05/08, 17:09:48 by DAB
+				if typeof(adrScript^) == stringType {
+					adrScript = @adrScript^^};
+				if   typeOf(adrScript^) == addressType {
+					while (typeof(adrScript^) == addresstype) {
+						adrScript = adrScript^}};
+				if  {scriptType, codetype} contains typeOf(adrScript^) {
+					callScript (adrScript, {}, adrparamtable); //scriptError to kill request
+					if adrEarlyTerminate != nil { //01/11/27, 09:29:02 by DAB
+						if adrEarlyTerminate^(callbackID) {
+							return false}}}}
+			else {
+				local (errorString = "Error in  callback:" + tryError); //better logging 01/12/22, 10:04:46 by DAB
+				if sitename == "" {
+					local (pta = html.getpagetableaddress());
+					local (adrSite= manilasuite.getmanilaSiteaddress(pta));
+					sitename = manilaSuite.getShortSiteName(manilasuite.getCanonicalSiteName(manilasuite.getManilaSiteAddress(pta)))};
+				local (adrLog = log.addToGuestDatabase(sitename));
+				adrLog^.error =errorString;
+				adrLog^.callbackTable = string.popFilefromAddress(adrCallbacks);
+				adrLog^.callbackScript = string.popFilefromAddress(adrScript);
+				if adrEarlyTerminate != nil { //01/11/27, 09:29:02 by DAB
+					adrLog^.earlyTerminate = string.popFilefromAddress(adrEarlyTerminate)}}}};
+	
+	return true}

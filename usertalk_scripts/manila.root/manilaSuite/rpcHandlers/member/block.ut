@@ -1,0 +1,19 @@
+on block (username, password, siteName, memberKey) {
+	«Block a member.
+	«Changes
+		«3/31/05; 3:57:51 AM by JES
+			«Call callbacks when a member is blocked.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't block member \"" + memberKey + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName)); //05/03/24, 22:58:09 by DAB
+	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
+	local (adrMember = mainResponder.members.getMemberTable (adrGroup, memberKey));
+	if not defined (adrMember^) {
+		scriptError ("Can't block \"" + memberKey + "\" because a member with that username does not exist.")};
+	adrMember^.blocked = true;
+	manilaSuite.members.callbacks(adrSite, adrGroup, adrMember, "block"); //05/03/24, 22:58:38 by DAB
+	
+	return (true)}

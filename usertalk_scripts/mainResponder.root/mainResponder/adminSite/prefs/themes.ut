@@ -1,0 +1,227 @@
+on themes () {
+	«Changes
+		«3/13/07; 2:25:42 PM by LL
+			«Add new button to scan theme folder so we can disable the thread to scan the Themes folder.
+		«5/7/06; 10:44:54 PM by JES
+			«Remember theme creation params, in case we're itterating.
+		«9/23/05; 2:54:08 AM by JES
+			«Better troubleshooting text on method not defined error when requesting a Theme form a remote server.
+		«9/23/05; 2:41:20 AM by JES
+			«Add Import Theme form to import a theme from any Manila 9.6 server.
+		«7/27/05; 5:20:17 AM by JES
+			«Added a link below the themes to the Add File page.
+		«9/5/02; 2:51:46 PM by JES
+			«Instead of putting explanatory text next to each list, display a simple header -- the explanatory text is in the prefs outline.
+		«8/20/02; 10:22:28 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (bgcolors = {pta^.trbg2, pta^.trbg1});
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	local (siteUrl, themeName, author, authorEmail, description);
+	on getThemeInfo () {
+		if defined (config.mainResponder.stats.lastThemeDownloadInfo) {
+			siteUrl = config.mainResponder.stats.lastThemeDownloadInfo.siteUrl;
+			themeName = config.mainResponder.stats.lastThemeDownloadInfo.themeName;
+			author = config.mainResponder.stats.lastThemeDownloadInfo.author;
+			authorEmail = config.mainResponder.stats.lastThemeDownloadInfo.authorEmail;
+			description = config.mainResponder.stats.lastThemeDownloadInfo.description}};
+	getThemeInfo ();
+	
+	on getShortName (s) {
+		local (allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789");
+		local (i, ct = sizeOf (s));
+		for i = ct downto 1 {
+			if not (allowed contains s[i]) {
+				s = string.delete (s, i, 1)}};
+		return (string.innerCaseName (s))};
+	on getThemeData (siteUrl, themeName, themeAuthor, themeAuthorEmail, themeDescription) {
+		local (theme, data);
+		local (flThisServer = false, sitename);
+		try { //manilaSuite.rpcUtils.urlToSiteName fails if the site is not on this server
+			sitename = manilaSuite.rpcUtils.urlToSiteName (siteUrl);
+			flThisServer = true};
+		if flThisServer {
+			data = manilaSuite.rpcHandlers.theme.getThemeData (siteUrl, themeName, themeAuthor, themeAuthorEmail, themeDescription)}
+		else { //try to get the theme from a remote server
+			local (urlparts = string.urlSplit (siteUrl));
+			local (theServer = "xmlrpc://" + urlparts[2] + "/RPC2");
+			data = [theServer].manila.theme.getThemeData (siteUrl, themeName, themeAuthor, themeAuthorEmail, themeDescription)};
+		data = binary (base64.decode (data));
+		setBinaryType (@data, tableType);
+		unpack (@data, @theme);
+		return (theme)};
+	on getThemeFileText (adr) {
+		local (filetext = "");
+		on add (s) {
+			filetext = filetext + s;};
+		add ("\r<!--\r#fatPage\r");
+		on addHint (name, value, flencode=false) {
+			local (s = string (value));
+			if flencode {
+				s = base64.encode (string (s), 0)};
+			add ("#" + name + " " + s + "\r")};
+		addHint ("version", 1);
+		addHint ("docs", "http://www.scripting.com/fatPages/faq.html");
+		addHint ("adrObject", string.popFileFromAddress (adr));
+		addHint ("netAddress", html.getPref ("serverNetAddress"));
+		addHint ("objectCreated", date.netStandardString (clock.now ()));
+		addHint ("objectModified", date.netStandardString (clock.now ()));
+		addHint ("lastBuildTime", date.netStandardString (clock.now ()));
+		addHint ("adrPageData", string.popFileFromAddress (adr));
+		addHint ("objectType", "application/x-frontier-tabl");
+		addHint ("pageData", fatPages.encodePageData (adr), true);
+		add ("-->\r");
+		return (filetext)};
+	on saveTheme (themeShortName, themeName) {
+		local (themefolder = Frontier.getSubFolder ("ops/themes/"));
+		local (fname = string.mid (themeShortName, 1, 26) + ".fttb");
+		local (adrThemeData = @config.manila.themes.[themeShortName]);
+		
+		file.writeWholeFile (themefolder + fname, getThemeFileText (adrThemeData));
+		
+		if not defined (adrThemeData^) {
+			new (tableType, adrThemeData)};
+		adrThemeData^.adr = @config.manila.themes.[themeShortName];
+		adrThemeData^.f = themefolder + fname;
+		if not defined (adrThemeData^.flEnabled) { //enabled by default
+			adrThemeData^.flEnabled = true}};
+	on enableOrDisableThemes (adrthemes, prefix) {
+		local (adr);
+		for adr in adrthemes {
+			if defined (adrargs^.[prefix + ":" + string.urlEncode (nameOf (adr^)) ] ) { //enabled
+				adr^.flEnabled = true}
+			else { //disabled
+				adr^.flEnabled = false}}};
+	
+	local (themeImportResult = "");
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.importTheme) {
+			try {
+				if not (adrargs^.siteUrl beginswith "http://") {
+					adrargs^.siteUrl = "http://" + adrargs^.siteUrl};
+				if not (adrargs^.siteUrl endswith "/") {
+					adrargs^.siteUrl = adrargs^.siteUrl + "/"};
+				local (themeShortName = getShortName (adrargs^.themeName));
+				with adrargs^ {
+					table.assign (@config.manila.themes.[themeShortName], getThemeData (siteUrl, themeName, themeAuthor, themeAuthorEmail, themeDescription))};
+				saveTheme (themeShortName, themeName);
+				bundle { //save info
+					if not defined (config.mainResponder.stats.lastThemeDownloadInfo) {
+						new (tableType, @config.mainResponder.stats.lastThemeDownloadInfo)};
+					config.mainResponder.stats.lastThemeDownloadInfo.siteUrl = adrargs^.siteUrl;
+					config.mainResponder.stats.lastThemeDownloadInfo.themeName = adrargs^.themeName;
+					config.mainResponder.stats.lastThemeDownloadInfo.author = adrargs^.themeAuthor;
+					config.mainResponder.stats.lastThemeDownloadInfo.authorEmail = adrargs^.themeAuthorEmail;
+					config.mainResponder.stats.lastThemeDownloadInfo.description = adrargs^.themeDescription};
+				getThemeInfo ();
+				manilaSuite.themes.scanFolder (); //PBS 06/06/00: load any new or updated themes
+				manilaSuite.themes.scanFolder (Frontier.getSubFolder ("ops/discussion group themes/"), @config.manila.discussionGroupThemes); //JES 10/26/00: load any new or updated themes
+				themeImportResult = "<b><font color=\"blue\">" + adrargs^.themeName + " imported successfully.</font></b>"}
+			else {
+				case true {
+					tryerror contains " error code 7:" { //method not defined
+						themeImportResult = "This server does not appear to support Theme exports. Verify that the server is running at least Manila 9.6, and that its Manila XML-RPC interface is enabled."};
+					tryerror contains "Poorly formed XML" { //not RPC server
+						themeImportResult = "This server does not appear to support Theme exports. Check the URL and try again."};
+					tryerror beginswith "The server, " { //other RPC error
+						local (ixColon = string.patternMatch (":", tryerror));
+						themeImportResult = string.delete (tryerror, 1, ixColon + 1)}}
+				else {
+					themeImportResult = tryerror};
+				bundle { //set defaults in case of an error
+					siteUrl = adrargs^.siteUrl;
+					themeName = adrargs^.themeName;
+					author = adrargs^.themeAuthor;
+					authorEmail = adrargs^.themeAuthorEmail;
+					description = adrargs^.themeDescription};
+				themeImportResult = "<b><font color=\"red\">Error importing theme: " + themeImportResult + "</font></b>"}}
+		else { //enable/disable Themes or DG Themes
+			enableOrDisableThemes (@config.manila.themes, "theme");
+			enableOrDisableThemes (@config.manila.discussionGroupThemes, "dgtheme");
+			if defined (adrargs^.scanForThemes) {
+				manilaSuite.themes.scanFolder (); //PBS 06/06/00: load any new or updated themes
+				manilaSuite.themes.scanFolder (Frontier.getSubFolder ("ops/discussion group themes/"), @config.manila.discussionGroupThemes)}}}; //JES 10/26/00: load any new or updated themes
+	
+	
+	add ("<table cellpadding=\"10\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr>");
+	add ("<td valign=\"right\" width=\"100%\">");
+	add ("<input type=\"submit\" name=\"scanForThemes\" value=\"Scan For New Themes\">");
+	add ("</td>");
+	add ("</tr></table>");
+	
+	add ("<table cellpadding=\"10\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr>");
+	
+	add ("<td valign=\"right\" width=\"60%\">");
+	bundle { //Manila Themes
+		add ("<p><b>Manila Themes</b></p>");
+		
+		add ("<table cellpadding=\"3\" cellspacing=\"0\" border=\"0\">");
+		bundle { //headers
+			add ("<tr><td></td><td><b>Theme</b></td><td><b>Author</b></td></tr>")};
+		
+		local (adrthemes = @config.manila.themes);
+		local (adr, ct = 0);
+		for adr in adrthemes {
+			local (name = nameOf (adr^));
+			local (checkedstring = "");
+			if adr^.flEnabled {
+				checkedstring = " checked"};
+			add ("<tr bgcolor=\"" + bgcolors[ (++ct % 2) + 1] + "\">");
+			add ("<td>&nbsp;&nbsp;<input type=\"checkbox\" name=\"theme:" + string.urlEncode (name) + "\"" + checkedstring + " />&nbsp;</td>");
+			add ("<td class=\"small\"><a href=\"" + adr^.info.siteUrl + "\" title=\"" + searchEngine.stripMarkup (string (adr^.info.description)) + "\">" + adr^.info.displayName + "</a></td>");
+			add ("<td class=\"small\" style=\"padding-right:10px\"><a href=\"mailto:" + adr^.info.authorEmail + "\">" + adr^.info.author + "</a></td>");
+			add ("</tr>")};
+		
+		add ("</table>")};
+	bundle { //Manila DG Themes
+		add ("<p><b>Discussion Group Themes</b></p>");
+		
+		add ("<table cellpadding=\"3\" cellspacing=\"0\" border=\"0\">");
+		bundle { //headers
+			add ("<tr><td></td><td><b>DG Theme</b></td><td><b>Author</b></td></tr>")};
+		
+		local (adrthemes = @config.manila.discussionGroupThemes);
+		local (adr, ct = 0);
+		for adr in adrthemes {
+			local (checkedstring = "");
+			if adr^.flEnabled {
+				checkedstring = " checked"};
+			local (name = nameOf (adr^));
+			add ("<tr bgcolor=\"" + bgcolors[ (++ct % 2) + 1] + "\">");
+			add ("<td>&nbsp;&nbsp;<input type=\"checkbox\" name=\"dgtheme:" + string.urlEncode (name) + "\"" + checkedstring + " />&nbsp;</td>");
+			add ("<td class=\"small\"><a href=\"" + adr^.info.siteUrl + "\" title=\"" + searchEngine.stripMarkup (string (adr^.info.description)) + "\">" + adr^.info.displayName + "</a></td>");
+			add ("<td class=\"small\"><a href=\"mailto:" + adr^.info.authorEmail + "\" style=\"padding-right:10px\">" + adr^.info.author + "</a></td>");
+			add ("</tr>")};
+		
+		add ("</table>")};
+	add ("</td>");
+	
+	add ("<td valign=\"top\">");
+	bundle { //Import Theme Form
+		add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\" width=\"50%\">");
+		
+		on tr (col1, col2) {
+			add ("<tr><td valign=\"top\">" + col1 + "</td><td>" + col2 + "</td></tr>")};
+		
+		tr ("", "<b>Import a Theme</b>");
+		if themeImportResult != "" {
+			add ("<tr><td colspan=\"2\">" + themeImportResult + "</td></tr>")};
+		tr ("<b>Source Site URL:</b>", "<input type=\"text\" name=\"siteUrl\" size=\"30\" value=\"" + siteUrl + "\">");
+		tr ("<b>Theme Name:</b>", "<input type=\"text\" name=\"themeName\" size=\"30\" value=\"" + themeName + "\">");
+		tr ("<b>Author:</b>", "<input type=\"text\" name=\"themeAuthor\" size=\"30\" value=\"" + author + "\">");
+		tr ("<b>Author Email:</b>", "<input type=\"text\" name=\"themeAuthorEmail\" size=\"30\" value=\"" + authorEmail + "\">");
+		tr ("<b>Description:</b>", "<textarea name=\"themeDescription\" rows=\"4\" cols=\"30\">" + description + "</textarea>");
+		tr ("", "<input type=\"submit\" name=\"importTheme\" value=\"Import Theme\">");
+		
+		add ("</table>");
+		
+		add ("<p><br>You can also add a Theme file to your server via the <a href=\"/addFile\">Add File</a> page.</p>")};
+	add ("</td>");
+	
+	add ("</tr></table>");
+	
+	return (htmltext)}

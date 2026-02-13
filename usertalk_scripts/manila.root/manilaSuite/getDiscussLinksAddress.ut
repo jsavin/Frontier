@@ -1,0 +1,9 @@
+on getDiscussLinksAddress (adrSite=nil, pta=nil) {
+	«Get the address for the discuss links.
+	
+	if adrSite != nil {
+		return (@adrSite^.["#newsSite"].discussLinks)};
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	return (@pta^.newsSite^.discussLinks)}

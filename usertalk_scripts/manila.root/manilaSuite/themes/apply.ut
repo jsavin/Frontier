@@ -1,0 +1,320 @@
+on apply (adrSite, themeName, flDefaultPages=false, adrTheme=nil, flNewSite=false, objectName=nil, flAddThemeLink=false, flAddPictures=true) {
+	«Changes:
+		«7/22/05; 3:00:08 PM by JES
+			«Fix a bug which caused sites to break when certain, older discussion group themes were applied.
+		«5/27/05; 3:09:29 AM by JES
+			«New parameter, flAddPictures. If true, then we add a DG message for all the items in the theme's pictures sub-table. We only add pictures that don't yet have a shortcut in the site. (They're referenced by shortcut name in {pictureRef} calls anyway, so let's not over-think -- theme designers should use relatively unique names to be safe.)
+		«9/12/03; 12:41:11 PM by JES
+			«If flDefaultPages is true and the default theme doesn't have a pages sub-table, use the one in manilaData.themes.default.
+		«3/31/03; 3:55:45 PM by JES
+			«If this is a new site, and news items are enabled, patch the templates to include message #3 for the about text instead of message #2. New news items sites have one more DG message in them for the initial news item, before the about page is created, which was causing an off-by-one bug in some themes.
+		«3/29/03; 1:49:51 PM by JES
+			«Work around a bug in the themes that shipped with Frontier 9.0 -- un-neuter the {permaLink} and {commentLink} psuedo-macros in the news items template.
+		«06/14/00; 4:49:48 PM by PBS
+			«Under some cases we don't want the cowskull specified in the theme, we want the calculated version. When the cowskull image is named /cowskull or /cowskull.gif assume what's wanted is the default cowskull image.
+			«When looking for a themeLink macro, we were checking for {themeLink () -- but sometimes people type {themeLink(). This caused double theme links at times. So now just look for {themeLink.
+			«objectName is a new optional parameter. If specified, set up only that object, not all objects. This supports the Restore to Default feature of the Advanced page and the emergency template restoration page.
+		«06/20/00; 10:14:39 PM by PBS
+			«For new sites, this was creating a second home page. Rather, it should just set the text and subject of the existing home page.
+		«10/23/00; 2:30:49 AM by JES
+			«Apply discussion group templates. Apply homepage template, making sure to set the pref for using the homepage template to false for themes that don't specify the pref.
+		«10/27/00; 3:51:49 AM by JES
+			«Only save theme application info if applying the entire theme.
+		«11/16/00; 3:28:02 PM by PBS
+			«Apply modules defined by the theme, if any.
+		«05/24/00; 2:42:50 PM by PBS
+			«Created. Set the theme for a Manila site. May be used to apply an entire theme or just one item in a theme.
+	
+	if not defined (config.manila.themes) { //make sure themes are initialized
+		manilaSuite.init ()};
+	
+	if adrTheme == nil { //it normally should be nil, unless the theme isn't stored in the config.manila.themes table
+		adrTheme = @config.manila.themes.[themeName]};
+	local (adrTable = @adrTheme^.appearance);
+	local (dgName = adrSite^.["#prefs"].discussionRoot);
+	local (adrDg);
+	manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrDg);
+	local (adrMessages = @adrDg^.messages);
+	
+	local (postTime, timeZone);
+	if manilaSuite.getSiteTimeZone (adrSite, @timeZone) {
+		postTime = manilaSuite.convertTime (clock.now (), timeZone)}
+	else {
+		postTime = clock.now ()};
+	
+	local (groupName = adrSite^.["#prefs"].defaultMembershipGroup);
+	local (memberKey);
+	memberKey = adrSite^.["#newsSite"].sysopMail;
+	if typeOf (memberKey) == listType {
+		memberKey = memberKey [1]};
+	
+	local (homePageUrl = adrSite^.["#ftpSite"].url);
+	local (urlParts = string.urlSplit (homePageUrl));
+	local (path = "/" + urlParts [3]);
+	
+	bundle { //set the prefs
+		
+		adrSite^.["#newsSite"].flUseHomePageTemplate = false; // 10/25/00 JES: make sure old themes don't use the homepage template
+		
+		local (adrItem);
+		for adrItem in adrTable {
+			local (itemName = nameOf (adrItem^));
+			if objectName != "" { //PBS 06/06/00: support for restore-to-default
+				if string.lower (itemName) != string.lower (objectName) {
+					continue}};
+			local (adrParent = @adrSite^.["#newsSite"]);
+			case string.lower (itemName) { //get item name and parent address
+				"alink";
+				"bgcolor";
+				"leftmargin";
+				"topmargin";
+				"marginheight";
+				"marginwidth";
+				"link";
+				"vlink";
+				"text";
+				"background" {
+					adrParent = @adrSite^.["#prefs"]};
+				"template" {
+					adrParent = adrSite;
+					itemName = "#template"};
+				"homepagetemplate" {
+					adrParent = adrSite;
+					itemName = "#homePageTemplate"};
+				"newsitemstemplate" {
+					adrParent = @adrSite^.["#newsSite"].newsItems;
+					if not defined (adrParent^) { //make sure newsItems table exists
+						new (tableType, adrParent)};
+					bundle { //JES 3/29/03: work around bug in themes shipped with 9.0 -- un-neuter the permaLink and commentLink macros
+						local (lowertemplate = string.lower (string (adrItem^)));
+						if lowertemplate contains "&#123;permalink&#125;" {
+							case typeOf (adrItem^) {
+								wptexttype {
+									wp.newTextObject (string.replaceAll (string (adrItem^), "&#123;permalink&#125;", "{permaLink}", false), adrItem)};
+								outlinetype {
+									op.newOutlineObject (string.replaceAll (string (adrItem^), "&#123;permalink&#125;", "{permaLink}", false), adrItem)};
+								stringtype {
+									adritem^ = string.replaceAll (string (adrItem^), "&#123;permalink&#125;", "{permaLink}", false)}}};
+						if lowertemplate contains "&#123;commentlink&#125;" {
+							case typeOf (adrItem^) {
+								wptexttype {
+									wp.newTextObject (string.replaceAll (string (adrItem^), "&#123;commentlink&#125;", "{commentLink}", false), adrItem)};
+								outlinetype {
+									op.newOutlineObject (string.replaceAll (string (adrItem^), "&#123;commentlink&#125;", "{commentLink}", false), adrItem)};
+								stringtype {
+									adritem^ = string.replaceAll (string (adrItem^), "&#123;commentlink&#125;", "{commentLink}", false)}}}};
+					itemName = "template"};
+				"activetopicicon";
+				"daylistfooter";
+				"daylistheader";
+				"daylistitemtemplate";
+				"daylisttemplate";
+				"daylisttemplateheader";
+				"daylisttemplateheader";
+				"daystopicsactive";
+				"daystopicslive";
+				"inactivetopicicon";
+				"msgtemplate";
+				"responseindenttemplate";
+				"responseitemtemplate";
+				"responselistfooter";
+				"responselistheader";
+				"responsesubthreadendtemplate";
+				"responsesubthreadstarttemplate";
+				"topicbased";
+				"topiclistfooter";
+				"topiclistheader";
+				"topiclistitemtemplate";
+				"topiclisttemplate";
+				"topicmsgtemplate";
+				"topictemplate";
+				"usericon" {
+					adrParent = @adrSite^.["#newsSite"].discussionGroup}};
+			
+			case string.lower (itemName) { //copy the pref: special cases for the template and cowskull image
+				"#template" {
+					local (s = string (adrItem^));
+					if flAddThemeLink { //JES 4/12/02: Respect the new optional parameter.
+						if not (string.lower (s) contains "{themelink") { //PBS 06/14/00: changed match string to account for people typing {themeLink() (note the missing space before the parentheses)
+							if not (string.lower (themeName) == "default") {
+								if not (string.lower (themeName) == "isp") {
+									s = string.replace (s, "</body>", "<p>{themeLink ()}\r</body>", false)}}}};
+					wp.newTextObject (s, @adrParent^.[itemName])};
+				"cowskullimage" { //PBS 06/14/00: if it's the default cowskull image, just delete it from the site and let the calculated default kick in
+					local (lowerItem = string.lower (string (adrItem^)));
+					if lowerItem contains "/cowskull\"" or lowerItem contains "/cowskull.gif\"" {
+						if defined (adrSite^.["#newsSite"].cowskullImage) {
+							delete (@adrSite^.["#newsSite"].cowskullImage)}}
+					else { //it's not the default, the theme is specifying a cowskull image
+						table.assign (@adrParent^.[itemName], adrItem^)}}}
+			else {
+				local (flTableCopy = false);
+				if defined (adrParent^.[itemName]) {
+					if typeOf (adrParent^.[itemName]) == typeOf (adrItem^) {
+						if typeOf (adrItem^) == tableType {
+							flTableCopy = true}}};
+				if flTableCopy {
+					table.copyContents (adrItem, @adrParent^.[itemName])}
+				else {
+					table.assign (@adrParent^.[itemName], adrItem^)}}}};
+	
+	bundle { //create the default pages if this is a new site
+		if flDefaultPages {
+			local (adrPages = @adrTheme^.pages);
+			if not defined (adrPages^) {
+				adrPages = @config.manila.themes.default.pages};
+			if not defined (adrPages^) {
+				adrPages = @manilaData.themes.default.pages};
+			local (pagesInfoTable);
+			new (tableType, @pagesInfoTable);
+			local (adrItem);
+			for adrItem in adrPages { //loop through all pages
+				if typeOf (adrItem^) == tableType { //page descriptions are tables
+					local (pageName = nameOf (adrItem^));
+					local (adrInfo = @pagesInfoTable.[pageName]);
+					new (tableType, adrInfo);
+					
+					local (adrDiscussLinks = @adrSite^.["#newsSite"].discussLinks);
+					on simpleAdd (subject, flStory=true, flHomePage=false, text="") {
+						local (msgNum);
+						
+						if flHomePage { //PBS 06/20/00: home page already exists, so set the text, don't create a new home page
+							msgNum = adrDiscussLinks^.homePageMsgNum;
+							local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)]);
+							adrMsgTable^.body = text;
+							adrMsgTable^.subject = subject;
+							homePagesCategory = adrSite^.["#newsSite"].homePagesListedIn;
+							adrMsgTable^.alsoListedIn = {homePagesCategory};
+							manilaSuite.discuss.setTimeZoneForMessage (adrMsgTable, timeZone)}
+						else {
+							msgNum = mainResponder.discuss.addMessage (subject, memberKey, 0, "", postTime:postTime, flcallback:false, adrRoot:adrDg, groupName:groupName, flEmptyBodyOk:true);
+							
+							«Make it a story and possibly a home page.
+							local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)]);
+							manilaSuite.discuss.setTimeZoneForMessage (adrMsgTable, timeZone);
+							local (storiesCategory, homePagesCategory);
+							storiesCategory = adrSite^.["#newsSite"].storiesListedIn;
+							adrMsgTable^.alsoListedIn = {};
+							if flStory {
+								adrMsgTable^.alsoListedIn = adrMsgTable^.alsoListedIn + storiesCategory};
+							
+							if text != "" {
+								adrMsgTable^.body = text}};
+						
+						return (msgNum)};
+					local (subject = adrItem^.title);
+					local (flStory = adrItem^.flStory);
+					local (flHomePage = adrItem^.flHomePage);
+					local (text = string (adrItem^.text));
+					local (msgNum = simpleAdd (subject, flStory, flHomePage, text));
+					if flHomePage {
+						adrDiscussLinks^.homePageMsgNum = msgNum};
+					adrInfo^.msgNum = msgNum}};
+			
+			bundle { //do calculated items
+				local (siteUrlPrefix = string.popTrailing (path, '/'));
+				local (navigatorText = string (adrPages^.navigator));
+				local (siteStructureText = string (adrPages^.siteStructure));
+				on replaceSitePrefix (s) {
+					s = string.replaceAll (s, "[siteUrlPrefix]", siteUrlPrefix, false);
+					return (s)};
+				navigatorText = replaceSitePrefix (navigatorText);
+				
+				for adrItem in @pagesInfoTable { //replace msgNums in site structure
+					local (pageName = nameOf (adrItem^));
+					local (msgNum = adrItem^.msgNum);
+					siteStructureText = string.replaceAll (siteStructureText, "[" + nameOf (adrItem^) + "PageMsgNum]", msgNum, false)};
+				
+				wp.newTextObject (siteStructureText, @adrSite^.["#hierarchy"].outline);
+				wp.newTextObject (navigatorText, @adrSite^.["#navigator"].outline)};
+			
+			try { //news items sites: patch includeMessage macros in templates to use msg #3 instead of #2 for about text
+				local (flNewsItemSite = false);
+				if defined (adrSite^.["#newsSite"].flNewsItemSite) {
+					flNewsItemSite = adrSite^.["#newsSite"].flNewsItemSite};
+				if flNewsItemSite {
+					on patchTemplate (adrtemplate) {
+						if defined (adrtemplate^) {
+							local (template = string (adrtemplate^));
+							template = string.replaceAll (template, "{includeMessage (2,", "{includeMessage (3,", false);
+							template = string.replaceAll (template, "{includeMessage(2,", "{includeMessage(3,", false);
+							template = string.replaceAll (template, "{includeMessage (2)", "{includeMessage (3)", false);
+							template = string.replaceAll (template, "{includeMessage(2)", "{includeMessage(3)", false);
+							wp.newTextObject (template, adrtemplate)}};
+					patchTemplate (@adrSite^.["#template"]);
+					patchTemplate (@adrSite^.["#homePageTemplate"])}}}};
+	
+	bundle { //create pictures if the theme includes them, and they don't already exist
+		if flAddPictures {
+			picturesCategory = adrSite^.["#newsSite"].picturesListedIn;
+			local (adrgloss = @adrsite^.["#glossary"]);
+			local (adrpics = @adrTheme^.pictures);
+			if defined (adrpics^) {
+				local (adrpic);
+				for adrpic in adrpics { //loop over pictures
+					local (fname = adrpic^.shortcut);
+					if fname contains " " {
+						fname = string.innerCaseName (fname)};
+					if not (fname contains ".") {
+						local (ext = "");
+						case adrpic^.mimeType {
+							"image/jpeg";
+							"image/jpg" {
+								ext = ".jpg"};
+							"image/gif" {
+								ext = ".gif"}};
+						fname = fname + ext};
+					if not defined (adrgloss^.[adrpic^.shortcut]) {
+						msgNum = mainResponder.discuss.addMessage (adrpic^.shortcut, memberKey, 0, "", postTime:postTime, flcallback:false, adrRoot:adrDg, groupName:groupName, flEmptyBodyOk:true);
+						local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)]);
+						adrMsgTable^.alsoListedIn = {picturesCategory};
+						adrMsgTable^.image = adrpic^;
+						manilaSuite.pictures.writeToDisk (adrMsgTable, fname, adrpic^.mimeType);
+						manilaSuite.pictures.createNewShortcut (adrMsgTable);
+						manilaSuite.discuss.addToIndexes (adrSite, adrMsgTable)}}}}};
+	
+	bundle { //PBS 11/13/00: add modules
+		local (adrTable = @adrTheme^.modules);
+		if defined (adrTable^) {
+			local (adrModules = @adrSite^.["#newsSite"].modules);
+			if not defined (adrModules^) {
+				new (tableType, adrModules)};
+			if not defined (adrTable^) {
+				adrTable = @config.manila.themes.default.modules};
+			local (adrItem);
+			for adrItem in adrTable { //loop through all modules
+				if typeOf (adrItem^) == tableType { //module descriptions are tables
+					local (name = nameOf (adrItem^));
+					if defined (adrModules^.[name]) { //skip if defined
+						continue};
+					local (adrModule = @adrModules^.[name]);
+					
+					local (adrMessages = @adrDg^.messages);
+					on simpleAdd (subject, text="") {
+						local (msgNum);
+						msgNum = mainResponder.discuss.addMessage (subject, memberKey, 0, "", postTime:postTime, flcallback:false, adrRoot:adrDg, groupName:groupName, flEmptyBodyOk:true);
+						
+						local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)]);
+						adrMsgTable^.alsoListedIn = {"modules"};
+						manilaSuite.discuss.setTimeZoneForMessage (adrMsgTable, timeZone);
+						
+						if text != "" {
+							adrMsgTable^.body = text};
+						
+						return (msgNum)};
+					local (subject = adrItem^.title);
+					local (text = string (adrItem^.text));
+					local (msgNum = simpleAdd (subject, text));
+					new (tableType, adrModule);
+					adrModule^.msgNum = msgNum}}}};
+	
+	bundle { //save the info in the site
+		if objectName == nil { //JES 10/26/00: don't store info when restoring a default
+			if not defined (adrSite^.["#themes"]) {
+				new (tableType, @adrSite^.["#themes"])};
+			adrSite^.["#themes"].lastThemeApplied = themeName}};
+	
+	bundle { //call the callbacks
+		manilaSuite.callbacks.applyThemeCallback (adrSite, adrTheme, flNewSite, objectName)};
+	
+	return (true)}

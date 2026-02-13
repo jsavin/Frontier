@@ -1,0 +1,24 @@
+on checkOut (username, password, siteName, msgNum) {
+	«Check out a message prior to editing it.
+		«10/07/00; 1:41:03 PM by PBS
+	«Changes:
+		«12/17/00; 5:23:04 PM by JES
+			«Fixed bug where subject was not defined when checking custody of the message.
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't checkout message \"" + msgNum + "\" because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum, adrroot:adrDiscuss));
+	local (adrSite = config.manila.sites.[siteName]);
+	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
+	local (adrMembers = @adrGroup^.users);
+	local (adrMember = @adrMembers^.[username]);
+	
+	bundle { //PBS 02/10/00: make this message isn't checked out by someone else
+		if not (manilaSuite.rpcUtils.memberCanCheckOut (username, password, adrMsg, siteName, true)) { //true because this is a message
+			scriptError ("Can't check out \"" + adrMsg^.subject + "\" because it's being edited by another member.")}}; //12/17/00 JES: use adrMsg^.subject, not subject
+	manilaSuite.rpcUtils.authorCheck (siteName, username, adrMsg);
+	
+	return (manilaSuite.custody.checkOut (adrMsg, adrMember, adrSite, true))}

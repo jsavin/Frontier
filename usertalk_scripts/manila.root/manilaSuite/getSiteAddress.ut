@@ -1,0 +1,7 @@
+on getSiteAddress (pta=nil) {
+	«Get the address of the root of this Manila site.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	return (pta^.adrSiteRootTable)}

@@ -1,0 +1,54 @@
+on getHomepageArchiveText (msgNum, adrSite=nil) {
+	«Get the text of the homepage archive, given a news item's message number
+		«This script doesn't do any formatting. The text it returns is for search engine indexing.
+		«This script can be called from outside the page rendering context if adrSite is not nil.
+		«msgNum can be any posted message for a given day, not just the most recent one.
+		«07/12/00; 5:29:53 PM by JES
+	
+	if adrSite == nil { // get the site address if not passed in
+		adrSite = manilaSuite.getSiteAddress ()};
+	
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+	local (adrMsg = manilaSuite.discuss.getMessageTable (msgNum, adrSite));
+	local (homepageText);
+	
+	bundle { // reality checks
+		if not defined (adrMsg^) {
+			scriptError ("Can't get the text of the archived homepage because there is no message " + msgNum + ".")};
+		if not defined (adrMsg^.newsItem) {
+			scriptError ("Can't get the text of the archived homepage because message " + msgNum + " is not a news item.")};
+		if not defined (adrMsg^.newsItem.postTime) {
+			scriptError ("Can't get the text of the archived homepage because message " + msgNum + " hasn't been posted to the homepage.")}};
+	
+	on getDay (d) {
+		local (day, month, year, hour, minute, second);
+		date.get (d, @day, @month, @year, @hour, @minute, @second);
+		return (date.set (day, month, year, 0, 0, 0))};
+	
+	local (day = getDay (adrMsg^.postTime));
+	local (adrPostOrder = @adrNewsSite^.newsItems.postOrder);
+	local (ct = sizeOf (adrPostOrder^));
+	
+	on add (s) {
+		homepageText = homepageText + s + " "};
+	on addItem (msgNum) {
+		local (adrMsg = manilaSuite.discuss.getMessageTable (msgNum, adrSite));
+		local (adrNewsItem = @adrMsg^.newsItem);
+		local (adrMember = manilaSuite.members.getMemberTableFromSiteAddress (adrSite, adrMsg^.member));
+		add (adrNewsItem^.title);
+		add (adrNewsItem^.url);
+		add (adrNewsItem^.description);
+		if defined (adrMember^.personalInfo.name) and adrMember^.personalInfo.name != "" {
+			add (adrMember^.personalInfo.name)}
+		else {
+			add (adrMsg^.member)}};
+	
+	local (postTime);
+	for i = ct downto 1 {
+		postTime = getDay (string.nthField (nameOf (adrPostOrder^[i]), tab, 2));
+		if postTime < day { // short-sircuit the loop after the day's last message
+			break};
+		if postTime == day {
+			addItem (adrPostOrder^[i])}};
+	
+	return (homepageText)}

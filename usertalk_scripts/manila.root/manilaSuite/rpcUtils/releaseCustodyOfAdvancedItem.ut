@@ -1,0 +1,21 @@
+on releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName) {
+	«Release custody of an advanced item.
+		«02/11/00; 11:08:14 AM by PBS
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't release custody of the " + itemName + " because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	on doError () {
+		scriptError ("Can't release custody of the " + itemName + " because another member has checked it out.")};
+	
+	if not (manilaSuite.rpcUtils.memberCanCheckOut (username, password, adrObject, siteName, false)) { //false because it's not a message
+		doError ()};
+	
+	local (fl);
+	fl = manilaSuite.rpcUtils.checkIn (username, password, adrObject, siteName, false); //false because it's not a message
+	
+	if not fl {
+		doError ()};
+	
+	return (true)}

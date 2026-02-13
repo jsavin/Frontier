@@ -1,0 +1,2 @@
+on setNews (username, password, sitename, newstext) {
+	return (mainResponder.news.setTodaysNews (username, password, sitename, newstext))}

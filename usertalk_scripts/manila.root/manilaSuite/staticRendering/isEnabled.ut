@@ -1,0 +1,18 @@
+on isEnabled (adrSite) {
+	«Return true if this site has turned on static rendering. If flStaticRenderingEnabled is true in the #newsSite table, then static rendering is on -- if it's also on for this server.
+		«There is an additional pref -- flStaticRenderingAlwaysAvailable -- that can be used to over-ride the server setting. This deliberately cannot be set through the Manila UI. It allows a server manager to define exceptions: static rendering may be off for all sites via the server setting but one or just a few sites can have static rendering on anyway.
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	if not defined (adrNewsSite^.flStaticRenderingEnabled) {
+		adrNewsSite^.flStaticRenderingEnabled = false};
+	if not defined (adrNewsSite^.flStaticRenderingAlwaysAvailable) {
+		adrNewsSite^.flStaticRenderingAlwaysAvailable = false};
+	
+	if manilaSuite.staticRendering.serverAllowsStaticRendering () {
+		return (adrNewsSite^.flStaticRenderingEnabled)};
+	
+	«Static rendering is off at the server level, but this site may be an exception.
+	if adrNewsSite^.flStaticRenderingAlwaysAvailable {
+		return (adrNewsSite^.flStaticRenderingEnabled)};
+	
+	return (false)}

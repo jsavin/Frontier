@@ -1,0 +1,23 @@
+on sendToWorkstation () {
+	
+	local (pta = html.getPageTableAddress ());
+	local (discussRoot = pta^.postargs.discussRoot);
+	local (msgnum = pta^.postargs.msgnum);
+	local (referer = pta^.postargs.referer);
+	local (client = pta^.client);
+	
+	if not mainResponder.editorial.clientIsMessageAuthor (discussRoot, msgnum) {
+		scriptError ("Can't open this document because " + userName + " does not have editorial privileges.")};
+	
+	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+	local (docTable = adrmsg^);
+	doctable.previewURL = referer;
+	doctable.discussRoot = discussRoot;
+	mainResponder.editorial.cleanDocTableForExport (@doctable);
+	
+	local (params = {doctable});
+	betty.rpc.client (client, 80, "workstation.open", @params);
+	
+	mainResponder.redirect (referer);
+	
+	return (true)}

@@ -1,0 +1,11 @@
+on getDepartmentList (adrDepartments) {
+	«Get the active department names as a list.
+		«04/19/00; 10:52:45 PM by PBS
+	
+	local (departmentList = {});
+	local (adrItem);
+	for adrItem in adrDepartments {
+		local (itemName = nameOf (adrItem^));
+		departmentList = departmentList + itemName};
+	
+	return (departmentList)}

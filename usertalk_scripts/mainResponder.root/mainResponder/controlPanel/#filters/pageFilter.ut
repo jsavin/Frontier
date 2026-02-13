@@ -1,0 +1,2 @@
+on pageFilter (adrPageTable) {
+	return (true)}

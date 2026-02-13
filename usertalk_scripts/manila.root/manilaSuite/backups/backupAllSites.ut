@@ -1,0 +1,60 @@
+on backupAllSites () {
+	«Changes
+		«11/1/05; 2:46:26 AM by JES
+			«Change call to tcp.sendMail to manilaSuite.sendMail.
+		«10/15/04; 11:45:01 PM by JES
+			«Skip sites which are not defined.
+				«Change recommended by David Bayly.
+		«6/26/02; 6:56:02 PM by JES
+			«Created.
+	local (adrsites = @config.manila.backups.sites);
+	local (backupFolder = config.manila.backups.backupFolder);
+	local (adr, data, ctsites = 0);
+	new (tabletype, @data);
+	for adr in adrsites { //do the backups
+		if adr^.flEnabled {
+			local (adrsite = adr^.adrsite); //03/03/06, 11:18:45 by DAB
+			if not defined (adrsite^) { //03/03/06, 11:18:48 by DAB: skip undefined sites
+				continue};
+			ctsites++;
+			local (adrdata = @data.[adrsite] );
+			new (tableType, adrdata);
+			local (sitename = nameOf (adrsite^));
+			try {sitename = manilaSuite.getNewsSitePref ("siteName", adrsite)};
+			adrdata^.sitename = sitename;
+			adrdata^.siteurl = manilaSuite.getSiteUrl (adrsite);
+			try {
+				manilaSuite.backups.backupOneSite (adrsite, adrdata, backupFolder);
+				adrdata^.flError = false;
+				adr^.whenLastBackedUp = clock.now ()}
+			else {
+				adrdata^.flError = true;
+				adrdata^.error = tryError}}};
+	
+	if ctsites > 0 { //send email notification
+		local (htmltext = "", indentlevel = 0);
+		on add (s) {
+			htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r"};
+		add ("<html>"); indentlevel++;
+		add ("<body>"); indentlevel++;
+		add ("<table width=\"450\">"); indentlevel++;
+		bundle { //header
+			add ("<tr><td><b>Website</b></td><td align=\"right\"><b>Files</b></td><td align=\"right\"><b>Backed up</b></td><td align=\"right\"><b>Size</b></td><td align=\"right\"><b>Errors</b></td></tr>")};
+		for adr in @data { //add sites successfully backed up
+			if not adr^.flError {
+				local (sitelink = html.getLink (adr^.sitename, adr^.siteurl));
+				add ("<tr><td>" + sitelink + "&nbsp;&nbsp;</td><td align=\"right\">" + adr^.ctfiles + "</td><td align=\"right\">" + adr^.ctfilesbackedup + "</td><td align=\"right\">" + string.megabytestring (adr^.ctbytesbackedup) + "</td><td align=\"right\">" + adr^.cterrors + "</td></tr>")}};
+		add ("</table>"); indentlevel--;
+		add ("</body>"); indentlevel--;
+		add ("</html>"); indentlevel--;
+		
+		for adr in @data { //add sites that had top-level errors
+			if adr^.flError {
+				local (sitelink = html.getLink (adr^.sitename, adr^.siteurl));
+				add ("<p>Error backing up " + sitelink + ": " + adr^.error + "</p>")}};
+		
+		manilaSuite.sendMail (config.manila.backups.notifyList, "Daily Manila backup for " + tcp.dns.getmydottedid (), htmltext, mimetype:"text/html")};
+	
+	return (true)};
+«bundle //test code
+	«backupAllSites ()

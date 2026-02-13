@@ -1,0 +1,357 @@
+on maintainCohorts (adrflChangedCohorts) { //03/08/11, 13:38:39 by DAB
+	«Changes
+		«2/22/06; 7:39:59 PM by JES
+			«Reformat HTML to match the rest of the admin page.
+		«04/05/20, 17:32:08 by DAB
+			«create and process data for cohort mainteance 
+			«was manilaFixer.accessControl.maintainCohorts : 02/02/21, 17:04:03 by DAB
+			«messages at manilaSuite.data.localisation.English.strings.accessControl
+	local (pta = html.getPageTableAddress());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	local (adrMemberInfo = manilaSuite.AccessControl.getMemberInfoAddress(pta, "accesscontrol", true)); //02/08/04, 10:24:41 by DAB
+	
+	local (adminUrl = manilaSuite.getUrl ("editorialAdmin", pta));
+	if pta^.searchArgs != "" {
+		adminUrl = adminUrl + "?" + pta^.searchArgs};
+	
+	manilaSuite.accessControl.buildDefaultCohorts(adrCohorts);
+	
+	local (separatorColor, separatorTextColor);
+	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (replTbl);
+	bundle { //02/03/24, 10:16:42 by DAB
+		new(tabletype, @replTbl)};
+	
+	add(manilaSuite.getString("accessControl.maintainCohortsHelpText", pta:pta)); //02/03/24, 10:15:18 by DAB
+	
+	local ( errCntr = 0); //02/08/03, 18:14:41 by DAB
+	on statusReport(errID, hue = "green") { //02/08/03, 18:14:55 by DAB
+		add("<p>");
+		add("<font color='" + hue + "'>" + manilaSuite.getString("accessControl." + errID, @replTbl, pta:pta)+ "</font>");
+		add("</p>");
+		return true};
+	
+	on errorReport(errID) { //02/08/03, 18:41:23 by DAB
+		statusReport(errID, "red");
+		errCntr++;
+		return true};
+	
+	local (targetCohort = "");
+	local (sourceCohort="Everyone");
+	bundle { //compute sourceCohort, if set as pref
+		case true { //try for personal last used, then global default, else Everyone
+			defined(adrMemberInfo^.lastSource) and defined(adrCohorts^.[adrMemberInfo^.lastSource]) {
+				sourceCohort = adrMemberInfo^.lastSource};
+			defined(adrNewsSite^.accessControl.defaultSource) and defined(adrCohorts^.[adrNewsSite^.accessControl.defaultSource]) {
+				sourceCohort = adrNewsSite^.accessControl.defaultSource}}};
+	
+	if pta^.method == "POST" {
+		local (dt = timeModified(adrCohorts)); //03/08/11, 13:38:18 by DAB
+		case true {
+			defined(pta^.postArgs.addcohort) {
+				local (s = string.trimWhiteSpace(pta^.postargs.newcohort));
+				replTbl.cohort = s;
+				case true {
+					s != string.dropNonAlphas(s) {
+						errorReport("errAddInvalidID")};
+					defined(adrCohorts^.[s]) {
+						errorReport("errAddAlreadyExists")}}
+				else {
+					targetCohort = s;
+					new(tabletype, @adrCohorts^.[s]);
+					adrCohorts^.[s].name = s;
+					adrCohorts^.[s].default = false;
+					adrCohorts^.[s].systemdefinition = false;
+					new(tabletype, @adrCohorts^.[s].memberdata);
+					adrCohorts^.[s].containsTest = manilaSuite.accessControl.genericContainsTest;
+					script.compile(@adrCohorts^.[s].containsTest);
+					statusReport("noteCohortAdded")}}; //02/08/03, 18:43:28 by DAB
+			defined(pta^.postArgs.deletecohort) {
+				local (s = string.trimWhiteSpace(pta^.postargs.cohortToDelete));
+				replTbl.cohort = s;
+				if not defined (adrCohorts^.[s]) {
+					errorReport("errDeleteDoesntExist")}
+				else {
+					delete(@adrCohorts^.[s]);
+					statusReport("noteCohortDeleted")}}; //02/08/03, 18:43:34 by DAB
+			defined(pta^.postArgs.modifycohort) {
+				local (s = string.trimWhiteSpace(pta^.postargs.cohortToModify));
+				replTbl.cohort = s;
+				if not defined (adrCohorts^.[s]) {
+					errorReport("errModifyDoesntExist")};
+				targetCohort = s};
+			defined(pta^.postArgs.setDefaultsource) {
+				local (s = string.trimWhiteSpace(pta^.postargs.defaultCohort));
+				replTbl.cohort = s;
+				if not defined (adrCohorts^.[s]) {
+					errorReport("errSetDoesntExist")};
+				local (flOKToMakeDefault = false);
+				case s {
+					"Everyone";
+					"Members Only" {
+						flOKToMakeDefault = sizeOf(adrGroup^.users) <= 512};
+					"Managing Editors Only";
+					"Editors Only" {
+						flOKToMakeDefault = true}}
+				else {
+					flOKToMakeDefault = sizeOf(adrCohorts^.[s].memberdata) <= 512};
+				if flOKToMakeDefault {
+					adrNewsSite^.accessControl.defaultSource = s}
+				else {
+					errorReport("errSetCohortTooBig")}};
+			defined(pta^.postArgs.setsource) {
+				sourceCohort = pta^.postArgs.sourceCohort;
+				if not defined(adrCohorts^.[sourceCohort]) {
+					repltbl.sourceCohort = sourceCohort;
+					errorReport("errMissingSourceCohort")}
+				else {
+					adrMemberInfo^.lastSource = sourceCohort};
+				local (s = string.trimWhiteSpace(pta^.postargs.cohortToModify));
+				replTbl.cohort = s;
+				if not defined (adrCohorts^.[s]) {
+					errorReport("errModifyDoesntExist")};
+				targetCohort = s};
+			defined(pta^.postArgs.cohortTomember) {
+				sourceCohort = pta^.postArgs.sourceCohort;
+				if not defined(adrCohorts^.[sourceCohort]) {
+					repltbl.sourceCohort = sourceCohort;
+					errorReport("errMissingSourceCohort")}
+				else {
+					adrMemberInfo^.lastSource = sourceCohort};
+				local (lastSource = pta^.postArgs.cohortbeingDisplayed);
+				local (cohort = string.trimWhiteSpace(pta^.postargs.cohortbeingModified));
+				replTbl.cohort = cohort;
+				if not defined (adrCohorts^.[cohort]) {
+					errorReport("errModifyDoesntExist")}
+				else {
+					targetCohort = cohort;
+					if lastSource == sourceCohort {
+						local (members = pta^.postargs.memberToDelete);
+						if typeof(members) != listType {
+							members = list(members)};
+						local (member, cnt=0);
+						for member in members {
+							if not defined (adrCohorts^.[cohort].memberdata.[member]) {
+								«replttbl.member = string.replace(member, "@", "\\@")    //02/08/03, 18:48:38 by DAB
+								repltTbl.member =  string.replace(member, "@", "\\@") «05/04/28, 13:59:37 by DAB
+									«replttbl.member = member;
+								errorReport("errModifyNoMember")}
+							else {
+								delete(@adrCohorts^.[cohort].memberdata.[member]);
+								cnt++}};
+						
+						replTbl.deletecnt = cnt;
+						statusReport("noteCohortMembersDeleted")}}};
+			defined(pta^.postArgs.membertochohort) {
+				sourceCohort = pta^.postArgs.sourceCohort;
+				if not defined(adrCohorts^.[sourceCohort]) {
+					repltbl.sourceCohort = sourceCohort;
+					errorReport("errMissingSourceCohort")}
+				else {
+					adrMemberInfo^.lastSource = sourceCohort};
+				local (lastSource = pta^.postArgs.cohortbeingDisplayed);
+				local (cohort = string.trimWhiteSpace(pta^.postargs.cohortbeingModified));
+				
+				replTbl.cohort = cohort;
+				if not defined (adrCohorts^.[cohort]) {
+					errorReport("errModifyDoesntExist")}
+				else {
+					targetCohort = cohort;
+					if lastSource == sourceCohort {
+						local (members = pta^.postargs.memberToAdd);
+						local (now = clock.now());
+						
+						if typeof(members) != listType {
+							members = list(members)};
+						local (member, cnt=0);
+						for member in members {
+							if not defined (adrCohorts^.[cohort].memberdata.[member]) {
+								adrCohorts^.[cohort].memberdata.[member] = now;
+								cnt++}};
+						
+						replTbl.Addcnt = cnt;
+						statusReport("noteCohortMembersAdded")}}}};
+		if dt != timeModified(adrCohorts) { //03/08/11, 13:38:22 by DAB
+			adrflChangedCohorts^ = true}};
+	
+	local (userCohorts = {});
+	bundle {
+		local (adr);
+		for adr in adrCohorts {
+			if defined(adr^.systemdefinition) and adr^.systemdefinition {
+				continue};
+			userCohorts[0] = string.popfileFromAddress(adr)}};
+	
+	bundle { //build form(s)
+		add("<form action='" + adminURL+ "#cohorts' method='post' name='maintainCohorts' id='maintainCohorts'>");
+		add("<table>");
+		
+		bundle { //row for add
+			add("\r\t<tr>");
+			add("\r\t<td>");
+			add(manilaSuite.getString("accessControl.addCohort", pta:pta)); //02/03/24, 10:03:48 by DAB
+			add("</td>");
+			add("\r\t<td>");
+			add("\r\t\t<input type='text' name='newcohort' value=''>");
+			add("</td>");
+			add("\r\t<td>");
+			add("\r\t\t<input type='submit' value='" + manilaSuite.getString("accessControl.buttonAddCohort", pta:pta) + "' name='addcohort'>"); //02/03/24, 10:06:04 by DAB
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		if sizeOf(userCohorts) > 0 { //row for delete
+			add("\r\t<tr>");
+			add("\r\t<td>");
+			add(manilaSuite.getString("accessControl.deleteCohort", pta:pta)); //02/03/24, 10:03:48 by DAB
+			add("</td>");
+			add("\r\t<td>");
+			add("\r\t\t<select name='cohortToDelete'>");
+			local (itm, adr, selex);
+			for itm in userCohorts {
+				adr = address(itm);
+				selex = "";
+				if adr^.name == targetCohort {
+					selex = " selected"};
+				add("\r\t\t\t<option value='" + adr^.name + "'" + selex + ">" + adr^.name + "</option>")};
+			add("\r\t\t</select>");
+			add("</td>");
+			add("\r\t<td>");
+			add("\r\t\t<input type='submit' value='" + manilaSuite.getString("accessControl.buttonDeleteCohort", pta:pta) + "' name='deletecohort'>"); //02/03/24, 10:06:04 by DAB
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		if sizeOf(userCohorts) > 0 { //row for modify
+			add("\r\t<tr>");
+			add("\r\t<td>");
+			add(manilaSuite.getString("accessControl.modifyCohort", pta:pta)); //02/03/24, 10:03:48 by DAB
+			add("</td>");
+			add("\r\t<td>");
+			add("\r\t\t<select name='cohortToModify'>");
+			local (itm, adr, selex);
+			for itm in userCohorts {
+				adr = address(itm);
+				selex = "";
+				if adr^.name == targetCohort {
+					selex = " selected"};
+				add("\r\t\t\t<option value='" + adr^.name + "'" + selex + ">" + adr^.name + "</option>")};
+			add("\r\t\t</select>");
+			add("</td>");
+			add("\r\t<td>");
+			add("\r\t\t<input type='submit' value='" + manilaSuite.getString("accessControl.buttonModifyCohort", pta:pta) + "' name='modifycohort'>"); //02/03/24, 10:07:27 by DAB
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		bundle { //row for set source default  02/08/03, 20:54:27 by DAB
+			add("\r\t<tr>");
+			add("\r\t<td>");
+			add(manilaSuite.getString("accessControl.setDefaultSource", pta:pta));
+			add("</td>");
+			add("\r\t<td>");
+			add("\r\t\t<select name='defaultCohort'>");
+			local (adr, selex);
+			for adr in adrCohorts {
+				selex = "";
+				if adr^.name == sourceCohort {
+					selex = " selected"};
+				add("\r\t\t\t<option value='" + adr^.name + "'" + selex + ">" + adr^.name + "</option>")};
+			add("\r\t\t</select>");
+			add("</td>");
+			add("\r\t<td>");
+			add("\r\t\t<input type='submit' value='" + manilaSuite.getString("accessControl.buttonSetDefault", pta:pta) + "' name='setDefaultsource'>");
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		if targetCohort != "" { //modify form
+			add("</table>");
+			add("\r<hr width='50%'>");
+			replTbl.selectedCohort = targetCohort;
+			add(manilaSuite.getString("accessControl.maintainCohortMembersHelptext", @replTbl, pta:pta)); //02/03/24, 10:15:18 by DAB
+			
+			add("<table border='1'>");
+			
+			local (howMany, itm, adr, nme, selex);
+			
+			howmany = sizeof(adrGroup^.users);
+			if sizeof(adrCohorts^.[targetCohort].memberdata) > howMany {
+				howMany = sizeOf(adrCohorts^.[targetCohort].memberdata)};
+			if howmany > 10 {
+				howmany = 10}; //typo 02/03/24, 10:17:49 by DAB
+			
+			bundle { //row for header
+				add("\r\t<tr>");
+				replTbl.sourceCohorts = manilaSuite.accessControl.cohortsPopup(pta, "sourceCohort", {sourceCohort}, {targetCohort}, true); //02/08/03, 18:02:25 by DAB
+				add("\r\t<td>"); //02/08/03, 15:09:23 by DAB
+				add(manilaSuite.getString("accessControl.columnIDSource", @replTbl, pta:pta)); //02/08/03, 15:09:23 by DAB
+				add("\r\t\t<input type='submit' value='" + manilaSuite.getString("accessControl.buttonChangeSource", pta:pta) + "' name='setsource'>"); //02/08/03, 19:21:14 by DAB
+				add("</td>"); //02/08/03, 15:09:23 by DAB
+				add("\r\t<td>" + manilaSuite.getString("accessControl.columnIDOperation", pta:pta) + "</td>"); //02/03/24, 10:20:22 by DAB
+				add("\r\t<td>" + manilaSuite.getString("accessControl.columnIDCohort", @replTbl, pta:pta) + "</td>"); //02/03/24, 10:20:22 by DAB
+				add("\r\t</tr>")};
+			
+			bundle { //
+				add("\r\t<tr>");
+				add("\r\t<td rowspan='2'>");
+				add("\r\t\t<select name='memberToAdd' multiple size='" + howMany + "'>");
+				for adr in @adrGroup^.users {
+					itm = nameof(adr^);
+					case true {
+						sourceCohort == "Everyone";
+						sourceCohort == "Members Only" {
+							};
+						sourceCohort == "Managing Editors Only" {
+							if not (manilaSuite.editors.getManagingEditorList(pta) contains itm) {
+								continue}};
+						sourceCohort == "Editors Only" {
+							case true {
+								manilaSuite.editors.getManagingEditorList(pta) contains itm;
+								manilaSuite.editors.getContentEditorList(pta) contains itm;
+								manilaSuite.editors.getContributingEditorList(pta) contains itm {
+									}}
+							else {
+								continue}}}
+					else {
+						if not defined(adrCohorts^.[sourceCohort].memberdata.[itm]) {
+							continue}};
+					if defined(adrCohorts^.[targetCohort].memberdata.[itm]) {
+						continue};
+					nme =itm;
+					add("\r\t\t\t<option value='" + itm + "'" + selex + ">" + nme + "</option>")};
+				add("\r\t\t</select>");
+				add("</td>");
+				
+				add("\r\t<td valign='middle'>");
+				add("\r\t\t<input type='submit' value='" + manilaSuite.getString("accessControl.buttonmembertochohort", pta:pta) + "' name='membertochohort'>"); //02/03/24, 10:24:41 by DAB
+				add("</td>");
+				add("\r\t<td align='left' rowspan='2'>");
+				add("\r\t\t<select name='memberToDelete' multiple size='" + howMany + "'>");
+				for adr in @adrCohorts^.[targetCohort].memberdata {
+					selex = "";
+					itm = nameof(adr^);
+					«nme = string.replace(itm, "@", "\\@")
+					nme = itm;
+					add("\r\t\t\t<option value='" + itm + "'" + selex + ">" + nme + "</option>")};
+				add("\r\t\t</select>");
+				add("</td>");
+				add("\r\t</tr>")};
+			
+			bundle { //buttons row
+				add("\r\t<tr>");
+				add("\r\t<td valign='middle'>");
+				add("\r\t\t<input type='submit' value='" + manilaSuite.getString("accessControl.buttoncohortTomember", pta:pta) + "' name='cohortTomember'>"); //02/03/24, 10:24:41 by DAB
+				add("\r\t\t<input type='hidden' value='" + nameOf(adrCohorts^.[targetCohort])+ "' name='cohortbeingModified'>"); //04/05/04, 19:19:34 by DAB
+				add("\r\t\t<input type='hidden' value='" + nameOf(adrCohorts^.[sourceCohort]) + "' name='cohortbeingDisplayed'>"); //04/05/04, 19:19:37 by DAB
+				add("</td>");
+				add("\r\t</tr>")}};
+		
+		add("</table>");
+		add("</form>")};
+	
+	return htmltext}

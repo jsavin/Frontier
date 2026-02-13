@@ -1,0 +1,30 @@
+on listSites (flSearchable=false) {
+	«List sites on this server. Optionally present a search form. The search form matches against site names, site URLs, ME names, ME email addresses.
+		«07/18/00; 12:21:03 AM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	if not manilaSuite.hosting.isHostingSite (adrSite) { //make sure this is a hosting site
+		scriptError ("Can't display the site list because this isn't a hosting site.")};
+	
+	local (actionUrl = pta^.uri);
+	if defined (pta^.pathArgs) {
+		if string.trimWhiteSpace (pta^.pathArgs) != "" {
+			actionUrl = actionUrl + "$" + pta^.pathArgs}};
+	
+	local (start = 1, sitesPerPage = 25, searchString = "");
+	bundle { //get start, max hits per page, search string
+		if defined (pta^.searchArgs) {
+			if pta^.searchArgs != "" {
+				local (t);
+				new (tableType, @t);
+				webserver.parseArgs (pta^.searchArgs, @t);
+				if defined (t.m) {
+					sitesPerPage = number (t.m)};
+				if defined (t.s) {
+					start = number (t.s)};
+				if defined (t.q) and flSearchable {
+					searchString = t.q}}}};
+	
+	return (manilaSuite.hosting.listSites (flSearchable, sitesPerPage, start, actionUrl, searchString))}

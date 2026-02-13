@@ -1,0 +1,32 @@
+on getTopicsRss (adrsite=nil, maxitems=50) {
+	«Changes
+		«10/11/03; 10:52:10 PM by JES
+			«Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
+		«5/9/03; 7:39:42 PM by JES
+			«Created. Return RSS which lists recent topics in a Manila site's discussion group.
+	on includeCallback (adrmsg) {
+		local (flInclude = (adrmsg^.inResponseTo == 0) );
+		return (flInclude)};
+	
+	if adrsite == nil {
+		adrsite = manilaSuite.getSiteAddress ()};
+	local (flEnabled = config.manila.prefs.flDiscussRssEnabled);
+	if defined (adrsite^.["#newsSite"].flDiscussRssAlwaysEnabled) {
+		flEnabled = (flEnabled or adrsite^.["#newsSite"].flDiscussRssAlwaysEnabled)};
+	if flEnabled {
+		flEnabled = manilaSuite.getNewsSitePref ("flSyndicateDiscussionGroup", default:true, flCreate:true)};
+	if manilaSuite.getNewsSitePref ("flEditorsOnlyAccessToSite", adrsite, false) {
+		local (pta = html.getPageTableAddress ());
+		local (flEditor = manilaSuite.editors.editorialTest (pta));
+		if not flEditor {
+			local (groupname = manilaSuite.members.getGroupNameFromSiteAddress (adrsite));
+			if not mainResponder.security.httpAuthentication (pta^.newsSite^.siteName, pta, groupname) {
+				return (manilaSuite.notFound.page ())}}};
+	if not flEnabled { //404 page
+		return (manilaSuite.notFound.page ())};
+	local (title = adrsite^.["#newsSite"].siteName + " Topics");
+	local (link = adrsite^.["#urls"].discussHomePage);
+	return (manilaSuite.discuss.rss.getRss (adrsite, @includeCallback, title:title, link:link, maxitems:maxitems))};
+«bundle //test code
+	«wp.newTextObject (getTopicsRss (@jaketest2ManilaWebsite), @workspace.rssText)
+	«edit (@workspace.rssText)

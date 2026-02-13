@@ -1,0 +1,26 @@
+on getNotifyList (adrnewssite) {
+	«Changes
+		«11/28/2000; 8:32:11 AM by DW
+			«Created. Return the #newsSite's notification list as a list. 
+	
+	try {
+		local (notifylist = adrnewssite^.notifylist, item);
+		case typeof (notifylist) {
+			stringType {
+				local (thelist = {}, i);
+				for i = 1 to string.countfields (notifylist, ",") {
+					thelist = thelist + string.trimWhitespace (string.nthfield (notifylist, ",", i))};
+				return (thelist)};
+			listType {
+				return (notifylist)}}
+		else {
+			return ({})};
+		if typeof (notifylist) == stringtype {
+			notifylist = {notifylist}};
+		for item in notifylist {
+			htmlRecipients = htmlRecipients + {item};
+			plainRecipients = plainRecipients + {item}}}
+	else { //error, return empty list
+		return ({})}};
+«bundle //test code
+	«dialog.alert (getnotifylist (@worldoutlineManilaWebsite.["#newsSite"]))

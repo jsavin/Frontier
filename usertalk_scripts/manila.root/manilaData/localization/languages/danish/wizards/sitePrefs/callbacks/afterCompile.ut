@@ -1,0 +1,1 @@
+return (manilaData.sitePrefs.wizard.callbacks.afterCompile ())

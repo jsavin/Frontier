@@ -1,0 +1,42 @@
+on drawCalendar (pta=nil, baseUrl=nil, adrCalendar=nil, cssPrefix="h") {
+	«Changes:
+		«9/14/05; 3:14:42 PM by JES
+			«New optional parameters, baseUrl, adrCalendar and cssPrefix.
+			«Cleaned up script formatting to make it easier to read.
+		«1999-2000
+			«4/18/00; 2:41:27 PM by JES
+				«localized
+			«06/01/00; 7:34:27 PM by JES
+				«Merged CSS changes with localization
+			«05/25/00; 9:47:35 PM by PBS
+				«Specify the cssPrefix for the home page calendar, so people can format the calendar with cascading style sheets.
+			«04/03/00; 11:18:24 AM by PBS
+				«Use the current site's time zone settings.
+			«12/14/99; 2:34:02 PM by PBS
+				«Respect the editor's prefs for the calendar appearance.
+			«10/28/99; 11:17:43 AM by PBS
+				«Calendar text gets the text color as specified in the template.
+			«?/?/99 by PBS
+				«Created. Draw the calendar for the home page.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (calText);
+	if adrCalendar == nil {
+		adrCalendar = pta^.adrSiteRootTable};
+	if baseUrl == nil {
+		baseUrl = manilaSuite.getUrl ("newsHome", pta)};
+	
+	bundle { //after this, calText contains the HTML text for the calendar
+		local (myt, dnt, dt);
+		manilaSuite.html.getCalendarTemplates (@myt, @dnt, @dt);
+		calText = mainResponder.localization.drawCalendar (colWidth:19, rowHeight:10, urlPrefix:baseUrl, tableBorder:0, curDate: pta^.postTime, monthYearTemplate:myt, dayNameTemplate:dnt, dayTemplate:dt, adrCalendar:adrCalendar, cssPrefix:"h", pta: pta)};
+	
+	local (calLinks = "", startDate = clock.now ());
+	
+	try {
+		startDate = mainResponder.calendar.getFirstDay (adrCalendar)};
+	
+	calLinks = mainResponder.calendar.getLinks (adrCalendar, pta^.postTime, baseUrl, startDate, manilaSuite.convertTime ());
+	return (manilaSuite.unTaint (calText + calLinks))}

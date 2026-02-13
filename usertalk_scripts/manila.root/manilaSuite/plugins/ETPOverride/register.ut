@@ -1,0 +1,36 @@
+on register (adrSite, urlName, adrScript) {
+	«Changes
+		«9/13/05; 8:37:01 PM by JES
+			«Add support for news item callbacks.
+			«Reformat code to UserLand's style.
+		«04/06/17, 13:06:49 by DAB
+			«Created. Register a script to build the ETP forms for urlname
+				«urlName must be the name of an entry in #urls
+					«not all urlnames are associated with a form, that's OK the scripts are never called by Manila
+				«only one script can be registered for each urlname; first come first served
+				«a plugin that is disabled should call manilaSuite.plugins.ETPform.deregister as part of its disable
+	local (flNewsItemCallback = false);
+	case string.lower (urlName) { //support for "special" news item callbacks which don't correspond to #urls
+		"newsreader";
+		"newsnewitem";
+		"newseditinbrowser";
+		"newspostitemtohomepage";
+		"newspostitem" {
+			flNewsItemCallback = true}};
+	case true { //reasons to not accept parameters
+		urlname == "";
+		not defined (adrSite^.["#urls"]);
+		not defined (adrSite^.["#urls"].[urlname]) {
+			if not flNewsItemCallback {
+				return (false)}};
+		not defined (adrScript^);
+		not ({scriptType, addressType} contains typeOf (adrScript^)) {
+			return (false)}};
+	if not defined(adrSite^.["#prefs"].ETPformSubstitutes) {
+		new (tabletype, @adrSite^.["#prefs"].ETPformSubstitutes)};
+	if defined (adrSite^.["#prefs"].ETPformSubstitutes.[urlname]) {
+		return (false)};
+	adrSite^.["#prefs"].ETPformSubstitutes.[urlname] = string.popFileFromAddress (adrScript);
+	return (true)};
+«bundle //test code
+	«manilaSuite.plugins.ETPoverride.register (@homeManilaWebsite, "newsReader", @workspace.etpOverrideTest.newsReader)

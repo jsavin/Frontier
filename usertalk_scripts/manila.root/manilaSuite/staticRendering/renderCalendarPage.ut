@@ -1,0 +1,43 @@
+on renderCalendarPage () {
+	«Publish an old home page that's in the calendar.
+		«03/06/00; 11:22:56 PM by PBS
+		«Changes:
+			«05/31/00; 3:46:02 PM by PBS
+				«Bring the manilaMacros table in to scope when building a page.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrStaticSite = pta^.adrStaticSite);
+	
+	bundle { //copy calendar to static site
+		local (i);
+		for i = 1904 to 2040 {
+			if defined (adrManilaSite^.[i]) {
+				adrStaticSite^.[i] = adrManilaSite^.[i]}};
+		
+		pta^.method = "GET"};
+	
+	local (adrPage);
+	local (s = pta^.relativePath);
+	nomad = adrStaticSite;
+	while sizeOf (s) > 0 {
+		s = string.popLeading (s, '/');
+		local (pathPart = string.nthField (s, '/', 1));
+		s = string.delete (s, 1, sizeOf (pathPart));
+		nomad = @nomad^.[pathPart]};
+	adrPage = nomad;
+	
+	if defined (manilaMacros) { //PBS 05/31/00
+		with manilaMacros {
+			html.buildOnePage (adrPage, pta)}}
+	else {
+		html.buildOnePage (adrPage, pta)};
+	
+	local (currentUrl);
+	local (relativePath = string.lower (pta^.relativePath));
+	currentUrl = pta^.adrStaticSite^.["#ftpSite"].url + relativePath;
+	if not (relativePath endsWith "/") {
+		currentUrl = currentUrl + manilaSuite.staticRendering.getSuffix ()};
+	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
+	manilaSuite.staticRendering.updateRenderStatus (adrManilaSite, currentUrl);
+	
+	return (true)}

@@ -1,0 +1,6 @@
+on getProfile (groupname, username, password) {
+	local (adruser = mainResponder.members.getMemberTableWithPassword (groupname, username, password));
+	local (localtable = adruser^);
+	try {delete (@localtable.messageListCache)}; //this can be enormous
+	try {delete (@localtable.randomNumber)}; //this is none of your business
+	return (localtable)}

@@ -1,0 +1,18 @@
+on monthYearString (d, pta=nil) {
+	«Gets the localized version of a month/year string for a given date value.
+		«d is a date or a string that can be coerced to a date
+	«4/13/00; 2:39:54 PM by JES
+	«Changes:
+		«05/17/00 6:38:19 PM by JS
+			«optimized -- no longer call mainResponder.localization.getDateTimeReplacementTable, rather build the table here
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	local (yr, mo, day, hr, min, sec);
+	date.get (d, @day, @mo, @yr, @hr, @min, @sec);
+	replacementTable.month = mo;
+	replacementTable.yy = string.mid (yr, 3, 2);
+	
+	return (mainResponder.getString ("date.monthYear", @replacementTable, pta: pta))}

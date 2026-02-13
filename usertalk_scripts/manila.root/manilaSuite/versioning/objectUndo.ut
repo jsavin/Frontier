@@ -1,0 +1,94 @@
+on objectUndo (pta, adrObject) {
+	«manilaSuite.versioning.objectUndo : 05/02/12, 12:22:21 by DAB
+		«perform an undo operation for advanced objects (not messages) 
+	«messages at manilaData.localization.languages.english.strings.versioning
+	local (adrSite = manilaSuite.getmanilaSiteAddress(pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite)); //04/05/18, 21:10:08 by DAB
+	local (adrMember = pta^.adrMemberInfo);
+	local (maxFilesOpened, maxVersions); //04/05/18, 21:50:36 by DAB
+	manilaSuite.versioning.getConfiguration(@maxFilesOpened, @maxVersions); //04/05/18, 21:50:07 by DAB
+	
+	local (replTbl);
+	bundle { //replacement table
+		new(tabletype, @replTbl);
+		replTbl.sitename = manilaSuite.getCanonicalSitename(adrSite);
+		replTbl.maxFilesOpened =  maxFilesOpened;
+		replTbl.maxVersions =  maxVersions};
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	on errorReport(s) {
+		add("<p align = 'center'>");
+		add("<span style = 'color:red'>" + manilaSuite.getString("versioning." + s, @replTbl, pta:pta)  + "</span>");
+		add("</p>")};
+	
+	pta^.title = manilaSuite.getString("Versioning.pageTitleRollback", @replTbl, pta:pta);
+	
+	local (objectID = pta^.postArgs.objectID);
+	local (flDiscardCurrent = defined(pta^.postArgs.undoDiscard) and pta^.postArgs.undoDiscard=="on");
+	replTbl.object = manilaSuite.custody.getItemNameFromAddress(adrObject, adrSite);
+	
+	if pta^.postargs.rollbackto == "" {
+		errorReport("errNoVersionSpecified");
+		return htmlText};
+	
+	if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, adrMember, adrSite, false)) {
+		return (manilaSuite.getString ("discuss.cantPostStoryCustodyError"))};
+	
+	local (adrLinkTbl = @adrNewsSite^.versioning.[objectID]);
+	local (flFound);
+	bundle { //locate desired version
+		replTbl.version =   date(pta^.postargs.rollbackto);
+		
+		local (filesOpened=0, versionsFound=0);
+		
+		on openRoot(f) {
+			if file.exists (f) {
+				if window.isOpen (f) {
+					return true};
+				try {
+					fileMenu.open (f, true);
+					filesOpened++;
+					return true}};
+			return false};
+		
+		loop {
+			if filesOpened == maxFilesOpened {
+				errorReport("errmaxFilesOpened");
+				break};
+			
+			if versionsFound == maxVersions {
+				errorReport("errmaxVersions");
+				break};
+			
+			if not defined(adrLinkTbl^) {
+				errorReport("errNoLink");
+				break};
+			
+			local (f = adrLinkTbl^.logFile);
+			if not openRoot(f) {
+				errorReport("errMissingLog");
+				break};
+			
+			with (@[f])^ {
+				adrLinkTbl = address(adrLinkTbl^.logEntry)};
+			if not defined(adrLinkTbl^) {
+				errorReport("errMissingEntry");
+				break};
+			
+			if adrLinkTbl^.timestamp == date(pta^.postargs.rollbackto) {
+				flFound = true;
+				break};
+			
+			versionsFound++};
+		};
+	
+	if flFound {
+		table.assign(adrObject, adrLinkTbl^.data);
+		if flDiscardCurrent {
+			manilaSuite.custody.undoCheckOut (adrObject, adrMember, adrSite, flMessage:false)}
+		else {
+			manilaSuite.custody.checkIn (adrObject, adrMember, adrSite, false)}};
+	
+	return  htmlText}

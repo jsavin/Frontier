@@ -1,0 +1,12 @@
+on getConfiguration (adrmaxFilesOpened, adrMaxVersions) {
+	«manilaSuite.versioning.getConfiguration : 04/05/18, 21:40:06 by DAB
+	if not defined(config.manila.prefs.versioning) {
+		new(tabletype, @config.manila.prefs.versioning);
+		config.manila.prefs.versioning.maxLogs = 7;
+		config.manila.prefs.versioning.maxVersions = 7;
+		config.manila.prefs.versioning.availability = 0;
+		config.manila.prefs.versioning.Folder = Frontier.getSubFolder ("ops/versioning/")};
+	adrMaxFilesOpened^ = config.manila.prefs.versioning.maxLogs;
+	adrMaxVersions^ = config.manila.prefs.versioning.maxVersions;
+	
+	return config.manila.prefs.versioning.availability}

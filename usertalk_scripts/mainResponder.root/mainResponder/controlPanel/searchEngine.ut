@@ -1,0 +1,38 @@
+local (pta = html.getPageTableAddress ());
+local (htmlText = "");
+local (flSearchLogDisplayed = false, flIndexerLogDisplayed = false);
+
+on add (s) {
+	htmlText = htmlText + s + "\r"};
+
+pta^.title = "Search Engine";
+
+bundle { //put up the searches log
+	local (logName = "Search Engine");
+	local (adrLog = log.getGuestSubTable ("Search Engine"));
+	if sizeOf (adrLog^) > 0 {
+		add ("<b>Most recent searches:</b><p>");
+		add (pta^.tools^.searchLogBrowser (25, {pta^.logAlternateColor, pta^.bgcolor}));
+		add (pta^.tools^.addLegend ("search"));
+		flSearchLogDisplayed = true}};
+
+bundle { //put up the indexer log
+	local (logName = "Search Engine Indexer");
+	local (adrLog = log.getGuestSubTable (logName));
+	if sizeOf (adrLog^) > 0 {
+		if flSearchLogDisplayed {
+			add ("<p><hr noshade size=\"1\"><p>")};
+		add ("<b>Most recent pages indexed:</b><p>");
+		add (pta^.tools^.indexerLogBrowser (25, {pta^.logAlternateColor, pta^.bgcolor}));
+		add (pta^.tools^.addLegend ("indexer"));
+		flIndexerLogDisplayed = true}};
+
+bundle { //display something even if this isn't a search engine server
+	if not flSearchLogDisplayed {
+		if not flIndexerLogDisplayed {
+			if not config.mainResponder.prefs.flSearchEngine {
+				add ("This computer is not running as a search engine server.")}
+			else {
+				add ("There have been no recent searches or pages indexed.")}}}};
+
+return (htmlText)

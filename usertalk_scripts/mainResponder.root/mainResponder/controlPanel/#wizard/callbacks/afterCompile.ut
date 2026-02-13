@@ -1,0 +1,19 @@
+«PBS: 12/07/01: don't do this anymore, maintain navigator by hand so hand-made changes to the navigator don't get clobbered.
+«generate the XML text for the #navigator from the #wizard structure
+«local (pta = html.getpagetableaddress ())
+«local (pagename = nameof (pta^.adrobject^))
+«local (adrwizard = pta^.wizard)
+«local (adrstructure = @adrwizard^.structure)
+«local (adroutline = @pta^.navigator^.outline)
+«
+«local (xmltext = "", indentlevel = 0)
+«on add (s)
+	«xmltext = xmltext + string.filledString ("\t", indentlevel) + s + "\r"
+«add ("<navigator>"); indentlevel++
+«local (panellist = xml.getaddresslist (@adrwizard^.structure [1], "panel"))
+«local (i, ct = sizeof (panellist), s)
+«for i = 1 to ct
+	«s = xml.getattribute (panellist [i], "title")^
+	«add ("<item name=\"" + s + "\" pagename=\"/controlPanel/" + pagename + "$" + i + "\"/>")
+«add ("</navigator>"); indentlevel--
+«op.newOutlineObject (xmltext, adroutline)

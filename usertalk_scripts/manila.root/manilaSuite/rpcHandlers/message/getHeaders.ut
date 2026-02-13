@@ -1,0 +1,87 @@
+on getHeaders (siteName, username, password, d) {
+	«Changes:
+		«1/31/06; 3:00:33 AM by JES
+			«Add support for flPending messages.
+		«3/19/05; 11:48:07 PM by JES
+			«Do the test for whether we're being called via SOAP only if responder is defined. Makes it possible to call this code from the local machine.
+		«05/23/01; 1:15:21 AM by JES
+			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+		«03/19/01; 3:20:46 PM by JES
+			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		«02/13/01; 2:04:44 PM by JES
+			«Prepend "msg" to the numerical name of the returned items. Fixes a bug when using SOAP where elements with invalid names would be generated.
+		«01/02/01; 1:25:38 AM by JES
+			«On Macs, convert the subject to Latin text.
+		«08/21/00; 10:55:24 PM by PBS
+			«Return the message headers for a given day.
+	
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get message headers because ");
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMsgs = @adrDiscuss^.messages);
+	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+	local (adrCal = @adrDiscuss^.calendar);
+	local (adrSite = config.manila.sites.[siteName]);
+	local (msgReaderUrl = adrSite^.["#urls"].discussMsgReader);
+	local (numMessages = manilaSuite.getNewsSitePref ("numMessagesInDiscussListing", default:50, flCreate:true, adrSite:adrSite));
+	local (flOneDay = manilaSuite.getNewsSitePref ("flDiscussListByDay", default:true, flCreate:true, adrSite:adrSite));
+	
+	local (day, month, year, hour, minute, second);
+	date.get (d, @day, @month, @year, @hour, @minute, @second);
+	local (adrYear = @adrCal^.[year]);
+	local (adrMonth = @adrYear^.[string.padWithZeros (month, 2)]);
+	local (adrDay = @adrMonth^.[string.padWithZeros (day, 2)]);
+	
+	local (flSoap = false);
+	if defined (responder) {
+		if string.upper (responder) == "SOAP" {
+			adrRequest^.customStructType = manilaData.soap.constants.customArrayTypes.messageHeader;
+			adrRequest^.customNamespace = manilaData.soap.constants.manilaNamespace;
+			adrRequest^.customNamespaceURI = manilaData.soap.constants.manilaNamespaceURI;
+			flSoap = true}};
+	local (messageHeaders);
+	if flSoap {
+		messageHeaders = {}}
+	else {
+		new (tableType, @messageHeaders)};
+	
+	on addMessage (adrItem) {
+		bundle { //was this message deleted? If so, skip it.
+			if defined (adrItem^.flDeleted) {
+				«The flDeleted flag may not exist: it's necessary to test for existence before testing whether it's true or false.
+				if adrItem^.flDeleted {
+					return (false)}}; // this message was deleted
+			if defined (adrItem^.flPending) and adrItem^.flPending {
+				return (false)}};
+		
+		local (nextMsgNum = sizeOf (messageHeaders) + 1);
+		nextMsgNum = string.padWithZeros (nextMsgNum, 7);
+		local (header); new (tableType, @header);
+		
+		header.url = msgReaderUrl + adrItem^.msgNum;
+		header.msgNum = adrItem^.msgNum;
+		header.postTime = adrItem^.postTime;
+		header.ctReads = adrItem^.ctReads;
+		header.memberName = mainResponder.members.getMemberName (groupName, adrItem^.member);
+		header.member = adrItem^.member;
+		header.subject = adrItem^.subject;
+		if system.environment.isMac { //01/02/01 JES: convert the subject to latin text
+			header.subject = latinToMac.macToLatin (header.subject)};
+		header.rpcPath = "/RPC2";
+		header.rpcServer = tcp.dns.getMyDomainName (); //it does caching
+		header.rpcPort = user.inetd.config.http.port;
+		
+		if flSoap {
+			messageHeaders[number (nextMsgNum)] = header}
+		else {
+			local (adrHeader = @messageHeaders.["msg" + nextMsgNum]);
+			adrHeader^ = header};
+		
+		return (true)}; // this message wasn't deleted
+	bundle { //get headers for this day
+		local (ct = sizeOf (adrDay^));
+		for i = ct downTo 1 { //loop through messages in reverse-chronological order
+			local (adrMsg = manilaSuite.discuss.getMessageTable (nameOf (adrDay^ [i]), adrSite));
+			addMessage (adrMsg)}};
+	
+	return (messageHeaders)}

@@ -1,0 +1,23 @@
+on getResponseCount (adrmsg) {
+	«Changes
+		«1/31/06; 2:14:20 AM by JES
+			«Add support for pending posts.
+		«??/??/?? by ???
+			«Created. Count the non-deleted responses in a message thread.
+	local (adrmsgs = parentOf (adrmsg^));
+	on countMessages (adrmsg) {
+		if defined (adrmsg^.flDeleted) and adrmsg^.flDeleted {
+			return (0)};
+		if defined (adrmsg^.flPending) and adrmsg^.flPending {
+			return (0)};
+		
+		«not deleted -- add one and recurse
+		local (ct = 1);
+		local (responsenum);
+		for responsenum in adrmsg^.responses {
+			local (adrresponse = @adrmsgs^.[string.padWithZeros (responsenum, 7)]);
+			ct = ct + countMessages (adrresponse)};
+		return (ct)};
+	return (countMessages (adrmsg) - 1)};
+«bundle //test code
+	«dialog.alert (getResponseCount (@jaketest2ManilaWebsite.["#discussionGroup"].messages[20]))

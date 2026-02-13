@@ -1,0 +1,8 @@
+on finalFilter (pta) {
+	«Final filter for static rendering.
+		«Changes:
+			«02/06/01; 10:37:25 AM by PBS
+				«Call the global finalFilter callback.
+	bundle { //PBS 02/06/01: call global finalFilter callback
+		mainResponder.callbackLoop (@config.manila.callbacks.finalFilter, pta)};
+	return (true)}

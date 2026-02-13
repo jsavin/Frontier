@@ -1,0 +1,59 @@
+on addChangedHomePage (url, siteName) {
+	«Add a changed home page to the table of changed home pages.
+		«05/06/00; 3:44:35 PM by PBS
+		«Changes:
+			«01/06/01; 6:34:11 PM by PBS
+				«Remove HTML markup from siteName.
+				«If siteName is "", give it the named Untitled.
+			«04/21/01; 8:08:31 PM by JES
+				«Rewritten to use a flat table structure, which makes it easy to limit the table's size.
+	
+	bundle { //get the address of the changed home pages table
+		if not defined (config.manila) {
+			new (tableType, @config.manila)};
+		if not defined (config.manila.updatedHomePages) {
+			new (tableType, @config.manila.updatedHomePages)}};
+	
+	bundle { //deal with empty siteNames or siteNames with markup
+		if siteName contains ">" or siteName contains "<" {
+			siteName = searchEngine.stripMarkup (siteName)};
+		if string.trimWhiteSpace (siteName) == "" {
+			siteName = "Untitled"}};
+	
+	local (adrUpdates = @config.manila.updatedHomePages);
+	
+	bundle { //delete any old entries for this site
+		local (adr, ct = sizeOf (adrUpdates^), i);
+		for i = ct downTo 1 {
+			adr = @adrUpdates^[i];
+			if url == adr^.url {
+				delete (adr)}}};
+	
+	local (d = clock.now ());
+	local (yr, mo, day, hr, min, sec, dateTimeString);
+	bundle { //get padded date field strings, and dateTimeString
+		date.get (d, @day, @mo, @yr, @hr, @min, @sec);
+		yr = string (yr);
+		mo = string.padWithZeros (mo, 2);
+		day = string.padWithZeros (day, 2);
+		hr = string.padWithZeros (hr, 2);
+		min = string.padWithZeros (min, 2);
+		sec = string.padWithZeros (sec, 2);
+		dateTimeString = yr + "." + mo + "." + day + "." + hr + "." + min + "." + sec};
+	
+	bundle { //add the site to the table
+		local (adrTable = table.uniqueName (dateTimeString + ".", adrUpdates, 3));
+		new (tableType, adrTable);
+		adrTable^.url = url;
+		adrTable^.siteName = siteName;
+		adrTable^.timeModified = clock.now ()};
+	
+	bundle { //limit the size of the table to the last 100 updates
+		local (ct = sizeOf (adrUpdates^));
+		local (maxUpdates = 100);
+		if ct > maxUpdates {
+			local (numToDelete = ct - maxUpdates, i);
+			for i = 1 to numToDelete {
+				delete (@adrUpdates^[1])}}}; //the first one is always the oldest one
+	
+	return (true)}

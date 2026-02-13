@@ -1,0 +1,20 @@
+on cowSkullImage (pta=nil) {
+	«Display a cow skull image.
+		«Cow skulls signify a link to the discussion group interface version of a page.
+		«Changes:
+			«12/8/98; 6:52:33 AM by DW
+				«This code was appearing all over the place.
+			«Thu, 04 Mar 1999 03:07:08 GMT by AR
+				«config.mainResponder.urls is no longer referenced -- look at the page table instead.
+			«Mon, Aug 2, 1999 at 3:40:25 PM by PBS
+				«New optional pta parameter.
+			«12/17/99; 11:36:58 AM by PBS
+				«You can over-ride the default cow skull image with a cowSkullImage item in the page table. Among other things, this allows Manila sites to replace the cow skull image with their own image or text.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if defined (pta^.cowSkullImage) { //PBS 12/17/99: one may over-ride the default cow skull image
+		return (string (pta^.cowSkullImage))};
+	
+	return ("<img src=\"" + pta^.responderAttributes.urls^.imageCowSkull + "\" height=\"18\" width=\"22\" border=\"0\" alt=\"\">")}

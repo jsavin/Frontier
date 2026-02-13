@@ -1,0 +1,3 @@
+on getMostRecentMsgTable (sitename = "scriptingNews") { //return the address of the msg table for the most recent news page
+	local (adrtable = mainResponder.news.getMostRecentAddress (sitename));
+	return (mainResponder.news.getMessageTable (adrtable^.discussionRoot, adrtable^.msgnum))}

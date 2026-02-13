@@ -1,0 +1,66 @@
+on pathToSiteStructureValue (xmlAtt) {
+	«manilaSuite.sitePrefs.siteStructure.pathToSiteStructureValue
+		«based on userlands'  manilasuite.hierarchypage
+		«returns boolean for success; if located the attribute is stuffed into the page table
+		«was manilaFixer.utilities.pathToSiteStructureValue : 02/02/26, 16:13:34 by DAB
+	local (pta = html.getPageTableAddress ());
+	local (adrTable = pta^.hierarchy);
+	local (path = pta^.remainingPath);
+	local (nomad = @adrTable^.structure [1]);
+	
+	on hierarchyDive (nomad, name) { //PBS 6/17/99: dive into an XML hierarchy table
+		local (lowerName = string.lower (name));
+		local (flFound = false);
+		
+		bundle { //find the item pointed to by name
+			local (i);
+			for i = 1 to sizeOf (nomad^) {
+				if manilaSuite.sitePrefs.siteStructure.isXMLInternal(@nomad^[i]) { //02/12/07, 16:42:01 by DAB
+					continue};
+				try {
+					local (itemName = xml.getAttributeValue (@nomad^ [i], "pathname"));
+					if string.lower (itemName) == lowerName {
+						nomad = @nomad^ [i];
+						flFound = true;
+						break}}}};
+		
+		if not flFound { //we didn't find the item
+			local (defaults = list (pta^.responderAttributes.defaultDirectoryItems));
+			local (s = string.trimWhiteSpace (pta^.path));
+			if not (s endswith "/") and (string.lower (defaults) contains string.lower (string.nthField (s, "/", string.countFields (s, "/")))) {
+				return (nomad)};
+			scriptError ("Can't process the request because there is no object named \"" + manilaSuite.unTaint (name) + "\".")};
+		
+		return (nomad)};
+	
+	while (sizeOf (path) > 0) {
+		local (pathPart = string.nthField (path, "/", 1));
+		try {
+			nomad = hierarchyDive (nomad, pathPart)}
+		else {
+			return false};
+		
+		path = string.delete (path, 1, sizeOf (pathPart));
+		path = string.popLeading (path, '/')};
+	
+	«If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
+	if string.lower (string.nthField (nameOf (nomad^), '\t', 2)) == "category" {
+		if not (pta^.remainingPath endsWith "/") {
+			local (lowerLastPathPart = string.lower (string.nthField (pta^.path, '/', string.countFields (pta^.path, '/'))));
+			local (i, flDefault = false);
+			for i = 1 to sizeOf (pta^.responderAttributes.defaultDirectoryItems) {
+				if lowerLastPathPart == string.lower (pta^.responderAttributes.defaultDirectoryItems [i]) {
+					flDefault = true;
+					break}};
+			if not flDefault {
+				return false}}}
+	else { //it's not a category, it must not end with a slash.
+		if pta^.remainingPath endsWith "/" {
+			return false}};
+	
+	try {
+		local (theValue = xml.getAttributeValue (nomad, xmlatt));
+		pta^.[xmlAtt] = theValue;
+		return true};
+	
+	return false}

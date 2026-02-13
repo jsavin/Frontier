@@ -1,0 +1,20 @@
+on setTemplate (appkey, blogid, username, password, template, templateType) {
+	«8/27/01; 3:56:35 PM by JES
+		«Blogger API glue for using manila.advancedPref.set to set the site's template and news item template.
+	local (siteurl = blogid); //these are synonymous for Manila sites
+	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
+	bundle { //make sure siteurl starts with http:// and ends with /
+		if not (string.lower (siteurl) beginsWith "http://") {
+			siteurl = "http://" + siteurl};
+		if not (siteurl endsWith "/") {
+			siteurl = siteurl + "/"}};
+	local (itemName);
+	case string.lower (templateType) {
+		"main" {
+			itemName = "template"};
+		"archiveindex" {
+			scriptError ("Can't set the archiveIndex template because Manila sites do not have an archiveIndex template.")}}
+	else { //error -- the template doesn't exist
+		scriptError ("Can't set the " + templateType + " template because it doesn't exist.")};
+	manilaSuite.rpcHandlers.advancedPref.set (username, password, sitename, itemName, template, 0);
+	return (true)}

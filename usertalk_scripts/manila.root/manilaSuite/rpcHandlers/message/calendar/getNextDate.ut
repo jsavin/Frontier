@@ -1,0 +1,10 @@
+on getNextDate (username, password, siteName, dt) {
+	«Get the date after dt in the message calendar.
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't get the date after \"" + dt + "\" in the message calendar because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	
+	return (mainResponder.calendar.getNextDay (@adrDiscuss^.calendar, dt))}

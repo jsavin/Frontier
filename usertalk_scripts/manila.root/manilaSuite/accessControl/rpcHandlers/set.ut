@@ -1,0 +1,60 @@
+on set (username, password, siteName, msgNum, attr, val) {
+	«manilaFixer.accessControl.rpcHandlers.set : 04/05/21, 09:45:24 by DAB
+		«set <attr> for <msgnum> to val 
+		«was manilaFixer.accessControl.rpcHandlers.set : 02/02/27, 14:44:50 by DAB
+	
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't set " + attr + " for message #" + msgNum + " because ");
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrMsg = @adrDiscuss^.messages.[string.padwithzeros (msgNum, 7)]);
+	
+	if not defined (adrMsg^) {
+		scriptError ("Can't set " + attr + " for message #" + msgNum + " because the message does not exist.")};
+	if defined (adrMsg^.flDeleted) and adrMsg^.flDeleted {
+		scriptError ("Can't set " + attr + " for message #" + msgNum + " because the message has been deleted.")};
+	
+	if not defined(adrMsg^.accesscontrol) {
+		new(tabletype, @adrMsg^.accesscontrol)};
+	
+	on dateChecks() {
+		try {
+			val = date(val)}
+		else {
+			scriptError ("Can't set " + attr + " for message #" + msgNum + " because " + val + " is not a valid time and date.")};
+		if val < clock.now() {
+			scriptError ("Can't set " + attr + " for message #" + msgNum + " because " + val + " is in the past.")};
+		return true};
+	
+	case string.lower(attr) {
+		"releasedate" {
+			dateChecks();
+			local (currExpiryDate);
+			try {currExpiryDate = adrMsg^.accessControl.expiryDate}; //may not exist
+			if (currExpiryDate != nil) and (currExpiryDate <= val) {
+				scriptError ("Can't set " + attr + " for message #" + msgNum + " because " + val + " precedes the expiry date.")};
+			adrMsg^.accesscontrol.[attr] = val};
+		"expirydate" {
+			dateChecks();
+			local (currReleaseDate);
+			try {currReleaseDate = adrMsg^.accessControl.releaseDate}; //may not exist
+			if (currReleaseDate != nil) and (currReleaseDate >= val) {
+				scriptError ("Can't set " + attr + " for message #" + msgNum + " because " + val + " follows the expiry date.")};
+			adrMsg^.accesscontrol.[attr] = val};
+		"permittedcohorts" { //04/03/15, 20:59:54 by DAB
+			local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+			local (adrCohorts = @adrGroup^.cohorts);
+			if not defined(adrCohorts^) {
+				scriptError ("Can't set " + attr + " for message #" + msgNum + " because no cohorts are defined.")};
+			if not defined(adrCohorts^.[val]) {
+				scriptError ("Can't set " + attr + " for message #" + msgNum + " because cohort " + val + " doesn't exist.")};
+			if not defined(adrMsg^.accessControl.permittedCohorts) { //04/03/25, 11:41:17 by DAB
+				adrMsg^.accessControl.permittedCohorts = {}};
+			adrMsg^.accessControl.permittedCohorts = adrMsg^.accessControl.permittedCohorts + {val}}}
+	else {
+		scriptError ("Can't set " + attr + " for message #" + msgNum + " because " + attr + " is an invalid name.")};
+	
+	return true};
+«bundle    //test logic
+	«window.msg(manilaFixer.accessControl.rpcHandlers.set ("dbayly@dab.dot", "noway", "myfirstSite", 129, "expiryDate", date.netStandardString(clock.now() + 60)))
+	«window.msg(manilaFixer.accessControl.rpcHandlers.set ("dbayly@dab.dot", "noway", "myfirstSite", 129, "releasedate", clock.now()))

@@ -1,0 +1,43 @@
+on listTopMessages (ctToList=10, url=nil, groupName="default") {
+	«Changes
+		«4/20/03; 1:00:22 PM by JES
+			«New optional parameter, groupName. This lets us show the user's real name instead of just an email address, when displaying most read message pages in a Manila site.
+	local (pta = html.getPageTableAddress ());
+	if url == nil {
+		url = pta^.responderattributes.urls^.discussMsgReader};
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s, align="") {
+		add ("<td nowrap " + align + " valign=\"middle\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
+	on shortenstring (s, maxlen=35) {
+		if sizeof (s) <= maxlen {
+			return (s)};
+		return (string.mid (s, 1, maxlen - 3) + "...")};
+	local (adrroot = mainresponder.discuss.openroot ());
+	local (adrmsgs = @adrroot^.messages);
+	local (adrrankings = @adrroot^.stats.rankings, ctrankings = sizeof (adrrankings^));
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	replacementTable.date = mainResponder.localization.dateTimeString (timeCreated (adrrankings));
+	add ("<i>" + mainResponder.getString ("discuss.rankingsCompiledOn", @replacementTable) + "</i><p>"); // 4/13/00 JES: localized compiled-on date
+	local (i, adrmsg);
+	add ("<table cellspacing=\"3\">"); indentlevel++;
+	bundle { //column headings; 4/12/00 JES: localized headings
+		add ("<tr>"); indentlevel++;
+		td ("<b>&nbsp;</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.count") + "</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.date") + "</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.subject") + "</b>");
+		td ("<b>" + mainResponder.getString ("listHeaders.originator") + "</b>");
+		add ("</tr>"); indentlevel--};
+	for i = ctrankings downto (ctrankings - ctToList + 1) {
+		adrmsg = @adrmsgs^.[nameof (adrrankings^ [i])];
+		add ("<tr>"); indentlevel++;
+		td (ctrankings - i + 1, "align=\"center\"");
+		td (adrmsg^.ctReads);
+		td (mainResponder.localization.shortDateString (adrmsg^.posttime)); // 4/13/00 JES: localized
+		td (mainresponder.discuss.linkToMessage (adrmsg, url, 40));
+		td (mainResponder.members.getMemberName (groupName, adrmsg^.member));
+		add ("</tr>"); indentlevel--};
+	add ("</table>"); indentlevel--;
+	return (htmltext)}

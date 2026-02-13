@@ -1,0 +1,50 @@
+on memberCanPostToHomePage (adrsite=nil, adrMember=nil) {
+	«Return true if this member is allowed to approve news items for posting to the home page.
+		«04/25/00; 2:51:50 PM by PBS
+	«Changes:
+		«9/26/03; 12:31:54 PM by JES
+			«Added support for content editor permissions.
+		«8/20/01; 12:18:27 AM by JES
+			«Added optional parameter, adrsite, which if specified makes it possible to call this script from outside the website framework context.
+	
+	local (flManagingEditor, flContentEditor, flEditor, flMember);
+	if adrsite == nil { //assume we're being called from the website framework context
+		local (pta = html.getPageTableAddress ());
+		flManagingEditor = manilaSuite.editors.managingEditorTest (pta);
+		flContentEditor = manilaSuite.editors.contentEditorTest (pta);
+		flEditor = manilaSuite.editors.editorialTest (pta);
+		flMember = defined (pta^.adrMemberInfo^)}
+	else { //we're being called from an RPC handler or some other script
+		if adrMember == nil {
+			scriptError ("Could not determine if the member may create a news item, because no member table address was specified.")};
+		local (siteName = manilaSuite.getCanonicalSiteName (adrSite));
+		local (username = nameOf (adrMember^));
+		flManagingEditor = manilaSuite.rpcUtils.isManagingEditor (siteName, username);
+		flContentEditor = manilaSuite.rpcUtils.isContentEditor (siteName, username);
+		flEditor = manilaSuite.rpcUtils.isContributingEditor (siteName, username) or manilaSuite.rpcUtils.isContentEditor (siteName, username);
+		flMember = manilaSuite.rpcUtils.isMember (siteName, username)};
+	if flManagingEditor { //MEs can always post to home page
+		return (true)};
+	
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrsite));
+	if not flMember { //you at least have to be a member to post to the home page
+		return (false)};
+	
+	«Content editors check.
+	if defined (adrNewsSite^.newsItems.access.flContentEditorsPost) {
+		if adrNewsSite^.newsItems.access.flContentEditorsPost {
+			if flContentEditor {
+				return (true)}}};
+	
+	«Contributing editors check.
+	if defined (adrNewsSite^.newsItems.access.flContributingEditorsPost) {
+		if adrNewsSite^.newsItems.access.flContributingEditorsPost {
+			if flEditor {
+				return (true)}}};
+	
+	«Members check.
+	if defined (adrNewsSite^.newsItems.access.flMembersPost) {
+		if adrNewsSite^.newsItems.access.flMembersPost {
+			return (true)}};
+	
+	return (false)}

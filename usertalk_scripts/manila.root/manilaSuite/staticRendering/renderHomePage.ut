@@ -1,0 +1,42 @@
+on renderHomePage () {
+	«Publish a home page.
+		«Changes:
+			«8/31/06; 11:33:46 AM by LL
+				«Support RSS auto-discovery for static rendered sites.
+			«04/01/00; PM by PBS
+				«Call script.compile to make sure no dialogs about closing an uncompiled script appear.
+			«05/31/00; 3:45:36 PM by PBS
+				«Bring the manilaMacros table in to scope when building a page.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	try { //08/31/06 LL: add <link> tag with the RSS URL to pta^.meta
+		local (flSyndicate = manilaSuite.getNewsSitePref ("flSyndicate", pta^.adrManilaSite));
+		if flSyndicate { //add the link to pta^.meta
+			local (siteUrl = manilaSuite.getSiteUrl (pta^.adrStaticSite, pta));
+			local (channelName = manilaSuite.getNewsSitePref ("rssInfo.channelTitle", pta^.adrManilaSite));
+			local (urlParts = string.urlSplit (siteUrl));
+			local (rssUrl = siteUrl + "xml/rss.xml");
+			local (linkString = "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"RSS\" href=\"" + rssUrl + "\" >"); // 10/22/04; 10:32:39 AM by EDS
+			if defined (pta^.meta) {
+				pta^.meta = pta^.meta + "\r" + linkstring}
+			else {
+				pta^.meta = linkString}}};
+	
+	local (relativePath = manilaSuite.staticRendering.getDefaultFilename ());
+	local (adrPage = @pta^.adrStaticSite^.[relativePath]);
+	local (s = "manilaSuite.staticRendering.buildHomePage ()");
+	script.newScriptObject (s, adrPage);
+	script.compile (adrPage); //PBS 04/01/00: prevent dialog box about uncompiled script
+	
+	if defined (manilaMacros) { //PBS 05/31/00
+		with manilaMacros {
+			html.buildOnePage (adrPage, pta)}}
+	else {
+		html.buildOnePage (adrPage, pta)};
+	
+	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
+	local (currentUrl = pta^.adrStaticSite^.["#ftpSite"].url);
+	manilaSuite.staticRendering.updateRenderStatus (adrManilaSite, currentUrl);
+	
+	return (true)}

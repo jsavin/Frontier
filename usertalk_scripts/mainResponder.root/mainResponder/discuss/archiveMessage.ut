@@ -1,0 +1,68 @@
+on archiveMessage (adrmsg) {
+	«8/13/99; 10:31:23 PM by DW
+		«writes an xml-formatted archive of the discussion group message
+		«Changes:
+			«12/6/99; 11:29:55 AM by PBS
+				«When archiving a discussion group message that's not stored in discuss.root (a Manila dg message, for instance), get the real name of the discussion group so it's not archived wrongly in a folder named #discussionGroup.
+			«12/23/99; 10:06:51 AM by DW
+				«This may be a major performance bottleneck. Add an optimization, we now store a ctRevisions item in the message table and bump it every time. This saves us from having to loop over the archive folder, so messages that are updated many times won't become slower and slower to update. 
+			«06/28/00; 1:23:26 AM by JES
+				«Make sure folder names aren't more than 31 characters long if running on a Mac
+					«First remove the ManilaWebsite part, then truncate to 31 characters
+						«This may not be optimal, but for most people it will suffice.
+	if config.mainresponder.prefs.flArchiveDiscuss {
+		local (pc = file.getpathchar (), now = clock.now ());
+		local (xmltext = mainresponder.discuss.tabletoxml (adrmsg, flIncludeEnclosure:true));
+		local (nomad = adrmsg);
+		nomad = parentOf (nomad^); //point at messages
+		nomad = parentOf (nomad^); //point at discussion root
+		local (nameDiscussGroup = nameOf (nomad^));
+		
+		bundle { //PBS 12/6/99: get the real name of the discussion group
+			if parentOf (nomad^) != @[system.temp.mainResponder.discussRootFile] {
+				try { //get it from the page table
+					local (pta);
+					pta = html.getPageTableAddress ();
+					nameDiscussGroup = pta^.discussionRoot}
+				else { //get it from the site, assuming that this dg is stored in the site
+					try {
+						local (adrSite = parentOf (nomad^));
+						nameDiscussGroup = adrSite^.["#prefs"].discussionRoot}}}};
+		
+		local (folder);
+		if system.environment.isMac { // 06/28/00 JES: make sure the folder name isn't too long on Macs
+			if sizeOf (nameDiscussGroup) > 31 {
+				nameDiscussGroup = nameDiscussGroup - "ManilaWebsite"};
+			nameDiscussGroup = string.mid (nameDiscussGroup, 1, 31)};
+		folder = config.mainresponder.prefs.discussArchiveFolder + nameDiscussGroup + pc;
+		
+		local (day, month, year, hour, minute, second);
+		date.get (now, @day, @month, @year, @hour, @minute, @second);
+		folder = folder + year + pc + string.padwithzeros (month, 2) + pc + string.padwithzeros (day, 2) + pc;
+		
+		bundle { //maintain the stats.changes table
+			local (adrchanges = @nomad^.stats.changes, adrprefs = @nomad^.prefs);
+			if not defined (adrchanges^) {
+				new (tabletype, adrchanges)};
+			adrchanges^.[nameof (adrmsg^)] = now;
+			adrprefs^.flChangesDirty = true};
+		local (f);
+		bundle { //write out the file
+			if defined (adrmsg^.ctRevisions) {
+				adrmsg^.ctRevisions++}
+			else {
+				adrmsg^.ctRevisions = 1};
+			f = folder + nameof (adrmsg^) + "." + string.padwithzeros (adrmsg^.ctRevisions, 4) + ".xml";
+			file.surefilepath (f);
+			file.writewholefile (f, xmltext);
+			bundle { //call the callback scripts
+				local (params);
+				new (tabletype, @params);
+				params.f = f; //the callback script just refers to "f"
+				params.xmltext = xmltext;
+				params.adrmsg = adrmsg;
+				params.nameDiscussGroup = nameDiscussGroup;
+				mainResponder.callbackLoop (@config.mainresponder.callbacks.archiveDiscussMessage, @params)}};
+		return (f)}};
+«bundle //test code
+	«archiveMessage (@discuss.messages.["0000001"])

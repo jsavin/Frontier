@@ -1,0 +1,174 @@
+on versioning (pta) {
+	«Changes
+		«10/7/05; 3:50:05 PM by JES
+			«Use the site display name instead of the site canonical name in the text shown to the user. (Why wasn't this done in the first place?)
+		«3/30/05; 12:56:59 AM by JES
+			«Use UserLand style tables and headers.
+			«Run dates through manilaSuite.convertDate.
+			«Use manilaSuite.members.linkToMember for member links instead of their email addresses.
+		«04/05/19, 17:17:08 by DAB
+			«Created. Configure the versioning in a site.
+				«was manilaFixer.versioning.default : 02/03/21, 21:56:52 by DAB
+				«messages at manilaData.localization.languages.english.strings.versioning
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	«local (sitename = manilaSuite.getCanonicalSitename(adrSite))
+	local (sitename = adrNewsSite^.siteName);
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (replTbl);
+	bundle { //replacement table
+		new(tabletype, @replTbl);
+		replTbl.sitename = sitename};
+	
+	local (seperatorColor, seperatorTextColor);
+	manilaSuite.html.getSeparatorColors (@seperatorColor, @seperatorTextColor);
+	on separator(msgID) {
+		add("\r<table width = '100%'>");
+		add("\r\t<tr>");
+		add("\r\t\t<td style = 'color:" + seperatorTextColor + ";background-color:" + seperatorColor + "' colspan='2'>");
+		add(manilaSuite.getString("versioning." + msgID, @replTbl, pta:pta));
+		add("</td>");
+		add("\r\t</tr>");
+		add("\r</table>");
+		return true};
+	
+	pta^.title = manilaSuite.getString("Versioning.pageTitle", @replTbl, pta:pta);
+	add(manilaSuite.getString("Versioning.helpText", @replTbl, pta:pta));
+	
+	separator("panelTitleConfigure");
+	
+	local (flVersioningCheckBox, flRollbackCheckBox); //02/04/25, 11:32:11 by DAB
+	bundle { //build configuration form
+		local (versioningState = 0);
+		try {versioningState = config.manila.prefs.versioning.availability};
+		case versioningState {
+			0 {
+				add(manilaSuite.getString("Versioning.versioningDeActivated", @replTbl, pta:pta))};
+			3 {
+				add(manilaSuite.getString("Versioning.versioningActivated", @replTbl, pta:pta));
+				flRollbackCheckBox = true}; //02/04/25, 11:50:13 by DAB
+			4 {
+				if defined(adrNewsSite^.versioning) and defined(adrNewsSite^.versioning.enabled) and adrNewsSite^.versioning.enabled {
+					add(manilaSuite.getString("Versioning.versioningActivated", @replTbl, pta:pta));
+					flRollbackCheckBox = true} //02/04/25, 11:50:13 by DAB
+				else {
+					add(manilaSuite.getString("Versioning.versioningDeActivated", @replTbl, pta:pta))}}}
+		else {
+			if not defined(adrNewsSite^.versioning) {
+				new(tabletype, @adrNewsSite^.versioning);
+				«adrNewsSite^.versioning.enabled = false
+				«if versioningState == 2
+					«adrNewsSite^.versioning.enabled = true};
+			if not defined(adrNewsSite^.versioning.enabled) { //05/03/26, 14:50:13 by DAB
+				adrNewsSite^.versioning.enabled = false;
+				if versioningState == 2 {
+					adrNewsSite^.versioning.enabled = true}};
+			
+			flRollbackCheckBox = true; //02/04/25, 11:50:13 by DAB
+			flVersioningCheckBox = true}}; //02/04/25, 11:50:13 by DAB
+	
+	if pta^.method == "POST" {
+		case true {
+			defined(pta^.postargs.toggleversioning) { //Post
+				if flVersioningCheckBox {
+					adrNewsSite^.versioning.enabled = boolean(pta^.postargs.enabled )};
+				if flRollbackCheckBox {
+					adrNewsSite^.versioning.FlRestoreWanted = boolean(pta^.postargs.rollBack)}}}};
+	
+	if flVersioningCheckBox or flRollbackCheckBox { //build the form to toggle versioning/rollback
+		local (checked = "");
+		
+		add ("\r<form method='POST' action='" + pta^.fname + "$versioning' name ='versioning'>");
+		«add ("\r<input type='hidden' name='" + shortName + "' value='true'>")
+		add("\r\t<table>");
+		
+		if flVersioningCheckBox { //row for versioning checkbox
+			add("\r\t\t<tr>");
+			add("\r\t\t<td>");
+			add(manilaSuite.getString("Versioning.formIDEnabled", @replTbl, pta:pta));
+			add("</td>");
+			add("\r\t\t<td>");
+			checked = "";
+			if adrNewsSite^.versioning.enabled {
+				checked = " checked"};
+			add("<input type = 'radio' name = 'enabled' value='true'" + checked + ">");
+			add(manilaSuite.getString("common.yes", pta:pta));
+			checked = "";
+			if not adrNewsSite^.versioning.enabled {
+				checked = " checked"};
+			add("<input type = 'radio' name = 'enabled' value='false'" + checked + ">");
+			add(manilaSuite.getString("common.no", pta:pta));
+			add("</td>");
+			add("\r\t\t</tr>")};
+		
+		if flRollbackCheckBox { //row for rollback checkbox
+			add("\r\t\t<tr>");
+			add("\r\t\t<td>");
+			add(manilaSuite.getString("Versioning.formIDMessageRollbackEnabled", @replTbl, pta:pta));
+			add("</td>");
+			add("\r\t\t<td>");
+			checked = "";
+			if adrNewsSite^.versioning.flRestoreWanted {
+				checked = " checked"};
+			add("<input type = 'radio' name = 'rollback' value='true'" + checked + ">");
+			add(manilaSuite.getString("common.yes", pta:pta));
+			checked = "";
+			if not adrNewsSite^.versioning.flRestoreWanted {
+				checked = " checked"};
+			add("<input type = 'radio' name = 'rollback' value='false'" + checked + ">");
+			add(manilaSuite.getString("common.no", pta:pta));
+			add("</td>");
+			add("\r\t\t</tr>")};
+		
+		bundle { //row for button
+			add("\r\t\t<tr>");
+			add("\r\t\t<td>&nbsp;</td><td>");
+			add("<input type = 'submit' name = 'toggleversioning' value = '" + manilaSuite.getString("Versioning.buttontoggleversioning", pta:pta) + "'>");
+			add("</td>");
+			add("\r\t\t</tr>")};
+		
+		add("\r\t</table>");
+		add("\r</form>")};
+	
+	if defined(adrNewsSite^.versioning) and sizeOf(adrNewsSite^.versioning)>0 {
+		separator("panelTitleLatestChanges");
+		
+		add(manilaSuite.getString("Versioning.helpTextAudit", @replTbl, pta:pta));
+		
+		local (adrEntry, adr, objectID);
+		add("\r\t<table cellpadding='0' cellspacing='8' border='0' width='75%'>");
+		bundle { //header row
+			add("\r\t<tr>");
+			add("\r\t<td>");
+			add("<b>Item</b>");
+			add("\r\t</td>");
+			add("\r\t<td>");
+			add("<b>Member</b>");
+			add("\r\t</td>");
+			add("\r\t<td>");
+			add("<b>Last Change</b>");
+			add("\r\t</td>");
+			add("\r\t</tr>")};
+		for adrEntry in @adrNewsSite^.versioning {
+			if typeof(adrEntry^) != tableType {
+				continue};
+			adr = address(nameOf(adrEntry^));
+			objectID = manilaSuite.custody.getItemNameFromAddress(adr, adrSite);
+			add("\r\t<tr>");
+			add("\r\t<td>");
+			add(objectID);
+			add("\r\t</td>");
+			add("\r\t<td>");
+			add(manilaSuite.members.linkToMember (pta^.defaultMembershipGroup, adrEntry^.memberKey));
+			add("\r\t</td>");
+			add("\r\t<td>");
+			add(manilaSuite.convertTime (adrEntry^.timestamp));
+			add("\r\t</td>");
+			add("\r\t</tr>")};
+		add("\r\t</table>")};
+	
+	return (manilaSuite.unTaint (htmlText))}

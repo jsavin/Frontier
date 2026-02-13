@@ -1,0 +1,72 @@
+on indexDiscussionMessage (adrStorage, flSpawnThread=true) {
+	«Add a discussion group message to the search engine.
+	
+	«Get the address of the message reader page.
+	
+	local (adrMessages = parentOf (adrStorage^));
+	local (adrRoot = parentOf (adrMessages^));
+	local (adrPrefs = @adrRoot^.prefs);
+	local (adrMsgReader);
+	
+	local (rootName = nameOf (adrRoot^));
+	local (lowerRootName = string.lower (rootName));
+	
+	if not defined (adrPrefs^.adrMsgReader) {
+		mainResponder.search.client.logNoIndex (adrStorage, "the address of the msgReader page isn't specified in the prefs for this discussion group.");
+		return (true)};
+	
+	adrMsgReader = adrPrefs^.adrMsgReader;
+	
+	if not defined (adrMsgReader) {
+		mainResponder.search.client.logNoIndex (adrStorage, "adrMsgReader, in the prefs for this discussion group, points to a page that doesn't exist.");
+		return (true)};
+	
+	«Index the msgReader-type page.
+	
+	mainResponder.search.client.index (adrMsgReader, true, adrStorage);
+	
+	«Handle alsoListedIn.
+	
+	if defined (adrStorage^.alsoListedIn) {
+		local (i);
+		
+		«Loop through each alsoListedIn category, and find and index each page.
+		for i = 1 to sizeOf (adrStorage^.alsoListedIn) {
+			local (site = adrStorage^.alsoListedIn [i]);
+			local (adrStory);
+			if not defined (config.mainResponder.search.sites.[site]) {
+				mainResponder.search.client.logNoIndex (adrStorage, "the alsoListedIn site " + site + " has no table in config.mainResponder.search.sites.");
+				continue};
+			local (adrSiteTable = @config.mainResponder.search.sites.[site]);
+			if not defined (adrSiteTable^.adrStories) {
+				mainResponder.search.client.logNoIndex (adrStorage, "the site table for site " + site + " has no adrStories element.");
+				continue};
+			local (adrStoriesTable = adrSiteTable^.adrStories);
+			if not defined (adrStoriesTable^) {
+				mainResponder.search.client.logNoIndex (adrStorage, adrStoriesTable + ", referenced from the config.mainResponder.search.sites table for site " + site + ", is not defined.");
+				continue};
+			local (flFound = false);
+			on checkTable (adrTable) {
+				local (j);
+				for j = 1 to sizeOf (adrTable^) {
+					if flFound {
+						break};
+					local (adrItem = @adrTable^ [j]);
+					if html.traversalSkip (adrItem) {
+						continue};
+					if defined (adrItem^.msgNum) and defined (adrItem^.discussionRoot) {
+						if string.popLeading (adrItem^.msgNum, '0') == string.popLeading (nameOf (adrStorage^), '0') {
+							if string.lower (adrItem^.discussionRoot) == lowerRootName {
+								adrStory = adrItem;
+								flFound = true;
+								continue}}};
+					if typeOf (adrItem^) == tableType {
+						checkTable (adrItem);
+						continue}}};
+			checkTable (adrStoriesTable);
+			if not flFound {
+				mainResponder.search.client.logNoIndex (adrStorage, "the indexer couldn't find the story with a msgNum of " + nameOf (adrStorage^))}
+			else { //the page has been found, index it
+				mainResponder.search.client.index (adrStory, adrSiteTable:adrSiteTable)}}};
+	
+	return (true)}

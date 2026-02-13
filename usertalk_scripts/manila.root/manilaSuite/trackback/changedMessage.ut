@@ -1,0 +1,26 @@
+on changedMessage (adrsite, adrmsg, flnew) {
+	«Changes
+		«7/14/03; 12:04:34 AM by JES
+			«Respect the global pref for enabling trackback at config.manila.prefs.flTrackbackEnabled.
+		«4/25/03; 7:41:34 AM by DW
+			«Gut the script, invoke the functionality in a thread, so the user doesn't have to wait.
+		«4/22/03; 6:57:13 PM by DW
+			«Created. The message is either new or changed. We scan the text looking for URLs, and accumulate them in a trackback sub-table.
+			«bundle //debugging
+				«local (oldtarget = target.set (@scratchpad.trackbacks))
+				«op.firstsummit ()
+				«local (s)
+				«if flnew
+					«s = "New"
+				«else
+					«s = "Edit"
+				«op.insert (s + ": " + nameof (adrmsg^) + " " + date.timestring (), up)
+				«target.set (oldtarget)
+	if defined (config.manila.prefs.flTrackbackEnabled) {
+		if config.manila.prefs.flTrackbackEnabled {
+			if manilaSuite.news.isPosted (adrmsg) {
+				local (adrtrackback = manilaSuite.trackback.init (adrsite));
+				if adrtrackback^.flEnabled {
+					thread.callscript (@manilasuite.trackback.threadscript, {adrsite, adrmsg, flnew})}}}}};
+«bundle //test code
+	«changedMessage (@tbtestManilaWebsite, @tbtestManilaWebsite.["#discussionGroup"].messages.["0000005"], false)

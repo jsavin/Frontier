@@ -1,0 +1,53 @@
+on themesPopup (label, buttonText) {
+	«Build an HTML list of themes on the site. Include links, descriptions, and authors optionally. (Default is to include all.) List themes that are public and enabled.
+		«06/15/00; 5:49:00 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	
+	local (htmlText, indentLevel = 0);
+	on add (s) {
+		htmlText = string.filledString ('\t', indentLevel) + htmlText + s};
+	
+	bundle { //handle redirect
+		if pta^.searchArgs != "" {
+			local (t);
+			new (tableType, @t);
+			webserver.parseArgs (pta^.searchArgs, @t);
+			if defined (t.url) {
+				mainResponder.redirect (t.url);
+				scriptError ("!redirect " + t.url)}}};
+	
+	local (path = pta^.uri);
+	if pta^.pathArgs != "" {
+		path = path + "$" + pta^.pathArgs};
+	
+	add ("<form method=\"get\" action=\"" + path + "\" target=\"new\">");
+	indentLevel++;
+	add (label + " ");
+	
+	add ("<select name=\"url\">");
+	indentLevel++;
+	
+	local (adrItem);
+	local (adrTable = @config.manila.themes);
+	for adrItem in adrTable {
+		if not adrItem^.flEnabled {
+			continue};
+		if not adrItem^.flPublic {
+			continue};
+		
+		local (themeName, themeUrl);
+		themeName = adrItem^.Info.displayName;
+		themeUrl = adrItem^.Info.siteUrl;
+		if themeUrl != "" {
+			add ("<option value=\"" + themeUrl + "\">" + themeName)}};
+	
+	add ("</select>");
+	indentLevel--;
+	
+	add ("&nbsp;<input type=\"submit\" value=\"" + buttonText + "\">");
+	
+	add ("</form>");
+	indentLevel--;
+	
+	return (manilaSuite.unTaint (htmlText))}

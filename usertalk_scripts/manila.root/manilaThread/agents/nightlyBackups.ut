@@ -1,0 +1,11 @@
+«Changes
+	«6/26/02; 8:42:32 PM by JES
+		«Run backups of all Manila sites for which backups are enabled at 1AM.
+if config.manila.backups.flEnabled {
+	local (now = clock.now ());
+	local (day, month, year, hour, minute, second);
+	date.get (now, @day, @month, @year, @hour, @minute, @second);
+	if hour == config.manila.backups.hourToBackUp { //run backups at 1 AM
+		if config.manila.backups.whenLastBackedUp < date.yesterday (now) {
+			config.manila.backups.whenLastBackedUp = now;
+			manilaSuite.backups.backupAllSites ()}}}

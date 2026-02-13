@@ -1,0 +1,25 @@
+on checkMemberCohortsFromGroup (pta, permittedCohorts, adrGroup) {
+	«manilaSuite.accessControl.checkMemberCohortsFromGroup : 05/05/14, 17:28:28 by DAB
+	«In the context of the page table, does the member belong to any
+	«cohorts  in the provided list?
+	«was manilaFixer.accessControl.checkMemberCohorts : 02/02/21, 17:54:49 by DAB
+	local (adrCohorts = @adrGroup^.cohorts);
+	
+	local (itm, adrCohort, adrScript,  tbl);
+	new(tabletype, @tbl);
+	for itm in permittedCohorts { //
+		adrCohort = @adrCohorts^.[itm];
+		if not defined(adrCohort^) {
+			continue};
+		if not defined(adrCohort^.containsTest) {
+			continue};
+		adrScript = @adrCohort^.containsTest;
+		while typeOf(adrScript^) == addressType {
+			adrScript = adrScript^};
+		if defined(tbl.[string(adrScript)]) { // don't call more than once
+			continue};
+		if adrScript^(pta) {
+			return true};
+		tbl.[string(adrScript)] = true};
+	
+	return false}

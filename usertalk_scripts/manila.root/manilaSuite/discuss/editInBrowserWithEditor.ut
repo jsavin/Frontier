@@ -1,0 +1,55 @@
+on editInBrowserWithEditor () {
+	«Edit this page in the browser.
+		«Changes:
+			«02/09/00; 6:51:27 PM by PBS
+				«Commented out obsolete code for sending a message to Pike on clicking the Edit this Page button. Added code for custody: if the member can't check out the object, an error is displayed instead of the editing form.
+	
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Edit Message";
+	pta^.autoParagraphs = false;
+	pta^.addLineFeeds = false;
+	
+	local (subjectPrompt = "Subject");
+	local (referer);
+	if defined (pta^.requestHeaders.referer) {
+		referer = manilaSuite.unTaint (pta^.requestHeaders.referer);
+		if not (string.lower (referer) contains "discuss") {
+			subjectPrompt = "Title";
+			pta^.title = "Edit Story"}};
+	
+	local (msgNum = number (pta^.pathArgs));
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+	manilaSuite.discuss.setLastUpdateTime (adrMsgTable);
+	
+	«bundle //possibly edit in Pike //PBS 02/09/00: commented out because we didn't wire the Edit this Page button to Pike. This code is obsolete.
+		«local (adrSite = manilaSuite.getSiteAddress (pta))
+		«local (sitename = manilaSuite.getSiteName (adrSite))
+		«local (username = nameOf (pta^.adrMemberInfo^))
+		«if manilaSuite.pikeUserLoggedOn (adrSite, username)
+			«local (params, msgtable, adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (sitename))
+			«msgtable = adrMsgTable^
+			«msgtable.url = adrDiscuss^.prefs.msgReaderUrl + msgnum
+			«manilaSuite.rpcUtils.cleanMessageTableForExport (@msgtable)
+			«params = {sitename, msgtable}
+			«betty.rpc.client (pta^.client, 1973, "pike.receiveMessage", @params)
+			«return ("true")
+	
+	local (htmlText);
+	htmlText = mainResponder.discuss.editMessageForm (msgNum, flLinkToReferer:true, flShowFileList:false, flShowFileUpload:false, filePrompt:"Attach an image (optional)", subjectPrompt:subjectPrompt);
+	local (s = manilaSuite.discuss.addDhtmlEditor (pta));
+	if s != "" {
+		htmlText = string.replace (htmlText, "<br><textarea name=\"body\"", "<p>" + manilaSuite.discuss.addDhtmlEditor (pta) + "<textarea name=\"body\" style=\"padding:7px\"")};
+	
+	bundle { //PBS 02/09/00: make sure the member can check out this object -- and actually check it out.
+		local (adrMember = pta^.adrMemberInfo);
+		local (adrSite = pta^.adrSiteRootTable);
+		
+		if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, adrMember, adrSite, true) { //true because it's a message
+			«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+			local (title = adrMsgTable^.subject);
+			title = manilaSuite.unTaint (title);
+			return ("Can't edit \"" + title + "\" because it's currently being edited by someone else.")};
+		
+		manilaSuite.custody.checkOut (adrMsgTable, adrMember, adrSite, true)}; //true because it's a message
+	
+	return (htmlText)}

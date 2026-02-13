@@ -1,0 +1,5 @@
+on errorCallback (adrMsg) {
+	if defined (adrMsg^.ctErrors) {
+		if adrMsg^.ctErrors > 1 { //you get two errors only: must not overwhelm systems with bad search engine servers
+			adrMsg^.flDelete = true}};
+	return (true)}

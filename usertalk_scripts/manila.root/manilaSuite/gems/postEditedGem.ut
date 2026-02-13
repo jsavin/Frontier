@@ -1,0 +1,21 @@
+on postEditedGem (pta=nil) {
+	«manilaSuite.gems.postEditedGem : 04/06/30, 15:23:14 by DAB
+		«Post changes to a gem. Since Manila itself doesn't edit gems, we only see if there's
+		«an override in force for this URLTable entry.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	pta^.title = manilaSuite.getString ("gems.postEditedGemPageTitle", pta: pta);
+	
+	manilaSuite.referer.checkNew ("gemEditInBrowser", "gemPostEditedMessage");
+	
+	local (htmlText="");
+	if manilaSuite.plugins.ETPoverride.getScriptAddress("gemPostEditedMessage", @adrETPbuilder) {
+		if not  adrETPbuilder^ (@htmltext) {
+			return htmltext}};
+	
+	if defined (pta^.postArgs.redirect) {
+		mainResponder.redirect (pta^.postArgs.redirect)};
+	
+	return ("")}

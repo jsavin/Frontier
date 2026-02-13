@@ -1,0 +1,15 @@
+on isStory (username, password, siteName, msgNum) {
+	«Determine if a message has been marked as a story.
+		«Changes:
+			«11/26/01; 11:06:18 AM by PBS
+				«Support content editors.
+	
+	bundle { //make sure this person is a managing or content editor of the site.
+		local (beginningErrorString = "Can't determine if message \"" + msgNum + "\" is a story because ");
+		manilaSuite.rpcUtils.managingEditorOrContentEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss));
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	return (manilaSuite.discuss.isStory (adrmsg, adrSite))}

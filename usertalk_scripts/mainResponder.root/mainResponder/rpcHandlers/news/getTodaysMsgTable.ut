@@ -1,0 +1,6 @@
+on getTodaysMsgTable (sitename) {
+	local (msgtable = mainresponder.news.getTodaysMsgTable (sitename)^);
+	local (adrnewstable = mainResponder.news.openRoot (sitename));
+	local (adrprefs = @adrnewstable^.["#newsSite"]);
+	msgtable.url = adrprefs^.readNewsUrl + string (msgtable.msgnum);
+	return (msgtable)}

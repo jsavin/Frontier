@@ -1,0 +1,296 @@
+on readThread (msgNum, flResponseForm=true, flShowThreadLinks=true, flShowAuthors=true, flShowPostTime=true, flShowThreadInfo=true, flShowReadCount=true, flShowResponseCount=true, flShowEnclosures=true, editPageUrl="", flShowCowSkullLink=false, pta=nil, adrMsgTable=nil, adrData=nil, adrGetBodyCallback=nil, adrGetTimeCallback=nil, fleditableSubject=false, cssPrefix="", threadAliveDays=5, threadActiveDays=1, bgColor="ivory", otherColor="beige", headerColor="black", headerTextColor="ivory", adrTemplate=nil, adrTopicTemplate=nil, defaultMode="day", activeThreadIcon=nil, inactiveThreadIcon=nil, userIcon=nil, adrInDgCallback=nil, flUseMappedMemberKeys=false) {
+	«This is the main bottleneck script for displaying discussion group threads.
+		«10/09/00; 6:24:12 PM by JES
+	«Changes
+		«4/4/02; 1:07:05 AM by JES
+			«New optional parameter, adrInDgCallback, is the address of a callback which determines whether a message should be included in the rendering. If the callback returns true, add the message. If it returns false, don't add the message.
+		«10/17/01; 10:46:43 AM by PBS
+			«Don't use IP address in links to built-in icons.
+		«9/26/01; 6:58:09 PM by PBS
+			«Don't call tcp.myDottedId, call tcp.dns.getMyDottedId since it caches.
+		«11/04/00; 10:08:13 PM by JES
+			«Fixed a bug where the incorrect URL would be generated for a thread's status icon. Fixed a bug where the incorrect icon would be used in the next and previous topic links.
+		«10/13/00; 12:06:11 AM by JES
+			«Added support for topic templates.
+	
+	bundle { //get page table, discussion group, and message table addresses
+		if pta == nil {
+			pta = html.getPageTableAddress ()};
+		if adrData == nil {
+			adrData = mainResponder.discuss.openRoot (pta)};
+		if adrMsgTable == nil {
+			adrMsgTable = @adrData^.messages.[string.padWithZeros (msgNum, 7)]}};
+	
+	if string.lower (pta^.method) != "post" { // redirect to the top message in the thread
+		if adrMsgTable^.inResponseTo != 0 { // redirect to the topic reader page -- to the message requested.
+			«bundle //increment read stats before redirecting
+				«adrMsgTable^.ctReads++
+				«config.mainResponder.stats.ctDiscussionGroupReads++
+			local (nomad = adrMsgTable);
+			while (nomad^.inResponseTo > 0) {
+				nomad = mainResponder.discuss.getMessageTable (nomad^.inResponseTo, pta, adrData)};
+			local (url = pta^.responderAttributes.urls^.discussMsgReader);
+			if not (url endsWith '$') {
+				url = url + "$"};
+			url = url + nomad^.msgNum;
+			if url != (pta^.url + "$" + pta^.pathArgs) { // make sure we're not redirecting to ourselves
+				try { // in case there are non-numeric pathArgs
+					if number (pta^.pathArgs) != number (nomad^.msgNum) {
+						url = url + "#" + pta^.pathArgs}};
+				local (searchArgs = "");
+				if defined (pta^.searchAgrs) and pta^.searchAgrs != "" {
+					searchArgs = "?" + pta^.searchArgs};
+				mainResponder.redirect (url + searchArgs)}}};
+	
+	local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+	local (flShowEditButtons, flEditButtonsAtTop, flShowMessageHeaders);
+	local (htmlText = "", indentLevel = 0);
+	local (flMember = defined (pta^.adrMemberInfo));
+	local (msgReaderUrl = pta^.responderAttributes.urls^.discussMsgReader);
+	if not (msgReaderUrl endsWith "$") {
+		msgReaderUrl = msgReaderUrl + "$"};
+	local (oldestActiveThreadDate = date (clock.now () - (3600 * 24 * threadActiveDays)));
+	
+	on buildSearchArgs (adrArgTable) {
+		local (ct = sizeOf (adrArgTable^), i, s = "?");
+		for i = 1 to ct {
+			s = s + nameOf (adrArgTable^[i]) + "=" + adrArgTable^[i] + "&"};
+		s = string.mid (s, 1, sizeOf (s) - 1);
+		return (s)};
+	
+	local (contextDate, y, m, d); // for context for next/prev topic
+	local (mode, thisModeSearchArgs, otherModeSearchArgs);
+	if pta^.searchArgs != "" { // get context information from the searchArgs, and build search args for mode flipping
+		local (searchArgs = "", argTable);
+		new (tableType, @argTable);
+		if defined (pta^.searchArgs) {
+			searchArgs = pta^.searchArgs};
+		webserver.parseArgs (pta^.searchArgs, @argTable);
+		bundle { // make sure year, month and day are defined
+			if defined (argTable.y) {
+				y = argTable.y}
+			else {
+				y = date.year ()};
+			if defined (argTable.m) {
+				m = argTable.m}
+			else {
+				m = date.month ()};
+			if defined (argTable.d) {
+				d = argTable.d}
+			else {
+				d = date.day ()}};
+		if not defined (argTable.mode) {
+			argTable.mode = defaultMode};
+		argTable.mode = string.lower (argTable.mode);
+		mode = argTable.mode;
+		thisModeSearchArgs = buildSearchArgs (@argTable);
+		if argTable.mode == "day" {
+			argTable.mode = "topic"}
+		else {
+			argTable.mode = "day"};
+		otherModeSearchArgs = buildSearchArgs (@argTable);
+		contextDate = date.set (d, m, y, 0, 0, 0)}
+	else { // context is assumed to be today
+		y = date.year ();
+		m = date.month ();
+		d = date.day ();
+		contextDate = date.set (d, m, y, 0, 0, 0)};
+	local (flCss = (cssPrefix != "")); //if true, emit CSS classes, otherwise don't
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	on getThreadLink (msgNum, adrThreadMsgTable, oldestThreadActiveDate) {
+		local (lastMsgDate = adrThreadMsgTable^.postTime);
+		if sizeOf (adrThreadMsgTable^.responses) {
+			local (lastMsgInThread = adrThreadMsgTable^.responses[sizeOf (adrThreadMsgTable^.responses)]);
+			local (adrLastMsgInThread = @adrData^.messages.[string.padWithZeros (lastMsgInThread, 7)]);
+			lastMsgDate = adrLastMsgInThread^.postTime};
+		local (statusIcon, startLinkTag);
+		if lastMsgDate < oldestActiveThreadDate { // inactive thread
+			statusIcon = inactiveThreadIcon} //"<img src=\"" + inactiveThreadImgUrl + "\" width=\"" + threadStatusIconWidth + "\" height=\"" + threadStatusIconHeight + "\" border=\"0\" alt=\"inactiveThreadIcon\">"
+		else { // active thread
+			statusIcon = activeThreadIcon}; //"<img src=\"" + activeThreadImgUrl + "\" width=\"" + threadStatusIconWidth + "\" height=\"" + threadStatusIconHeight + "\" border=\"0\" alt=\"activeThreadIcon\">"
+		if flCss {
+			startLinkTag = "<a href=\"" + msgReaderUrl + msgNum + "?mode=topic&y=" + y + "&amp;m=" + m + "&amp;d=" + d + "\" class=\"" + cssPrefix + "NextThreadLink\">"}
+		else {
+			startLinkTag = "<a href=\"" + msgReaderUrl + msgNum + "?mode=topic&y=" + y + "&amp;m=" + m + "&amp;d=" + d + "\">"};
+		return (startLinkTag + statusIcon + "</a>&nbsp;" + startLinkTag + adrThreadMsgTable^.subject + "</a>")};
+	on getResponseForm () {
+		if flMember { //only members can add messages
+			local (subject = adrMsgTable^.subject);
+			
+			if not (string.lower (subject) beginswith string.lower (string.trimWhiteSpace (mainResponder.getString ("discuss.rePrefix")))) {
+				subject = mainResponder.getString ("discuss.rePrefix") + subject};
+			
+			local (buttontext, bodyprompt);
+			buttontext = mainResponder.getString ("discuss.postResponseButtonText");
+			bodyprompt = mainResponder.getString ("discuss.responseTextPrompt");
+			local (redirect = pta^.responderAttributes.urls^.discussMsgReader);
+			if not (redirect endsWith '$') {
+				redirect = redirect + "$"};
+			redirect = redirect + msgNum + "#";
+			return (mainResponder.discuss.newMessageForm (msgNum, subject, buttontext:buttontext, redirectUrl:redirect, bodyprompt: bodyprompt, pta:pta, fleditableSubject:false))};
+		return ("")};
+	on getLastPostTime (adrMsgTable) {
+		while sizeOf (adrMsgTable^.responses) {
+			local (lastMsgNum = adrMsgTable^.responses[sizeOf (adrMsgTable^.responses)]);
+			adrMsgTable = mainResponder.discuss.getMessageTable (lastMsgNum, pta, adrData)};
+		return (adrMsgTable^.postTime)};
+	
+	bundle { //was this topic deleted?
+		if mainResponder.discuss.isMessageDeleted (msgNum, adrMsgTable, pta) {
+			add (mainResponder.getString ("discuss.messageDeleted"));
+			return (htmlText)}};
+	
+	«bundle //increment read stats on the top message
+		«adrMsgTable^.ctReads++
+		«config.mainResponder.stats.ctDiscussionGroupReads++
+	
+	local (topicTable);
+	new (tableType, @topicTable);
+	on addMessageTree (adrMsgTable) { //recursively walk the message tree
+		local (flAddMessage = true);
+		if adrInDgCallback != nil {
+			flAddMessage = adrInDgCallback^ (adrMsgTable)};
+		if flAddMessage {
+			local (num = string.padWithZeros (adrMsgTable^.msgnum, 7));
+			topicTable.[num] = adrMsgTable};
+		local (i, responses = adrMsgTable^.responses, ct = sizeOf (responses));
+		for i = 1 to ct { //dive into the responses tree
+			addMessageTree (mainResponder.discuss.getMessageTable (responses[i], pta, adrData))}};
+	addMessageTree (adrMsgTable);
+	
+	local (userIconUrl, userIconHeight = 16, userIconWidth = 16);
+	local (activeThreadImgUrl, inactiveThreadImgUrl, threadStatusIconWidth = 17, threadStatusIconHeight = 14);
+	bundle { // build image data for internal link arrows and message status icons
+		«local (myDottedId = tcp.myDottedId ())
+		«local (myDottedId = tcp.dns.getMyDottedId ()) //PBS 09/26/01: faster
+		«local (myPort = user.inetd.config.http.port)
+		«local (portString = "")
+		«if myPort != 80
+			«portString = ":" + myPort
+		local (resourcesUrl = "/mainResponderResources/");
+		
+		activeThreadImgUrl = resourcesUrl + "icons/folder.open2";
+		inactiveThreadImgUrl = resourcesUrl + "icons/folder2";
+		userIconUrl = resourcesUrl + "icons/user";
+		
+		if userIcon == nil {
+			userIcon = "<img src=\"" + userIconUrl + "\" height=\"" + userIconHeight + "\" width=\"" + userIconWidth + "\" border=\"0\" alt=\"user\">"};
+		if activeThreadIcon == nil {
+			activeThreadIcon = "<img src=\"" + activeThreadImgUrl + "\" height=\"" + threadStatusIconHeight + "\" width=\"" + threadStatusIconWidth + "\" border=\"0\" alt=\"activeTopic\">"};
+		if inactiveThreadIcon == nil {
+			inactiveThreadIcon = "<img src=\"" + inactiveThreadImgUrl + "\" height=\"" + threadStatusIconHeight + "\" width=\"" + threadStatusIconWidth + "\" border=\"0\" alt=\"inactiveTopic\">"}};
+	
+	local (prevThreadMsgNum = 0, nextThreadMsgNum = 0);
+	local (adrPrevThreadMsgTable, adrNextThreadMsgTable);
+	local (ct);
+	if flShowThreadLinks { // find the previous and next topics
+		local (threadData);
+		mainResponder.discuss.getThreadData (@threadData, contextDate, threadAliveDays, pta, adrInDgCallback:adrInDgCallback);
+		local (ctThreads = sizeOf (threadData));
+		for i = 1 to ctThreads {
+			if threadData[i].adrThread == adrMsgTable {
+				if i > 1 {
+					adrPrevThreadMsgTable = threadData[i - 1].adrThread;
+					prevThreadMsgNum = adrPrevThreadMsgTable^.msgNum};
+				if i < ctThreads {
+					adrNextThreadMsgTable = threadData[i + 1].adrThread;
+					nextThreadMsgNum = adrNextThreadMsgTable^.msgNum}}}};
+	ct = sizeOf (topicTable);
+	
+	if adrTopicTemplate == nil {
+		if flShowThreadInfo {
+			add ("<table width=\"100%\" cellpadding=\"3\" cellspacing=\"0\" border=\"0\" bgcolor=\"" + headerColor + "\">");
+			
+			add ("<tr bgcolor=\"" + headerColor + "\"><td>&nbsp;");
+			if adrMsgTable^.postTime < oldestActiveThreadDate { // inactive thread
+				add ("<img src=\"" + inactiveThreadImgUrl + "\" width=\"" + threadStatusIconWidth + "\" height=\"" + threadStatusIconHeight + "\" border=\"0\" alt=\"inactiveThreadIcon\">")}
+			else { // active thread
+				add ("<img src=\"" + activeThreadImgUrl + "\" width=\"" + threadStatusIconWidth + "\" height=\"" + threadStatusIconHeight + "\" border=\"0\" alt=\"activeThreadIcon\">")};
+			
+			add ("&nbsp;&nbsp;<b><font color=\"" + headerTextColor + "\">" + adrMsgTable^.subject + "</font></b></td>");
+			
+			add ("<td align=\"right\">");
+			local (memberName = mainResponder.members.getMemberName (membershipGroup, adrMsgTable^.member));
+			if memberName contains "@" { // obscure email addresses
+				memberName = string.nthField (memberName, '@', 1) + "&#64;" + string.mid (string.nthField (memberName, '@', 2), 1, 1) + "..."};
+			add ("<font color=\"" + headerTextColor + "\" size=\"-1\">started by " + memberName + " on " + mainResponder.localization.dateTimeString (adrMsgTable^.postTime, pta) + "</font>");
+			add ("</td></tr>");
+			
+			add ("</table>")};
+		if adrTemplate == nil {
+			if flCss { // start the messages table
+				add ("<table width=\"100%\" cellpadding=\"0\" cellspacing=\"1\" border=\"0\" bgcolor=\"" + headerColor + "\" class=\"" + cssPrefix + "Table\">")}
+			else {
+				add ("<table width=\"100%\" cellpadding=\"0\" cellspacing=\"1\" border=\"0\" bgcolor=\"" + headerColor + "\">")}};
+		for i = 1 to ct { //render messages chronologically
+			if adrInDgCallback != nil {
+				if not adrInDgCallback^ (@topicTable[i]) {
+					continue}};
+			add (mainResponder.discuss.renderOneMessage (topicTable[i], adrTemplate, flShowAuthors, flShowPostTime, flShowReadCount, flShowResponseCount, flShowEnclosures, flResponseForm, flShowCowSkullLink, editPageUrl, adrData, bgColor, otherColor, headerColor, headerTextColor, adrGetBodyCallback, adrGetTimeCallback, cssPrefix, y, m, d, "topic", pta:pta, adrInDgCallback:adrInDgCallback, flUseMappedMemberKeys:flUseMappedMemberKeys))};
+		if adrTemplate == nil {
+			add ("</table>")};
+		if flResponseForm { //provide a response form
+			add (getResponseForm ())}}
+	else { // flow the topic through the topicTemplate
+		local (s = string (adrTopicTemplate^), lowerTemplate = string.lower (s));
+		local (lastPostTime = getLastPostTime (adrMsgTable));
+		
+		bundle { // replace bgcolor, headerColor and headerTextColor
+			s = string.replaceAll (s, "{bgcolor}", bgcolor, false);
+			s = string.replaceAll (s, "{headerColor}", headerColor, false);
+			s = string.replaceAll (s, "{headerTextColor}", headerTextColor, false)};
+		bundle { // replace previousTopicLink
+			if flShowThreadLinks {
+				if prevThreadMsgNum {
+					local (threadLink = getThreadLink (prevThreadMsgNum, adrPrevThreadMsgTable, oldestActiveThreadDate));
+					s = string.replaceAll (s, "{previousTopicLink}", threadLink, false)}
+				else {
+					s = string.replaceAll (s, "{previousTopicLink}", "", false)}}
+			else {
+				s = string.replaceAll (s, "{previousTopicLink}", "", false)}};
+		bundle { // replace nextTopicLink
+			if flShowThreadLinks {
+				if nextThreadMsgNum {
+					local (threadLink = getThreadLink (nextThreadMsgNum, adrNextThreadMsgTable, oldestActiveThreadDate));
+					s = string.replaceAll (s, "{nextTopicLink}", threadLink, false)}
+				else {
+					s = string.replaceAll (s, "{nextTopicLink}", "", false)}}
+			else {
+				s = string.replaceAll (s, "{nextTopicLink}", "", false)}};
+		bundle { // replace statusIcon
+			if lastPostTime < oldestActiveThreadDate { // inactive thread
+				s = string.replaceAll (s, "{statusIcon}", inactiveThreadIcon, false)}
+			else { // active thread
+				s = string.replaceAll (s, "{statusIcon}", activeThreadIcon, false)}};
+		bundle { // replace subject
+			s = string.replaceAll (s, "{subject}", adrMsgTable^.subject, false)};
+		bundle { // replace author
+			local (memberName = mainResponder.members.getMemberName (membershipGroup, adrMsgTable^.member));
+			if memberName contains "@" { // obscure email addresses
+				memberName = string.nthField (memberName, '@', 1) + "&#64;" + string.mid (string.nthField (memberName, '@', 2), 1, 1) + "..."};
+			s = string.replaceAll (s, "{author}", memberName, false)};
+		bundle { // replace postTime
+			s = string.replaceAll (s, "{postTime}", adrMsgTable^.postTime, false)};
+		bundle { // replace lastPostTime
+			s = string.replaceAll (s, "{lastPostTime}", lastPostTime, false)};
+		bundle { // replace responseForm
+			if lowerTemplate contains "{responseform}" {
+				if flResponseForm {
+					s = string.replaceAll (s, "{responseForm}", getResponseForm (), false)}
+				else {
+					s = string.replaceAll (s, "{responseForm}", "", false)}}};
+		bundle { // replace messages
+			local (messages);
+			for i = 1 to ct { //render messages chronologically
+				if adrInDgCallback != nil {
+					if not adrInDgCallback^ (@topicTable[i]) {
+						continue}};
+				messages = messages + mainResponder.discuss.renderOneMessage (topicTable[i], adrTemplate, flShowAuthors, flShowPostTime, flShowReadCount, flShowResponseCount, flShowEnclosures, flResponseForm, flShowCowSkullLink, editPageUrl, adrData, bgColor, otherColor, headerColor, headerTextColor, adrGetBodyCallback, adrGetTimeCallback, cssPrefix, y, m, d, "topic", pta:pta, userIcon:userIcon, adrInDgCallback:adrInDgCallback, flUseMappedMemberKeys:flUseMappedMemberKeys);
+				if sizeOf (htmltext) > 102400 { //limit to 100KB
+					break}};
+			s = string.replaceAll (s, "{messages}", messages, false)};
+		
+		add (s)};
+	return (htmlText)}

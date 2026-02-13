@@ -1,0 +1,16 @@
+«Possibly do a static rendering of the home page and most recent calendar page.
+	«04/30/00; 10:22:20 PM by PBS
+
+bundle { //static rendering and auto-rendering must both be enabled
+	if not (manilaSuite.staticRendering.isEnabled (adrSite)) {
+		return (true)};
+	if not (manilaSuite.staticRendering.isAutoRenderingEnabled (adrSite)) {
+		return (true)}};
+
+local (oldPta);
+oldPta = html.getPageTableAddress ();
+manilaSuite.staticRendering.renderPage ("/", adrSite); //render the home page
+html.setPageTableAddress (oldPta);
+mainResponder.redirect (adrSite^.["#newsSite"].staticSite.["#ftpSite"].url); //redirect to static home page
+
+return (true)

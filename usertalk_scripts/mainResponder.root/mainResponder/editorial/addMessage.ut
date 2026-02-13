@@ -1,0 +1,10 @@
+on addMessage (discussRoot, userName, password, body, subject) {
+	
+	if not mainResponder.editorial.authenticateMember (username, password, discussRoot) {
+		scripterror ("Can't create the document because " + username + " does not have the required editorial privileges." )};
+	
+	local (adrdiscuss, msgnum);
+	adrdiscuss = mainResponder.editorial.getDiscussTableAddress (discussRoot);
+	msgnum = mainResponder.discuss.addMessage (subject, username, 0, body, flNeuterMacros:true, flNeuterTags:true, adrroot:adrdiscuss, flcallback:false);
+	
+	return (msgnum)}

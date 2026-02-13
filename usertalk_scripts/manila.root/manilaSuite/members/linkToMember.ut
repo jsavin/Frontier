@@ -1,0 +1,5 @@
+on linkToMember (groupName, memberKey, hideEmail=true, adrMembers=nil, pta=nil, urlprefix="") {
+	«Changes
+		«4/18/03; 4:51:47 PM by JES
+			«Created. Wrapper for mainResponder.members.linkToMember, which calls using param values to obliterate email addresses form Manila's UI.
+	return (mainResponder.members.linkToMember (groupName, memberKey, hideEmail, adrMembers, pta, urlprefix, true))}

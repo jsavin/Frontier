@@ -1,0 +1,52 @@
+on searchPage (flshowSiteNames=nil, flDoSearch=true) {
+	local (pta = html.getPageTableAddress ());
+	local (adrLinks = manilaSuite.getDiscussLinksAddress ());
+	
+	«if not defined (pta^.newsSite^.flSearchable) or not pta^.newsSite^.flSearchable
+		«scriptError ("Can't display this page because this site is not searchable.")
+	local (msgNum = adrLinks^.searchMsgNum);
+	
+	pta^.flReadMessageProcessMacros = false;
+	pta^.flReadMessageAutoParagraphs = false;
+	
+	local (adrMsgTable);
+	adrMsgTable = mainResponder.discuss.getMessageTable (msgNum);
+	
+	pta^.title = adrMsgTable^.subject;
+	
+	local (displaySearchString);
+	
+	new (tableType, @pta^.argTable);
+	if defined (pta^.searchArgs) and pta^.searchArgs != "" {
+		webserver.parseArgs (pta^.searchArgs, @pta^.argTable);
+		if defined (pta^.argTable.q) {
+			displaySearchString = pta^.argTable.q;
+			displaySearchString = string.replaceAll (displaySearchString, "+", " ");
+			displaySearchString = string.replaceAll (displaySearchString, "\"", "&quot;")}}
+	else {
+		displaySearchString = ""};
+	
+	pta^.displaySearchString = displaySearchString;
+	
+	local (htmlText);
+	
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	add (string (adrMsgTable^.body));
+	«add (mainResponder.discuss.readMessage (msgNum, false, false, false, false, false, false, false, false, false, flShowCowSkullLink:false))
+	«add (mainResponder.discuss.readMessage (msgNum, false, false, false, false, false, false, true, false, false, flShowCowSkullLink:false))
+	add ("<br>");
+	pta^.title = adrMsgTable^.subject;
+	
+	if defined (pta^.searchArgs) and pta^.searchArgs != "" { //is this a search?
+		local (indexName = nameOf (pta^.adrSiteRootTable^) + " Index.root");
+		if defined (pta^.newsSite^.searchIndexName) {
+			local (defaultIndexName = indexName);
+			indexName = pta^.newsSite^.searchIndexName;
+			if string.lower (defaultIndexName) != string.lower (indexName) and flShowSiteNames == "" {
+				flShowSiteNames = true}};
+		if defined (pta^.argTable.q) and flDoSearch {
+			add (mainResponder.search.server.htmlSearch (pta, nameOf (pta^.adrObject^), flShowSiteNames, feedback:false, indexName:indexName))}};
+	
+	return (htmlText)}

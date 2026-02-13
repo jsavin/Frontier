@@ -1,0 +1,48 @@
+on renderBuiltinPage (relativePath, adrSite) {
+	«Changes
+		«11/4/06; 5:51:56 PM by LL
+			«Updated to add the relativePath of the page to the URL so the report displays the actual page published and just not the base URL of the site.
+		«11/4/03; 12:14:50 AM by JES
+			«Created. Render any page in a Manila site which actually has an object in the site table, i.e. not a calendar or hierarchy page.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	bundle { //add some items to the pagetable that may be needed to render the page
+		pta^.newsSite = manilaSuite.getNewsSiteAddress (adrsite);
+		pta^.rssInfo = @pta^.newsSite^.rssInfo;
+		pta^.port = user.inetd.config.http.port};
+	
+	bundle { //pop off leading '/' chars from relativePath
+		relativePath = string.popLeading (relativePath, "/")};
+	local (currentUrl = pta^.adrStaticSite^.["#ftpSite"].url);
+	currentUrl = currentUrl + relativePath;
+	
+	local (adrPage);
+	bundle { //dive into the site, find the object that renders the page, set adrPage and copy the object to it
+		adrPage = pta^.adrStaticSite;
+		local (nomad = adrSite);
+		loop {
+			local (pathPart = string.nthField (relativePath, "/", 1));
+			relativePath = string.delete (relativePath, 1, sizeOf (pathPart) + 1);
+			adrPage = @adrPage^.[pathPart];
+			nomad = @nomad^.[pathPart];
+			if sizeOf (relativePath) == 0 { //create the page and break
+				if pathPart contains "." {
+					pta^.fileextension = "." + string.nthField (pathPart, ".", string.countFields (pathPart, "."));
+					adrPage = parentOf (adrPage^);
+					adrPage = @adrPage^.[string.popSuffix (pathPart)]};
+				table.assign (adrPage, nomad^);
+				break};
+			if not defined (adrPage^) {
+				new (tableType, adrPage)}}};
+	
+	if defined (manilaMacros) {
+		with manilaMacros {
+			html.buildOnePage (adrPage, pta)}}
+	else {
+		html.buildOnePage (adrPage, pta)};
+	
+	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
+	manilaSuite.staticRendering.updateRenderStatus (adrManilaSite, currentUrl);
+	
+	return (true)}

@@ -1,0 +1,59 @@
+on tableToXml (adrstorage, cookie=nil, flIncludeEnclosure=false) {
+	«8/15/99; 8:28:26 AM by DW
+		«Major overhaul for new discussion group archiving feature.
+	local (xmltext = "", indentlevel = 0);
+	on add (s) {
+		xmltext = xmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on processString (s) {
+		«s = string.replaceall (s, "&", "&amp;")
+		«s = string.replaceall (s, "\"", "\\\"")
+		s = string.replaceall (s, "&lt;", "&amp;lt;");
+		s = string.replaceall (s, "<", "&lt;");
+		return (s)};
+	add ("<?xml version=\"1.0\"?>");
+	add ("<ticket>"); indentlevel++;
+	add ("<header>"); indentlevel++;
+	add ("<msgNum>" + adrstorage^.msgnum + "</msgNum>");
+	local (fldeleted = false);
+	if defined (adrstorage^.fldeleted) {
+		fldeleted = adrstorage^.fldeleted;
+		add ("<flDeleted>" + fldeleted + "</flDeleted>")};
+	if not fldeleted {
+		add ("<subject>" + processString (adrstorage^.subject) + "</subject>");
+		add ("<member>" + adrstorage^.member + "</member>");
+		if flIncludeEnclosure {
+			if defined (adrstorage^.enclosureType) { //has an enclosure
+				add ("<enclosure>"); indentlevel++;
+				add ("<enclosureAddress>" + adrstorage^.enclosureAddress + "</enclosureAddress>");
+				add ("<enclosureType>" + adrstorage^.enclosureType + "</enclosureType>");
+				local (bits); pack (adrstorage^.enclosureBits, @bits); bits = base64.encode (bits, 0);
+				add ("<enclosureBits>" + bits + "</enclosureBits>");
+				add ("</enclosure>"); indentlevel--}}};
+	add ("<postTime>" + date.netstandardstring (adrstorage^.posttime) + "</postTime>");
+	add ("<ctReads>" + adrstorage^.ctreads + "</ctReads>");
+	add ("<inResponseTo>" + adrstorage^.inResponseTo + "</inResponseTo>");
+	if defined (adrstorage^.inNewsSite) {
+		add ("<inNewsSite>" + adrstorage^.inNewsSite + "</inNewsSite>")};
+	if defined (adrstorage^.responses) {
+		if sizeof (adrstorage^.responses) > 0 {
+			local (item);
+			add ("<responses>"); indentlevel++;
+			for item in adrstorage^.responses {
+				add ("<response>" + item + "</response>")};
+			add ("</responses>"); indentlevel--}};
+	if defined (adrstorage^.alsoListedIn) {
+		if sizeof (adrstorage^.alsoListedIn) > 0 {
+			local (item);
+			add ("<alsoListedIn>"); indentlevel++;
+			for item in adrstorage^.alsoListedIn {
+				add ("<category>" + item + "</category>")};
+			add ("</alsoListedIn>"); indentlevel--}};
+	add ("</header>"); indentlevel--;
+	if fldeleted {
+		add ("<body/>")}
+	else {
+		add ("<body>" + processString (string (adrstorage^.body)) + "</body>")};
+	if cookie != nil {
+		add ("<cookie>" + cookie + "</cookie>")};
+	add ("</ticket>"); indentlevel--;
+	return (xmltext)}

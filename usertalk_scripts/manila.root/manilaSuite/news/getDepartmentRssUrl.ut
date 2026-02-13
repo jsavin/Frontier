@@ -1,0 +1,8 @@
+on getDepartmentRssUrl (adrsite, department) {
+	«Changes
+		«1/31/05; 7:04:57 PM by JES
+			«Pass adrsite to manilaSuite.getSiteUrl.
+		«9/3/03; 12:13:12 PM by JES
+			«Created. Get the RSS url for a given department.
+	local (deptpath = manilaSuite.news.departmentNameToPath (department));
+	return (manilaSuite.getSiteUrl (adrsite) + "newsItems/departments/" + deptpath + ".xml")}

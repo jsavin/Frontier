@@ -1,0 +1,29 @@
+on xmlCoffeeMug () {
+	«Changes
+		«5/31/02; 5:40:29 PM by JES
+			«Created.
+	local (adrSite = manilaSuite.getSiteAddress ());
+	local (flSyndicate = manilaSuite.getNewsSitePref ("flSyndicate", adrSite));
+	if not flSyndicate { //return the empty string
+		return ("")};
+	local (siteUrl = manilaSuite.getSiteUrl (adrSite));
+	local (channelName = manilaSuite.getNewsSitePref ("rssInfo.channelTitle"));
+	bundle { //massage channelName
+		channelName = string.replaceAll (channelName, "\"", "&quot;");
+		channelName = string.replaceAll (channelName, "<", "&lt;");
+		channelName = string.replaceAll (channelName, ">", "&gt;")};
+	local (urlParts = string.urlSplit (siteUrl));
+	local (imgUrl = "http://" + urlParts[2] + "/mainResponderResources/userlandIcons/xmlCoffeeMug");
+	local (imgHeight = 36, imgWidth = 36);
+	local (rssurl = siteUrl + "xml/rss.xml");
+	local (linkUrl = "http://127.0.0.1:5335/system/pages/subscriptions?url=" + string.urlEncode (rssurl));
+	local (linkText = "");
+	
+	bundle { //build the link
+		on add (s) {
+			linkText = linkText + s};
+		add ("<a href=\"" + linkUrl + "\" title=\"Click on the XML coffee mug to subscribe to &quot;" + channelName + "&quot; in Radio UserLand.\">");
+		add ("<img src=\"" + imgUrl + "\" height=\"" + imgHeight + "\" width=\"" + imgWidth + "\" border=\"0\" alt=\"XML coffee mug\">");
+		add ("</a>")};
+	
+	return (linkText)}

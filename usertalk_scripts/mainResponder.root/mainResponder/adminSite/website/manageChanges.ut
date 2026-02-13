@@ -1,0 +1,352 @@
+on manageChanges () {
+	«Changes
+		«10/5/05; 7:46:18 PM by JES
+			«Fix copy/paste bug in error message and confirmation message after moving part(s) to before the checkpoint.
+		«9/30/05; 3:29:07 AM by JES
+			«Don't fail trying to get the type of an item. If what is an address, pop the file part off.
+		«9/30/05; 3:25:11 AM by JES
+			«Don't fail if a change doesn't have a data sub-element.
+		«8/31/05; 2:54:49 AM by JES
+			«Add a tiny bit of padding to make the table easier to read when change notes are included.
+		«8/31/05; 2:06:26 AM by JES
+			«Additional note formatting: replace cr's with line breaks, tabs with &mdash, and & with &amp;.
+		«8/30/05; 4:13:14 PM by JES
+			«Fix vertical alignment and cell padding for readability.
+		«8/30/05; 4:02:20 PM by JES
+			«Re-enabled code for displaying change notes ('why'). Instead of showing the text in its own column, we display it underneath the 'what' part for horizontal space-saving and readability.
+		«8/15/05; 1:21:44 AM by JES
+			«Fix error after deletion. After deletion, we needed to reset the local, sizeChanges, which tracks the size of the changes table.
+		«7/21/05; 4:20:09 AM by JES
+			«Added handling for all operations, preserving which objects are checked in the UI. Added multiple-page support -- default is max 100 items per page.
+		«7/19/05; 3:59:38 AM by JES
+			«Created. Run the change manager for a subscribable database.
+	local (pta = html.getPageTableAddress ());
+	«workspace.pt = pta^
+	
+	local (flIncludeWhy = true);
+	local (bgcolors = {pta^.trbg2, pta^.trbg1});
+	local (ctPerPage = 100);
+	if defined (pta^.searchArgTable.m) {
+		ctPerPage = number (pta^.searchArgTable.m)};
+	
+	local (dbRelPath = pta^.pathArgs);
+	pta^.title = "/" + dbRelPath + " -- #changes";
+	local (viewPartUrl = "/viewPart$" + dbRelPath);
+	
+	local (f = string.popTrailing (frontier.getSubFolder (dbRelPath), file.getPathChar ()));
+	local (fname = file.fileFromPath (f));
+	local (adrchanges = @[f].["#changes"]);
+	local (sizeChanges = sizeOf (adrchanges^));
+	
+	local (htext);
+	on add (s) {
+		htext = htext + (s + "\r");};
+	on datestring (d) {
+		on pad (n) {
+			return (string.padWithZeros (n, 2))};
+		local (day, month, year, hour, minute, second);
+		date.get (d, @day, @month, @year, @hour, @minute, @second);
+		local (meridian);
+		if hour > 12 {
+			hour = hour - 12;
+			meridian = " PM"}
+		else {
+			if hour == 0 {
+				hour = 12};
+			meridian = " AM"};
+		return (pad (month) + "/" + pad (day) + "/" + string.mid (year, 3, 2) + "; " + pad (hour) + ":" + pad (minute) + ":" + pad (second) + meridian)};
+	on button (s, name="") {
+		if name == "" {
+			name = string.innerCaseName (s);
+			name[1] = string.lower (name[1])};
+		return ("<input type=\"submit\" name=\"" + name + "\" value=\"" + s + "\">&nbsp;&nbsp;")};
+	on getLastChangeBeforeCheckpoint (adrAdrChange) {
+		local (adr, i);
+		for i = sizeChanges downto 1 {
+			adr = @adrchanges^[i];
+			if adr^.when <= checkpointDate {
+				adrAdrChange^ = adr;
+				return (true)}};
+		return (false)};
+	on getFirstChangeAfterCheckpoint (adrAdrChange) {
+		local (adrLast);
+		if getLastChangeBeforeCheckpoint (@adrLast) {
+			local (ix = indexof (adrLast^));
+			if ix == sizeChanges {
+				return (false)};
+			adrAdrChange^ = @adrchanges^[ix+1];
+			return (true)};
+		if adrchanges^[sizechanges].when > checkpointDate {
+			adrAdrChange^ = @adrchanges^[sizechanges];
+			return (true)};
+		return (false)};
+	
+	local (now = clock.now ());
+	
+	local (flCheckpoint=false, checkpointDate);
+	bundle { //set checkpointDate (and flCheckpoint) for this database
+		if defined (user.databases.[fname].checkpointDate) {
+			checkpointDate = user.databases.[fname].checkpointDate;
+			flCheckpoint = true}};
+	
+	add ("<form method=\"POST\">");
+	
+	local (adrargs, flButtonsAtBottom=true);
+	if pta^.method == "POST" {
+		adrargs = @pta^.postArgs;
+		on addHiddenSelection () {
+			local (adr);
+			for adr in adrargs {
+				if adr^ == "xxx" {
+					add ("<input type=\"hidden\" name=\"" + nameOf (adr^) + "\" value=\"xxx\">")}};
+			return};
+		with adrargs^ {
+			case true {
+				defined (clearCheckpoint) {
+					pta^.title = "Clear Checkpoint for " + fname;
+					add ("<p>Are you sure you want to clear the checkpoint for " + fname + "? The checkpoint is currently set to " + datestring (checkpointDate) + ".</p>");
+					add ("<p>" + button ("Clear Checkpoint", "clearCheckpointConfirm") + button ("Cancel") + "</p>");
+					addHiddenSelection ();
+					return (htext)};
+				defined (clearCheckpointConfirm) {
+					delete (@user.databases.[fname].checkpointDate);
+					flCheckpoint = false;
+					add ("<p><b>Checkpoint cleared.</b></p>")};
+				defined (setCheckpoint) {
+					local (dateMostRecentSelected = clock.now ());
+					local (adr, i, ct=sizeOf (adrargs^));
+					for i = ct downto 1 {
+						adr = @adrargs^[i];
+						if adr^ == "xxx" {
+							local (change = string.urlDecode (nameOf (adr^)));
+							local (adrchange = @adrchanges^.[change]);
+							dateMostRecentSelected = adrchange^.when;
+							break}};
+					user.databases.[fname].checkpointDate = dateMostRecentSelected;
+					checkpointDate = dateMostRecentSelected;
+					flCheckpoint = true;
+					add ("<p><b>Checkpoint set to " + datestring (checkpointDate) + ".</b></p>")};
+				defined (moveAfterCheckpoint) {
+					pta^.title = "Move To After Checkpoint";
+					add ("<p>Are you sure you want to move the checked changes to after the checkpoint?</p>");
+					add ("<p>The checkpoint is currently set to " + datestring (checkpointDate) + ".</p>");
+					add ("<p><b>This operation cannot be undone.</b></p>");
+					add ("<p>" + button ("Move After Checkpoint", "moveAfterCheckpointConfirm") + button ("Cancel") + "</p>");
+					flButtonsAtBottom = false};
+				defined (moveAfterCheckpointConfirm) {
+					local (adrLastBefore);
+					if getLastChangeBeforeCheckpoint (@adrLastBefore) {
+						local (t); new (tableType, @t); //a table to map old change table names to new ones, to preserve selection
+						local (newWhen = checkpointDate + 1);
+						local (ixLast = number (string.nthField (nameOf (adrLastBefore^), "\t", 1)));
+						local (ixNext = ixLast + 1);
+						local (adr, ctMoved = 0, ctToRenumber = 0);
+						for adr in adrargs {
+							if adr^ == "xxx" {
+								local (change = string.urlDecode (nameOf (adr^)));
+								local (ixChange = number (string.nthField (change, "\t", 1)));
+								local (adrchange = @adrchanges^.[change]);
+								if ixChange == ixLast {
+									adrchange^.when = newWhen; //is the last change before checkpoint -- fix up date and stop here
+									ctToRenumber = ctMoved;
+									ctMoved++;
+									break};
+								if ixChange > ixLast { //already after the checkpoint -- stop here
+									ctToRenumber = ctMoved;
+									break};
+								adrchange^.when = newWhen;
+								local (newName = string.padWithZeros (ixNext, 8) + "\t" + xml.convertToDisplayName (change));
+								while defined (adrchanges^.[newName]) { //should almost never happen
+									ixNext++;
+									newName = string.padWithZeros (ixNext, 8) + "\t" + xml.convertToDisplayName (change)};
+								t.[change] = newName;
+								table.rename (adrchange, t.[change]);
+								ixNext++;
+								ctMoved++;
+								ctToRenumber = ctMoved}};
+						for adr in @t { //preserve selection
+							table.rename (@adrargs^.[string.urlEncode (nameOf (adr^))], string.urlEncode (adr^))};
+						«bundle //non-working renumbering code
+							«new (tableType, @t)
+							«local (i)
+							«local (ixLastAfter = number (string.nthField (nameOf (adrchanges^[sizeChanges]), "\t", 1)))
+							«ixLastAfter = ixLastAfter + (1000 * ctToRenumber)
+							«for i = sizeChanges downto 1
+								«local (adr = @adrchanges^[i])
+								«local (change = nameOf (adr^))
+								«local (ixChange = number (string.nthField (change, "\t", 1)))
+								«if ixChange == ixLast
+									«break
+								«local (newNumber = ixLastAfter)
+								«local (newName = string.padWithZeros (newNumber, 8) + "\t" + xml.convertToDisplayName (change))
+								«while defined (adrchanges^.[newName]) //should almost never happen
+									«newNumber--
+									«newName = string.padWithZeros (newNumber, 8) + "\t" + xml.convertToDisplayName (change)
+								«t.[change] = newName
+								«table.rename (adr, newName)
+								«ixLastAfter = ixLastAfter - 1000
+							«for adr in @t //preserve selection -- intermediate step
+								«local (oldName = string.urlEncode (nameOf (adr^)))
+								«if defined (adrargs^.[oldName])
+									«table.rename (@adrargs^.[oldName], string.urlEncode (adr^))
+						add ("<p><b>" + ctMoved + " change(s) moved to after the checkpoint.</b></p>")}
+					else {
+						add ("<p><b>Can't move changes because all changes are already after the checkpoint.</b></p>")}};
+				defined (moveBeforeCheckpoint) {
+					pta^.title = "Move To Before Checkpoint";
+					add ("<p>Are you sure you want to move the checked changes to before the checkpoint?</p>");
+					add ("<p>The checkpoint is currently set to " + datestring (checkpointDate) + ".</p>");
+					add ("<p><b>This operation cannot be undone.</b></p>");
+					add ("<p>" + button ("Move Before Checkpoint", "moveBeforeCheckpointConfirm") + button ("Cancel") + "</p>");
+					flButtonsAtBottom = false};
+				defined (moveBeforeCheckpointConfirm) {
+					local (adrFirstAfter);
+					if getFirstChangeAfterCheckpoint (@adrFirstAfter) {
+						local (t); new (tableType, @t); //a table to map old change table names to new ones, to preserve selection
+						local (newWhen = checkpointDate);
+						local (ixFirst = number (string.nthField (nameOf (adrFirstAfter^), "\t", 1)));
+						local (ixPrev = ixFirst - 1);
+						local (adr, ctMoved = 0, ctToRenumber = 0);
+						for adr in adrargs {
+							if adr^ == "xxx" {
+								local (change = string.urlDecode (nameOf (adr^)));
+								local (ixChange = number (string.nthField (change, "\t", 1)));
+								local (adrchange = @adrchanges^.[change]);
+								if ixChange == ixFirst {
+									adrchange^.when = newWhen; //is the last change before checkpoint -- fix up date and stop here
+									ctToRenumber = ctMoved;
+									ctMoved++;
+									break};
+								if ixChange < ixFirst { //already after the checkpoint -- stop here
+									ctToRenumber = ctMoved;
+									break};
+								adrchange^.when = newWhen;
+								local (newName = string.padWithZeros (ixPrev, 8) + "\t" + xml.convertToDisplayName (change));
+								while defined (adrchanges^.[newName]) { //should almost never happen
+									ixPrev--;
+									newName = string.padWithZeros (ixPrev, 8) + "\t" + xml.convertToDisplayName (change)};
+								t.[change] = newName;
+								table.rename (adrchange, t.[change]);
+								ixPrev--;
+								ctMoved++;
+								ctToRenumber = ctMoved}};
+						for adr in @t { //preserve selection
+							table.rename (@adrargs^.[string.urlEncode (nameOf (adr^))], string.urlEncode (adr^))};
+						add ("<p><b>" + ctMoved + " change(s) moved to before the checkpoint.</b></p>")}
+					else {
+						add ("<p><b>Can't move changes because all changes are before after the checkpoint.</b></p>")}};
+				defined (deleteChecked) {
+					pta^.title = "Delete Changes in " + fname;
+					add ("<p>Are you sure you want to delete the following changes from the root updates stream for " + fname + "?</p>");
+					add ("<p><b>This operation cannot be undone.</b></p>");
+					add ("<p>" + button ("Delete Checked", "deleteCheckedConfirm") + button ("Cancel") + "</p>");
+					flButtonsAtBottom = false};
+				defined (deleteCheckedConfirm) {
+					local (adr, ct=0);
+					for adr in adrargs {
+						if adr^ == "xxx" {
+							local (change = string.urlDecode (nameOf (adr^)));
+							local (adrchange = @adrchanges^.[change]);
+							try {delete (adrchange); ct++}}};
+					sizeChanges = sizeOf (adrchanges^); //reset after deletion
+					add ("<p><b>" + ct + " part(s) deleted from root updates stream for " + fname + ".</b></p>")}}}};
+	
+	add ("<table cellpadding=\"2\" cellspacing=\"0\" border=\"0\" width=\"100%\">");
+	bundle { //column headings
+		add ("<tr><td style=\"padding-bottom:5px\">&nbsp;</td><td><b>What</b></td><td align=\"right\"><b>Type&nbsp;</b></td><td><b>&nbsp;Who</b></td><td align=\"right\"><b>&nbsp;When</b></td></tr>")};
+	
+	local (start = sizeChanges, end = sizeChanges - ctPerPage);
+	bundle { //add the changes
+		local (i, ct = 0, flCheckpointAdded = false);
+		if adrargs != nil {if defined (adrargs^.deleteChecked) {flCheckpointAdded = true}}; //confirm delete -- no checkpoint display
+		if defined (pta^.searchArgTable.s) {
+			start = start - number (pta^.searchArgTable.s) + 1;
+			if start > sizeChanges {
+				start = sizeChanges}};
+		if defined (pta^.searchArgTable.m) {
+			end = start - number (pta^.searchArgTable.m) + 1};
+		if end < 1 {
+			end = 1};
+		for i = start downto end {
+			local (adr = @adrchanges^[i]);
+			if flCheckpoint { //maybe do a row for the checkpoint
+				if not flCheckpointAdded {
+					if adr^.when <= checkpointDate {
+						add ("<tr bgcolor=\"yellow\"><td></td><td></td><td class=\"small\" style=\"padding:2px 0px 3px 0px\" align=\"right\"><b>Checkpoint&nbsp;</b></td><td></td><td class=\"small\" align=\"right\">" + datestring (checkpointDate) + "</td></tr>");
+						ct++;
+						flCheckpointAdded = true}}};
+			local (checked = "", itemName = string.urlEncode (nameOf (adr^)));
+			if adrargs != nil { //if this is a POST, preserve the selection
+				if defined (adrargs^.[itemName]) {
+					checked = " checked"}
+				else { //if asking for delete confirmation or move confirmation, skip non-selected parts
+					case true {
+						«defined (adrargs^.moveAfterCheckpoint)
+						«defined (adrargs^.moveBeforeCheckpoint)
+						defined (adrargs^.deleteChecked) {
+							continue}}}};
+			add ("<tr bgcolor=\"" + bgcolors[(++ct % 2) + 1] + "\">");
+			local (checkbox = "<input type=\"checkbox\" name=\"" + itemName + "\" value=\"xxx\"" + checked + ">");
+			add ("<td valign=\"top\">" + checkbox + "</td>");
+			local (why = "");
+			if flIncludeWhy {
+				if sizeOf (adr^.why) > 0 {
+					why = string.replaceAll (string (adr^.why), "&", "&amp;");
+					why = string.replaceAll (why, "<", "&lt;");
+					why = "<br>" + why;
+					why = string.replaceAll (why, "\r", "<br>");
+					why = string.replaceAll (why, "\t", "&mdash;")}};
+			local (theWhat = adr^.what);
+			if typeOf (theWhat) == addressType {
+				theWhat = string.popFileFromAddress (theWhat)};
+			local (what = "<a href=\"" + viewPartUrl + "?part=" + itemName + "\" title=\"Click to view this part...\">" + theWhat + "</a>");
+			add ("<td class=\"small\" style=\"padding-left:5px;padding-right:5px\">" + what + why + "</td>");
+			local (theType);
+			if defined (adr^.data) {
+				theType = (string.typeToString (typeOf (adr^.data)) - "Type")}
+			else {
+				if defined (adr^.what^) {
+					theType = (string.typeToString (typeOf (adr^.what^)) - "Type")}
+				else {
+					theType = "(unknown)"}};
+			add ("<td class=\"small\" align=\"right\" valign=\"top\">" + theType + "&nbsp;</td>");
+			add ("<td class=\"small\" valign=\"top\"><nobr>&nbsp;" + adr^.who + "</nobr></td>");
+			add ("<td class=\"small\" align=\"right\" valign=\"top\"><nobr>&nbsp;" + datestring (adr^.when) + "</nobr></td>");
+			add ("</tr>")}};
+	
+	add ("</table>");
+	
+	if flButtonsAtBottom { //next/prev links
+		local (nextLink = "", prevLink = "");
+		if start < sizeChanges { //prev link
+			local (prevPageStart = (sizeChanges - start) - ctPerPage + 1);
+			if prevPageStart < 1 {
+				prevPageStart = 1};
+			prevLink = html.getLink ("<< Prev", pta^.url + "$" + pta^.pathArgs + "?s=" + prevPageStart + "&m=" + ctPerPage)};
+		if end > 1 { //next link
+			local (nextPageStart = (sizeChanges - start + 1) + ctPerPage);
+			if nextPageStart <= sizeChanges {
+				nextLink = html.getLink ("Next >>", pta^.url + "$" + pta^.pathArgs + "?s=" + nextPageStart + "&m=" + ctPerPage);
+				if prevLink {
+					nextLink = "| " + nextLink}}};
+		if nextLink or prevLink {
+			add ("<p>" + prevLink + " " + nextLink + "</p>")}};
+	
+	if flButtonsAtBottom { //buttons
+		add ("<p><nobr>");
+		if flCheckpoint {
+			add (button ("Clear Checkpoint"));
+			add (button ("Reset Checkpoint", "setCheckpoint"))}
+		else {
+			add (button ("Set Checkpoint"))};
+		if flCheckpoint {
+			add (button ("Move After Checkpoint"));
+			add (button ("Move Before Checkpoint"))};
+		add (button ("Delete Checked"));
+		add ("</nobr></p>")};
+	add ("</form>");
+	
+	return (htext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«manageChanges ()

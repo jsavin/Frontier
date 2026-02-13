@@ -1,0 +1,20 @@
+on init (adrsite) {
+	«Changes
+		«11/3/04; 6:17:11 PM by JES
+			«Added flEnabled flag to the pathPermissions sub-table. Default is true.
+		«5/21/03; 3:22:24 PM by JES
+			«Created. Initialize path permissions for a given Manila site.
+	
+	return (true); // 11/05/05; 10:46:02 AM by PR wired off
+	
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	local (adrdata = @adrnewssite^.pathPermissions);
+	if not defined (adrdata^) {
+		new (tableType, adrdata)};
+	if not defined (adrdata^.flEnabled) {
+		adrdata^.flEnabled = true};
+	if not defined (adrdata^.paths) {
+		new (tableType, @adrdata^.paths)};
+	if not defined (adrsite^.admin.editPermissions) {
+		adrsite^.admin.editPermissions = manilaData.newSiteTemplate.admin.editPermissions};
+	return (adrdata)}

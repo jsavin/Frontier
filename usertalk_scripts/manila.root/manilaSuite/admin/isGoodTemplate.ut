@@ -1,0 +1,60 @@
+on isGoodTemplate (s, adrErrorString, pta=nil, flCheckNavigatorLinks=true) {
+	«Check template text for macros that must exist, such as {bodytext} and {editorialMenu}.
+		«Return true if the template is okay, false otherwise. If it's not okay, put error text in adrErrorString^.
+		«10/28/99; 2:08:29 PM by PBS
+		«Changes:
+			«4/17/00; 7:00:57 PM by JES
+				«localized
+				«added pta parameter because the advanced page script takes pta as an input parameter
+			«12/17/99; 10:20:19 PM by PBS
+				«Neuter macros -- one way to make your site unusable is to leave a macro unclosed. By neutering macros here we can catch that.
+			«10/25/00; 7:04:18 PM by PBS
+				«New optional parameter: flCheckNavigatorLinks. The Home Page Template doesn't enforce navigator links. Default is true, preserving current behavior.
+	
+	«4/19/00; 1:05:26 PM by JES: localization support
+		«The problem here is that manila.template.set (called in Pike) needs to verify the template, but the RPC handler doesn't have a page table. So -- if pta==nil, we build a page table with the language set to the default for the server. This is not ideal because we'd rather know the language for the site, but it at least allows isGoodTemplate to run in either context.
+	local (tempTable);
+	if pta == nil { // 4/19/00 JES: build a fake page table with a language entry for getString
+		new (tableType, @tempTable);
+		if defined (config.mainResponder.globals.language) { // does the server have a default setting?
+			tempTable.language = config.mainResponder.globals.language}
+		else {
+			if defined (user.prefs.language) { // does Frontier have a language setting?
+				tempTable.language = user.prefs.language}
+			else { // fall back to English
+				tempTable.language = "English"}};
+		pta = @tempTable};
+	
+	if string.lower (s) contains "{bodytext}" {
+		if not (s contains "{bodytext}") {
+			adrErrorString^ = manilaSuite.getString ("admin.bodyTextMacroMustBeLowercase", pta: pta);
+			return (false)}};
+	if not (s contains "{bodytext}") {
+		adrErrorString^ = manilaSuite.getString ("admin.templateMustContainBodytextMacro", pta: pta);
+		return (false)};
+	
+	if not (string.lower (s) contains "{editorialmenu}") {
+		adrErrorString^ = manilaSuite.getString ("admin.templateMustContainEditorialMenu", pta: pta);
+		return (false)};
+	
+	if flCheckNavigatorLinks { //PBS 10/25/00: now optional -- home page template doesn't enforce this macro
+		if not (string.lower (s) contains "{navigatorlinks}") {
+			adrErrorString^ = manilaSuite.getString ("admin.templateMustContainNavLinksMacro", pta: pta);
+			return (false)}};
+	
+	bundle { //PBS 12/17/99: try with neutered macros
+		local (adrLegalMacros = @config.mainResponder.prefs.legalMacros);
+		s = html.neuterMacros (s, adrLegalMacros);
+		local (flNeuteringRuinsTemplate = false);
+		if not (string.lower (s) contains "{bodytext}") {
+			flNeuteringRuinsTemplate = true};
+		if not (string.lower (s) contains "{editorialmenu}") {
+			flNeuteringRuinsTemplate = true};
+		if flCheckNavigatorLinks { //PBS 10/25/00: now optional -- home page template doesn't enforce this macro
+			if not (string.lower (s) contains "{navigatorlinks}") {
+				flNeuteringRuinsTemplate = true}};
+		if flNeuteringRuinsTemplate {
+			adrErrorString^ = manilaSuite.getString ("admin.macrosMustBeEnclosedWithBraces", pta: pta);
+			return (false)}};
+	
+	return (true)}

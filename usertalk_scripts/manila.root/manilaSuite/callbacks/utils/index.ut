@@ -1,0 +1,13 @@
+on index (adrMsg, adrSite) {
+	«Common code for indexing new and changed stories. Possibly send an RPC message to a search engine.
+		«04/04/00; 9:53:29 PM by PBS
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	if defined (adrNewsSite^.search) {
+		if defined (adrNewsSite^.search.flIndex) {
+			if adrNewsSite^.search.flIndex {
+				if defined (adrNewsSite^.search.serverDomain) {
+					if string.trimWhiteSpace (adrNewsSite^.search.serverDomain) != "" {
+						manilaSuite.search.indexMessage (adrMsg, adrSite)}}}}};
+	
+	return (true)}

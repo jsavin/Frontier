@@ -1,0 +1,18 @@
+on disable (username, password, siteName) {
+	«Don't use the home page template.
+		«10/14/00; 2:07:00 PM by PBS
+		«Changes:
+			«12/10/01; 6:01:30 PM by PBS
+				«Toss the home page cache.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't disable the home page template because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	adrSite^.["#newsSite"].flUseHomePageTemplate = false;
+	
+	manilaSuite.cache.tossHomePage (adrSite:adrSite); //PBS 12/10/01: toss the home page cache
+	
+	return (true)}

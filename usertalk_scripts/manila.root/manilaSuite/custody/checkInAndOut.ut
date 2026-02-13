@@ -1,0 +1,17 @@
+on checkInAndOut (adrObject, adrMember, adrSite, flMessage=false) {
+	«Check in an object. Return false if the object can't be checked in. The only reason an object can't be checked in (at least in this context) is that it's already checked out by someone else.
+		«02/08/00; 10:18:17 PM by PBS
+	«After that check it out; or renew the checkout (used by versioning)
+	
+	local (adrTable = manilaSuite.custody.getObjectsTableAddress (adrSite, flMessage));
+	local (objectIdentifier = manilaSuite.custody.getObjectIdentifier (adrObject, flMessage));
+	local (adrItem = @adrTable^.[objectIdentifier]);
+	if (defined (adrItem^)) { //the item was checked out
+		if not (manilaSuite.custody.isCheckedOutByUser (adrItem, adrMember, adrSite, flMessage)) {
+			if not (manilaSuite.custody.hasLockTimedOut (adrItem, adrSite)) {
+				return (false)}}; //can't check it in because it's checked out by someone else
+		manilaSuite.versioning.checkin(adrItem, adrObject, adrMember, adrSite, flMessage); //04/05/18, 21:22:52 by DAB
+		«delete (adrItem)
+		adrItem^.checkedOutDate = clock.now ()}; //renew the lease
+	
+	return (true)} //the check-in happened

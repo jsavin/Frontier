@@ -1,0 +1,12 @@
+on getSiteThemeAddress (adrSite) {
+	«Given the address of a site, return the address of the theme that has been applied to this site.
+		«06/06/00; 3:37:37 PM by PBS
+	
+	local (themeName = "default");
+	if defined (adrSite^.["#themes"].lastThemeApplied) {
+		themeName = adrSite^.["#themes"].lastThemeApplied};
+	
+	if defined (config.manila.themes.[themeName]) {
+		return (@config.manila.themes.[themeName])};
+	
+	return (@config.manila.themes.default)} //fallback position, in case the theme was deleted

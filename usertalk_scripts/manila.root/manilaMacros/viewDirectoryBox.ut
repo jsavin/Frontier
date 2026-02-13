@@ -1,0 +1,25 @@
+on viewDirectoryBox (path, boxTitle="", align="", width=175, frameColor="black", titleTextColor="white", boxFillColor="white", hspace=0, vspace=0) {
+	«Changes:
+		«12/28/2000; 8:24:23 AM by DW
+			«The vspace parameter wasn't being used. I wonder why this was never reported, or was it?
+		«02/26/01; 12:22:10 AM by PBS
+			«If the context is static rendering, then it's necessary to set pta^.method as "GET" -- otherwise the rendering code will generate a scriptError.
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	if manilaSuite.staticRendering.isStaticRendering () { //PBS 02/25/01: set pta^.method, if this is a static rendering
+		html.getPageTableAddress ()^.method = "GET"};
+	if sizeof (align) > 0 {
+		align = " align=\"" + align + "\""};
+	add ("<table" + align + " cellpadding=\"0\" cellspacing=\"0\" border=\"0\">"); indentlevel++;
+	add ("<tr height=\"" + vspace + "\"><td colspan=\"3\"></td></tr>");
+	add ("<tr><td width=\"" + hspace + "\"></td><td>");
+	bundle { //generate the inner table
+		add ("<table cellpadding=\"1\" cellspacing=\"0\" border=\"0\" width=\"" + width + "\">"); indentlevel++;
+		add ("<tr bgcolor=\"" + frameColor + "\"><td><font color=\"" + titleTextColor + "\"><center>" + boxTitle + "</center></font></td></tr>");
+		add ("<tr bgcolor=\"" + frameColor + "\"><td><table border=\"0\" cellpadding=\"0\" cellspacing=\"5\" width=\"" + (width-1) + "\" bgcolor=\"" + boxFillColor + "\">" + manilaSuite.directory.viewDirectory (true, path, flDirectoryInABox:true) + "</table></td></tr>");;
+		add ("</table>"); indentlevel--};
+	add ("</td><td width=\"" + hspace + "\"></td></tr>");
+	add ("<tr height=\"" + vspace + "\"><td colspan=\"3\"></td></tr>");
+	add ("</table>"); indentlevel--;
+	return (htmltext)}

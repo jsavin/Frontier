@@ -1,0 +1,126 @@
+on viewPart () {
+	«Changes
+		«7/22/05; 3:50:54 PM by JES
+			«Fix a bug in the move-to-before checkpoint POST handler. Parts were being moved to just before the latest change before the checkpoint, instead of to just before the latest change *after* the checkpoint.
+		«7/20/05; 5:13:34 PM by JES
+			«If the part is an image (gif or jpeg), add an img tag with the url to the image, so the user can see it.
+		«7/20/05; 3:16:24 AM by JES
+			«Created. View a part in a #changes table, or at any odb address.
+	local (pta = html.getPageTableAddress ());
+	«workspace.pt = pta^
+	
+	local (htext);
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	local (adr);
+	if defined (pta^.searchArgTable.adr) { //viewing an object by address
+		if defined (pta^.searchArgTable.adr^) {
+			adr = address (pta^.searchArgTable.adr);
+			local (sAdr = string.popFileFromAddress (adr));
+			if sAdr beginswith "system.verbs.builtins." {
+				sAdr = string.delete (sAdr, 1, sizeOf ("system.verbs.builtins."))};
+			pta^.title = sAdr}
+		else {
+			pta^.title = "Not Defined";
+			return ("Can't view part because there is no object defined at this location:<br><br>" + pta^.searchArgTable.adr)}}
+	else { //viewing a part in a #changes table
+		local (dbRelPath = pta^.pathArgs);
+		local (f = string.popTrailing (frontier.getSubFolder (dbRelPath), file.getPathChar ()));
+		local (fname = file.fileFromPath (f));
+		local (adrchanges = @[f].["#changes"]);
+		local (adrchange = @adrchanges^.[pta^.searchArgTable.part]);
+		pta^.title = fname + ": " + adrchange^.what;
+		bundle { //details & spacer
+			add ("<div class=\"small\"><i>" + adrchange^.when + " by " + adrchange^.who + "</i> -- <b>" + (string.typeToString (typeOf (adrchange^.data)) - "Type") + "</b></div>");
+			if string (adrchange^.why) != "" {
+				add ("<p>" + string (adrchange^.why) + "</p>")};
+			add ("<div>&nbsp;</div>")};
+		adr = @adrchange^.data};
+	if defined (pta^.searchArgTable.serve) { //serve the object itself, instead of its rendering
+		pta^.responseHeaders.["Content-Type"] = mainResponder.getODBMimeType (adr);
+		pta^.responseBody = adr^;
+		scriptError ("!return")};
+	
+	on massage (s) {
+		s = string.replaceAll (s, "\\", "\\\\");
+		s = string.replaceAll (s, "//", "/\\/");
+		s = string.replaceAll (s, "&", "&amp;");
+		s = string.replaceAll (s, "<", "&lt;");
+		s = string.replaceAll (s, "{", "&#123;");
+		s = string.replaceAll (s, "@", "\\@");
+		s = string.replaceAll (s, "\"", "&quot;");
+		s = string.replaceAll (s, "\r", "<br>");
+		return (s)};
+	on viewIt (adr) {
+		case typeOf (adr^) {
+			menubarType;
+			scriptType;
+			outlineType {
+				local (lo = adr^);
+				local (oldTarget = target.set (@lo));
+				op.setDisplay (false);
+				op.fullExpand ();
+				op.firstSummit ();
+				
+				local (commentLevel = infinity);
+				loop {
+					local (caretOrComment, level = op.level ());
+					if script.isComment () {
+						caretOrComment = "&laquo;&nbsp;";
+						if commentLevel > level {
+							commentLevel = level}}
+					else {
+						if level > commentLevel {
+							caretOrComment = "&laquo;&nbsp;"}
+						else {
+							caretOrComment = "&#x25b8;&nbsp;";
+							commentLevel = infinity}};
+					local (s = massage (op.getLineText ()));
+					add ("<div class=\"small\" style=\"padding-left:" + ((level - 1) * 2) + "em; text-indent: -1em\">" + caretOrComment + s + "</div>");
+					if not op.go (flatdown, 1) {break}};
+				op.setDisplay (true);
+				try {target.set (oldTarget)}};
+			charType;
+			string4Type {
+				add ("\'" + massage (adr^) + "\'")};
+			booleanType;
+			stringType;
+			longType;
+			doubleType;
+			listType;
+			dateType;
+			directionType;
+			recordType;
+			wpTextType {
+				add (massage (string (adr^)))};
+			addressType {
+				add ("@" + massage (adr^))};
+			binaryType {
+				local (s, i);
+				local (dataType = getBinaryType (adr^));
+				local (max = 30, etc = "...");
+				if max >= sizeOf (adr^) {
+					max = sizeOf (adr^);
+					etc = ""};
+				for i = 1 to max {
+					s = s + string.delete (string.hex (number (adr^[i])), 1, 4);};
+				s = "[" + dataType + "] 0x" + s + etc;
+				add ("<code>" + s + "</code>");
+				case string.lower (dataType) {
+					"gif ";
+					"giff";
+					"jpg ";
+					"jpeg" {
+						add ("<p><img src=\"" + string.nthField (pta^.firstLine, " ", 2) + "&serve\"></p>")}}};
+			tableType {
+				add (html.tenderRender (adr))}}
+		else {
+			add ("[unable to render this type]")}};
+	
+	viewIt (adr);
+	
+	return (htext)};
+bundle { //test code
+	html.setPageTableAddress (@workspace.pt);
+	viewPart ()}

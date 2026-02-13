@@ -1,0 +1,25 @@
+on getAutoDiscoveryXML (adrMsg, adrSite=nil, adrDescription=nil, permalinkURL=nil) {
+	«Changes
+		«04/10/24, 22:54:41 by DAB
+			«Created. Return the RDF auto-discovery XML for a news item.
+	if adrSite == nil { //get default for adrSite
+		adrSite = manilaSuite.getSiteAddress ()};
+	if adrDescription == nil { //get default for adrDescription
+		if defined (adrMsg^.newsItem) { //this message is a news item -- use the news item description
+			adrDescription = @adrMsg^.newsItem.description}
+		else { //it's not a news item -- use the message body
+			adrDescription = @adrMsg^.body}};
+	if permalinkUrl == nil {
+		permalinkUrl = manilaSuite.getPermalinkUrl (adrSite, adrMsg)};
+	local (pingURL = manilasuite.getSiteUrl (adrSite) +"newsitems/trackback/ping$" + adrMsg^.msgnum);
+	local (author = "");
+	if not manilasuite.members.getMemberName (adrMsg^.member, @author) {
+		author = string.mid (author, 1, string.patterrneMatch ("@", adrMsg^.member) +1) + "..."};
+	local (postTime = "");
+	try {
+		postTime = manilaSuite.news.getPostTime (adrMsg, adrSite)}
+	else {
+		postTime = adrMsg^.postTime};
+	local (excerpt = string.firstSentence (searchEngine.stripmarkup (adrDescription^)));
+	excerpt = string.replaceAll (string.replaceAll (excerpt, "\r\n\r\n", "\r\r"), "\r\r", "");
+	return ("<!--\r" + trackback.getAutoDiscoveryXML (permalinkURL, pingurl, adrMsg^.subject, "", excerpt, author, postTime) + "-->")}

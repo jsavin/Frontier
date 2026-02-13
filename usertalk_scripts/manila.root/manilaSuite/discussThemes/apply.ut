@@ -1,0 +1,23 @@
+on apply (adrSite, themeName, adrTheme=nil, objectName="") {
+	«Set the theme for a Manila site. May be used to apply an entire theme or just one item in a theme.
+		«10/26/00; 11:20:37 PM by JES
+	
+	if adrTheme == nil { //it normally should be nil, unless the theme isn't stored in the config.manila.themes table
+		adrTheme = @config.manila.discussionGroupThemes.[themeName]};
+	local (adrTable = @adrTheme^.appearance);
+	
+	bundle { //set the prefs
+		if objectName == "" {
+			local (adrItem);
+			for adrItem in adrTable {
+				manilaSuite.themes.apply (adrSite, themeName, adrTheme:adrTheme, objectName:nameOf (adrItem^))}}
+		else {
+			manilaSuite.themes.apply (adrSite, themeName, adrTheme:adrTheme, objectName:objectName)}};
+	
+	bundle { //save the info in the site
+		if not defined (adrSite^.["#themes"]) {
+			new (tableType, @adrSite^.["#themes"])};
+		adrSite^.["#themes"].lastDiscussThemeApplied = themeName}};
+
+bundle { // debugging code
+	apply (@sandboxManilaWebsite, "testTheme", @workspace.dgTheme)}

@@ -1,0 +1,187 @@
+on listSubscribableDatabases () {
+	«Changes
+		«9/30/05; 3:06:33 AM by JES
+			«Fix typo in tool-tip: Click, not Clock.
+		«7/27/05; 5:20:39 AM by JES
+			«Added a link below the databases to the Add File page.
+		«7/19/05; 3:55:18 AM by JES
+			«For databases with >0 changes, link the change count to the manageChanges page for the database.
+		«7/19/05; 3:38:06 AM by JES
+			«Improved formatting of the table. Database name is now a link to download (a copy of) the database. Added file size column.
+		«6/16/05; 4:17:30 AM by JES
+			«Add checkbox for setting a checkpoint. Updates checked in after setting a checkpoint are not sent to subscriers until after the checkpoint is removed.
+		«9/7/02; 10:22:30 PM by JES
+			«Be more tolerant about which databases are allowed to be subscribed.
+		«8/26/02; 5:52:49 PM by JES
+			«Created. Lists databases on this server, with checkboxes for whether or not the database should be subscribable.
+	local (pta = html.getPageTableAddress ());
+	«workspace.pt = pta^
+	
+	local (bgcolors = {pta^.trbg1, pta^.trbg2});
+	
+	local (pc = file.getPathChar ());
+	local (now = clock.now ());
+	local (gdbsPath = frontier.getSubFolder (""));
+	
+	on findInUserDatabases (f) {
+		local (lowerpath = string.lower (f));
+		local (adrtable);
+		for adrtable in @user.databases {
+			if string.lower (adrtable^.f) == lowerpath {
+				return (adrtable)}};
+		return (@user.databases.[file.fileFromPath (f)] )};
+	
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	bundle { //list the databases
+		local (t); new (tableType, @t);
+		bundle { //build sorted table of databases
+			
+			on isSubscribable (f) {
+				local (lowerpath = string.lower (f));
+				local (adrtable);
+				for adrtable in @user.databases {
+					try {
+						if string.lower (adrtable^.f) == lowerpath {
+							return (adrtable^.supportsSubscribe)}}};
+				return (false)};
+			on skipDatabase (f) {
+				bundle { //skip all databases that are getting updates from elsewhere
+					local (lowerfname = string.lower (file.fileFromPath (f)));
+					local (adrtable);
+					for adrtable in @user.rootUpdates.servers {
+						try {
+							if string.lower (adrtable^.dbname) == lowerfname {
+								if tcp.equalNames (tcp.dns.getMyDottedId (), adrtable^.server) {
+									return (false)};
+								return (true)}}}};
+				bundle { //skip other canonical databases
+					local (lowerpath = string.lower (f));
+					local (appFolder = Frontier.getSubFolder ("apps"));
+					local (logFolder = Frontier.getSubFolder ("ops") + "logs" + pc);
+					local (opsFolder = Frontier.getSubFolder ("ops"));
+					local (datafilesFolder = Frontier.getSubFolder ("ops") + "datafiles" + pc);
+					on checkOne (path) {
+						if string.lower (path) == lowerpath {
+							return (true)};
+						return (false)};
+					if checkOne (appFolder + "config.root") {return (true)};
+					if checkOne (datafilesFolder + "mainResponderSearchQueue.root") {return (true)};
+					if checkOne (opsFolder + "members.root") {return (true)};
+					if checkOne (opsFolder + "discuss.root") {return (true)};
+					if lowerpath beginsWith string.lower (logfolder) {return (true)}};
+				return (false)};
+			
+			local (adr);
+			for adr in @system.compiler.files {
+				local (f = nameOf (adr^));
+				local (adrdbdata = findInUserDatabases (f));
+				if skipDatabase (f) {
+					continue};
+				local (dbname = file.fileFromPath (f));
+				local (dbsize = file.size (f));
+				local (modified = file.modified (f));
+				local (folder = file.folderFromPath (f));
+				local (foldername = string.popTrailing (file.fileFromPath (folder), pc));
+				local (adrdb = @[f] );
+				local (dbtables = sizeOf (adrdb^));
+				local (adrfolder = @t.[foldername]);
+				if not defined (adrfolder^) {
+					new (tableType, adrfolder)};
+				local (adrdbinfo = @adrfolder^.[dbname]);
+				new (tableType, adrdbinfo);
+				if defined (adrdb^.["#changes"]) {
+					adrdbinfo^.changes = sizeOf (adrdb^.["#changes"])}
+				else {
+					adrdbinfo^.changes = 0};
+				if defined (adrdbdata^.flStopAtCheckpoint) {
+					adrdbinfo^.flStopAtCheckpoint = adrdbdata^.flStopAtCheckpoint}
+				else {
+					adrdbinfo^.flStopAtCheckpoint = false};
+				adrdbinfo^.checkpointDate = "n/a";
+				if adrdbinfo^.flStopAtCheckpoint {
+					if defined (adrdbdata^.checkpointDate) {
+						adrdbinfo^.checkpointDate = date.netStandardString (adrdbdata^.checkpointDate)}
+					else {
+						adrdbinfo^.checkpointDate = ""}};
+				if defined (config.mainResponder.prefs.flSubscriptionsStopAtCheckpoint) {
+					if config.mainResponder.prefs.flSubscriptionsStopAtCheckpoint {
+						if defined (config.mainResponder.prefs.subscriptionsCheckpointDate) {
+							if config.mainResponder.prefs.subscriptionsCheckpointDate < adrdbinfo^.checkpointDate {
+								adrdbinfo^.checkpointDate = "(" + date.netStandardString (config.mainResponder.prefs.subscriptionsCheckpointDate) + ")"}}}};
+				adrdbinfo^.flSubscribable = isSubscribable (f);
+				adrdbinfo^.f = f;
+				adrdbinfo^.sizeBytes = file.size (f)}};
+		
+		add ("<table cellpadding=\"2\" cellspacing=\"0\" border=\"0\">");
+		bundle { //headers
+			add ("<tr><td>&nbsp;</td><td align=\"center\"><b>Folder</b></td><td><b>Database</b></td><td align=\"right\"><b>Size</b></td><td align=\"center\"><b>&nbsp;&nbsp;Checkpoint</b></td><td align=\"right\"><b>&nbsp;&nbsp;Changes</b></td></tr>")};
+		local (ct = 0, adrfolder, adrdb);
+		for adrfolder in @t {
+			local (folder = nameOf (adrfolder^));
+			local (folderCol = "<td class=\"small\" align=\"right\">" + folder + "&nbsp;&nbsp;/&nbsp;" + "</td>");
+			for adrdb in adrfolder {
+				local (dbname = nameOf (adrdb^));
+				if pta^.method == "POST" { //set up this db
+					if defined (pta^.postArgs.["enabled_" + string.urlEncode (adrdb^.f)] ) { //subscribable
+						local (adrinfo = findInUserDatabases (adrdb^.f));
+						if not defined (adrinfo^) { //init user.databases sub-table
+							new (tableType, adrinfo);
+							adrinfo^.f = adrdb^.f;
+							adrinfo^.openOnStartup = true;
+							adrinfo^.runStartupScript = false};
+						adrinfo^.supportsSubscribe = true;
+						if not defined ([adrdb^.f].["#changes"]) {
+							new (tableType, @[adrdb^.f].["#changes"])};
+						adrdb^.flsubscribable = true;
+						if defined (pta^.postArgs.["checkpoint_" + string.urlEncode (adrdb^.f)] ) { //checkpoint
+							local (oldValue = false);
+							if defined (adrinfo^.flStopAtCheckpoint) {
+								oldValue = adrinfo^.flStopAtCheckpoint};
+							if not oldValue { //only update the checkpoint date/time if we've just enabled the checkpoint
+								adrdb^.flStopAtCheckpoint = true;
+								adrdb^.checkpointDate = now;
+								adrinfo^.flStopAtCheckpoint = true;
+								adrinfo^.checkpointDate = now}}
+						else {
+							adrdb^.flStopAtCheckpoint = false;
+							adrdb^.checkpointDate = "n/a";
+							adrinfo^.flStopAtCheckpoint = false}}
+					else { //turn off subscriptions for this database
+						local (adrinfo = findInUserDatabases (adrdb^.f));
+						if defined (adrinfo^) {
+							adrinfo^.supportsSubscribe = false;
+							adrdb^.flsubscribable = false}}};
+				add ("<tr bgcolor=\"" + bgcolors[(ct++% 2) + 1] + "\">");
+				bundle { //checkbox
+					local (checked = "");
+					if adrdb^.flsubscribable {
+						checked = " checked"};
+					add ("<td>&nbsp;<input type=\"checkbox\" name=\"enabled_" + string.urlEncode (adrdb^.f) + "\"" + checked + " />&nbsp;</td>")};
+				add (folderCol); folderCol = "<td></td>"; //only display the folder once
+				local (dbrelpath = string.replaceAll (string.delete (adrdb^.f, 1, sizeOf (gdbsPath)), pc, "/"));
+				local (dblink = "<a href=\"/downloadDatabase$" + dbrelpath + "\" title=\"Click to download a copy of this database...\">" + dbname + "</a>");
+				add ("<td class=\"small\">" + dblink + "</td>");
+				add ("<td class=\"small\" align=\"right\">&nbsp;&nbsp;" + string.gigabyteString (adrdb^.sizeBytes) + "</td>");
+				bundle { //checkpoint
+					local (checked = "");
+					if adrdb^.flStopAtCheckpoint {
+						checked = " checked"};
+					add ("<td class=\"small\" align=\"right\">&nbsp;" + adrdb^.checkpointDate + "&nbsp;<input type=\"checkbox\" name=\"checkpoint_" + string.urlEncode (adrdb^.f) + "\"" + checked + " />&nbsp;</td>")};
+				local (changesLink = adrdb^.changes);
+				if adrdb^.changes > 0 {
+					changesLink = "<a href=\"/manageChanges$" + dbrelpath + "\" title=\"Click to manage changes in this database...\">" + adrdb^.changes + "</a>"};
+				add ("<td class=\"small\" align=\"right\">" + changesLink + "&nbsp;</td>");
+				add ("</tr>")};
+			};«add ("<tr><td>&nbsp;</td></tr>"); ct = 0
+		
+		add ("</table>")};
+	
+	add ("<p>You can add a database to your server via the <a href=\"/addFile\">Add File</a> page.</p>");
+	
+	return (htmltext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«listSubscribableDatabases ()

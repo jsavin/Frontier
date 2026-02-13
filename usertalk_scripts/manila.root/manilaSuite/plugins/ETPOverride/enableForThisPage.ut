@@ -1,0 +1,11 @@
+on enableForThisPage (pta=nil) {
+	«Changes
+		«9/14/05; 1:10:37 AM by JES
+			«Created. (Re-)enable ETP callbacks for the page currently being rendered.
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	if defined (adrsite^.["#prefs"].ETPFormSubstitutes) {
+		pta^.ETPFormSubstitutes = @adrsite^.["#prefs"].ETPFormSubstitutes;
+		return (true)};
+	return (false)}

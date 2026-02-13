@@ -1,0 +1,170 @@
+on msgReader (pta=nil) {
+	«Changes:
+		«4/11/06; 6:51:47 PM by JES
+			«Address cross-site scripting issue, where the mode searchArg was rendered verbatim into the page. Now we entity-encode the searchArgs to make sure that they're not interpreted as HTML when rendered in the browser.
+		«1/31/06; 2:16:55 AM by JES
+			«Add support for pending messages.
+		«1/21/05; 4:48:17 PM by LL
+			«Added support for a server and site level preference to determine if pta^.flAnchorRelNofollow should bet set to true or not.
+		«1/20/05; 2:14:20 AM by JES
+			«If we're on a discussion group msgReader page, set pta^.flAnchorRelNofollow to true. Causes Manila's finalFilter to add a rel="nofollow" attribute to all <a ... > tags.
+		«2003
+			«4/18/03; 6:18:52 PM by JES
+				«Pass in true for flUseMappedMemberKeys to mainResponder.discuss.readThread, mainResponder.discuss.renderOneMessage and mainResponder.discuss.readMessage.
+		«2002
+			«4/6/02; 3:10:52 PM by JES
+				«Added support for displaying the full text of messages in the response list -- Slashdot-style discussion group renderings.
+			«4/4/02; 1:23:24 AM by JES
+				«Added support for prefs for whether to list stories, pictures and news items in the discussion group.
+			«1/25/02; 6:21:10 PM by PBS
+				«Performance enhancement in the local "add" routine -- add a trailing semicolon.
+			«1/14/02; 3:21:59 PM by PBS
+				«If pathArgs ends with .opml, return OPML document.
+		«2000
+			«10/25/00; 2:17:49 AM by JES
+				«Pass icon tags to mainResponder.discuss.readThread, so that the topic reader page will respect manila site DG prefs, instead of using defaults.
+			«10/13/00; 12:03:28 AM by JES
+				«Support single message template-based rendering.
+			«10/12/00; 12:23:26 AM by JES
+				«If the mode is specified in searchArgs, respect it over the preference for whether to use the topic-based or day-based DG interface.
+			«10/08/00; 3:26:57 PM by JES
+				«Added support for the topic-based DG interface.
+			«05/01/00; 5:35:33 PM by PBS
+				«Support for news items. News items are in an XML format, and should be rendered as HTML. Use the adrGetBodyCallback feature of mainResponder.discuss.readMessage to supply an XML-to-HTML renderer.
+			«04/06/00; 5:12:03 PM by PBS
+				«Add the email-subscription checkbox. A member can subscribe to all direct responses to a message, receive responses via email.
+		«1999
+			«Created. Display a discussion group message in the standard discussion group interface.
+	
+	manilaSuite.accesscontrol.checks(); //04.05.22, 18:59:50 by DAB
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	if string.lower (pta^.pathArgs) endsWith ".opml" { //PBS 1/14/02: return OPML document
+		local (msgNum = string.popSuffix (pta^.pathArgs));
+		return (manilaSuite.discuss.opmlReader (msgNum))};
+	if string.lower (pta^.url + "$") beginsWith string.lower (manilaSuite.getUrl ("discussMsgReader")) {
+		case manilaSuite.getNewsSitePref ("discussionGroup.flNofollowLinkAttributeEnabled", default: "default", flCreate: true) {
+			"true" {
+				pta^.flAnchorRelNofollow = true};
+			"default" {
+				if defined (config.manila.prefs.flNofollowLinkAttributeEnabled) {
+					if config.manila.prefs.flNofollowLinkAttributeEnabled {
+						pta^.flAnchorRelNofollow = true}}}}};
+	pta^.msgNum = number (pta^.pathArgs);
+	if pta^.pathArgs == "" { //PBS 10/26/00: check for missing pathArgs and use message 0
+		pta^.msgNum = 1};
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (pta^.msgNum));
+	
+	pta^.title = adrMsgTable^.subject;
+	pta^.title = string.replaceAll (pta^.title, "\"", "&quot;");
+	pta^.title = manilaSuite.unTaint (pta^.title); //PBS 10/31/99: no curly-brace macros in titles
+	pta^.flReadMessageAutoParagraphs = false;
+	local (searchArgs = pta^.searchArgs);
+	if searchArgs != "" {
+		searchArgs = "?" + searchArgs;
+		searchArgs = xml.entityEncode (searchArgs, true)};
+	
+	local (htmlText = "");
+	
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	add (manilaSuite.html.confirmBox (pta));
+	
+	local (flResponseForm = true);
+	local (flDiscussTopicBased = manilaSuite.getNewsSitePref ("discussionGroup.topicBased", default: false, flCreate: true));
+	if defined (pta^.searchArgs) and pta^.searchArgs != "" { // 10/12/00 JES: does the URL specify which DG interface to use?
+		local (argTable);
+		new (tableType, @argTable);
+		webserver.parseArgs (pta^.searchArgs, @argTable);
+		if defined (argTable.mode) {
+			case string.lower (argTable.mode) {
+				"day" {
+					flDiscussTopicBased = false};
+				"topic" {
+					flDiscussTopicBased = true}}}};
+	if defined (pta^.flResponseFormOnDiscussPage) {
+		flResponseForm = pta^.flResponseFormOnDiscussPage};
+	
+	local (responseIndentTemplate, responseItemTemplate, responseListHeader, responseListFooter);
+	local (responseSubThreadEndTemplate, responseSubThreadStartTemplate);
+	bundle { // get DG response list prefs
+		responseIndentTemplate = string (pta^.newsSite^.discussionGroup.responseIndentTemplate);
+		responseItemTemplate = string (pta^.newsSite^.discussionGroup.responseItemTemplate);
+		responseFullItemTemplate = string (pta^.newsSite^.discussionGroup.responseFullItemTemplate);
+		responseListHeader = string (pta^.newsSite^.discussionGroup.responseListHeader);
+		responseListFooter = string (pta^.newsSite^.discussionGroup.responseListFooter);
+		responseSubThreadEndTemplate = string (pta^.newsSite^.discussionGroup.responseSubThreadEndTemplate);
+		responseSubThreadStartTemplate = string (pta^.newsSite^.discussionGroup.responseSubThreadStartTemplate)};
+	
+	local (bgColor, headerColor, headerTextColor);
+	bundle { // get the color prefs
+		bgColor = manilaSuite.getNewsSitePref ("colors.discussListings", default:"beige", flCreate:true, flUnTaint:true);
+		if string.trimWhiteSpace (bgColor) == "" {
+			bgColor = manilaData.newSiteTemplate.["#newsSite"].colors.discussListings};
+		manilaSuite.html.getSeparatorColors (@headerColor, @headerTextColor)};
+	
+	if flDiscussTopicBased { //10/08/00 JES: if the DG is topic-based, use mainResponder.discuss.readThread
+		on setPageUpdateTime (adrMsgTable) {
+			manilaSuite.discuss.setLastUpdateTime (adrMsgTable);
+			return (manilaSuite.callbacks.getBodyCallback (adrMsgTable))};
+		local (adrTemplate, adrTopicTemplate, activeTopicIcon, inactiveTopicIcon, userIcon);
+		if defined (pta^.newsSite^.discussionGroup.topicMsgTemplate) {
+			adrTemplate = @pta^.newsSite^.discussionGroup.topicMsgTemplate};
+		if defined (pta^.newsSite^.discussionGroup.topicTemplate) {
+			adrTopicTemplate = @pta^.newsSite^.discussionGroup.topicTemplate};
+		if defined (pta^.newsSite^.discussionGroup.activeTopicIcon) {
+			activeTopicIcon = pta^.newsSite^.discussionGroup.activeTopicIcon};
+		if defined (pta^.newsSite^.discussionGroup.inactiveTopicIcon) {
+			inactiveTopicIcon = pta^.newsSite^.discussionGroup.inactiveTopicIcon};
+		if defined (pta^.newsSite^.discussionGroup.userIcon) {
+			userIcon = pta^.newsSite^.discussionGroup.userIcon};
+		add (mainResponder.discuss.readThread (pta^.msgNum, flResponseForm:flResponseForm, flShowCowSkullLink:true, adrGetBodyCallback:@setPageUpdateTime, adrGetTimeCallback:@manilaSuite.convertTime, cssPrefix:"dt", adrTemplate:adrTemplate, otherColor:bgColor, headerColor:headerColor, headerTextColor:headerTextColor, adrTopicTemplate:adrTopicTemplate, pta:pta, activeThreadIcon:activeTopicIcon, inactiveThreadIcon:inactiveTopicIcon, userIcon:userIcon, adrInDgCallback:@manilaSuite.discuss.isMessageInDiscussionGroup, flUseMappedMemberKeys:true))}
+	else { //use the single-message renderer
+		local (adrTemplate);
+		if defined (pta^.newsSite^.discussionGroup.msgTemplate) {
+			adrTemplate = @pta^.newsSite^.discussionGroup.msgTemplate};
+		if defined (adrTemplate^) { // if there's a template, flow the message through it
+			local (userIcon);
+			if defined (pta^.newsSite^.discussionGroup.userIcon) { //PBS 03/12/01: fixed typo preventing custom user icon from being used in single message renderer
+				userIcon = pta^.newsSite^.discussionGroup.userIcon};
+			local (depthToExpandResponses = manilaSuite.getNewsSitePref ("discussionGroup.depthToExpandResponses", default: 1, flCreate: true));
+			local (flResponsesInChronologicalOrder = manilaSuite.getNewsSitePref ("discussionGroup.responseListChronological", default: false, flCreate: true));
+			add (mainResponder.discuss.renderOneMessage (adrMsgTable, adrTemplate, flShowResponseForm:flResponseForm, otherColor:bgColor, headerColor:headerColor, headerTextColor:headerTextColor, adrGetBodyCallback:@manilaSuite.callbacks.getBodyCallback, adrGetTimeCallback:@manilaSuite.convertTime, cssPrefix:"dm", defaultMode:"day", responseItemTemplate:responseItemTemplate, responseListHeader:responseListHeader, responseListFooter:responseListFooter, responseIndentTemplate:responseIndentTemplate, responseSubThreadStartTemplate:responseSubThreadStartTemplate, responseSubThreadEndTemplate:responseSubThreadEndTemplate, pta:pta, userIcon:userIcon, adrInDgCallback:@manilaSuite.discuss.isMessageInDiscussionGroup, depthToExpandResponses:depthToExpandResponses, flResponsesInChronologicalOrder:flResponsesInChronologicalOrder, responseFullItemTemplate:responseFullItemTemplate, flUseMappedMemberKeys:true))}
+		else { // no template -- let mainResponder render it
+			add (mainResponder.discuss.readMessage (pta^.msgNum, flResponseForm:flResponseForm, adrGetBodyCallback:@manilaSuite.callbacks.getBodyCallback, searchArgs:searchArgs, flUseMappedMemberKeys:true))}};
+	
+	bundle { //PBS 04/07/00: email subscriptions box
+		if defined (pta^.adrMemberInfo) { //service is for members only
+			local (flEmailEnabled = false);
+			if defined (pta^.newsSite^.flDiscussAllowEmailSubscriptions) {
+				if pta^.newsSite^.flDiscussAllowEmailSubscriptions {
+					flEmailEnabled = true}}
+			else {
+				if not flEmailEnabled { //check in config.manila.prefs
+					if defined (config.manila.prefs.flDiscussAllowEmailSubscriptions) {
+						if config.manila.prefs.flDiscussAllowEmailSubscriptions {
+							flEmailEnabled = true}}}};
+			
+			if flEmailEnabled {
+				local (flDeleted = false, flPending = false);
+				if defined (adrMsgTable^.flDeleted) {
+					if adrMsgTable^.flDeleted {
+						flDeleted = true}};
+				if defined (adrMsgTable^.flPending) {
+					if adrMsgTable^.flPending {
+						flPending = true}};
+				if not (flDeleted or flPending) {
+					add (manilaSuite.html.emailBox (adrMsgTable, pta))}}}};
+	
+	add (manilaSuite.html.adminBox (pta));
+	
+	if not flDiscussTopicBased {
+		manilaSuite.discuss.setLastUpdateTime (adrMsgTable)};
+	
+	bundle { //see if anything to do after a read
+		local (adrAfterRead);
+		if manilaSuite.plugins.ETPoverride.getScriptAddress("discussMsgReader", @adrAfterRead) {
+			adrAfterRead^(adrMsgTable)}};
+	
+	return (htmlText)}

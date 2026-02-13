@@ -1,0 +1,60 @@
+on customRenderer (partialAddress, defaultValue, adrXmlTable) {
+	«Changes:
+		«1/21/02; 9:05:24 PM by PBS
+			«Deal with the bloggerApi.root Tool.
+	local (pta = html.getPageTableAddress ());
+	local (htmlText = "", indentLevel = 0);
+	
+	on add (s) {
+		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+	
+	case partialAddress {
+		"controlPanel.webEditServer.grantAccessTo" {
+			add ("<select name=\"" + partialAddress + "\">"); indentLevel++;
+			add ("<option value=\"\" selected>Choose a user...</option>");
+			
+			on addUser (userName) {
+				if not (people.serviceIsAttachedToUser ("WebEdit", userName)) {
+					add ("<option value=\"" + userName + "\"" + userName + ">" + userName+ "</option>")}};
+			people.visitAllUsers (@addUser);
+			
+			add ("</select>"); indentLevel--};
+		"controlPanel.webEditServer.userToEdit";
+		"controlPanel.webEditServer.denyAccessTo" {
+			add ("<select name=\"" + partialAddress + "\">"); indentLevel++;
+			add ("<option value=\"\" selected>Choose a user...</option>");
+			
+			on addUser (userName) {
+				add ("<option value=\"" + userName + "\"" + userName + ">" + userName+ "</option>")};
+			people.visitServiceUsers ("WebEdit", @addUser);
+			
+			add ("</select>"); indentLevel--};
+		"controlPanel.manila.bloggerToolCheck" {
+			local (folder = Frontier.getSubFolder ("apps/Tools/"));
+			local (f = folder + "bloggerApi.root");
+			if pta^.method == "POST" {
+				if defined (pta^.postArgs.["controlPanel.manila.flBloggerToolDisable"]) {
+					if pta^.postArgs.["controlPanel.manila.flBloggerToolDisable"] {
+						if defined (user.betty.rpcHandlers.blogger) { //re-point to Manila
+							user.betty.rpcHandlers.blogger = @manilaSuite.bloggerApi.rpcHandlers};
+						Frontier.tools.enable (f, false);
+						Frontier.tools.uninstall (f);
+						fileMenu.save (f);
+						fileMenu.close (f);
+						add ("The Blogger API Tool (bloggerApi.root) has been disabled.")}}}
+			else {
+				if defined (bloggerApi) {
+					if file.exists (f) {
+						if Frontier.tools.isEnabled (f) {
+							local (adrData = @user.tools.databases.[file.fileFromPath (f) - ".root"]);
+							if defined (adrData^) {
+								if adrData^.flInstalled {
+									add ("<tr><td>You're still running the bloggerApi Tool. Its features have been built into Manila. Would you like to disable this Tool?</td>");
+									add ("<td><input type=\"radio\" name=\"controlPanel.manila.flBloggerToolDisable\" value=true checked>Yes");
+									add ("<input type=\"radio\" name=\"controlPanel.manila.flBloggerToolDisable\" value=false>No");
+									add ("</td></tr>")}}}}}}}};
+	
+	if htmlText endsWith "\r" {
+		htmlText = string.delete (htmlText, sizeOf (htmlText), 1)};
+	
+	return (htmlText)}

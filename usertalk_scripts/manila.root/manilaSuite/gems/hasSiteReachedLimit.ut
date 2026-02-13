@@ -1,0 +1,12 @@
+on hasSiteReachedLimit (adrSite) {
+	«Return true if the site has reached or exceeded its allowed hard drive space.
+		«04/13/00; 9:14:54 PM by PBS
+	
+	local (limit = manilaSuite.gems.getSiteLimit (adrSite));
+	
+	local (currentSize = manilaSuite.gems.getCurrentSiteFolderSize (adrSite));
+	
+	if currentSize >= limit {
+		return (true)}; //true means the site has reached or exceeded its limit
+	
+	return (false)} //the site has not reached its limit yet

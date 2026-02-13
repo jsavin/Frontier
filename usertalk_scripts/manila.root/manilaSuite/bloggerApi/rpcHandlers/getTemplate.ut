@@ -1,0 +1,20 @@
+on getTemplate (appkey, blogid, username, password, templateType) {
+	«8/27/01; 3:27:22 PM by JES
+		«Blogger API glue for using manila.advancedPref.get to get the site's template and news item template.
+	local (siteurl = blogid); //these are synonymous for Manila sites
+	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
+	bundle { //make sure siteurl starts with http:// and ends with /
+		if not (string.lower (siteurl) beginsWith "http://") {
+			siteurl = "http://" + siteurl};
+		if not (siteurl endsWith "/") {
+			siteurl = siteurl + "/"}};
+	local (itemName);
+	case string.lower (templateType) {
+		"main" {
+			itemName = "template"};
+		"archiveindex" {
+			scriptError ("Can't get the archiveIndex template because Manila sites do not have an archiveIndex template.")}}
+	else { //error -- the template doesn't exist
+		scriptError ("Can't get the " + templateType + " template because it doesn't exist.")};
+	local (t = manilaSuite.rpcHandlers.advancedPref.get (username, password, siteName, itemName));
+	return (t.body)}

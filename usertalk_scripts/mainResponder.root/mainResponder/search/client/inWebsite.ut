@@ -1,0 +1,35 @@
+on inWebsite (adrObject) {
+	«Return true if the object is in the content part of a website, false otherwise.
+		«It must not start with a # sign or have a # sign in its address.
+		«There must be an #ftpSite table above it, somewhere.
+	
+	on findFtpSite (adrTable) {
+		«Find the #ftpSite for this object.
+		
+		local (nomad = adrObject);
+		if typeOf (nomad^) != tableType {
+			nomad = parentOf (nomad^)};
+		
+		on checkTable (adrTable) {
+			«Check one table for the existence an #ftpSite table.
+			if defined (adrTable^.["#ftpSite"]) {
+				return (true)};
+			if defined (adrTable^.["#prefs"].ftpSite) {
+				return (true)};
+			if defined (adrTable^.["#prefs"].["#ftpSite"]) {
+				return (true)};
+			return (false)};
+		
+		loop {
+			if nomad == @root or nomad == nil {
+				return (false)};
+			if html.traversalSkip (nomad) {
+				return (false)};
+			if checkTable (nomad) {
+				return (true)};
+			nomad = parentOf (nomad^)}};
+	
+	if findFtpSite (adrObject) {
+		return (true)};
+	
+	return (false)}

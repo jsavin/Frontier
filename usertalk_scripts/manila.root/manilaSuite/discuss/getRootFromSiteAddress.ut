@@ -1,0 +1,11 @@
+on getRootFromSiteAddress (adrSite) {
+	«Get the address of the discussion group table for this site.
+		«This script can run outside the page rendering context.
+		«10/19/99;  2:59:31 PM by PBS
+	
+	local (discussRoot = manilaSuite.discuss.getRootNameFromSiteAddress (adrSite));
+	local (adrDiscuss = @[mainResponder.discuss.openFile ()].[discussRoot]);
+	if typeOf (adrDiscuss^) == addressType or typeOf (adrDiscuss^) == stringType {
+		adrDiscuss = adrDiscuss^};
+	
+	return (adrDiscuss)}

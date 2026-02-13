@@ -1,0 +1,77 @@
+on createNewsItemEmailMessage (adrMsgTable, url, member, flNew, status="", language = nil) {
+	«Create an email message regarding a news item. Return a table containing two fields: subject and text.
+		«04/04/00; 10:17:44 PM by PBS
+		«Changes:
+			«05/20/00; 9:29:31 PM by JES
+				«localized
+	
+	local (tempTable); // 05/04/00 JES: a dummy page table for getString -- needed because we might be running in an RPC handler.
+	bundle { // figure out what language to use in the email
+		new (tableType, @tempTable);
+		if language {
+			tempTable.language = language}
+		else {
+			local (nomad);
+			nomad = parentOf (parentOf (parentOf (adrMsgTable^)^)^); // the site root
+			if defined (nomad^.["#prefs"].language) { // try to get the setting from the site
+				tempTable.language = nomad^.["#prefs"].language};
+			if not defined (tempTable.language) { // fallback to server or Frontier settings, then to English
+				if defined (config.mainResponder.globals.language) {
+					tempTable.language = config.mainResponder.globals.language}
+				else { // does Frontier have a language setting?
+					if defined (user.prefs.language) {
+						tempTable.language = user.prefs.language}
+					else { // fall back to English
+						tempTable.language = "English"}}}}};
+	
+	local (type = "News Item");
+	local (t);
+	new (tableType, @t);
+	t.subject = "";
+	t.text = "";
+	
+	on addLine (s) {
+		t.text = t.text + s + "\r\n\r\n";
+		return (true)};
+	
+	
+	local (stringName);
+	local (replacementTable); new (tableType, @replacementTable); // 05/04/00 JES
+	replacementTable.subject = adrMsgTable^.subject;
+	if status != "" { //is it a status change (is it released or posted)?
+		case string.lower (status) {
+			"released" {
+				stringName = string.innerCaseName ("released " + type);
+				t.subject = manilaSuite.getString ("emailNotification." + stringName + "Subject", @replacementTable, pta: @tempTable);
+				addLine (manilaSuite.getString ("emailNotification." + stringName + "Body", pta: @tempTable))};
+			"posted" {
+				stringName = string.innerCaseName ("posted " + type);
+				t.subject = manilaSuite.getString ("emailNotification." + stringName + "Subject", @replacementTable, pta: @tempTable);
+				addLine (manilaSuite.getString ("emailNotification." + stringName + "Body", pta: @tempTable))}}}
+	else { //it's a new or edited news items
+		if flNew {
+			stringName = string.innerCaseName ("new " + type);
+			t.subject = manilaSuite.getString ("emailNotification." + stringName + "Subject", @replacementTable, pta: @tempTable);
+			addLine (manilaSuite.getString ("emailNotification." + stringName + "Body", pta: @tempTable))}
+		else {
+			stringName = string.innerCaseName ("changed " + type);
+			t.subject = manilaSuite.getString ("emailNotification." + stringName + "Subject", @replacementTable, pta: @tempTable);
+			addLine (manilaSuite.getString ("emailNotification." + stringName + "Body", pta: @tempTable))}};
+	
+	«t.subject = t.subject + type + ": " + adrMsgTable^.subject // 05/04/00 JES: subject is now inserted by manilaSuite.getString
+	
+	replacementTable.url = url;
+	replacementTable.member = member;
+	addLine (manilaSuite.getString ("emailNotification.address", @replacementTable, pta: @tempTable));
+	addLine (manilaSuite.getString ("emailNotification.by", @replacementTable, pta: @tempTable));
+	
+	bundle { //do formatting for post text
+		local (xmlTable = manilaSuite.news.xmlToTable (string (adrMsgTable^.body)));
+		replacementTable.department = xmlTable.department;
+		replacementTable.linksTo = xmlTable.url;
+		replacementTable.description = xmlTable.description;
+		addLine (manilaSuite.getString ("emailNotification.department", @replacementTable, pta: @tempTable));
+		addLine (manilaSuite.getString ("emailNotification.linksTo", @replacementTable, pta: @tempTable));
+		addLine (manilaSuite.getString ("emailNotification.description", @replacementTable, pta: @tempTable))};
+	
+	return (t)}

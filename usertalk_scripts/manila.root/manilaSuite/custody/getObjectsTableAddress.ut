@@ -1,0 +1,26 @@
+on getObjectsTableAddress (adrSite, flMessage=false) {
+	«Get the address of the table of objects for this site. If it's a dg message, the checkouts table is in the discussion group. If it's an advanced item, the checkouts table is in the #newsSite table of the site.
+		«02/08/00; 10:18:51 PM by PBS
+		«Changes:
+			«02/09/00; 7:11:49 PM by PBS
+				«The checkouts table has been moved to the #newsSite table inside the site.
+			«02/10/00; 11:38:55 AM by PBS
+				«There are now two checkouts tables, one in the dg and one in the site itself. This is because Manila sites may share a dg, but having two sites shouldn't be a way to circumvent custody.
+	
+	local (adrCheckOuts);
+	
+	if flMessage { //the checkouts table is in the discussion group
+		local (adrDg);
+		local (dgName = adrSite^.["#prefs"].discussionRoot);
+		manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrDg);
+		adrCheckouts = @adrDg^.checkouts;
+		if not defined (adrCheckouts^) {
+			new (tableType, adrCheckouts)}}
+	else { //the checkouts table is in the site itself
+		local (adrNewsSite = @adrSite^.["#newsSite"]);
+		
+		adrCheckouts = @adrNewsSite^.checkouts;
+		if not defined (adrCheckouts^) {
+			new (tableType, adrCheckouts)}};
+	
+	return (adrCheckouts)}

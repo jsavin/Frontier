@@ -1,0 +1,11 @@
+on isCheckedOutByUser (adrItem, adrMember, adrSite, flMessage=false) {
+	«Is an object checked out by a user?
+		«02/08/00; 10:30:19 PM by PBS
+	
+	local (memberKey = adrItem^.user);
+	local (groupName = adrItem^.group);
+	local (adrMemberWhoCheckedItOut = mainResponder.members.getMemberTable (groupName, memberKey));
+	if adrMember == adrMemberWhoCheckedItOut {
+		return (true)};
+	
+	return (false)}

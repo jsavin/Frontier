@@ -1,0 +1,131 @@
+on memberMenu(pta, formID, elementID, selectedMembers, multiBoxSize=0, maxEntriesPerMenu) {
+	«manilaSuite.accessControl.memberMenu : 04/05/29, 14:06:23 by DAB
+		«return a table of select menus that allow drilling down to a specific member key
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrUsers = @adrGroup^.users);
+	local (userCnt = sizeOf(adrUsers^));
+	local (flNeedJavascript = false);
+	
+	local (htmltext="");
+	on add(s) {
+		htmltext = htmltext + s;};
+	local (replTbl);
+	new(tabletype, @replTbl);
+	
+	on binarySearch (valueSought) { //case insensitive binary search of names of table
+		valueSought = string.lower(valueSought);
+		local (Nmax = sizeOf(adrUsers^));
+		if NMax == 0 { //03/08/23, 12:24:10 by DAB
+			return 0};
+		local (Nmin = 1);
+		local (ix, v);
+		while Nmax != Nmin {
+			ix = (Nmax + Nmin) /2;
+			v = string.lower(nameOf(adrUsers^[ix]));
+			case true {
+				v == valueSought {
+					return ix};
+				v  >= valueSought {
+					Nmax = ix}}
+			else {
+				Nmin = ix+1}};
+		if string.lower(nameOf(adrUsers^[Nmax])) == valueSought {
+			return Nmax};
+		return 0};
+	
+	local (ixCurrent = 1, ixSelectedMembers={});
+	case true { //compute ixCurrent (and maybe ixSelectedMembers)
+		pta^.method == "POST" and defined(number(pta^.postargs.[formID+"_"+elementID+"_drilldown"])) and number(pta^.postargs.[formID+"_"+elementID+"_drilldown"])>0 {
+			local (ix = number(pta^.postargs.[formID+"_"+elementID+"_drilldown"]));
+			if defined(pta^.postargs.[elementID + ix]) {
+				ixCurrent = number(pta^.postargs.[elementID + ix])}};
+		selectedMembers != {} { //compute selected member key indexes
+			if typeof(selectedMembers) != listTYpe {
+				selectedMembers = {selectedMembers}};
+			local (key, ix);
+			for key in selectedMembers {
+				local (ix = binarySearch(key));
+				if ix > 0 {
+					ixSelectedMembers[0] = ix}};
+			try {ixCurrent = ixSelectedMembers[1]}}};
+	
+	on buildMenu(increment, idSuffix) {
+		local (ixStart=1, ixSelected=ixCurrent);
+		local (entries = userCnt/increment);
+		if entries > maxEntriesPerMenu {
+			if increment == 1 {
+				add("\r\t\t<td align = 'center' valign = 'middle'>");
+				replTbl.menuItems = maxEntriesPerMenu;
+				replTbl.totalUsers = string.addCommas(userCnt);
+				add("<p>" + manilaSuite.getString("accesscontrol.drillhint", @replTbl, pta:pta)  + "</p>")}
+			else {
+				add("<p>")};
+			ixStart = buildMenu(increment*maxEntriesPerMenu, number(idSuffix)+1);
+			if increment == 1 {
+				add("\r\t\t</td>")}
+			else {
+				add("</p>")}};
+		
+		bundle { //build the level for the increment we have
+			if increment == 1 {
+				add("\r\t\t<td>")};
+			add("\r\t\t\t<select name = '" + elementID + idSuffix + "'");
+			case true {
+				increment > 1 {
+					add(" onchange='"); //deselect lesser levels 
+					add("this.form." + formID+"_"+elementID+"_drilldown.value=\"" + idSuffix + "\";");
+					for id = idSuffix-1 downto 1 {
+						add("deSelectAll(this.form." + elementID + id +");")}; //deselect all options
+					add("deSelectAll(this.form." + elementID  +");"); //desleect all options 
+					add("this.form.submit()'"); //submit
+					flNeedJavascript = not defined(pta^.flDeselectAllJavascript)};
+				multiBoxSize > 1 {
+					add(" multiple size='" + multiBoxSize + "'")}};
+			add(">");
+			
+			local (ixFinish = ixStart+(increment*maxEntriesPerMenu-1));
+			if ixFinish > userCnt {
+				ixFinish = userCnt};
+			local (ix =ixStart);
+			local (nme);
+			loop {
+				nme = nameof(adrUsers^[ix]);
+				if idSuffix > 0 {
+					nme = nme + " ..."};
+				selected = "";
+				case true {
+					(increment == 1) and (ixSelectedMembers contains ix);
+					(ix <= ixCurrent) and (ixCurrent <  (ix+ increment)) {
+						selected = " selected";
+						ixSelected = ix}};
+				add("\r\t\t\t\t<option value='" + ix + "'" + selected + ">" + nme + "</option>");
+				ix = ix + increment;
+				if ix > ixFinish {
+					break}};
+			
+			add("\r\t\t\t</select>");
+			if increment == 1 {
+				add("\r\t\t</td>")}};
+		
+		return ixSelected};
+	
+	add("\r<table>\r\t<tr>");
+	buildMenu(1, "");
+	add("\r\t</tr>\r</table>");
+	
+	if flNeedJavascript { // gott a set up the javascript here
+		local (s = "");
+		if defined(pta^.javaScript) {
+			s = pta^.javaScript};
+		s = s + string(manilaSuite.accessControl.deselectAllJavaScript);
+		pta^.javaScript = s;
+		pta^.flDeselectAllJavascript = true;
+		
+		add("<input type ='hidden' name='" + formID+"_"+elementID+"_drilldown' value='0'>")};
+	
+	return htmltext};
+«bundle
+	«wp.newtextObject(memberMenu(@baylysManilaWebsite, "users", "fred", "dbayly@udena.ch", 4, 10), @temp.memberMenu)
+	«wp.newtextObject(memberMenu(@hamricksManilaWebsite, "users", "fred", "dbayly@udena.ch", 10, 100), @temp.memberMenu)
+	«edit(@temp.memberMenu)

@@ -1,0 +1,27 @@
+on defaultPage () {
+	«Changes
+		«3/4/07; 2:58:39 PM by LL
+			«Restrict the referers page to editors.
+		«9/10/01; 1:31:03 PM by PBS
+			«Display the list of stats pages. This will need to be localized.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Stats";
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta));
+	local (flEditor = manilaSuite.editors.editorialTest (pta));
+	
+	on addPage (title, fname) {
+		add ("<li><a href=\"" + fname + "\">" + title + "</a><p>")};
+	
+	addPage ("Hourly Hits", "hourlyHits");
+	if flManagingEditor {
+		addPage ("Members", "members")};
+	addPage ("Most Read Messages", "mostReadMessages");
+	if flEditor {
+		addPage ("Referers", "referers")};
+	
+	return (manilaSuite.unTaint (htmlText))}

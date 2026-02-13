@@ -1,0 +1,59 @@
+on notifyNewsItemStatusChange (adrMsg, adrSite, url, adrMember, status) {
+	«Notify editors that the status of a news item has changed.
+		«7/21/07; 10:28:10 PM by LL
+			«Fixed a typo for the adrMsg parameter. 
+		«12/10/06; 3:13:08 PM by LL
+			«Fixed a bug where emails might not be sent if there were multiple recipients, because the recipient list was a sting, and coercion to a list failed. Instead, convert to a list by calling manilaSuite.admin.stringToList.
+		«04/30/00; 6:25:08 PM by PBS
+		«Changes:
+			«08/07/00; 9:11:05 PM by PBS
+				«Call manilaSuite.sendMail rather than tcp.sendMail.
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	local (lowerStatus = string.lower (status));
+	local (type = "News Item");
+	
+	bundle { //decide whether or not to send notification
+		local (adrFlag);
+		adrFlag = @adrNewsSite^.flNotifyReleasedNewsItems;
+		if lowerStatus == "posted" {
+			adrFlag = @adrNewsSite^.flNotifyPostedNewsItems};
+		
+		if not (defined (adrFlag^)) {
+			adrFlag^ = false};
+		if not (adrFlag^) {
+			return (true)}}; //don't send notification
+	
+	local (member = manilaSuite.emailNotification.getMemberName (adrMember));
+	
+	local (emailSubject, emailMessage);
+	bundle { //create the email message to send
+		local (t); //a table that will contain two elements: subject and text.
+		if lowerStatus == "posted" {
+			url = adrSite^.["#ftpSite"].url};
+		t = manilaSuite.emailNotification.createNewsItemEmailMessage (adrMsg, url, member, false, status);
+		emailSubject = t.subject;
+		emailMessage = t.text};
+	
+	bundle { //send the email notifications
+		local (sender);
+		bundle { //get the sender email address
+			sender = "webmaster@userland.com";
+			if defined (adrNewsSite^.notifySender) {
+				sender = adrNewsSite^.notifySender}};
+		
+		local (recipients);
+		bundle { //get the recipients list
+			if not defined (adrNewsSite^.notifyList) {
+				return (true)};
+			recipients = adrNewsSite^.notifyList;
+			if typeOf (recipients) != listType { //PBS 10/27/99: for this script, make sure it's a list
+				recipients = manilaSuite.admin.stringToList (recipients)}};
+		
+		bundle { //send the email
+			local (oneRecipient);
+			for oneRecipient in recipients {
+				«try {tcp.sendMail (oneRecipient, emailSubject, emailMessage, sender)}
+				try {manilaSuite.sendMail (oneRecipient, emailSubject, emailMessage, sender)}}}}; //PBS 08/07/00: call manilaSuite.sendMail rather than tcp.sendMail
+	
+	return (true)}

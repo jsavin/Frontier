@@ -1,0 +1,46 @@
+on buildIndex (adrSite, categoryName) {
+	«Build an index -- of stories, pictures, whatever. adrSite is the address of a site; categoryName is a name like "stories" or "pictures."
+		«10/09/00; 8:53:50 PM by PBS
+	
+	local (adrIndex = manilaSuite.discuss.getIndexAddress (adrSite, categoryName));
+	local (t);
+	new (tableType, @t);
+	local (adrTable = @t);
+	
+	local (listedIn = manilaSuite.discuss.getCategoryName (categoryName, adrSite)); //go from "stories" to "mySiteStories" or whatever
+	
+	local (dgName = adrSite^.["#prefs"].discussionRoot);
+	manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrDiscussionGroup);
+	local (adrMessages = @adrDiscussionGroup^.messages);
+	local (adrMsg);
+	for adrMsg in adrMessages { //loop through all messages
+		if defined (adrMsg^.flDeleted) { //deleted?
+			if adrMsg^.flDeleted {
+				continue}};
+		
+		if manilaSuite.discuss.isInCategory (adrMsg, listedIn) { //is it in this category?
+			local (itemName = string.padWithZeros (adrMsg^.msgNum, 7));
+			local (value = true);
+			«adrTable^.[itemName] = true
+			adrTable^.[itemName] = string.lower(adrMsg^.subject)}; //03/01/21, 17:00:39 by DAB
+		
+		thread.sleepfor(0)}; //03/01/02, 18:23:22 by DAB
+	
+	adrIndex^.index = t; //copy at the end
+	local (sortedBy = ""); //03/02/12, 13:45:34 by DAB
+	try {sortedBy = adrIndex^.sortedBy}; //03/02/12, 13:45:38 by DAB
+	local (sortedByWanted = "name");
+	if  manilaSuite.getNewssitePref("flstoriesAlphaSort", adrSite, false, true) { //03/02/12, 13:46:35 by DAB
+		sortedByWanted = "value"};
+	«table.sortby("value")
+	if sortedByWanted != sortedBy {
+		local (oldTarg = target.set(@adrIndex^.index));
+		table.sortby(sortedByWanted); //03/02/12, 13:45:53 by DAB
+		try {target.set(oldTarg)}};
+	adrIndex^.flValid = true; //we just built it, it's valid
+	adrIndex^.flValueIsSubject = true; //03/02/01, 17:22:57 by DAB
+	adrIndex^.sortedBy = sortedByWanted; //03/02/12, 13:50:11 by DAB
+	
+	return (true)};
+«buildindex(@uniquemarketingManilawebsite, "stories")
+«buildindex(@uniquemarketingManilawebsite, "pictures")

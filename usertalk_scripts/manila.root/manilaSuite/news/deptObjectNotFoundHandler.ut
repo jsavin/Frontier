@@ -1,0 +1,111 @@
+on deptObjectNotFoundHandler () {
+	«Changes
+		«8/17/07; 6:51:47 PM by JES 10:47:18 PM by LL
+			«Return a more friendly error message if no item has been posted to the department.
+		«7/8/06; 9:01:36 PM by LL
+			«Fix a bug when inserting the calendar on the homepage that caused the news items to be repeated twice on the page when the calendar macro wasn't included in the template.
+		«1/31/06; 2:42:47 AM by JES
+			«Skip pending messages.
+		«10/7/05; 4:00:05 AM by JES
+			«Remove references to indentLevel. Fixes copy/paste bug.
+		«9/16/05; 3:15:03 AM by JES
+			«Add calendar to all department pages, not just archive pages. Respect pref for whether a calendar appears on the home page. If not, then department home pages don't get one either.
+		«9/16/05; 1:55:57 AM by JES
+			«Add support for department archive pages, using the same date-based URL format as home page archives.
+		«9/3/03; 3:09:15 PM by JES
+			«Created. Return a department in HTML or RSS.
+	local (pta = html.getPageTableAddress ());
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	
+	on addCalendar (adrHtext, d) { //add calendar to adrHtext^ or to pta^.calendar, based on presence of {calendar} macro in template
+		
+		local (flSysopPlacesCalendar = string.lower (pta^.template) contains "{calendar}");
+		
+		local (calText);
+		bundle { //build the HTML calendar
+			local (tempcal); new (tableType, @tempCal); //place for a temporary calendar with current, prev and next months
+			local (minCalDate = date.prevYear (d));
+			local (maxCalDate = date.nextYear (d));
+			local (msgsForCalendar = manilaSuite.news.getLastNMessageNumbers (infinity, dept, maxCalDate, minCalDate, adrsite));
+			local (msg);
+			for msg in msgsForCalendar { //build tempcal
+				local (adrmsg = manilaSuite.discuss.getMessageTable (msg, adrsite));
+				if defined (adrmsg^.flDeleted) and adrmsg^.flDeleted { //skip deleted news items
+					continue};
+				if defined (adrmsg^.flPending) and adrmsg^.flPending {
+					continue};
+				mainResponder.calendar.getDayAddress (@tempcal, manilaSuite.convertTime (adrmsg^.newsItem.postTime))}; //create calendar day
+			
+			local (baseUrl = string.nthField (pta^.url, "#", 1) + fname + "/");
+			calText = manilaSuite.html.drawCalendar (pta, baseUrl, @tempcal);
+			try { //add month links if possible
+				calText = calText + mainResponder.calendar.getLinks (@tempcal, d, baseUrl)};
+			calText = manilaSuite.unTaint (calText)};
+		
+		if flSysopPlacesCalendar {
+			pta^.calendar = calText}
+		else {
+			local (htmltext);
+			on add (s) {
+				htmltext = htmltext + (s + "\r");};
+			add ("<table cellpadding=\"10\">");
+			add ("<tr>");
+			add ("<td valign=\"top\">" + adrHtext^  + "</td>");
+			add ("<td valign=\"top\"><br><center>" + calText + "</center></td>");
+			add ("</tr>");
+			add ("</table>");
+			adrHtext^ = htmlText};
+		return};
+	
+	local (path = pta^.remainingPath);
+	if path contains "/" { //possibly handle department archive page
+		if path endswith "/" { //redirect without trailing /
+			mainResponder.redirect ("http://" + pta^.host + string.popTrailing (pta^.URI, "/"));
+			return ("")};
+		if string.countFields (path, "/") != 4 { //404 page
+			return (manilaSuite.notFound.page ())};
+		local (year, month, day, d);
+		try { //get date from url parts -- if this fails, then return a 404
+			year = number (string.nthField (path, "/", 2));
+			month = number (string.nthField (path, "/", 3));
+			day = number (string.nthField (path, "/", 4));
+			d = date.set (day, month, year, 0, 0, 0)}
+		else { //404 page
+			return (manilaSuite.notFound.page ())};
+		try { //trap unexpected errors so we can show them to the user
+			local (fname = string.nthField (path, "/", 1));
+			
+			local (dept = manilaSuite.news.departmentPathToName (adrsite, fname));
+			if dept == "" { //404 page
+				return (manilaSuite.notFound.page ())};
+			
+			try { //verify that there's a post on that day
+				local (adrDay = mainResponder.calendar.getDayAddress (adrsite, d, false));
+				if not defined (adrDay^) { //404 page
+					return (manilaSuite.notFound.page ())}}
+			else { //404 page
+				return (manilaSuite.notFound.page ())};
+			
+			local (deptText = manilaSuite.news.viewDepartment (dept, infinity, d));
+			addCalendar (@deptText, d);
+			return (deptText)}
+		else {
+			pta^.title = "Unexpected Error";
+			return ("Unexpected error: " + tryError)}};
+	
+	local (fname = string.popSuffix (path));
+	local (dept = manilaSuite.news.departmentPathToName (adrsite, fname));
+	if dept == "" { //404 page
+		return (manilaSuite.notFound.page ())};
+	if path endsWith ".xml" { //render in RSS
+		return (manilaSuite.discuss.rss.getDepartmentRss (dept, adrsite))}
+	else { //render in HTML
+		local (deptText = manilaSuite.news.viewDepartment (dept));
+		if manilaSuite.news.getLastNMessageNumbers (infinity, dept) == {} {
+			local (replacementTable); new (tableType, @replacementTable); // 05/04/00 JES: localized error message
+			replacementTable.department = xml.entityEncode (dept, true);
+			deptText = manilaSuite.getString ("news.noPostsInDepartment", @replacementTable);
+			return (deptText)};
+		if pta^.newsSite^.flCalendarOnHomePage {
+			addCalendar (@deptText, clock.now ())};
+		return (deptText)}}

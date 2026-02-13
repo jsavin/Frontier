@@ -1,0 +1,23 @@
+on getHomepageArchiveUrl (msgNum, adrSite = nil) {
+	«Get the URL of the homepage archive page, given a news item's message number
+		«This script can be called from outside the page rendering context if adrSite is not nil.
+		«07/12/00; 4:09:44 PM by JES
+	
+	if adrSite == nil { // get the site address if not passed in
+		adrSite = manilaSuite.getSiteAddress ()};
+	
+	local (adrMsg = manilaSuite.discuss.getMessageTable (msgNum, adrSite));
+	
+	bundle { // reality checks
+		if not defined (adrMsg^) {
+			scriptError ("Can't get the URL of the archived homepage because there is no message " + msgNum + ".")};
+		if not defined (adrMsg^.newsItem) {
+			scriptError ("Can't get the URL of the archived homepage because message " + msgNum + " is not a news item.")};
+		if not defined (adrMsg^.newsItem.postTime) {
+			scriptError ("Can't get the URL of the archived homepage because message " + msgNum + " hasn't been posted to the homepage.")}};
+	
+	local (postTime = adrMsg^.newsItem.postTime);
+	local (url = manilaSuite.getSiteUrl (adrSite));
+	url = url + mainResponder.calendar.dateToPathArgs (postTime);
+	
+	return (url)}

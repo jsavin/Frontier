@@ -1,0 +1,153 @@
+on listSites () {
+	«Changes
+		«2/28/06; 3:47:34 PM by JES
+			«Bug fix for incorrect background color if a site can't be added because the site table no longer defined.
+		«2/22/06; 2:08:07 AM by JES
+			«Fix error with tagline display.
+		«11/11/05; 3:38:34 AM by JES
+			«If the cache table for a given site is a placeholder, re-cache with full data, for display on the admin site home page. This means we only cache full data for one page worth of sites at a time at most.
+		«7/6/05; 1:26:30 AM by JES
+			«Add a new icon to indicate whether hosting is enabled for a given site.
+		«12/12/03; 11:50:10 PM by JES
+			«If the last-modified time can't be converted to a date type, just return it as a string.
+		«9/8/02; 4:55:26 PM by JES
+			«Use the local globe icon instead of the one hosted at UserLand.
+		«9/3/02; 4:33:36 AM by JES
+			«Added a small padlock icon next to the name of editors only sites.
+		«8/20/02; 4:16:45 PM by JES
+			«Added links to multiple pages for servers that have more than 25 sites.
+	
+	local (pta);
+	try {pta = html.getPageTableAddress ()};
+	
+	local (bgcolor1, bgcolor2, ctitems=0, thisPageUrl="");
+	try {bgcolor1 = pta^.trbg1; bgcolor2 = pta^.trbg2; tisPageUrl = pta^.uri};
+	local (start = 1, count = 25);
+	bundle { //get start and count from pta^.searchArgTable, if present
+		if defined (pta^.searchArgTable.s) {
+			try {start = number (pta^.searchArgTable.s)}};
+		if defined (pta^.searchArgTable.m) {
+			try {count = number (pta^.searchArgTable.m)}}};
+	
+	local (globeicon, lockicon, hostingicon);
+	bundle { //set globeicon, lockicon and hostingicon
+		globeicon = "<img src=\"mainResponderResources/userlandIcons/remote\" width=\"11\" height=\"11\" border=\"0\" style=\"position:relative; top:1\">";
+		lockicon = "<img src=\"/mainResponderResources/icons/lock\" width=\"9\" height=\"12\" border=\"0\" style=\"position:relative; top:1\">";
+		hostingicon = "<img src=\"/mainResponderResources/icons/folderGlobe\" width=\"18\" height=\"16\" border=\"0\" style=\"position:relative; top:4\">"};
+	
+	local (htmlText = "", indentlevel = 0);
+	on add (s) {
+		htmlText = htmlText + (string.filledString ("\t", indentlevel) + s + "\r");};
+	
+	local (flFoundSites = false);
+	local (adrcache = mainResponder.adminSite.macros.initSiteListCache ());
+	local (adrincache = @adrcache^.sites);
+	if sizeOf (adrincache) > 0 {
+		flFoundSites = true};
+	
+	bundle { //description
+		add ("<p>Below is a list of Manila sites on this server. For more detailed information and managerial functions, click a site's name. To view a site, click the globe icon. You can also <a href=\"" + mainResponder.adminSite.urls.newSite + "\">create a new site</a>.</p>")};
+	
+	bundle { //build the table that gets rendered as HTML
+		if flFoundSites {
+			
+			local (yesterday = date.yesterday (clock.now ()));
+			on shortDateTime (d) {
+				try {
+					if d < yesterday {
+						return (date.shortString (d))}
+					else {
+						return (string.timeString (d))}}
+				else {
+					return (d)}};
+			
+			bundle { //start the table
+				add ("<table cellpadding=\"10\" cellspacing=\"0\" boreder=\"0\" width=\"99%\">"); indentlevel++};
+			
+			«Loop through the table of info about the sites on this server.
+			local (numSites = sizeOf (adrincache^));
+			local (bgcolor);
+			for i = start to (start + count - 1) {
+				if i > numSites {
+					break};
+				
+				local (adrItem = @adrincache^[i]);
+				if defined (adrItem^.flPlaceholder) and adrItem^.flPlaceholder {
+					local (adrSite = adrItem^.adrSite);
+					local (canonicalSiteName = adrItem^.canonicalSiteName);
+					local (shortSiteName = adrItem^.site);
+					mainResponder.adminSite.macros.initSiteListCacheForSite (adrSite, adrItem, canonicalSiteName, shortSiteName);
+					if not defined (adrItem^) { //this happens if initSiteListCacheForSite fails to finish its job
+						continue}};
+				
+				if i % 2 == 1 {
+					bgcolor = bgcolor1}
+				else {
+					bgcolor = bgcolor2};
+				
+				local (editor = adrItem^.managingEditor);
+				local (tagline = string.replaceAll (string (adrItem^.adrSite^.["#newsSite"].tagline), "\"", "&quot;"));
+				local (editUrl = thisPageUrl + "?site=" + string.urlEncode (adrItem^.site));
+				local (editLink = "<a href=\"" + editUrl + "\" title=\"" + tagline + "\">" + adrItem^.displaySiteName + "</a>");
+				bundle { //add lock icon for editors only sites
+					if defined (adrItem^.adrSite^.["#newsSite"].flEditorsOnlyAccessToSite) {
+						if adrItem^.adrSite^.["#newsSite"].flEditorsOnlyAccessToSite {
+							editLink = editLink + "&nbsp;&nbsp;" + lockicon}}};
+				try { //hosting icon for hosting-enabled sites
+					if defined (pta^.canonicalSiteName) {
+						delete (@pta^.canonicalSiteName)};
+					if manilaSuite.hosting.isHostingSite (adrItem^.adrSite) {
+						editLink = editLink + "&nbsp;&nbsp;" + hostingicon}};
+				local (siteLink, editorLink);
+				bundle { //set siteLink, editorLink, tagline
+					if adrItem^.flInstalled {
+						siteLink = "<a href=\"" + adrItem^.siteUrl + "\" title=\"" + tagline + "\">" + globeIcon + "</a>";
+						editorLink = html.getLink (editor, adrItem^.profilesUrl + editor);
+						try { //get the real name of the editor, if possible //PBS06/05/01: was a bundle, now a try, so errors aren't fatal
+							local (groupName = adrItem^.membershipGroupName);
+							local (adrInfo = mainResponder.members.getMemberTable (groupName, editor));
+							if (defined (adrInfo^.personalInfo.name)) and (adrInfo^.personalInfo.name != "") {
+								editorLink = html.getLink (adrInfo^.personalInfo.name, adrItem^.profilesUrl + editor)}}}
+					else {
+						siteLink = "";
+						editorLink = string.replace (editor, "@", "\\@")}};
+				
+				bundle { //add the info for this site
+					add ("<tr bgcolor=\"" + bgcolor + "\">"); indentlevel++;
+					add ("<td valign=\"bottom\" style=\"padding-bottom: 0px;\"><span style=\"width:11;\">" + siteLink + "</span>&nbsp;&nbsp;<b>" + editLink + "</b></td>");
+					add ("<td valign=\"bottom\"  style=\"padding-bottom: 0px;\" class=\"small\"  valign=\"bottom\"><nobr><b>" + shortDateTime (adrItem^.modified) + "</b></nobr></td>");
+					add ("<td valign=\"bottom\" style=\"padding-bottom: 0px;\" class=\"small\" style=\"padding-top: 0px;\" align=\"right\"><nobr><b>" + string.addCommas (adrItem^.totalHits) + "</b> hits; <b>" + adrItem^.hitsToday + "</b> today</nobr>" + "</td>");
+					add ("</tr>"); indentlevel--;
+					
+					add ("<tr bgcolor=\"" + bgcolor + "\">"); indentlevel++;
+					add ("<td valign=\"bottom\" style=\"padding-top: 0px;\" class=\"small\">Owner: <b>" + editorLink + "</b></td>");
+					local (memberstring = "members");
+					if adrItem^.ctMembers == 1 {
+						memberstring = "member"};
+					add ("<td class=\"small\"  style=\"padding-top: 0px;\"><b>" + string.addCommas (adrItem^.ctMembers) + "</b>&nbsp;" + memberstring + "</td>");
+					add ("<td class=\"small\"  style=\"padding-top: 0px;\" align=\"right\"><b>" + string.addCommas (adrItem^.ctMessages) + "</b>&nbsp;messages</td>");
+					add ("</tr>"); indentlevel--}};
+			add ("</table>"); indentlevel--}};
+	
+	if not flFoundSites {
+		add ("<hr size=\"0\" /><p>There are no sites to list at this time.</p>")};
+	
+	if flFoundSites { //possibly add links to more pages
+		local (ctsites = sizeOf (adrincache^));
+		if ctsites > count {
+			add ("<b>&nbsp;&nbsp;More sites:</b>");
+			local (ctpages = 0);
+			local (n = 1);
+			while n <= ctsites {
+				ctpages++;
+				if n < start or n >= (start + count) { //link
+					add ("<a href=\"" + pta^.uri + "?s=" + n + "&m=" + count + "\">" + ctpages + "</a>")}
+				else {
+					add ("<b>" + ctpages + "</b>")};
+				n = n + count}}};
+	
+	return (htmlText)};
+
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«listSites ()

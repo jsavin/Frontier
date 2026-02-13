@@ -1,0 +1,7 @@
+on copyMLACTbl (adrMsg, adrDataTbl) {
+	«manilaSuite.AccessControl.copyMLACTbl : 04/05/20, 16:52:10 by DAB
+		«copy access control data table from one message to another 
+		«used in manilaFixer.dgmanager.XMLToDG 
+		«manilaFixer.accessControl.copyMLACTbl : 02/05/21, 23:04:21 by DAB
+	adrMsg^.accessControl = adrdataTbl^;
+	return true}

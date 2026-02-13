@@ -1,0 +1,57 @@
+on editMessageForm (discussRoot="", msgnum=0, displayTitle=true, bodyLabel="", buttonLabel="Save") {
+	
+	local (pta = html.getPageTableAddress ());
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	
+	if discussRoot == "" {
+		discussRoot = pta^.postargs.discussRoot};
+	if msgnum == 0 {
+		msgnum = pta^.postargs.msgnum};
+	
+	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+	
+	if defined (pta^.postargs.body) { //update the text
+		local (authinfo = mainResponder.editorial.getClientUsernamePassword (discussRoot));
+		local (subject);
+		if defined (pta^.postargs.subject) {
+			subject = pta^.postargs.subject}
+		else {
+			subject = adrmsg^.subject};
+		mainResponder.editorial.updateMessage (msgNum, discussRoot, authinfo[1], authinfo[2], pta^.postargs.body, subject);
+		if defined (pta^.postargs.referer) {
+			mainResponder.redirect (pta^.postargs.referer);
+			return ("")}};
+	
+	on cleanForExport (s) {
+		s = string.replaceall (s, "\n", "");
+		s = string.replaceall (s, "&", "&amp;");
+		s = string.replaceall (s, "<", "&lt;");
+		s = string.replaceall (s, ">", "&gt;");
+		s = string.replaceall (s, "\"", "&quot;");
+		s = string.replaceall (s, "//", "\\//");
+		s = string.replaceall (s, "@", "\\@");
+		return (s)};
+	local (body = cleanForExport (string (adrmsg^.body)));
+	local (rows = string.length (body) / 50);
+	if rows > 30 {rows = 30};
+	if rows < 10 {rows = 10};
+	
+	add ("<form method=\"POST\" action=\"" + pta^.uri + "\">"); indentlevel++;
+	add ("<input type=\"hidden\" name=\"discussRoot\" value=\"" + discussRoot + "\">");
+	add ("<input type=\"hidden\" name=\"msgnum\" value=\"" + msgnum + "\">");
+	if defined (pta^.postargs.referer) {
+		add ("<input type=\"hidden\" name=\"referer\" value=\"" + pta^.postargs.referer + "\">")};
+	if displayTitle {
+		local (subject = cleanForExport (string (adrmsg^.subject)));
+		subject = string.replaceAll (subject, "\"", "&quot;");
+		add ("<b>Title:</b><br>");
+		add ("<input size=\"70\" maxlength=\"70\" name=\"subject\" value=\"" + subject + "\"><p>")};
+	if bodyLabel != "" {
+		add ("<b>" + bodyLabel + "</b><br>")};
+	add ("<textarea name=\"body\" rows=\"" + rows + "\" cols=\"80\" wrap=\"virtual\">" + body + "</textarea>");
+	add ("<p align=\"center\"><input type=\"submit\" value=\"" + buttonLabel + "\"></p>");
+	add ("</form>"); indentlevel--;
+	
+	return (htmlText)}

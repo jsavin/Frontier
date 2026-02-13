@@ -1,0 +1,9 @@
+on releaseItem (adrMsgTable, adrSite) {
+	«Mark a news item as being released. This means it can now be posted to the home page.
+		«04/20/00; 3:47:35 PM by PBS
+	
+	adrMsgTable^.newsItem.flReleased = true;
+	manilaSuite.news.updateIndexes (adrMsgTable, adrSite);
+	manilaSuite.callbacks.releasedNewsItemCallback (adrMsgTable);
+	
+	return (true)}

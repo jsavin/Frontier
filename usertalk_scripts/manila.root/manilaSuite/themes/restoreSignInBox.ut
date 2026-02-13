@@ -1,0 +1,11 @@
+on restoreSignInBox (adrSiteInfo) {
+	«Restore the sign in box to the default.
+		«06/06/00; 3:53:29 PM by PBS
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	local (objectName = "membersBoxTemplates");
+	local (signOutBox = adrSite^.["#newsSite"].membersBoxTemplates.signOutBox);
+	manilaSuite.themes.restoreToDefault (adrSite, objectName);
+	adrSite^.["#newsSite"].membersBoxTemplates.signOutBox = signOutBox; //restore the other box
+	
+	return (true)}

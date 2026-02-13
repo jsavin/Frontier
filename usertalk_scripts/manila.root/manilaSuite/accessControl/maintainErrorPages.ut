@@ -1,0 +1,148 @@
+on maintainErrorPages () {
+	«Changes
+		«4/16/05; 2:25:36 AM by JES
+			«Split error page titles out into their own fields, with macro neutering, handling special characters properly (quot, apos, etc).
+		«04/05/20, 17:55:53 by DAB
+			«Created. Allow user to change the 2 error pages and the error gif.
+	local (pta = html.getPageTableAddress());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	local (replTbl);
+	bundle { //02/03/24, 10:16:42 by DAB
+		new(tabletype, @replTbl)};
+	
+	add(manilaSuite.getString("accessControl.maintainErrorPagesHelptext", pta:pta)); //02/03/24, 10:15:18 by DAB
+	
+	local (errPrefix="", errCntr = 0);
+	on errorReport(s) {
+		add("<p align = 'center'>");
+		add("<font color = 'red'>" + errPrefix + s + "</font>");
+		add("</p>");
+		errCntr++};
+	
+	on translateEntities (s) { //02/07/21, 16:17:27 by DAB
+		s = string.replaceall (s, "\t", "  ");
+		s = string.replaceall (s, "&", "&amp;");
+		s = string.replaceall (s, "<", "&lt;");
+		s = string.replaceall (s, ">", "&gt;");
+		s = string.replaceAll (s, "{", "&#123;");
+		s = string.replaceAll (s, "\"", "&quot;"); //02/05/05, 15:23:31 by DAB
+		s = string.replaceAll (s, "\'", "&apos;"); //02/05/05, 15:23:31 by DAB
+		return (s)};
+	
+	if pta^.method == "POST" {
+		if defined(pta^.postargs.errorpages) {
+			bundle { //inaccessible text page   
+				local (s = pta^.postargs.inaccessible);
+				local (title = manilaSuite.untaint (pta^.postargs.inaccessibleTitle));
+				s = string.replaceAll(s, lf, ""); //04/01/17, 16:45:10 by DAB
+				s = html.neuterMacros (s, @config.mainResponder.prefs.legalMacros); //02/07/21, 16:40:24 by DAB
+				if s == "" {
+					delete(@adrNewsSite^.accessControl.inaccessible);
+					adrSite^.accessControl.inaccessible = maniladata.newSiteTemplate.accessControl.inaccessible}
+				else {
+					s = "#title \"" + string.replaceAll (title, "\"", "\\\"") + "\"\r" + s;
+					wp.newTextObject(s, @adrNewsSite^.accessControl.inaccessible);
+					adrSite^.accessControl.inaccessible = adrNewsSite^.accessControl.inaccessible}};
+			bundle { //currently inaccessible page 
+				local (s = pta^.postargs.nonCurrent);
+				local (title = manilaSuite.untaint (pta^.postargs.nonCurrentTitle));
+				s = string.replaceAll(s, lf, ""); //04/01/17, 16:45:10 by DAB
+				s = html.neuterMacros (s, @config.mainResponder.prefs.legalMacros); //02/07/21, 16:40:24 by DAB
+				if s == "" {
+					delete(@adrNewsSite^.accessControl.nonCurrent);
+					adrSite^.accessControl.nonCurrent = manilaData.newSiteTemplate.accessControl.nonCurrent} //05/02/13, 11:26:19 by DAB
+				else {
+					s = "#title \"" + string.replaceAll (title, "\"", "\\\"") + "\"\r" + s;
+					wp.newTextObject(s, @adrNewsSite^.accessControl.nonCurrent);
+					adrSite^.accessControl.nonCurrent = adrNewsSite^.accessControl.nonCurrent}}}};
+	
+	bundle { //build form
+		add("<form method = 'post' action = '" + pta^.fName + "$accesscontrol#maintainErrorPages' name = 'MLACerrorpages'>");
+		add("<table>");
+		
+		on splitTitleAndBody (adrBody, adrTitle) {
+			local (titleDirective = string.nthField (adrBody^, "\r", 1));
+			adrBody^ = string.trimWhiteSpace (string.delete (s, 1, sizeOf (titleDirective)) );
+			local (ix = string.patternMatch (" ", titleDirective));
+			titleDirective = string.delete (titleDirective, 1, ix);
+			adrTitle^ = string.trimWhiteSpace (titleDirective);
+			adrTitle^ = string.mid (adrTitle^, 2, sizeOf (adrTitle^) - 2);
+			adrTitle^ = string.replaceAll (adrTitle^, "\\\"", "\"");
+			return};
+		
+		bundle { //row(s) for error page inaccessible due to cohort
+			local (url = pta^.ftpSite^.url + "accessControl/inaccessible");
+			
+			add("\r\t<tr>");
+			add("\r\t<td align = 'left' colspan = '2' ><h4>"); //02/03/16, 01:42:01 by DAB
+			replTbl.link = html.getLink(manilaSuite.getString("accessControl.linktoView", pta:pta), url); //02/03/24, 10:33:49 by DAB
+			add(manilaSuite.getString("accessControl.formIDNotInCohort", @replTbl, pta:pta)); //02/03/24, 10:34:51 by DAB
+			add("</h4></td>");
+			add("\r\t</tr>");
+			
+			add("\r\t<tr>");
+			add("\r\t<td align = 'left' colspan = '2'>");
+			local (s = "");
+			try {s = string(adrNewsSite^.accessControl.inaccessible)};
+			if s == "" {
+				s = string(manilaData.newSiteTemplate.accessControl.inaccessible)};
+			local (title = "");
+			splitTitleAndBody (@s, @title);
+			s = translateEntities (s);
+			title = translateEntities (title);
+			add ("<b>Title:</b><br><input type='text' name='inaccessibleTitle' size='40' maxlength='100' value='" + title + "'><br><br>");
+			add ("<b>Body:</b><br>");
+			add("\r\t\t<textarea name = 'inaccessible' rows = '6' cols = '60'>");
+			add (s);
+			add("</textarea>");
+			add ("<br><br>");
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		bundle { //row for error page inaccessible due to date
+			add("\r\t<tr>");
+			add("\r\t<td align = 'left' colspan = '2'><h4>");
+			local (url = pta^.ftpSite^.url + "accessControl/nonCurrent");
+			replTbl.link = html.getLink(manilaSuite.getString("accessControl.linktoView", pta:pta), url); //02/03/24, 10:33:49 by DAB
+			add(manilaSuite.getString("accessControl.formIDNotInReleasePeriod", @replTbl, pta:pta)); //02/03/24, 10:34:51 by DAB
+			add("</h4></td>");
+			add("\r\t</tr>");
+			
+			add("\r\t<tr>");
+			add("\r\t<td align = 'left' colspan = '2'>");
+			local (s = "");
+			try {s = string(adrNewsSite^.accessControl.nonCurrent)};
+			if s == "" {
+				s = string(manilaData.newSiteTemplate.accessControl.nonCurrent)};
+			local (title = "");
+			splitTitleAndBody (@s, @title);
+			s = translateEntities (s);
+			title = translateEntities (title);
+			add ("<b>Title:</b><br><input type='text' name='nonCurrentTitle' size='40' maxlength='100' value='" + title + "'><br><br>");
+			add ("<b>Body:</b><br>");
+			add("\r\t\t<textarea name = 'nonCurrent'  rows = '6' cols = '60'>");
+			add (s);
+			add("</textarea>");
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		bundle {
+			add("\r\t<tr>");
+			add("\r\t<td align = 'right'>");
+			add("\r\t\t<input type = 'reset'>");
+			add("</td>");
+			add("\r\t<td align = 'left'>");
+			add("\r\t\t<input type = 'submit' name='errorpages' value = '" + manilaSuite.getString("accessControl.buttonErrorPages", pta:pta) + "'>"); //02/03/24, 10:38:10 by DAB
+			add("</td>");
+			add("\r\t</tr>")};
+		
+		add("</table>");
+		add("</form>")};
+	
+	return htmltext}

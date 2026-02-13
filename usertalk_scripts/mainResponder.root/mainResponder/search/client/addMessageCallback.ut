@@ -1,0 +1,4 @@
+on addMessageCallback (adrObject) {
+	«Whenever a DG message is new or changed, this callback gets called.
+	try {mainResponder.search.client.index (adrObject)};
+	return (true)}

@@ -1,0 +1,36 @@
+«8/12/99; 4:50:09 PM by DW
+	«loop over all the discussion groups, building a table of statistics for them
+	«there's a new sub-table for each discussion group, called stats
+	«inside that table is a table called rankings
+	«the name of each item in the table is the id of a message
+	«the value is the number of reads for the message
+	«the table is sorted in inverse order, the last item in the table is the most read
+	«Changes:
+		«10/2/99; 11:11:08 PM by PBS
+			«An item in discuss.root may be an address or a string that can be coerced to an address. This address may point to discussion group storage outside of discuss.root.
+
+local (adrroot = @[system.temp.mainresponder.discussrootfile], ct = sizeof (adrroot^), i, adrgroup);
+for i = 1 to ct {
+	adrgroup = @adrroot^ [i];
+	msg ("Ranking discussion group \"" + nameof (adrgroup^) + "\"");
+	case typeOf (adrgroup^) { //PBS 10/2/99: support for addresses in discuss.root
+		addressType;
+		stringType {
+			if defined (adrgroup^^) {
+				adrgroup = adrgroup^} //de-reference to get the address of the discussion group
+			else {
+				continue}}}; //a bad address shouldn't stop the rankings of the other groups
+	local (adrstats = @adrgroup^.stats);
+	if not defined (adrstats^) {
+		new (tabletype, adrstats)};
+	local (adrrankings = @adrstats^.rankings); new (tabletype, adrrankings);
+	local (adrmessages = @adrgroup^.messages, ctmessages = sizeof (adrmessages^), j, adrmessage);
+	for j = 1 to ctmessages {
+		adrmessage = @adrmessages^ [j];
+		adrrankings^.[nameof (adrmessage^)] = adrmessage^.ctReads};
+	local (oldtarget = target.set (adrrankings));
+	msg ("Sorting discussion group \"" + nameof (adrgroup^) + "\"");
+	table.sortBy ("Value");
+	target.set (oldtarget)};
+filemenu.savemyroot (adrroot);
+msg ("")

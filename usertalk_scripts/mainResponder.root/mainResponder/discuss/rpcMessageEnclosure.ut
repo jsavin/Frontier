@@ -1,0 +1,46 @@
+on rpcMessageEnclosure (client, port, msgnum) {
+	«9/6/99; 4:01:16 PM by DW
+		«First try sending the object to userland.receiveObject, if that fails, try sending to editorial.receiveEnclosure.
+		«For more information see http://frontier.userland.com/discuss/msgReader$1277.
+		«Changes:
+			«04/12/00; 1:37:43 PM by JES
+				«localized using mainResponder.getString
+			«05/01/00; 7:26:52 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+	local (pta = html.getpagetableaddress ());
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	
+	local (adrmsg = mainresponder.discuss.getmessagetable (msgnum));
+	local (adr = adrmsg^.enclosureAddress);
+	local (type = string.delete (adrmsg^.enclosuretype, 1, sizeof ("application/x-frontier-")));
+	local (bits); pack (adrmsg^.enclosurebits, @bits); local (encodedBits = base64.encode (bits, infinity));
+	local (params = {adr, type, encodedBits});
+	
+	try {
+		local (errorstring);
+		on tryOne (procedurename) {
+			try {
+				local (flinstalled = betty.rpc.client (client, port, procedurename, @params));
+				pta^.title = mainResponder.getString ("discuss.sendRpcEnclosureWorkedTitle");
+				add (mainResponder.getString ("discuss.sendRpcEnclosureWorkedBody"));
+				return (true)}
+			else {
+				errorstring = tryError;
+				return (false)}};
+		if not tryOne ("userland.receiveObject") {
+			if not tryOne ("editorial.receiveEnclosure") {
+				pta^.title = mainResponder.getString ("discuss.sendRpcEnclosureDidntWorkTitle");
+				bundle { // localized the body of the error page; 4/12/00; 1:50:59 PM by JES
+					local (s); // we need to massage the text a little for HTML formatting, so put it in a local
+					local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+					replacementTable.msgnum = msgnum;
+					replacementTable.errorstring = errorstring;
+					s = mainResponder.getString ("discuss.sendRpcEnclosureDidntWorkBody", {"msgnum", msgnum, "errorstring", errorstring}); // 4/13/00 JES: localized the error
+					s = string.replaceAll (s, "\r", "\r" + string.filledString ("\t", indentlevel));
+					add (s)}}}};
+	return (htmltext)};
+
+«bundle //test code
+	«rpcMessageEnclosure (tcp.dns.getmydomainname (), 80, 868)

@@ -1,0 +1,21 @@
+on getCachedReferersPage (adrText, pta=nil) {
+	«Put the cached referers page in adrText^. If cache is old, return false.
+		«11/02/00; 5:10:59 PM by WM
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (adrTable = manilaSuite.stats.getReferersTableAddress (adrSite));
+	local (adrCache = parentOf (adrTable^));
+	adrCache = @adrCache^.referersPageCache;
+	if not defined (adrCache^) {
+		return (false)};
+	local (timeCached = timeModified (adrCache));
+	pta^.lastUpdate = timeCached;
+	local (day, month, year, hour, minute, second);
+	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+	local (onTheHour);
+	onTheHour = date.set (day, month, year, hour, 0, 0);
+	if timeCached < onTheHour { //is it old?
+		return (false)};
+	adrText^ = string (adrCache^); //use the cached version
+	return (true)}

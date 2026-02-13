@@ -1,0 +1,31 @@
+«Index the UserLand Discussion Group.
+local (adrMessages);
+local (siteName = "Discussion Group");
+local (siteUrl = "http://discuss.userland.com/");
+local (baseUrl = siteUrl + "msgReader$");
+local (client = tcp.myDottedId ());
+
+adrMessages = @["D:\\discuss.root"].discuss.messages;
+local (i);
+
+for i = 1 to sizeOf (adrMessages^) {
+	local (adrMessage = @adrMessages^ [i]);
+	
+	if defined (adrMessage^.flDeleted) and adrMessage^.flDeleted {
+		continue};
+	
+	local (text, title, url);
+	
+	title = adrMessage^.subject;
+	text = string (adrMessage^.body);
+	text = text + " " + adrMessage^.member + " " + title;
+	
+	local (lastMod = clock.now ());
+	try {lastMod = adrMessage^.postTime};
+	try {lastMod = adrMessage^.lastUpdate};
+	
+	url = baseUrl + adrMessage^.msgNum;
+	
+	mainResponder.search.server.index (title, url, text, siteName, siteUrl, client, false, lastMod);
+	
+	fileMenu.save (mainResponder.search.utilities.getIndexPath ())}

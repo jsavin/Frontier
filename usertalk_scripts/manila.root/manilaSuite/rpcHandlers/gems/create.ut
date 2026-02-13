@@ -1,0 +1,43 @@
+on create (username, password, siteName, fileName, theData, mimeType = "", title = "") {
+	«Changes
+		«3/19/05; 11:11:17 PM by JES
+			«Improve security and error reporting.
+		«3/19/05; 3:53:15 PM by TAC
+			«Created. Create a new gem in gems storage.
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName), dataTable);
+	bundle { //security and error testing
+		local (beginningErrorString = "Can't create a new gem because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString);
+		if not manilaSuite.gems.enabledInSite (adrSite:adrSite) {
+			scriptError (beginningErrorString + "the Gems feature is not enabled for this site.")};
+		fileName = string.popLeading (fileName, '.'); //invisible files not allowed
+		if fileName == "" { // make sure fileName isn't empty
+			scriptError (beginningErrorString + "fileName must not be empty.")}};
+	if (title == "") { // create default title if none is given, it's the fileName
+		title = fileName};
+	bundle { // set up dataTable, this is the temporary data table other gems scripts will need; contains info about the gem
+		new (tableType, @dataTable);
+		if mimeType == "" { //try to calculate mimeType from file name
+			local (ext = string.lower (string.nthField (fileName, ".", string.countFields (fileName, "."))));
+			mimeType = "application/octet-stream"; //the default
+			if defined (user.webserver.prefs.ext2Mime.[ext]) {
+				ext = user.webserver.prefs.ext2Mime.[ext]}};
+		dataTable.["Content-Type"] = mimeType;
+		dataTable.data = theData;
+		dataTable.fileName = fileName;
+		dataTable.member = username;
+		dataTable.sizeBytes = sizeOf (theData);
+		dataTable.title = title;
+		bundle { // add posttime and time zone to data table
+			local (postTime = clock.now (), timeZone);
+			if defined (adrSite^.["#newsSite"].timeZone) {
+				timeZone = adrSite^.["#newsSite"].timeZone.zone};
+			dataTable.postTime = postTime;
+			dataTable.timeZone = timeZone}};
+	«Create the new gem: write to disk, store info in site, possibly create shortcut.
+	local (adrGemTable);
+	try {
+		adrGemTable = manilaSuite.gems.createNewGem (adrSite, @dataTable)}
+	else {
+		scriptError ("Could not create the gem because an error occurred: " + tryError)};
+	return (adrGemTable^.url)}

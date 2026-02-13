@@ -1,0 +1,15 @@
+on getUrl (urlName, pta=nil) {
+	«Get one URL from the #urls table. Make sure the URL is untainted.
+		«10/30/99; 4:53:01 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	«local (adrUrls = pta^.responderAttributes.urls)
+	local (adrUrls = pta^.urls); //03/02/02, 12:33:52 by DAB
+	if not defined (adrUrls^.[urlName]) {
+		scriptError ("Can't get URL of \"" + manilaSuite.unTaint (urlName) + "\" because it doesn't exist.")};
+	
+	adrUrls^.[urlName] = manilaSuite.unTaint (adrUrls^.[urlName]);
+	
+	return (adrUrls^.[urlName])}

@@ -1,0 +1,96 @@
+on databaseInfo () {
+	«Changes
+		«11/9/05; 1:16:29 AM by JES
+			«Fix a bug which could cause datafiles which contain a nil value (item #1) as their first item from causing an error loading the readouts page.
+		«7/27/05; 5:19:51 AM by JES
+			«Added a link below the databases to the Add File page.
+		«6/4/05; 4:53:57 AM by JES
+			«For databases in the logs and datafiles sub-folders, list the number of sub-tables under the top-level table, instead of the number of top-level tables. This is a much more useful data-point than the number 1.
+		«1/24/05; 12:39:50 PM by JES
+			«Fix an error in date display: Use the last two year digits, not the middle two.
+		«8/14/02; 5:43:24 PM by JES
+			«Created.
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	local (pta = html.getPageTableAddress ());
+	local (bgcolors = {pta^.trbg1, pta^.trbg2});
+	
+	local (t); new (tableType, @t);
+	bundle { //build sorted table of databases
+		local (adr);
+		for adr in @system.compiler.files {
+			local (f = nameOf (adr^));
+			local (dbname = file.fileFromPath (f));
+			local (dbsize = file.size (f));
+			local (modified = file.modified (f));
+			local (folder = file.folderFromPath (f));
+			local (foldername = file.fileFromPath (folder));
+			local (adrdb = @[f] );
+			local (dbtables = sizeOf (adrdb^));
+			case string.lower (folder) {
+				string.lower (Frontier.getSubFolder ("ops/logs/"));
+				string.lower (Frontier.getSubFolder ("ops/datafiles/")) {
+					try {
+						dbtables = sizeOf (adrdb^[1])}
+					else {
+						try {
+							dbtables = sizeOf (adrdb^[sizeOf (adrdb^)])}
+						else {
+							dbtables = "???"}}}};
+			local (adrfolder = @t.[foldername]);
+			if not defined (adrfolder^) {
+				new (tableType, adrfolder)};
+			local (adrdbinfo = @adrfolder^.[dbname]);
+			new (tableType, adrdbinfo);
+			adrdbinfo^.size = dbsize;
+			adrdbinfo^.modified = modified;
+			adrdbinfo^.tables = dbtables};
+		local (rootpath = window.getFile (@root));
+		local (adrrootfolder = @t.[" "]);
+		new (tableType, adrrootfolder);
+		local (rootname = file.fileFromPath (rootpath));
+		local (adrroot = @adrrootfolder^.[rootname] );
+		new (tableType, adrroot);
+		adrroot^.size = file.size (rootpath);
+		adrroot^.modified = file.modified (rootpath);
+		adrroot^.tables = sizeOf (root)};
+	
+	add ("<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"92%\">");
+	bundle { //headers
+		add ("<tr><td><b>Folder</b></td><td><b>Database</b></td><td align=\"right\"><b>Size</b></td><td align=\"right\"><b>Tables</b></td><td align=\"right\"><b>Modified</b></td></tr>")};
+	
+	on datestring (d) {
+		on pad (n) {
+			return (string.padWithZeros (n, 2))};
+		local (day, month, year, hour, minute, second);
+		date.get (d, @day, @month, @year, @hour, @minute, @second);
+		local (meridian);
+		if hour > 12 {
+			hour = hour - 12;
+			meridian = " PM"}
+		else {
+			if hour == 0 {
+				hour = 12};
+			meridian = " AM"};
+		return (pad (month) + "/" + pad (day) + "/" + string.mid (year, 3, 2) + "; " + pad (hour) + ":" + pad (minute) + ":" + pad (second) + meridian)};
+	
+	local (ct = 0, adrfolder, adrdb);
+	for adrfolder in @t {
+		local (folder = nameOf (adrfolder^));
+		for adrdb in adrfolder {
+			add ("<tr bgcolor=\"" + bgcolors[(ct++% 2) + 1] + "\">");
+			add ("<td class=\"small\">" + folder + "</td>");
+			folder = ""; //only display the folder once
+			add ("<td class=\"small\">" + nameOf (adrdb^) + "</td>");
+			add ("<td class=\"small\" align=\"right\">" + string.gigabyteString (adrdb^.size) + "</td>");
+			add ("<td class=\"small\" align=\"right\">" + adrdb^.tables + "</td>");
+			add ("<td class=\"small\" align=\"right\">" + datestring (adrdb^.modified) + "</td>");
+			add ("</tr>")};
+		add ("<tr><td>&nbsp;</td></tr>"); ct = 0};
+	
+	add ("</table>");
+	
+	add ("<p>You can add a database to your server via the <a href=\"/addFile\">Add File</a> page.</p>");
+	
+	return (htmltext)}

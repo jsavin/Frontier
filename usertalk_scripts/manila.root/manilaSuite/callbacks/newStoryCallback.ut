@@ -1,0 +1,7 @@
+on newStoryCallback (adrMsg) {
+	«This scripts exists for historical reasons: this script is called from user space. This script now simply forwards to manilaSuite.callbacks.newMessageCallback. This script exists to avoid breakage.
+		«04/05/00; 11:19:30 AM by PBS
+	
+	manilaSuite.callbacks.newMessageCallback (adrMsg);
+	
+	return (true)}

@@ -1,0 +1,28 @@
+«11/9/99; 5:22:34 AM by DW
+	«Recoded to use new double verbs in 6.1b16. The verbs are file.freeSpaceOnVolumeDouble, file.volumeSizeDouble and file.bytesOnVolumeDouble.
+on gigabyteString (size) { «display size in gigabytes, the next step after string.kBytes
+	local (onegig = 1024 * 1024 * 1024);
+	if size <= onegig {
+		return (string.megabyteString (number (size)))};
+	local (rawgigs = size / onegig);
+	local (leftofdecimal = string.nthfield (rawgigs, ".", 1));
+	local (rightofdecimal = string.nthfield (rawgigs, ".", 2));
+	return (leftofdecimal + "." +  rightofdecimal [1] + "GB")};
+local (adrTable = html.table.new (border:0, cellspacing:15, cellpadding:0));
+html.table.addColumn (adrTable, "Disk", align:"center");
+html.table.addColumn (adrTable, "Free", align:"right");
+html.table.addColumn (adrTable, "Size", align:"right");
+local (f);
+fileloop (f in "") {
+	if string.lower (f) beginsWith "a:" { //PBS 11/1/99: skip floppy drive to avoid modal dialog
+		continue};
+	
+	try {
+		local (freeSpace, totalSpace);
+		freeSpace = gigabyteString (file.freeSpaceOnVolumeDouble (f));
+		totalSpace = gigabyteString (file.volumeSizeDouble (f));
+		html.table.addRow (adrTable)^.cells = {f, freeSpace, totalSpace}}};
+
+local (htmlText = html.table.render (adrTable));
+html.table.delete (adrTable);
+return (htmlText)

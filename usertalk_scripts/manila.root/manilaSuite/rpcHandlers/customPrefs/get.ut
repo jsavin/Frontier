@@ -1,0 +1,29 @@
+on get (username, password, siteName) {
+	«Get the custom prefs XML text.
+	«Changes:
+		«02/21/01; 11:55:10 PM by JES
+			«Convert Mac text to Latin if the server is a Mac.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't get the custom prefs because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	if not defined (adrNewsSite^.prefsWizard) {
+		local (siteInfo);
+		new (tableType, @siteInfo);
+		siteInfo.adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName);
+		manilaSuite.newSite.createCustomPrefsWizard (@siteInfo)};
+	
+	local (t);
+	new (tableType, @t);
+	t.body = string (adrNewsSite^.prefsWizard.outline);
+	if system.environment.isMac {
+		t.body = latinToMac.macToLatin (t.body)};
+	bundle { //get window info table
+		new (tableType, @t.windowInfo);
+		local (adrSite = parentOf (adrNewsSite^));
+		local (itemName = "customPrefs");
+		manilaSuite.rpcUtils.getWindowInfoTable (itemName, adrSite, @t.windowInfo)};
+	
+	return (t)}

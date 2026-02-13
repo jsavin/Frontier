@@ -1,0 +1,10 @@
+on hasLockTimedOut (adrItem, adrSite) {
+	«Return true if the lock has timed out. The default timeout is 4 hours.
+		«02/08/00; 10:25:24 PM by PBS
+	
+	local (checkedOutDate = adrItem^.checkedOutDate);
+	local (timeOutSecs = manilaSuite.custody.getTimeOutSeconds (adrSite));
+	if checkedOutDate + timeOutSecs < clock.now () { //check-out has timed out
+		return (true)};
+	
+	return (false)}

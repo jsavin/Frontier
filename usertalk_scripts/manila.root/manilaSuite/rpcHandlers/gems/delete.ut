@@ -1,0 +1,14 @@
+on delete (username, password, siteName, fileName) {
+	«Changes
+		«05/03/24, 22:07:39 by DAB
+			«Call manilasuite.gems.markdeleted to delete a gem, instead of setting flDeleted here.
+		«3/19/05; 11:11:12 PM by JES
+			«Created. Delete a gem given its filename, and return its URL.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't delete message \"" + msgNum + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrgem = manilaSuite.gems.getGemAddressFromFilename (adrsite, fileName));
+	manilasuite.gems.markdeleted(adrSite, adrgem^.num, manilasuite.members.getMemberTableFromSiteAddress(adrSite, username)); //05/03/24, 22:07:39 by DAB
+	return (adrgem^.url)}

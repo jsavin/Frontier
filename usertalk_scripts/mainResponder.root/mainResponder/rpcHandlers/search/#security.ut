@@ -1,0 +1,34 @@
+«Changes
+	«1/11/06; 10:52:11 PM by JES
+		«When checking to see if this is a request from the local machine, also check the client IP address against our own. The client doesn't have to be the loopback address.
+«First make sure this server is a search engine server.
+	«Then check to see if this is a local or public submission.
+	«If it's public, reject it if flAllowPublicSearchSubmissions is false.
+	«If the request hasn't been rejected yet, run the sysop's callbacks,
+	«so the sysop has a chance to reject the request.
+
+if not config.mainResponder.prefs.flSearchEngine {
+	scriptError ("Can't index this page because the server is not a search engine server.")};
+
+«Is this a local or public (non-local) request?
+local (flLocal = false);
+if client == "127.0.0.1" or client == tcp.myDottedID () {
+	flLocal = true};
+try { //a second way to check if the request is allowed
+	if tcp.equalNames (client, tcp.dns.getMyDottedId ()) {
+		flLocal = true}};
+
+«If it isn't a local request, and public (non-local) submissions aren't allowed, reject the request.
+if not flLocal and not config.mainResponder.prefs.flAllowPublicSearchSubmissions {
+	scriptError ("Can't index this page because the server does not accept public submissions.")};
+
+local (adrParamTable);
+
+«Get the address of the page table.
+if defined (code) {
+	adrParamTable = parentOf (code)};
+
+«Call callbackLoop. If a callback scriptErrors, then don't index this page.
+mainResponder.callbackLoop (@config.mainResponder.callbacks.searchEngineSecurity, adrParamTable);
+
+return (true)

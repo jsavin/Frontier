@@ -1,0 +1,2 @@
+on getProfileInfoAddress (adrSite=nil) {
+	return (manilaSuite.getDiscussLinksAddress (adrSite))}

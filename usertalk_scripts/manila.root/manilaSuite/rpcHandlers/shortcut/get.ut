@@ -1,0 +1,27 @@
+on get (username, password, siteName, shortcutName) {
+	«Get a shortcut named shortcutName.
+	
+	local (beginningErrorString = "Can't get shortcut \"" + shortcutName + "\" because ");
+	bundle { //make sure this person is an editor of this site
+		manilaSuite.rpcUtils.editorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrGlossary = @adrSite^.["#glossary"]);
+	
+	if not defined (adrGlossary) {
+		new (tableType, adrGlossary)};
+	
+	name = manilaSuite.unTaint (string.trimWhiteSpace (shortcutName));
+	
+	local (adrItem = @adrGlossary^.[shortcutName]);
+	if not defined (adrItem^) {
+		scriptError (beginningErrorString + "because a shortcut named \"" + shortcutName + "\" does not exist.")};
+	local (returnValue);
+	if typeOf (adrItem^) == tableType {
+		new (tableType, @returnValue);
+		returnValue.linetext = string (adrItem^.linetext);
+		returnValue.path = string (adrItem^.path)}
+	else {
+		returnValue = string (adrItem^)};
+	
+	return (returnValue)}

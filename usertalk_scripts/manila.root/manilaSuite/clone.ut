@@ -1,0 +1,76 @@
+on clone (siteName, membershipGroupName, discussionGroupName, sysopEmail, sysopPassword, sysopName, siteUrl, flAddToDomains, flAddToUserDatabases, flUseExistingGdb=false, existingGdbName=nil, canonicalSiteName=nil, theme="default", flAddThemeLink=false) {
+	«This is the master script. Call it to build a new site.
+		«Changes:
+			«10/21/99; 11:29:25 AM by PBS
+				«Create self-contained Manila sites by default.
+			«10/27/99; 10:31:55 PM by PBS
+				«Call the createRssInfo script to initialize the syndication prefs.
+			«11/18/99; 12:50:37 PM by PBS
+				«New optional parameters: flUseExistingGdb and existingGdbName. If the first is true, please provide a name in the second. This way you can put more than one Manila site in a single guest database.
+			«03/02/00; 10:13:24 PM by PBS
+				«New parameter: canonicalSiteName. This is the site name that's stored in config.manila.sites. The reason this can now be specified is so the caller can implement multiple name-spaces if hosting multiple domains like EditThisPage.Com on a single server.
+			«06/07/00; 5:26:10 PM by PBS
+				«New theme optional parameter, specifies the theme to use. Also: call manilaSuite.init, to make sure themes and legal macros are initialized.
+	
+	manilaSuite.init (); //PBS 06/07/00: make sure themes and legal macros are initialized
+	
+	local (siteInfo); //this table will be passed around, it contains info about the site
+	new (tableType, @siteInfo);
+	
+	bundle { //copy params into siteInfoTable
+		«Other scripts will add more info about the site.
+		siteInfo.siteName = manilaSuite.unTaint (siteName);
+		siteInfo.membershipGroupName = manilaSuite.unTaint (membershipGroupName);
+		siteInfo.discussionGroupName = manilaSuite.unTaint (discussionGroupName);
+		siteInfo.sysopEmail = manilaSuite.unTaint (sysopEmail);
+		siteInfo.sysopPassword = sysopPassword;
+		siteInfo.sysopName = manilaSuite.unTaint (sysopName);
+		siteInfo.siteUrl = manilaSuite.unTaint (siteUrl);
+		siteInfo.flAddToDomains = boolean (flAddToDomains);
+		siteInfo.flAddToUserDatabases = boolean (flAddToUserDatabases);
+		siteInfo.shortSiteName = manilaSuite.getShortSiteName (siteInfo.siteName);
+		siteInfo.flUseExistingGdb = flUseExistingGdb;
+		siteInfo.existingGdbName = existingGdbName;
+		siteInfo.theme = theme};
+	
+	manilaSuite.newSite.createGuestDatabase (@siteInfo); //create the gdb
+	
+	manilaSuite.newSite.createShell (@siteInfo); //create the website shell
+	
+	manilaSuite.newSite.createMembershipGroup (@siteInfo); //create the membership group if it doesn't already exist
+	
+	manilaSuite.newSite.createDiscussionGroup (@siteInfo); //create the dg if it doesn't already exist
+	
+	manilaSuite.newSite.createNavigator (@siteInfo); //create the navigator for this site
+	
+	manilaSuite.newSite.createSiteCalendar (@siteInfo); //create the site calendar in the site shell
+	
+	manilaSuite.newSite.createRssInfo (@siteInfo); //create the rssInfo syndication prefs
+	
+	manilaSuite.newSite.createCustomPrefsWizard (@siteInfo); //create the custom prefs wizard
+	
+	manilaSuite.newSite.createHierarchy (@siteInfo);
+	
+	manilaSuite.themes.apply (siteInfo.adrSite, theme, true, flNewSite:true, flAddThemeLink:flAddThemeLink); //PBS 05/26/00: apply the theme
+	
+	bundle { //add an entry to config.manila.sites
+		if canonicalSiteName != nil { //PBS 03/02/00: the caller can specify the canonical site name that goes in config.manila.sites
+			config.manila.sites.[canonicalSiteName] = siteInfo.adrSite}
+		else {
+			config.manila.sites.[siteInfo.shortSiteName] = siteInfo.adrSite}};
+	
+	bundle { //call the callbacks table at config.manila.callbacks.newSite
+		if defined (config.manila.callbacks.newSite) {
+			mainResponder.callbackLoop (@config.manila.callbacks.newSite, @siteInfo)}};
+	
+	bundle { //save everything
+		fileMenu.save (); //save Frontier.root
+		fileMenu.save (system.temp.mainResponder.membersRootFile); //members.root
+		fileMenu.save (system.temp.mainResponder.discussRootFile); //discuss.root
+		fileMenu.saveMyRoot (@config.manila); //config.root
+		fileMenu.saveMyRoot (siteInfo.adrSite)}; //the gdb containing the site
+	
+	try { //JES 6/9/02: delete the site list cache from system.temp.mainResponder.siteListCache
+		delete (@system.temp.mainResponder.siteListCache)};
+	
+	return (siteInfo)} //return the table of info about the site

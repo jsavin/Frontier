@@ -1,0 +1,38 @@
+on addToPicturesList (username, password, siteName, msgNum) {
+	«Mark a message as being in the pictures list.
+		«Changes:
+			«10/09/00; 10:21:01 PM by PBS
+				«Make sure the pictures index gets updated.
+			«04/22/01; 12:51:01 AM by JES
+				«Create a shortcut when adding a message to the pictures list, if the site's pref is set.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't add message \"" + msgNum + "\" to the pictures list because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss));
+	local (picturesCategory = manilaSuite.discuss.getPicturesCategory (adrSite));
+	manilaSuite.discuss.addCategoryToMessage (adrmsg, picturesCategory, adrSite); //PBS 10/09/00: update pictures index
+	
+	bundle { //04/22/2001 JES: Create a shortcut for the story if the site's pref is set
+		local (flCreateShortcut = manilaSuite.getNewsSitePref ("autoShortcuts", adrSite, true));
+		if flCreateShortcut {
+			local (name = manilaSuite.unTaint (adrmsg^.subject));
+			local (adrGlossItem = @adrSite^.["#glossary"].[name]);
+			if not defined (adrGlossItem^) {
+				local (adrUrls = @adrSite^.["#urls"]);
+				local (imageViewerUrl = adrUrls^.imageViewer);
+				local (url = imageViewerUrl + adrMsg^.msgNum);
+				
+				local (imgTag = "<img src=\"");
+				local (imgUrl = adrMsg^.msgNum);
+				imgTag = imgTag + url + "\" ";
+				imgTag = imgTag + "height=\"" + adrMsg^.image.height + "\" ";
+				imgTag = imgTag + "width=\"" + adrMsg^.image.width + "\" ";
+				imgTag = imgTag + "border=\"0\">";
+				
+				adrGlossItem^ = imgTag}}};
+	
+	return (true)}

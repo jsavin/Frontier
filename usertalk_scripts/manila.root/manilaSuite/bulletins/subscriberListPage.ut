@@ -1,0 +1,75 @@
+on subscriberListPage (pta=nil, adrSubscribersTable=nil) {
+	«adrSubscribersTable is the address of a table with two top-level subtables, HTML and plain.
+		«Each entry in HTML and plain is the email address of a subscriber.
+		«The value of each entry is the name, if the name is present in the member record.
+		«Otherwise the value is empty.
+		«If adrSubscribersTable is nil -- which should be common -- then this script will get it by calling manilaSuite.bulletins.getSubscribersTable.
+		«Changes:
+			«10/31/99; 2:09:35 PM by PBS
+				«Use manilaSuite.unTaint in place of mainResponder.neuterText when it's sure that no macros of any kind should run.
+				«Use manilaSuite.getUrl to get a URL.
+			«04/18/00; 8:38:07 PM by JES
+				«Localized.
+			«05/01/00; 4:07:06 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists.
+			«07/18/00; 11:39:01 AM by JES
+				«Bug fix: profile URL was always /profiles/$ instead of /profiles/$email -- navigation to a user's profile was broken.
+			«1/25/02; 6:19:40 PM by PBS
+				«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	pta^.title = manilaSuite.getString ("bulletins.bulletinSubscribersPageTitle", pta: pta); // 4/18/00 JES: localized
+	pta^.activeUrls = false;
+	
+	local (subscribersTable);
+	local (profilesUrl = manilaSuite.getUrl ("profilesHome", pta));
+	if not (profilesUrl endsWith "$") {
+		profilesUrl = profilesUrl + "$"};
+	
+	if adrSubscribersTable == nil { //if there is no pre-built subscribers table, get it
+		new (tableType, @subscribersTable);
+		manilaSuite.bulletins.getSubscribersTable (@subscribersTable, pta);
+		adrSubscribersTable = @subscribersTable};
+	
+	local (htmlText, i, indentLevel = 0);
+	
+	on add (s) {
+		htmlText = htmlText + (string.filledString ("\t", indentLevel) + s + "\r");};
+	
+	add (manilaSuite.getString ("bulletins.clickSubscribersEmaliForProfile", pta: pta) + "<p>"); // 4/18/00 JES: localized
+	
+	on doTable (adrTable) {
+		add ("<ol>"); indentLevel++;
+		
+		for i = 1 to sizeOf (adrTable^) {
+			local (adrItem = @adrTable^ [i]);
+			local (emailAddress = nameOf (adrItem^));
+			local (memberName = adrItem^);
+			
+			emailAddress = manilaSuite.unTaint (emailAddress);
+			
+			if memberName == "" {
+				add ("<li><a href=\"" + profilesUrl  + emailAddress + "\">" + emailAddress + "</a><br>")}
+			else {
+				memberName = manilaSuite.unTaint (memberName);
+				local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+				replacementTable.url = profilesUrl + emailAddress;
+				replacementTable.email = emailAddress;
+				replacementTable.memberName = memberName;
+				add ("<li>" + manilaSuite.getString ("bulletins.emailAndMemberName", @replacementTable, pta: pta) + "<br>")}}; // 4/18/00 JES: localized
+		
+		add ("</ol>"); indentLevel--;
+		
+		return (true)};
+	
+	add ("<b>" + manilaSuite.getString ("bulletins.plainTextRecipients", pta: pta) + "</b>:"); // 4/18/00 JES: localized
+	indentLevel++;
+	doTable (@adrSubscribersTable^.plain);
+	
+	add ("<b>" + manilaSuite.getString ("bulletins.htmlRecipients", pta: pta) + "</b>:"); // 4/18/00 JES: localized
+	indentLevel++;
+	doTable (@adrSubscribersTable^.Html);
+	
+	return (htmlText)}

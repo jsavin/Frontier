@@ -1,0 +1,20 @@
+on visitDatabases (callback) { //call the routine for every open database
+	«Changes:
+		«12/8/99; 9:57:51 AM by PBS
+			«Don't visit index.root and news.root if they don't exist.
+	
+	on visitfile (f) {
+		if window.isopen (f) {
+			callback^ (f)}};
+	local (i);
+	for i = 1 to sizeof (user.databases) {
+		visitfile (user.databases [i].f)};
+	
+	if defined (system.temp.mainResponder.indexRootFile) { //PBS 12/8/99: visit only if index.root exists
+		visitfile (system.temp.mainResponder.indexRootFile)};
+	visitfile (system.temp.mainResponder.discussRootfile);
+	visitfile (system.temp.mainResponder.membersRootFile);
+	if defined (system.temp.mainResponder.newsRootFile) { //PBS 12/8/99: visit only if news.root exists
+		visitfile (system.temp.mainResponder.newsRootFile)}};
+«bundle //test code
+	«visitDatabases (@msg)

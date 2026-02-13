@@ -1,0 +1,14 @@
+on exportSiteForDownload (siteUrl, username, password) {
+	«3/20/01; 8:25:48 PM by JES
+		«Does the same thing that the [site]/downloadMySite/mySite.root page does -- export the site to a guest database, and return the download URL for the exported database.
+	
+	local (siteName = manilaSuite.rpcUtils.urlToSiteName (siteUrl));
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	bundle { //make sure this person is the managing editor
+		local (beginningErrorString = "Can't export the site because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	if config.manila.prefs.flSiteDownloadsEnabled {
+		return (manilaSuite.admin.exportGdb (adrSite))}
+	else {
+		scriptError ("Can't export the site for download because the site download feature is not available on this server.")}}

@@ -1,0 +1,59 @@
+on getExternalEditorInfoXml () {
+	«Build an XML page that contains info needed by external editors such as Radio UserLand.
+		«09/11/00; 10:14:03 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	
+	bundle { //it's XML, over-ride HTML formatting prefs
+		pta^.responseHeaders.["Content-Type"] = "text/xml";
+		pta^.autoParagraphs = false;
+		pta^.clayCompatibility = false;
+		pta^.activeUrls = false;
+		pta^.processMacros = false;
+		pta^.expandGlossaryItems = false;
+		wp.newTextObject ("{bodytext}", @pta^.template)};
+	
+	on error (errorMessage) {
+		return ("<?xml version=\"1.0\"?>\r<error>" + errorMessage + "</error>\r")};
+	
+	local (canonicalSiteName, displaySiteName, rpcPort, rpcServer, rpcPath);
+	canonicalSiteName = manilaSuite.getCanonicalSiteName (adrSite);
+	displaySiteName = string (adrSite^.["#newsSite"].siteName);
+	rpcPort = user.inetd.config.http.port;
+	rpcServer = pta^.host;
+	rpcPath = user.betty.prefs.rpcClientDefaultPath;
+	
+	
+	try { //build the XML response
+		local (xmlText = "", indent = 0);
+		
+		on add (s) {
+			xmlText = xmlText + string.filledString ("\t", indent) + s + "\r\n"};
+		on encodeWithAmpersands (s) {
+			s = string.replaceAll (s, "&", "&amp;");
+			s = string.replaceAll (s, "<", "&lt;");
+			s = string.replaceAll (s, ">", "&gt;");
+			s = string.replaceAll (s, "{", "&#123;");
+			s = string.replaceAll (s, "}", "&#125;");
+			return (s)};
+		on addHeader () {
+			add ("<?xml version=\"1.0\"?>");
+			add ("<externalEditorInfo version=\"1.0d1\">"); indent++};
+		on addFooter () {
+			add ("</externalEditorInfo>"); indent--};
+		on addItem (adrItem) {
+			local (itemName = nameOf (adrItem^));
+			add ("<" + itemName + ">" + encodeWithAmpersands (adrItem^) + "</" + itemName + ">")};
+		
+		addHeader ();
+		addItem (@canonicalSiteName);
+		addItem (@displaySiteName);
+		addItem (@rpcPort);
+		addItem (@rpcServer);
+		addItem (@rpcPath);
+		addFooter ();
+		
+		return (xmlText)}
+	else {
+		return (manilaSuite.unTaint (error (tryError)))}}

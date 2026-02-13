@@ -1,0 +1,14 @@
+on getOneDay (username, password, siteName, dt) {
+	«Get the msgNum for a specific day in the home page calendar.
+		«Changes:
+			«06/22/00; 10:25:23 PM by JES
+				«Bug fix - the call to manilaSuite.rpcUtils.memberCheck didn't pass the beginningErrorString parameter
+	
+	bundle { //make sure the person is a member of the site
+		local (beginningErrorString = "Can't get the msgNum for day \"" + dt + "\" because ");
+		manilaSuite.rpcUtils.memberCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrDay = mainResponder.calendar.getDayAddress (adrSite, dt, flCreate:false));
+	
+	return (number (adrDay^.msgNum))}

@@ -1,0 +1,209 @@
+on defaultPage (flRadioHosting=false, adrtrackback=nil, flCanDeleteTrackbacks=false) {
+	«Changes
+		«3/21/07; 2:57:08 PM by LL
+			«Do not display the TrackBack page if the feature is disabled.
+		«1/31/06; 1:01:46 AM by JES
+			«Rework counter reset and whenLastModified code for flRadioHosting, when deleting trackbacks. May also fix incorrect trackback counters after one or more trackbacks are deleted in a Radio blog.
+		«1/13/06; 3:59:38 AM by JES
+			«If hosting trackback for a Radio blog, add form elements to let Radio users log in to delete trackbacks.
+		«1/20/05; 1:53:02 AM by JES
+			«Set pta^.flAnchorRelNofollow to true. Causes Manila's finalFilter to add a rel="nofollow" attribute to all <a ... > tags.
+		«10/27/04; 2:34:07 PM by DAB
+			«If an argument named link is specified in the search-args for the trackback page, use its value for the posturl (linking back to the original post), instead of the URL returned by manilaSuite.getPermalinkUrl. This makes it possible to use Manila's trackback code outside of the news items context.
+		«09/01/04; 1:52:33 PM by PR
+			«Added support for radio trackback deletion
+		«7/21/04; 4:49:21 PM by JES
+			«Added support for TrackBack deletion by managing/content editors. Added permalinks.
+		«2003
+			«7/22/03; 6:52:07 PM by JES
+				«New optional parameters, flRadioHosting -- default false, and adrtrackback -- default nil.
+				«If flRadioHosting is true and adrtrackback is specified, then we render trackbacks from the table specified by adrtrackback.
+				«Used for hosting incoming trackback pings for hosted Radio weblogs.
+				«Called by manilaSuite.radioHosting.commentsPage.
+			«7/14/03; 3:27:46 AM by JES
+				«Created. Generate a pop-up window page with incoming trackbacks.
+	local (pta = html.getPageTableAddress (), htmltext);
+	pta^.flAnchorRelNofollow = true; //JES 1/20/05: cause Manila's finalFilter to add a rel="nofollow" to all <a ... > tags
+	
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	pta^.title = manilaSuite.getString ("trackback.trackbackPageTitle");
+	
+	local (args); new (tableType, @args);
+	webserver.parseArgs (string.replaceAll (pta^.searchArgs, "&amp;", "&"), @args);
+	
+	if (not config.manila.prefs.flRadioHostingEnabled) {
+		return (manilaSuite.notFound.page (pta))};
+	if defined (config.manila.prefs.flTrackbackEnabled) {
+		if not config.manila.prefs.flTrackbackEnabled {
+			return (manilaSuite.notFound.page (pta))}};
+	if not manilaSuite.getNewsSitePref ("trackback.flEnabled", default:false) {
+		return (manilaSuite.notFound.page (pta))};
+	
+	bundle { //set flCanDeleteComments
+		if !flCanDeleteTrackbacks { // 01/09/04; 2:36:35 PM by PR if the argument is true, skip this
+			flCanDeleteTrackbacks = manilaSuite.editors.canEditContent (pta)}};
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrprefs = manilaSuite.trackback.init (adrsite));
+	manilaSuite.trackback.setPopupTemplate ();
+	local (header = string (adrprefs^.templates.header));
+	local (footer = string (adrprefs^.templates.footer));
+	local (bgcolor1 = adrprefs^.colors.bgcolor1);
+	local (bgcolor2 = adrprefs^.colors.bgcolor2);
+	local (msgnum=0, trackbackurl, adrmsg, posturl, posttitle, adrurls);
+	bundle { //get trackbackurl, msgnum, adrmsg, posturl and posttitle
+		if flRadioHosting {
+			trackbackurl = string.replace (manilaSuite.getSiteUrl (), "//", "/\\/") + "comments$trackback?u=" + args.u + "&p=" + args.p;
+			if defined (args.link) {
+				posturl = args.link}
+			else {
+				posturl = ""};
+			if defined (args.title) {
+				posttitle = args.title}
+			else {
+				posttitle = "this post"};
+			if adrtrackback != nil {
+				adrurls = @adrtrackback^.inbound.urls}}
+		else { //trackback for this site
+			if msgnum == 0 {
+				msgnum = args.p};
+			try {
+				adrmsg = manilaSuite.discuss.getMessageTable (number (msgnum), adrsite);
+				trackback.initPost (adrmsg);
+				adrtrackback = @adrmsg^.trackback;
+				adrurls = @adrtrackback^.inbound.urls;
+				trackbackurl = string.replace (manilaSuite.getSiteUrl (), "//", "/\\/") + "newsItems/trackback/ping$" + adrmsg^.msgnum;
+				«posturl = manilaSuite.getPermalinkUrl (adrsite, adrmsg)
+				if defined (args.link) { //04/10/24, 19:29:38 by DAB
+					posturl = args.link}
+				else {
+					posturl = manilaSuite.getPermalinkUrl (adrsite, adrmsg)};
+				posttitle = adrmsg^.subject}}};
+	
+	on countTrackbacks () {
+		local (ct = 0);
+		for adrUrl in adrUrls {
+			if adrUrl^.flPosted {
+				ct++}};
+		return (ct)};
+	if pta^.method == "POST" { //possibly delete trackbacks
+		if defined (pta^.postArgs.deleteTrackbacks) { //JES 7/21/04: handle trackback deletion
+			if flCanDeleteTrackbacks { //security check -- must have cookie to delete
+				local (adr, flDeletedAtLeastOneTrackback=false);
+				for adr in @pta^.postArgs {
+					if adr^ == "xxx" {
+						local (url = string.urlDecode (nameOf (adr^)) );
+						adrurls^.[url].flPosted = false}};
+				if flDeletedAtLeastOneTrackback {
+					if flRadioHosting {
+						local (adrdata = manilaSuite.radioHosting.init ());
+						adrdata^.userStats.[string.padWithZeros (args.u, 7)].whenLastModified = clock.now ();
+						local (adrcomment = parentOf (adrtrackback^));
+						adrcomment^.count = countTrackbacks ()}}}}};
+	
+	local (loginError = "");
+	on addRadioModeration () {
+		«1/13/06; 3:37:11 AM by JES: Cribbed from manilaSuite.radioHosting.commentsPage
+		if flRadioHosting {
+			local (s = "");
+			if !flCanDeleteTrackbacks {
+				if loginError != "" {
+					s = s +  ("<p><a name=\"error\"></a>" + loginError + "</p>\r")};
+				s = s + ("<p><hr size=\"1\" width=\"100%\"><p>" + manilaSuite.getString ("radioHosting.commentModerationPrompt") + "<br /><br /><b>Password:</b> <input name=\"password\" type=\"password\" /> <input type=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\" /></p>\r");
+				s = s + "<input type=\"hidden\" name=\"c\" value=\"radioLogin\" />"}
+			else {
+				«logout message
+				s = s + "<p><a target=\"_self\" href=\"" + pta^.path + "$trackback?c=radioLogout&" + pta^.searchArgs + "\">" + manilaSuite.getString ("radioHosting.disableCommentDeletion") + "</a></p>"};
+			return (s)};
+		return ""};
+	
+	bundle { //do string replacements on header and footer
+		header = string.replaceAll (header, "{trackbackUrl}", trackbackUrl, false);
+		header = string.replaceAll (header, "{posturl}", posturl, false);
+		header = string.replaceAll (header, "{postTitle}", postTitle, false);
+		footer = string.replaceAll (footer, "{trackbackUrl}", trackbackUrl, false);
+		footer = string.replaceAll (footer, "{posturl}", posturl, false);
+		footer = string.replaceAll (footer, "{postTitle}", postTitle, false)};
+	add (header);
+	if flCanDeleteTrackbacks { //JES 7/21/04: form start for trackback deletion
+		add ("<form method=\"POST\" target=\"_self\">")};
+	local (bgcolor = bgcolor1);
+	bundle { //add trackbacks
+		local (adrurl, pings);
+		new (tableType, @pings);
+		if adrurls != nil {
+			for adrurl in adrurls { //build the pings table, sorted by date
+				local (flPosted = true);
+				if defined (adrurl^.flPosted) {
+					flPosted = adrurl^.flPosted};
+				if flPosted {
+					local (whenString = date.dateToIso8601String (adrurl^.whenPing));
+					local (adrping = table.uniqueName (whenString, @pings, 2));
+					adrping^ = adrurl^;
+					adrping^.url = nameOf (adrurl^)}}};
+		local (adrLastPing);
+		if sizeOf (pings) > 0 {
+			adrLastPing = @pings[sizeOf (pings)]};
+		for adrurl in @pings { //loop over the sorted pings, adding them to the page
+			local (s = string (adrprefs^.templates.itemTemplate));
+			s = string.replaceAll (s, "{bgcolor}", bgcolor, false);
+			if flCanDeleteTrackbacks { //JES 7/21/04: add checkbox for deleting trackback
+				local (ix = sizeOf (s));
+				while ix > 0 {
+					if s[ix] == "}" {
+						local (checkbox = "<br /><input type=\"checkbox\" name=\"" + string.urlEncode (adrurl^.url) + "\" value=\"xxx\" /> " + manilaSuite.getString ("radioHosting.checkToDeleteThisTrackback") );
+						if adrurl == adrLastPing {
+							local (deleteButton = "<input type=\"submit\" name=\"deleteTrackbacks\" value=\"" + manilaSuite.getString ("radioHosting.deleteTrackbacksButton") + "\" />");
+							checkbox = checkbox + "<br /><br />" + deleteButton + "</form>";
+							if flRadioHosting {
+								checkbox = checkbox + addRadioModeration ()}};
+						s = string.insert (checkbox, s, ix+1);
+						break};
+					ix--}}
+			else { //JES 1/13/06: Add Radio comment/trackback moderation login form
+				if flRadioHosting {
+					if adrurl == adrLastPing {
+						local (ix = sizeOf (s));
+						while ix > 0 {
+							if s[ix] == "}" {
+								s = "<form method=\"POST\" target=\"_self\">" + string.insert (addRadioModeration (), s, ix+1) + "</form>";
+								break};
+							ix--}}}};
+			s = string.replaceAll (s, "{excerpt}", adrurl^.excerpt, false);
+			s = string.replaceAll (s, "{weblogTitle}", adrurl^.weblogName, false);
+			local (postTime = mainResponder.localization.dateTimeString (manilaSuite.convertTime (adrurl^.whenPing)) );
+			bundle { //permalink
+				postTime = postTime + " <a href=\"#a" + string.hashMd5 (adrurl^.url) + "\" title=\"Permanent link to this TrabkBack.\" target=\"_self\">#</a>"};
+			s = string.replaceAll (s, "{postTime}", postTime, false);
+			local (itemLink = html.getLink (adrurl^.title, adrurl^.url));
+			if adrurl^.title == "" {
+				itemLink = adrurl^.url};
+			s = string.replaceAll (s, "{itemLink}", "<a name=\"a" + string.hashMd5 (adrurl^.url) + "\"></a>" + itemLink, false);
+			«bundle //1/15/05 by DW -- add rel="nofollow" on all anchors
+				«s = string.replaceall (s, "<a", "<a rel=\"nofollow\"", false)
+			add (s);
+			bundle { //flip the bgcolor
+				if bgcolor == bgcolor1 {
+					bgcolor = bgcolor2}
+				else {
+					bgcolor = bgcolor1}}}};
+	«if flCanDeleteTrackbacks //JES 7/21/04: delete button for comment deletion
+		«local (lowerTrimmedTemplate = string.lower (string.trimWhiteSpace (string (adrprefs^.templates.itemTemplate) )) )
+		«local (flAddTableTags = false)
+		«if lowerTrimmedTemplate contains "<tr"
+			«if not (lowerTrimmedTemplate contains "<table")
+				«flAddTableTags = true
+		«local (deleteButton = "<input type=\"submit\" name=\"deleteTrackbacks\" value=\"" + manilaSuite.getString ("radioHosting.deleteTrackbacksButton") + "\" />")
+		«if flAddTableTags
+			«add ("<tr bgcolor=\"" + bgcolor + "\"><td>" + deleteButton + "</td></tr>")
+		«else
+			«add ("<br /><br />" + deleteButton)
+		«add ("</form>")
+	add (footer);
+	
+	return (htmltext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«defaultPage (true, @tbtestManilaWebsite.["#newsSite"].radioHosting.trackback.users.["0001000"].["841"].trackback)

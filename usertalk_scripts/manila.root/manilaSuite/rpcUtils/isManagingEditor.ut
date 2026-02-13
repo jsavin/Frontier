@@ -1,0 +1,8 @@
+on isManagingEditor (sitename, username) {
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	local (me, meList = adrSite^.["#newsSite"].sysopMail);
+	username = string.lower (username);
+	for me in list (meList) {
+		if username == string.lower (me) {
+			return (true)}};
+	return (false)}

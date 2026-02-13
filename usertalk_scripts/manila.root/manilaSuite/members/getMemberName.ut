@@ -1,0 +1,16 @@
+on getMemberName (memberKey, adrName) {
+	«Get the name of a member.
+		«Return true if the name was defined, false otherwise.
+		«Put the name in adrName^.
+		«10/27/99; 10:10:07 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (groupName = pta^.defaultMembershipGroup);
+	local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey));
+	
+	if defined (adrMember^.personalInfo.name) {
+		if adrMember^.personalInfo.name != "" {
+			adrName^ = adrMember^.personalInfo.name;
+			return (true)}};
+	
+	return (false)}

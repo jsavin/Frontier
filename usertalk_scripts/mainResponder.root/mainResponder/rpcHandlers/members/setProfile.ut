@@ -1,0 +1,6 @@
+on setProfile (groupname, username, password, struct) {
+	local (adruser = mainResponder.members.getMemberTableWithPassword (groupname, username, password));
+	local (i);
+	for i = 1 to sizeof (struct) {
+		adruser^.[nameof (struct [i])] = struct [i]};
+	return (true)}

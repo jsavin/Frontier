@@ -1,0 +1,15 @@
+on updateAllList (adrMsgTable, adrSite) {
+	«Update the index of all news items.
+		«04/20/00; 1:31:51 AM by PBS
+	
+	local (flDelete = false);
+	if defined (adrMsgTable^.flDeleted) {
+		if adrMsgTable^.flDeleted {
+			flDelete = true}};
+	
+	if not flDelete {
+		manilaSuite.news.addToIndex ("all", adrMsgTable, adrSite)}
+	else {
+		manilaSuite.news.deleteFromIndex ("all", adrMsgTable, adrSite)};
+	
+	return (true)}

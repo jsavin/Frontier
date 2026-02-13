@@ -1,0 +1,12 @@
+on firstFilter (pta) {
+	«manilaFixer.versioning.firstFilter : 02/03/26, 20:37:09 by DAB
+		«if versioning is on, build the table for versioning in the page table
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite));
+	
+	if adrStorage^.versioning.enabled {
+		new(tabletype, @pta^.versioning);
+		pta^.versioning.adrCheckIn = @manilaFixer.versioning.checkIn;
+		pta^.versioning.adrCheckOut = @manilaFixer.versioning.checkOut};
+	
+	return true}

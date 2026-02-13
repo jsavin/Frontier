@@ -1,0 +1,99 @@
+on initSiteListCacheForSite (adrsite, adrcache, canonicalSiteName, shortSiteName, flPlaceholder=false) {
+	«Changes
+		«3/4/07; 3:34:31 PM by LL
+			«Correct the site name if it includes an @ character since it breaks the links to the manage site page.
+			«Also, remove any markup included in the site name.
+		«2/22/06; 2:03:39 AM by JES
+			«Fix error caching the tagline.
+		«11/10/05; 5:54:36 AM by JES
+			«Created. Factored from mainResponder.adminSite.macros.initSiteListCache, for use when navigating directly to the admin page for a site. Added some defensive-driving code for edge-case sites.
+	
+	new (tableType, adrcache);
+	
+	if flPlaceholder {
+		adrcache^.flPlaceholder = true;
+		adrcache^.adrSite = adrsite;
+		adrcache^.canonicalSiteName = canonicalSiteName;
+		adrcache^.site = shortSiteName;
+		return (true)};
+	
+	adrcache^.adrsite = adrSite;
+	
+	«Get information about this site.
+	try { //the list should never fail to build, even if there's an abberant site out there
+		local (displaySiteName = manilaSuite.getNewsSitePref ("siteName", adrsite, shortSiteName));
+		if displaySiteName contains "@" {
+			displaySiteName = string.replaceAll (displaySiteName, "@", "\\@")};
+		if displaySiteName contains ">" or displaySiteName contains "<" {
+			displaySiteName = searchEngine.stripMarkup (displaySiteName)};
+		local (tagline = "");
+		try {tagline = string (adrsite^.["#newsSite"].tagline)};
+		local (siteUrl = adrSite^.["#ftpSite"].url);
+		local (flInstalled = defined (config.manila.sites.[shortSiteName]) or defined (config.manila.sites.[nameOf (adrSite^)]) );
+		local (editor = adrSite^.["#newsSite"].sysopMail);
+		if typeOf (editor) == listType {
+			editor = editor [1]};
+		local (dgName = adrSite^.["#prefs"].discussionRoot);
+		local (dgUrl = adrSite^.["#urls"].discussHomePage);
+		local (profilesUrl = adrSite^.["#urls"].profilesHome);
+		if not (profilesUrl endsWith "$") {
+			profilesUrl = profilesUrl + "$"};
+		local (membershipGroupName = adrSite^.["#prefs"].defaultMembershipGroup);
+		
+		«Populate the entry in the table.
+		adrcache^.flInstalled = flInstalled;
+		adrcache^.site = shortSiteName;
+		adrcache^.canonicalSiteName = canonicalSiteName;
+		adrcache^.siteUrl = siteUrl;
+		adrcache^.managingEditor = editor;
+		adrcache^.discussionGroup = dgName;
+		adrcache^.dgUrl = dgUrl;
+		adrcache^.profilesUrl = profilesUrl;
+		adrcache^.membershipGroupName = membershipGroupName;
+		adrcache^.tagline = tagline;
+		adrcache^.displaySiteName = displaySiteName;
+		
+		local (adrDiscuss, adrMembers);
+		try { //if the site is installed, use mainResponder.discuss.openRoot to get adrDiscuss and adrMembers
+			local (t); new (tableType, @t);
+			t.discussionRoot = dgName;
+			adrDiscuss = mainResponder.discuss.openRoot (@t);
+			local (adrgroup = manilaSuite.members.getGroupFromSiteAddress (adrsite));
+			adrMembers = @adrGroup^.users}
+		else { //set adrDiscuss and adrMembers to the the discussion group in the site table
+			adrDiscuss = @adrSite^.["#discussionGroup"];
+			try {adrMembers = @adrsite^.["#membershipGroup"].users}};
+		adrcache^.adrDiscuss = adrDiscuss;
+		adrcache^.adrMembers = adrMembers;
+		local (adrMessages = @adrDiscuss^.messages);
+		local (ctMessages = sizeOf (adrMessages^));
+		try {
+			adrcache^.modified = "unknown";
+			local (adrMostRecentMessage = @adrMessages^ [ctMessages]);
+			local (lastModDate = adrMostRecentMessage^.postTime);
+			adrcache^.modified = lastModDate};
+		adrcache^.ctMessages = ctMessages;
+		local (ctMembers);
+		try {ctMembers = sizeOf (adrMembers^)};
+		adrcache^.ctMembers = ctMembers;
+		
+		bundle { //total hits all-time
+			if defined (config.manila.stats.sites.allTime.[shortSiteName]) {
+				adrcache^.totalHits = config.manila.stats.sites.allTime.[shortSiteName].totalHits}
+			else {
+				if defined (config.manila.stats.sites.allTime.[canonicalSiteName]) {
+					adrcache^.totalHits = config.manila.stats.sites.allTime.[canonicalSiteName].totalHits}
+				else {
+					adrcache^.totalHits = 0}}};
+		bundle { //total hits today
+			if defined (config.manila.stats.sites.today.[shortSiteName]) {
+				adrcache^.hitsToday = config.manila.stats.sites.today.[shortSiteName].totalHits}
+			else {
+				if defined (config.manila.stats.sites.today.[canonicalSiteName]) {
+					adrcache^.hitsToday = config.manila.stats.sites.today.[canonicalSiteName].totalHits}
+				else {
+					adrcache^.hitsToday = 0}}}}
+	else { //garbage collection
+		«scriptError (tryError)
+		delete (adrcache)};
+	return (true)}

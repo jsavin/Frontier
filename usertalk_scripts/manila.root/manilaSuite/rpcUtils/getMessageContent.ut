@@ -1,0 +1,75 @@
+on getMessageContent (siteName, msgNum, flEncodeAmpersands = false) {
+	«Get the text and info about a message.
+		«Changes:
+			«1/31/06; 3:01:56 AM by JES
+				«Add support for flPending messages.
+			«09/22/02; 11:37:16 PM by JES
+				«If the message has a site structure path, return that for its url instead of the storyReader or msgReader url. Makes Radio's View In Browser command load the page from its canonical (site-structure-defined) location.
+			«05/26/01; 2:54:22 AM by JES
+				«If the page is a story, return the storyReader URL, instead of the msgReader URL.
+			«03/15/01; 9:36:49 PM by JES
+				«If windowInfo is present in the returnTable, but it's not a table, delete it.
+			«01/02/01; 1:19:08 AM by JES
+				«On Macs, convert the subject to Latin text.
+			«12/22/00; 2:55:30 PM by JES
+				«If the message is an outline, add the opml representation of the outline to the returned struct.
+			«11/20/00; 6:30:08 PM by JES
+				«Added new optional parameter, flEncodeAmpersands, which causes & to be converted to &amp;. This is required for SOAP support, since there are two decodings of entities - one when the SOAP message is decoded, and another when the opml is converted to an outline.
+			«11/04/00; 6:58:56 PM by JES
+				«Send the flServerAcceptsOpml if running Frontier 7.0b21 or later.
+			«08/22/00; 5:09:01 PM by PBS
+				«Return the name of the member in the memberName field.
+			«03/24/00; 6:57:11 PM by PBS
+				«The rendererInfo code added yesterday had a typo -- now it's fixed.
+			«03/23/00; 7:26:37 PM by PBS
+				«Return a rendererInfo struct. See http://www.xmlrpc.com/stories/storyReader$769
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (siteUrl = manilaSuite.getSiteUrl (adrSite));
+	local (adrmsg = @adrDiscuss^.messages.[string.padwithzeros (msgNum, 7)]);
+	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName)); //PBS 08/22/00: used in getting the name of the member
+	
+	if not defined (adrmsg^) {
+		scriptError ("Can't get message #" + msgNum + " because it does not exist.")};
+	if defined (adrmsg^.flDeleted) and adrmsg^.flDeleted {
+		scriptError ("Can't get message #" + msgNum + " because it has been deleted.")};
+	if defined (adrmsg^.flPending) and adrmsg^.flPending {
+		scriptError ("Can't get message #" + msgNum + " because it's pending editor approval.")};
+	
+	local (returntable);
+	returntable = adrmsg^;
+	if flEncodeAmpersands { //11/20/00 JES: encode ampersands as &amp; -- required for SOAP support.
+		if defined (returntable.opml) {
+			table.assign (@returntable.opml, string.replaceAll (string (returntable.opml), "&", "&amp;"))}};
+	bundle { //set returntable.url
+		local (relpath = manilaSuite.siteStructure.getRelativePathToMessage (adrmsg^.msgNum, adrSite));
+		if relpath == "" { //fall back to storyReader or msgReader path
+			if manilaSuite.discuss.isStory (adrmsg, adrSite) {
+				returntable.url = adrSite^.["#urls"].storyReader + msgNum}
+			else {
+				returntable.url = string (adrDiscuss^.prefs.msgReaderUrl) + msgNum}}
+		else { //use the siteStructure path
+			returntable.url = siteUrl + string.popLeading (relpath, "/")}};
+	returntable.msgNum = number (msgNum);
+	returntable.memberName = mainResponder.members.getMemberName (groupName, adrmsg^.member); //PBS 08/22/00: return the name of the member
+	if not date.versionLessThan (Frontier.version (), "7.0b21") { // only accept opml if the server is 7.0b21 or later
+		returnTable.flServerAcceptsOpml = true;
+		if defined (returnTable.outline) and (not defined (returnTable.opml)) { //12/22/00 JES: add opml to the returned struct
+			returnTable.opml = op.outlineToXml (@returnTable.outline)}};
+	if system.environment.isMac { //01/02/01 JES: convert the subject and body to latin text
+		returntable.subject = latinToMac.macToLatin (returntable.subject); //01/02/01 JES
+		returntable.body = latinToMac.macToLatin (returntable.body)};
+	manilaSuite.rpcUtils.cleanMessageTableForExport (@returnTable);
+	
+	bundle { //03/23/00: add the rendererInfo table if not present
+		if not defined (returnTable.rendererInfo) {
+			new (tableType, @returnTable.rendererInfo);
+			returnTable.rendererInfo.name = "pikeRenderer";
+			returnTable.rendererInfo.flRenderOnEntry = true}};
+	bundle { //03/15/2001 JES: delete windowInfo if not a table
+		if defined (returnTable.windowInfo) {
+			if not (typeOf (returnTable.windowInfo) == tableType) {
+				delete (@returnTable^.windowInfo)}}};
+	
+	return (returnTable)}

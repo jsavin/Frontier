@@ -1,0 +1,50 @@
+on commonCommands (prompt=mainResponder.getString ("macros.commonCommands.prompt")) {
+	«Changes
+		«4/14/00; 6:00:28 PM by JES
+			«localized
+		«11/23/98; 10:29:05 AM by DW
+			«A macro, with a set of common commands that make sense anywhere
+		«Thu, 04 Mar 1999 03:01:01 GMT by AR
+			«Changed several occurences of config.mainresponder.urls to pta^.responderattributes.urls^
+		«Wed, 26 May 1999 01:42:42 GMT by AR
+			«Eliminated some dead code.
+	local (pta = html.getpagetableaddress ());
+	local (flloggedon = defined (pta^.adrmemberinfo));
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	add ("<table border=\"0\" cellpadding=\"7\" cellspacing=\"0\">"); indentlevel++;
+	add ("<tr>"); indentlevel++;
+	bundle { //add commands
+		add ("<td valign=\"top\"><b>"); indentlevel++;
+		add ("&nbsp;");
+		on addCommand (url, text, separatortext=mainResponder.getString ("macros.commonCommands.commandSeparator")) {
+			add ("<a href=\"" + url + "\">" + text + "</a>" + "&nbsp;")};
+		«4/14/00; 5:59:29 PM by JES: localized command name strings
+		addCommand (config.mainresponder.urls.discussHomePage, mainResponder.getString ("macros.commonCommands.homeCommand"));
+		addCommand (pta^.responderattributes.urls^.newsHome, mainResponder.getString ("macros.commonCommands.newsCommand"), mainResponder.getString ("macros.commonCommands.commandEndSeparator"));
+		addCommand (pta^.responderattributes.urls^.searchHome, mainResponder.getString ("macros.commonCommands.searchCommand"));
+		addCommand (pta^.responderattributes.urls^.discussTopics, mainResponder.getString ("macros.commonCommands.listTopicsCommand"));
+		if flloggedon {
+			addCommand (pta^.responderattributes.urls^.discussNewThread, mainResponder.getString ("macros.commonCommands.newTopicCommand"));
+			addCommand (pta^.responderattributes.urls^.prefsHome, mainResponder.getString ("macros.commonCommands.whoAreYouCommand"));
+			try {addCommand (pta^.responderattributes.urls^.discussDocs, mainResponder.getString ("macros.commonCommands.docsCommand"))};
+			addCommand (pta^.responderattributes.urls^.memberLogOff, mainResponder.getString ("macros.commonCommands.logoffCommand"))}
+		else {
+			addCommand (pta^.responderattributes.urls^.memberLogOn, mainResponder.getString ("macros.commonCommands.logonCommand"))};
+		«if pta^.client == "206.204.24.11"
+			«add (" [Hi Dave!]")
+		add (string.filledstring ("&nbsp;", 5));
+		add ("</b></td>"); indentlevel--};
+	«bundle //add search box
+		«add ("<td valign=\"top\">"); indentlevel++
+		«add ("<form method=\"GET\" action=\"" + pta^.responderattributes.urls^.searchHome + "\">"); indentlevel++
+		«add ("<input name=\"t\" type=\"hidden\" value=\"or\">")
+		«add ("<input name=\"m\" type=\"hidden\" value=\"10\">")
+		«add ("<input name=\"s\" type=\"hidden\" value=\"1\">")
+		«add ("<input name=\"q\" size=\"25\" value=\"\"><input type=\"submit\" value=\"Search\">")
+		«add ("</form>"); indentlevel--
+		«add ("</td>"); indentlevel--
+	add ("</tr>"); indentlevel--;
+	add ("</table>"); indentlevel--;
+	return (htmltext)}

@@ -1,0 +1,110 @@
+on isValid (adrTop, adrErrorReport, maxMsgnum=99999999, adrSite=nil) {
+	«Changes
+		«1/7/06; 1:21:28 AM by JES
+			«Allow <story> elements with url attributes instead of storynum attributes.
+			«Only validate msgnum for story links which actually have one.
+			«Only require pathname attribute for story links which link inside this site's site structure, not for external links.
+		«8/15/05; 1:08:16 AM by JES
+			«Fix incorrect error message when a duplicate path exists at a higher level of the site structure, after we've checked a more deeply nested level. The error message was incorrectly informing the user that the error was at the more deeply nested level, and not the level where the conflict actually exists.
+		«05/05/04, 14:43:54 by DAB
+			«Created. Return true if no semantic errors in supplied site structure.
+				«messages at manilaData.localization.languages.english.strings.admin
+					«siteStructureErrorPrefix=Cannot update site structure because
+					«siteStructureNoPathname=an entry under [[pathToDate]] has no pathname
+					«siteStructureDupPath=2 entries under [[pathToDate]] have pathname [[pathname]]
+					«siteStructureBadPathname=the pathname at [[currentPath]] is reserved
+					«siteStructureCatNoName=the category at [[currentPath]] has no name
+					«siteStructureStoryNoMsgnum=the story at [[currentPath]] has no msgnum
+					«siteStructureStoryBadMsgnum=the msgnum [[msgnum]] of story at [[currentPath]] is invalid
+					«siteStructureTemplateForIndex=a story at [[currentpath]] may not have values for templateForIndex
+	local (errorCount=0);
+	if adrSite == nil { // 18/05/05; 9:33:17 AM by PR
+		local (pta = html.getPageTableAddress ());
+		adrSite = manilaSuite.getSiteAddress (pta)};
+	on requiredAttribute (adr, attname) {
+		return defined (adr^.["/atts"]) and defined (adr^.["/atts"].[attname]) and (adr^.["/atts"].[attname] != "") //05/06/03, 15:31:50 by DAB
+			«return defined (adr^.["/atts"]) and defined (adr^.["/atts"].[attname])};
+	
+	local (replTbl);
+	new (tableType, @repltbl);
+	on issueError (errorID) {
+		errorID = manilaSuite.getString("admin.siteStructureErrorPrefix", @replTbl) + manilaSuite.getString("admin." + errorID, @replTbl);
+		adrErrorReport^ (errorID);
+		errorCount++;
+		return true};
+	
+	on checklevel (adrTbl, pathToDate) {
+		local (adr, nme, pathNameAtt, msgnum);
+		local (pathNamesThisLevel = {});
+		replTbl.pathToDate = pathToDate;
+		for adr in adrTbl {
+			nme = xml.convertToDisplayName (nameOf (adr^));
+			if nme beginsWith "/" {
+				continue};
+			if string.lower (nme) == "description" { //05/05/18, 13:24:38 by DAB
+				continue};
+			try { //only validate pathname value for stories which have one
+				pathNameAtt = xml.getAttributeValue (adr, "pathname");
+				replTbl.pathName = pathNameAtt;
+				replTbl.currentPath = pathtoDate + pathNameAtt; // 18/05/05; 9:33:03 AM by PR moved up
+				if pathToDate == "/" { //top level pass, avoid reserved names 05/05/18, 13:57:14 by DAB
+					«if defined (adrSite^.[pathName]) 
+					if defined (adrSite^.[pathNameAtt]) { // 18/05/05; 9:33:09 AM by PR
+						issueError ("siteStructureBadPathname")}};
+				if pathnamesThisLevel contains string.lower (pathnameAtt) {
+					issueError ("siteStructureDupPath")}
+				else {
+					pathNamesThisLevel[0] = string.lower (pathnameAtt)}};
+			«replTbl.currentPath = pathtoDate + pathNameAtt
+			case string.lower (pathNameAtt) {
+				"default";
+				"index" {
+					issueError ("siteStructureBadPathname")}};
+			case nme {
+				"category" {
+					if not requiredAttribute (adr, "pathname") {
+						issueError ("siteStructureNoPathname")};
+					if not requiredAttribute (adr, "name") {
+						issueError ("siteStructureCatNoName")};
+					if defined (adr^.["/atts"].msgnum) {
+						msgnum= xml.getAttributeValue (adr, "msgnum");
+						replTbl.msgnum = msgnum;
+						case true {
+							msgnum == "";
+							string.length (msgnum) > 8;
+							string.length (msgnum) != string.length (string (number (msgnum)));
+							number (msgnum) < 0;
+							number (msgnum) > maxMsgnum {
+								issueError ("siteStructureStoryBadMsgnum")}}};
+					checklevel (adr, pathToDate + pathNameAtt + "/" );
+					replTbl.pathToDate = pathToDate}; //JES 8/15/05: reset pathToDate -- fix incorrect duplicate path error message
+				"story" {
+					if not requiredAttribute (adr, "name") {
+						issueError ("siteStructureStoryNoName")};
+					local (flHasMsgnum = true, flHasUrl = false);
+					if not requiredAttribute (adr, "msgnum") {
+						flHasMsgnum = false;
+						if not requiredAttribute (adr, "url") {
+							issueError ("siteStructureStoryNoMsgnum")};
+						flHasUrl = true};
+					if not flHasUrl {
+						if not requiredAttribute (adr, "pathname") {
+							issueError ("siteStructureNoPathname")}};
+					if flHasMsgnum {
+						msgnum= xml.getAttributeValue (adr, "msgnum");
+						replTbl.msgnum = msgnum;
+						case true {
+							msgnum == "";
+							string.length (msgnum) > 8;
+							string.length (msgnum) != string.length(string(number(msgnum)));
+							number (msgnum) < 0;
+							number (msgnum) > maxMsgnum {
+								issueError ("siteStructureStoryBadMsgnum")}}};
+					if defined (adr^.["/atts"].templateForIndex) {
+						issueError ("siteStructureTemplateForIndex")}}}
+			else {
+				continue}};
+		return true};
+	
+	checkLevel (@adrTop^[1], "/");
+	return (errorCount == 0)}

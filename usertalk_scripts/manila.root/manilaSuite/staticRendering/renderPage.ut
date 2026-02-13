@@ -1,0 +1,88 @@
+on renderPage (relativePath, adrManilaSite, adrStaticSite=nil) {
+	«Render one page to a static server. relativePath is the path to the page relative to the site, as in /2000/03/10 or /resources/linux/programming. Returns a copy of the page table.
+		«Pages that are render-able: the home page, previous home pages, and pages in the site structure.
+		«03/13/00; 2:07:13 PM by PBS
+	«Changes:
+		«11/11/03; 2:09:17 AM by JES
+			«Only render the site's RSS feed if syndication is enabled.
+		«11/3/03; 11:25:30 AM by JES
+			«Added support for syndication -- when rendering the home page, also render the RSS file.
+		«03/28/00; 10:18:55 PM by PBS
+			«Misc. fixes -- double slashes when rendering the current archive page fixed; rendering the current archive page too often fixed.
+	
+	relativePath = string.popLeading (relativePath, '/'); //the leading / is optional
+	
+	local (pt); //page table
+	new (tableType, @pt);
+	
+	on setUpPageTable (adrTable, relPath) {
+		adrTable^.relativePath = manilaSuite.unTaint (relPath);
+		adrTable^.adrManilaSite = adrManilaSite;
+		adrTable^.flManilaStaticRendering = true; //this flag means we're doing a Manila static rendering
+		
+		if adrStaticSite == nil {
+			adrStaticSite = @adrManilaSite^.["#newsSite"].staticSite};
+		adrTable^.adrStaticSite = adrStaticSite;
+		
+		new (tableType, @adrTable^.responseHeaders); //needed for RSS files
+		
+		html.setPageTableAddress (adrTable)};
+	
+	setUpPageTable (@pt, relativePath);
+	
+	local (flHomePage = false);
+	local (flCalendarPage = false);
+	local (flSiteStructurePage = false);
+	
+	bundle { //handle rendering a home page
+		if relativePath == "" or relativePath == "default" { //it's the home page
+			manilaSuite.staticRendering.renderHomePage ();
+			flHomePage = true;
+			bundle { //also render the most recent calendar page
+				«try
+				local (adrDay = mainResponder.calendar.getMostRecentAddress (adrManilaSite));
+				local (year, month, day);
+				day = nameOf (adrDay^);
+				local (adrMonth = parentOf (adrDay^));
+				month = nameOf (adrMonth^);
+				local (adrYear = parentOf (adrMonth^));
+				year = nameOf (adrYear^);
+				local (archiveRelativePath = year + "/" + month + "/" + day);
+				local (oldPta = @pt);
+				local (t);
+				new (tableType, @t);
+				setUpPageTable (@t, archiveRelativePath);
+				manilaSuite.staticRendering.renderCalendarPage ();
+				html.setPageTableAddress (oldPta)};
+			bundle { //also render the RSS file
+				if manilaSuite.getNewsSitePref ("flSyndicate", adrManilaSite, true) {
+					local (oldPta = @pt);
+					local (t);
+					new (tableType, @t);
+					setUpPageTable (@t, "xml/rss.xml");
+					manilaSuite.staticRendering.renderBuiltinPage ("xml/rss.xml", adrManilaSite);
+					html.setPageTableAddress (oldPta)}}}};
+	
+	bundle { //handle rendering a calendar page
+		if not flHomePage {
+			local (firstPart = string.nthField (relativePath, '/', 1));
+			try {
+				number (firstPart);
+				flCalendarPage = true};
+			if flCalendarPage {
+				manilaSuite.staticRendering.renderCalendarPage ()}}};
+	
+	bundle { //handle rendering a site structure page
+		if not flHomePage and not flCalendarPage {
+			manilaSuite.staticRendering.renderHierarchyPage ()}};
+	
+	bundle { //delete the page table address
+		try {html.deletePageTableAddress ()}};
+	
+	bundle { //end the current rendering session -- if this is a single page session
+		manilaSuite.staticRendering.endSinglePageSession (adrManilaSite)};
+	
+	return (pt)}; //return a copy of the page table
+
+bundle { //test code
+	manilaSuite.staticRendering.renderPage ("", @jaketest2ManilaWebsite)}

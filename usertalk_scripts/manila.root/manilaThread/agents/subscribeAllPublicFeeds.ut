@@ -1,0 +1,38 @@
+«Changes
+	«3/17/03; 2:27:09 PM by JES
+		«Created.
+			«If the aggregator is enabled, and config.manila.prefs.flAggregatorSubAllSitesOnServer is true, subscribe the aggregator to the RSS feeds for all sites which have syndication enabled and are not editors only sites.
+			«Runs once per hour.
+if defined (aggregatorData) {
+	if aggregatorData.prefs.enabled {
+		if not defined (manilaThread.stats.whenSubscribeLocalSites) {
+			manilaThread.stats.whenSubscribeLocalSites = date (0)};
+		local (now = clock.now ());
+		local (lastHour = now - (60 * 60) );
+		if manilaThread.stats.whenSubscribeLocalSites < lastHour {
+			manilaThread.stats.whenSubscribeLocalSites = now;
+			if config.manila.prefs.flAggregatorSubAllSitesOnServer {
+				local (nomad);
+				for nomad in @config.manila.sites {
+					try { //if one site fails, don't skip the rest
+						local (adrsite = nomad^);
+						local (adrnewssite = @adrsite^.["#newsSite"]);
+						local (flSubscribe = false);
+						if adrnewssite^.flSyndicate {
+							local (flEditorsOnly = false);
+							if defined (adrnewssite^.flEditorsOnlyAccessToSite) {
+								flEditorsOnly = adrnewssite^.flEditorsOnlyAccessToSite};
+							if not flEditorsOnly {
+								flSubscribe = true}};
+						if flSubscribe {
+							local (siteurl = adrsite^.["#ftpSite"].url);
+							if not (siteurl endswith "/") {
+								siteurl = siteurl + "/"};
+							local (rssurl = siteurl + "xml/rss.xml");
+							if not defined (aggregatorData.services.[rssurl]) {
+								xml.aggregator.subscribeService (rssurl)}}
+						else {
+							if defined (aggregatorData.services.[rssurl]) {
+								xml.aggregator.unsubscribeService (rssurl)}}};
+					«else //debugging code
+						«msg (tryerror)}}}}}

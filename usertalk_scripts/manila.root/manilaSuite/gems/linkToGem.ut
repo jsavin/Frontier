@@ -1,0 +1,8 @@
+on linkToGem (adrSite, adrTable) {
+	«Build a link to a gem.
+		«04/14/00; 6:35:19 PM by PBS
+	
+	local (title, url);
+	title = adrTable^.title;
+	url = adrTable^.url;
+	return (html.getLink (title, url))}

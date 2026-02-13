@@ -1,0 +1,18 @@
+on checkIn (siteName, username, password) {
+	«Release custody of the editorial outline.
+		«10/12/00; 9:49:07 PM by PBS
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't check in the editorial outline because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = config.manila.sites.[siteName]);
+	local (adrTable = @adrSite^.["#newsSite"].editorialOutline);
+	if adrTable^.flCheckedOut {
+		if string.lower (adrTable^.checkedOutBy) != string.lower (username) {
+			scriptError ("Can't check in editorial outline because another editor has checked it out.")}};
+	adrTable^.flCheckedOut = false;
+	adrTable^.checkedOutBy = "";
+	adrTable^.timeCheckedOut = date (0);
+	
+	return (true)}

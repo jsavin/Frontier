@@ -1,0 +1,147 @@
+on themesPage (pta=nil) {
+	«Changes
+		«10/1/05; 2:47:21 AM by JES
+			«Fix double page title display.
+		«1/25/02; 6:22:28 PM by PBS
+			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		«10/27/00; 3:09:17 PM by JES
+			«Implement the discussion group themes-chooser page on a Manila site. Cribbed from manilaSuite.themes.themesPage
+	
+	if not defined (config.manila.discussionGroupThemes) {
+		manilaSuite.init ()};
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	pta^.title = manilaSuite.getString ("themes.discussThemesPageTitle", pta: pta);
+	
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (htmlText = "", indentLevel = 0);
+	on add (s) {
+		htmlText = htmlText + (string.filledString ("\t", indentLevel) + s + "\r");};
+	
+	bundle { //apply the theme if this is a post
+		local (flPost = (string.lower (pta^.method) == "post"));
+		if flPost and (not (defined (pta^.postArgs.no))) {
+			local (themeName = string.urlDecode (pta^.postArgs.theme));
+			if defined (pta^.postArgs.needConfirm) { //do a confirmation
+				if defined (config.manila.discussionGroupThemes.[themeName]) {
+					local (s = "");
+					manilaSuite.referer.checkSelf (); //check referer to defeat client side trojan horse
+					local (displayName = config.manila.discussionGroupThemes.[themeName].info.displayName);
+					local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
+					manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor);
+					bundle { //build the top of the table
+						local (action = pta^.fname + "$" + pta^.pathArgs + "?confirmed");
+						s = "\r<table border=\"0\" cellpadding=\"3\" cellspacing=\"1\" bgcolor=\"" + headerColor + "\" width=\"350\">";
+						s = s + "\r<tr bgcolor=\"" + headerColor + "\"><td align=\"left\"><b><font color=\"" + headerTextColor + "\">" + manilaSuite.getString ("admin.confirmBoxHeader", pta: pta) + "</font></b></td></tr>\r<tr bgcolor=\"" + backgroundColor + "\"><td><font color=\"" + backgroundTextColor + "\">";
+						s = s + "\r<form method=\"POST\" action=\"" + action + "\">"};
+					bundle { //build the middle of the table
+						local (replacementTable); new (tableType, @replacementTable);
+						replacementTable.displayName = displayName;
+						s = s + manilaSuite.getString ("themes.applyDiscussThemeConfirm", @replacementTable, pta: pta)}; // 06/10/00 JES: localized
+					bundle { //build the bottom of the table
+						s = s + "\r</font>";
+						s = s + "\r<input type=\"hidden\" name=\"theme\" value=\"" + pta^.postArgs.theme + "\">";
+						s = s + "\r<p align=\"right\">";
+						s = s + "\r<input type=\"submit\" name=\"no\" value=\"" + manilaSuite.getString ("common.noButton", pta: pta) + "\">&nbsp;&nbsp;";
+						s = s + "\r<input type=\"submit\" name=\"yes\" value=\"" + manilaSuite.getString ("common.yesButton", pta: pta) + "\">&nbsp;&nbsp;</p></form>";
+						s = s + "\r</td></tr></table><br><br>"};
+					return (manilaSuite.unTaint (s))}} //no curly brace macros should be evaluated in this page text
+			else {
+				if defined (config.manila.discussionGroupThemes.[themeName]) {
+					manilaSuite.referer.checkSelf (); //check referer to defeat client side trojan horse
+					if defined (pta^.postArgs.yes) {
+						manilaSuite.discussThemes.apply (adrSite, themeName);
+						«Refresh page.
+						mainResponder.redirect (pta^.fname + "$" + pta^.pathArgs + "?refresh");
+						return ("")}}
+				else {
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.themeName = themeName;
+					scriptError (manilaSuite.getString ("themes.nonexistantThemeError", @replacementTable, pta: pta))}}}};
+	
+	bundle { //add title and page description
+		«add ("<h2>" + pta^.title + "</h2>")
+		add (manilaSuite.getString ("themes.discussThemesPageDescription", pta: pta))};
+	
+	bundle { //create the form
+		local (lastThemeName = "default");
+		if defined (pta^.themes^.lastDiscussThemeApplied) {
+			lastThemeName = pta^.themes^.lastDiscussThemeApplied};
+		local (adrThemes = @config.manila.discussionGroupThemes);
+		local (adrLastThemeApplied = @adrThemes^.[lastThemeName]);
+		local (radioButtonName = "theme");
+		local (previewLink = "themes/screenShot" + "?name=");
+		add ("<form method=\"post\" action=\"" + pta^.fname + "$" + pta^.pathArgs + "\">");
+		indentLevel++;
+		add ("<table border=\"0\" cellspacing=\"0\" cellpadding=\"6\">");
+		indentLevel++;
+		local (adrItem);
+		on addTheme (canonicalName, name, description, author, authorEmail, creationDate, url, flChecked) {
+			add ("<tr>");
+			indentLevel++;
+			add ("<td valign=\"top\" width=\"10\">");
+			indentLevel++;
+			add ("<input type=\"radio\" name=\"" + radioButtonName + "\" value=\"" + string.urlEncode (canonicalName) + "\"");
+			if flChecked {
+				add (" checked")};
+			add (">");
+			add ("</td>");
+			indentLevel--;
+			add ("<td valign=\"top\">");
+			indentLevel++;
+			if url == "" {
+				add ("<b>" + name + "</b><br>")}
+			else {
+				add ("<b><a href=\"" + url + "\">" + name + "</a></b><br>")};
+			add ("<font size=\"-1\">");
+			add (description);
+			local (authorLink = author);
+			if authorEmail != "" {
+				authorLink = "<a href=\"mailto:" + authorEmail + "\">" + author + "</a>"};
+			bundle { // add the created by message
+				local (replacementTable); new (tableType, @replacementTable);
+				replacementTable.authorLink = authorLink;
+				replacementTable.creationDate = creationDate;
+				add ("<br>" + manilaSuite.getString ("themes.createdByMessage", @replacementTable, pta: pta))};
+			add ("</font>");
+			add ("</td>");
+			indentLevel--;
+			«add ("<td valign=\"top\">")
+			«indentLevel++
+			«local (url = previewLink + string.urlEncode (name))
+			«local (link)
+			«link = "<a href=\"" + url + "\" target=\"screenshot\">Screen Shot</a>"
+			«if url != ""
+				«link = "<a href=\"" + url + "\">Site</a>"
+			«add (link)
+			«add ("</td>")
+			«indentLevel--
+			add ("</tr>");
+			indentLevel--};
+		
+		for adrItem in adrThemes {
+			if adrItem^.flPublic and adrItem^.flEnabled {
+				local (themeCanonicalName = nameOf (adrItem^));
+				local (themeDisplayName = themeCanonicalName);
+				if defined (adrItem^.info.displayName) {
+					themeDisplayName = adrItem^.info.displayName};
+				local (description = string (adrItem^.info.description));
+				local (author = string (adrItem^.info.author));
+				local (creationDate = mainResponder.localization.dateTimeString (adrItem^.info.CreationDate, pta)); // 06/10/00 JES: localized
+				local (url);
+				if defined (adrItem^.Info.siteUrl) {
+					url = string.trimWhiteSpace (adrItem^.Info.siteUrl)};
+				local (flChecked = (adrItem == adrLastThemeApplied));
+				local (authorEmail = "");
+				if defined (adrItem^.info.authorEmail) {
+					authorEmail = adrItem^.info.authorEmail};
+				addTheme (themeCanonicalName, themeDisplayName, description, author, authorEmail, creationDate, url, flChecked)}};
+		
+		add ("</table>");
+		indentLevel--;
+		add ("<p><input name=\"needConfirm\" type=\"submit\" value=\"" + manilaSuite.getString ("themes.applyThemeButton") + "\">");
+		add ("</form>");
+		indentLevel--};
+	
+	return (manilaSuite.unTaint (htmlText))} //no curly brace macros should be evaluated in this page text

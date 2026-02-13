@@ -1,0 +1,77 @@
+on editor (flSetTitle=true, action="") {
+	«Changes
+		«7/23/03; 10:52:48 AM by JES
+			«Respect flSetTitle.
+		«7/8/03; 1:36:03 PM by JES
+			«Created. Admin interface for editing the robots.txt file.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrdata = manilaSuite.robots.init (adrsite));
+	local (adrpaths = @adrdata^.paths);
+	
+	local (htext = "");
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	bundle { //managing editor test
+		if not manilaSuite.editors.managingEditorTest () {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}};
+	
+	bundle { //set page title, add intro text
+		if flSetTitle {
+			pta^.title = manilaSuite.getString ("robots.editorPageTitle")};
+		add (manilaSuite.getString ("robots.editorPageIntroText"))};
+	
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.addPath) { //add a path
+			local (path = manilaSuite.untaint (adrargs^.pathToAdd));
+			adrpaths^.[path] = true;
+			local (t); new (tableType, @t);
+			t.path = path;
+			add ("<p><b>" + manilaSuite.getString ("robots.confirmAddPath", @t) + "</b></p>")};
+		if defined (adrargs^.deletePaths) { //delete one or more paths
+			local (adr, flDeleted = false);
+			for adr in adrargs {
+				if adr^ == "x" {
+					local (path = string.urlDecode (nameOf (adr^)));
+					if defined (adrpaths^.[path]) {
+						delete (@adrpaths^.[path]);
+						flDeleted = true}}};
+			if flDeleted { //add confirm text
+				add ("<p><b>" + manilaSuite.getString ("robots.confirmDeletePaths") + "</b></p>")}}};
+	
+	bundle { //add a path
+		if action == "" {
+			add ("<form method=\"POST\">")}
+		else {
+			add ("<form method=\"POST\" action=\"" + action + "\">")};
+		local (prompt = manilaSuite.getString ("robots.pathToAddPrompt"));
+		local (addPathButton = manilaSuite.getString ("robots.addPathButton"));
+		local (pathToAddInput = "<input type=\"text\" name=\"pathToAdd\" width=\"40\" />");
+		local (submitButton = "<input type=\"submit\" name=\"addPath\" value=\"" + addPathButton + "\" />");
+		add ("<p><b>" + prompt + "</b>&nbsp;" + pathToAddInput + "&nbsp;" + submitButton + "</p>");
+		add ("</form>")};
+	bundle { //existing paths with checks and a delete button
+		if sizeOf (adrpaths^) == 0 { //no paths
+			add ("<p><br />" + manilaSuite.getString ("robots.noBlockedPaths") + "</p>")}
+		else { //list paths, with a check next to each for deletion
+			add ("<p><br />" + manilaSuite.getString ("robots.blockedPathsListHeader") + "</p>");
+			add ("<p>");
+			if action == "" {
+				add ("<form method=\"POST\">")}
+			else {
+				add ("<form method=\"POST\" action=\"" + action + "\">")};
+			local (adr);
+			for adr in adrpaths { //add each path with a check for deletion
+				local (name = string.urlEncode (nameOf (adr^)) );
+				local (checkbox =  "<input type=\"checkbox\" name=\"" + name + "\" value=\"x\" />");
+				add (checkbox + "&nbsp;" + nameOf (adr^) + "<br />")};
+			local (deleteButton = manilaSuite.getString ("common.deleteButton"));
+			local (submitButton = "<input type=\"submit\" name=\"deletePaths\" value=\"" + deleteButton + "\" />");
+			add ("<br />" + submitButton);
+			add ("</form>");
+			add ("</p>")}};
+	
+	return (htext)}

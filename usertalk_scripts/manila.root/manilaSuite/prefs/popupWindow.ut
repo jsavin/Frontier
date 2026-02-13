@@ -1,0 +1,109 @@
+on popupWindow (adrWizard=nil, popupWindowTitle=nil, template=nil, flFormatting=true) {
+	«Display a sitePrefs popup window.
+	«Changes:
+		«4/24/05; 1:38:39 AM by JES
+			«New optional parameters, popupWindowTitle and template, allow caller to override the look of the popup page, and its title.
+			«New optional parameter: flFormatting. Determines whether to use blockquote and font size +1 as a wrapper for the body of the popup window.
+		«04/18/00; 3:58:57 PM by JES
+			«localized
+		«12/22/00; 7:11:55 PM by JES
+			«Redirect to /prefs/radio/popupWindow if the url is /prefs/pike/popupWindow
+		«9/26/01; 1:42:51 PM by PBS
+			«If the site has a background picture or odd colors, the pop-up window may be unreadable. So use plain colors and no background picture.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	bundle { //12/22/00 JES: redirect to prefs/radio/popupWindow
+		local (prefsUrl = string.lower (manilaSuite.getUrl ("prefsHome")));
+		if not (prefsUrl endsWith "/") {
+			prefsUrl = prefsUrl + "/"};
+		local (pikePopupUrl = prefsUrl + "pike/popupwindow");
+		if string.lower (pta^.url) beginsWith pikePopupUrl {
+			scriptError ("!redirect " + prefsUrl + "radio/popupWindow")}};
+	
+	bundle { //PBS 09/26/01: use plain colors, no background picture
+		pta^.background = "";
+		pta^.bgcolor = "white";
+		pta^.text = "black";
+		pta^.link = "blue";
+		pta^.alink = "red";
+		pta^.vlink = "purple"};
+	
+	if adrWizard == nil { // 05/05/00 JES: try to get a localized wizard address, otherwise use @manilaData.sitePrefs.wizard
+		local (adrLanguageTable = manilaSuite.getLanguageTableAddress (pta: pta));
+		if defined (adrLanguageTable^.wizards.sitePrefs) { // is there a localized wizard?
+			adrWizard = @adrLanguageTable^.wizards.sitePrefs}
+		else { // no localized wizard exists -- find server/Frontier default wizard, or use the one in manilaData instead.
+			local (adrLanguagesTable = parentOf (adrLanguageTable^));
+			if defined (config.mainResponder.globals.language) { // is there a default language for the server?
+				if defined (adrLanguagesTable^.[config.mainResponder.globals.language].wizards.sitePrefs) {
+					adrWizard = @adrLanguagesTable^.[config.mainResponder.globals.language].wizards.sitePrefs}};
+			if not adrWizard { // no server default, what about Frontier?
+				if defined (user.prefs.language) {
+					if defined (adrLanguagesTable^.[user.prefs.language].wizards.sitePrefs) {
+						adrWizard = @adrLanguagesTable^.[user.prefs.language].wizards.sitePrefs}}};
+			if not adrWizard { // no server or Frontier default, use manilaData.sitePrefs.wizard
+				adrWizard = @manilaData.sitePrefs.wizard}}};
+	if adrWizard == @manilaData.prefs.wizard {
+		local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
+		if defined (adrNewsSite^.prefsWizard) {
+			adrWizard = @adrNewsSite^.prefsWizard}};
+	pta^.wizard = adrWizard;
+	
+	on findPanel () {
+		«Return the address of the specified panel.
+		local (i, ixPanel = 0);
+		local (adrStructure = @adrWizard^.structure [1]);
+		for i = 1 to sizeOf (adrStructure^) {
+			local (adrItem = @adrStructure^ [i]);
+			local (itemName = nameOf (adrItem^));
+			if string.lower (xml.convertToDisplayName (itemName)) == "panel" {
+				ixPanel++;
+				if ixPanel == panelNum {
+					return (adrItem)}}};
+		scriptError (manilaSuite.getString ("admin.cantDisplayPopupWindowError"))};
+	on findItem () {
+		local (i, ixItem = 0);
+		for i = 1 to sizeOf (adrPanel^) {
+			local (adrItem = @adrPanel^ [i]);
+			local (itemName = nameOf (adrItem^));
+			if string.lower (xml.convertToDisplayName (itemName)) == "item" {
+				ixItem++;
+				if ixItem == itemNum {
+					return (adrItem)}}};
+		scriptError (manilaSuite.getString ("admin.cantDisplayPopupWindowError"))};
+	
+	local (pathArgs = pta^.pathArgs);
+	local (panelNum = number (string.nthField (pathArgs, ",", 1)));
+	local (itemNum = number (string.nthField (pathArgs, ",", 2)));
+	local (adrPanel = findPanel ());
+	local (adrItem = findItem ());
+	
+	local (popupText = xml.getValue (adritem, "popuptext"));
+	popupText = string.replaceAll (popupText, "\t", "");
+	popupText = string.replaceAll (popupText, "\r", "<p>");
+	
+	if template == nil {
+		delete (@pta^.template); pta^.indirectTemplate = true; pta^.template = "plaintext"}
+	else {
+		table.assign (@pta^.template, template); pta^.indirectTemplate = false};
+	delete (@pta^.javaScript); //popup windows should not have any JavaScript
+	if popupWindowTitle == nil {
+		pta^.title = manilaSuite.getString ("admin.popupWindowTitle")}
+	else {
+		pta^.title = popupWindowTitle};
+	
+	local (htmlText = "", indentLevel = 0);
+	
+	on add (s) {
+		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+	
+	if flFormatting {
+		add ("<blockquote><font size=\"+1\"><b>"); indentLevel++};
+	add (popupText);
+	if flFormatting {
+		add ("</b></font></blockquote>"); indentLevel++};
+	
+	htmlText = manilaSuite.unTaint (htmlText); //no curly brace macros in this text
+	
+	return (htmlText)}

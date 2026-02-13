@@ -1,0 +1,121 @@
+on addSiteToTree (domainName, path, siteRef, flCreateDomain = false, flConvertToSiteTree = false, adrDomains = @config.mainResponder.domains) {
+	«Changes
+		«9/22/04; 2:37:05 AM by JES
+			«Use a semaphore lock to prevent multiple threads from trying to update a given domain's site tree simultaneously.
+		«7/9/03; 3:44:34 PM by JES
+			«Fixed a bug which could cause invalid XML to be produced for the site tree if siteRef is the address of an object whose name begins with a numeric character.
+		«8/13/02; 4:54:46 PM by JES
+			«Pass adrDomains to mainResponder.siteTree.convertDomainToSiteTree.
+		«8/13/02; 3:47:32 PM by JES
+			«New optional parameter, adrDomains. Compile the siteTree XML after adding a new site to the tree.
+		«8/6/02; 6:35:22 PM by JES
+			«Fixed a pair of bugs which would cause errors when creating a top-level site for the first time.
+		«7/1/02; 11:44:22 PM by JES
+			«Add a site to the siteTree for a given domain.
+				«Parameters:
+				«domainName -- the domain to add the site to
+				«path -- the relative, slash-delimited path for the site
+				«siteRef -- a reference to the site -- an address or a filespec.
+	local (adrdomain = @adrDomains^.[domainName]);
+	
+	on lockDomain () { //semaphore lock for two seconds
+		try {
+			semaphore.lock (string.popFileFromAddress (this) + ":" + string.popFileFromAddress (adrdomain), 120)}
+		else {
+			scriptError ("Can't add a site to \"" + domainName + "\" because the domain's site tree is being modified by another process.")}};
+	on unlockDomain () {
+		try {semaphore.unlock (string.popFileFromAddress (this) + ":" + string.popFileFromAddress (adrdomain))}};
+	lockDomain ();
+	
+	try {mainResponder.siteTree.compileIfDirty (adrdomain)};
+	if not defined (adrdomain^) { //make sure the domain exists
+		if flCreateDomain {
+			new (tableType, adrdomain);
+			new (tableType, @adrdomain^.siteTree);
+			new (tableType, @adrdomain^.siteTree.directory);
+			op.newOutlineObject ("<siteTree>\r\t</siteTree>", @adrdomain^.siteTree.directory.outline)}
+		else {
+			unlockDomain ();
+			scriptError ("Can't add a site to \"" + domainName + "\" because the domain doesn't exist.")}};
+	if not defined (adrdomain^.siteTree) { //make sure the domain is defined by an XML siteTree
+		if flConvertToSiteTree {
+			mainResponder.siteTree.convertDomainToSiteTree (domainName, adrDomains)}
+		else {
+			unlockDomain ();
+			scriptError ("Can't add a site to \"" + domainName + "\" because the domain is not defined by an XML siteTree.")}};
+	local (flAddress = false, flFile = false, flRedirect = false);
+	case typeOf (siteRef) {
+		addressType {
+			flAddress = true};
+		stringType;
+		filespecType {
+			if string.lower (siteRef) beginsWith "http://" { //redirect
+				flRedirect = true}
+			else {
+				flFile = true}}}
+	else { //configuration error
+		unlockDomain ();
+		scriptError ("Can't create the siteTree entry for \"" + siteRef + "\" because there's a configuration error for the \"" + domainName + "\" domain.")};
+	bundle { //add the site to the tree
+		local (pathAttName);
+		bundle { //set pathAttName, pop file from address if necessary
+			if flAddress {
+				pathAttName = "address";
+				siteRef = string.popFileFromAddress (siteRef);
+				siteRef = string.replaceAll (siteRef, "[\"", "");
+				siteRef = string.replaceAll (siteRef, "\"]", "")};
+			if flFile {
+				pathAttName = "folderpath"};
+			if flRedirect {
+				pathAttName = "redirect"}};
+		if path beginsWith "/" {
+			path = string.delete (path, 1, 1)};
+		local (xstruct);
+		local (adroutline = @adrdomain^.siteTree.directory.outline);
+		xml.compile (string (adroutline^), @xstruct);
+		local (adrtree = xml.getAddress (@xstruct, "siteTree"));
+		if typeOf (adrtree^) == stringType {
+			if adrtree^ == "" {
+				new (tableType, adrtree)}};
+		local (adrtopsite);
+		try { //get adrtopsite
+			adrtopsite = xml.getAddress (adrtree, "site")}
+		else { //create top site
+			adrtopsite = xml.addTable (adrtree, "site")};
+		local (nomad = mainResponder.siteTree.dive (adrtopsite, path, true));
+		if not defined (nomad^.["/atts"]) {
+			new (tableType, @nomad^.["/atts"])};
+		nomad^.["/atts"].[pathAttName] = siteRef;
+		bundle { //delete other atts that may be lying around if we're re-defining an existing site
+			if flAddress {
+				if defined (nomad^.["/atts"].folderpath) {
+					delete (@nomad^.["/atts"].folderpath)};
+				if defined (nomad^.["/atts"].redirect) {
+					delete (@nomad^.["/atts"].redirect)}};
+			if flFile {
+				if defined (nomad^.["/atts"].address) {
+					delete (@nomad^.["/atts"].address)};
+				if defined (nomad^.["/atts"].redirect) {
+					delete (@nomad^.["/atts"].redirect)}};
+			if flRedirect {
+				if defined (nomad^.["/atts"].address) {
+					delete (@nomad^.["/atts"].address)};
+				if defined (nomad^.["/atts"].folderpath) {
+					delete (@nomad^.["/atts"].folderpath)}}};
+		bundle { //delete all /pcdata tables, since they prevent sub-elements from being decompiled
+			on visitproc (adrtable) {
+				if defined (adrtable^.["/pcdata"]) {
+					delete (@adrtable^.["/pcdata"])};
+				return (true)};
+			table.visit (@xstruct, @visitproc)};
+		local (xtext = xml.decompile (@xstruct));
+		xtext = string.trimWhiteSpace (string.delete (xtext, 1, sizeOf (string.nthField (xtext, "\r", 1) + 1)));
+		op.newOutlineObject (xtext, adroutline);
+		mainResponder.siteTree.compileIfDirty (adrdomain)};
+	unlockDomain ();
+	return (true)};
+«bundle //test code
+	«addSiteToTree ("default", "foo", "Mac_OS_X:")
+	«addSiteToTree ("default", "bar", @createASiteManilaWebsite)
+	«addSiteToTree ("default", "baz", "http://www.yahoo.com")
+	«addSiteToTree ("default", "flim/flam/floz", "http://www.scripting.com")

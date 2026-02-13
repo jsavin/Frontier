@@ -1,0 +1,248 @@
+on getResults (adrSearch, adrSearchRequest=nil) {
+	«Get the raw search results.
+		«Changes:
+			«8/8/02; 12:16:45 AM by JES
+				«Respect config.mainResponder.search.prefs.hoursToCacheSearchResults.
+			«10/29/99; 10:51:48 PM by PBS
+				«Get the page table address in a try. It's possible that this script is running outside the rendering context.
+			«10/1/99; 1:48:35 PM by PBS
+				«Support for multiple sites. Instead of searching one site or all sites, you can search a specified set of sites.
+			«9/13/99; 11:00:16 AM by PBS
+				«Drop not just trailing s but also trailing S from keywords.
+			«8/20/99; 12:01:36 PM by PBS
+				«Don't ignore keywords of less than 3 characters: only ignore keywords in the stop words list.
+	
+	local (i, j);
+	local (ctIgnored = 0);
+	local (results);
+	local (sizeSearchTable);
+	local (adrTable);
+	local (indexPath = adrSearch^.index);
+	local (termsTables);
+	new (tableType, @termsTables);
+	local (adrCache);
+	
+	bundle { //set up the cache
+		local (siteName);
+		if not defined (temp.mainResponder.search) {
+			new (tableType, @temp.mainResponder.search)};
+		if not defined (temp.mainResponder.search.cache) {
+			new (tableType, @temp.mainResponder.search.cache)};
+		if not defined (temp.mainResponder.search.cache.[adrSearch^.index]) {
+			new (tableType, @temp.mainResponder.search.cache.[adrSearch^.index])};
+		if not defined (adrSearchRequest^.site) or adrSearchRequest^.site == "" {
+			siteName = "all"}
+		else {
+			siteName = adrSearchRequest^.site};
+		if not defined (temp.mainResponder.search.cache.[adrSearch^.index].[siteName]) {
+			new (tableType, @temp.mainResponder.search.cache.[adrSearch^.index].[siteName])};
+		adrCache = @temp.mainResponder.search.cache.[adrSearch^.index].[siteName].[adrSearch^.filteredSearchString]};
+	
+	bundle { //delete cache if expired
+		if defined (adrCache^) {
+			local (hoursToCache = config.mainResponder.search.prefs.hoursToCacheSearchResults);
+			local (whenexpires = timeCreated (adrCache) + (hoursToCache * 60 * 60) );
+			if whenExpires < clock.now () {
+				delete (adrCache)}}};
+	
+	on intersectTables (adrTables, adrResults) {
+		local (i, j);
+		local (sizeResults = sizeOf (adrResults^));
+		if sizeOf (adrTables^) > 0 {
+			if sizeResults > sizeOf (adrTables^ [1]) { //switch tables: performance enhancement
+				«Switch the main table with the second term table.
+					«This is a quick way to get a performance boost when the first term
+					«is a super-common word like "Frontier."
+				local (tempTable = adrResults^);
+				adrResults^ = adrTables^ [1];
+				adrTables^ [1] = tempTable;
+				sizeResults = sizeOf (adrResults^)};
+			
+			for i = sizeResults downTo 1 {
+				local (itemName = nameOf (adrResults^ [i]));
+				for j = 1 to sizeOf (adrTables^) {
+					if not defined (adrTables^ [j].[itemName]) {
+						delete (@adrResults^ [i]);
+						break};
+					adrResults^ [i] = adrResults^ [i] + adrTables^ [j].[itemName] + 4000}}};
+		return (true)};
+	
+	if not defined (adrSearch^.ignoredList) {
+		adrSearch^.ignoredList = {}};
+	if not defined (adrSearch^.notFoundList) {
+		adrSearch^.notFoundList = {}};
+	
+	for i = 1 to adrSearch^.countKeywords { //loop through keywords, finding matches
+		local (keyword = string.nthField (adrSearch^.filteredSearchString, ' ', i));
+		local (origkeyword = keyword);
+		
+		«PBS 8/20/99: don't ignore keywords of less than 3 characters.
+		«if sizeOf (keyWord) < 3
+			«ctIgnored++
+			«adrSearch^.ignoredList [0] = origkeyword
+			«continue
+		
+		keyword = string.dropNonAlphas (keyword);
+		keyword = string.popTrailing (keyword, 's');
+		keyword = string.popTrailing (keyword, 'S'); //PBS 9/13/99: Drop trailing S also
+		
+		if not (searchEngine.checkStopWords (keyword)) {
+			ctIgnored++;
+			adrSearch^.ignoredList [0] = origkeyword;
+			continue};
+		
+		if not defined (adrCache^) {
+			local (firstLetter = keyword [1]);
+			if defined ([indexPath].index.[firstLetter].[keyword]) {
+				local (adrResults = @[indexPath].index.[firstLetter].[keyword]);
+				if i - ctIgnored == 1 {
+					adrSearch^.rawResults = adrResults^}
+				else {
+					new (tableType, @termsTables.[i]);
+					termsTables.[i] = adrResults^}}
+			else {
+				new (tableType, @adrSearch^.rawResults);
+				return (true)}}};
+	
+	if not defined (adrCache^) {
+		if sizeOf (termsTables) < 1 and adrSearch^.countKeywords - ctIgnored > 1 {
+			new (tableType, @adrSearch^.rawResults);
+			return (true)}};
+	if not defined (adrCache^) {
+		intersectTables (@termsTables, @adrSearch^.rawResults)};
+	
+	bundle { //handle "hot pages" -- pages that are often visited for this search string
+		if not defined (adrCache^) {
+			local (pta);
+			try {
+				pta = html.getPageTableAddress ()};
+			if defined (pta^.displaySearchString) {
+				local (adrHotPages = @[indexPath].hotPages);
+				if defined (adrHotPages^) {
+					local (adrSearchString = @adrHotPages^.[pta^.displaySearchString]);
+					if defined (adrSearchString^) {
+						local (i);
+						local (size = sizeOf (adrSearchString^));
+						for i = size downTo 1 {
+							if defined (adrSearch^.rawResults.[nameOf (adrSearchString^ [i])]) {
+								adrSearch^.rawResults.[nameOf (adrSearchString^ [i])] = adrSearch^.rawResults.[nameOf (adrSearchString^ [i])] + 1000;
+								if i == size { //top hit goes to top
+									adrSearch^.rawResults.[nameOf (adrSearchString^ [i])] = adrSearch^.rawResults.[nameOf (adrSearchString^ [i])] + 3000}};
+							if size - i == 4 { //only do top 5
+								break}}}}}}};
+	
+	bundle { //filter the results by siteName if needed
+		if not defined (adrCache^) {
+			«Filter the results based on a site name.
+				«Also set adrScreen^.totalHits to the number of hits.
+			if defined (adrSearchRequest^.site) and (adrSearchRequest^.site != "") and (string.lower (adrSearchRequest^.site) != "all") {
+				local (sitesList = adrSearchRequest^.site); //PBS 10/1/99: search multiple sites
+				local (flAll = false);
+				if typeOf (sitesList) != listType {
+					sitesList = {sitesList}};
+				local (i);
+				for i = 1 to sizeOf (sitesList) {
+					sitesList [i] = string.lower (sitesList [i]);
+					if sitesList [i] == "all" {
+						flAll = true;
+						break}};
+				if not flAll {
+					local (indexName = adrSearchRequest^.indexName);
+					local (indexPath = Frontier.getSubFolder ("/ops/") + indexName);
+					
+					for i = sizeOf (adrSearch^.rawResults) downTo 1 {
+						local (adrPageInfo, url, pageID);
+						
+						pageID = nameOf (adrSearch^.rawResults [i]);
+						url = string.nthField (pageID, '@', 1);
+						
+						adrPageInfo = @[indexPath].pageInfo.[pageID];
+						local (lowerPageSite = string.lower (adrPageInfo^.siteName));
+						
+						if not (sitesList contains lowerPageSite) {
+							delete (@adrSearch^.rawResults [i])};
+						if lowerPageSite == "" {
+							delete (@adrSearch^.rawResults [i])}};
+					
+					if sizeOf (adrSearch^.rawResults) < 1 {
+						return (mainResponder.search.server.nothingFound (@search))}}}}};
+	
+	bundle { //sort results by relevancy
+		if not defined (adrCache^) {
+			local (oldTarget = target.set (@adrSearch^.rawResults));
+			target.set (@adrSearch^.rawResults);
+			table.sortBy ("Value");
+			try {target.set (oldTarget)};
+			adrCache^ = adrSearch^.rawResults;
+			setTimeCreated (adrCache, clock.now ())}
+		else {
+			adrSearch^.rawResults = adrCache^}};
+	
+	«Get the minimum relevancy ranking for AND searches.
+	adrSearch^.min = ((adrSearch^.countKeywords - ctIgnored) - 1)  * 4000;
+	
+	«Get the total number of raw hits.
+	adrSearch^.totalHits = sizeOf (adrSearch^.rawResults);
+	
+	bundle { //handle quoted items
+		local (s = adrSearch^.filteredSearchString);
+		if s contains "\"" {
+			loop {
+				if adrSearch^.totalHits == 0 {
+					break};
+				if s == "" {
+					break};
+				
+				local (quotedItem);
+				local (ixquote = string.patternMatch ("\"", s));
+				local (ixquote2, remainder);
+				local (flQuote = false);
+				
+				if ixquote < 1 {
+					break};
+				
+				if ixquote == 1 {
+					flQuote = true};
+				try {
+					if s [ixquote - 1] == " " {
+						flQuote = true}};
+				
+				if flQuote {
+					remainder = string.mid (s, ixquote + 1, infinity);
+					ixquote2 = string.patternMatch ("\"", remainder);
+					
+					quotedItem = string.mid (remainder, 1, ixquote2 - 1);
+					quotedItem = string.lower (quotedItem);
+					
+					if not (quotedItem contains " ") {
+						s = string.mid (remainder, ixquote2 + 1, infinity);
+						continue};
+					
+					local (i);
+					
+					for i = sizeOf (adrSearch^.rawResults) downTo 1 {
+						if adrSearch^.totalHits == 0 {
+							break};
+						local (j);
+						local (pageID = nameOf (adrSearch^.rawResults [i]));
+						«local (adrPageInfo = mainResponder.search.getPageInfoAddress (pageID, adrSearch^.indicesFolder))
+						local (adrPageInfo);
+						
+						adrPageInfo = @[indexPath].pageInfo.[pageID];
+						
+						on checkString (adr) {
+							if defined (adr^) {
+								return (string.lower (adr^) contains quotedItem)};
+							return (false)};
+						
+						if not (checkString (@adrPageInfo^.content)) {
+							if not (checkString (@adrPageInfo^.compactTitle)) {
+								if not (checkString (@adrPageInfo^.title)) {
+									delete (@adrSearch^.rawResults [i]); //the item doesn't contain the quoted string, delete it from the raw results
+									adrSearch^.totalHits--}}}}}
+				else {
+					break};
+				
+				s = string.mid (remainder, ixquote2 + 1, infinity)}}};
+	
+	return (true)}

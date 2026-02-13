@@ -1,0 +1,102 @@
+on ETPcontrolsPost () {
+	«manilaSuite.accessControl.ETPcontrolsPost : 04/05/21, 14:50:19 by DAB
+		«handle the form fields added in manilaFixer.accessControl.finalFilter 
+		«which set the access control values in the message table
+			«cohorts to set are in pta^.postargs.access_chohorts
+			«release times to be specified
+		«this is a callback, the following globals are set up in manilaSuite.callbacks.callbackLoop
+			«adrMsg
+			«adrSite
+			«language  (may be nil)
+			«url
+			«adrMember
+		«was manilaFixer.accessControl.newOrChangedCallback : 02/04/07, 17:30:55 by DAB
+	local (pta = html.getPageTableAddress());
+	
+	if not defined(pta^.postargs.accesscontrol_fields) {
+		return false};
+	
+	if not defined(adrMsg^.accessControl) {
+		new(tabletype, @adrMsg^.accessControl)};
+	if not defined(adrMsg^.accessControl.permittedCohorts) {
+		adrMsg^.accessControl.permittedCohorts = {}};
+	if not defined(adrMsg^.accessControl.permittedROCohorts) { //02/09/19, 00:44:49 by DAB
+		adrMsg^.accessControl.permittedROCohorts = {}};
+	
+	bundle { //set cohorts
+		local (v  = {});
+		try {
+			v = pta^.postargs.accesscontrol_cohorts;
+			case true {
+				 v == "Everyone" {
+					v = {}};
+				typeof(v) != listType {
+					v = list(v)}}};
+		
+		adrMsg^.accessControl.permittedCohorts = v;
+		
+		if defined(pta^.postargs.accessControl_setDefaultCohorts) and (pta^.postargs.accessControl_setDefaultCohorts=="on") { //02/08/04, 11:36:02 by DAB
+			local (adrMemberInfo = manilaSuite.accessControl.getMemberInfoAddress(pta, "accesscontrol", true));
+			adrMemberInfo^.defaultCohorts  = v}};
+	
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress( adrSite));
+	if  defined(adrNewsSite^.accessControl.ROcohortPopupWanted) and adrNewsSite^.accessControl.ROcohortPopupWanted {
+		local (v  = {});
+		try {
+			v = pta^.postargs.accesscontrol_ROcohorts;
+			case true {
+				 v == "Everyone" {
+					v = {}};
+				typeof(v) != listType {
+					v = list(v)}}};
+		
+		adrMsg^.accessControl.permittedROCohorts = v;
+		
+		if defined(pta^.postargs.accesscontrol_setDefaultROCohorts) and (pta^.postargs.accesscontrol_setDefaultROCohorts=="on") {
+			local (adrMemberInfo = manilaSuite.accessControl.getMemberInfoAddress(pta, "accesscontrol", true));
+			adrMemberInfo^.defaultROCohorts  = v}};
+	
+	bundle { //set release/expiry timestamps
+		local (now = clock.now());
+		local (slop = manilaSuite.getNewsSitePref ("custody.timeOutMinutes", default:30, flCreate:false)); //02/03/15, 15:36:02 by DAB
+		now = now - (slop * 60); //don't be so precise  02/03/15, 15:35:52 by DAB
+		local (errPrefix="");
+		on errorReport(s) {
+			scriptError(errPrefix + s)};
+		
+		on parseDate(prefix,  currval, adr) {
+			local (d);
+			try {
+				d = date.set(pta^.postargs.[prefix+"DD"], pta^.postargs.[prefix+"Month"], pta^.postargs.[prefix+"YY"], number(pta^.postargs.[prefix+"H"]) + number(pta^.postargs.[prefix+"hourOffset"]), pta^.postargs.[prefix+"M"], 0)}
+			else {
+				local (err = tryError);
+				errorReport(err);
+				return false};
+			
+			if (currval ==  nil) or (d != currval) {
+				if d  <= now {
+					errorReport(manilaString.getString("accessControl.errDateInthePast", pta:pta))}}; //02/03/24, 10:47:07 by DAB
+			adr^ = d;
+			return true};
+		
+		local (currReleaseDate);
+		try {currReleaseDate = adrNewsSite^.accessControl.releaseDate}; //may not exist
+		if defined(pta^.postargs.accesscontrol_releaseDateOK) and (pta^.postargs.accesscontrol_releaseDateOK == "on") {
+			errPrefix = manilaSuite.getString("accessControl.errCantSetReleaseDate", pta:pta); //02/03/24, 10:46:25 by DAB
+			parseDate("accesscontrol_releaseDate", currReleaseDate, @adrMsg^.accessControl.releaseDate )}
+		else {
+			adrMsg^.accessControl.releaseDate = nil};
+		
+		if defined(pta^.postargs.accesscontrol_expiryDateOK) and (pta^.postargs.accesscontrol_expiryDateOK == "on") {
+			errPrefix = manilaSuite.getString("accessControl.errCantSetExpiryDate", pta:pta); //02/03/24, 10:46:17 by DAB
+			local (currExpiryDate);
+			try {currExpiryDate = adrMsg^.accessControl.expiryDate}; //may not exist
+			local (v);
+			if parseDate("accesscontrol_expiryDate", currExpiryDate,  @v) {
+				if (currReleaseDate != nil) and (currReleaseDate > v) {
+					errorReport(manilaSuite.getString("accessControl.errExpiryPrecedesRelease", pta:pta))}; //02/03/24, 10:46:10 by DAB
+				adrMsg^.accessControl.expiryDate = v}}
+		else {
+			adrMsg^.accessControl.expiryDate = nil}};
+	
+	return true}

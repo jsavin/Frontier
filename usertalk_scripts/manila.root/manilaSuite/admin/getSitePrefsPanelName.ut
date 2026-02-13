@@ -1,0 +1,30 @@
+on getSitePrefsPanelName (panelId, pta=nil) {
+	«5/29/00; 6:26:30 PM by JES
+		«Gets the name of a site prefs panel
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrNavigator = manilaSuite.admin.getSitePrefsNavigatorAddress (pta));
+	
+	«compile XML if dirty
+	if (not (defined (adrNavigator^.structure))) or (timeModified (@adrNavigator^.outline) > timeModified (@adrNavigator^.structure)) {
+		xml.compile (string (adrNavigator^.outline), @adrNavigator^.structure)};
+	
+	local (adrItem, i, found = false);
+	for i = 1 to sizeOf (adrNavigator^.structure [1]) {
+		adrItem = @adrNavigator^.structure [1] [i]; //address of the current link
+		try { // in case there's no id attribute
+			if xml.getAttributeValue (adrItem, "id") == string.lower (panelId) {
+				found = true;
+				break}};
+		if string.lower (string.nthField (xml.getAttributeValue (adrItem, "pagename"), '$', 2)) == string.lower (panelId) {
+			found = true;
+			break}};
+	if found {
+		local (pagename);
+		pagename = xml.getAttributeValue (adrItem, "pagename");
+		return (string.nthField (pagename, '$', 2))};
+	if adrNavigator == @manilaData.sitePrefs.navigator {
+		return (panelId)}; // for backward compatibility
+	scriptError ("Can't find the preferences page url because the navigator doesn't contain an item whose id is '" + panelId + "'.")}

@@ -1,0 +1,87 @@
+on getHashStats (flIncludeHeader=true) {
+	«Get statistics about the in-memory table hierarchy.
+		«10/26/01; 11:07:11 AM by PBS
+		«Changes:
+			«10/31/01; 11:28:58 AM by PBS
+				«flIncludeHeader is a new optional parameter. If true, include general info at the top about this installation of Radio.
+	local (fldebug = false); //set to false if not debugging
+	local (text = "", indentlevel = 0);
+	on add (s) {
+		text = text + string.filledString ('\t', indentlevel) + s + "\n"};
+	local (stats = Frontier.hashStats ());
+	bundle { //header
+		add ("Frontier hash stats for " + user.prefs.name + " run at " + clock.now () + ".");
+		add ("");
+		if flIncludeHeader {
+			add ("About This Installation:");
+			indentlevel++;
+			add ("Radio version: " + Frontier.version ());
+			local (os = "Windows");
+			if system.environment.isMac {
+				if system.environment.isCarbon {
+					os = "Mac OS X"}
+				else {
+					os = "Mac OS"}};
+			add ("Operating System: " + os);
+			local (osVersion = system.environment.osVersionString);
+			if system.environment.isCarbon {
+				osVersion = string.replace (osVersion, "16", "10")};
+			add ("OS Version: " + osVersion);
+			add ("IP address: " + tcp.dns.getMyDottedId ());
+			add ("Email: " + user.prefs.mailAddress);
+			add ("");
+			indentlevel--}};
+	local (firstLine = string.nthField (stats, '\r', 1));
+	bundle { //first line
+		add ("Hash stats:");
+		indentlevel++;
+		on doField (ix, name) {
+			local (val = string.nthField (firstLine, ',', ix));
+			val = string.trimWhiteSpace (val);
+			add (name + ": " + val)};
+		doField (1, "Max # table items in a hash bucket");
+		doField (2, "Total # tables in memory");
+		doField (3, "Max depth of table hierarchy");
+		indentlevel--};
+	bundle { //remaining stats
+		add ("");
+		add ("Stats by type:");
+		stats = string.delete (stats, 1, sizeOf (firstLine));
+		stats = string.trimWhiteSpace (stats);
+		indentlevel++;
+		local (s = "Type" + string.filledString (' ', 15 - 4));
+		s = s + "In Memory" + string.filledString (' ', 15 - sizeOf ("In Memory"));
+		s = s + "In Tables in memory";
+		add (s);
+		local (i);
+		local (lastch = ' ');
+		for i = 1 to sizeOf (s) {
+			local (ch = s [i]);
+			if string.isAlpha (ch) {
+				s [i] = "-"};
+			if (i < sizeOf (s)) and (lastch != ' ') {
+				s [i] = "-"};
+			lastch = ch};
+		add (s);
+		
+		loop {
+			local (oneLine = string.nthField (stats, '\r', 1));
+			if oneLine == "" {
+				break};
+			stats = string.delete (stats, 1, sizeOf (oneLine));
+			stats = string.trimWhiteSpace (stats);
+			local (type = string.nthField (oneLine, '\t', 3));
+			local (inMemory = string.nthField (oneLine, '\t', 1));
+			local (inTables = string.nthField (oneLine, '\t', 2));
+			local (s = type);
+			s = s + string.filledString (' ', 15 - sizeOf (type));
+			s = s + inMemory + string.filledString (' ', 15 - sizeOf (inMemory));
+			s = s + inTables;
+			add (s)};
+		indentlevel--};
+	
+	if fldebug {
+		wp.newTextObject (text, @temp.hashStats);
+		edit (@temp.hashStats)};
+	
+	return (text)}

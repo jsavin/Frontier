@@ -1,0 +1,8 @@
+on getMostRecentMessageNumber (adrSite=nil) {
+	«Get the msgNum of the most recent news item.
+		«9/25/01; 4:20:27 PM by PBS
+	local (messagesList);
+	messagesList = manilaSuite.news.getLastNMessageNumbers (1, adrSite:adrSite);
+	if sizeOf (messagesList) > 0 {
+		return (messagesList [1])};
+	return (-1)} //no most recent message number

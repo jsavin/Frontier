@@ -1,0 +1,146 @@
+on edit (username, password, sitename, msgnum, title, url, description, department, flPostToHomePage) {
+	«Changes:
+		«12/14/05; 3:22:56 PM by JES
+			«If no departments exist in the site, ignore newsItems.prefs.flMultipleDepartments.
+		«10/18/05; 4:10:13 AM by JES
+			«Accept both "HomePage" and "Home Page" for the Home Page 'department'.
+		«10/17/05; 6:15:05 PM by JES
+			«If flPostToHomePage is false, or is set to false because multiple departments is enabled and department is empty, revert the item's status to pending. Also remove from postOrder index.
+		«10/17/05; 4:13:04 AM by JES
+			«Bug fix: Don't skip multiple department special handling if not running on Mac.
+		«10/17/05; 3:45:51 AM by JES
+			«Bug fix: Check for empty department before checking for home page department and setting to empty.
+		«10/17/05; 3:40:21 AM by JES
+			«Bug fix: if multiple departments are enabled and department is empty, set flOnHomePage to false and flPostToHomePage to false.
+		«10/17/05; 3:23:39 AM by JES
+			«Small bug fix in multiple-department handling for home page pseudo-department.
+		«10/17/05; 3:12:43 AM by JES
+			«Add support for Home Page 'department' if multiple departments is enabled in the site.
+		«10/17/05; 3:11:30 AM by JES
+			«Add support for multiple departments if department is passed in as a list (array).
+		«11/19/03; 12:03:52 PM by JES
+			«Fix a bug editing news items when the site defines a time zone: Use updateTime, not postTime when converting to the site's time zone.
+		«1/27/03; 2:05:24 PM by JES
+			«When setting the news item title, also set the subject of the message containing the news item, per bug report from Brent Simmons.
+		«8/20/01; 12:47:29 AM by JES
+			«Check permissions through (the new version of) manilaSuite.news.memberCanEdit, which also checks custody of the message containing the news item.
+			«If flPostToHomePage is true, check the see if the user has permission to post to the site's home page.
+		«1/15/02; 6:52:43 PM by PBS
+			«Fixed a bug with neutering tags. The script was looking for pta^.newsSite^.legalTags to find the address of the legal tags table for the site. But since this is not a rendering context -- it's an XML-RPC context -- that failed. Instead look for adrNewsSite^.legalTags and use it if found.
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	local (adrDepartments = manilaSuite.news.getDepartmentTableAddress (adrsite));
+	local (flDepartmentsExistInSite = (sizeOf (adrDepartments^) > 0) );
+	local (flMultipleDepartmentsEnabled = manilaSuite.getNewsSitePref ("newsItems.prefs.flMultipleDepartments", adrSite, false) and flDepartmentsExistInSite);
+	local (flOnHomePage = true);
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	local (adrdiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (groupname = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+	local (adrmember = mainResponder.members.getMemberTable (groupname, username));
+	local (adrtable = mainResponder.discuss.getMessageTable (msgnum, adrRoot:adrdiscuss));
+	bundle { //make sure this user can edit/publish the message
+		if not (manilaSuite.news.memberCanEdit (adrtable, adrmember, adrsite)) {
+			scriptError ("Can't edit news item \"" + msgnum + "\" because \"" + username + "\" does not have permission to edit the message, or the message is checked out by another user.")};
+		if flPostToHomePage { //check to see if the user can post to the home page
+			if not (manilaSuite.news.memberCanPostToHomePage (adrSite:adrsite, adrMember:adrmember)) {
+				scriptError ("Can't edit news item \"" + msgnum + "\" because \"" + username + "\" does not have permission to post to the home page.")}}};
+	
+	local (updateTime = clock.now ());
+	if defined (adrnewssite^.timeZone) {
+		timeZone = adrnewssite^.timeZone.zone;
+		updateTime = manilaSuite.convertTime (updateTime, timeZone)};
+	
+	local (pagetable, oldPta = nil);
+	bundle { //set up a pagetable, save old pagetable if it exists
+		new (tabletype, @pagetable);
+		pagetable.enableSafeMacros = true;
+		pagetable.adrsiteRootTable = adrsite;
+		pagetable.adrMemberInfo = mainResponder.members.getMemberTable (groupname, username);
+		pagetable.urls = @adrsite^.["#urls"];
+		try {oldPta = html.getPageTableAddress ()};
+		html.setPageTableAddress (@pagetable)};
+	
+	if system.environment.isMac { //convert to Mac text, handle Home Page 'department'
+		title = latinToMac.convert (title);
+		description = latinToMac.convert (description)};
+	bundle { //handle multiple departments
+		if typeOf (department) == listType {
+			local (ct = sizeOf (department), i);
+			if flMultipleDepartmentsEnabled {
+				flOnHomePage = false};
+			for i = ct downto 1 {
+				if flMultipleDepartmentsEnabled {
+					if string.lower (department[i]) == "homepage" or string.lower (department[i]) == "home page" {
+						delete (@department[i]);
+						flOnHomePage = true;
+						continue}};
+				if system.environment.isMac {
+					department[i] = latinToMac.convert (department[i])}};
+			if flMultipleDepartmentsEnabled {
+				if sizeOf (department) == 0 {
+					if not flOnHomePage {
+						flPostToHomePage = false}}}}
+		else { //single department
+			if flMultipleDepartmentsEnabled {
+				if department == "" {
+					flOnHomePage = false;
+					flPostToHomePage = false};
+				if string.lower (department) == "homepage" {
+					department = "";
+					flOnHomePage = true}}
+			else {
+				if system.environment.isMac {
+					department = latinToMac.convert (department)}}}};
+	description = string.replaceAll (description, "\r\r", "\r\n\r\n");
+	
+	bundle { //PBS 07/05/00: neuter tags, so News Items obeys legal tags
+		«It's tricky because this is a case of embedding HTML in XML.
+		local (adrLegalTags = @config.mainResponder.prefs.legalTags);
+		if defined (adrNewsSite^.legalTags) { //PBS 1/15/02: was pta^.newsSite^.legalTags, which was incorrect
+			adrLegalTags = @adrNewsSite^.legalTags};
+		description = html.neuterTags (description, adrLegalTags);
+		description = string.replaceAll (description, "&lt;", "&amp;lt;")};
+	
+	if title != "" {
+		adrtable^.newsitem.title = title;
+		adrtable^.subject = title};
+	if url != "" {
+		adrtable^.newsitem.url = url};
+	if sizeOf (department) > 0 {
+		adrtable^.newsitem.department = department};
+	if flMultipleDepartmentsEnabled {
+		adrtable^.newsitem.flOnHomePage = flOnHomePage;
+		if not flOnHomePage and sizeOf (department) == 0 {
+			flPostToHomePage = false}};
+	if description != "" {
+		adrtable^.newsitem.description = description};
+	
+	adrtable^.body = manilaSuite.news.tableToXml (@adrtable^.newsitem);
+	adrtable^.lastUpdate = updateTime;
+	
+	if flPostToHomePage { //post the item to the home page, and call the homePageUpdate callbacks
+		manilaSuite.news.postItemToHomePage (adrtable, adrSite);
+		try {manilaSuite.callbacks.rpcHomePageUpdate (adrTable, adrSite, adrnewssite^.siteName, description, username, password)}}
+	else { //release the news item
+		if not flPostToHomePage { //revert to pending status
+			if defined (adrTable^.newsItem.flPosted) {
+				if adrTable^.newsItem.flPosted { //was posted previously -- remove from postedOrder index
+					local (adrIndex = manilaSuite.news.getIndexAddress ("postOrder", adrSite), sizeIndex = sizeOf (adrIndex^), i);
+					for i = sizeIndex downto 1 {
+						local (adr = @adrIndex^[i]);
+						if adr^ == msgNum {
+							delete (adr);
+							break}}}};
+			adrTable^.newsItem.flPosted = false};
+		manilaSuite.news.releaseItem (adrTable, adrSite)};
+	
+	bundle { //update indexes
+		manilaSuite.news.updateIndexes (adrTable, adrSite)};
+	
+	bundle { //restore the pagetable
+		if oldPta == nil {
+			html.deletePageTableAddress ()}
+		else {
+			html.setPageTableAddress (oldPta)}};
+	return (true)};
+«bundle //test code
+	«dialog.alert (edit ("jake@userland.com", user.prefs.manilaPassword, "blogger", 11, "Test post", "http://127.0.0.1/blogger/", "this is an edited news item, which was already on the home page", "default", true))

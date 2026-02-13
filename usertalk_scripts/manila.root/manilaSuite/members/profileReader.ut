@@ -1,0 +1,428 @@
+on profileReader (pta=nil) {
+	«View one profile.
+	«Changes:
+		«3/30/07; 1:02:07 PM by LL
+			«Added Delete button to the profile reader page.
+		«2006
+			«11/9/06; 2:34:07 PM by LL
+				«Add site-level preference to disable the spam-free mailto links.
+			«1/31/06; 2:42:08 AM by JES
+				«Add support for pending message status.
+		«2005
+			«8/4/05; 4:02:36 AM by JES
+				«Managing editors always see the next/prev links, regardless of whether the members list is public or not.
+			«8/4/05; 3:29:31 AM by JES
+				«If the wizard's structure table is not defined, create it by compiling the outline XML.
+			«7/6/05; 8:27:05 PM by JES
+				«Added support for checkboxArray type items in custom prefs.
+			«6/6/05; 6:27:20 PM by JES
+				«When getting a usersMapKey from a member key, call through mainResponder.members.getUsersMapKey instead of generating it here. (Restoring old, but as yet unreleased code.)
+			«30/06/05; 8:38:00 AM by PR
+				«updated the code to find the usernum in the spam free mail to
+		«1999-2004
+			«8/13/04; 6:05:45 PM by JES
+				«Added ability to block or unblock members from the profile reader page.
+			«9/11/03; 5:53:55 PM by JES
+				«If logged in as managing editor, display the email address next to the member's name.
+			«9/3/03; 10:45:28 AM by JES
+				«Added support for shared membership groups. Thanks to Erin Clerico for the fix.
+			«9/2/03; 12:14:04 PM by JES
+				«When logged in as the managing editor, display blocked members with the word "blocked" next to their names.
+				«When not logged in as the managing editor, blocked members are not linked to, and their profile page will return an appropriate error message.
+				«If a member or member-map key is not defined, or a member-map key maps to a deleted member, display an appropriate error message.
+			«4/21/03; 10:06:56 PM by JES
+				«If the member's table doesn't have a name, don't display their email address in the title of the page.
+			«4/21/03; 11:31:17 AM by JES
+				«Add the mailto link with a prompt after the custom prefs items. This way you don't have to have personalInfo.name as one of your custom prefs, to get a mailto link.
+			«4/20/03; 11:19:28 PM by JES
+				«Added spam-free mailto links.
+			«4/18/03; 5:21:22 PM by JES
+				«Use the new numeric mapped member keys for next/prev member links instead of older style links which include the member's email address.
+			«10/27/00; 11:57:49 AM by PBS
+				«Previous and Next member links appear only if the members list is public or a Managing Editor is viewing the page.
+			«05/01/00; 3:00:03 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«04/21/00; 3:06:25 AM by JES
+				«localized
+			«11/6/99; 4:36:19 PM by PBS
+				«If a pref ends with a question mark, don't add a colon.
+			«11/1/99; 2:43:39 PM by PBS
+				«View custom prefs info if defined by the managing editor.
+				«Previous and Next member links.
+				«If no memberKey is specified: view your own profile if you're a logged-in member, otherwise view the profile of the managing editor.
+				«Use manilaSuite.unTaint when appropriate rather than mainResponder.neuterText.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	pta^.title = manilaSuite.getString ("members.profilePageTitle", pta: pta); // 4/21/00 JES: localized
+	
+	local (htmlText = "");
+	
+	on add (s) {
+		htmlText = htmlText + s + cr};
+	
+	local (groupName = pta^.defaultMembershipGroup);
+	local (adrMembershipGroup = manilaSuite.members.getGroupFromSiteAddress (manilaSuite.getSiteAddress ()));
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrProfileInfo = manilaSuite.getDiscussLinksAddress (pta: pta));
+	local (flEditor = manilaSuite.editors.editorialTest (pta));
+	local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta));
+	
+	on memberKeyToMappedKey (memberKey) {
+		return (mainResponder.members.getUsersMapKey (memberKey, adrMembershipGroup))};
+	
+	on getDgProfileMessageTable (memberKey, adrAdrTable) {
+		if defined (adrProfileInfo^.[memberKey]) {
+			local (msgNum = adrProfileInfo^.[memberKey]);
+			local (adrMsg = mainResponder.discuss.getMessageTable (msgNum));
+			if defined (adrMsg^) {
+				local (flCanDisplayMsg = true);
+				if defined (adrMsg^.flDeleted) and adrMsg^.flDeleted {
+					flCanDisplayMsg = false};
+				if defined (adrMsg^.flPending) and adrMsg^.flPending {
+					flCanDisplayMsg = false};
+				if flCanDisplayMsg {
+					adrAdrTable^ = adrMsg;
+					return (true)}}};
+		return (false)};
+	
+	on viewDgProfile (memberKey) {
+		local (adrTable);
+		if getDgProfileMessageTable (memberKey, @adrTable) {
+			local (msgNum = adrProfileInfo^.[memberKey]);
+			pta^.title = adrTable^.subject;
+			pta^.flReadMessageProcessMacros = false;
+			pta^.flReadMessageAutoParagraphs = false;
+			add (mainResponder.discuss.readMessage (msgNum, false, false, false, false, false, false, flEditButtonsInHeader:false, flShowCowSkullLink:manilaSuite.discuss.dgReadAccess (pta)));
+			return (true)};
+		return (false)};
+	
+	on viewProfile (memberKey, pta=nil) { // 4/27/00 JES: pass in pta
+		
+		if pta^.method == "POST" { //are we deleting, blocking or unblocking this member?
+			manilaSuite.referer.checkSelf ();
+			local (adrMembers = mainresponder.members.getMembershipTable (groupName));
+			local (adrMember = @adrMembers^.users.[memberKey]);
+			if defined (pta^.postArgs.blockMember) {
+				adrMember^.blocked = true};
+			if table.tableContains (adrSite, adrMembers) { //only allow deletion if member group is in this site
+				if defined (pta^.postArgs.deleteMember) { //confirm first, then possibly delete one or more members
+					pta^.title = manilaSuite.getString ("members.deleteMemberTitle", pta: pta);
+					add (manilaSuite.getString ("members.deleteMemberDescription", pta: pta));
+					add ("<form method=\"POST\">");
+					add ("<ul>");
+					local (adr);
+					local (memberName = string.replace (memberKey, "@", "\\@"));
+					memberName = string.lower (memberName);
+					if defined (adrMember^.personalInfo.name) {
+						if typeOf (adrMember^.personalInfo.name) == stringType {
+							local (s = adrMember^.personalInfo.name);
+							s = string.trimWhiteSpace (s);
+							if s != "" {
+								memberName = s + " (" + memberName + ")"}}};
+					add ("</ul>");
+					add ("<p><br /><input type=\"submit\" name=\"deleteConfirm\" value=\"" + manilaSuite.getString ("common.deleteButton") + "\">&nbsp;&nbsp;<input type=\"submit\" name=\"cancel\" value=\"" + manilaSuite.getString ("common.cancelButton") + "\"></p>");
+					add ("</form>");
+					return (htmltext)};
+				if defined (pta^.postArgs.deleteConfirm) {
+					local (memberName = string.replace (memberKey, "@", "\\@"));
+					memberName = string.lower (memberName);
+					if defined (adrMember^.personalInfo.name) {
+						if typeOf (adrMember^.personalInfo.name) == stringType {
+							local (s = adrMember^.personalInfo.name);
+							s = string.trimWhiteSpace (s);
+							if s != "" {
+								memberName = s + " (" + memberName + ")"}}};
+					if defined (adrMember^.usersMapKey) {
+						try {delete (@adrMembershipGroup^.usersMap.[adrMember^.usersMapKey])}};
+					try {delete (adrMember)};
+					local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+					replacementTable.membername = memberName;
+					pta^.memberDeleted = manilaSuite.getString ("members.deleteMemberConfirm", @replacementTable, pta: pta)}};
+			if defined (pta^.postArgs.unblockMember) {
+				if defined (adrMember^.blocked) {
+					delete (@adrMember^.blocked)}}};
+		
+		if not (viewDgProfile (memberKey)) {
+			if pta == nil {
+				pta = html.getPageTableAddress ()};
+			local (adrMembers = mainresponder.members.getMembershipTable (groupName));
+			local (adrMember = @adrMembers^.users.[memberKey]);
+			
+			if defined (adrMember^) {
+				local (flCanEdit = false);
+				if defined (pta^.adrMemberInfo) {
+					if defined (pta^.adrMemberInfo^) {
+						if pta^.adrMemberInfo == adrMember {
+							flCanEdit = true}}};
+				
+				local (editPrefsUrl);
+				editPrefsUrl = manilaSuite.getUrl ("prefsHome", pta); // 4/27/00 JES: pass in pta
+				
+				on tr (name, value) {
+					if value != "" {
+						name = manilaSuite.unTaint (name);
+						value = manilaSuite.unTaint (value);
+						add ("<tr>");
+						if name endsWith "?" {
+							add ("<td valign=\"top\" nowrap>" + name + "&nbsp;&nbsp;</td>")}
+						else {
+							add ("<td valign=\"top\" nowrap>" + name + ":&nbsp;&nbsp;</td>")};
+						add ("<td valign=\"top\">" + value + "</td>");
+						add ("</tr>")}};
+				
+				add ("<table cellpadding=\"0\" cellspacing=\"5\">");
+				
+				on addName () {
+					local (name);
+					if defined (adrMember^.personalInfo.name) {
+						name = adrMember^.personalInfo.name}
+					else {
+						name = "anonymous"};
+					if flCanEdit {
+						name = "<a href=\"" + editPrefsUrl + "\">" + name + "</a>"};
+					local (blocked = "", mailaddress = "");
+					if flManagingEditor {
+						if defined (adrMember^.blocked) {
+							if adrMember^.blocked {
+								blocked = " (blocked)"}};
+						mailaddress = " " + nameOf (adrMember^)};
+					tr (manilaSuite.getString ("members.name", pta: pta), "<b>" + name + mailaddress + "</b>" + blocked)}; // 4/21/00 JES: localized
+				
+				bundle { //build the profile HTML
+					local (adrWizard);
+					if defined (pta^.wizard) { //JES 11/3/05: replcae with wizard address from page table, if defined
+						adrWizard = pta^.wizard}
+					else {
+						adrWizard = @pta^.newsSite^.prefsWizard;
+						if not defined (adrWizard^) {
+							local (siteInfo);
+							new (tableType, @siteInfo);
+							siteInfo.adrSite = pta^.adrSiteRootTable;
+							manilaSuite.newSite.createCustomPrefsWizard (@siteInfo)}};
+					if not defined (adrWizard^.structure) {
+						xml.compile (string (adrWizard^.outline), @adrWizard^.structure)};
+					local (adrTable = @adrWizard^.structure [1]);
+					local (i);
+					
+					on getItemName (adrItem) {
+						local (name = xml.convertToDisplayName (nameOf (adrItem^)));
+						return (name)};
+					
+					for i = 1 to sizeOf (adrTable^) {
+						local (adrPanel = @adrTable^ [i]);
+						local (name = getItemName (adrPanel));
+						if string.lower (name) != "panel" {
+							continue};
+						local (j);
+						for j = 1 to sizeOf (adrPanel^) {
+							local (adrItem = @adrPanel^ [j]);
+							local (name = getItemName (adrItem));
+							if string.lower (name) != "item" {
+								continue};
+							local (label = "");
+							if defined (adrItem^.["/atts"].title) {
+								label = adrItem^.["/atts"].title};
+							local (type = string.lower (adrItem^.["/atts"].type));
+							if type == "separator" {
+								continue};
+							if not defined (adrItem^.["/atts"].viewByEditorsOnly) {
+								continue};
+							local (flViewByEditorsOnly = adrItem^.["/atts"].viewByEditorsOnly);
+							if (not flEditor) and flViewByEditorsOnly {
+								continue};
+							local (partialAddress = adrItem^.["/atts"].adr);
+							
+							if string.lower (partialAddress) == "personalinfo.name" {
+								addName ()}
+							else {
+								on getPrefAddress (partialAddress) { //takes a partial address, returns an address into user's member table
+									local (nomad = adrMember, s);
+									loop {
+										if not (partialAddress contains ".") {
+											nomad = @nomad^.[partialAddress];
+											break};
+										s = string.nthField (partialAddress, '.', 1);
+										nomad = @nomad^.[s];
+										if not defined (nomad^) {
+											return};
+										partialAddress = string.delete (partialAddress, 1, sizeOf (s) + 1)};
+									return (nomad)};
+								
+								local (adrPref = getPrefAddress (partialAddress));
+								if defined (adrPref^) {
+									if type == "checkboxarray" {
+										local (adrsub, sValue = "");
+										for adrsub in adrItem {
+											if xml.convertToDisplayName (nameOf (adrsub^)) == "item" {
+												local (subadr = @adrPref^.[xml.getAttributeValue (adrsub, "name")]);
+												if defined (subadr^) {
+													if subadr^ {
+														sValue = sValue + xml.getAttributeValue (adrsub, "title") + ", "}}}};
+										if sValue != "" {
+											sValue = string.mid (sValue, 1, sizeOf (sValue) - 2)};
+										tr (label, sValue)}
+									else {
+										tr (label, adrPref^)}}}}}};
+				
+				add ("</table>");
+				
+				bundle { //mailto link and explanatory text
+					local (flDisplayMailtoLink = manilaSuite.getNewsSitePref ("flMemberMailtoLink", pta^.adrSiteRootTable, true, true));
+					if flDisplayMailtoLink {
+						local (mailtolink = "");
+						local (usernum);
+						if defined (adrMember^.usersMapKey) { // 30/06/05; 8:37:29 AM by PR should always work
+							usernum = adrMember^.usersMapKey}
+						else { // fallback
+							usernum = pta^.pathArgs};
+						local (name = "this member");
+						if defined (adrMember^.personalInfo.name) {
+							name = adrMember^.personalInfo.name};
+						try { //if usernum is non-numeric, then it's not usable for spam-free mailto
+							usernum = number (usernum); //will fail if not numeric
+							local (profilesUrl = manilaSuite.getUrl ("profilesHome", pta));
+							if profilesUrl endsWith "$" {
+								profilesUrl = string.popTrailing (profilesUrl, "$")};
+							local (referer = "false"); //sent to the spam-free mailto form
+							if defined (pta^.requestHeaders.referer) {
+								if not (referer beginsWith profilesUrl) {
+									referer = pta^.requestHeaders.referer}};
+							if not (profilesUrl endswith "/") {
+								profilesUrl = profilesUrl + "/"};
+							local (mailUrl = profilesUrl + "sendMail?usernum=" + usernum + "&referer=" + referer);
+							local (tooltip = string.replaceAll (manilaSuite.getString ("members.clickToSendEmailTo", pta:pta), "[[name]]", name));
+							mailtolink = "<a href=\"" + mailUrl + "\" title=\"" + tooltip + "\"><img src=\"http://" + pta^.host + "/mainResponderResources/icons/mailto\" border=\"0\"></a>"};
+						if sizeOf (mailtolink) > 0 {
+							local (prompt = string.replaceAll (manilaSuite.getString ("members.mailtoLinkPrompt"), "[[name]]", name));
+							add ("<p>" + prompt + "&nbsp;" + mailtolink + "</p>")}}};
+				
+				if defined (adrMember^.personalInfo.name) and adrMember^.personalInfo.name != "" {
+					pta^.title = adrMember^.personalInfo.name}
+				else {
+					local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+					if memberKey contains "@" {
+						replacementTable.member = string.mid (memberKey, 1, string.patternMatch ("@", memberKey) + 1) + "..."}
+					else {
+						replacementTable.member = memberKey};
+					pta^.title = manilaSuite.getString ("members.profileFor", @replacementTable, pta: pta)}} // 4/21/00 JES: localized
+			else {
+				local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+				replacementTable.member = manilaSuite.unTaint (memberKey);
+				if defined (pta^.memberDeleted) and (pta^.memberDeleted != "") {
+					add (string (pta^.memberDeleted))}
+				else {
+					add (manilaSuite.getString ("members.noProfileInfoFor", @replacementTable, pta: pta) + "<p>")}}}; // 4/21/00 JES: localized
+		
+		«Previous and Next member links.
+		local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey));
+		if defined (adrMember^) {
+			local (flPublic = manilaSuite.getNewsSitePref ("flMembersListPublic", default:false, flCreate:true));
+			if flManagingEditor or flPublic { //PBS 10/27/00: display Next and Prev Member links only if this is the Managing Editor or the members list is public
+				local (adrMembers = parentOf (adrMember^));
+				local (ix = indexOf (adrMember^));
+				local (prevLink, nextLink);
+				local (profilesUrl = manilaSuite.getUrl ("profilesHome", pta)); // 4/27/00 JES: pass in pta
+				if not (profilesUrl endsWith "$") {
+					profilesUrl = profilesUrl + "$"};
+				
+				bundle { //get the link to the previous member
+					local (ixPrev = ix - 1);
+					local (prevMemberKey);
+					loop {
+						prevMemberKey = nameOf (adrMembers^ [ixPrev]);
+						local (flBlocked = false);
+						if not flManagingEditor {
+							if defined (adrMembers^.[prevMemberKey].blocked) {
+								flBlocked = adrMembers^.[prevMemberKey].blocked}};
+						if flManagingEditor or (not flBlocked) {
+							break};
+						ixPrev--;
+						if ixPrev < 1 {
+							break}};
+					«loop
+						«prevMemberKey = nameOf (adrMembers^ [ixPrev])
+						«if prevMemberKey contains "@" //must be a real member, not the Admin member or similar
+							«break
+						«ixPrev--
+						«if ixPrev < 1
+							«break
+					
+					if ixPrev > 0 {
+						local (prevUrl);
+						prevUrl = profilesUrl + memberKeyToMappedKey (prevMemberKey);
+						prevLink = html.getLink (manilaSuite.getString ("members.previousMember", pta: pta), prevUrl)} // 4/21/00 JES: localized
+					else {
+						prevLink = manilaSuite.getString ("members.previousMember", pta: pta)}}; // 4/21/00 JES: localized
+				bundle { //get the link to the next member
+					local (ixNext = ix + 1);
+					local (nextMemberKey);
+					local (ctMembers = sizeOf (adrMembers^));
+					loop {
+						nextMemberKey = nameOf (adrMembers^ [ixNext]);
+						local (flBlocked = false);
+						if not flManagingEditor {
+							if defined (adrMembers^.[nextMemberKey].blocked) {
+								flBlocked = adrMembers^.[nextMemberKey].blocked}};
+						if flManagingEditor or (not flBlocked) {
+							break};
+						ixNext++;
+						if ixNext >= ctMembers {
+							break}};
+					«loop
+						«nextMemberKey = nameOf (adrMembers^ [ixNext])
+						«if nextMemberKey contains "@" //must be a real member, not the Admin member or similar
+							«break
+						«ixNext++
+						«if ixNext >= ctMembers
+							«break
+					
+					if ixNext <= ctMembers {
+						local (nextUrl);
+						nextUrl = profilesUrl + memberKeyToMappedKey (nextMemberKey);
+						nextLink = html.getLink (manilaSuite.getString ("members.nextMember", pta: pta), nextUrl)} // 4/21/00 JES: localized
+					else {
+						nextLink = manilaSuite.getString ("members.nextMember", pta: pta)}}; // 4/21/00 JES: localized
+				
+				«Add the previous and next member links.
+				add ("<p>");
+				add (prevLink + " | " + nextLink)}};
+		
+		if defined (adrMember^) { //JES 8/13/04: Block/Unblock/Delete member buttons
+			if flManagingEditor {
+				if string.lower (memberKey) != string.lower (nameOf (pta^.adrMemberInfo^)) { //can't block self
+					local (blockButton = "<input type=\"submit\" name=\"blockMember\" value=\"" + manilaSuite.getString ("admin.blockMemberButton") + "\">");
+					local (unblockButton = "<input type=\"submit\" name=\"unblockMember\" value=\"" + manilaSuite.getString ("admin.unblockMemberButton") + "\">");
+					local (deleteButton = "<input type=\"submit\" name=\"deleteMember\" value=\"" + manilaSuite.getString ("admin.deleteMemberButton") + "\">");
+					add ("<p><form method=\"POST\"><input type=\"hidden\" name=\"member\" value=\"" + string.urlEncode (memberKey) + "\">" + blockButton + " " + unblockButton + " " + deleteButton + "</form>")}}}};
+	
+	on unknownMemberError () {
+		return ("Can't display profile page for this member because the member does not exist.")};
+	
+	if defined (pta^.pathArgs) and (pta^.pathArgs != "") {
+		local (memberKey = string (pta^.pathArgs));
+		if not (memberKey contains "@") { //it's a new-style mapped link (a numeric one)
+			local (adrmap = @adrMembershipGroup^.usersMap);
+			if not defined (adrmap^.[memberKey]) {
+				return (unknownMemberError ())};
+			memberKey = adrmap^.[memberKey]};
+		local (adrMember);
+		try {
+			adrMember = mainResponder.members.getMemberTable (groupName, memberKey)}
+		else {
+			return (unknownMemberError ())};
+		if not defined (adrMember^) {
+			return (unknownMemberError ())};
+		if not flManagingEditor {
+			if defined (adrMember^.blocked) {
+				if adrMember^.blocked {
+					return (unknownMemberError ())}}};
+		viewProfile (memberKey, pta)} // 4/27/00 JES: pass in pta
+	else {
+		if defined (pta^.adrMemberInfo) { //if this is a member, you view your own profile
+			viewProfile (nameOf (pta^.adrMemberInfo^), pta)} //pass pta 28.5.2005, 15:43:43 by EBF
+		else { //view the profile of a managing editor
+			local (oneManagingEditor = manilaSuite.editors.getOneManagingEditor ());
+			viewProfile (oneManagingEditor, pta)}}; // 4/27/00 JES: pass in pta
+	
+	return (manilaSuite.unTaint (htmlText))}

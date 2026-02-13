@@ -1,0 +1,53 @@
+on getCurrentFile() {
+	«manilaSuite.versioning.getCurrentFile : 04/05/18, 21:18:08 by DAB
+		«manilaFixer.versioning.getCurrentFile : 02/03/26, 21:44:32 by DAB
+			«cloned from manilaFixer.log.getCurrentFile
+	if not defined(system.temp.versioning) {
+		new(tabletype, @system.temp.versioning)};
+	if not defined(system.temp.versioning.dayLastversioningAdd) {
+		system.temp.versioning.dayLastversioningAdd = 0};
+	if not defined(system.temp.versioning.lastversioningFile) {
+		system.temp.versioning.lastversioningFile = nil};
+	
+	local (now = clock.now ());
+	if date.day (now) == system.temp.versioning.dayLastversioningAdd {
+		if window.isopen (system.temp.versioning.lastversioningFile) {
+			return (system.temp.versioning.lastversioningFile)}};
+	
+	local (f = system.temp.versioning.lastversioningFile);
+	if f != nil {
+		if window.isopen (f) { //close the old versioning file
+			fileMenu.save (f);
+			fileMenu.close (f)}};
+	
+	bundle { //set f to the new file
+		local (day, month, year, hour, minute, second);
+		date.get (now, @day, @month, @year, @hour, @minute, @second);
+		local (datefname = year + "-" + string.padwithzeros (month, 2) + "-" + string.padwithzeros (day, 2));
+		
+		«Get the log folder. It's stored at config.manila.versioning.prefs.Folder
+		if not (file.exists (config.manila.prefs.versioning.Folder)) {
+			try {
+				config.manila.prefs.versioning.Folder  = Frontier.getSubFolder ("ops/versioning/")}
+			else {
+				config.manila.prefs.versioning.Folder  = Frontier.pathString + "versioning" + file.getPathChar ()}};
+		
+		f = config.manila.prefs.versioning.Folder + datefname + " versioning.root"};
+	
+	bundle { //open the file or create it
+		try {
+			fileMenu.open (f, hidden:true)}
+		else {
+			file.sureFilePath (f);
+			fileMenu.new (f, hidden:true);
+			window.setPosition (f, 30, 40);
+			window.setSize (f, 350, 525);
+			new (tabletype, @[f].[date.shortstring (now)]);
+			try {delete (@[f].["item #1"])};
+			fileMenu.save (f); //2/22/99; 5:12:07 PM by DW
+			};
+		system.temp.versioning.lastversioningFile = f;
+		system.temp.versioning.dayLastversioningAdd = date.day (now)};
+	
+	return (f)};
+manila.versioning.getCurrentFile()

@@ -1,0 +1,42 @@
+on viewAggregator (maxitems=100, flPostButtons=false) {
+	«Changes
+		«5/15/06; 2:37:46 PM by LL
+			«Bug fix: Fix an error message when trying to get the link for a story.  When adrstory^.data.link was defined, it was trying to use adrstory^.permalink.
+		«9/20/05; 5:46:59 PM by JES
+			«Small cosmetic imporvement: Only add leading space before channel title if not the first channel listed.
+		«6/11/03; 10:32:29 PM by JES
+			«Added support for post link and permalinks.
+		«2/25/03; 6:28:58 PM by DW
+			«Created. Render aggregator news items for feeds to which this Manila site is subscribed.
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r"};
+	local (adrprefs = manilaSuite.aggregator.init ());
+	local (adrdata = xml.aggregator.init (), adrstories = @adrdata^.stories, ixstory);
+	local (namelastfeed = "", ct = 0);
+	local (flFirstFeed = true);
+	for ixstory = sizeof (adrstories^) downto 1 {
+		local (adrstory = @adrstories^ [ixstory]);
+		local (url = adrstory^.url);
+		if defined (adrprefs^.services.[url]) { //we're subscribed
+			local (textbelow = "");
+			bundle { //get link/permalink
+				if defined (adrstory^.permalink) {
+					textbelow = " <a href=\"" + adrstory^.permalink + "\">#</a>"};
+				if defined (adrstory^.data.link) {
+					textbelow = " <a href=\"" + adrstory^.data.link + "\">#</a>"}};
+			if flPostButtons {
+				textbelow = textbelow + " [<a href=\"" + manilaSuite.getUrl ("newsItemNew") + "?story=" + number (nameOf (adrstory^)) + "\">post</a>]"};
+			if adrstory^.channeltitle != namelastfeed {
+				if not flFirstFeed {
+					add ("<br /><br />")};
+				flFirstFeed = false;
+				add ("<p><b><font size=\"+1\">" + adrstory^.channeltitle + ", " + date.timestring (adrstory^.time, true) + ".</font></b></p>");
+				namelastfeed = adrstory^.channeltitle};
+			add ("<p>" + adrstory^.storytext + "<br />\r" + textbelow + "</p>");
+			ct++;
+			if ct >= maxitems {
+				break}}};
+	if ct == 0 {
+		add ("There are no new stories to list at this time.")};
+	return (htmltext)}

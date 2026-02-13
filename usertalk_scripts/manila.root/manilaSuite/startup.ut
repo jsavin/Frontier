@@ -1,0 +1,65 @@
+«This script is called when Frontier starts up, to get Manila ready for another session.
+«Changes:
+	«12/13/05; 4:20:22 AM by JES
+		«Ensure that all default mime types from webserver.data.prefs.ext2MIME are defined in user.webserver.prefs.ext2MIME.
+	«04/05/00; 10:11:08 AM by PBS
+		«The RPC new message and save message callback scripts have changed: they now call scripts in the manilaSuite.callbacks table.
+
+on startupMsg (s) {
+	msg ("manilaSuite.startup: " + s)};
+
+on sureTable (adrTable) {
+	if not defined (adrTable^) {
+		new (tableType, adrTable)}};
+
+manilaSuite.init (); //initialize config.manila
+
+bundle { //make sure needed callbacks are installed.
+	startupMsg ("Ensuring mainResponder callbacks exist");
+	if not defined (config.mainResponder.callbacks.addMessage.manila) {
+		script.newScriptObject ("manilaSuite.callbacks.newMessageCallback (adrNewMsg)", @config.mainResponder.callbacks.addMessage.manila)};
+	if not defined (config.mainResponder.callbacks.editMessage.manila) {
+		script.newScriptObject ("manilaSuite.callbacks.changedMessageCallback (adrEditedMsg)", @config.mainResponder.callbacks.editMessage.manila)};
+	sureTable (@config.mainResponder.callbacks.rpcNewMessage);
+	if not defined (config.mainResponder.callbacks.rpcNewMessage.manila) {
+		script.newScriptObject ("manilaSuite.callbacks.rpcNewMessageCallback (adrMsgTable)", @config.mainResponder.callbacks.rpcNewMessage.manila)};
+	sureTable (@config.mainResponder.callbacks.rpcSaveMessage);
+	if not defined (config.mainResponder.callbacks.rpcSaveMessage.manila) {
+		script.newScriptObject ("manilaSuite.callbacks.rpcChangedMessageCallback (adrMsgTable)", @config.mainResponder.callbacks.rpcSaveMessage.manila)};
+	if not defined (config.mainResponder.callbacks.memberCanEdit) {
+		new (tableType, @config.mainResponder.callbacks.memberCanEdit)};
+	if not defined (config.mainResponder.callbacks.memberCanEdit.manila) {
+		script.newScriptObject ("return (manilaSuite.memberCanEditCallback ())", @config.mainResponder.callbacks.memberCanEdit.manila)}};
+
+bundle { //init root updates prefs for manila.root
+	startupMsg ("Ensuring root updates preferences exist");
+	local (adrPrefs = @user.rootUpdates.servers.manila);
+	sureTable (adrPrefs);
+	if not defined (adrPrefs^.autobackup) {
+		adrPrefs^.autobackup = true};
+	if not defined (adrPrefs^.dbname) {
+		adrPrefs^.dbname = "manila.root"};
+	if not defined (adrPrefs^.dialogs) {
+		adrPrefs^.dialogs = true};
+	if not defined (adrPrefs^.lastUpdate) {
+		adrPrefs^.lastUpdate = "Mon, 18 Oct 1999 19:00:00 GMT"};
+	if not defined (adrPrefs^.method) {
+		adrPrefs^.method = "nirvanaServer.subscriptions.update"};
+	if not defined (adrPrefs^.port) {
+		adrPrefs^.port = 80};
+	if not defined (adrPrefs^.serialNum) {
+		adrPrefs^.serialNum = 0};
+	if not defined (adrPrefs^.server) {
+		adrPrefs^.server = "updates.userland.com"};
+	if not defined (adrPrefs^.URL) {
+		adrPrefs^.URL = "http://frontier.userland.com/updates/manila"}};
+
+bundle { //ensure all default mime types are defined
+	local (adrtype);
+	for adrtype in @webserver.data.prefs.ext2MIME {
+		if not defined (user.webserver.prefs.ext2MIME.[nameOf (adrtype^)] ) {
+			user.webserver.prefs.ext2MIME.[nameOf (adrtype^)] = adrtype^}}};
+
+msg (""); //wipe out any msg we left behind
+
+return (true)

@@ -1,0 +1,513 @@
+on getConfigInfo (flIncludeHeader=true) {
+	«Get general config info about Frontier, mainResponder, and Manila.
+	local (mailtext = "", indentlevel = 0);
+	local (fldebug = false); //should false except when you're working on the script
+	on add (s) {
+		mailtext = mailtext + string.filledstring ("   ", indentlevel) + s + "\r\n"};
+	on addOnOff (label, bool) {
+		local (s = label + ": ");
+		if bool {
+			s = s + "On"}
+		else {
+			s = s + "Off"};
+		add (s)};
+	
+	add ("Frontier configuration on " + clock.now () + "."); indentlevel++;
+	add ("");
+	bundle { //Installation information
+		if flIncludeHeader {
+			add ("Installation information:"); indentlevel++;
+			add ("");
+			add ("Manila version: " + manilaSuite.version ());
+			add ("Kernel version: " + Frontier.version ());
+			local (os = "Windows");
+			if system.environment.isMac {
+				if system.environment.isCarbon {
+					os = "Mac OS X"}
+				else {
+					os = "Mac OS"}};
+			add ("Operating System: " + os);
+			local (osVersion = system.environment.osVersionString);
+			if system.environment.isCarbon {
+				osVersion = string.replace (osVersion, "16", "10")};
+			add ("OS Version: " + osVersion);
+			add ("IP address: " + tcp.dns.getMyDottedId ());
+			add ("Frontier folder: " + file.folderfrompath (frontier.getprogrampath ()));
+			add (""); indentlevel--}};
+	bundle { //About you and your computer
+		add ("About you and your computer:"); indentlevel++;
+		add ("");
+		add ("Name: " + user.prefs.name);
+		add ("Organization: " + user.prefs.organization);
+		add ("Mail address: " + user.prefs.mailAddress);
+		add ("Outgoing mail server: " + user.prefs.mailHost);
+		addOnOff ("Web server", inetd.isDaemonRunning (@user.inetd.config.http));
+		add ("Port: " + user.inetd.config.http.port);
+		add ("Log folder: " + user.log.prefs.folder);
+		add (""); indentlevel--};
+	bundle { //Safety and performance
+		add ("Safety and performance:"); indentlevel++;
+		add ("");
+		addOnOff ("Save changed databases every minute", config.mainResponder.prefs.flSaveDatabasesEveryMinute);
+		add (""); indentlevel--};
+	bundle { //Proxy server
+		add ("Proxy server:"); indentlevel++;
+		add ("");
+		add ("Domain: " + user.webbrowser.proxy.domain);
+		add ("Port: " + user.webbrowser.proxy.port);
+		add ("Username: " + user.webbrowser.proxy.username);
+		add (""); indentlevel--};
+	bundle { //Installed tools
+		add ("Installed tools:"); indentlevel++;
+		add ("");
+		local (adrItem);
+		for adrItem in @user.tools.databases {
+			if adrItem^.flInstalled {
+				add (nameOf (adrItem^))}};
+		add (""); indentlevel--};
+	bundle { //Open Databases
+		add ("Open Databases:"); indentlevel++;
+		add ("");
+		on visit (f) {
+			local (fname = file.fileFromPath (f));
+			local (folder = file.folderFromPath (f));
+			local (folderName = file.fileFromPath (folder));
+			folderName = string.popTrailing (folderName, file.getPathChar ());
+			local (size = string.megabyteString (file.size (f)));
+			add (folderName + "/" + fname + ": " + size)};
+		table.visitOpenDatabases (@visit);
+		add (""); indentlevel--};
+	bundle { //Tools folder contents
+		add ("Tools folder:"); indentlevel++;
+		add ("");
+		local (f);
+		fileloop (f in Frontier.tools.getToolsFolderPath ()) {
+			local (fname = file.fileFromPath (f));
+			local (size = string.megabyteString (file.size (f)));
+			add (fname + ": " + size)};
+		add (""); indentlevel--};
+	bundle { //agents
+		add ("Agents:"); indentlevel++;
+		add ("");
+		local (adrItem);
+		for adrItem in @system.agents {
+			add (nameOf (adrItem^))};
+		add (""); indentlevel--};
+	bundle { //threads
+		add ("Threads:"); indentlevel++;
+		add ("");
+		local (adrItem);
+		for adrItem in @user.scheduler.threads {
+			local (flDefined = true, flEnabled = true);
+			if not defined (adrItem^) {
+				flDefined = false}
+			else {
+				if not (adrItem^^.enabled) {
+					flEnabled = false}};
+			local (threadName = nameOf (adrItem^));
+			if not flDefined {
+				add (threadName + ": [not defined]")}
+			else {
+				if not flEnabled {
+					add (threadName + ": [disabled]")}
+				else {
+					add (threadName + ": " + adrItem^)}}};
+		add (""); indentlevel--};
+	bundle { //XML-RPC
+		add ("XML-RPC:"); indentlevel++;
+		add ("");
+		local (ctOutgoingAsynchMessages = 0);
+		if defined (user.betty.queueOutgoing.table) {
+			ctOutgoingAsynchMessages = sizeOf (user.betty.queueOutgoing.table)};
+		addOnOff ("Allow by IP Only", user.betty.prefs.flAllowByIPOnly);
+		«addOnOff ("Keep Asynch Client Log", user.betty.prefs.flKeepAsynchClientLog)
+		addOnOff ("Keep Server Log", user.betty.prefs.flKeepServerLog);
+		add ("RPC Client Default Path: " + user.betty.prefs.rpcClientDefaultPath);
+		add ("RPC Client Default Timeout: " + user.betty.prefs.rpcClientDefaultTimeout);
+		add ("# Pending Asynch Messages: " + ctOutgoingAsynchMessages);
+		add ("");
+		add ("Handlers:"); indentlevel++;
+		add ("");
+		local (adr);
+		for adr in @user.betty.rpcHandlers {
+			local (name = nameOf (adr^));
+			local (type = typeOf (adr^));
+			local (val = "");
+			case type {
+				tableType {
+					val = sizeOf (adr^) + " items"};
+				scriptType {
+					val = sizeOf (adr^) + " lines"};
+				addressType {
+					val = adr^}};
+			if val == "" {
+				add (name)}
+			else {
+				add (name + ": " + val)}};
+		add ("");
+		indentlevel--;
+		addOnOff ("RPC2 responder enabled", defined (user.webserver.responders.RPC2.enabled) and user.webserver.responders.RPC2.enabled);
+		add (""); indentlevel--};
+	bundle { //SOAP
+		add ("SOAP:"); indentlevel++;
+		add ("");
+		add ("RPC Client Default Timeout: " + user.soap.prefs.rpcClientDefaultTimeout);
+		add ("");
+		add ("Handlers:"); indentlevel++;
+		add ("");
+		local (adr);
+		for adr in @user.soap.rpcHandlers {
+			local (name = nameOf (adr^));
+			local (type = typeOf (adr^));
+			local (val = "");
+			case type {
+				tableType {
+					val = sizeOf (adr^) + " items"};
+				scriptType {
+					val = sizeOf (adr^) + " lines"};
+				addressType {
+					val = adr^}};
+			if val == "" {
+				add (name)}
+			else {
+				add (name + ": " + val)}};
+		add ("");
+		indentlevel--;
+		addOnOff ("SOAP responder enabled", defined (user.webserver.responders.soap.enabled) and user.webserver.responders.soap.enabled);
+		add (""); indentlevel--};
+	on doSimpleTable (adrTable) {
+		local (adrItem);
+		for adrItem in adrTable {
+			local (name = nameOf (adrItem^));
+			local (lowerName = string.lower (name));
+			if lowerName contains "password" or lowerName contains "serialnum" {
+				continue};
+			local (value);
+			local (size = sizeOf (adrItem^));
+			case typeOf (adrItem^) {
+				outlineType {
+					value = "outline: " + size + " lines"};
+				scriptType {
+					value = "script: " + size + " lines"};
+				wpTextType {
+					value = "wp-text: " + size + " characters"};
+				tableType {
+					value = "table: " + size + " items"};
+				menubarType {
+					value = "menubar: " + size + " lines"}}
+			else {
+				value = string (adrItem^)};
+			add (name + ": " + value)}};
+	on addTableAsSection (title, adrTable) {
+		local (nameAddress = string.popFileFromAddress (string (adrTable)));
+		title = title + " (" + nameAddress + "): ";
+		add (title); indentLevel++;
+		add ("");
+		doSimpleTable (adrTable);
+		add (""); indentLevel--};
+	bundle { //Webserver
+		bundle { //Responders
+			add ("Responders:"); indentlevel++;
+			add ("");
+			local (adr);
+			for adr in @user.webserver.responders {
+				local (name = nameOf (adr^));
+				while (typeOf (adr^) == addressType) {
+					adr = adr^};
+				local (flEnabled = adr^.enabled);
+				addOnOff (name, flEnabled)};
+			add (""); indentlevel--};
+		bundle { //Webserver stats
+			add ("Webserver stats:"); indentlevel++;
+			add ("");
+			add ("Hits: " + user.webserver.stats.hits);
+			add ("Max connections: " + user.webserver.stats.maxConnections);
+			add ("Max memory available: " + user.webserver.stats.maxMemAvail);
+			add ("Min memory available: " + user.webserver.stats.minMemAvail);
+			add ("Up since: " + user.webserver.stats.upSince);
+			if defined (user.webserver.stats.wormHits) {
+				add ("Worm hits: " + user.webserver.stats.wormHits)};
+			add (""); indentlevel--};
+		bundle { //Webserver prefs
+			add ("Webserver prefs:"); indentlevel++;
+			add ("");
+			add ("Default responder: " + user.webserver.prefs.defaultResponder);
+			addOnOff ("Debugging", user.webserver.prefs.fldebug);
+			addOnOff ("Domain stats", user.webserver.prefs.flDomainStats);
+			addOnOff ("DNS Lookups", user.webserver.prefs.flUseDns);
+			add (""); indentlevel--};
+		bundle { //Webserver prefilters
+			add ("Webserver PreFilters:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @user.webserver.preFilters {
+				if typeOf (adrItem^) == addressType {
+					add (nameOf (adrItem^) + ": " + adrItem^)}
+				else {
+					add (nameOf (adrItem^))}};
+			add (""); indentlevel--};
+		bundle { //Webserver postfilters
+			add ("Webserver PostFilters:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @user.webserver.postFilters {
+				if typeOf (adrItem^) == addressType {
+					add (nameOf (adrItem^) + ": " + adrItem^)}
+				else {
+					add (nameOf (adrItem^))}};
+			add (""); indentlevel--}};
+	bundle { //Manila
+		on doThemesTable (adrTable) {
+			local (adrItem);
+			for adrItem in adrTable {
+				local (enabledString = "enabled");
+				if not adrItem^.flEnabled {
+					enabledString = "disabled"};
+				add (nameOf (adrItem^) + ": " + enabledString)}};
+		bundle { //Manila callbacks
+			add ("Manila callbacks:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @config.manila.callbacks {
+				add (nameOf (adrItem^) + ":"); indentLevel++;
+				local (sizeTable = sizeOf (adrItem^));
+				if sizeTable < 1 {
+					add ("[Empty]")}
+				else {
+					local (adrCallback);
+					for adrCallback in adrItem {
+						if typeOf (adrCallback^) == addressType {
+							add (nameOf (adrCallback^) + ": " + adrCallback^)}
+						else {
+							add (nameOf (adrCallback^))}}};
+				indentLevel--};
+			add (""); indentlevel--};
+		bundle { //Manila dg themes
+			add ("Manila discussion group themes:"); indentlevel++;
+			add ("");
+			doThemesTable (@config.manila.discussionGroupThemes);
+			add (""); indentlevel--};
+		bundle { //Manila hosting
+			add ("Manila hosting:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @config.manila.hosting.sites {
+				local (name = nameOf (adrItem^));
+				add (name + ":");indentLevel++;
+				doSimpleTable (adrItem);
+				indentLevel--};
+			add (""); indentlevel--};
+		bundle { //Manila prefs
+			add ("Manila prefs (config.manila.prefs):"); indentlevel++;
+			add ("");
+			doSimpleTable (@config.manila.prefs);
+			add (""); indentlevel--};
+		bundle { //Manila sites
+			add ("Manila sites:"); indentlevel++;
+			add ("");
+			add ("# sites in config.manila.sites: " + sizeOf (config.manila.sites));
+			add (""); indentlevel--};
+		bundle { //Manila stats
+			add ("Manila stats:"); indentlevel++;
+			add ("");
+			add ("# referers tables: " + sizeOf (config.manila.stats.referers));
+			if defined (config.manila.stats.reports) {
+				add ("# reports: " + sizeOf (config.manila.stats.reports))};
+			if defined (config.manila.stats.sites.allTime) {
+				add ("# all-time sites stats: " + sizeOf (config.manila.stats.sites.allTime))};
+			if defined (config.manila.stats.sites.hourly) {
+				add ("# hourly sites stats: " + sizeOf (config.manila.stats.sites.hourly))};
+			if defined (config.manila.stats.sites.today) {
+				add ("# today sites stats: " + sizeOf (config.manila.stats.sites.today))};
+			add (""); indentlevel--};
+		bundle { //Manila themes
+			add ("Manila themes:"); indentlevel++;
+			add ("");
+			doThemesTable (@config.manila.themes);
+			add (""); indentlevel--}};
+	bundle { //mainResponder
+		addTableAsSection ("mainResponder global URLs", @config.mainResponder.urls);
+		addTableAsSection ("mainResponder prefs", @config.mainResponder.prefs);
+		addTableAsSection ("mainResponder globals", @config.mainResponder.globals);
+		bundle { //mainResponder legal macros
+			add ("mainResponder legal macros:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @config.mainResponder.prefs.legalMacros {
+				local (name = nameOf (adrItem^));
+				case typeOf (adrItem^) {
+					booleanType {
+						add (name + ": " + adrItem^)};
+					tableType {
+						if (sizeOf (adrItem^) == 2) and (defined (adrItem^.flLegal)) and (defined (adrItem^.flParams)) {
+							add (name + ": [takes params]: " + adrItem^.flLegal)}
+						else {
+							add (name + ": [misconfigured]")}}}};
+			add (""); indentlevel--};
+		bundle { //mainResponder search queue
+			add ("mainResponder search queue:"); indentlevel++;
+			add ("");
+			if defined (config.mainResponder.data.searchQueue) {
+				add ("# items: " + sizeOf (config.mainResponder.data.searchQueue))}
+			else {
+				add ("Empty")};
+			add (""); indentlevel--};
+		bundle { //mainResponder callbacks
+			add ("mainResponder callbacks:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @config.mainResponder.callbacks {
+				add (nameOf (adrItem^) + ":"); indentLevel++;
+				local (sizeTable = sizeOf (adrItem^));
+				if sizeTable < 1 {
+					add ("[Empty]")}
+				else {
+					local (adrCallback);
+					for adrCallback in adrItem {
+						if typeOf (adrCallback^) == addressType {
+							add (nameOf (adrCallback^) + ": " + adrCallback^)}
+						else {
+							add (nameOf (adrCallback^))}}};
+				indentLevel--};
+			add (""); indentlevel--};
+		bundle { //mainResponder domains
+			add ("mainResponder domains (config.mainResponder.domains):"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @config.mainResponder.domains {
+				local (name = nameOf (adrItem^));
+				if typeOf (adrItem^) == tableType {
+					if defined (adrItem^.siteTree.directory.outline) {
+						add (name + " [siteTree]:");
+						indentLevel++;
+						add (string (adrItem^.siteTree.directory.outline));
+						add ("");
+						indentLevel--}
+					else {
+						add (name + ": table " + sizeOf (adrItem^) + " items")}}
+				else {
+					add (name + ": " + string (adrItem^))}};
+			add (""); indentlevel--}};
+	bundle { //user table
+		if defined (user.applescripts.prefs) {
+			addTableAsSection ("AppleScript", @user.applescripts.prefs)};
+		if defined (user.backups) {
+			addTableAsSection ("Backups", @user.backups)};
+		if defined (user.batchExporter) {
+			addTableAsSection ("BatchExporter", @user.batchExporter)};
+		bundle { //user.callbacks
+			add ("user.callbacks:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @user.callbacks {
+				add (nameOf (adrItem^) + ":"); indentLevel++;
+				local (sizeTable = sizeOf (adrItem^));
+				if sizeTable < 1 {
+					add ("[Empty]")}
+				else {
+					local (adrCallback);
+					for adrCallback in adrItem {
+						if typeOf (adrCallback^) == addressType {
+							add (nameOf (adrCallback^) + ": " + adrCallback^)}
+						else {
+							add (nameOf (adrCallback^))}}};
+				indentLevel--};
+			add (""); indentlevel--};
+		if defined (user.com) {
+			addTableAsSection ("COM", @user.com)};
+		bundle { //user.databases
+			add ("user.databases:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @user.databases {
+				add (nameOf (adrItem^) + ":"); indentLevel++;
+				doSimpleTable (adrItem);
+				indentLevel--};
+			add (""); indentlevel--};
+		if defined (user.export) {
+			addTableAsSection ("Export", @user.export)};
+		if defined (user.html.glossary) {
+			add ("user.html.glossary:"); indentlevel++;
+			add ("");
+			add ("# items: " + sizeOf (user.html.glossary));
+			add (""); indentlevel--};
+		if defined (user.html.macros) {
+			add ("user.html.macros:"); indentlevel++;
+			add ("");
+			add ("# items: " + sizeOf (user.html.macros));
+			add (""); indentlevel--};
+		if defined (user.html.renderers) {
+			add ("user.html.renderers:"); indentlevel++;
+			add ("");
+			add ("# items: " + sizeOf (user.html.renderers));
+			add (""); indentlevel--};
+		if defined (user.html.prefs) {
+			addTableAsSection ("HTML prefs", @user.html.prefs)};
+		if defined (user.menus) {
+			addTableAsSection ("Menus", @user.menus)};
+		if defined (user.prefs) {
+			addTableAsSection ("Basic prefs", @user.prefs)};
+		if defined (user.prefs.dates) {
+			addTableAsSection ("Dates", @user.prefs.dates)};
+		if defined (user.prefs.dialogs) {
+			addTableAsSection ("Dialogs", @user.prefs.dialogs)};
+		if defined (user.prefs.fonts) {
+			addTableAsSection ("Fonts", @user.prefs.fonts)};
+		if defined (user.prefs.search) {
+			addTableAsSection ("Search", @user.prefs.search)};
+		if defined (user.rootUpdates.prefs) {
+			addTableAsSection ("Root Updates prefs", @user.rootUpdates.prefs)};
+		if defined (user.rootUpdates.servers) {
+			add ("user.rootUpdates.Servers:"); indentlevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @user.rootUpdates.Servers {
+				add (nameOf (adrItem^) + ":"); indentLevel++;
+				doSimpleTable (adrItem);
+				indentLevel--};
+			add (""); indentlevel--};
+		if defined (user.unix.scripts) {
+			addTableAsSection ("Unix scripts", @user.unix.scripts)};
+		if defined (user.webBrowser) {
+			addTableAsSection ("WebBrowser", @user.webBrowser)}};
+	bundle { //Misc
+		if defined (system.verbs.traps) {
+			addTableAsSection ("Traps", @system.verbs.traps)};
+		if defined (system.verbs.extensions) {
+			addTableAsSection ("Extensions", @system.verbs.extensions)};
+		bundle { //root table sizes
+			add ("Top-level table sizes:"); indentLevel++;
+			add ("");
+			local (adrItem);
+			for adrItem in @root {
+				local (name = nameOf (adrItem^));
+				local (size = sizeOf (adrItem^));
+				if typeOf (adrItem^) != tableType {
+					add (name + ": Not a table, which surprises us.")}
+				else {
+					add (name + ": " + size + " items")}};
+			
+			add ("");indentLevel--}};
+	bundle { //Guest Databases folders
+		on doFolder (name) {
+			add (name + " folder:"); indentlevel++;
+			add ("");
+			local (f);
+			fileloop (f in Frontier.getSubFolder (name)) {
+				local (fname = file.fileFromPath (f));
+				fname = string.popTrailing (fname, file.getPathChar ());
+				if file.isFolder (f) {
+					add (fname + ": [folder]")}
+				else {
+					local (size = string.megabyteString (file.size (f)));
+					add (fname + ": " + size)}};
+			add (""); indentlevel--};
+		doFolder ("apps");
+		doFolder ("ops");
+		doFolder ("www")};
+	
+	if fldebug {
+		wp.newTextObject (mailText, @temp.FrontierConfiguration);
+		edit (@temp.FrontierConfiguration)};
+	
+	return (mailText)}

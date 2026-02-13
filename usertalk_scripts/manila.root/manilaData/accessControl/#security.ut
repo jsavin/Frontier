@@ -1,0 +1,26 @@
+local (pt = responderAttributes); // setup  a fake page table
+local (groupName = pt.newsSite^.sysopMemberOfGroup);
+local (adrGroup = mainResponder.members.getMembershipTable (groupName)); // 17/05/05; 4:41:19 PM by PR
+bundle { // set adrMemberInfo if the user is logged in
+	local (cookieName = string.replaceAll (adrGroup^.cookieName, " ", ""));
+	local (cookie, memberKey);
+	if defined (requestHeaders.cookies.[cookieName]) { // 17/05/05; 4:19:03 PM by PR
+		cookie = requestHeaders.cookies.[cookieName];
+		memberKey = mainResponder.members.getMemberKeyFromCookie (cookie);
+		bundle { //authenticate
+			local (flHashedCookie = mainResponder.members.isHashedCookieFormat (cookie));
+			if flHashedCookie { //PBS 04/10/00: is it a new style cookie?
+				try {
+					local (t = mainResponder.members.cookieStringToTable (cookie));
+					pt.adrMemberInfo = mainResponder.members.getMemberTableWithHash (groupName, memberKey, t.h)}} //t.h contains the hashString
+			else { //it's an old style cookie
+				try {
+					cookie = string.urlDecode (cookie);
+					local (password = string.nthField (cookie, '\t', 2));
+					pt.adrMemberInfo = mainResponder.members.getMemberTableWithPassword (groupName, memberKey, password)}}}}};
+«adrGroup = responderAttributes.membershipgroup
+if not manilaSuite.accessControl.checkMemberCohorts(@pt, [[cohorts]], adrGroup) {
+	code = 401; //unauthorized 
+	responseBody = webserver.util.buildErrorPage ("401 UNAUTHORIZED", "Access to this URI is restricted.");
+	try {delete (@responseHeaders.["Content-Type"])};
+	scripterror("!")}

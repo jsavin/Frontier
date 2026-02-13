@@ -1,0 +1,27 @@
+on getMemberPrefAddress (adrMemberInfo, prefName, defaultValue=nil) {
+	«manilaSuite.members.getMemberPrefAddress : 04/05/16, 13:53:31 by DAB
+		«return the address of the desired part of the member table, if possible
+	if not defined(adrMemberInfo^) {
+		return nil};
+	
+	local (adr = adrMemberInfo);
+	local (N = string.countFields(prefName, "."));
+	local (ix=1, str);
+	loop {
+		if ix > N {
+			return adr};
+		str = string.nthField(prefName, ".", ix);
+		if not defined(adr^.[str]) {
+			case true {
+				defaultValue==nil {
+					break};
+				ix == N {
+					adr^.[str] = defaultValue}}
+			else {
+				new(tabletype, @adr^.[str])}};
+		adr = @adr^.[str];
+		ix++};
+	
+	return nil};
+bundle {
+	manilaSuite.members.getMemberPrefAddress(manilaSuite.members.getMemberTableFromSiteAddress(@myfirstsiteManilawebsite, "anyone@aol.com"), "siteprefs.advanced.spareFlag", true)}

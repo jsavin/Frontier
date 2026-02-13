@@ -1,0 +1,8 @@
+on getShortSectionName (sectionName) {
+	«Changes
+		«10/11/06; 6:07:56 PM by LL
+			«Bug fix: Corrected incorrect section names.
+		«manilaSuite.sitePrefs.utility.getShortSectionName : 04/05/13, 21:29:04 by DAB
+			«factored from manilaSuite.sitePrefs.advancedPage
+	return (string.lower (string.dropNonAlphas (sectionName)))};
+window.msg(getShortSectionName ("Colors"))

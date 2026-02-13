@@ -1,0 +1,32 @@
+on getThemeData (siteUrl, themeName="", themeAuthor="", themeAuthorEmail="", themeDescription="") {
+	«Changes
+		«6/28/05; 2:25:36 AM by JES
+			«Created. Given a site URL, return a Theme table based on the site.
+	local (sitename = manilaSuite.rpcUtils.urlToSiteName (siteUrl));
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	
+	local (flCloneable = manilaSuite.getNewsSitePref ("theme.flCloneable", adrsite, false));
+	if not flCloneable { //access error
+		scriptError ("Can't get theme data because the managing editor has not made the site cloneable as a theme.")};
+	
+	bundle { //set themeName, themeAuthor, themeAuthorEmail and themeDescription, if not supplied
+		if themeName == "" { //use human-readable site name
+			themeName = manilaSuite.getNewsSitePref ("theme.name", adrsite, adrsite^.["#newsSite"].siteName)};
+		if themeAuthorEmail == "" { //use 1st managing editor
+			themeAuthorEmail = manilaSuite.getNewsSitePref ("theme.authorEmail", adrsite, adrsite^.["#newsSite"].sysopMail[1])};
+		if themeAuthor == "" { //use ME's name, or if not specified, the site name
+			if defined (adrsite^.["#membershipGroup"].users.[themeAuthorEmail].personalInfo.name) {
+				themeAuthor = adrsite^.["#membershipGroup"].users.[themeAuthorEmail].personalInfo.name}
+			else { //use site name for theme name
+				themeAuthor = manilaSuite.getNewsSitePref ("theme.authorName", adrsite, adrsite^.["#newsSite"].siteName)}};
+		if themeDescription == "" { //use site's tagline
+			themeDescription = manilaSuite.getNewsSitePref ("theme.description", adrsite, string (adrsite^.["#newsSite"].tagLine))}};
+	
+	local (themeShortName = string.innerCaseName (themeName));
+	
+	local (themeTable);
+	manilaSuite.themes.siteToTheme (adrsite, @themeTable, themeShortName, themeName, themeAuthor, themeAuthorEmail, siteUrl, themeDescription);
+	local (packedData);
+	pack (themeTable, @packedData);
+	local (data = base64.encode (string (packedData), 0) );
+	return (data)}

@@ -1,0 +1,87 @@
+on handler (pta, adrObject) {
+	«manilaSuite.sitePrefs.handlers.PrintFriendlyTemplate.handler : 04/05/15, 15:11:33 by DAB
+		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	«messages at manilaData.localization.languages.english.strings.admin
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf(this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName(pta, sectionName));
+	
+	add("\r<p>");
+	add(manilaSuite.getString ("admin." + shortName + "SectionDescription", pta: pta));
+	add("\r</p>");
+	
+	local (replacementTable);
+	bundle { //set up replacement table
+		new (tableType, @replacementTable);
+		replacementTable.displayName = displayName};
+	
+	if defined(pta^.postargs.[shortname]) {
+		case true {
+			defined (pta^.postArgs.restoreToDefault) {
+				add(manilaSuite.sitePrefs.utility.confirmBox(pta, shortname, "admin.confirmTemplateRestoreToDefault", @replacementTable))};
+			defined (pta^.postArgs.doRestoreDefault) { //restore to default
+				wp.newTextObject (string (manilaData.printFriendlyTemplates.template), adrObject);
+				
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable));
+				«cause the containing frame to refresh
+				add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")};
+			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
+				}}
+		else { //try to update the template
+			local (s = string (pta^.postArgs.[shortName]));
+			s = string.replaceAll (s, lf, "");
+			s = mainResponder.neuterText (s, true, false);
+			wp.newTextObject (s, adrObject);
+			
+			manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+			add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.printFriendlyTemplateUpdateSuccess", @replacementTable));
+			«cause the containing frame to refresh
+			add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname + "=2'</script>")}};
+	
+	if pta^.searchArgs != "" {
+		local (argTable);
+		new (tableType, @argTable);
+		webserver.parseArgs (pta^.searchArgs, @argTable);
+		if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+			case argTable.[shortName] {
+				"1" {
+					add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable))};
+				"2" {
+					add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.printFriendlyTemplateUpdateSuccess", @replacementTable))}}}};
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	bundle { //row for textarea
+		add ("\r\t<tr>");
+		add ("\r\t\t<td align='left' valign='top' colspan='2'>");
+		add("&nbsp;&nbsp;");
+		«local (value = manilaSuite.sitePrefs.utility.exportOutline (string (adrObject^)))
+		if not defined (adrObject^) {
+			wp.newTextObject (string (manilaData.printFriendlyTemplates.template), adrObject)};
+		local (value = manilaSuite.sitePrefs.utility.exportOutline (string (adrObject^)));
+		add("<textarea name='" + shortName + "' cols='" + manilaSuite.sitePrefs.data.cols + "' rows='" + manilaSuite.sitePrefs.data.rows + "' style='width:" + manilaSuite.sitePrefs.data.textareaWidthPixels + "; height:" + manilaSuite.sitePrefs.data.textareaHeightPixels + "'>" +  value + "</textarea>");
+		add ("\r\t\t</td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for buttons
+		add(manilaSuite.sitePrefs.utility.addButtons(pta, adrObject, sectionName, flMemberHasPike))};
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

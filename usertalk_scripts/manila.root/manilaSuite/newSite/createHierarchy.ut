@@ -1,0 +1,25 @@
+on createHierarchy (adrSiteInfo) {
+	«Create the XML #hierarchy.
+		«11/9/99; 1:00:24 AM by PBS
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	if not defined (adrSite^.["#hierarchy"]) {
+		adrSite^.["#hierarchy"] = manilaData.newSiteTemplate.["#hierarchy"]}
+	else {
+		adrSite^.["#hierarchy"].outline = manilaData.newSiteTemplate.["#hierarchy"].outline};
+	if not defined (adrSite^.["#objectNotFoundHandler"]) {
+		adrSite^.["#objectNotFoundHandler"] = manilaData.newSiteTemplate.["#objectNotFoundHandler"]};
+	
+	bundle { //do FAQ and Feedback pages as site structure pages
+		faqMsgNum = adrSite^.["#newsSite"].discussLinks.faqMsgNum;
+		feedbackMsgNum = adrSite^.["#newsSite"].discussLinks.emailMsgNum;
+		local (htext = "<hierarchy>\r");
+		«htext = htext + "  <story name=\"FAQ\" pathname=\"faq\" msgNum=\"" + faqMsgNum + "\"/>\r"
+		«htext = htext + "  <story name=\"Feedback\" pathname=\"feedback\" msgNum=\"" + feedbackMsgNum + "\"/>\r"
+		htext = htext + "  </hierarchy>";
+		table.assign (@adrSite^.["#hierarchy"].outline, htext)};
+	
+	«Compile.
+	xml.compile (string (adrSite^.["#hierarchy"].outline), @adrSite^.["#hierarchy"].structure);
+	
+	return (true)}

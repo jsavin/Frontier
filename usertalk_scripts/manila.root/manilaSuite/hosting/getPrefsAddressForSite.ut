@@ -1,0 +1,31 @@
+on getPrefsAddressForSite (adrSite, adrAdrPrefs) {
+	«Changes
+		«3/18/04; 3:26:32 PM by JES
+			«Make sure that the prefs table's name is the site's canonical name before returning.
+		«06/12/00; 11:11:09 PM by PBS
+			«Created. adrAdrPrefs^ gets the address of the prefs table for this site. Return false if no prefs.
+	
+	local (canonicalSiteName);
+	try { //set canonicalSiteName
+		canonicalSiteName = manilaSuite.getCanonicalSiteName (adrSite)}
+	else { //fallback in case site is not installed
+		canonicalSiteName = manilaSuite.getShortSiteName (nameOf (adrSite^))};
+	local (lowerName = string.lower (canonicalSiteName));
+	local (adrPrefsTable = @config.manila.hosting.sites);
+	local (adrPrefs);
+	for adrPrefs in adrPrefsTable {
+		if string.lower (adrPrefs^.canonicalSiteName) == lowerName {
+			if adrPrefs^.canonicalSiteName != "" {
+				if string.lower (nameOf (adrPrefs^)) != adrPrefs^.canonicalSiteName { //try to update the name of the prefs table, so it matches the site's name
+					if string.lower (nameOf (adrPrefs^)) != "default" { //special case
+						local (siteName = adrPrefs^.canonicalSiteName);
+						if not defined (adrPrefsTable^.[siteName]) { //make sure we're not trampling another table
+							table.rename (adrPrefs, siteName);
+							adrPrefs = @adrPrefsTable^.[siteName]}}}};
+			adrAdrPrefs^ = adrPrefs;
+			return (true)}};
+	return (false)};
+«bundle //testing
+	«local (adrprefs)
+	«getPrefsAddressForSite (@createASiteManilaWebsite, @adrprefs)
+	«dialog.notify (adrprefs)

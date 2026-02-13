@@ -1,0 +1,93 @@
+on postFilter (pta) {
+	«Maintain Manila stats per site, both aggregate and daily.
+		«05/08/00; 4:21:46 PM by PBS
+	«Changes:
+		«4/21/01; 2:09:21 AM by JES
+			«Don't store stats data in a calendar structure. Instead, only store today's information at config.manila.stats.sites.today.
+	
+	local (siteName, displaySiteName, siteUrl);
+	try { //get the site name, display site name, and site URL -- fails if this isn't a Manila site
+		siteName = manilaSuite.getCanonicalSiteName (pta^.adrSiteRootTable);
+		displaySiteName = string (pta^.newsSite^.siteName);
+		siteUrl = pta^.ftpSite^.url}
+	else { //just return, this script maintains stats for Manila sites only
+		return (true)};
+	
+	if defined (pta^.responseHeaders.["Content-type"]) {
+		local (contentType = string.lower (pta^.responseHeaders.["Content-type"]));
+		if contentType == "text/html" or (contentType beginsWith "image/") {
+			if defined (pta^.code) {
+				if pta^.code == 200 {
+					local (flPublic = true);
+					bundle { //is this a non-public site?
+						if defined (pta^.newsSite^.flEditorsOnlyAccessToSite) {
+							if pta^.newsSite^.flEditorsOnlyAccessToSite {
+								flPublic = false}}};
+					
+					on initSiteTable (adrTable, flSiteInfo=true) {
+						if not defined (adrTable^) {
+							new (tableType, adrTable)};
+						if not defined (adrTable^.pageReads) {
+							adrTable^.pageReads = 0};
+						if not defined (adrTable^.totalHits) {
+							adrTable^.totalHits = 0};
+						if not defined (adrTable^.memberHits) {
+							adrTable^.memberHits = 0};
+						if not defined (adrTable^.memberPageReads) {
+							adrTable^.memberPageReads = 0};
+						if flSiteInfo {
+							adrTable^.displaySiteName = displaySiteName;
+							adrTable^.siteUrl = siteUrl};
+						return (true)};
+					local (adrAggregate, adrCalendar);
+					bundle { //make sure the data tables exist and are set up
+						if not defined (config.manila) {
+							new (tableType, @config.manila)};
+						if not defined (config.manila.stats) {
+							new (tableType, @config.manila.stats)};
+						if not defined (config.manila.stats.sites) {
+							new (tableType, @config.manila.stats.sites)};
+						if not defined (config.manila.stats.sites.allTime) {
+							new (tableType, @config.manila.stats.sites.allTime)};
+						«if not defined (config.manila.stats.sites.calendar)
+							«new (tableType, @config.manila.stats.sites.calendar)
+						if not defined (config.manila.stats.sites.today) {
+							new (tableType, @config.manila.stats.sites.today)};
+						
+						adrAggregate = @config.manila.stats.sites.allTime;
+						};«adrCalendar = @config.manila.stats.sites.calendar
+					
+					local (adrAggregateItem, adrTodayItem); //adrCalendarItem)
+					bundle { //get address of aggregate item
+						adrAggregateItem = @adrAggregate^.[siteName];
+						initSiteTable (adrAggregateItem)};
+					«bundle //get address of calendar item
+						«local (adrDay = mainResponder.calendar.getDayAddress (adrCalendar, clock.now ()))
+						«adrCalendarItem = @adrDay^.[siteName]
+						«initSiteTable (adrCalendarItem, false)
+					bundle { //get address of today item
+						adrTodayItem = @config.manila.stats.sites.today.[siteName];
+						initSiteTable (adrTodayItem)};
+					
+					adrAggregateItem^.totalHits++;
+					adrTodayItem^.totalHits++;
+					
+					local (flMember = (defined (pta^.adrMemberInfo)));
+					if contentType == "text/html" { //is it a page read?
+						adrAggregateItem^.pageReads++;
+						adrTodayItem^.pageReads++;
+						if flMember {
+							adrAggregateItem^.memberPageReads++;
+							adrTodayItem^.memberPageReads++}};
+					
+					if flMember { //is it a member?
+						adrAggregateItem^.memberHits++;
+						adrTodayItem^.memberHits++};
+					
+					if flPublic {
+						if defined (adrAggregateItem^.flPublic) {
+							try {delete (@adrAggregateItem^.flPublic)}}}
+					else {
+						adrAggregateItem^.flPublic = false}}}}};
+	
+	return (true)}

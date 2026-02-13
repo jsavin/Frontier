@@ -1,0 +1,12 @@
+on rpcGetHomePageContent (siteName) {
+	«This supports the manila.homepage.getCurrentContent RPC handler. Return a table of text and info.
+		«04/25/00; 6:03:26 PM by PBS
+	
+	local (adrSite = config.manila.sites.[siteName]);
+	local (returntable);
+	new (tableType, @returnTable);
+	returntable.url = adrSite^.["#ftpSite"].url;
+	returntable.subject = "Home Page";
+	returntable.body = manilaSuite.news.rpcFormatLastNItems (siteName);
+	
+	return (returnTable)}

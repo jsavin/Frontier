@@ -1,0 +1,35 @@
+on displaySiteReadsReport (flAllTime=true) {
+	«Display the site reads report.
+		«05/09/00; 1:08:52 AM by PBS
+		«Changes:
+			«05/15/00; 7:51:48 PM by JES
+				«localized
+	
+	local (pta, tempTable);
+	try { // try to get pta for language (won't work outside wsf context)
+		pta = html.getPageTableAddress ()}
+	else { // fake the page table, using server's or Frontier's language setting
+		new (tableType, @tempTable);
+		if defined (config.mainResponder.globals.language) {
+			tempTable.language = config.mainResponder.globals.language}
+		else { // no server setting -- use Frontier setting?
+			if defined (user.prefs.language) {
+				tempTable.language = user.prefs.language}
+			else { // no Frontier setting -- use English
+				tempTable.language = "English"}};
+		pta = @tempTable};
+	
+	local (reportName = "mostReadSites");
+	if not flAllTime {
+		reportName = "mostReadSitesYesterday"};
+	
+	if defined (config.manila.stats.reports.[reportName]) {
+		local (htmlText);
+		local (d = timeModified (@config.manila.stats.reports.[reportName]));
+		local (replacementTable); new (tableType, @replacementTable);
+		replacementTable.date = mainResponder.localization.dateTimeString (d, pta);
+		htmlText = "<i>" + manilaSuite.getString ("hosting.rankingsCompiledOn", @replacementTable, pta: pta) + "</i><p>";
+		htmlText = htmlText + string (config.manila.stats.reports.[reportName]);
+		return (htmlText)};
+	
+	return (manilaSuite.getString ("hosting.rankingsNotCompiledError", pta: pta))}

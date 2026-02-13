@@ -1,0 +1,168 @@
+on defaultPage () {
+	«Build the default discussion group home page.
+	«Changes:
+		«9/28/05; 1:36:37 PM by JES
+			«Comment out reference to userlandWidgets.
+		«2/18/05; 5:29:25 AM by JES
+			«Moved the Create a New Topic link to above the discussion group listing.
+		«9/28/01; 4:27:47 PM by PBS
+			«Support for print friendly template.
+		«2000:
+			«04/03/00; 11:04:06 AM by PBS
+				«Manila time zone support: the day may be in the future according to the server's time zone.
+			«04/18/00; 2:44:54 PM by JES
+				«localized
+			«05/01/00; 4:01:33 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«05/30/00; 5:45:02 PM by PBS
+				«Send the cssPrefix parameter to mainResponder.discuss.listDay, so a discussion group listing can be formatted using cascading style sheets.
+				«Also send the cssPrefix parameter to mainResponder.calendar.draw, so the calendar respects the CSS for the site.
+			«06/01/00; 6:36:42 PM by JES
+				«Merged Brent's last changes for calendar css classes
+			«07/07/00; 6:54:39 PM by JES
+				«Call new script to get HTML for the listing: manilaSuite.discuss.listMessages. manilaSuite.discuss.listMessages knows how to render a single day, and also how to render n messages, starting from the day you pass to it.
+			«09/29/00; 5:07:41 PM by PBS
+				«Don't display the new topic link if the discuss security script has disabled it.
+			«10/10/00; 6:44:50 PM by JES
+				«When using the topics-based default page always pass the current date to manilaSuite.discuss.listMessages, rather than the last date in the calendar.
+		«1999:
+			«10/27/99; 1:08:48 PM by PBS
+				«Don't specify a background color for the calendar; it should be transparent.
+			«10/27/99; 9:43:08 PM by PBS
+				«Get the background color for discussion group listings from #newsSite.colors.discussListings.
+			«10/28/99; 11:11:46 AM by PBS
+				«The text color for the calendar now comes from the text color specified in the template.
+			«10/31/99; 2:22:15 PM by PBS
+				«Clean-ups.
+			«12/14/99; 2:51:26 PM by PBS
+				«Respect for the editor's prefs for calendar formatting.
+			«12/21/99; 8:23:47 PM by PBS
+				«Call manilaSuite.html.getSeparatorColors to get the editor's preferred separator colors. Also: if the discuss listings color is "", then use an appropriate default.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrData = mainResponder.discuss.openRoot ());
+	local (adrCal = @adrData^.calendar);
+	local (flSysopPlacesCalendar = string.lower (pta^.template) contains "{calendar}");
+	local (flDiscussTopicBased = false);
+	try {
+		manilaSuite.getNewsSitePref ("discussionGroup.topicBased", default: false, flCreate: true)};
+	
+	local (bgColor = manilaSuite.getNewsSitePref ("colors.discussListings", default:"beige", flCreate:true, flUnTaint:true));
+	if string.trimWhiteSpace (bgColor) == "" {
+		bgColor = manilaData.newSiteTemplate.["#newsSite"].colors.discussListings};
+	
+	local (headerColor, headerTextColor);
+	manilaSuite.html.getSeparatorColors (@headerColor, @headerTextColor);
+	
+	«07/07/00 JES: new prefs for rendering n messages in the DG listing, not just a single day.
+	local (flOneDay = manilaSuite.getNewsSitePref ("flDiscussListByDay", default:true, flCreate:true));
+	local (numMsgsToList = manilaSuite.getNewsSitePref ("numMessagesInDiscussListing", default:50, flCreate:true));
+	
+	pta^.activeUrls = false;
+	pta^.title = manilaSuite.getString ("discuss.defaultPageName"); // 4/18/00 JES: localized
+	
+	local (theDay = nil);
+	if pta^.pathArgs != "" {
+		try {
+			theDay = mainResponder.calendar.pathArgsToDate (pta^.pathArgs);;
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.date = mainResponder.localization.shortDateString (theDay);
+			pta^.title = manilaSuite.getString ("discuss.archiveForDate", @replacementTable); // 4/18/00 JES: localized
+			flOneDay = true}}; // 07/07/00 JES: only render one day on archive pages.
+	if theDay == nil {
+		try {
+			if flDiscussTopicBased {
+				theDay = manilaSuite.convertTime ();
+				theDay = date.set (date.day (theDay), date.month (theDay), date.year (theDay), 0, 0, 0)}
+			else {
+				theDay = mainResponder.calendar.getMostRecentDay (adrCal, manilaSuite.convertTime ())}} //PBS 04/02/00: respect time zone prefs
+		else {
+			«theDay = clock.now ()
+			theDay = manilaSuite.convertTime ()}}; //PBS 04/02/00: respect time zone prefs
+	
+	local (listingForTheDay);
+	bundle { //get the HTML view of the day's dg messages
+		«07/07/00 JES: call manilaSuite.discuss.listMessages instead of mainResponder.discuss.listDay
+		if pta^.flPrintFriendlyTemplate { //PBS 09/28/01: print friendly colors
+			bgColor = "#FFFFFF";
+			headerColor = "#CCCCCC";
+			headerTextColor = "#000000"};
+		listingForTheDay = manilaSuite.discuss.listMessages (theDay, otherColor:bgColor, headerColor:headerColor, headerTextColor:headerTextColor, cssPrefix:"dl", flOneDay:flOneDay, numMessages:numMsgsToList)}; //PBS 05/30/00: "dl" is CSS prefix for discussion group listing
+	
+	local (calText);
+	bundle { //build the HTML calendar
+		local (url = pta^.path + "$");
+		local (myt, dnt, dt);
+		manilaSuite.html.getCalendarTemplates (@myt, @dnt, @dt);
+		calText = mainResponder.localization.drawCalendar (colWidth:19, rowHeight:10, urlPrefix:url, tableBorder:0, curDate: theDay, monthYearTemplate:myt, dayNameTemplate:dnt, dayTemplate:dt, adrCalendar:adrCal, cssPrefix:"d", pta: pta); // 4/18/00 JES: call localized drawCalendar wrapper
+		«bundle // Brent's CSS-aware, but non-localized version
+			«try //PBS 05/30/00: send the new cssPrefix parameter so the calendar gets CSS classes
+				«calText = mainResponder.calendar.draw (colWidth:19, rowHeight:10, urlPrefix:url, tableBorder:0, curDate: theDay, monthYearTemplate:myt, dayNameTemplate:dnt, dayTemplate:dt, adrCalendar:adrCal, cssPrefix:"d") //"d" prefix for discussion group, "h" for home page
+			«else //if mainResponder hasn't been updated, the call above would fail
+				«calText = mainResponder.calendar.draw (colWidth:19, rowHeight:10, urlPrefix:url, tableBorder:0, curDate: theDay, monthYearTemplate:myt, dayNameTemplate:dnt, dayTemplate:dt, adrCalendar:adrCal)
+		calText = manilaSuite.unTaint (calText);
+		try {
+			calText = calText + mainResponder.calendar.getLinks (adrCal, theDay, url)};
+		
+		bundle { // add searchArgs to the calendar links to preserve the mode
+			local (searchArgs = "");
+			if defined (pta^.searchArgs) and pta^.searchArgs {
+				searchArgs = "?" + pta^.searchArgs};
+			if searchArgs {
+				local (s = calText, ctLines = string.countFields (s, cr), l);
+				calText = "";
+				for i = 1 to ctLines {
+					l = string.nthField (s, cr, 1);
+					s = string.delete (s, 1, sizeOf (l) + 1);
+					if l contains "</a>" {
+						local (ix = string.patternMatch ("</a>", l));
+						while l[ix] != ">" {
+							ix--};
+						ix--; // back up over the closed quote in the url
+						l = string.insert (searchArgs, l, ix)};
+					calText = calText + l;
+					if i != ctLines {
+						calText = calText + cr}}}};
+		
+		«if defined (pta^.newsSite^.flNavBoxOnDiscuss) and pta^.newsSite^.flNavBoxOnDiscuss
+			«calText = calText + "<p>" + string (userlandWidgets.standardElements.navBox)};
+	
+	if not pta^.flPrintFriendlyTemplate {
+		if defined (pta^.newsSite^.flNewThreadOnDiscussHome) { //PBS 9/25/99: Optional New Thread link at bottom of dg page
+			if pta^.newsSite^.flNewThreadOnDiscussHome {
+				if (not (defined (pta^.flNewDiscussTopic))) or (pta^.flNewDiscussTopic) { //PBS 09/29/00: discuss security script may have disabled display of new topic link
+					url = manilaSuite.getUrl ("discussNewThread", pta);
+					url = string.popTrailing (url, '$');
+					local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+					replacementTable.url = url;
+					«listingForTheDay = listingForTheDay + "<p>" + manilaSuite.getString ("discuss.createNewTopic", @replacementTable) // 4/18/00 JES: localized
+					listingForTheDay = "<p>" + manilaSuite.getString ("discuss.createNewTopic", @replacementTable) + "</p>\r" + listingForTheDay}}}};
+	
+	local (htmlText = "", indentLevel = 0);
+	
+	on add (s) {
+		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+	
+	bundle { //build the page, either with the calendar in the standard place or where the ME has placed it
+		if flSysopPlacesCalendar {
+			pta^.calendar = calText;
+			add (listingForTheDay)}
+		else {
+			add ("<table cellpadding=\"10\">"); indentLevel++;
+			add ("<tr>"); indentLevel++;
+			add ("<td valign=\"top\">" + listingForTheDay + "</td>");
+			add ("<td valign=\"top\"><br><center>" + calText + "</center></td>");
+			add ("</tr>"); indentLevel--;
+			add ("</table>"); indentLevel--}};
+	
+	bundle { //get the post time of the last day in the dg, to use in the last update field
+		try {
+			local (adrDay = mainResponder.calendar.getDayAddress (adrCal, theDay, flCreate:false));
+			local (ct = sizeOf (adrDay^));
+			if ct > 0 {
+				local (msgNum = nameOf (adrDay^ [ct]));
+				msgNum = number (msgNum);
+				local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+				pta^.lastUpdate = adrMsgTable^.postTime}}};
+	
+	return (htmlText)}

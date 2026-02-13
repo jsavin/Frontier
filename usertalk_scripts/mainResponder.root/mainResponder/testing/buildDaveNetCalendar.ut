@@ -1,0 +1,25 @@
+local (adrsite = @dweb.davenet, subtablename, i, j, adryear, adrmonth, adrpiece, adrtable);
+local (adrcalendar = @scratchpad.davenetcalendar);
+table.emptytable (adrcalendar);
+for subtablename = 94 to 98 {
+	adryear = @adrsite^.[string (subtablename)];
+	for i = 1 to sizeof (adryear^) {
+		adrmonth = @adryear^ [i];
+		try {
+			number (nameof (adrmonth^))}
+		else {
+			continue};
+		for j = 1 to sizeof (adrmonth^) {
+			adrpiece = @adrmonth^ [j];
+			if nameof (adrpiece^) beginswith "#" {
+				continue};
+			try {
+				local (posttime = date (html.getonedirective ("posttime", string (adrpiece^))));
+				local (adrtable = mainResponder.calendar.addTo (adrcalendar, posttime));
+				local (urlparts = string.parseAddress (adrpiece));
+				local (url = urlparts [3] + "/" + urlparts [4] + "/" + urlparts [5] + ".html");
+				adrtable^.url = url;
+				msg (url)}
+			else {
+				dialog.alert (tryerror);
+				return}}}}

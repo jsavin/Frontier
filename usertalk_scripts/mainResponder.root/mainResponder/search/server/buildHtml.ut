@@ -1,0 +1,167 @@
+on buildHtml (adrSearch, adrScreen, adrSearchRequest) {
+	«Build the HTML results screen.
+		«Changes:
+			«8/7/02; 6:21:54 PM by JES
+				«Added support for #renderOneSearchResult callback. The callback takes two parameters, adrInfo and ranking.
+				«adrInfo is the address of a table containing meta-data about the page, usually in the pageinfo sub-table of Index.root.
+				«ranking is a number which can be converted to a pseudo-percentage by calling mainResponder.search.utilities.getRankPercent.
+			«8/7/02; 4:00:45 PM by JES
+				«Call mainResponder.search.utilities.getRankPercent instead of calculating the rank percent here.
+			«9/11/99; 12:52:52 PM by PBS
+				«When displaying the title and text of a search result, replace < with &lt; so any HTML in the title, for instance, doesn't add unwanted HTML to the search results page.
+			«9/10/99; 9:35:21 PM by PBS
+				«The feedback URL gets a .wsf suffix appended if pta^.wsfSuffixRequired is true.
+				«Requested by Seth Dillingham on the Frontier-Server list, to facilitate running the search engine behind external servers.
+			«8/20/99; 11:17:09 AM by PBS
+				«If a #buildSearchResults script is defined, then call that script, allowing a scripter to over-ride the standard search engine results display.
+	
+	local (pta);
+	
+	local (adrRenderOneResultCallback);
+	bundle { //PBS 8/20/99: look for #buildSearchResults callback
+		try {
+			pta = html.getPageTableAddress ()};
+		if pta != nil { //this works only if we're running in the context of the website framework
+			if defined (pta^.responderAttributes.buildSearchResults) {
+				local (adrCallback = @pta^.responderAttributes.buildSearchResults);
+				while typeOf (adrCallback^) == addressType { //de-reference in a loop until it's no longer an address
+					adrCallback = adrCallback^};
+				return (adrCallback^ (adrSearch, adrScreen, adrSearchRequest))}}}; //call the callback script
+	bundle { //JES 8/7/02: look for #renderOneSearchResult callback
+		if pta != nil {
+			if defined (pta^.responderAttributes.renderOneSearchResult) {
+				local (adrCallback = @pta^.responderAttributes.renderOneSearchResult);
+				while typeOf (adrCallback^) == addressType { //de-reference in a loop until it's no longer an address
+					adrCallback = adrCallback^};
+				adrRenderOneResultCallback = adrCallback}}};
+	
+	local (results);
+	local (adrResults = @adrSearch^.rawResults);
+	
+	on buildOneHitHtml (pageID, ranking, adrSearch, adrScreen, adrSearchRequest) {
+		local (adrPageInfo);
+		local (htmlText = "");
+		local (rankPercent);
+		local (redirect = "feedback?url=");
+		local (linkText, dateString);
+		
+		if pta != nil { //PBS 9/10/99: append .wsf suffix if needed.
+			«This facilitates running the search engine behind an external server like WebTen, IIS, etc.
+				«This code was contributed by Seth Dillingham, and edited slightly to remove a try statement.
+			if defined (pta^.wsfSuffixRequired) and pta^.wsfSuffixRequired {
+				redirect = "feedback.wsf?url="}};
+		
+		if not (adrSearchRequest^.feedback) {
+			redirect = ""};
+		
+		adrPageInfo = @[adrSearch^.index].pageInfo.[pageID];
+		
+		if not defined (adrPageInfo^) { //safety check, in case the indexed page doesn't have an info table
+			return ("")};
+		
+		if adrRenderOneResultCallback != nil {
+			return (adrRenderOneResultCallback^ (adrPageInfo, ranking))};
+		
+		if not defined (adrScreen^.hitCounter) {
+			adrScreen^.hitCounter = 0};
+		adrScreen^.hitCounter++;
+		
+		«htmlText = htmlText + "\r<table border=0 cellpadding=4 cellspacing=0 width=90%>"
+		if adrScreen^.hitCounter % 2 == 1 {
+			htmlText = htmlText + "\r<tr bgcolor=\"" + adrSearchRequest^.altColor + "\">"}
+		else {
+			htmlText = htmlText + "\r<tr>"};
+		
+		bundle { //determine rank percentage
+			rankPercent = mainResponder.search.utilities.getRankPercent (ranking, adrSearch^.min) + "%";
+			«bundle //old, now factored code
+				«ranking = ranking - adrSearch^.min
+				«case true
+					«ranking > 2615
+						«ranking = 100
+					«ranking > 2609
+						«ranking = 99
+					«ranking > 2599
+						«ranking = ranking - 2600
+						«ranking = 90 + ranking
+					«ranking > 2009
+						«ranking = 89
+					«ranking > 1999
+						«ranking = ranking - 2000
+						«ranking = 80 + ranking
+					«ranking > 1209
+						«ranking = 79
+					«ranking > 1199
+						«ranking = ranking - 1200
+						«ranking = 70 + ranking
+					«ranking > 1000
+						«ranking = ranking - 1000
+						«ranking = 70 + ranking
+					«ranking > 609
+						«ranking = 69
+					«ranking > 599
+						«ranking = ranking - 600
+						«ranking = 60 + ranking 
+					«ranking > 500 and ranking < 1001
+						«ranking = 60
+					«ranking > 500
+						«ranking = ranking - 500
+						«ranking = 50 + ranking
+					«ranking > 109
+						«ranking = 49
+					«ranking > 99
+						«ranking = ranking - 100
+						«ranking = ranking + 40
+					«ranking < 100
+						«if ranking > 39
+							«ranking = 39
+				«rankPercent = ranking + "%"};
+		
+		htmlText = htmlText + "\r<td valign=top align=left width=5%><font size=-2>" + rankPercent + "</font></td>\r<td valign=top align=right width=10%><nobr><font size=-2>" + string.nthField (adrPageInfo^.lastModDate, ";", 1) + "&nbsp;</font></nobr></td>";
+		
+		if not defined (adrScreen^.linkQuery) {
+			adrScreen^.linkQuery = string.replaceAll (adrSearchRequest^.searchString, " ", "+");
+			adrScreen^.linkQuery = string.replaceAll (adrScreen^.linkQuery, "\"", "&quot;")};
+		
+		if adrPageInfo^.showText {
+			«linkText = string.replaceAll (adrPageInfo^.text, "<", "&lt;")
+			linkText = adrPageInfo^.text}
+		else {
+			local (pageTitle = string.replaceAll (adrPageInfo^.title, "<", "&lt;"));
+			if redirect == "" {
+				linkText = "<a href=\"" + adrPageInfo^.url + "\">" + pageTitle + "</a>"}
+			else {
+				linkText = "<a href=\"" + redirect + adrPageInfo^.url + "&q=" + adrScreen^.linkQuery + "\">" + pageTitle + "</a>"}};
+		
+		if adrPageInfo^.siteName != "" and adrSearchRequest^.flShowSiteNames {
+			htmlText = htmlText + "\r<td valign=top align=left width=65%><font size=-1>" + linkText+ "</font></td>\r<td valign=top align=left width=20%><font size=-2>" + "<a href=\"" + adrPageInfo^.siteUrl + "\">" + adrPageInfo^.siteName + "</a></font></td>"}
+		else {
+			htmlText = htmlText + "\r<td valign=top align=left width=65%><font size=-1>" + linkText+ "</font></td>\r<td valign=top align=left width=20%><font size=-2>&nbsp;</font></td>"};
+		
+		return (htmlText)}; // + "\r</tr></table>")
+	
+	adrScreen^.hitsThisPage = 0;
+	
+	adrScreen^.top = (sizeOf (adrResults^) + 1) - adrSearchRequest^.start;
+	adrScreen^.bottom = (adrScreen^.top + 1) - adrSearchRequest^.maxHitsPerPage;
+	
+	adrScreen^.totalHits = nil;
+	adrScreen^.end = (adrSearchRequest^.start + adrSearchRequest^.maxHitsPerPage) - 1;
+	
+	adrScreen^.totalHits = sizeOf (adrResults^);
+	
+	if adrScreen^.end > adrScreen^.totalHits {
+		adrScreen^.end = adrScreen^.totalHits};
+	if adrScreen^.bottom < 1 {
+		adrScreen^.bottom = 1};
+	
+	for i = adrScreen^.top downTo adrScreen^.bottom {
+		results = results + buildOneHitHtml (nameOf (adrResults^ [i]), adrResults^ [i], adrSearch, adrScreen, adrSearchRequest);
+		adrScreen^.hitsThisPage++;
+		if adrScreen^.hitsThisPage == adrScreen^.totalHits {
+			break}};
+	
+	results = "\r<table border=\"0\" cellpadding=4 cellspacing=0 width=90%>" + results;
+	results = results + "\r</tr></table>";
+	
+	return (results)}

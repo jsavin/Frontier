@@ -1,0 +1,8 @@
+on pikeIsEnabled () {
+	«Return true if Pike support is enabled on this server, false otherwise. If the Manila RPC handlers are linked in to user.betty.rpcHandlers, then Pike support is enabled.
+		«01/17/00; 5:47:35 PM by PBS
+	
+	if not defined (user.betty.rpcHandlers.manila) {
+		return (false)};
+	
+	return (true)}

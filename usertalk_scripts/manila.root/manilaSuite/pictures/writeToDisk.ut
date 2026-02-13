@@ -1,0 +1,159 @@
+on writeToDisk (adrMsgTable, fileName="", mimeType="") {
+	«Changes:
+		«3/13/07; 12:11:08 PM by LL
+			«Add support for PNG images.
+		«7/11/05; 4:13:13 AM by JES
+			«If we're editing an existing image, and we can't create the path to the static file, make sure to delete the old one, so the new image URL (the dynamic URL) will be used.
+		«5/28/05; 10:16:20 PM by JES
+			«If the folder can't be found or created, return false. We don't want the user to ever see an error because of this.
+		«5/27/05; 6:07:57 PM by JES
+			«New optional parameters, fileName and mimeType. Makes it possible to call this verb outside of the context of posting an image.
+		«7/30/02; 11:30:32 PM by JES
+			«Filename length limit on MacOS is 31 characters, not 32.
+		«03/01/00; 4:06:15 PM by PBS
+			«Deal with files that contain non-alphas or spaces -- remove them.
+		«02/29/00; 6:04:14 PM by PBS
+			«Write a picture to disk, if the prefs are set up that way.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	bundle { //ensure prefs
+		if not defined (config.manila.prefs.flWritePicturesToStaticServer) {
+			config.manila.prefs.flWritePicturesToStaticServer = false};
+		if not defined (config.manila.prefs.staticFilesFolder) {
+			config.manila.prefs.staticFilesFolder = ""};
+		if not defined (config.manila.prefs.staticFilesUrl) {
+			config.manila.prefs.staticFilesUrl = ""}};
+	
+	local (baseFolder = config.manila.prefs.staticFilesFolder);
+	try {
+		file.sureFilePath (baseFolder + "xxx")}
+	else {
+		if defined (adrMsgTable^.image.f) {
+			delete (@adrMsgTable^.image.f)};
+		if defined (adrMsgTable^.image.url) {
+			delete (@adrMsgTable^.image.url)};
+		return (false)};
+	local (baseUrl = config.manila.prefs.staticFilesUrl);
+	
+	bundle { //error checking
+		if not (config.manila.prefs.flWritePicturesToStaticServer) {
+			return (false)};
+		
+		if fileName == "" { //supplied by caller -- don't check in postArgs
+			if not (defined (pta^.postArgs.attachFile)) or typeOf (pta^.postArgs.attachFile) != tableType {
+				return (false)};
+			if not (defined (pta^.postArgs.attachFile.filename)) {
+				return (false)};
+			if not (defined (pta^.postArgs.attachFile.data)) {
+				return (false)};
+			if string.length (pta^.postArgs.attachFile.filename) < 1 {
+				return (false)};
+			if string.length (pta^.postArgs.attachFile.data) < 1 {
+				return (false)}};
+		if mimeType == "" { //supplied by caller -- don't check in postArgs
+			if not defined (pta^.postArgs.attachFile.["Content-type"]) {
+				return (false)}};
+		
+		if baseFolder == "" {
+			return (false)};
+		if not (baseUrl beginsWith "http://") {
+			return (false)}};
+	
+	local (originalFileName);
+	bundle { //get the file name
+		on getLastField (s, chdelim) {
+			local (ctFields = string.countFields (s, chdelim));
+			s = string.nthField (s, chdelim, ctFields);
+			return (s)};
+		
+		if fileName == "" {
+			originalFileName = pta^.postArgs.attachFile.fileName}
+		else { //caller supplied fileName
+			originalFileName = fileName};
+		
+		originalFileName = getLastField (originalFileName, '/');
+		originalFileName = getLastField (originalFileName, '\\');
+		originalFileName = getLastField (originalFileName, ':');
+		
+		originalFileName = string.popSuffix (originalFileName, '.');
+		originalFileName = string.dropNonAlphas (originalFileName)};
+	
+	local (suffix = ".gif");
+	bundle { //get the mime type
+		if mimeType == "" {
+			mimeType = pta^.postArgs.attachFile.["Content-type"]};
+		local (flGif = false, flJpeg = false, flPng = false);
+		
+		case string.lower (mimeType) { //is it a GIF, JPEG or PNG?
+			"image/gif" {
+				flGif = true};
+			"image/jpeg";
+			"image/pjpeg" {
+				flJpeg = true};
+			"image/png";
+			"image/x-png" {
+				flPng = true}};
+		if flJpeg {
+			suffix = ".jpg"};
+		if flPng {
+			suffix = ".png"};
+		if not flGif and not flJpeg and not flPng {
+			return (false)}};
+	
+	local (adrSite = pta^.adrSiteRootTable);
+	local (siteName = manilaSuite.getCanonicalSiteName (adrSite));
+	siteName = manilaSuite.getShortSitename (siteName);
+	
+	local (pc = file.getPathChar ());
+	local (folder = baseFolder + siteName + pc);
+	bundle { //make sure the folder for this site exists
+		if not (file.exists (folder)) {
+			file.newFolder (folder)}};
+	
+	local (fname = originalFileName);
+	
+	bundle { //make sure the file name ends with a good suffix and isn't too long
+		if not (string.lower (fname) endsWith suffix) {
+			fname = fname + suffix};
+		if sizeOf (fname) > 31 {
+			local (suffix = string.nthField (fname, '.', string.countFields (fname, '.')));
+			fname = string.mid (fname, 1, 31 - sizeOf (suffix) - 1);
+			fname = fname + "." + suffix}};
+	
+	local (f = folder + fname);
+	bundle { //get a unique name if needed
+		if file.exists (f) {
+			if defined (adrMsgTable^.image.f) {
+				if string.lower (f) != string.lower (adrMsgTable^.image.f) {
+					f = file.uniqueName (string.popSuffix (string.mid (fname, 1, 20)), folder, 3, suffix);
+					fname = file.fileFromPath (f)}}
+			else {
+				f = file.uniqueName (string.popSuffix (string.mid (fname, 1, 20)), folder, 3, suffix);
+				fname = file.fileFromPath (f)}}};
+	
+	local (macType, macCreator);
+	bundle { //get the Macintosh file type and creator
+		case suffix {
+			".gif" {
+				macType = 'GIFf'};
+			".jpg" {
+				macType = 'JPEG'};
+			".png" {
+				macType = 'PNGf'}};
+		local (macCreator = 'MOSS');
+		if defined (user.html.prefs.imgFileCreator) {
+			macCreater = user.html.prefs.imgFileCreator}};
+	
+	try { //write the file to disk
+		file.writeWholeFile (f, adrMsgTable^.image.bits, macType, macCreator, clock.now ())};
+	
+	bundle { //add f and url to the image subtable for this messages
+		if not (baseUrl endsWith "/") {
+			baseUrl = baseUrl + "/"};
+		local (url = baseUrl + siteName + "/" + fname);
+		
+		adrMsgTable^.image.f = f;
+		adrMsgTable^.image.url = url};
+	
+	return (true)}

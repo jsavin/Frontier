@@ -1,0 +1,50 @@
+on prefsPage (pta=nil) {
+	«This displays the Pike Prefs page.
+		«01/14/00; 11:45:40 AM by PBS
+		«Changes:
+			«05/05/00; 2:55:03 PM by JES
+				«localized
+			«05/09/00; 10:43:57 PM by PBS
+				«Check the referer to defeat the client side trojan horse.
+			«05/11/00; 8:15:12 PM by JES
+				«merged in Brent's security fix for the client side trojan horse attack.
+			«05/27/00; 2:54:37 PM by JES
+				«localized boolean names and submit button
+			«12/22/00; 7:12:18 PM by JES
+				«Redirect to /prefs/radio/ if the url is /prefs/pike/
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	bundle { //12/22/00 JES: redirect to prefs/radio/
+		local (prefsUrl = string.lower (manilaSuite.getUrl ("prefsHome")));
+		if not (prefsUrl endsWith "/") {
+			prefsUrl = prefsUrl + "/"};
+		local (pikePrefsUrl = prefsUrl + "pike");
+		if string.lower (pta^.url) beginsWith pikePrefsUrl {
+			scriptError ("!redirect " + prefsUrl + "radio/")}};
+	
+	bundle { //PBS 05/09/00: if POST, check referer to defeat client side trojan horse
+		local (flPost = string.lower (pta^.method) == "post");
+		if flPost {
+			manilaSuite.referer.checkSelf ()}};
+	
+	pta^.wizard = manilaSuite.getWizardAddress ("pikePrefs", @manilaData.pikePrefs.wizard, pta: pta);
+	
+	local (htmlText = "");
+	local (separatorColor, separatorTextColor);
+	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+	
+	bundle { // replace "Yes" and "No" in the prefsSuite.browser HTML with localized strings
+		local (s);
+		s = prefsSuite.browser (flIncludeTitle:false, separatorColor:separatorColor, separatorTextColor:separatorTextColor);
+		s = string.replaceAll (s, ">Yes\r", ">" + manilaSuite.getString ("common.yes", pta: pta) + "\r");
+		s = string.replaceAll (s, ">No\r", ">" + manilaSuite.getString ("common.no", pta: pta) + "\r");
+		s = string.replaceAll (s, "value=\" Submit \"", "value=\" " + manilaSuite.getString ("common.submitButton", pta: pta) + " \"");
+		htmlText = htmlText + s};
+	
+	htmlText = manilaSuite.unTaint (htmlText); //no curly brace macros in this text
+	
+	local (adrOutline = @pta^.wizard^.outline);
+	pta^.lastUpdate = timeModified (adrOutline);
+	
+	return (htmlText)}

@@ -1,0 +1,50 @@
+on buildImageTag (msgNum) {
+	«Given a message number, build the image tag.
+		«This works for new-style image management, where the images are stored in the dg in an image subtable.
+		«An image in a dg message table has the following elements:
+			«bits, the binary data.
+			«height, the height in pixels of the image.
+			«width, the width in pixels of the image.
+			«mimeType, the MIME type of the image (not referenced in this script).
+		«This feature requires an imageViewer element in the #urls table. This should be a URL to a script which takes a msgNum as pathArgs, as in http://mysite.com/picture$. This script returns the actual image data with MIME type specified in the response headers.
+		«10/20/99; 11:18:55 AM by PBS
+		«Changes:
+			«02/29/00; 10:47:20 PM by PBS
+				«If the image has been written to disk, the URL is stored in the image subtable. Use that URL instead of calculating the URL.
+			«04/10/00; 3:02:46 PM by JES
+				«Localized -- The alt element had a colon in it. Now it's looked up.
+			«05/01/00; 2:19:46 PM by JES
+				«Changed getString call that used a replacement list, so that it passes a replacementTableAddress instead.
+			«3/13/07; 11:44:25 PM by LL
+				«Strip the alt text of any HTML which is included in the discussion group message body.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+	
+	if not defined (pta^.responderAttributes.urls^.imageViewer) { //check for imageViewer in #urls table
+		return ("")}; //return empty string, can't build an img tag
+	
+	if not defined (adrMsgTable^.image) { //check for image subtable
+		return ("")}; //return empty string, can't build an img tag
+	
+	local (imgTag = "<img src=\"");
+	local (url = pta^.responderAttributes.urls^.imageViewer + adrMsgTable^.msgNum);
+	if defined (adrMsgTable^.image.url) { //PBS 02/29/00: if the image is on a static server, use that URL instead of the calculated URL
+		url = adrMsgTable^.image.url};
+	imgTag = imgTag + url + "\" ";
+	imgTag = imgTag + "height=\"" + adrMsgTable^.image.height + "\" ";
+	imgTag = imgTag + "width=\"" + adrMsgTable^.image.width + "\" ";
+	imgTag = imgTag + "border=\"0\" ";
+	
+	local (altText, replacementTable);
+	new (tableType, @replacementTable); // 05/01/00 JES: build replacement table for getString
+	replacementTable.msgsubject = adrMsgTable^.subject;
+	replacementTable.msgbody = adrMsgTable^.body;
+	altText = mainResponder.getString ("discuss.imageAltText", @replacementTable);
+	altText = searchEngine.stripMarkup (altText);
+	altText = string.replaceAll (altText, "\n", " "); //make sure the alt text can appear in an img tag
+	altText = string.replaceAll (altText, "\r", " ");
+	altText = string.replaceAll (altText, "\"", "&quot;");
+	imgTag = imgTag + "alt=\"" + altText + "\">";
+	
+	return (imgTag)}

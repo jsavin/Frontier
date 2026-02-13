@@ -1,0 +1,12 @@
+on registerCallback (sitename, id, adr, callbackType = "changedCohorts") {
+	«manilaSuite.AccessControl.registerCallback : 04/05/20, 18:03:26 by DAB
+		«an API to allow external scripts to be called when an accesscontrol event happens
+		«only events is  currently  messages cohort list changes, but interface is general
+		«was manilaFixer.accessControl.registerCallback : 03/08/11, 13:28:47 by DAB
+	local (adrSite = manilaSuite.rpcutils.getSiteAddress(sitename));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	manilaSuite.accessControl.init(adrSite); //04/05/08, 11:51:44 by DAB
+	if not defined(adrNewsSite^.accessControl.callbacks.[callbackType]) {
+		new(tabletype, @adrNewsSite^.accessControl.callbacks.[callbackType])};
+	adrNewsSite^.accessControl.callbacks.[callbackType].[id] = string.popFilefromAddress(adr);
+	return true}

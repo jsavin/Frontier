@@ -1,0 +1,9 @@
+on checkIn (username, password, siteName) {
+	«Release custody of the javascript.
+		«02/11/00; 11:15:53 AM by PBS
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject = @adrNewsSite^.javaScript);
+	local (itemName = "JavaScript");
+	
+	return (manilaSuite.rpcUtils.releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName))}

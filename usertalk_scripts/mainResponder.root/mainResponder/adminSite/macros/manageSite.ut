@@ -1,0 +1,1173 @@
+on manageSite (adrinfo) {
+	«Changes
+		«3/24/08; 5:48:59 PM by LL
+			«Correct the link for the Plug-ins settings page.
+		«1/23/07; 5:34:19 PM by LL
+			«New command to modify the static rendering settings for a site.
+			«Bug fix: change URL wasn't properly updating config.mainresponder.domains entries.
+		«12/11/06; 3:11:39 PM by LL
+			«If any errors are encountered while manually backing up a Manila site, display a partial list of the backup error messages.
+		«2/22/06; 2:01:38 AM by JES
+			«Clear the mainResponder site list cache after deleting a site.
+		«2/22/06; 2:00:13 AM by JES
+			«Real fix for bug displaying tagline.
+		«2005
+			«11/11/05; 4:25:29 AM by JES
+				«New settings for whether member names are required to be email addresses or not. Either override server default, or respect it.
+			«10/7/05; 3:38:54 PM by JES
+				«Add clarification to versioning state. Change rollback commands to show/hide.
+			«10/7/05; 3:34:20 PM by JES
+				«Add options for configuring versioning.
+			«3/17/05; 3:47:28 PM by JES
+				«Make calls to tcp.equalNames in a try block, since this can fail when working with servers that aren't connected to the Internet.
+		«2002-2004
+			«8/30/04; 2:17:02 PM by JES
+				«Added commands for enabling or disabling plugins, and setting plugin availability for specific sites.
+					«Thanks to David Bayly for the idea for this feature.
+			«5/19/04; 6:34:00 PM by JES
+				«Fixed display of which plugins are enabled or disabled.
+			«4/9/04; 5:56:04 PM by JES
+				«Added the ability to move sites from one database to another.
+			«3/23/04; 1:55:17 AM by JES
+				«Added support for per-site hosting prefs configuration.
+			«12/13/03; 12:28:34 AM by JES
+				«If the discussion group doesn't specify a message reader URL, first check the site's #urls table, and if not found there, generate one.
+			«9/8/02; 5:05:08 PM by JES
+				«Added a command to toggle search indexing of discussion group messages.
+			«9/3/02; 4:13:16 AM by JES
+				«Added an access permission display to the Basic information section -- public or private (editors-only), with a command to toggle the public/private status of the site.
+			«8/29/02; 8:42:35 PM by JES
+				«Make a backup of deleted sites before deleting them.
+			«8/29/02; 3:51:49 PM by JES
+				«Added the ability to delete sites from the server. Added search engine de-indexing when a site is disabled or deleted.
+			«6/9/02; 3:54:37 PM by JES
+				«Created. Present a UI for managing a Manila site.
+	local (pta = html.getPageTableAddress ());
+	«workspace.pt = pta^; edit (@workspace.pt) //debugging
+	
+	pta^.title = "Manage site: " + adrinfo^.displaySiteName;
+	local (settingsPageUrl = "http://" + pta^.host + "/settings");
+	local (thisPageUrl = "http://" + pta^.host + "/?" + pta^.searchArgs);
+	local (bgcolor1 = pta^.trbg1, bgcolor2 = pta^.trbg2, ctitems);
+	local (adrsite = adrinfo^.adrsite);
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	local (adrdg = adrinfo^.adrDiscuss);
+	local (adrmsgs = @adrdg^.messages);
+	local (msgReaderUrl);
+	bundle { //set msgReaderUrl
+		if defined (adrdg^.prefs.msgReaderUrl) {
+			msgReaderUrl = adrdg^.prefs.msgReaderUrl}
+		else {
+			if defined (adrsite^.["#urls"].discussMsgReader) {
+				msgReaderUrl = adrsite^.["#urls"].discussMsgReader}
+			else {
+				msgReaderUrl = adrinfo^.siteUrl + "discuss/msgReader$"}}};
+	local (yesterday = date.yesterday (clock.now ()));
+	
+	local (htmlText = "", indentlevel = 0);
+	on add (s) {
+		htmlText = htmlText + (string.filledString ("\t", indentlevel) + s + "\r");};
+	on addRow (itemname, itemvalue, linktext="", linkurl="") {
+		local (widthstring = "");
+		if ctitems == 0 {
+			widthstring = " width=\"200\""};
+		if (ctitems++ % 2) == 0 {
+			bgcolor = bgcolor1}
+		else {
+			bgcolor = bgcolor2};
+		add ("<tr bgcolor=\"" + bgcolor + "\">"); indentlevel++;
+		add ("<td valign=\"top\" style=\"padding-right: 15px;\"" + widthstring + ">" + itemname + ":</td>");
+		add ("<td valign=\"top\">" + itemvalue + "</td>");
+		if sizeOf (linktext) > 0 {
+			local (link = linktext);
+			if sizeOf (linkurl) > 0 {
+				link = html.getlink (linktext, linkurl)};
+			add ("<td valign=\"top\" align=\"right\">" + link + "&nbsp;&nbsp;</td>")}
+		else {
+			add ("<td></td>")};
+		add ("</tr>"); indentlevel--};
+	on addHeader (s) {
+		add ("<h4>" + s + "</h4>");
+		add ("<table cellpadding=\"3\" cellspacing=\"0\" border=\"0\" width=\"100%\">"); indentlevel++;
+		ctitems = 0}; //reset the bgcolor
+	on addFooter () {
+		add ("</table>"); indentlevel--};
+	on shortDateTime (d) {
+		if d < yesterday {
+			return (date.shortString (d))}
+		else {
+			return (string.timeString (d))}};
+	
+	local (command = "view", message = "");
+	if defined (system.temp.mainResponder.misc.message) {
+		message = string.replaceAll (system.temp.mainResponder.misc.message, "\"", "\\\"");
+		delete (@system.temp.mainResponder.misc.message)};
+	if defined (pta^.searchArgTable.command) {
+		command = pta^.searchArgTable.command};
+	if defined (pta^.postArgs.command) {
+		command = pta^.postArgs.command};
+	case command { //handle admin commands
+		"enable" {
+			pta^.title = "Enable site: " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<p>To enable this site, enter the URL where it will be served, and click the Enable Site button.</p>");
+					add ("<p><br />URL: <input type=\"text\" name=\"siteUrl\" size=\"80\" maxlength=\"255\" value=\"" + adrinfo^.siteurl + "\" /></p>");
+					add ("<p><br /><input type=\"submit\" name=\"enableSite\" value=\"Enable Site\" /></p>");
+					add ("</form>"); indentlevel--};
+				"POST" {
+					manilaSuite.installSite (adrsite);
+					adrinfo^.flInstalled = true;
+					local (newUrl = pta^.postArgs.siteUrl);
+					local (oldUrl = adrinfo^.siteurl);
+					if not (newUrl endsWith "/") {
+						newUrl = newUrl + "/"};
+					if not (string.lower (newUrl) beginsWith "http://") {
+						newUrl = "http://" + newUrl};
+					if string.lower (oldUrl) != string.lower (newUrl) {
+						manilaSuite.admin.changeSiteUrl (oldUrl, newUrl, adrsite)};
+					adrsite^.["#newsSite"].search.siteUrl = newUrl;
+					adrsite^.["#newsSite"].rssInfo.channelLink = newUrl;
+					adrsite^.["#newsSite"].rssInfo.imageLink = newUrl;
+					adrinfo^.siteUrl = newUrl;
+					system.temp.mainResponder.misc.message = "The \"" + adrinfo^.displaySiteName + "\" site has been installed successfully.";
+					delete (@pta^.searchArgTable.command);
+					local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+					mainResponder.redirect (url);
+					return ("")}}};
+		"disable" {
+			pta^.title = "Disable site: " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					bundle { //disable site
+						add ("<form method=\"POST\">"); indentlevel++;
+						add ("<p>To disable this site click the Disable Site button below. Disabled sites are listed on the admin site home page, but will not be served by the server. You can enable the site at any time, by clicking the enable link on the Manage site page.</p>");
+						add ("<p>To delete this site click the Delete Site button below. Deleted sites are removed completely from the server, and will no longer appear on the admin site home page.</p>");
+						if config.mainResponder.prefs.flSearchEngine {
+							add ("<p>Any pages in this site which have been indexed by Frontier's search engine will be removed from the index.</p>")};
+						add ("<p><br /><input type=\"submit\" name=\"disableSite\" value=\"Disable Site\" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"deleteSite\" value=\"Delete Site\" /></p>");
+						add ("</form>"); indentlevel--};
+					bundle { //delete site
+						add ("<form method=\"POST\">"); indentlevel++;
+						add ("<p><br /></p>");
+						add ("</form>"); indentlevel--}};
+				"POST" {
+					if defined (pta^.postArgs.deleteSite) { //confirm site deletion
+						pta^.title = "Delete site: " + adrinfo^.displaySiteName;
+						add ("<form method=\"POST\">"); indentlevel++;
+						add ("<p>Are you sure you want to completely delete \"" + adrinfo^.displaySiteName + "\" from the server?</p><p><i>This operation is permanent and cannot be undone.</i></p>");
+						add ("<p><br /><br /><input type=\"submit\" name=\"cancelDelete\" value=\"Cancel\" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"confirmDelete\" value=\"Delete Site\" /></p>");
+						add ("</form>"); indentlevel--}
+					else {
+						if defined (pta^.postArgs.cancelDelete) { //redirect back to the main page
+							delete (@pta^.searchArgTable.command);
+							local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+							mainResponder.redirect (url);
+							return ("")}
+						else { //uninstall or confirmed delete
+							local (t); new (tableType, @t); //a dummy table for backup info
+							manilaSuite.backups.backupOneSite (adrsite, @t);
+							if config.mainResponder.prefs.flSearchEngine {
+								thread.callScript (@mainResponder.search.server.restartIndex, {adrinfo^.displaySiteName} )};
+							manilaSuite.unInstallSite (adrsite);
+							adrinfo^.flInstalled = false;
+							if defined (pta^.postArgs.confirmDelete) {
+								delete (adrsite);
+								delete (adrinfo);
+								if defined (system.temp.mainResponder.misc.siteListCache) { //clear admin site cache
+									delete (@system.temp.mainResponder.misc.siteListCache)};
+								mainResponder.redirect (mainResponder.adminSite.urls.home)}
+							else {
+								system.temp.mainResponder.misc.message = "The \"" + adrinfo^.displaySiteName + "\" site has been uninstalled.";
+								delete (@pta^.searchArgTable.command);
+								local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+								mainResponder.redirect (url)};
+							return ("")}}}}};
+		"changeUrl" {
+			pta^.title = "Change site URL: " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<p>To change this site's URL, enter the URL and click the Change URL button.</p>");
+					add ("<p><br />URL: <input type=\"text\" name=\"siteUrl\" size=\"60\" maxlength=\"255\" value=\"" + adrinfo^.siteurl + "\" /></p>");
+					add ("<p><br /><input type=\"submit\" name=\"changeUrl\" value=\"Change URL\" /></p>");
+					add ("</form>"); indentlevel--};
+				"POST" {
+					local (newUrl = pta^.postArgs.siteUrl);
+					local (oldUrl = adrinfo^.siteurl);
+					if not (newUrl endsWith "/") {
+						newUrl = newUrl + "/"};
+					if not (string.lower (newUrl) beginsWith "http://") {
+						newUrl = "http://" + newUrl};
+					if string.lower (oldUrl) != string.lower (newUrl) {
+						manilaSuite.admin.changeSiteUrl (oldUrl, newUrl, adrsite)};
+					adrsite^.["#newsSite"].rssInfo.channelLink = newUrl;
+					adrsite^.["#newsSite"].rssInfo.imageLink = newUrl;
+					adrsite^.["#newsSite"].search.siteUrl = newUrl;
+					adrinfo^.siteUrl = newUrl;
+					bundle { // config.mainresponder.domains
+						local (urlparts = string.urlSplit (newUrl));
+						local (flTopLevelSite = sizeOf (urlparts[3]) == 0);
+						if flTopLevelSite {
+							if defined (config.mainResponder.domains.[urlparts[2]]) {
+								if mainResponder.siteTree.domainIsSiteTree (@config.mainResponder.domains.[urlparts[2]] ) {
+									mainResponder.siteTree.addSiteToTree (urlparts[2], "/" + urlparts[3], adrSite)}
+								else {
+									case typeOf (config.mainResponder.domains.[urlparts[2]]) {
+										addressType;
+										stringType;
+										filespecType {
+											config.mainResponder.domains.[urlparts[2]] = adrsite}}
+									else { //error
+										scriptError ("Can't add site to config.mainResponder.domains because there's already an existing domain, with an unknown format.")}}}
+							else { //simple add
+								config.mainResponder.domains.[urlparts[2]] = adrsite}}
+						else { //sub-site
+							local (flDefaultDomain = false);
+							if sizeOf (config.mainResponder.domains) == 1 {
+								if defined (config.mainResponder.domains.default) {
+									flDefaultDomain = true}};
+							if flDefaultDomain {
+								urlparts[2] = "default"};
+							mainResponder.siteTree.addSiteToTree (urlparts[2], "/" + urlparts[3], adrsite, true, true)}};
+					system.temp.mainResponder.misc.message = "The URL for \"" + adrinfo^.displaySiteName + "\" has been changed successfully.";
+					delete (@pta^.searchArgTable.command);
+					local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+					mainResponder.redirect (url);
+					return ("")}}};
+		"changeMembershipGroup" {
+			pta^.title = "Change Membership Group: " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<p>To change this membership group enter the membership group name, and click the Change Group button.</p>");
+					add ("<p><br />Membership Group: <input type=\"text\" name=\"membershipGroup\" size=\"80\" maxlength=\"255\" value=\"" + manilaSuite.members.getGroupNameFromSiteAddress (adrsite) + "\" /></p>");
+					add ("<p><br /><input type=\"submit\" name=\"changeMembershipGroup\" value=\"Change Group\" /></p>");
+					add ("</form>"); indentlevel--};
+				"POST" {
+					local (groupName = pta^.postArgs.membershipGroup);
+					try {
+						local (adrgroup = mainResponder.members.getMembershipTable (groupName)); //will error if there's no group with the entered name
+						on doTable (adrtable) {
+							bundle { //find reasons not to do this table
+								if adrtable == adrmsgs { //skip discussion group messasge tables
+									return};
+								if string.lower (nameOf (adrtable^)) == "#membershipgroup" {
+									return}};
+							local (adr);
+							for adr in adrtable {
+								local (lowerItemName = string.lower (nameOf (adr^)));
+								case (typeOf (adr^)) {
+									tableType {
+										doTable (adr)}; //recurse
+									stringType {
+										case lowerItemName {
+											"#members";
+											"defaultmembershipgroup";
+											"membershipgroup";
+											"sysopmemberofgroup" {
+												adr^ = groupName}}}}};
+							return (true)};
+						doTable (adrsite);
+						system.temp.mainResponder.misc.message = "The membership group for \"" + adrinfo^.displaySiteName + "\" has been changed successfully."}
+					else {
+						system.temp.mainResponder.misc.message = "<i>Couldn't change the membership group for \"" + adrinfo^.displaySiteName + "\", because there is no group named \"" + groupName + "\".</i>"};
+					delete (@pta^.searchArgTable.command);
+					local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+					mainResponder.redirect (url);
+					return ("")}}};
+		"enableVersioning" {
+			if not defined (adrNewsSite^.versioning) {
+				new (tableType, adrNewsSite^.versioning)};
+			adrNewsSite^.versioning.enabled = true;
+			system.temp.mainResponder.misc.message = "Versioning has been enabled for \"" + adrinfo^.displaySiteName + "\".";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"disableVersioning" {
+			if not defined (adrNewsSite^.versioning) {
+				new (tableType, adrNewsSite^.versioning)};
+			adrNewsSite^.versioning.enabled = false;
+			system.temp.mainResponder.misc.message = "Versioning has been disabled for \"" + adrinfo^.displaySiteName + "\".";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"showRollback" {
+			if not defined (adrNewsSite^.versioning) {
+				new (tableType, adrNewsSite^.versioning)};
+			adrNewsSite^.versioning.flRestoreWanted = true;
+			system.temp.mainResponder.misc.message = "Versioning rollback option is now shown for \"" + adrinfo^.displaySiteName + "\".";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"hideRollback" {
+			if not defined (adrNewsSite^.versioning) {
+				new (tableType, adrNewsSite^.versioning)};
+			adrNewsSite^.versioning.flRestoreWanted = false;
+			system.temp.mainResponder.misc.message = "Versioning rollback option is now hidden for \"" + adrinfo^.displaySiteName + "\".";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"enableBackups" {
+			manilaSuite.backups.enableOneSite (adrsite);
+			system.temp.mainResponder.misc.message = "Automatic backups of \"" + adrinfo^.displaySiteName + "\" have been enabled.";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"disableBackups" {
+			manilaSuite.backups.disableOneSite (adrsite);
+			system.temp.mainResponder.misc.message = "Automatic backups of \"" + adrinfo^.displaySiteName + "\" have been disabled.";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"backupNow" {
+			pta^.title = "Backup site: " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<p><br />To make an immediate backup of this site click the Backup Site button below. Only new or changed content will be backed up.</p>");
+					add ("<p><br /><br /><input type=\"submit\" name=\"backupSite\" value=\"Backup Site\" /></p>");
+					add ("</form>"); indentlevel--};
+				"POST" {
+					local (adrconfig = manilaSuite.backups.initSiteInfo (adrsite));
+					local (data); new (tableType, @data);
+					manilaSuite.backups.backupOneSite (adrsite, @data);
+					adrconfig^.whenLastBackedUp = clock.now ();
+					system.temp.mainResponder.misc.message = "\"" + adrinfo^.displaySiteName + "\" has been backed up. " + data.ctfilesbackedup + " of " + data.ctfiles + " files saved, for a total of " + string.megabyteString (data.ctbytesbackedup) + ". " + data.cterrors + " errors.";
+					if defined (data.errorLog) {
+						system.temp.mainResponder.misc.message = system.temp.mainResponder.misc.message  + data.errorLog};
+					delete (@pta^.searchArgTable.command);
+					local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+					mainResponder.redirect (url);
+					return ("")}}};
+		"enableSearch" {
+			adrnewssite^.search.flIndex = true;
+			system.temp.mainResponder.misc.message = "Search engine indexing of pages in \"" + adrinfo^.displaySiteName + "\" has been enabled.";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"disableSearch" {
+			adrnewssite^.search.flIndex = false;
+			system.temp.mainResponder.misc.message = "Search engine indexing of pages in \"" + adrinfo^.displaySiteName + "\" has been disabled.";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"configureSearch" {
+			pta^.title = "Configure Search Indexing: " + adrinfo^.displaySiteName;
+			add ("<form method=\"POST\">"); indentlevel++;
+			add ("<p>Enter information about the search server that will index this site, and click the Submit button.</p>");
+			add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+			add (radio.prefs.stringPref ("Server domain name or IP address", @adrnewssite^.search.serverDomain));
+			add (radio.prefs.numberPref ("Server port", @adrnewssite^.search.serverPort));
+			add (radio.prefs.stringPref ("Server RPC path", @adrnewssite^.search.serverRpcPath));
+			add (radio.prefs.stringPref ("Index XML-RPC procedure", @adrnewssite^.search.serverProcedureName));
+			add ("</table>");
+			add ("<p><br /><input type=\"submit\" name=\"configureSearch\" value=\"Submit\" /></p>");
+			add ("</form>"); indentlevel--;
+			if pta^.method == "POST" {
+				system.temp.mainResponder.misc.message = "The search engine server for \"" + adrinfo^.displaySiteName + "\" has been changed.";
+				delete (@pta^.searchArgTable.command);
+				local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+				mainResponder.redirect (url);
+				return ("")}};
+		"enableDgIndexing" {
+			adrnewssite^.search.flIndexDgMessages = true;
+			system.temp.mainResponder.misc.message = "Indexing of discussion group messages for \"" + adrinfo^.displaySiteName + "\" has been enabled.";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"disableDgIndexing" {
+			adrnewssite^.search.flIndexDgMessages = false;
+			system.temp.mainResponder.misc.message = "Indexing of discussion group messages for \"" + adrinfo^.displaySiteName + "\" has been disabled.";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"indexSite" {
+			pta^.title = "Index entire site: " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<p>To index this entire site, click the Index Site button below. Depending on the size of the site, this may take some time, and will slow the server down while indexing is in progress.</p>");
+					add ("<p>If you don't want to index the site now, click your browser's Back button.</p>");
+					add ("<p><br /><input type=\"submit\" name=\"indexSite\" value=\"Index Site\" /></p>");
+					add ("</form>"); indentlevel--};
+				"POST" {
+					manilaSuite.search.init (adrsite);
+					thread.callscript (@manilaSuite.search.threadedSiteIndex, {adrsite});
+					system.temp.mainResponder.misc.message = "Search engine indexing of \"" + adrinfo^.displaySiteName + "\" has started. You can monitor indexing status in the Search section below.";
+					delete (@pta^.searchArgTable.command);
+					local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+					mainResponder.redirect (url);
+					return ("")}}};
+		"deIndexSite" {
+			pta^.title = "De-index entire site: " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<p>To de-index this entire site, click the De-index Site button below. Depending on the number of indexed pages, this may take some time, and will slow the server down while de-indexing is in progress.</p>");
+					add ("<p>If you don't want to de-index the site now, click your browser's Back button.</p>");
+					add ("<p><br /><input type=\"submit\" name=\"deIndexSite\" value=\"De-index Site\" /></p>");
+					add ("</form>"); indentlevel--};
+				"POST" {
+					local (adrdata = manilaSuite.search.init (adrsite));
+					adrdata^.indexQueue.flRunning = false; //make sure it won't be kicked off again
+					local (sitetodeindex = adrinfo^.displaySiteName);
+					thread.callScript (@mainResponder.search.server.restartIndex, {sitetodeindex});
+					system.temp.mainResponder.misc.message = "Search engine de-indexing of \"" + sitetodeindex + "\" has started. Depending on the number of pages in the index, it may take a few minutes for the operation to complete.";
+					delete (@pta^.searchArgTable.command);
+					local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+					mainResponder.redirect (url);
+					return ("")}}};
+		"makePrivate" {
+			adrnewssite^.flEditorsOnlyAccessToSite = true;
+			system.temp.mainResponder.misc.message = "This site has been made private.";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"makePublic" {
+			adrnewssite^.flEditorsOnlyAccessToSite = false;
+			system.temp.mainResponder.misc.message = "This site has been made public.";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"editHostingSettings" {
+			pta^.title = "Edit Hosting Settings: " + adrinfo^.displaySiteName;
+			bundle { //description
+				add ("<p>Use the form below to configure hosting options for " + adrinfo^.displaySiteName + ": who can create new sites, the domain of the sites and where the sites are created. You can also setup shared membership, default site language and editing tool, and customize the default home page text.</p>")};
+			add (mainResponder.adminSite.prefs.hosting (adrsite));
+			if pta^.method == "POST" {
+				system.temp.mainResponder.misc.message = "Hosting settings for \"" + adrinfo^.displaySiteName + "\" have been saved.";
+				delete (@pta^.searchArgTable.command);
+				local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+				mainResponder.redirect (url);
+				return ("")}};
+		"editRendering" {
+			pta^.title = "Edit Rendering Settings: " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<p>To change this site's static URL or folder, enter the changes and then click the Submit button.</p>");
+					local (staticSiteUrl, staticSiteFolder);
+					if defined (adrsite^.["#newsSite"].staticSite.["#ftpSite"].url) {
+						staticSiteUrl = adrsite^.["#newsSite"].staticSite.["#ftpSite"].url};
+					if defined (adrsite^.["#newsSite"].staticSite.["#ftpSite"].folder) {
+						staticSiteFolder = adrsite^.["#newsSite"].staticSite.["#ftpSite"].folder};
+					
+					add ("<p><br />Static Site URL: <input type=\"text\" name=\"staticSiteUrl\" size=\"60\" maxlength=\"255\" value=\"" +staticSiteUrl + "\" /></p>");
+					add ("<p><br />Static Site folder: <input type=\"text\" name=\"staticSiteFolder\" size=\"80\" maxlength=\"255\" value=\"" + staticSiteFolder + "\" /></p>");
+					add ("<p><br /><input type=\"submit\" name=\"changeRenderingSettings\" value=\"Submit\" /></p>");
+					add ("</form>"); indentlevel--};
+				"POST" {
+					local (newUrl = pta^.postArgs.staticSiteUrl);
+					if not (newUrl endsWith "/") {
+						newUrl = newUrl + "/"};
+					if not (string.lower (newUrl) beginsWith "http://") {
+						newUrl = "http://" + newUrl};
+					adrsite^.["#newsSite"].staticSite.["#ftpSite"].url = newUrl;
+					adrsite^.["#newsSite"].staticSite.["#ftpSite"].folder = pta^.postArgs.staticSiteFolder;
+					
+					system.temp.mainResponder.misc.message = "The rendering settings for \"" + adrinfo^.displaySiteName + "\" has been changed successfully.";
+					delete (@pta^.searchArgTable.command);
+					local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+					mainResponder.redirect (url);
+					return ("")}}};
+		"moveSiteTable" {
+			pta^.title = "Move " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"POST\">"); indentlevel++;
+					add ("<p>To move " + adrinfo^.displaySiteName + " to another database, choose a database to move to from the menu below, and click the Move Site button. To move the site to a new database, type the name of the database into the New Database field, and click the Move Site button.</p>");
+					add ("<p>You will have an opportunity to confirm this operation.</p>");
+					add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\">"); indentlevel++;
+					bundle { //database pop-up
+						add ("<tr><td align=\"right\">Move To:</td>");
+						add ("<td><select name=\"db\">");
+						add ("<option value=\"none\" selected>- choose a database -</option>");
+						local (wwwfolder = Frontier.getSubFolder ("www"));
+						local (f);
+						fileloop (f in wwwfolder) {
+							case string.lower (file.fileFromPath (f)) { //skip prefs.root and news.root
+								"prefs.root";
+								"news.root" {
+									continue}};
+							local (addresslist = string.parseAddress (adrsite));
+							if string.lower (f) == string.lower (addresslist[1]) { //skip the database that the site is already in
+								continue};
+							if defined ([f]) {
+								if defined ([f].[nameOf (adrsite^)]) {
+									continue};
+								add ("<option value=\"" + string.urlEncode (f) + "\">" + file.fileFromPath (f) + "</option>")}};
+						add ("</select></td>")};
+					add ("<tr><td align=\"right\">New Database:</td><td><input type=\"text\" name=\"newDatabaseName\" size=\"30\" maxlength=\"26\"></td></tr>");
+					add ("</table>"); indentlevel--;
+					add ("<p><br /><input type=\"submit\" name=\"moveSite\" value=\"Move Site\" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"cancel\" value=\"Cancel\" /></p>");
+					add ("</form>"); indentlevel--};
+				"POST" {
+					on getMoveToDb () {
+						local (newDbName = "");
+						if defined (pta^.postArgs.newDatabaseName) {
+							newDbName = string.trimWhiteSpace (pta^.postArgs.newDatabaseName)};
+						local (moveToDb = string.urlDecode (pta^.postArgs.db));
+						if sizeOf (newDbName) > 0 { //new database
+							if not (string.lower (newDbName) endswith ".root") {
+								newDbName = newDbName + ".root"};
+							local (wwwfolder = Frontier.getSubFolder ("www"));
+							local (f = wwwfolder + newDbName);
+							moveToDb = f};
+						return (moveToDb)};
+					if defined (pta^.postArgs.moveSite) { //give the user a chance to confirm
+						local (moveToDb = getMoveToDb ());
+						add ("<form method=\"POST\">"); indentlevel++;
+						add ("<input type=\"hidden\" name=\"db\" value=\"" + string.urlEncode (moveToDb) + "\">");
+						if file.exists (moveToDb) {
+							add ("<p>Are you sure you want to move " + adrinfo^.displaySiteName + " to " + file.fileFromPath (moveToDb) + "?<br /><br /></p>")}
+						else {
+							add ("<p>Are you sure you want to move " + adrinfo^.displaySiteName + " to a new database named " + file.fileFromPath (moveToDb) + "?<br /><br /></p>")};
+						bundle { //summary of the move
+							add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\">");
+							add ("<tr><td align=\"right\">Site&nbsp;address:</td><td>@" + string.popFileFromAddress (adrSite) + "</td></tr>");
+							local (origDbName = string.nthField (string (adrSite), "\"", 2) );
+							add ("<tr><td align=\"right\">Move&nbsp;from:</td><td>" + file.fileFromPath (origDbName) + "</td></tr>");
+							local (newDb = "", existingDb = "");
+							if not file.exists (moveToDb) {
+								newDb = " <i>(new)</i>"}
+							else {
+								existingDb = " <i>(" + sizeOf ([moveToDb]) + " sites, " + string.gigabyteString (file.size (moveToDb)) + ")</i>"};
+							add ("<tr><td align=\"right\">Move&nbsp;to:</td><td>" + file.fileFromPath (moveToDb) + newDb + existingDb + "</td></tr>");
+							add ("</table>")};
+						msg (moveToDb);
+						add ("<p><br /><input type=\"submit\" name=\"moveSiteConfirm\" value=\"Move Site\" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"cancel\" value=\"Cancel\" /></p>");
+						add ("</form>"); indentlevel--}
+					else { //confirm or cancel
+						if defined (pta^.postArgs.moveSiteConfirm) {
+							local (moveToDb = getMoveToDb ());
+							try { //move the site, creating the database if necessary
+								if not (defined ([moveToDb])) { //is it already open?
+									if file.exists (moveToDb) {
+										fileMenu.open (moveToDb, true)} //it does, open it
+									else {
+										fileMenu.new (moveToDb);
+										window.hide (@[moveToDb]);
+										fileMenu.save (moveToDb)}};
+								manilaSuite.moveSiteTable (adrSite, @[moveToDb]);
+								system.temp.mainResponder.misc.message = adrinfo^.displaySiteName + " has been moved to " + file.fileFromPath (moveToDb) + ".";
+								if defined (system.temp.mainResponder.misc.siteListCache) {
+									delete (@system.temp.mainResponder.misc.siteListCache)};
+								delete (@pta^.searchArgTable.command);
+								local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+								mainResponder.redirect (url);
+								return ("")}
+							else {
+								add ("<b><font color=\"red\">Error moving site: " + tryerror + "</font></b>")}}
+						else { //cancel -- redirect back to manage site page
+							delete (@pta^.searchArgTable.command);
+							local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+							mainResponder.redirect (url);
+							return ("")}}}}};
+		"pluginSettings" {
+			local (plugin = pta^.searchArgTable.plugin);
+			local (sitename = manilaSuite.getShortSiteName (adrinfo^.site));
+			pta^.title = plugin + " Plug-in Settings for " + adrinfo^.displaySiteName;
+			case pta^.method {
+				"GET" {
+					add ("<form method=\"post\">");
+					add ("<p>On this page, you can enable or disable the " + plugin + " plug-in for " + adrinfo^.displaySiteName + ". You can also modify the availability of the plugin to the site's owners.</p>");
+					
+					local (enabledCheck = "");
+					if manilaSuite.plugins.isEnabled (plugin, adrsite) {
+						enabledCheck = " checked"};
+					add ("<p><input type=\"checkbox\" name=\"flEnabled\" value=xxx" + enabledCheck + ">&nbsp;Check this box to enable the " + plugin + " plug-in for " + adrinfo^.displaySiteName + ".</p>");
+					
+					local (defaultSelect = "", visibleSelect = "", invisibleSelect = "");
+					local (availPrompt);
+					bundle { //set availPrompt, default selection
+						local (flSiteSpecificConfig =  defined (config.manila.plugins.prefs.[plugin].alwaysVisibleToSites.[sitename]) );
+						if flSiteSpecificConfig {
+							if config.manila.plugins.prefs.[plugin].alwaysVisibleToSites.[sitename] {
+								visibleSelect = " selected";
+								availPrompt = "The " + plugin + " plug-in is always be available for this site."}
+							else {
+								invisibleSelect = " selected";
+								availPrompt = "The " + plugin + " plug-in is never available for this site."}}
+						else {
+							defaultSelect = " selected";
+							if manilaSuite.plugins.isPermittedInSite (plugin, adrsite) {
+								availPrompt = "The " + plugin + " plug-in is available to all sites on this server by default."}
+							else {
+								availPrompt = "The " + plugin + " plug-in is unavailable to all sites on this server by default."}}};
+					add ("<p><br />" + availPrompt + " To change this setting, choose an option from the pop-up menu below.</p>");
+					bundle { //availability pop-up
+						add ("<p>Make the " + plugin + " plug-in available to this site: ");
+						add ("<select name=\"availability\">");
+						add ("<option value=\"default\"" + defaultSelect + ">Using server default</option>");
+						add ("<option value=\"visible\"" + visibleSelect + ">Always</option>");
+						add ("<option value=\"invisible\"" + invisibleSelect + ">Never</option>");
+						add ("</select>")};
+					
+					add ("<p><br /><input type=\"submit\" name=\"submit\" value=\"Submit\" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"cancel\" value=\"Cancel\" /></p>");
+					
+					add ("<p><br />Note: You can change the global availability options for plug-ins on this server using the <a href=\"/settings?page=2.11\">Plug-in Settings page</a>.</p>");
+					add ("</form>");
+					return (htmltext)};
+				"POST" {
+					if defined (pta^.postArgs.submit) {
+						on enableOrDisablePlugin (flEnable=true) {
+							local (oldAdrSiteRootTable = pta^.adrSiteRootTable, oldFilters = pta^.filters);
+							bundle { //patch up page table so plugins install stuff in the right place
+								«This is a work-around for plugins that need to do something special with the site table, or with the site's filters.
+								pta^.adrSiteRootTable = adrsite;
+								pta^.filters = @adrsite^.["#filters"]}; //metaData plugin needs this
+							if flEnable {
+								manilaSuite.plugins.enable (plugin, adrsite)}
+							else { //disable
+								manilaSuite.plugins.disable (plugin, adrsite)};
+							bundle { //restore page table for admin site
+								pta^.adrSiteRootTable = oldAdrSiteRootTable;
+								pta^.filters = oldFilters};
+							return};
+						local (flWasEnabled = manilaSuite.plugins.isEnabled (plugin, adrsite) );
+						local (flEnabled = defined (pta^.postArgs.flEnabled) );
+						
+						local (message = "");
+						case pta^.postArgs.availability { //set site-specific availability
+							"default" {
+								if defined (config.manila.plugins.prefs.[plugin].alwaysVisibleToSites.[sitename]) {
+									delete (@config.manila.plugins.prefs.[plugin].alwaysVisibleToSites.[sitename])}};
+							"visible" {
+								config.manila.plugins.prefs.[plugin].alwaysVisibleToSites.[sitename] = true};
+							"invisible" {
+								config.manila.plugins.prefs.[plugin].alwaysVisibleToSites.[sitename] = false}};
+						if flEnabled { //enable if necessary
+							if not flWasEnabled {
+								enableOrDisablePlugin ();
+								message = "The " + plugin + " plug-in has been enabled, and availability options saved."}}
+						else { //disable if necessary
+							if flWasEnabled {
+								enableOrDisablePlugin (false);
+								message = "The " + plugin + " plug-in has been disabled, and availability options saved."}};
+						if message == "" {
+							message = "Availability options for the " + plugin + " plug-in have been saved."};
+						system.temp.mainResponder.misc.message = message}}};
+			delete (@pta^.searchArgTable.command);
+			delete (@pta^.searchArgTable.plugin);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"allowAnyUsername" {
+			local (adrGroup = parentOf (adrinfo^.adrMembers^));
+			if config.manila.prefs.flUsernameMustBeEmail {
+				adrGroup^.flUsernameMustBeEmail = false}
+			else {
+				if defined (adrGroup^.flUsernameMustBeEmail) {
+					delete (@adrGroup^.flUsernameMustBeEmail)}};
+			system.temp.mainResponder.misc.message = "Member username email requirement removed for " + adrinfo^.displaySiteName + ".";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")};
+		"usernameMustBeEmail" {
+			local (adrGroup = parentOf (adrinfo^.adrMembers^));
+			if config.manila.prefs.flUsernameMustBeEmail {
+				if defined (adrGroup^.flUsernameMustBeEmail) {
+					delete (@adrGroup^.flUsernameMustBeEmail)}}
+			else {
+				adrGroup^.flUsernameMustBeEmail = true};
+			system.temp.mainResponder.misc.message = "Member usernames must be email addresses for " + adrinfo^.displaySiteName + ".";
+			delete (@pta^.searchArgTable.command);
+			local (url = "http://" + pta^.host + "/?" + webserver.encodeArgs (@pta^.searchArgTable));
+			mainResponder.redirect (url);
+			return ("")}}
+	else { //display site info
+		if sizeOf (message) > 0 { //confirmation message
+			add ("<p><b>" + message + "</b></p>")};
+		bundle { //basic info
+			addHeader ("Basic information");
+			bundle { //status -- installed/not installed
+				local (s, cmd);
+				if adrinfo^.flInstalled {
+					s = "This site is enabled.";
+					cmd = "disable"}
+				else {
+					s = "This site is disabled.";
+					cmd = "enable"};
+				addRow ("Status", s, cmd, thisPageUrl + "&command=" + cmd)};
+			addRow ("URL", adrinfo^.siteUrl, "change&nbsp;URL", thisPageUrl + "&command=changeUrl");
+			addRow ("Tagline", string (adrnewssite^.tagline));
+			bundle { //owner
+				local (editor = adrinfo^.managingEditor);
+				local (editorlink = editor);
+				bundle { //set editorLink
+					if adrinfo^.flInstalled {
+						editorlink = html.getLink (editor, adrinfo^.profilesUrl + editor);
+						try { //get the real name of the editor, if possible
+							local (adrmember = @adrinfo^.adrMembers^.[editor]);
+							if (defined (adrmember^.personalInfo.name)) and (adrmember^.personalInfo.name != "") {
+								editorlink = html.getLink (adrmember^.personalInfo.name, adrinfo^.profilesUrl + editor)}}}
+					else {
+						editorlink = string.replace (editor, "@", "\\@")}};
+				addRow ("Owner", editorlink)};
+			bundle { //access
+				local (flEditorsOnly = boolean (manilaSuite.getNewsSitePref ("flEditorsOnlyAccessToSite", adrsite, false, true)) );
+				if flEditorsOnly {
+					addRow ("Access", "Private (editors-only)", "make&nbsp;public", thisPageUrl + "&command=makePublic")}
+				else {
+					addRow ("Access", "Public", "make&nbsp;private", thisPageUrl + "&command=makePrivate")}};
+			addRow ("Created", adrmsgs^[1].postTime);
+			addRow ("Last modified", adrinfo^.modified);
+			bundle { //database
+				local (f, dbname, addresslist = string.parseAddress (adrsite));
+				f = addresslist[1];
+				if f == "root" {
+					f = frontier.getFilePath ()};
+				dbname = file.fileFromPath (f);
+				addRow ("Database", dbname, "move", thisPageUrl + "&command=moveSiteTable")};
+			bundle { //site adderss
+				addRow ("Site address", "@" + string.popFileFromAddress (adrsite))};
+			addRow ("Membership group", manilaSuite.members.getGroupNameFromSiteAddress (adrsite), "change", thisPageUrl + "&command=changeMembershipGroup");
+			addFooter ()};
+		bundle { //versioning
+			addHeader ("Versioning");
+			local (versioningState = 0, flVersioningEnabled = false);
+			try {versioningState = config.manila.prefs.versioning.availability};
+			bundle { //tracking enabled/disabled
+				case versioningState {
+					3 { //enabled server-wide
+						addRow ("Enabled/disabled", "Versioning is enabled server-wide for all sites", "change server setting", settingsPageUrl + "?page=2.11");
+						flVersioningEnabled = true};
+					2; //enabled by default, ME can disable
+					1; //disabled by default, ME can enable
+					4 { //enabled by admins only
+						local (byDefault = "");
+						flVersioningEnabled = (versioningState == 2);
+						if defined (adrnewssite^.versioning.enabled) {
+							flVersioningEnabled = adrnewssite^.versioning.enabled}
+						else {
+							byDefault = " (by default)"};
+						if versioningState == 4 {
+							byDefault = " (enabled by admins only)"};
+						if flVersioningEnabled {
+							addRow ("Enabled/disabled", "Versioning is enabled for this site" + byDefault, "disable", thisPageUrl + "&command=disableVersioning")}
+						else { //disabled
+							addRow ("Enabled/disabled", "Versioning is disabled for this site" + byDefault, "enable", thisPageUrl + "&command=enableVersioning")}};
+					0 { //disabled server-wide
+						addRow ("Enabled/disabled", "Disabled server-wide", "change server setting", settingsPageUrl + "?page=2.11")}}};
+			bundle { //rollback enabled/disabled
+				local (rollbackState, flRollbackEnabled = false);
+				if defined (adrnewssite^.versioning.flRestoreWanted) {
+					if adrnewssite^.versioning.flRestoreWanted {
+						rollbackState = "Rollback option to restore previous versions is shown";
+						flRollbackEnabled = true}
+					else { //not enabled
+						rollbackState = "Rollback option to restore previous versions not shown"}}
+				else {
+					rollbackState = "Rollback option not set"};
+				if flRollbackEnabled {
+					addRow ("Rollback", rollbackState, "hide", thisPageUrl + "&command=hideRollback")}
+				else { //not enabled
+					addRow ("Rollback", rollbackState, "show", thisPageUrl + "&command=showRollback")}};
+			addFooter ()};
+		bundle { //backups
+			addHeader ("Backups");
+			local (canonicalSiteName = adrinfo^.site);
+			try {canonicalSiteName = manilaSuite.getCanonicalSiteName (adrsite)};
+			local (adrdata = @config.manila.backups.sites.[canonicalSiteName]);
+			local (flEnabled = false, whenLastBackup = "never backed up");
+			bundle { //set flEnabled and whenLastBackup
+				if defined (adrdata^) {
+					flEnabled = adrdata^.flEnabled;
+					if adrdata^.whenLastBackedUp != date (0) {
+						whenLastBackup = adrdata^.whenLastBackedUp}}};
+			if flEnabled {
+				addRow ("Enabled/disabled", "Automatic backups are enabled for this site", "disable", thisPageUrl + "&command=disableBackups")}
+			else {
+				addRow ("Enabled/disabled", "Automatic backups are disabled for this site", "enable", thisPageUrl + "&command=enableBackups")};
+			addRow ("Last backed up", whenLastBackup, "backup now", thisPageUrl + "&command=backupNow");
+			addFooter ()};
+		bundle { //contentStats stats (dg, gems)
+			addHeader ("Content");
+			local (adrstats = @adrinfo^.contentStats);
+			if not defined (adrstats^) { //build a table of stats, and store it in the info cache
+				local (ctmsgs=0, ctnewsitems=0, ctpostednewsitems=0, ctpics=0, ctstories=0, ctgems=0, gemstotalsizedouble=0.0);
+				bundle { //collect info
+					ctmsgs = sizeOf (adrmsgs^);
+					local (picturesCategory = manilaSuite.discuss.getPicturesCategory (adrSite));
+					local (storiesCategory = manilaSuite.discuss.getStoriesCategory (adrSite));
+					local (adr);
+					for adr in adrmsgs { //count pictures, stories and news items
+						if defined (adr^.alsoListedIn) {
+							if adr^.alsoListedIn contains picturesCategory {
+								ctpics++};
+							if adr^.alsoListedIn contains storiesCategory {
+								ctstories++}};
+						if defined (adr^.newsItem) {
+							ctnewsitems++;
+							if manilaSuite.news.isPosted (adr) {
+								ctpostednewsitems++}}};
+					local (adrgems = manilaSuite.gems.getSiteDataAddress (adrSite));
+					for adr in adrgems {
+						if defined (adr^.flDeleted) { //skip if deleted
+							if adr^.flDeleted {
+								continue}};
+						local (sizeonegem);
+						try { //will fail if the file doesn't exist
+							sizeonegem = manilaSuite.gems.getFileSize (adr);
+							gemstotalsizedouble = gemstotalsizedouble + sizeonegem;
+							ctgems++}}};
+				bundle { //cache info
+					new (tableType, adrstats);
+					adrstats^.ctMsgs = ctmsgs;
+					adrstats^.ctNewsItems = ctnewsitems;
+					adrstats^.ctNewsItemsPosted = ctpostednewsitems;
+					adrstats^.ctPictures = ctpics;
+					adrstats^.ctStories = ctstories;
+					adrstats^.ctGems = ctGems;
+					adrstats^.gemsTotalSizeBytes = gemstotalsizedouble}};
+			addRow ("Discussion group messages", adrstats^.ctMsgs);
+			bundle { //last 5 threads
+				local (adrmsg, i, ct = 0, sizeDg = sizeOf (adrmsgs^));
+				local (s = "<table cellpadding=\"2\" cellspacing=\"0\" border=\"0\" width=\"95%\">");
+				for i = sizeDg downto 1 {
+					adrmsg = @adrmsgs^[i];
+					if adrmsg^.inResponseTo != 0 {
+						continue};
+					ct++;
+					local (link = mainResponder.discuss.linkToMessage (adrmsg, msgReaderUrl));
+					s = s + ("<tr><td valign=\"top\" class=\"small\" width=\"15\">" + adrmsg^.msgnum + "</td><td valign=\"top\" class=\"small\">" + link + "</td><td align=\"right\" class=\"small\">" + shortDateTime (adrmsg^.postTime) + "</td></tr>");;
+					if ct >= 5 {
+						break}};
+				s = s + "</table>";
+				addRow ("Most recent threads", s)};
+			addRow ("Stories", adrstats^.ctStories);
+			addRow ("Pictures", adrstats^.ctPictures);
+			addRow ("News Items", adrstats^.ctNewsItems + " (" + adrstats^.ctNewsItemsPosted + " posted)");
+			addRow ("Gems", adrstats^.ctGems + " (" + string.gigabyteString (adrstats^.gemsTotalSizeBytes) + ")");
+			addFooter ()};
+		bundle { //syndication info
+			addHeader ("Syndication");
+			bundle { //enabled/disabled
+				local (s);
+				if manilaSuite.getNewsSitePref ("flSyndicate", adrsite) {
+					s = "Enabled"}
+				else {
+					s = "Disabled"};
+				addRow ("Enabled/disabled", s)};
+			local (channelTitle = "(undefined)");
+			local (channelDescription = "(undefined)");
+			local (channelME = "(undefined)");
+			try {channelTitle = manilaSuite.getNewsSitePref ("rssInfo.channelTitle", adrsite)};
+			try {channelDescription = manilaSuite.getNewsSitePref ("rssInfo.channelDescription", adrsite)};
+			try {channelME = manilaSuite.getNewsSitePref ("rssInfo.userLandExtensions.managingEditor", adrsite)};
+			addRow ("Title", channelTitle);
+			addRow ("Description", channelDescription);
+			addRow ("RSS URL", adrinfo^.siteUrl + "xml/rss.xml");
+			addRow ("scriptingNews2 URL", adrinfo^.siteUrl + "xml/scriptingNews2.xml");
+			addRow ("Managing editor", string.replace (channelME, "@", "\\@"));
+			addFooter ()};
+		bundle { //search info
+			addHeader ("Search");
+			local (adrdata = manilaSuite.search.init (adrsite));
+			local (flEnabled = adrdata^.flIndex);
+			local (server = adrdata^.serverDomain);
+			local (flThisMachine = false);
+			try {flThisMachine = tcp.equalNames (server, tcp.dns.getMyDottedId ())};
+			if not flThisMachine {
+				try {flThisMachine = tcp.equalNames (server, "127.0.0.1")}};
+			bundle { //enabled/disabled
+				local (s, cmd);
+				if flEnabled {
+					s = "Enabled";
+					cmd = "disable"}
+				else {
+					s = "Disabled";
+					cmd = "enable"};
+				addRow ("Enabled/disabled", s, cmd, thisPageUrl + "&command=" + cmd + "Search")};
+			bundle { //search server
+				local (s);
+				if server == "" {
+					s = "not specified"}
+				else { //get server info
+					s = server + ":" + adrdata^.serverPort;
+					local (rpcpath = adrdata^.serverRpcPath);
+					if not (rpcpath beginsWith "/") {
+						rpcpath = "/" + rpcpath};
+					s = s + rpcpath;
+					if flThisMachine {
+						s = s + "<br /><font size=\"-1\" class=\"small\">(The search engine is running on this server.)</font>"}};
+				addRow ("Server", s, "configure", thisPageUrl + "&command=configureSearch")};
+			bundle { //RPC procedure
+				local (procedure = adrdata^.serverProcedureName);
+				addRow ("XML-RPC Index Procedure", procedure)};
+			bundle { //dg indexing
+				local (s, cmd);
+				if adrdata^.flIndexDgMessages {
+					s = "Discussion group messages will be indexed";
+					cmd = "disable"}
+				else {
+					s = "Discussion group messages will not be indexed";
+					cmd = "enable"};
+				addRow ("Discussion Group Indexing", s, cmd, thisPageUrl + "&command=" + cmd + "DgIndexing")};
+			bundle { //last full index
+				if adrdata^.indexQueue.whenLastIndexCompleted > date (0) {
+					addRow ("Last Full Index", adrdata^.indexQueue.whenLastIndexCompleted)}
+				else {
+					local (note = "");
+					if flEnabled {
+						note = "<font size=\"-1\" class=\"small\">(This only means that a full index of this site has never been run, however all of the content in this site may have already been incrementally indexed as it was created.)</font>"};
+					addRow ("Last Full Index", "never<br />" + note)}};
+			bundle { //admin functions
+				if flEnabled and (server != "") {
+					local (prompt = "Index entire site");
+					if adrdata^.indexQueue.flRunning {
+						if thread.exists (adrdata^.indexQueue.threadId) {
+							addRow (prompt, "This site is in the process of being indexed: " + adrdata^.indexQueue.ctMsgsIndexed + " of " + sizeOf (adrmsgs^) + " messages indexed so far.")}
+						else {
+							addRow (prompt, "This site was in the process of being indexed, but the index operation has been stopped. To restart the index, click the restart link at the right. (You will be prompted for confirmation.)", "restart", thisPageUrl + "&command=indexSite")}}
+					else {
+						addRow (prompt, "You can re-index this entire site including pages created before indexing was enabled, by clicking the index link at the right. (You will be prompted for confirmation.)", "index", thisPageUrl + "&command=indexSite")}}
+				else {
+					addRow ("De-index entire site", "You can de-index pages in this site which were indexed while indexing was enabled, by clicking the de-index link at the right. (You will be prompted for confirmation.)", "de-index", thisPageUrl + "&command=deIndexSite")}};
+			addFooter ()};
+		bundle { //rendering
+			addHeader ("Rendering");
+			bundle { //enabled/disabled
+				if manilaSuite.getNewsSitePref ("flStaticRenderingEnabled", adrsite, "false") {
+					addRow ("Enabled/disabled", "Enabled", "edit", thisPageUrl + "&command=editRendering");
+					bundle { //rendering location
+						case manilaSuite.getNewsSitePref ("staticRenderingMethod", adrsite, "file") {
+							"file" {
+								addRow ("Static rendering method", "Local Filesystem");
+								if defined (adrsite^.["#newsSite"].staticSite.["#ftpSite"].url) {
+									addRow ("Static site URL", adrsite^.["#newsSite"].staticSite.["#ftpSite"].url)}};
+							"ftp" {
+								addRow ("Static rendering method", "FTP");
+								addRow ("Static site URL", manilaSuite.getNewsSitePref ("staticRenderingURL", adrsite))}}}}
+				else {
+					addRow ("Enabled/disabled", "Disabled")}};
+			addFooter ()};
+		try { //hosting -- this only works if the site is installed
+			local (adrprefs);
+			addHeader ("Hosting");
+			if manilaSuite.hosting.getPrefsAddressForSite (adrsite, @adrprefs) { //hosting enabled for site
+				addRow ("Enabled/disabled", "Enabled", "edit settings", thisPageUrl + "&command=editHostingSettings");
+				bundle { //top-level or sub-sites
+					local (topLevelOrSubSites = "Top-level sites");
+					if adrprefs^.flSubSites {
+						topLevelOrSubSites = "Sub-sites"};
+					addRow ("Create top-level sites or sub-sites", topLevelOrSubSites)};
+				bundle { //who can create
+					local (whoCanCreateSites = "Anyone");
+					if adrprefs^.flEditorsOnlyCreateSites {
+						whoCanCreateSites = "Editors Only"};
+					if defined (adrprefs^.flRequireEmailConfirmation) {
+						if adrprefs^.flRequireEmailConfirmation {
+							if adrprefs^.flRestrictByEmailDomain {
+								whoCanCreateSites = whoCanCreateSites - " Only";
+								whoCanCreateSites = whoCanCreateSites + " with an email address in the " + adrprefs^.restrictToDomain + " domain"}
+							else {
+								whoCanCreateSites = whoCanCreateSites + " (with email confirmation)"}}};
+					addRow ("Who can create new sites", whoCanCreateSites)};
+				bundle { //membership info
+					local (membership);
+					local (flUseHostingSiteMembershipGroup = false);
+					if defined (adrprefs^.flUseHostingSiteMembershipGroup) {
+						flUseHostingSiteMembershipGroup = adrprefs^.flUseHostingSiteMembershipGroup};
+					if flUseHostingSiteMembershipGroup {
+						membership = "Each new site shares its membership group with this site"}
+					else {
+						membership = "Each new site has its own membership group"};
+					addRow ("Membership", membership)};
+				bundle { //language
+					if defined (adrprefs^.defaultLanguage) {
+						local (lang = adrprefs^.defaultLanguage);
+						if defined (mainResponder.localization.languages.[lang].strings.languages.[lang]) {
+							lang = mainResponder.localization.languages.[lang].strings.languages.[lang]}
+						else {
+							if defined (mainResponder.localization.languages.english.strings.languages.[lang]) {
+								lang = mainResponder.localization.languages.english.strings.languages.[lang]}
+							else {
+								lang = string.upper (lang[1]) + string.delete (lang, 1, 1)}};
+						addRow ("Default language", lang)}
+					else {
+						addRow ("Default language", "not specified")}};
+				bundle { //editing tool
+					if defined (adrprefs^.defaultEditor) {
+						addRow ("Default editing tool", adrprefs^.defaultEditor)}
+					else {
+						addRow ("Default editing tool", "not specified")}}}
+			else { //hosting disabled for site
+				addRow ("Enabled/disabled", "Hosting has never been configured for this site", "configure", thisPageUrl + "&command=editHostingSettings")};
+			addFooter ()}
+		else { //always close the table, even if something failed
+			addFooter ()};
+		bundle { //editors
+			addHeader ("Editors");
+			local (s);
+			on addOneEditor (email) {
+				local (edlink = email);
+				try {
+					local (adrmember = @adrinfo^.adrMembers^.[email]);
+					if defined (adrmember^.personalInfo) {
+						if defined (adrmember^.personalInfo.name) {
+							edlink = adrmember^.personalInfo.name}}};
+				edlink = html.getLink (string.replace (edlink, "@", "\\@"), adrinfo^.profilesUrl + email);
+				s = s + edlink + ", "};
+			on addEditors (editors) {
+				if typeOf (editors) == listType {
+					local (editor);
+					for editor in editors {
+						addOneEditor (editor)}}
+				else { //only one editor
+					addOneEditor (editors)};
+				s = string.mid (s, 1, sizeOf (s) - 2);
+				return (true)};
+			bundle { //managing editors
+				s = "";
+				local (editors = manilaSuite.getNewsSitePref ("sysopMail", adrsite, "x"));
+				if editors != "x" {
+					addEditors (editors)};
+				addRow ("Managing editors", s, "edit", adrinfo^.siteurl + "admin/sitePrefs/default$editorial")};
+			bundle { //contributing editors
+				s = "";
+				local (editors = manilaSuite.getNewsSitePref ("contributingEditors", adrsite, "x"));
+				if editors != "x" {
+					addEditors (editors)};
+				addRow ("Contributing editors", s, "edit", adrinfo^.siteurl + "admin/sitePrefs/default$editorial")};
+			bundle { //content editors
+				s = "";
+				local (editors = manilaSuite.getNewsSitePref ("contentEditors", adrsite, "x"));
+				if editors != "x" {
+					addEditors (editors)};
+				addRow ("Content editors", s, "edit", adrinfo^.siteurl + "admin/sitePrefs/default$editorial")};
+			addFooter ()};
+		bundle { //members
+			addHeader ("Members");
+			bundle { //username email requirement
+				local (s, cmd, cmdArg, adrGroup = parentOf (adrinfo^.adrMembers^));
+				if defined (adrgroup^.flUsernameMustBeEmail) {
+					if adrgroup^.flUsernameMustBeEmail {
+						s = "usernames must be email addresses in this site";
+						cmd = "allow any";
+						cmdArg = "allowAnyUsername"}
+					else {
+						s = "usernames not required to be email addresses in this site";
+						cmd = "require email";
+						cmdArg = "usernameMustBeEmail"}}
+				else { //server default
+					if config.manila.prefs.flUsernameMustBeEmail { //enabled in all sites by default
+						s = "usernames must be email addresses (by server default)";
+						cmd = "allow any";
+						cmdArg = "allowAnyUsername"}
+					else {
+						s = "usernames not required to be email addresses (by server default)";
+						cmd = "require email";
+						cmdArg = "usernameMustBeEmail"}};
+				addRow ("Usernames", s, cmd, thisPageUrl + "&command=" + cmdArg)};
+			addRow ("Total members", sizeOf (adrinfo^.adrMembers^), "list", adrinfo^.siteurl + "stats/members");
+			local (ctblocked = 0, adr);
+			for adr in adrinfo^.adrMembers {
+				if defined (adr^.blocked) {
+					if adr^.blocked {
+						ctblocked++}}};
+			addRow ("Blocked members", ctblocked, "edit", adrinfo^.siteurl + "admin/");
+			addFooter ()};
+		bundle { //plugins
+			local (pluginslist = manilaSuite.plugins.getList (true));
+			addHeader ("Plugins");
+			if sizeOf (pluginslist) > 0 {
+				for plugin in pluginsList {
+					local (link = plugin);
+					local (url = manilaSuite.plugins.getPluginDescriptionUrl (plugin));
+					if url != "" {
+						link = html.getLink (plugin, url)};
+					local (status);
+					if manilaSuite.plugins.isEnabled (plugin, adrSite) {
+						status = "Enabled"}
+					else {
+						status = "Disabled"};
+					bundle { //add some text explaining the visibility status of the plugin
+						local (sitename = manilaSuite.getShortSiteName (adrinfo^.site));
+						
+						local (flServerVisible = config.manila.prefs.flPluginsVisibleByDefault);
+						
+						local (flPluginVisibleDefined = defined (config.manila.plugins.prefs.[plugin].flVisibleByDefault) );
+						local (flPluginVisible = flServerVisible);
+						if flPluginVisibleDefined {flPluginVisible = config.manila.plugins.prefs.[plugin].flVisibleByDefault};
+						
+						local (flSiteVisibleDefined = defined (config.manila.plugins.prefs.[plugin].alwaysVisibleToSites.[sitename]) );
+						local (flSiteVisible = flPluginVisible);
+						if flSiteVisibleDefined {flSiteVisible = config.manila.plugins.prefs.[plugin].alwaysVisibleToSites.[sitename]};
+						
+						if flSiteVisible {
+							status = status + " -- available to site owner, "}
+						else {
+							status = status + " -- unavailable to site owner, "};
+						if flSiteVisibleDefined {
+							status = status + "as defined for this site"}
+						else {
+							if flPluginVisibleDefined {
+								status = status + "as defined for this plug-in"}
+							else {
+								status = status + "by default for plug-ins on this server"}}};
+					addRow (link, status, "settings", thisPageUrl + "&command=pluginSettings&plugin=" + plugin)}}
+			else { //no plugins installed
+				add ("<tr bgcolor=\"" + bgcolor1 + "\"><td colspan=\"2\">There are no plugins installed on this server.</td></tr>")};
+			addFooter ()};
+		bundle { //stats
+			addHeader ("Stats");
+			addRow ("Hits all-time", adrinfo^.totalHits);
+			addRow ("Hits today", adrinfo^.hitsToday + "&nbsp;&nbsp;&nbsp;<font size=\"-1\" class=\"small\">(<a href=\"" + adrinfo^.siteurl + "stats/referers\">referers</a>)</font>");
+			
+			bundle { //5 most read messages
+				local (adrstats = @adrdg^.stats);
+				if not defined (adrstats^) {
+					new (tableType, adrstats)};
+				local (adrrankings = @adrstats^.rankings);
+				bundle { //compile rankings if necessary
+					if not defined (adrrankings^) {
+						new (tableType, adrrankings);
+						setTimeCreated (adrrankings, date.yesterday (clock.now ()))};
+					local (timeCompiled = timeCreated (adrrankings));
+					local (midnight);
+					local (day, month, year, hour, minute, second);
+					date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+					midnight = date.set (day, month, year, 0, 0, 0);
+					if timeCompiled < midnight { //do the stats need to be re-compiled? 
+						new (tabletype, adrrankings);
+						local (adrmsg);
+						for adrmsg in adrmsgs {
+							adrrankings^.[nameof (adrmsg^)] = adrmsg^.ctReads};
+						local (oldtarget = target.set (adrrankings));
+						table.sortBy ("Value");
+						try {target.set (oldtarget)}}};
+				local (i, adrmsg, ctcounts = sizeOf (adrrankings^), ctlisted = 0);
+				local (s = "<table cellpadding=\"2\" cellspacing=\"0\" border=\"0\" width=\"95%\">");
+				for i = ctcounts downto 1 {
+					ctlisted++;
+					adrmsg = @adrmsgs^.[nameof (adrrankings^[i]) ];
+					local (link = mainResponder.discuss.linkToMessage (adrmsg, msgReaderUrl));
+					s = s + ("<tr><td valign=\"top\" class=\"small\" width=\"15\">" + ctlisted + ".</td><td valign=\"top\" class=\"small\">" + link + "</td><td align=\"right\" class=\"small\">" + adrmsg^.ctReads + " reads</td></tr>");;
+					if ctlisted >= 5 {
+						break}};
+				s = s + "<td></td><td class=\"small\">(<a href=\"" + adrinfo^.siteUrl + "stats/mostReadMessages\">more</a>)</td>";
+				s = s + "</table>";
+				addRow ("Most read messages", s)};
+			addFooter ()}};
+	
+	return (htmlText)};
+
+«bundle //test code
+	«html.setpagetableaddress (@workspace.pt)
+	«managesite (workspace.adrinfo)

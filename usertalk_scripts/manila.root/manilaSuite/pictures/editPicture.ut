@@ -1,0 +1,81 @@
+local (pta = html.getPageTableAddress ());
+local (msgNum = number (pta^.pathArgs));
+local (adrTable = mainResponder.discuss.getMessageTable (msgNum));
+local (htmlText = "", indentLevel = 0);
+
+pta^.title = manilaSuite.getString ("pictures.editPicturePageTitle"); // 4/21/00 JES: localized
+pta^.lastUpdate = adrTable^.lastUpdate;
+
+on add (s) {
+	htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+
+if defined (adrTable^.image) { //new-style image management
+	add (mainResponder.discuss.buildImageTag (msgNum));
+	add ("<p>")}
+else { //old-style image management
+	local (folderpath, urlprefix);
+	bundle { //compute folderpath and urlprefix
+		local (pc = file.getPathChar ());
+		local (adrdiscuss = mainResponder.discuss.openRoot ());
+		on add (s) { //append sub-folders to folderpath
+			folderpath = folderpath + s + pc;
+			urlprefix = urlprefix + s + "/"};
+		folderpath = adrdiscuss^.prefs.binaryServerFolder;
+		urlprefix = adrdiscuss^.prefs.binaryServerURL;
+		add (pta^.defaultMembershipGroup);
+		add (adrtable^.member);
+		add (nameof (adrdiscuss^));
+		add (msgnum)};
+	if (file.exists (folderpath) and (file.filesInFolder (folderpath, 1) > 0)) {
+		local (f);
+		fileloop (f in folderpath, 1) {
+			local (fname = file.fileFromPath (f));
+			local (imageURL = urlprefix + fname);
+			local (imgtag = "<img alt=\"\" ");
+			bundle { // get height & width
+				local (hwlist);
+				case file.type (f) {
+					'gif ';
+					'GIFf' {
+						hwList = html.getGifHeightWidth (f);
+						imgTag = imgTag + "height=\"" + hwList[1] + "\" width=\"" + hwList[2] + "\" "};
+					'jpg ';
+					'JPEG' {
+						hwList = html.getJpegHeightWidth (f);
+						imgTag = imgTag + "height=\"" + hwList[1] + "\" width=\"" + hwList[2] + "\" "}}};
+			imgtag = imgtag + "src=\"" + imageURL + "\">";
+			add (imgtag + "<p>");
+			«if pta^.tools^.editorialTest ()
+				«add ("<p><b>Image URL (editors only): </b><br>")
+				«add ("<a href=\"" + imageURL + "\">" + string.replaceAll (string.replaceAll (imageURL, "@", "\\@"), "//", "\\//") + "</a>")
+				«add ("<p><b>Prefabricated image tag for copy & pasting (editors only):<b>")
+				«add ("<form><textarea readonly cols=\"70\">" + imgtag + "</textarea></form>")}}};}}};
+
+local (postMsgUrl = manilaSuite.getUrl ("picturePostEditedMessage", pta), filePrompt, subjectPrompt, bodyPrompt);
+«4/21/00; 3:19:08 AM by JES: localized
+filePrompt = manilaSuite.getString ("pictures.choosePicturePrompt");
+subjectPrompt = manilaSuite.getString ("pictures.titlePrompt");
+bodyPrompt = manilaSuite.getString ("pictures.bodyPrompt");
+«add (mainResponder.discuss.editMessageForm (msgNum, flLinkToReferer:true, flShowFileList:false, flShowFileUpload:true, filePrompt: filePrompt, subjectPrompt: subjectPrompt, bodyPrompt: bodyPrompt, actionUrl:postMsgUrl))
+local (adrETPbuilder = @mainResponder.discuss.editMessageForm); //04.06.23, 13:38:12 by DAB
+manilaSuite.plugins.ETPoverride.getScriptAddress("pictureEditInBrowser", @adrETPbuilder); //04.06.23, 13:38:07 by DAB
+htmltext = adrETPbuilder^(msgNum, flLinkToReferer:true, flShowFileList:false, flShowFileUpload:true, filePrompt: filePrompt, subjectPrompt: subjectPrompt, bodyPrompt: bodyPrompt, actionUrl:postMsgUrl);
+
+bundle { //04/05/20, 12:18:31 by DAB: make sure the member can check out this object -- and actually check it out.
+	local (adrMember = pta^.adrMemberInfo);
+	local (adrSite = pta^.adrSiteRootTable);
+	
+	if not manilaSuite.custody.memberCanCheckOutObject (adrTable, adrMember, adrSite, true) { //true because it's a message
+		«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+		local (title = adrMsgTable^.subject);
+		title = manilaSuite.unTaint (title);
+		
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.title = title;
+		return (manilaSuite.getString ("discuss.cantEditBecauseSomeoneElseIs", @replacementTable))}; // 4/19/00 JES: localized
+	
+	manilaSuite.custody.checkOut (adrTable, adrMember, adrSite, true); //true because it's a message
+	};
+local (restoreForm = manilaSuite.versioning.messageUndoForm(pta, adrTable)); //versioning 04/05/20, 12:21:23 by DAB
+
+return (restoreForm +  htmlText)

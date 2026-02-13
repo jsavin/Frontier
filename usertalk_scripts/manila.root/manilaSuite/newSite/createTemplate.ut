@@ -1,0 +1,21 @@
+on createTemplate (adrSiteInfo) {
+	local (adrSite = adrSiteInfo^.adrSite);
+	local (baseUrl = adrSite^.["#ftpSite"].url);
+	
+	local (shortSiteName = adrSiteInfo^.siteName);
+	if defined (adrSiteInfo^.shortSiteName) {
+		shortSiteName = adrSiteInfo^.shortSiteName}
+	else {
+		shortSiteName = manilaSuite.getShortSiteName (adrSiteInfo^.siteName)};
+	
+	local (adrTemplate = @adrSite^.["#template"]);
+	local (s = string (manilaData.newSiteTemplate.["#template"]));
+	s = string.replaceAll (s, "[homePageUrl]", "<a href=\"" + baseUrl + "\">");
+	s = string.replaceAll (s, "[siteName]", shortSiteName);
+	if defined (adrSite^.["#prefs"].spaceGif) {
+		if adrSite^.["#prefs"].spaceGif != "" {
+			local (spaceUrl = adrSite^.["#prefs"].spaceGif);
+			s = string.replaceAll (s, "[spaceGif]", "<img src=\"" + spaceUrl + "\" width=\"1\" height=\"1\" alt=\"\">")}};
+	wp.newTextObject (s, adrTemplate);
+	
+	return (true)}

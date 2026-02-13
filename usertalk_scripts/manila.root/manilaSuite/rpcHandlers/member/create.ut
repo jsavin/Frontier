@@ -1,0 +1,24 @@
+on create (username, password, siteName, memberKey, memberName, memberPassword) {
+	«Create a new member with a member key, name, and password.
+	«Changes
+		«3/31/05; 4:01:08 AM by JES
+			«Call callbacks when a member is created.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't create member \"" + memberName + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName)); //05/03/24, 22:58:09 by DAB
+	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
+	local (adrMember = mainResponder.members.getMemberTable (adrGroup, memberKey));
+	if not defined (adrMember^) {
+		new (tableType, adrMember);
+		adrMember^.password = memberPassword;
+		new (tableType, @adrMember^.personalInfo);
+		adrMember^.personalInfo.name = memberName;
+		
+		manilaSuite.members.callbacks(adrSite, adrMember, "signup") //05/06/15, 14:19:22 by DAB
+			«manilaSuite.members.callbacks(adrSite, adrGroup, adrMember, "signup") //05/03/24, 22:58:38 by DAB;
+		return (true)};
+	
+	return (false)}

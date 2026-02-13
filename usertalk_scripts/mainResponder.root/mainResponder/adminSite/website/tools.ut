@@ -1,0 +1,194 @@
+«Display the Tools page in the Frontier Control Panel which allows one to turn on and off Tools. Based on the Tools page in Radio UserLand.
+	«Changes:
+		«9/5/05; 4:16:23 AM by JES
+			«Added Scan For New Tools button.
+		«6/18/02; 6:55:01 PM by JES
+			«If the Tool's info table includes a localUrl, use that URL for the Tool's name-link.
+		«1/21/02; 9:38:38 PM by PBS
+			«Fixed an errant reference to user.radio.
+			«Fixed a bug where sometimes a Tool wouldn't get enabled.
+		«12/3/01; 9:32:42 PM by PBS
+			«Created.
+Frontier.tools.init ();
+
+local (htmltext, indentlevel = 0);
+on add (s) {
+	htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};
+on translateToEntities (s) {
+	«Before putting some text in an input field or textarea, translating certain entities will ensure that the HTML on the page won't get messed up.
+		«01/10/01; 4:49:47 PM by PBS
+	s = string.replaceAll (s, "&", "&amp;");
+	s = string.replaceAll (s, "<", "&lt;");
+	s = string.replaceAll (s, "\"", "&quot;");
+	s = string.replaceAll (s, "{", "&#123;"); //no macros in these locations
+	return (s)};
+local (pta = html.getpagetableaddress ());
+local (pc = file.getPathChar ());
+pta^.title = "Tools";
+
+local (checkboxval = "x");
+if pta^.method == "POST" {
+	local (adrargs = @pta^.postArgs);
+	if defined (adrargs^.submit) and adrargs^.submit == "Submit" {
+		local (adrtable);
+		for adrtable in @user.tools.databases { //loop over all Tools, and enable/disable pased on args
+			local (name = nameOf (adrtable^));
+			local (f = adrtable^.path);
+			if defined (adrargs^.[name]) { //enabled tool
+				if defined ([f]) { //already enabled
+					Frontier.tools.enable (f, true);
+					Frontier.tools.install (f);
+					continue};
+				if file.exists (f) { //reality check
+					filemenu.open (f, true);
+					Frontier.tools.enable (f, true);
+					Frontier.tools.install (f)}}
+			else { //disabled tool
+				if defined ([f]) {
+					fileMenu.saveMyRoot (@[f]);
+					Frontier.tools.uninstall (f);
+					menus.buildMenuBar (); //PBS 10/23/01: refresh the menu
+					Frontier.tools.enable (f, false);
+					local (oldTarget = target.set (@[f]));
+					fileMenu.close ();
+					try {target.set (oldtarget)}}}}};
+	if defined (adrargs^.scanForTools) {
+		frontier.tools.checkTools ()}};
+
+bundle { //explanatory text
+	add ("This page lists the Tools which are present in your Guest Databases/apps/Tools/ folder. Included is the Tool's name, author, release date, and version, if available. If the Tool has a Web page, then the name of the Tool is a link. The checkbox next to each Tool's name can be used to activate or deactivate the Tool -- check or uncheck the box, and then click the Submit button.<p>")};
+
+bundle { //start the form
+	add ("<form method=\"POST\">"); indentlevel++};
+bundle { //start the table
+	add ("<table border=\"0\" cellspacing=\"1\" cellpadding=\"5\">"); indentlevel++};
+bundle { //add the Tools
+	local (adrtable);
+	for adrtable in @user.tools.databases {
+		local (name = nameOf (adrtable^));
+		local (adrdata = @user.tools.databases.[name]);
+		local (f = adrdata^.path);
+		local (toolsFolder = Frontier.tools.getToolsFolderPath ());
+		if not file.exists (f) {
+			continue};
+		bundle { //PBS 10/19/01: make sure it's actually in the Tools folder
+			«Mac filespecs may follow the Tool when it has been moved out of the Tools folder.
+			local (folder = file.folderFromPath (f));
+			if string.lower (folder) != string.lower (toolsFolder) { //check to see if its parent is the Tools folder
+				continue}};
+		if not defined (system.temp.Frontier.tools) {
+			new (tableType, @system.temp.Frontier.tools)};
+		local (adrtempdata = @system.temp.Frontier.tools.[frontier.tools.cleanToolName (name)]);
+		if not defined (adrtempdata^) {
+			new (tableType, adrtempdata)};
+		local (adrinfo = @adrtempdata^.info);
+		local (flGetInfo = false);
+		if not defined (adrtempdata^.lastModified) {
+			adrtempdata^.lastModified = date (0)};
+		if adrtempdata^.lastModified != file.modified (f) {
+			flGetInfo = true};
+		if flGetInfo { //try to get the info out of the Tool
+			local (flCloseFile = false);
+			if not defined ([f]) { //try to open the database
+				try { //avoid possible permissions problems on MacOS X
+					if system.environment.isMac { //set type and creator if needed
+						if not (file.type (f) == 'TABL') {
+							file.setType (f, 'TABL');
+							file.setCreator (f, 'LAND')}};
+					fileMenu.open (f, true);
+					flCloseFile = true}};
+			local (adrinfotable = @[name + "Info"]);
+			if defined (adrinfotable^) { //copy the info to the temp.Frontier.tools table
+				adrinfo^ = adrinfotable^};
+			if flCloseFile { //close the file if it had been opened
+				filemenu.close (f)};
+			adrtempdata^.lastModified = file.modified (f)};
+		
+		add ("<tr>"); indentlevel++;
+		bundle { //add checkbox
+			local (check = checkboxval);
+			if adrdata^.flInstalled and defined ([f]) {
+				check = check +  " checked"};
+			add ("<td valign=\"top\"><input type=\"checkbox\" name=\"" + translateToEntities (name) + "\" value=" + check + "></td>")};
+		
+		local (displayName = name, homePageUrl = "", author = "", authorEmail = "", version = "", releaseDate = "", description = "");
+		if defined (adrinfo^) {
+			if defined (adrinfo^.name) {
+				displayName = adrinfo^.name}
+			else {
+				displayName = name};
+			if defined (adrinfo^.homePageUrl) {
+				homePageUrl = adrinfo^.homePageUrl}
+			else {
+				homePageUrl = ""};
+			if defined (adrinfo^.author) {
+				author = adrinfo^.author}
+			else {
+				author = ""};
+			if defined (adrinfo^.authorEmail) {
+				authorEmail = adrinfo^.authorEmail;
+				if author == "" {
+					author = authorEmail}}
+			else {
+				authorEmail = ""};
+			if defined (adrinfo^.version) {
+				version = adrinfo^.version}
+			else {
+				version = ""};
+			if defined (adrinfo^.releaseDate) {
+				releaseDate = date.shortString (adrinfo^.releaseDate)}
+			else {
+				releaseDate = ""};
+			if defined (adrinfo^.description) {
+				description = string (adrinfo^.description)}
+			else {
+				description = ""}};
+		
+		bundle { //add the tool info
+			displayName = "<b>" + displayName + "</b>";
+			local (nameLink = displayName, docslink = "", authorLink = author);
+			if defined (system.temp.Frontier.tools.[name].url) { //make the Tool's name a link to the Tool's page
+				nameLink = html.getLink (displayName, system.temp.Frontier.tools.[name].url)};
+			if defined (system.temp.Frontier.tools.[name].info.localUrl) { //make the Tool's name a link to the Tool's page
+				local (host = pta^.host);
+				if host contains ":" {
+					host = string.nthField (host, ":", 1)};
+				local (port = user.inetd.config.http.port);
+				if defined (user.inetd.config.http.apparentPort) {
+					port = user.inetd.config.http.apparentPort};
+				if port != 80 {
+					host = host + ":" + user.inetd.config.http.port};
+				nameLink = html.getLink (displayName, "http://" + host + system.temp.Frontier.tools.[name].info.localUrl)};
+			if version != "" { //add the version next to the name
+				nameLink = nameLink + " v" + version};
+			if homePageUrl != "" { //link the globe to the home page
+				docslink = "&nbsp;" + html.getLink ("Docs", homePageUrl) + "."};
+			if authorEmail != "" { //mailto link on the author name
+				authorLink = html.getLink (author, "mailto:" + authorEmail)};
+			
+			bundle { //add the author and release date to the description
+				if authorLink != "" {
+					description = description + " Author: " + authorLink;
+					if releaseDate == "" {
+						description = description + "."}
+					else {
+						description = description + "; "}};
+				if releaseDate != "" {
+					description = description + " Released: " + releaseDate + "."}};
+			local (s = nameLink);
+			if description != "" { //add the description
+				s = s + ": " + description};
+			s = s + docsLink;
+			
+			add ("<td>"); indentlevel++;
+			add ("<div>" + s + "</div>");
+			add ("</td>"); indentlevel--};
+		
+		add ("</tr>"); indentlevel--}};
+bundle { //submit button
+	add ("<tr><td colspan=\"2\" align=\"left\" style=\"padding-left:9px\"><br><input type=\"submit\" name=\"submit\" value=\"Submit\"> <input type=\"submit\" name=\"scanForTools\" value=\"Scan For New Tools\"></td></tr>")};
+add ("</table>"); indentlevel--;
+
+add ("</form>");
+
+return (string.replaceAll (htmltext, "{", "&#123;"))

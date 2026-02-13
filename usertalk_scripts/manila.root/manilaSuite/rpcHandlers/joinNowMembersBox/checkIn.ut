@@ -1,0 +1,9 @@
+on checkIn (username, password, siteName) {
+	«Release custody of the join now members box.
+		«02/11/00; 11:16:23 AM by PBS
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject = @adrNewsSite^.membersBoxTemplates.signInBox);
+	local (itemName = "join now members box");
+	
+	return (manilaSuite.rpcUtils.releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName))}

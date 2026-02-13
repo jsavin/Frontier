@@ -1,0 +1,20 @@
+on search () {
+	«Changes
+		«8/18/02; 7:03:26 PM by JES
+			«If this server is not a search engine server, return the empty string.
+		«8/8/02; 3:13:31 AM by JES
+			«Created. Render a miniature search form.
+	
+	if not config.mainResponder.prefs.flSearchEngine {
+		return ("")};
+	
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + s};
+	
+	add ("<form method=\"get\" action=\"" + mainResponder.adminSite.urls.search + "\"><nobr>");
+	add ("<input type=\"text\" name=\"q\" size=\"13\" value=\"\">&nbsp;");
+	add ("<input type=\"submit\" value=\"Search\">");
+	add ("</nobr></form>");
+	
+	return (htmltext)}

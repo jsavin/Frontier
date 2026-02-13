@@ -1,0 +1,46 @@
+on defaultPage (pta=nil) {
+	«Changes:
+		«5/26/03; 1:29:02 PM by JES
+			«Call string.gigabyteString for the free space on volume string, instead of string.megabyteString.
+		«04/20/00; 7:45:02 PM by JES
+			«localized
+		«05/01/00; 3:22:48 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+		«9/12/01; 2:58:46 PM by PBS
+			«Support for access privileges.
+		«04/12/00; 6:05:52 PM by PBS
+			«Created. Return a list of all gems with a new-gem link.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	pta^.title = manilaSuite.getString ("gems.gemsPageTitle", pta: pta); // 4/20/00 JES: localized
+	
+	
+	bundle { //PBS 09/12/01: check access privileges for gems page
+		if not (manilaSuite.editors.editorialPageAccess ("gems", pta)) {
+			return ("Can't display the Gems page because you don't have sufficient access privileges.")}};
+	
+	local (htmlText);
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (flCreateLink = true);
+	local (flLimitReached = manilaSuite.gems.hasSiteReachedLimit (adrSite));
+	if flLimitReached {
+		flCreateLink = false};
+	
+	htmlText = manilaSuite.gems.gemsList (flCreateLink);
+	
+	bundle { //add info about free space on disk, if this is an editor
+		if manilaSuite.editors.editorialTest (pta) {
+			local (folder = manilaSuite.gems.getSiteFolder (adrSite));
+			local (limit = double (manilaSuite.gems.getSiteLimit (adrSite)));
+			local (currentSize = 0);
+			local (freeSpace);
+			if file.exists (folder) {
+				currentSize = file.bytesInFolder (folder)};
+			freeSpace = limit - currentSize;
+			freeSpace = string.gigabyteString (freeSpace);
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.freespace = freeSpace;
+			htmlText = htmlText + "\r<p>" + manilaSuite.getString ("gems.freeSpaceInGemsFolder", @replacementTable, pta: pta)}}; // 4/20/00 JES: localized
+	
+	return (manilaSuite.unTaint (htmlText))}

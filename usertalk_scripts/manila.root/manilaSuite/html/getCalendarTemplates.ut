@@ -1,0 +1,13 @@
+on getCalendarTemplates (adrMonthYearTemplate, adrDayNameTemplate, adrDayTemplate) {
+	«Get the editor's calendar templates.
+		«Tuesday, December 14, 1999 at 2:32:01 PM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	
+	local (adrDefaults = @manilaData.newSiteTemplate.["#newsSite"].calendarTemplates);
+	
+	adrMonthYearTemplate^ = manilaSuite.getNewsSitePref ("calendarTemplates.monthYearTemplate", default:adrDefaults^.monthYearTemplate, flCreate:true);
+	adrDayNameTemplate^ = manilaSuite.getNewsSitePref ("calendarTemplates.dayNameTemplate", default:adrDefaults^.dayNameTemplate, flCreate:true);
+	adrDayTemplate^ = manilaSuite.getNewsSitePref ("calendarTemplates.dayTemplate", default:adrDefaults^.dayTemplate, flCreate:true);
+	
+	return (true)}

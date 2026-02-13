@@ -1,0 +1,115 @@
+on tableToHTML (adrtable, adrparamtable) {
+	«Changes:
+		«Thu, 04 Mar 1999 02:52:01 GMT by AR
+			«Changed one occurence of config.mainResponder.urls to adrparamtable^.responderAttributes.urls^
+		«01/28/00; 12:06:48 AM by PBS
+			«Ensure that either resources.root exists, or there is an address at config.mainResponder.sites.resources that is the address of mainResponder.resources.
+	local (htmltext = "", indentlevel = 0);
+	bundle { //PBS 01/28/00: mainResponder.resources
+		«This fixes the 6.1 bug that left folder and table listings without icons, since resources.root didn't ship with Frontier anymore. Now the contents of resources.root are stored at mainResponder.root. If resources.root is not present on the system, we create a pointer in config.mainResponder.sites.resources to point to mainResponder.resources.
+		local (pathToResourcesRoot = Frontier.getSubFolder ("www") + "resources.root");
+		if not (file.exists (pathToResourcesRoot)) {
+			«Create an entry at config.mainResponder.sites.resources that's the address of mainResponder.resources.
+			if not defined (config.mainResponder.sites) {
+				new (tableType, @config.mainResponder.sites)};
+			if not defined (config.mainResponder.sites.resources) {
+				config.mainResponder.sites.resources = @mainResponder.resources}}};
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	add ("<html>"); indentlevel++;
+	add ("<head>"); indentlevel++;
+	local (title = "Index of " + adrparamtable^.path);
+	add ("<title>" + title + "</title>");
+	add ("</head>"); indentlevel--;
+	add ("<body>"); indentlevel++;
+	add ("<h2>" + title + "</h2>");
+	add ("<table cellpadding=\"4\" width=\"100%\" border=\"0\">"); indentlevel++;
+	bundle { //add two rows at top of table
+		add ("<tr><td>&nbsp;</td><td><b>Name</b></td><td><b>Size</b></td><td><b>Kind/Value</b></td><td><b>Last Modified</b></td></tr>");
+		add ("<tr><td colspan=\"5\"><hr noshade></td></tr>")};
+	local (i, ct = sizeof (adrtable^), adritem);
+	local (mimetype, size, iconname, name, itemurl, moddate, flscalar, typestring);
+	for i = 1 to ct {
+		adritem = @adrtable^ [i];
+		if html.traversalSkip (adritem) {
+			continue};
+		bundle { //set mimetype
+			local (objecttype);
+			if (typeOf (adritem^) == binaryType) {
+				objecttype = getBinaryType (adritem^)} //get the type of the binary
+			else {
+				objecttype = typeOf (adritem^)};
+			
+			try { //look up in the MIME types table
+				mimetype = user.webserver.prefs.type2MIME.[objecttype]}
+			else { //use the default MIME type
+				mimetype = "text/html"}};
+		
+		size = sizeof (adritem^);
+		case typeof (adritem^) {
+			scripttype;
+			outlinetype;
+			menubartype {
+				size = size + " lines"};
+			listtype;
+			tabletype {
+				size = size + " items"}}
+		else {
+			if size < 1024 {
+				if size > 1 {
+					size = size + " bytes"}
+				else {
+					size = size + " byte"}}
+			else {
+				size = string.megabytestring (size)}};
+		
+		iconname = "unknown";
+		try {iconname = user.webserver.prefs.MIME2icon.[mimetype]};
+		
+		name = nameof (adritem^);
+		itemurl = adrparamtable^.path;
+		if not (itemurl endswith "/") {
+			itemurl = itemurl + "/"};
+		itemurl = itemurl + string.urlencode (name);
+		if typeof (adritem^) == tabletype {
+			itemurl = itemurl + "/"};
+		
+		moddate = timeModified (adritem); flscalar = false;
+		if typeof (moddate) == booleantype {
+			moddate = ""; flscalar = true};
+		
+		bundle { //set typestring
+			local (type = typeOf (adritem^));
+			case type {
+				filespectype;
+				stringType {
+					typestring = "\"" + adritem^ + "\""};
+				charType {
+					typestring = "'" + adritem^ + "'"};
+				booleanType;
+				string4Type;
+				longType;
+				dateType;
+				shortType {
+					typestring = string (adritem^)};
+				addressType {
+					typestring = "@" + string (adritem^)}}
+			else {
+				typestring = string.typeToString (type) - "Type"}};
+		
+		add ("<tr>"); indentlevel++;
+		add ("<td><img src=\"" + adrparamtable^.responderAttributes.urls^.icons + iconname + "\"></td>");
+		add ("<td><a href=\"" + itemurl + "\">" + name + "</a></td>");
+		add ("<td>" + size + "</td>");
+		add ("<td>" + typestring + "</td>");
+		add ("<td>" + moddate + "</td>");
+		add ("</tr>"); indentlevel--};
+	add ("<tr><td colspan=\"5\"><hr noshade></td></tr>");
+	add ("</table>"); indentlevel--;
+	bundle { //add a comment if one is present
+		local (adrcomment = @adrtable^.["#comment"]);
+		if defined (adrcomment^) {
+			add ("Comment: " + string (adrcomment^))}};
+	add ("</body>"); indentlevel--;
+	add ("</html>"); indentlevel--;
+	return (htmltext)}

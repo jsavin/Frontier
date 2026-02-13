@@ -1,0 +1,11 @@
+on unTaint (s) {
+	«Any text coming from outside that does not pass through mainResponder.neuterMacros and that may be displayed in a page should pass through here. All { characters are translated to &#123; and all } characters are translated to &#123;. This prevents unwanted macros expansion, means the text is safe.
+		«10/30/99; 4:36:45 PM by PBS
+		«Changes:
+			«11/1/99; 5:42:54 PM by PBS
+				«No need to replace } characters.
+	
+	s = string.replaceAll (s, "{", "&#123;");
+	«s = string.replaceAll (s, "}", "&#125;") //PBS 11/1/99: this is superfluous
+	
+	return (s)}

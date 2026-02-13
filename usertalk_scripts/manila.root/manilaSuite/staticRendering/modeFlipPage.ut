@@ -1,0 +1,95 @@
+on modeFlipPage () {
+	«Handle a mode flip from static to dynamic.
+		«03/17/00; 7:28:49 PM by PBS
+		«Changes:
+			«05/24/00; 8:25:21 PM by JES
+				«localized
+	
+	local (pta = html.getPageTableAddress ());
+	local (flPost = string.lower (pta^.method) == "post");
+	local (relativeUrl);
+	
+	on staticToRelative (staticUrl) {
+		local (baseStaticUrl = pta^.newsSite^.staticSite.["#ftpSite"].url);
+		local (relativeUrl = string.delete (staticUrl, 1, sizeOf (baseStaticUrl)));
+		relativeUrl = string.popSuffix (relativeUrl);
+		if string.lower (relativeUrl) endsWith "index" or string.lower (relativeUrl) endsWith "default" {
+			relativeUrl = string.popSuffix (relativeUrl, '/');
+			if string.lower (relativeUrl) == "index" or string.lower (relativeUrl) == "default" {
+				relativeUrl = ""}};
+		relativeUrl = string.popLeading (relativeUrl, '/');
+		temp.rux3 = relativeUrl;
+		return (relativeUrl)};
+	
+	on redirectToDynamic () {
+		mainResponder.redirect (relativeUrl);
+		scriptError ("!redirect " + relativeUrl);
+		return (true)};
+	
+	if flPost { //handle a posted form
+		manilaSuite.discuss.postEditedMsg ();
+		
+		«Render the page if auto-rendering is on.
+		local (staticUrl = pta^.postArgs.referer);
+		relativeUrl = staticToRelative (staticUrl);
+		
+		local (flRender = manilaSuite.getNewsSitePref ("flStaticRenderingOnChange", default:false, flCreate:true));
+		if flRender { //render if auto-rendering is on, redirect to rendered page
+			local (oldPta = pta);
+			local (t);
+			t = manilaSuite.staticRendering.renderPage (relativeUrl, pta^.adrSiteRootTable);
+			html.setPageTableAddress (pta);
+			clock.waitSeconds (1);
+			mainResponder.redirect (staticUrl);
+			scriptError ("!redirect " + staticUrl)}
+		else { //don't render, redirect to dynamic page
+			redirectToDynamic ()}}
+	else {
+		local (flDisplayEditor = manilaSuite.getNewsSitePref ("flDisplayEditorOnStaticModeFlip", default:false, flCreate:true));
+		relativeUrl = staticToRelative (pta^.searchArgs);
+		
+		if flDisplayEditor and defined (pta^.adrMemberInfo) {
+			«Get the msgNum, then display an edit form for this page.
+			local (msgNum);
+			
+			on error () {
+				scriptError (manilaSuite.getString ("staticRendering.notAMessageError"))};
+			
+			bundle { //get the msgNum
+				if relativeUrl == "" {
+					msgNum = pta^.newsSite^.discussLinks.homePageMsgNum}
+				else { //it's a calendar page or site structure page
+					local (firstPart = string.nthField (relativeUrl, '/', 1));
+					try { //see if it's a calendar page
+						number (firstPart);
+						relativeUrl = string.popTrailing (relativeUrl, '/');
+						local (d = mainResponder.calendar.pathArgsToDate (relativeUrl));
+						local (adr = mainResponder.calendar.getDayAddress (pta^.adrSiteRootTable, d, false));
+						msgNum = adr^.msgNum}
+					else { //it must be a site structure page
+						on callback (adrObject, relativePath) {
+							relativePath = string.popLeading (relativePath, '/');
+							relativePath = string.popTrailing (relativePath, '/');
+							if string.lower (relativePath) == string.lower (relativeUrl) {
+								if defined (adrObject^.["/atts"].msgNum) {
+									msgNum = (adrObject^.["/atts"].msgNum)};
+								return (false)}};
+						manilaSuite.siteStructure.visitPages (pta^.adrSiteRootTable, @callback)}}};
+			
+			if msgNum != nil { //display the editing form, if a msgNum was found
+				pta^.activeUrls = false;
+				pta^.autoParagraphs = false;
+				pta^.addLineFeeds = false;
+				«Display the editing form only if this person can edit this message.
+				
+				local (adrMsg = mainResponder.discuss.getMessageTable (msgNum, pta:pta));
+				if not (mainResponder.discuss.memberCanEdit (adrMsg, pta^.adrMemberInfo)) { //PBS 6/9/99
+					redirectToDynamic ()};
+				
+				pta^.title = "Edit Story";
+				local (actionUrl = pta^.url);
+				htmlText = mainResponder.discuss.editMessageForm (msgNum, flLinkToReferer:true, flShowFileList:false, flShowFileUpload:false, filePrompt: manilaSuite.getString ("staticRendering.attachAnImage"), subjectPrompt: manilaSuite.getString ("common.titlePrompt"), actionUrl:actionUrl);
+				return (htmlText)}};
+		
+		redirectToDynamic ();
+		return ("")}}

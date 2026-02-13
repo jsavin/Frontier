@@ -1,0 +1,47 @@
+on editorialTest (pta=nil) {
+	«Returns true if the user is an editor of the site, an ME, CE, or Content Editor.
+		«5/19/99; 12:28:59 PM by DW
+		«Change notes:
+			«Saturday, May 29, 1999 at 7:36:52 PM by PBS
+				«Lower-case compare.
+			«03/14/01; 4:22:18 PM by PBS
+				«Minor optimizations possible -- we may have already checked to see if the person is an ME, for instance.
+			«11/26/01; 9:46:49 AM by PBS
+				«Handle Content Editors.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if defined (pta^.flEditor) {
+		return (pta^.flEditor)};
+	if defined (pta^.flManagingEditor) { //PBS 03/14/01: minor optimization
+		if pta^.flManagingEditor {
+			pta^.flEditor = true;
+			return (true)}};
+	if defined (pta^.flContentEditor) { //PBS 11/26/01
+		if pta^.flContentEditor {
+			pta^.flEditor = true;
+			return (true)}};
+	
+	if defined (pta^.adrMemberInfo) {
+		if manilaSuite.editors.managingEditorTest (pta) { //PBS 03/14/01: minor optimization
+			pta^.flEditor = true;
+			return (true)};
+		
+		if manilaSuite.editors.contentEditorTest (pta) { //PBS 11/26/01
+			pta^.flEditor = true;
+			return (true)};
+		
+		local (lowerMemberKey = string.lower (nameOf (pta^.adrMemberInfo^)));
+		local (oneEditor);
+		for oneEditor in pta^.newsSite^.contributingEditors {
+			if string.lower (oneEditor) == lowerMemberKey {
+				pta^.flEditor = true;
+				return (true)}}}
+	else {
+		pta^.flManagingEditor = false; //PBS 03/14/01: minor optimization
+		pta^.flContentEditor = false}; //PBS 11/26/01
+	
+	pta^.flEditor = false;
+	
+	return (false)}

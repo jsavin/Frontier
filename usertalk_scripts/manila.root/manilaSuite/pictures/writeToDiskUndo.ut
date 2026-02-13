@@ -1,0 +1,16 @@
+on writeToDiskUndo (adrMsg) {
+	«manilaSuite.pictures.writeToDiskUndo : 04/05/23, 08:44:52 by DAB
+		«make sure that Manila serves the image from its internal copy, never from static disk
+		«delete disk files-  this is necessary to close off access via the old url
+		«needed for access controlled pictures
+	if not defined(adrMsg^.image) {
+		return false};
+	if defined(adrMsg^.image.url) {
+		delete(@adrMsg^.image.url)};
+	if not defined(adrMsg^.image.f) {
+		return false};
+	if file.exists(adrMsg^.image.f) {
+		file.delete(adrMsg^.image.f)};
+	delete(@adrMsg^.image.f);
+	
+	return true}

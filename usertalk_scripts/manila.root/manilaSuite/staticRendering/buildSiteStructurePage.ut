@@ -1,0 +1,33 @@
+on buildSiteStructurePage (relativePath) {
+	«Build a site structure page by calling manilaSuite.hierarchyPage.
+		«03/13/00; 2:51:57 PM by PBS
+		«Changes:
+			«12/19/01; 9:19:09 PM by PBS
+				«Instead of calling manilaSuite.hierarchyPage directly, call the site's #objectNotFoundHandler.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
+	pta^.adrSiteRootTable = adrManilaSite; //manilaSuite.hierarchyPage expects this
+	pta^.remainingPath = relativePath; //it expects this also
+	pta^.hierarchy = @adrManilaSite^.["#hierarchy"];
+	
+	bundle { //set up the path as a web browser would have requested it
+		local (urlParts = string.urlSplit (adrManilaSite^.["#ftpSite"].url));
+		local (uri = urlParts [3]);
+		uri = "/" + uri;
+		uri = uri + relativePath;
+		pta^.path = uri};
+	
+	local (htmlText); //PBS 12/19/01: call #objectNotFoundHandler, it may have been customized
+	local (adrObjectNotFoundHandler = @adrManilaSite^.["#objectNotFoundHandler"]);
+	if defined (adrObjectNotFoundHandler^) {
+		htmlText = adrObjectNotFoundHandler^ ()}
+	else {
+		htmlText = manilaSuite.hierarchyPage ()};
+	
+	«bundle //we're not supporting the hierarchyPath element yet
+		«pta^.hierarchyPath = ""
+	
+	pta^.adrSiteRootTable = pta^.adrStaticSite; //restore the actual site table address
+	
+	return (htmlText)}

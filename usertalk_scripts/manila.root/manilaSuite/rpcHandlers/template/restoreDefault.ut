@@ -1,0 +1,25 @@
+on restoreDefault (username, password, siteName) {
+	«Restore the template to the default.
+		«Changes:
+			«06/06/00; 4:40:45 PM by PBS
+				«Call the themes restore script.
+			«12/10/01; 6:03:15 PM by PBS
+				«Toss the home page cache.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't restore the template to the default because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (siteInfo, adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	new (tableType, @siteInfo);
+	siteInfo.adrSite = adrSite;
+	siteInfo.siteName = siteName;
+	«manilaSuite.newSite.createTemplate (@siteInfo)
+	manilaSuite.themes.restoreTemplate (@siteInfo);
+	
+	manilaSuite.cache.tossHomePage (adrSite:adrSite); //PBS 12/10/01: toss the home page cache
+	
+	fileMenu.saveMyRoot (adrSite);
+	
+	return (string (adrSite^.["#template"]))}

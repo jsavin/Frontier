@@ -1,0 +1,63 @@
+on listAdministrators () {
+	«Changes
+		«6/27/02; 1:36:55 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.flAddSubmitButton = false; //suppress the default submit button
+	if defined (pta^.searchArgTable.adminUser) { //return the empty string if editing an existing member
+		return ("")};
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledString ("\t", indentlevel) + s + "\r\n");};
+	
+	local (adrgroup = mainResponder.members.getMembershipTable ("admin"));
+	local (adrusers = @adrgroup^.users);
+	
+	if pta^.method == "POST" {
+		if defined (pta^.postArgs.deleteAdminUsers) {
+			local (adr);
+			for adr in @pta^.postArgs {
+				if typeOf (adr^) == stringType {
+					if adr^ == "x" {
+						local (email = nameOf (adr^));
+						local (adrmember = mainResponder.members.getMemberTable ("admin", email));
+						local (name = "");
+						try {name = adrmember^.personalInfo.name};
+						if name != "" {
+							if defined (user.people.users.[name]) {
+								if people.serviceIsAttachedToUser ("Custody", name) {
+									user.people.users.[name].services.Custody.enabled = false};
+								if people.serviceIsAttachedToUser ("WebEdit", name) {
+									user.people.users.[name].services.WebEdit.enabled = false}}};
+						delete (adrmember)}}}}};
+	
+	add ("<p><b>Current Administrators</b></p>");
+	
+	add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\">"); indentlevel++;
+	bundle { //header
+		add ("<tr><td></td><td><b>Email</b></td><td><b>Name</b></td><td><b>WebEdit</b></td><td></td></tr>")};
+	local (adruser);
+	for adruser in adrusers {
+		add ("<tr>"); indentlevel++;
+		local (email = nameOf (adruser^));
+		local (name = "");
+		try {name = adruser^.personalInfo.name};
+		local (flWebEdit = false);
+		if name != "" {
+			flWebEdit = suites.people.serviceIsAttachedToUser ("WebEdit", name)};
+		add ("<td><input type=\"checkbox\" name=\"" + email + "\" value=\"x\" /></td>");
+		add ("<td>" + string.replace (email, "@", "\\@") + "</td>");
+		add ("<td>" + name + "</td>");
+		if flWebEdit {
+			add ("<td>enabled</td>")}
+		else {
+			add ("<td>disabled</td>")};
+		bundle { //edit link
+			add ("<td><a href=\"" + pta^.uri + "?" + pta^.searchArgs + "&adminUser=" + email + "\">edit</a></td>")};
+		add ("</tr>"); indentlevel--};
+	add ("</table>"); indentlevel--;
+	
+	add ("<p><input type=\"submit\" name=\"deleteAdminUsers\" value=\"Delete\" /></p>");
+	
+	return ("<tr><td colspan=\"2\">" + htmltext + "</td></tr>")}

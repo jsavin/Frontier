@@ -1,0 +1,24 @@
+on saveMessage (msgNum, discussRoot, userName, password, docTable) {
+	
+	bundle { //base64 decode all strings in the message table
+		local (i);
+		for i = 1 to sizeOf (docTable) {
+			if typeOf (docTable [i]) == stringType {
+				docTable [i] = base64.decode (docTable [i])}}};
+	
+	mainResponder.editorial.updateMessage (msgNum, discussRoot, userName, password, docTable.body, docTable.subject);
+	
+	if docTable.body contains "\t" { //convert to outline
+		local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
+		op.newOutlineObject (adrmsg^.body, @adrmsg^.body)};
+	
+	«Add enclosures
+	if defined (docTable.enclosureBits) and (docTable.enclosureBits) == tableType {
+		local (ix, binaryfolder = mainResponder.editorial.getMessageBinaryFolder (discussRoot, msgnum));
+		for ix = 1 to sizeof (docTable.enclosureBits) {
+			if typeof (docTable.enclosureBits [ix]) == binaryType {
+				f = binaryfolder + string.replaceAll (nameof (docTable.enclosureBits [ix]), file.getPathChar (), "");
+				file.sureFilePath (f);
+				file.writeWholeFile (f, docTable.enclosureBits [ix])}}};
+	
+	return (true)}

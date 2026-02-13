@@ -1,0 +1,77 @@
+on flipHomePage (adrSite, siteName, adrMemberInfo, ipAddress=nil) {
+	«Flip the home page. This script does not assume a rendering context, so it's okay to call it from RPC handlers. It also assumes that the caller has already authenticated the member.
+		«10/02/00; 9:23:53 PM by PBS
+	«Changes
+		«1/30/04; 4:55:51 PM by JES
+			«Add the new home page to the home page index.
+		«5/16/03; 12:13:15 PM by JES
+			«Log the event.
+		«4/8/03; 11:35:57 PM by JES
+			«Add the client's ip address to the message table for the new home page.
+	
+	local (startticks = clock.ticks ());
+	
+	local (now = clock.now ());
+	bundle { //get the current time adjusted for time zone
+		if defined (adrSite^.["#newsSite"].timeZone) { //PBS 04/03/00: convert time according to time zone prefs
+			local (timeZone = adrSite^.["#newsSite"].timeZone.zone);
+			now = manilaSuite.convertTime (now, timeZone)}};
+	
+	local (adrCalendar = adrSite);
+	local (adrRoot = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	local (adrDay = mainResponder.calendar.getDayAddress (adrCalendar, now, true, tableType));
+	
+	if sizeOf (adrDay^) != 0 { //flip the home page only if there is no home page for today
+		scriptError ("Can't flip the home page because the current day already has a home page.")};
+	
+	local (member = nameOf (adrMemberInfo^));
+	local (homePageMsgNum = adrNewsSite^.discussLinks.homePageMsgNum);
+	local (adrPrevMsg = mainResponder.discuss.getMessageTable (homePageMsgNum, adrRoot:adrRoot));
+	local (discussRoot = adrNewsSite^.discussionRoot);
+	
+	local (subject = adrPrevMsg^.subject);
+	local (flEmptySubject = false);
+	if subject == "" { //PBS: 12/26/99: empty subjects will cause mainResponder to return an error, so work around the problem.
+		«subject = manilaSuite.getString ("admin.untitled")
+		subject = "Untitled";
+		flEmptySubject = true};
+	
+	local (body = "");
+	local (msgNum);
+	
+	local (data); //data to be added to the message table (client IP address)
+	bundle { //populate the data table
+		new (tableType, @data);
+		if ipAddress != nil {
+			data.ipAddress = ipAddress}};
+	
+	msgNum = mainResponder.discuss.addMessage (subject, member, 0, body, true, false, now, adrRoot, flEmptyBodyOk:true, flCallback:false, adrdata:@data); //PBS 04/03/00: use converted current time: time zone support
+	adrDay^.msgNum = msgNum;
+	adrDay^.discussionRoot = discussRoot;
+	adrNewsSite^.discussLinks.homePageMsgNum = msgNum; //set the home page message number
+	
+	local (adrMsg);
+	adrMsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrRoot);
+	
+	bundle { //JES 1/30/04: add to home page category
+		local (homepagesCategory = manilaSuite.discuss.getHomepagesCategory (adrSite));
+		manilaSuite.discuss.addCategoryToMessage (adrMsg, homepagesCategory, adrSite)};
+	
+	if flEmptySubject { //PBS 12/26/99: handle empty subjects. It's okay for the home page to have an empty subject.
+		adrMsg^.subject = ""};
+	
+	bundle { //log the event
+		if defined (manilaSuite.log) {
+			try {
+				local (t); new (tableType, @t);
+				t.memberLink = manilaSuite.members.linkToMember (manilaSuite.rpcUtils.getDiscussGroupName (sitename), member);
+				manilaSuite.log.addEvent ("flipHomePage", startticks, @t)}}};
+	
+	return (true)};
+«bundle //test code
+	«local (adrsite = @testManilaWebsite)
+	«local (siteName = manilaSuite.getCanonicalSiteName (adrSite))
+	«local (adrMemberInfo = @testManilaWebsite.["#membershipGroup"].users.["jake@userland.com"])
+	«flipHomePage (adrSite, siteName, adrMemberInfo)

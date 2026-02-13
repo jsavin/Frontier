@@ -1,0 +1,91 @@
+on postEditedMsg (flNeuterMacros=true, flNeuterText=true, flCheckReferer=true) {
+	«Post an edited message.
+		«Changes:
+			«4/12/07; 3:20:25 PM by LL
+				«Support a new site level preference to support a limited set of HTML tags for members.
+			«2/21/07; 9:59:51 AM by LL
+				«Added support for a new or changed message submit callback.
+			«2000 and earlier
+				«02/09/00; 7:06:22 PM by PBS
+					«Custody: it's an error if the person doesn't have custody of this story.
+					«Deleted call to manilaSuite.changedStoryCallback, which doesn't exist.
+				«04/03/00; 11:14:06 AM by PBS
+					«Pass last update time to mainResponder -- support for Manila time zones.
+				«04/05/00; 12:49:51 PM by PBS
+					«Call the home page update callbacks.
+				«04/19/00 at 6:32:31 PM by JES
+					«localized
+				«05/09/00; 10:40:35 PM by PBS
+					«Check referer to defeat the client side trojan horse.
+				«05/11/00; 7:51:36 PM by JES
+					«merged in Brent's security fix for the client side trojan horse attack.
+				«10/13/04; 2:18:21 AM by JES
+					«Call mainResponder.discuss.postEditedMessage with flAcceptFileDeletions as true.
+	
+	local (pta = html.getPageTableAddress ());
+	pta^.title = manilaSuite.getString ("discuss.messageReceivedPageTitle"); // 4/19/00 JES: localized
+	
+	local (msgNum = number (pta^.postArgs.msgNum));
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum));
+	local (adrMember = pta^.adrMemberInfo);
+	local (adrSite = pta^.adrSiteRootTable);
+	
+	if flCheckReferer {
+		manilaSuite.referer.checkEdit ()}; //PBS 05/09/00: security -- make sure the referer and msgNum are correct, defeat client side trojan horse
+	
+	bundle { //PBS 02/09/00: if the object is checked out by someone else, return an error page.
+		if not (manilaSuite.custody.memberCanCheckOutObject (adrMsg, adrMember, adrSite, true)) { //true because it's a message
+			return (manilaSuite.getString ("discuss.cantPostStoryCustodyError"))}}; // 4/19/00 JES: localized
+	
+	on forbiddenPage () {
+		pta^.template = string (manilaData.notFoundTemplate);
+		pta^.title = "403 Forbidden";
+		pta^.code = 403;
+		pta^.activeUrls = false;
+		return ("Request Forbidden.")};
+	bundle { //call messageSubmit callbacks
+		local (adrcallbacks = @config.manila.callbacks.messageSubmit);
+		if not defined (adrcallbacks^) {
+			new (tableType, adrcallbacks)};
+		for adr in adrcallbacks {
+			local (adrscript = adr);
+			try {
+				while typeOf (adrscript^) == addressType { //follow addresses
+					adrscript = adrscript^};
+				if nameOf (adrscript^) != "item #1" {
+					if not adrscript^ (pta) {
+						return (forbiddenPage ())}}}
+			else {
+				pta^.errorText = tryError;
+				return (manilaSuite.discuss.editInBrowser (msgNum))}}};
+	
+	bundle { //see if any pre post validation is requested, 04.06.20, 17:49:46 by DAB
+		local (adrValidator, htmltext);
+		if manilaSuite.plugins.ETPoverride.getScriptAddress("discussPostEditedMessage", @adrValidator) { //04.06.20, 13:14:14 by DAB
+			if not adrValidator^(@htmltext) { //validator saw error, so returns whatever it says (repeat form)
+				return htmltext}}};
+	
+	bundle { //PBS 04/05/00: call the homePageUpdate callbacks -- it may be an updated home page
+		if defined (pta^.postArgs.body) {
+			local (newText = pta^.postArgs.body);
+			try {manilaSuite.callbacks.homePageUpdate (adrMsg, adrSite, adrMember, newText)}}};
+	
+	«mainResponder.discuss.postEditedMessage (flAcceptFileUploads:true, flAcceptFileDeletions:false, flNeuterText:flNeuterText, flNeuterMacros:flNeuterMacros, lastUpdateTime:manilaSuite.convertTime ()) //PBS 04/03/00: use the current time zone to set the last update time
+	bundle { //check legal tags for member
+		if not (pta^.flEditor == true) {
+			if not defined (config.manila.prefs.flRestrictHtmlForMembers) {
+				config.manila.prefs.flRestrictHtmlForMembers = true};
+			
+			if config.manila.prefs.flRestrictHtmlForMembers {
+				if manilaSuite.getNewsSitePref ("discussionGroup.flRestrictHtmlForMembers", adrSite, true) {
+					if defined (pta^.postArgs.subject) {
+						pta^.postArgs.subject = searchEngine.stripMarkup (string (pta^.postArgs.subject))};
+					if defined (pta^.postArgs.body) {
+						pta^.postArgs.body = manilaSuite.html.stripHtmlAttributes (string (pta^.postArgs.body))}}}}};
+	mainResponder.discuss.postEditedMessage (flAcceptFileUploads:true, flAcceptFileDeletions:true, flNeuterText:flNeuterText, flNeuterMacros:flNeuterMacros, lastUpdateTime:manilaSuite.convertTime ()); //DAB    03/01/04, 18:13:29 by DAB
+	manilaSuite.discuss.setTimeZoneForMessage (adrMsg); //PBS 04/03/00: store the time zone with the message
+	
+	bundle { //PBS 02/09/00: check in the object
+		manilaSuite.custody.checkIn (adrMsg, adrMember, adrSite, true)}; //true because it's a message
+	
+	return ("")}

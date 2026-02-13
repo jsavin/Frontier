@@ -1,0 +1,40 @@
+on makeManilaMacrosSafe () {
+	«Copy info from manilaData.legalMacros. Make macros in manilaMacros safe.
+		«05/10/00; 6:18:02 PM by PBS
+	
+	local (adrLegalMacros = @config.mainResponder.prefs.legalMacros);
+	if not defined (adrLegalMacros^) {
+		new (tableType, adrLegalMacros)};
+	
+	bundle { //copy info from manilaData.legalMacros
+		local (adrTable = @manilaData.legalMacros);
+		local (adrItem);
+		for adrItem in adrTable {
+			local (itemName = nameOf (adrItem^));
+			if not defined (adrLegalMacros^.[itemName]) {
+				adrLegalMacros^.[itemName] = adrItem^}}};
+	
+	bundle { //make macros in manilaMacros safe
+		local (adrTable = @manilaMacros);
+		
+		on doTable (adrTable) {
+			local (adrItem);
+			for adrItem in adrTable {
+				case typeOf (adrItem^) {
+					tableType { //recurse
+						doTable (adrItem)};
+					scriptType {
+						local (macroName = string.popFileFromAddress (adrItem));
+						macroName = string.delete (macroName, 1, sizeOf ("manilaMacros."));
+						
+						local (adrMacro = @adrLegalMacros^.[macroName]);
+						if not defined (adrMacro^) {
+							new (tableType, adrMacro)};
+						if not defined (adrMacro^.flLegal) {
+							adrMacro^.flLegal = true};
+						if not defined (adrMacro^.flParams) {
+							adrMacro^.flParams = true}}}}};
+		
+		doTable (adrTable)};
+	
+	return (true)}

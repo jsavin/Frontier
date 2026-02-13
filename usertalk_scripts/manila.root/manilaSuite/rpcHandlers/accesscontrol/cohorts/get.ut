@@ -1,0 +1,5 @@
+on get (username, password, siteName, msgNum) {
+	«manilaSuite.rpcHandlers.accesscontrol.cohorts.get : 04/05/21, 09:47:12 by DAB
+		«get cohorts that are defined for  the membership group of a site
+		«was manilaFixer.rpcHandlers.accesscontrol.cohorts.get : 02/02/27, 14:41:26 by DAB
+	manilaSuite.accessControl.rpcHandlers.get(username, password, siteName, msgNum, "permittedcohorts")}

@@ -1,0 +1,158 @@
+on viewSlide () {
+	«Find and display a slide.
+		«Changes:
+			«12/18/00; 2:52:35 PM by PBS
+				«The slides template is the template for the entire page.
+				«If the member can edit the slide, add an Edit with Radio button.
+			«12/20/00; 3:44:48 PM by PBS
+				«Fix for sub-sites -- the next, previous, and home links didn't work. Now they're relative to the current page, rather than of the form /slides/xxx/yyy.
+				«Because of caching, we have to make those relative URLs always the same. But that doesn't work when /msgNum, /msgNum/, /msgNum/1 get you the same page. So: redirect when the URL isn't of the form /msgNum/1.
+	local (flUseCache = true);
+	local (pta = html.getPageTableAddress ());
+	local (adrPrefs = @pta^.newsSite^.slides);
+	local (msgNum, slideNum = 1, urlPrefix = "");
+	
+	bundle { //get msgNum, pop it off the path
+		local (path = pta^.remainingPath);
+		msgNum = number (string.nthField (path, "/", 1));
+		if string.countFields (path, "/") > 1 {
+			slideNum = number (string.nthField (path, "/", 2))}
+		else { //PBS 12/20/00: redirect from /msgNum and /msgNum/ to /msgNum/1 so links are always relative
+			if path endsWith "/" {
+				scriptError ("!redirect 1")}
+			else {
+				scriptError ("!redirect " + msgNum + "/1")}}};
+	
+	on postProcess (s) {
+		bundle { //plain template
+			pta^.flIndirectTemplate = false;
+			pta^.template = "{bodytext}"};
+		
+		bundle { //add the Edit with Radio button, possibly.
+			local (flMemberCanEdit = false);
+			if defined (pta^.adrMemberInfo) { //find out if the current member can edit this slide
+				if mainResponder.discuss.memberCanEdit (adrMsg, pta^.adrMemberInfo, pta) {
+					flMemberCanEdit = true}};
+			
+			if flMemberCanEdit {
+				local (editButtonText = "\r<p>" + manilaSuite.pike.editMessageButton (adrMsg, "Edit this slide in an outline in Radio UserLand.", pta));
+				s = string.replaceAll (s, "{editInRadioButton}", editButtonText, false)}
+			else {
+				s = string.replaceAll (s, "{editInRadioButton}", "", false)}}; //no edit button
+		
+		bundle { //neuter macros
+			s = html.neuterMacros (s, @config.mainResponder.prefs.legalMacros)};
+		
+		return (s)};
+	
+	local (adrDiscussionRoot = mainResponder.discuss.openRoot ());
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum, pta));
+	local (adrCache, adrxstruct);
+	
+	bundle { //locate the cache for this message
+		local (adrSlides = @adrDiscussionRoot^.slides);
+		if not defined (adrSlides^) {
+			new (tableType, adrSlides)};
+		local (adrTables = @adrSlides^.tables);
+		if not defined (adrTables^) {
+			new (tableType, adrTables)};
+		local (adrSlide = @adrTables^.[nameof (adrMsg^)]);
+		if not defined (adrSlide^) {
+			new (tableType, adrSlide)};
+		adrCache = @adrSlide^.cache;
+		
+		bundle { //possibly toss the HTML cache
+			if defined (adrCache^) {
+				local (templateLastModified = 0);
+				if defined (adrPrefs^.templateModified) {
+					templateLastModified = adrPrefs^.templateModified};
+				if templateLastModified > timeModified (adrCache) { //cache is stale?
+					delete (adrCache)}}}; //delete cache
+		
+		if not defined (adrCache^) {
+			new (tableType, adrCache)};
+		adrxstruct = @adrSlide^.xmlstruct}; //don't create it if doesn't exist
+	bundle { //make sure the xmlstruct is up to date
+		on clearCache () {
+			new (tableType, adrCache)};
+		local (adrOutline = @adrMsg^.outline);
+		if not defined (adrOutline^) {
+			scriptError ("Can't display this slide page because message #" + adrMsg^.msgNum + " does not contain an outline.")};
+		bundle { //rebuild the xml structure if it needs it
+			local (flRebuild = false);
+			if defined (adrxstruct^) {
+				if timeModified (adrOutline) > timeModified (adrxstruct) {
+					flRebuild = true}}
+			else {
+				flRebuild = true};
+			if flRebuild {
+				local (ownerEmail = adrMsg^.member);
+				local (ownerName = mainResponder.members.getMemberName (pta^.defaultMembershipGroup, ownerEmail));
+				xml.compile (op.outlineToXml (adrOutline, ownerName, ownerEmail), adrxstruct);
+				clearCache ()}}};
+	
+	local (adrCachePage);
+	bundle { //see if we can serve it from the cache
+		adrCachePage = @adrCache^.[string.padWithZeros (slideNum, 5)];
+		if defined (adrCachePage^) {
+			if flUseCache {
+				return (postProcess (adrCachePage^))}}};
+	
+	local (slideTitle, slideBody, ctSlides, prevUrl, nextUrl);
+	bundle { //add the current level to the html text
+		local (nomad = xml.getAddress (adrxstruct, "opml"));
+		nomad = xml.getAddress (nomad, "body");
+		ctSlides = sizeof (nomad^);
+		bundle { //set prevUrl and nextUrl
+			if slideNum == ctSlides {
+				nextUrl = urlPrefix + 1}
+			else {
+				nextUrl = urlPrefix + (slideNum + 1)};
+			if slideNum == 1 {
+				prevUrl = urlPrefix + ctSlides}
+			else {
+				prevUrl = urlPrefix + (slideNum - 1)}};
+		nomad = @nomad^ [slideNum];
+		slideTitle = xml.entityDecode (nomad^.["/atts"].text, true);
+		
+		local (htmlText = "", indentLevel = 0);
+		on add (s) {
+			htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r\n"};
+		on hasSubs (adrHead) {
+			local (adr);
+			for adr in adrHead {
+				if not (nameOf (adr^) beginsWith "/") { //it's an outline
+					return (true)}};
+			return (false)};
+		
+		local (indentString = adrPrefs^.indentString, outdentString = adrPrefs^.outdentString);
+		on doLevel (nomad) {
+			local (adr);
+			for adr in nomad {
+				if not (nameOf (adr^) beginsWith "/") { //it's an outline
+					local (text = xml.entityDecode (adr^.["/atts"].text, true));
+					add (text + "<p>");
+					if hasSubs (adr) {
+						add (indentString); indentLevel++;
+						doLevel (adr);
+						add (outdentString); indentLevel--}}}};
+		doLevel (nomad);
+		slideBody = htmlText;
+		
+		«Add macro for edit button.
+		slideBody = slideBody + "{editInRadioButton}"};
+	
+	local (htmlText = string (adrPrefs^.template));
+	bundle { //do string substitutions
+		htmlText = string.replaceAll (htmlText, "{slideTitle}", slideTitle, false);
+		htmlText = string.replaceAll (htmlText, "{slideBody}", slideBody, false);
+		htmlText = string.replaceAll (htmlText, "{slideNum}", slideNum, false);
+		htmlText = string.replaceAll (htmlText, "{ctSlides}", ctSlides, false);
+		htmlText = string.replaceAll (htmlText, "{homeUrl}", urlPrefix + "1", false);
+		htmlText = string.replaceAll (htmlText, "{prevUrl}", prevUrl, false);
+		htmlText = string.replaceAll (htmlText, "{nextUrl}", nextUrl, false);
+		htmlText = string.replaceAll (htmlText, "{title}", slideTitle, false)};
+	pta^.title = slideTitle;
+	adrCachePage^ = htmlText;
+	
+	return (postProcess (htmlText))}

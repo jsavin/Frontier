@@ -1,0 +1,144 @@
+on handler (pta, adrObject) {
+	«Changes
+		«10/1/05; 2:38:55 AM by JES
+			«Removed commented out code. Re-formatted to UserLand style.
+		«04/05/16, 11:38:48 by DAB
+			«Created. Factored from manilaSuite.admin.advancedPage.
+				«messages at manilaData.localization.languages.english.strings.admin
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress (pta));
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf (this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName (pta, sectionName));
+	
+	add ("\r<p>");
+	add (manilaSuite.getString ("admin." + shortName + "SectionDescription", pta: pta));
+	local (flCloneable = manilaSuite.getNewsSitePref ("theme.flCloneable", default:false, flCreate:true));
+	if flCloneable { //add download link
+		try {
+			local (downloadUrl = manilaSuite.themes.getDownloadUrl (adrSite));
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.downloadUrl = downloadUrl;
+			add (manilaSuite.getString ("admin.themeDownloadLink", @replacementTable, pta: pta))}};
+	add ("\r</p>");
+	
+	local (replacementTable);
+	bundle { //set up replacement table
+		new (tableType, @replacementTable);
+		replacementTable.displayName = displayName};
+	
+	if defined (pta^.postargs.[shortname]) {
+		case true {
+			defined (pta^.postArgs.restoreToDefault) {
+				add (manilaSuite.sitePrefs.utility.confirmBox (pta, shortname, "admin.themeRestoreDefaultConfirm", @replacementTable))};
+			defined (pta^.postArgs.doRestoreDefault) { //restore to default
+				adrObject^.name = pta^.newsSite^.siteName;
+				adrObject^.flCloneable = false;
+				adrObject^.description = "";
+				local (defaultAuthor = "");
+				if defined (pta^.adrMemberInfo^.personalInfo.name) {
+					defaultAuthor = pta^.adrMemberInfo^.personalInfo.name};
+				adrObject^.authorName = defaultAuthor;
+				local (defaultEmail = nameOf (pta^.adrMemberInfo^));
+				adrObject^.authorEmail = defaultEmail;
+				manilaSuite.custody.checkInAndOut (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				add (manilaSuite.sitePrefs.utility.successMessage (pta, "admin.themeRestoreDefaultSuccess", @replacementTable))};
+			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
+				}}
+		else { //try to update the colors
+			adrObject^.flCloneable = boolean (pta^.postArgs.flCloneable);
+			adrObject^.name = manilaSuite.unTaint (pta^.postArgs.themeName);
+			adrObject^.authorName = manilaSuite.unTaint (pta^.postArgs.themeAuthor);
+			adrObject^.authorEmail = manilaSuite.unTaint (pta^.postArgs.themeEmail);
+			adrObject^.description = manilaSuite.unTaint (pta^.postArgs.themeDescription);
+			manilaSuite.custody.checkInAndOut (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+			add (manilaSuite.sitePrefs.utility.successMessage(pta, "admin.themeUpdateSuccess", @replacementTable))}};
+	
+	on tdLabel (label="") {
+		if label == "" {
+			label = sectionName};
+		add ("\r\t\t<td align='left'valign='top'width='300'>" + label + "</td>");
+		return (true)};
+	on tdValue (prefName, default) {
+		local (value=default);
+		if defined (adrObject^.[prefName]) {
+			value = manilaSuite.unTaint (adrObject^.[prefName])};
+		add ("\r\t\t<td valign='top' align='left'>");
+		add ("<input name='" + prefName + "' value='" + value + "' size='10'>");
+		add ("</td>");
+		return (true)};
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	bundle { //row for clonable radios
+		add ("\r\t<tr>");
+		add ("<td align='left'>" + manilaSuite.getString ("admin.themeCloneablePrompt", pta: pta) + "</td>");
+		add ("<td align='left'>");
+		add (manilaSuite.getString ("common.yes", pta: pta));
+		local (checked="");
+		if flCloneable {
+			checked= " checked"};
+		add (" <input type='radio' name='flCloneable' value='true'" + checked + ">");
+		add (manilaSuite.getString ("common.no", pta: pta));
+		checked="";
+		if not flCloneable {
+			checked= " checked"};
+		add (" <input type='radio' name='flCloneable' value='false'" + checked + ">");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for name of theme
+		local (themeName = manilaSuite.getNewsSitePref ("theme.name", default:pta^.newsSite^.siteName, flCreate:true));
+		add ("\r\t<tr>");
+		add ("<td align='left'>" + manilaSuite.getString ("admin.themeNamePrompt", pta: pta) + "</td>");
+		add ("<td align='left'><input name='themeName' size='40' value='" + manilaSuite.translateToEntities (themeName) + "'></td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for name of author
+		local (defaultAuthor = "");
+		if defined (pta^.adrMemberInfo^.personalInfo.name) {
+			defaultAuthor = pta^.adrMemberInfo^.personalInfo.name};
+		local (themeAuthor = manilaSuite.getNewsSitePref ("theme.authorName", default:defaultAuthor, flCreate:true));
+		add ("\r\t<tr>");
+		add ("<td align='left'>" + manilaSuite.getString ("admin.themeAuthorPrompt", pta: pta) + "</td>");
+		add ("<td align='left'><input name='themeAuthor' size='40' value='" + manilaSuite.translateToEntities (themeAuthor) + "'></td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for email of author
+		local (defaultEmail = nameOf (pta^.adrMemberInfo^));
+		local (themeEmail = manilaSuite.getNewsSitePref ("theme.authorEmail", default:defaultEmail, flCreate:true));
+		add ("\r\t<tr>");
+		add ("<td align='left'>" + manilaSuite.getString ("admin.themeAuthorEmailPrompt", pta: pta) + "</td>");
+		add ("<td align='left'><input name='themeEmail' size='40' value='" + manilaSuite.translateToEntities (themeEmail) + "'></td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for descriptive text
+		local (themeDescription = manilaSuite.getNewsSitePref ("theme.description", default:"", flCreate:true));
+		themeDescription = manilaSuite.sitePrefs.utility.exportOutline (themeDescription);
+		
+		add ("\r\t<tr>");
+		add ("<td align='left'>" + manilaSuite.getString ("admin.themeDescriptionPrompt", pta: pta) + "</td>");
+		add ("\r\t\t<td align='left' valign='top' >");
+		add ("<textarea name='themeDescription' cols='35' rows='3'>" + themeDescription + "</textarea>"); //05/04/28, 22:43:37 by DAB
+		add ("\r\t\t</td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for buttons
+		add (manilaSuite.sitePrefs.utility.addButtons (pta, adrObject, sectionName, false))}; //no radio interface
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

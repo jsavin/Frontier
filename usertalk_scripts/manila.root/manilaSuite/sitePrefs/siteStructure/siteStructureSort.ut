@@ -1,0 +1,93 @@
+on siteStructureSort (adrSite, relativePath, subLevelsOnly=false) {
+	«manilaSuite.sitePrefs.siteStructure.siteStructureSort : 04/05/16, 16:28:41 by DAB
+		«sort the hierarchy as if it were an outline, recursively
+		«01/08/28, 22:28:21 by DAB
+			«optional sublevelsOnly parameter, to sort only subordinate levels to where relativePath points
+		«manilaFixer.siteStructureSort : 01/03/26, 18:24:42 by DAB
+	
+	on sortOneLevel(adrTbl) {
+		local (nme, adr);
+		local (nameTbl);
+		new(tabletype, @nameTbl);
+		for adr in adrTbl {
+			if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
+				continue};
+			nme = xml.getAttributeValue(adr, "name");
+			nameTbl.[nme] = adr;
+			if manilaSuite.sitePrefs.siteStructure.isXMLCategory(adr) { //02/04/15, 15:38:34 by DAB
+				sortOneLevel(adr)}};
+		
+		local (newTbl);
+		new(tabletype, @newtbl);
+		for adr in @nameTbl {
+			nme = nameOf(adr^^);
+			ix = string.patternMatch("\t", nme);
+			nme = string.delete(nme, 1, ix);
+			table.moveAndRename(adr^, xml.addTable(@newTbl, nme))};
+		
+		table.copyContents(@newTbl, adrTbl);
+		};«msg("here")
+	
+	local (adrTable = @adrSite^.["#hierarchy"]);
+	bundle { //compile the XML outline if needed
+		«The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
+		local (flCompile = true);
+		
+		if defined (adrTable^.structure) {
+			if timeModified (@adrTable^.outline) <= timeModified (@adrTable^.structure) {
+				flCompile = false}};
+		
+		if flCompile {
+			xml.compile (string (adrTable^.outline), @adrTable^.structure)}};
+	
+	local (nomad = @adrTable^.structure[1]);
+	bundle { //position nomad using relativePath
+		local (nme, adr, flFound);
+		loop {
+			relativePath = string.popleading(relativePath, "/");
+			nme = string.nthField(relativePath, "/", 1);
+			if nme == "" {
+				break};
+			relativePath = string.delete(relativePath, 1, string.length(nme));
+			nme = string.lower(nme);
+			flFound = false;
+			for adr in nomad {
+				if not (nameof(adr^) contains "\t") {
+					continue};
+				if string.lower(string.nthField(nameof(adr^), '\t', 2)) == "description" { //04/05/02, 13:07:55 by DAB
+					continue};
+				if nme == string.lower(xml.getAttributeValue(adr, "pathname")) {
+					nomad = adr;
+					flFound = true;
+					break}};
+			if not flFound {
+				return false}};
+		if not manilaSuite.sitePrefs.siteStructure.isXMLCategory(nomad) { //02/04/15, 15:39:09 by DAB
+			return false}};
+	
+	if subLevelsOnly {
+		local (adr);
+		for adr in nomad {
+			if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
+				continue};
+			if manilaSuite.sitePrefs.siteStructure.isXMLCategory(adr) { //02/04/15, 15:39:24 by DAB
+				«window.msg("Sorting contents of category " +  xml.getAttributeValue(adr, "name"))
+				sortOneLevel(adr)}}}
+	else {
+		sortOneLevel(nomad)};
+	
+	bundle { //re-build the outline
+		local (s);
+		try {
+			s = xml.decompile (@adrTable^.structure)}
+		else {
+			temp.sitestructuresort = adrTable^.structure;
+			scriptError("Invalid site structure Created by sitestructuresort:" + tryError)};
+		
+		local (xmlHeader = string.nthField (s, '\r', 1));
+		s = string.delete (s, 1, sizeOf (xmlHeader));
+		s = string.trimWhiteSpace (s);
+		wp.newTextObject (s, @adrTable^.outline)};
+	
+	return true};
+«siteStructureSort (@zkmverlagManilawebsite, "/unterrichtsbereiche//", true)

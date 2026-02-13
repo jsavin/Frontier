@@ -1,0 +1,13 @@
+on startRenderSession (adrSite, flWholeSite=false) {
+	«Begin a rendering session.
+		«03/14/00; 4:02:41 PM by PBS
+	
+	local (adrSiteInfo = manilaSuite.staticRendering.getStatusAddress (adrSite));
+	
+	new (tableType, adrSiteInfo);
+	adrSiteInfo^.flWholeSite = flWholeSite;
+	adrSiteInfo^.currentUrl = "";
+	adrSiteInfo^.sessionStart = clock.now ();
+	adrSiteInfo^.countRenderedPages = 0;
+	
+	return (true)}

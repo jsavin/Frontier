@@ -1,0 +1,73 @@
+on getResponsesHeaders (siteName, username, password, msgnum) {
+	«Changes
+		«Saturday, September 30, 2000 at 11:25:37 AM by DW
+			«Forked from manilaSuite.rpcHandlers.message.getCurrentHeaders. 
+			«Return information about the most recent top-level messages.
+		«Saturday, September 30, 2000 at 5:02:08 PM by PBS
+			«Use new Manila pref for number of topics in a topics listing.
+		«01/02/01; 1:25:38 AM by JES
+			«On Macs, convert the subject to Latin text.
+		«02/13/01; 2:04:44 PM by JES
+			«Prepend "msg" to the numerical name of the returned items. Fixes a bug when using SOAP where elements with invalid names would be generated.
+		«03/19/01; 3:21:24 PM by JES
+			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		«05/23/01; 1:15:21 AM by JES
+			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+	
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get message headers because ");
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMsgs = @adrDiscuss^.messages);
+	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+	local (adrCal = @adrDiscuss^.calendar);
+	local (adrSite = config.manila.sites.[siteName]);
+	local (msgReaderUrl = adrSite^.["#urls"].discussMsgReader);
+	«local (numMessages = manilaSuite.getNewsSitePref ("numMessagesInDiscussListing", default:50, flCreate:true, adrSite:adrSite))
+	local (numMessages = manilaSuite.getNewsSitePref ("numMessagesInDiscussTopicsListing", default:10, flCreate:true, adrSite:adrSite)); //PBS 09/30/00: new pref for number of topics in topics list
+	
+	local (theDay);
+	theDay = mainResponder.calendar.getLastAddress (adrCal);
+	
+	local (flSoap = false);
+	if string.upper (responder) == "SOAP" {
+		adrRequest^.customStructType = manilaData.soap.constants.customArrayTypes.messageHeader;
+		adrRequest^.customNamespace = manilaData.soap.constants.manilaNamespace;
+		adrRequest^.customNamespaceURI = manilaData.soap.constants.manilaNamespaceURI;
+		flSoap = true};
+	local (messageHeaders);
+	if flSoap {
+		messageHeaders = {}}
+	else {
+		new (tableType, @messageHeaders)};
+	
+	on addMessage (adrItem) {
+		local (nextMsgNum = sizeOf (messageHeaders) + 1);
+		nextMsgNum = string.padWithZeros (nextMsgNum, 7);
+		local (header); new (tableType, @header);
+		
+		header.url = msgReaderUrl + adrItem^.msgNum;
+		header.msgNum = adrItem^.msgNum;
+		header.postTime = adrItem^.postTime;
+		header.ctReads = adrItem^.ctReads;
+		header.memberName = mainResponder.members.getMemberName (groupName, adrItem^.member);
+		header.member = adrItem^.member;
+		header.subject = adrItem^.subject;
+		if system.environment.isMac { //01/02/01 JES: convert the subject to latin text
+			header.subject = latinToMac.macToLatin (header.subject)};
+		header.rpcPath = "/RPC2";
+		header.rpcServer = tcp.dns.getMyDomainName (); //it does caching
+		header.rpcPort = user.inetd.config.http.port;
+		
+		if flSoap {
+			messageHeaders[number (nextMsgNum)] = header}
+		else {
+			local (adrHeader = @messageHeaders.["msg" + nextMsgNum]);
+			adrHeader^ = header};
+		
+		return (true)};
+	
+	local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite), responsemsgnum);
+	for responsemsgnum in adrmsg^.responses {
+		addmessage (manilaSuite.discuss.getMessageTable (responsemsgnum, adrsite))};
+	
+	return (messageHeaders)}

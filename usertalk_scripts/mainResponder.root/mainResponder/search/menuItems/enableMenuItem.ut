@@ -1,0 +1,3 @@
+if config.mainResponder.prefs.flSearchEngine {
+	return ("Disable Search Engine")};
+return ("Enable Search Engine")

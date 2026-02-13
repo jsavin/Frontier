@@ -1,0 +1,99 @@
+on getMessageFromClient (client, port) {
+	«Changes
+		«Sat, 06 Mar 1999 17:21:35 GMT by AR
+			«Deactivated adrmsg^.htmlCache code.
+		«11/6/99; 7:59:01 PM by PBS
+			«Pass incoming text through mainResponder.neuterText, to make extra sure that unwanted macros and tags are neutered.
+		«11/16/99; 11:31:59 AM by PBS
+			«Use mainResponder's memberCanEdit callback to allow managing editors of Manila sites to edit pages using the Edit in Frontier button.
+		«05/01/00; 7:48:38 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+	if client == "127.0.0.1" {
+		client = "localhost"};
+	local (xmltext = base64.decode (betty.rpc.client (client, port, "editorial.returnMessage")));
+	local (xtable);
+	xml.compile (xmltext, @xtable);
+	
+	on cookieError (explanation) {
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.explanation = explanation;
+		scriptError (mainResponder.getString ("discuss.cantReceiveMsgBadAuthentication", @replacementTable))};
+	on formatError (fieldname) {
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.fieldname = fieldname;
+		scriptError (mainResponder.getString ("discuss.cantReceiveMsgMissingField", @replacementTable))};
+	local (adrcookie, adrmsgnum);
+	if not xml.getpathaddress (@xtable, "ticket/cookie", @adrcookie) {
+		cookieError (mainResponder.getString ("discuss.theCookieIsMissing"))};
+	if not xml.getpathaddress (@xtable, "ticket/header/msgNum", @adrmsgnum) {
+		cookieError (mainResponder.getString ("discuss.theMsgnumIsMissing"))};
+	
+	local (adrsubject, adrposttime, adrmember, adrctreads, adrinresponseto, adrresponses, adrbody);
+	if not xml.getpathaddress (@xtable, "ticket/header/subject", @adrsubject) {
+		formatError ("subject")};
+	if not xml.getpathaddress (@xtable, "ticket/header/member", @adrmember) {
+		formatError ("member")};
+	if not xml.getpathaddress (@xtable, "ticket/body", @adrbody) {
+		formatError ("body")};
+	
+	local (alsoListedList, flalsolist = false);
+	bundle { //get alsoListedIn
+		local (adrlist);
+		if xml.getpathaddress (@xtable, "ticket/header/alsoListedIn", @adrlist) {
+			local (i);
+			alsoListedList = xml.getAddressList (adrlist, "category");
+			for i = 1 to sizeof (alsoListedList) { //turn addresses into values
+				alsoListedList [i] = alsoListedList [i]^;
+				flalsolist = true}}};
+	
+	local (flenclosure = false, enclosureAddress, enclosureBits, enclosureType);
+	bundle { //check for an enclosure
+		local (adrenclosure);
+		if xml.getpathaddress (@xtable, "ticket/header/enclosure", @adrenclosure) {
+			enclosureAddress = xml.getvalue (adrenclosure, "enclosureAddress");
+			enclosureType = xml.getvalue (adrenclosure, "enclosureType");
+			enclosureBits = xml.getvalue (adrenclosure, "enclosureBits");
+			
+			local (prefix = "application/x-frontier-");
+			if enclosureType beginswith prefix {
+				local (type = string.delete (enclosureType, 1, sizeof (prefix)));
+				local (bits = binary (base64.decode (enclosureBits)));
+				setBinaryType (@bits, type);
+				unpack (@bits, @enclosureBits)};
+			
+			flenclosure = true}};
+	
+	local (adrmemberinfo = html.getpagetableaddress ()^.adrmemberinfo);
+	bundle { //check the cookie
+		if adrcookie^ != mainresponder.discuss.getCheckSum (adrmsgnum^, adrmemberinfo) {
+			cookieError (mainResponder.getString ("discuss.theChecksumIsIncorrect"))};
+		delete (adrcookie)};
+	
+	local (adrmsg = mainresponder.discuss.getmessagetable (adrmsgnum^));
+	if adrmsg^.member != nameof (adrmemberinfo^) { //not the author of the message
+		«PBS 11/16/99: use the memberCanEdit callback to allow managing editors of Manila sites to use the Edit in Frontier button for all stories and messages.
+		if defined (config.mainResponder.callbacks.memberCanEdit) {
+			local (pta = html.getPageTableAddress ());
+			pta^.adrMsgToEdit = adrMsg;
+			pta^.flMemberCanEdit = false;
+			mainResponder.callbackLoop (@config.mainResponder.callbacks.memberCanEdit, pta);
+			if not pta^.flMemberCanEdit {
+				cookieError (mainResponder.getString ("discuss.theMemberIsNotAuthorOfMsg"))}}};
+	
+	try {delete (@adrmsg^.body)};
+	adrBody^ = mainResponder.neuterText (string (adrbody^), true, true); //PBS 11/6/99: neuter text
+	op.newoutlineobject (string (adrbody^), @adrmsg^.body);
+	mainResponder.neuterOutline (@adrmsg^.body); //eliminate #directives in the outline
+	adrmsg^.subject = adrsubject^;
+	if flenclosure {
+		adrmsg^.enclosureAddress = enclosureAddress;
+		adrmsg^.enclosureBits = enclosureBits;
+		adrmsg^.enclosureType = enclosureType};
+	if flalsolist {
+		adrmsg^.alsoListedIn = alsoListedList};
+	
+	«try {delete (@adrmsg^.htmlcache)}  // Deactivated.
+	try {delete (@adrmsg^.toptopicscache)};
+	filemenu.savemyroot (adrmsg);
+	
+	return (true)}

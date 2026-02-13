@@ -1,0 +1,145 @@
+on subscriptions () {
+	«Changes
+		«3/7/06; 4:44:33 AM by JES
+			«Accept feed:// urls.
+		«3/13/03; 3:11:00 AM by JES
+			«When unsubscribing from a feed, make sure that all installed Manila sites are also unsubscribed.
+		«3/10/03; 8:44:32 PM by JES
+			«Set the border attribute for the XML icon IMG tag to "0".
+		«3/4/03; 3:34:29 PM by JES
+			«Created. Render the list of subscriptions global to this server, along with a field for adding a new subscription.
+	local (htext);
+	on add (s) {
+		htext = htext + (s + "\r");};
+	on getDateString (when, flIncludeSeconds=true) {
+		«Changes
+			«1/15/01; 11:00:50 AM by DW
+				«Return the time string if it's today, return the date string if it's earlier.
+		local (day, month, year, hour, minute, second, nowday, nowmonth, nowyear);
+		date.get (when, @day, @month, @year, @hour, @minute, @second);
+		date.get (clock.now (), @nowday, @nowmonth, @nowyear, @hour, @minute, @second);
+		if (day == nowday) and (month == nowmonth) and (year == nowyear) {
+			return (date.timestring (when, flIncludeSeconds))};
+		return (date.shortstring (when))};
+	
+	local (xmlimg = "<img src=\"/mainResponderResources/userlandIcons/xml\" height=\"14\" width=\"36\" border=\"0\">");
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrdata = xml.aggregator.init ());
+	pta^.errorString = "";
+	pta^.adrNewService = nil;
+	pta^.flAddSubmitButton = false;
+	
+	if pta^.method == "POST" { //add or remove subscription(s)
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.subscribe) { //user click the Subscribe button
+			local (rssurl = adrargs^.url);
+			if rssurl beginswith "feed://" {
+				rssurl = "http" + string.delete (rssurl, 1, 4)};
+			if not (rssurl beginswith "http://") {
+				rssurl = "http://" + rssurl};
+			if rssurl != "http://" { //add this subscription
+				xml.aggregator.subscribeService (rssurl, @pta^.errorString, @pta^.adrNewService)}};
+		if defined (adrargs^.unsubscribe) { //user clicked the Unsubscribe button
+			local (i, adr, adrservice);
+			for i = sizeof (adrargs^) downto 1 {
+				adr = @adrargs^[i];
+				local (urlservice = string.urlDecode (nameof (adr^)) );
+				adrservice = @adrdata^.services.[urlservice];
+				if defined (adrservice^) {
+					xml.aggregator.unsubscribeService (nameof (adrservice^))};
+				local (nomad);
+				for nomad in @config.manila.sites {
+					local (adrsite = nomad^);
+					if defined (adrsite^) {
+						local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+						if defined (adrnewssite^) {
+							if defined (adrnewssite^.aggregator) {
+								if defined (adrnewssite^.aggregator.services.[urlservice]) {
+									delete (@adrnewssite^.aggregator.services.[urlservice])}}}}}}}};
+	
+	bundle { //field to subscribe to a new feed, Subscribe button
+		local (initialurl = "http://");
+		if defined (pta^.searchArgs) { //try to get the initial URL from a url argument in the request
+			if pta^.searchArgs != "" {
+				local (t); new (tableType, @t);
+				webserver.parseArgs (pta^.searchArgs, @t);
+				if defined (t.url) {
+					initialurl = t.url}}};
+		add ("<td align=\"left\">" + "URL" + ":</td>");
+		add ("<td valign=\"top\"><input type=\"text\" name=\"url\" size=\"55\" maxlength=\"255\" value=\"" + initialurl + "\">&nbsp;&nbsp;<input type=\"submit\" name=\"subscribe\" value=\"Add\"></td>");
+		if pta^.errorString != "" { //show the error to the user
+			add ("</tr><tr><td colspan=\"2\"><br><i>Can't subscribe to the channel. The most likely cure is to check the URL in a web browser and see if you can get it to read the feed. The following message probably won't help you figure out what went wrong, but we include it here because it might: \"" + errorstring + "\"</i></td>")};
+		if pta^.adrNewService != nil { //show confirmation to the user
+			local (channeltitle = xml.entityDecode (pta^.adrNewService^.compilation.channeltitle, true, true) );
+			add ("</tr><tr><td colspan=\"2\"><br><i>Congratulations, you have successfully added the \"" + channeltitle + "\" feed to the news feeds available on this server. It now appears in the list of available feeds below. For subscribed sites, new items will appear on the Aggregator page every hour.</i></td>")};
+		add ("</td>")};
+	if sizeOf (adrdata^.services) > 0 { //list of feeds with check boxes and Delete button
+		
+		bundle { //add explanatory text
+			add ("</tr><tr><td colspan=\"2\">");
+			add ("<br><br>The following table lists the feeds available to sites on this server. Included is the name of the source, linked to its Web page, the time or day it last changed, the number of times it has changed since it was added, and a link to the XML file for the channel. To delete a feed, check it and then click on the Unsubscribe button at the bottom of the page.<br><br>");
+			add ("</td>")};
+		
+		add ("</tr><tr><td colspan=\"2\"><blockquote>");
+		
+		local (sortedtable, adr, adrsort);
+		bundle { //fill sorted table
+			new (tabletype, @sortedtable);
+			for adr in @adrdata^.services {
+				if defined (adr^.compilation) {
+					if sizeof (adr^.compilation) > 0 {
+						try { //missing channeltitle doesn't stop us -- 3/20/02 DW
+							local (channeltitle = adr^.compilation.channeltitle);
+							if sizeof (channeltitle) > 0 {
+								adrsort = @sortedtable.[adr^.compilation.channeltitle];
+								if defined (adrsort^) { //collision
+									local (ct = 1);
+									loop {
+										adrsort = @sortedtable.[adr^.compilation.channeltitle + "." + ct++];
+										if not defined (adrsort^) {
+											break}}};
+								adrsort^ = nameof (adr^)}}}}}};
+		
+		bundle { //start the HTML table
+			add ("<table cellspacing=\"0\" cellpadding=\"0\"><tr bgcolor=\"DCDCDC\"><td>");
+			add ("<table cellspacing=\"1\" cellpadding=\"5\" border=\"0\">")};
+		for adrsort in @sortedtable { //add the table rows for each channel
+			adr = @adrdata^.services.[adrsort^];
+			if defined (adr^.compilation) {
+				if sizeof (adr^.compilation) > 0 {
+					local (title = adr^.compilation.channeltitle);
+					local (channeldescription = "", channellink = "");
+					if defined (adr^.compilation.channeldescription) {
+						channeldescription = xml.entityDecode (adr^.compilation.channeldescription, true, true);
+						channeldescription = string.replaceAll (channeldescription, "\"", "&quot;");
+						channeldescription = string.replaceAll (channeldescription, "\'", "&apos;");
+						channeldescription = string.replaceAll (channeldescription, "<", "&lt;");
+						channeldescription = string.replaceAll (channeldescription, ">", "&gt;")};
+					if defined (adr^.compilation.channellink) {
+						channellink = adr^.compilation.channellink};
+					add ("<tr bgcolor=\"white\">");
+					bundle { //add checkbox
+						local (name = nameof (adr^));
+						local (checkboxval = "xxx ");
+						if false {
+							checkboxval = checkboxval + "checked"};
+						add ("<td valign=\"top\"><input type=\"checkbox\" name=\"" + string.urlEncode (nameOf (adr^)) + "\" value=" + checkboxval + "></td>")};
+					if sizeof (title) > 50 {
+						title = string.mid (title, 1, 50) + "..."};
+					add ("<td valign=\"top\" title=\"" + channeldescription + "\" nowrap><a href=\"" + channellink + "\">" + xml.entityDecode (title, true, true) + "</a></td>");
+					add ("<td align=\"right\" valign=\"top\"><nobr><font size=\"-1\">" + getDateString (adr^.timeLastChange, false) + "</font></nobr></td>");
+					add ("<td align=\"right\" valign=\"top\"><font size=\"-1\">" + adr^.ctChanges + "</font></td>");
+					add ("<td valign=\"top\"><a href=\"" + nameof (adr^) + "\" title=\"Click to view the current XML source text for the channel.\">" + xmlimg + "</a></td>");
+					add ("</tr>")}}};
+		bundle { //end the HTML table
+			add ("</table></td></tr></table>")};
+		
+		add ("</blockquote></td>");
+		
+		bundle { //Unsubscribe button
+			add ("</tr><tr><td colspan=\"2\">");
+			add ("<br><input type=\"submit\" name=\"unsubscribe\" value=\"Unsubscribe\">");
+			add ("</td>")}};
+	
+	return (htext)}

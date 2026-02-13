@@ -1,0 +1,22 @@
+on checkMemberCohorts (pta=nil, permittedCohorts, adrGroup=nil) {
+	«Changes
+		«4/26/06; 2:24:08 AM by JES
+			«If the permittedCohorts parameter contains "Everyone", even non members should pass the test. Fix from DAB.
+			«Removed old, commented code.
+		«05/13/05; 4:30:58 PM by PR
+			«Do all the hard work in manilaSuite.accessControl.checkMemberCohortsFromGroup.
+		«04/05/20, 16:17:48 by DAB
+			«Created. In the context of the page table, does the member belong to any cohorts  in the provided list?
+				«was manilaFixer.accessControl.checkMemberCohorts : 02/02/21, 17:54:49 by DAB
+	
+	«If we have a list of cohort names, we must have a member
+	if not defined (pta^.adrMemberInfo) {
+		return (permittedCohorts contains "Everyone")}; //4/22/06; 7:23:04 PM by DAB
+	
+	if not adrGroup {
+		local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+		adrGroup = manilaSuite.members.getGroupFromSiteAddress (adrSite)}; // 03/06/05; 9:54:39 AM by PR
+	
+	return (manilaSuite.AccessControl.checkMemberCohortsFromGroup (pta, permittedCohorts, adrGroup)); // 05/14/05; 2:46:47 PM by PR
+	
+	return (false)}

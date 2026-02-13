@@ -1,0 +1,105 @@
+on ensureValidHomePageCalendar (adrSite) {
+	«Changes
+		«4/1/03; 2:31:06 PM by JES
+			«Created. Ensures that the site contains a valid home page calendar. Called from manilaSuite.filters.firstFilter.
+	try { //if we can't get the last day in the calendar, then the calendar is invalid
+		local (lastDayAddress = mainResponder.calendar.getLastAddress (adrSite))}
+	else { //there was an error -- fix the problem
+		bundle { //first delete all empty months/years, since they can cause an error
+			local (year, month);
+			for year = date.year (clock.now ()) downto 1998 {
+				local (adryear = @adrSite^.[year]);
+				if defined (adryear^) {
+					for month = 1 to 12 { //delete any empty months
+						local (adrmonth = @adryear^.[string.padWithZeros (month, 2)]);
+						if defined (adrmonth^) {
+							if sizeOf (adrmonth^) == 0 {
+								delete (adrmonth)}}};
+					if sizeOf (adryear^) == 0 {
+						delete (adryear)}}}};
+		bundle { //if there's a non-deleted home page message or news item, create a calendar entry for it
+			local (adrDiscuss = manilaSuite.discuss.getDiscussionGroupAddress (adrSite));
+			local (adrMessages = @adrDiscuss^.messages);
+			local (flNewsItemsSite = manilaSuite.news.newsItemsEnabled (adrSite));
+			local (i, ct = sizeOf (adrMessages^));
+			on isDeleted (adrmsg) {
+				local (flDeleted = false);
+				if defined (adrmsg^.flDeleted) {
+					flDeleted = adrmsg^.flDeleted};
+				return (flDeleted)};
+			for i = ct downto 1 {
+				local (adrmsg = @adrMessages^[i]);
+				if flNewsItemsSite {
+					if manilaSuite.news.isNewsItem (adrmsg) {
+						if not isDeleted (adrmsg) {
+							if manilaSuite.news.isPosted (adrmsg) {
+								local (adrday = mainResponder.calendar.getDayAddress (adrSite, manilaSuite.news.getPostTime (adrmsg, adrSite))); //creates the day
+								adrday^.flNewsItems = true;
+								return (true)}}}}
+				else { //non-news items site
+					if manilaSuite.discuss.isHomePage (adrmsg, adrSite) {
+						if not isDeleted (adrmsg) { //found one
+							local (adrday = mainResponder.calendar.getDayAddress (adrSite, adrmsg^.postTime)); //creates the day
+							local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+							adrday^.discussionRoot = adrNewsSite^.discussionRoot;
+							adrday^.msgNum = adrmsg^.msgNum;
+							return (true)}}}}};
+		local (now = clock.now ());
+		local (year, month, day, adryear, adrmonth, adrday);
+		bundle { //ensure year
+			local (flFound = false);
+			year = date.year (now);
+			while year > 1998 {
+				adryear = @adrSite^.[year];
+				if defined (adryear^) {
+					flFound = true;
+					break};
+				year--};
+			if not flFound {
+				year = date.year (now);
+				adryear = @adrSite^.[year];
+				new (tableType, adryear)}};
+		bundle { //ensure month
+			local (flThisYear = false);
+			if year == date.year (now) { //start with this month
+				flThisYear = true};
+			month = 12;
+			if flThisYear {
+				month = date.month (now)};
+			local (flFound = false);
+			while month > 0 {
+				adrmonth = @adryear^.[string.padWithZeros (month, 2)];
+				if defined (adrmonth^) {
+					flFound = true;
+					break};
+				month--};
+			if not flFound {
+				if flThisYear {
+					month = date.month (now)}
+				else {
+					month = 12};
+				adrmonth = @adryear^.[string.padWithZeros (month, 2)];
+				new (tableType, adrmonth)}};
+		bundle { //ensure day
+			local (flThisMonth = false);
+			if year == date.year (now) { //start with today?
+				if month == date.month (now) {
+					flThisMonth = true}};
+			day = date.daysInMonth (month);
+			if flThisMonth {
+				day = date.day (now)};
+			local (flFound = false);
+			while day > 0 {
+				adrday = @adrmonth^.[string.padWithZeros (day, 2)];
+				if defined (adrday^) {
+					flFound = true;
+					break};
+				day--};
+			if not flFound {
+				if flThisMonth {
+					day = date.day (now)}
+				else {
+					day = date.daysInMonth (month)};
+				adrday = @adrmonth^.[string.padWithZeros (day, 2)];
+				new (tableType, adrday)}}};
+	return (true)}

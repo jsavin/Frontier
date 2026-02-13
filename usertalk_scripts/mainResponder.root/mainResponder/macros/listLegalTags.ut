@@ -1,0 +1,9 @@
+local (adrtable = @config.mainResponder.prefs.legalTags, i);
+local (htmltext = "", indentlevel = 0);
+on add (s) {
+	htmltext = htmltext + string.filledString ("\t", indentlevel) + s};
+for i = 1 to sizeof (adrtable^) {
+	if i > 1 {
+		add (", ")};
+	add ("&lt;" + nameof (adrtable^ [i]) + "&gt;")};
+return (htmltext)

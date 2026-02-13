@@ -1,0 +1,15 @@
+on getMemberKeyFromCookie (cookieString) {
+	«This is a utility script for getting the member key (email address, usually) from a cookie string. This is especially useful for #security scripts. It works with old and new cookie formats. cookieString should be an un-url-decoded cookie string. This script may return the empty string. It may return an invalid memberKey.
+		«04/10/00; 2:38:03 PM by PBS
+	
+	if mainResponder.members.isHashedCookieFormat (cookieString) {
+		local (t);
+		t = mainResponder.members.cookieStringToTable (cookieString);
+		return (t.id)}
+	else {
+		local (memberKey);
+		cookieString = string.urlDecode (cookieString);
+		memberKey = string.nthField (cookieString, '\t', 1);
+		return (memberKey)};
+	
+	return ("")}

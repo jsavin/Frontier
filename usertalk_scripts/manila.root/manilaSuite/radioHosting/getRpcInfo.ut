@@ -1,0 +1,31 @@
+on getRpcInfo () {
+	«Changes
+		«9/9/03; 1:25:43 AM by JES
+			«Created. Return an XML snippet contining information needed to call this Manila site using XML-RPC.
+	local (pta = html.getPageTableAddress ());
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (siteurl = manilaSuite.getSiteUrl (adrsite, pta));
+	local (urlparts = string.urlSplit (siteurl));
+	local (server = urlparts[2], port = 80);
+	bundle { //set port if non-80
+		if server contains ":" {
+			port = string.nthField (server, ":", 2);
+			server = string.nthField (server, ":", 1)}};
+	local (path = "/RPC2");
+	
+	local (xtext, ilevel=0);
+	on add (s) {
+		xtext = xtext + (string.filledString ("\t", ilevel) + s + "\r");};
+	
+	add ("<rpcInfo>"); ilevel++;
+	add ("<server>" + server + "</server>");
+	add ("<port>" + port + "</port>");
+	add ("<path>" + path + "</path>");
+	add ("<methodName>manila.radioHosting.setPrefs</methodName>");
+	add ("<siteName>" + manilaSuite.getCanonicalSiteName (adrsite) + "</siteName>");
+	add ("</rpcInfo>"); ilevel--;
+	
+	return (xtext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«wp.newtextObject (getRpcInfo (), @workspace.xtext)

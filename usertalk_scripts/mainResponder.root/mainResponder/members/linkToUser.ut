@@ -1,0 +1,8 @@
+local (pta = html.getPageTableAddress ());
+local (username = "");
+try {username = nameof (pta^.adrMemberInfo^)};
+if username == "" {
+	return ("")};
+local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+replacementTable.username = username;
+return (mainResponder.getString ("members.cookieIndicatesYouAre", @replacementTable))

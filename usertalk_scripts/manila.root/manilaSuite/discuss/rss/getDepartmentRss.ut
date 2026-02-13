@@ -1,0 +1,49 @@
+on getDepartmentRss (department="", adrsite=nil, maxitems=50) {
+	«Changes
+		«10/11/03; 10:51:52 PM by JES
+			«Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
+		«10/8/03; 12:42:40 PM by JES
+			«Added support for per-department language specification.
+		«9/4/03; 4:32:51 PM by JES
+			«If syndication is not enabled on the site or if the site is editors only, return a 404 page.
+		«5/9/03; 10:10:22 PM by JES
+			«Created. Return RSS for a given news item department.
+	local (pta = html.getPageTableAddress ());
+	on includeCallback (adrmsg) {
+		local (flInclude = false);
+		if defined (adrmsg^.newsItem.department) {
+			if manilaSuite.news.isPosted (adrmsg) {
+				if typeOf (adrmsg^.newsItem.department) == listType {
+					if adrmsg^.newsItem.department contains department {
+						flInclude = true}}
+				else {
+					if adrmsg^.newsItem.department == department {
+						flInclude = true}}}};
+		return (flInclude)};
+	if adrsite == nil {
+		adrsite = manilaSuite.getSiteAddress ()};
+	local (adrdepts = manilaSuite.news.getDepartmentTableAddress (adrsite));
+	if manilaSuite.getNewsSitePref ("flEditorsOnlyAccessToSite", adrsite, false) {
+		local (flEditor = manilaSuite.editors.editorialTest (pta));
+		if not flEditor {
+			local (groupname = manilaSuite.members.getGroupNameFromSiteAddress (adrsite));
+			if not mainResponder.security.httpAuthentication (pta^.newsSite^.siteName, pta, groupname) {
+				return (manilaSuite.notFound.page ())}}};
+	if department == "" { //get department from path-args
+		if defined (pta^.pathArgs) {
+			if pta^.pathArgs != "" {
+				department = string.urlDecode (pta^.pathArgs)}};
+		if department == "" { //404 page
+			return (manilaSuite.notFound.page ())}};
+	local (title = adrsite^.["#newsSite"].siteName + ": " + department);
+	local (link = manilaSuite.getUrl ("editorialNewsItems") + "departments/" + manilaSuite.news.departmentNameToPath (department));
+	local (description = "", language = "none");
+	if defined (adrdepts^.[department].description) {
+		description = adrdepts^.[department].description};
+	if defined (adrdepts^.[department].language) {
+		if adrdepts^.[department].language != "" {
+			language = adrdepts^.[department].language}};
+	return (manilaSuite.discuss.rss.getRss (adrsite, @includeCallback, title:title, maxitems:maxitems, link:link, description:description, language:language))};
+«bundle //test code
+	«wp.newTextObject (getDepartmentRss ("Manila", @jaketest2ManilaWebsite), @workspace.rssText)
+	«edit (@workspace.rssText)

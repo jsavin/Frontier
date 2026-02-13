@@ -1,0 +1,1 @@
+return (manilaSuite.news.security ()) //check access permissions, which vary on settings

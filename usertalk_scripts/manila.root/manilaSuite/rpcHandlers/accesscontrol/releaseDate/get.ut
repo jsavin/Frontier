@@ -1,0 +1,5 @@
+on get (username, password, siteName, msgNum) {
+	«manilaSuite.rpcHandlers.accesscontrol.releaseDate.get : 04/05/21, 10:00:30 by DAB
+		«get releaseDate of message msgnum in site sitename
+		«manilaFixer.rpcHandlers.accesscontrol.releaseDate.get : 02/02/27, 14:41:26 by DAB
+	manilaSuite.accessControl.rpcHandlers.get(username, password, siteName, msgNum, "releasedate")}

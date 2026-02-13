@@ -1,0 +1,19 @@
+on getBodyCallback (adrMsgTable) {
+	«Changes:
+		«4/13/07; 4:28:03 PM by JES
+			«Call into manilaSuite.news.viewFullItem for news item full-item view. Refactors so we're not replicating code (and bugs) for full-item news item pages.
+		«7/9/05; 5:40:38 AM by JES
+			«Pass flFullItemPage to manilaSuite.news.formatNewsItem as true. Causes the full text of the news item to always appear in the discussion group, regardless of what the news item summary prefs are set to.
+		«04/13/00; 2:50:33 PM by PBS
+			«Created. Common bottleneck callback for getting the body of a discussion group message. It's necessary to over-ride mainResponder's built-in behavior, as there are types of contents mainResponder doesn't know about.
+	
+	if defined (adrMsgTable^.newsItem) {
+		local (pta = html.getPageTableAddress ());
+		local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+		local (newsItemTemplate = manilaSuite.news.getNewsItemTemplate (adrSite));
+		local (flDgLink = true);
+		if string.lower (pta^.url) endsWith "msgreader" {
+			flDgLink = false};
+		«return (manilaSuite.news.formatNewsItem (adrMsgTable, newsItemTemplate, flDgLink:flDgLink, flIncrementReadCount:false, flFullItemPage:true)) //the read count is incremented by mainResponder
+		return (manilaSuite.news.viewFullItem ())};
+	return ("")}

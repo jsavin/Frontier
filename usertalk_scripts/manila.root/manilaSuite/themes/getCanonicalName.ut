@@ -1,0 +1,5 @@
+on getCanonicalName (adrTheme) {
+	«Return the canonical name of a theme, given its address.
+		«06/05/00; 10:56:16 PM by PBS
+	
+	return (nameOf (adrTheme^))}

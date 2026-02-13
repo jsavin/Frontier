@@ -1,0 +1,51 @@
+«Changes
+	«11/24/06; 5:28:56 PM by LL
+		«Changed some text on the page.
+	«9/20/06; 2:14:22 PM by LL
+		«Corrected Manila store link and removed Frontier references.
+	«4/8/02; 4:13:43 PM by JES
+		«Created. Cribbed from radio.macros.enterSerialNumber and radio.macros.thankYou.
+
+local (pta = html.getpagetableaddress ());
+local (htmltext = "", indentlevel = 0);
+on add (s) {
+	htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};
+local (flInvalidSerialNumber = false, serialNumberForDisplay = string.upper (user.prefs.serialNumber));
+bundle { //clear the serial number if it's the trial serial number
+	if serialNumberForDisplay == "A1NX-5JF5-1909" {
+		serialNumberForDisplay = ""}};
+if pta^.method == "POST" {
+	local (sn = string.trimWhiteSpace (string.upper (pta^.postArgs.serialNumber)));
+	serialNumberForDisplay = sn;
+	if sn == "" {
+		filemenu.quit ()};
+	if userLand.isValidSerialNumber (sn) {
+		userland.trialVersion.flExpired = false;
+		userland.trialVersion.flTrialVersion = false;
+		userland.trialVersion.whenRegistered = clock.now ();
+		user.prefs.serialnumber = sn;
+		mainResponder.redirect ("http://" + pta^.host + pta^.uri + "?confirm=true");
+		return ("")}
+	else {
+		flInvalidSerialNumber = true}};
+local (args); new (tableType, @args);
+webserver.parseArgs (pta^.searchArgs, @args);
+if defined (args.confirm) { //thank you page
+	pta^.title = "Thank You";
+	add ("<p style=\"padding-top:15px;\">From all of us at UserLand, thank you!</p>");
+	add ("<p>Click the Continue button to return to the Frontier Admin site.</p>");
+	add ("<p style=\"padding-top:15px;\"><form method=\"GET\" action=\"/\">");
+	add ("<input type=\"submit\" value=\"Continue\">");
+	add ("</form></p>")}
+else { //enter serial number page
+	pta^.title = "Please enter your Manila serial number";
+	add ("<p>To register Manila, please visit the <a href=\"http://manila.userland.com/store\">store website</a>, obtain a serial number, and enter it here. </p>");
+	bundle { //add the form
+		add ("<form method=\"POST\">"); indentlevel++;
+		add ("<table cellspacing=\"10\" cellpadding=\"0\">"); indentlevel++;
+		add ("<tr><td>Serial number:</td><td><input type=text size=\"35\" name=\"serialNumber\" value=\"" + serialNumberForDisplay + "\"></td><td><input type=\"submit\" value=\"Submit\"></td></tr>");
+		if flInvalidSerialNumber {
+			add ("<tr><td>&nbsp;</td><td colspan=\"2\"><font color=\"red\">Sorry, that is not a valid serial number.</font></td></tr>")};
+		add ("</table>"); indentlevel--;
+		add ("</form>"); indentlevel--}};
+return (htmltext)

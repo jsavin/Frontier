@@ -1,0 +1,35 @@
+on buildDefaultCohorts (adrCohorts) {
+	«28/04/05; 6:07:11 PM AM by PR
+		«added Content and Contributing editors
+	«manilaSuite.AccessControl.buildDefaultCohorts : 04/05/20, 16:13:00 by DAB
+		«ensure 'standard" chohorts are set up
+		«was manilafixer.buildDefaultCohorts : 02/02/21, 15:37:28 by DAB
+	«messages at manilaData.localization.languages.english.strings.accessControl
+	local (pta = html.getPageTableAddress());
+	
+	on addCohort(nme, isinScript, isdefault, id=nil) { //id is language invariant capable
+		nme = manilaSuite.getString("accessControl." + nme, pta:pta); //02/03/24, 11:04:51 by DAB
+		if id == nil {id = nme}; //02/03/24, 11:00:13 by DAB
+		new(tabletype, @adrCohorts^.[id]); //02/03/24, 11:04:57 by DAB
+		«adrCohorts^.[nme].name = nme
+		«adrCohorts^.[nme].containsTest = isinScript
+		«adrCohorts^.[nme].default = isdefault
+		«adrCohorts^.[nme].systemdefinition = true
+		adrCohorts^.[id].name = nme; //03/01/08, 18:09:28 by DAB
+		adrCohorts^.[id].containsTest = isinScript; //03/01/08, 18:09:28 by DAB
+		adrCohorts^.[id].default = isdefault; //03/01/08, 18:09:28 by DAB
+		adrCohorts^.[id].systemdefinition = true; //03/01/08, 18:09:28 by DAB
+		return true};
+	
+	if not defined(adrCohorts^) {
+		new(tabletype, adrCohorts)};
+	
+	addCohort("Everyone", @manilaSuite.accessControl.universal, true, "Everyone");
+	addCohort("ManagingEditorsOnly", @manilaSuite.editors.managingEditorTest,  false, "Managing Editors Only");
+	addCohort("EditorsOnly", @manilaSuite.editors.editorialTest,  false, "Editors Only");
+	addCohort("MembersOnly", @manilaSuite.accessControl.membersOnly,  false, "Members Only");
+	«28/04/05; 6:07:11 PM by PR added content editor and contributing editor cohorts
+	addCohort("ContentEditorsOnly", @manilaSuite.editors.contentEditorTest,  false, "Content Editors Only");
+	addCohort("ContributingEditorsOnly", @manilaSuite.editors.contributingEditorTest,  false, "Contributing Editors Only");
+	
+	return true}

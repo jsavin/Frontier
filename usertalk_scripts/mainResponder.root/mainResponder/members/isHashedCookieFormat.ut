@@ -1,0 +1,13 @@
+on isHashedCookieFormat (cookieString) {
+	«Return true if the cookie string is in the new format, false if it's the original format. cookieString is an undecoded cookieString.
+		«04/10/00; 12:00:59 PM by PBS
+	
+	if not (cookieString contains "&") {
+		return (false)};
+	
+	if cookieString contains "%09" {
+		cookieString = string.urlDecode (cookieString);
+		if string.countFields (cookieString, '\t') == 2 {
+			return (false)}};
+	
+	return (true)} //it's in the new format

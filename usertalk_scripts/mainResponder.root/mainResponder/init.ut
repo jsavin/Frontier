@@ -1,0 +1,337 @@
+on init () {
+	«Initialize mainResponder.
+	«Changes:
+		«12/30/09; 12:33:12 AM by JES
+			«Initialize data and hooks for the maintenance mode placeholder page.
+				«Initialize config.mainResponder.prefs.maintenanceMode.flEnabled to false. If true, the maintenanceMode controlAccess callback will respond to all requests on ports other than the admin port, with an error page.
+				«The title and text of the error page are initialized and can be customized at config.mainResponder.prefs.maintenanceMode.pageTitle and config.mainResponder.prefs.maintenanceMode.pageText.
+		«Changes <= 2005
+			«10/7/05; 3:57:41 PM by JES
+				«If admin group has empty cookieDomain, change it to * so it will work for all sites for a given domain name, including sub-domains. (See mainResponder.members.getCookieDomain for related changes.)
+			«9/27/05; 1:17:40 AM by JES
+				«Ensure config.mainResponder.controlPanel.wizards exists.
+			«9/22/05; 2:35:15 AM by JES
+				«Init config.mainResponder.prefs.flAdminGroupAlwaysAllowed to true.
+			«6/17/05; 8:18:16 PM by JES
+				«Call mainResponder.subscriptions.updateAllChangesTables in its own thread.
+			«10/23/04; 1:05:33 AM by JES
+				«Init config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites to true.
+			«3/10/03; 5:53:51 PM by JES
+				«Make sure that system.environment.isRadio is defined (and false).
+			«3/4/03; 3:19:15 PM by JES
+				«Return @config.mainResponder.
+			«9/3/02; 1:26:05 AM by JES
+				«Fixed a bonehead bug -- we were calling user.rootUpdates.init to initialize the user.rootUpdates.callbacks table. We should have called rootUpdates.init instead.
+			«8/28/02; 11:18:11 PM by JES
+				«Register admin site callbacks, and config.mainResponder.prefs.flLogRootUpdates.
+			«8/20/02; 12:38:52 AM by JES
+				«If the port 5335 listen configured at user.inetd.config.http2 is not installed, install it, based on the default http listen.
+			«8/18/02; 5:21:19 PM by JES
+				«Install the admin site pathEvaluation callback at config.mainResponder.callbacks.pathEvaluation.frontierAdminSite.
+			«8/1/02; 6:59:56 PM by JES
+				«Initialize new search engine prefs at config.mainResponder.search.prefs. No longer create config.mainResponder.data.searchQueue.
+			«06/22/00; 3:57:55 PM by PBS
+				«Set hashed cookies to true by default.
+			«06/17/00; 5:29:29 PM by PBS
+				«Now false by default: flKeepParamTable, flLog, flDiscussStatsNightly
+			«12/11/1999 at 5:29:32 AM by AR
+				«Commented out the code for hooking into the scheduler. This is now handled in mainResponder.startup.
+			«11/23/99; 4:10:06 PM by PBS
+				«Backups and discuss archiving now false by default.
+			«11/20/99; 4:29:29 PM by PBS
+				«Changed some defaults. Discuss archiving is true by default. Nightly updates are on by default; the default nightly update list contains Frontier, mainResponder, manila, and prefs.root. Save databases every minute is true by default. Logging database opens to the temp table is now false by default.
+			«11/16/99; 11:48:17 PM by PBS
+				«Set up prefs for flUpdateNightly, updateNightlyList, and securityLevel. The first two are prefs for automated nightly updates, the third is the security level for the Control Panel.
+			«10/25/99; 4:04:59 PM by PBS
+				«config.mainResponder.prefs.flControlPanel: if true, then the /controlPanel/ system website can be accessed. It's true by default.
+			«8/15/99; 9:53:42 AM by DW
+				«config.mainResponder.prefs.flLogReopenHourly, if true, we close the log file every hour. It will be re-opened by the next log.add call. In our work with the 6.1 kernel, we've determined that for busy servers this helps Frontier's memory utilization significantly, and the cost of re-opening the file once an hour is relatively small.
+			«8/15/99; 9:34:07 AM by DW
+				«Make sure that scheduler tasks are installed. This is also handled in mainResponder.install, but I don't want to ask people to run this script to go to 6.1, so we check to see if they're defined and if they're not we link them in.
+			«8/15/99; 8:26:14 AM by DW
+				«initialize config.mainResponder.prefs.flArchiveDiscuss and discussArchiveFolder.
+			«Wed, Mar 10, 1999 at 2:34:19 PM by PBS
+				«Initialize config.mainResponder.data.
+				«Initialize config.mainResponder.data.searchQueue.
+			«Wed, Mar 10, 1999 at 2:19:48 PM by PBS
+				«Initialize the config.mainResponder.search table.
+				«Set config.mainResponder.prefs.flSearchEngine to false by default.
+					«This means that this machine is not, by default, a search engine server.
+				«Set config.mainResponder.prefs.flLogMemAvail to false by default.
+			«Tue, Mar 9, 1999 at 4:12:13 PM by PBS
+				«Use Frontier.getSubFolder rather than mainResponder.getFolder.
+			«Sat, Mar 20, 1999 at 4:48:37 PM by PBS
+				«Added flConvertToMacText pref.
+					«On Macs, convert incoming latin text to Mac.
+					«On Windows the pref has no effect.
+	
+	on suretable (adrtable) {
+		if not defined (adrtable^) {
+			new (tabletype, adrtable)}};
+	suretable (@config.mainResponder);
+	bundle { //config.mainResponder.prefs
+		suretable (@config.mainResponder.prefs);
+		if not defined (config.mainResponder.prefs.backupFolder) {
+			config.mainResponder.prefs.backupFolder = Frontier.getSubFolder ("/ops/backups/")};
+		if not defined (config.mainResponder.prefs.defaultDiscussRoot) {
+			config.mainResponder.prefs.defaultDiscussRoot = "discuss"};
+		if not defined (config.mainResponder.prefs.defaultNewsRoot) {
+			config.mainResponder.prefs.defaultNewsRoot = "default"};
+		if not defined (config.mainResponder.prefs.flAllowPublicSearchSubmissions) { //PBS 3/9/99
+			config.mainResponder.prefs.flAllowPublicSearchSubmissions = false};
+		if not defined (config.mainResponder.prefs.flBackupNightly) {
+			config.mainResponder.prefs.flBackupNightly = false}; //PBS 11/23/99: now false by default
+		if not defined (config.mainResponder.prefs.flDiscussStatsNightly) {
+			«config.mainResponder.prefs.flDiscussStatsNightly = true
+			config.mainResponder.prefs.flDiscussStatsNightly = false}; //PBS 06/17/00: Now false by default for 6.2.
+		if not defined (config.mainResponder.prefs.flArchiveDiscuss) {
+			config.mainResponder.prefs.flArchiveDiscuss = false}; //PBS 11/23/99: now false by default
+		if not defined (config.mainResponder.prefs.discussArchiveFolder) {
+			config.mainResponder.prefs.discussArchiveFolder = Frontier.getSubFolder ("/ops/discussArchive/")};
+		if not defined (config.mainResponder.prefs.flControlPanel) { //PBS 10/25/99: pref for the /controlPanel/ site
+			config.mainResponder.prefs.flControlPanel = true};
+		if not defined (config.mainResponder.prefs.flDebug) {
+			config.mainResponder.prefs.flDebug = false};
+		if not defined (config.mainResponder.prefs.flKeepParamTable) {
+			«config.mainResponder.prefs.flKeepParamTable = true
+			config.mainResponder.prefs.flKeepParamTable = false}; //PBS 06/17/00: Now false by default in 6.2.
+		if not defined (config.mainResponder.prefs.flLog) {
+			«config.mainResponder.prefs.flLog = true
+			config.mainResponder.prefs.flLog = false}; //PBS 06/17/00: HTTP logging now off by default in 6.2.
+		if not defined (config.mainResponder.prefs.flLogMemavail) {
+			config.mainResponder.prefs.flLogMemavail = false};
+		if not defined (config.mainResponder.prefs.flLogDatabaseOpens) {
+			config.mainResponder.prefs.flLogDatabaseOpens = false}; //PBS 11/20/99: now false by default, no to logging database opens to the temp table
+		if not defined (config.mainResponder.prefs.flLogReopenHourly) {
+			config.mainResponder.prefs.flLogReopenHourly = false};
+		if not defined (config.mainResponder.prefs.flOpenAboutWindow) {
+			config.mainResponder.prefs.flOpenAboutWindow = true};
+		if not defined (config.mainResponder.prefs.flBuildPagesInBackground) {
+			config.mainResponder.prefs.flBuildPagesInBackground = false}; //PBS 11/20/99: now false by default, no to building pages in the background
+		if not defined (config.mainResponder.prefs.flProfiling) {
+			config.mainResponder.prefs.flProfiling = false};
+		if not defined (config.mainResponder.prefs.flSaveDatabasesEveryMinute) {
+			config.mainResponder.prefs.flSaveDatabasesEveryMinute = true}; //PBS 11/20/99: save databases every minute is now true by default
+		if not defined (config.mainResponder.prefs.flMembershipHashedCookies) { //PBS 06/22/00: true by default
+			config.mainResponder.prefs.flMembershipHashedCookies = true};
+		if not defined (config.mainResponder.prefs.flSearchEngine) {
+			config.mainResponder.prefs.flSearchEngine = false};
+		if not defined (config.mainResponder.prefs.flStats) {
+			config.mainResponder.prefs.flStats = true};
+		if not defined (config.mainResponder.prefs.flSubscriptions) {
+			config.mainResponder.prefs.flSubscriptions = false};
+		if not defined (config.mainResponder.prefs.hitsBetweenLogSaves) {
+			config.mainResponder.prefs.hitsBetweenLogSaves = 100};
+		if not defined (config.mainResponder.prefs.flConvertToMacText) { //PBS 3/20/99
+			config.mainResponder.prefs.flConvertToMacText = true};
+		if not defined (config.mainResponder.prefs.logFolder) {
+			config.mainResponder.prefs.logFolder = Frontier.getSubFolder ("/ops/logs/")};
+		if not defined (config.mainResponder.prefs.legalTags) {
+			new (tabletype, @config.mainResponder.prefs.legalTags);
+			config.mainResponder.prefs.legalTags.i = true;
+			config.mainResponder.prefs.legalTags.pre = true};
+		if not defined (config.mainResponder.prefs.flAllowByIpOnly) { //AR 11/04/1999
+			config.mainResponder.prefs.flAllowByIpOnly = false};
+		if not defined (config.mainResponder.prefs.allowedIpAddresses) { //AR 11/04/1999
+			config.mainResponder.prefs.allowedIpAddresses = "127.0.0.1"};
+		if not defined (config.mainResponder.prefs.flUpdateNightly) { //PBS 11/16/99: update various gdbs every night
+			config.mainResponder.prefs.flUpdateNightly = true}; //PBS 11/20/99: nightly updates now true by default
+		if not defined (config.mainResponder.prefs.updateNightlyList) { //PBS 11/16/99: list of gdbs to update nightly
+			config.mainResponder.prefs.updateNightlyList = {"Frontier.root", "mainResponder.root", "manila.root", "prefs.root"}}; //PBS 11/20/99: update everything every night by default
+		if not defined (config.mainResponder.prefs.securityLevel) { //PBS 11/16/99: set up security level pref
+			config.mainResponder.prefs.securityLevel = 0};
+		if not defined (config.mainResponder.prefs.flLogRootUpdates) {
+			config.mainResponder.prefs.flLogRootUpdates = true};
+		if not defined (config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites) { // 10/22/04; 4:04:56 PM by EDS
+			config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites = true};
+		if not defined (config.mainResponder.prefs.flAdminGroupAlwaysAllowed) { //JES 9/22/05: init to true -- if true, admins can log in anywhere
+			config.mainResponder.prefs.flAdminGroupAlwaysAllowed = true}};
+	bundle { //config.mainResponder.prefs.maintenanceMode -- JES 12/30/09
+		if not defined (config.mainResponder.prefs.maintenanceMode) {
+			new (tableType, @config.mainResponder.prefs.maintenanceMode)};
+		if not defined (config.mainResponder.prefs.maintenanceMode.flEnabled) {
+			config.mainResponder.prefs.maintenanceMode.flEnabled = false};
+		if not defined (config.mainResponder.prefs.maintenanceMode.pageTitle) {
+			config.mainResponder.prefs.maintenanceMode.pageTitle = "Planned Maintenance"};
+		if not defined (config.mainResponder.prefs.maintenanceMode.pageText) {
+			config.mainResponder.prefs.maintenanceMode.pageText = "<h2>Down for maintenance</h2>\r\n<p>\r\nThe server is currently down for planned maintenance. Please come back later.\r\n</p>\r\n<p>\r\n<i>Sorry for the inconvenience!</i>\r\n</p>"};
+		if not defined (config.mainresponder.callbacks.controlAccess.maintenanceMode) {
+			config.mainresponder.callbacks.controlAccess.maintenanceMode = @mainResponder.security.maintenanceMode}};
+	bundle { //config.mainResponder.urls
+		local (localhost = "localhost");
+		suretable (@config.mainResponder.urls);
+		bundle { //discuss urls
+			local (basediscussurl = "http://" + localhost + "/htmlInterfaces/discussionGroup/");
+			if not defined (config.mainResponder.urls.discussEditInBrowser) {
+				config.mainResponder.urls.discussEditInBrowser = basediscussurl + "edit/editInBrowser$"};
+			if not defined (config.mainResponder.urls.discussEditInFrontier) {
+				config.mainResponder.urls.discussEditInFrontier = basediscussurl + "edit/editInFrontier$"};
+			if not defined (config.mainResponder.urls.discussEnclosureDownloader) {
+				config.mainResponder.urls.discussEnclosureDownloader = basediscussurl + "enclosureDownloader$"};
+			if not defined (config.mainResponder.urls.discussEnclosureRPCer) {
+				config.mainResponder.urls.discussEnclosureRPCer = basediscussurl + "enclosureRPCer$"};
+			if not defined (config.mainResponder.urls.discussEnclosureViewer) {
+				config.mainResponder.urls.discussEnclosureViewer = basediscussurl + "raw/messages/"};
+			if not defined (config.mainResponder.urls.discussGetChangesFromWorkstation) {
+				config.mainResponder.urls.discussGetChangesFromWorkstation = basediscussurl + "edit/getChangesFromWorkstation"};
+			if not defined (config.mainResponder.urls.discussHomePage) {
+				config.mainResponder.urls.discussHomePage = basediscussurl};
+			if not defined (config.mainResponder.urls.discussMsgReader) {
+				config.mainResponder.urls.discussMsgReader = basediscussurl + "msgReader$"};
+			if not defined (config.mainResponder.urls.discussNewThread) {
+				config.mainResponder.urls.discussNewThread = basediscussurl + "edit/newThread$"};
+			if not defined (config.mainResponder.urls.discussPostEditedMessage) {
+				config.mainResponder.urls.discussPostEditedMessage = basediscussurl + "edit/postEditedMsg"};
+			if not defined (config.mainResponder.urls.discussPostMessage) {
+				config.mainResponder.urls.discussPostMessage = basediscussurl + "edit/postMsg"};
+			if not defined (config.mainResponder.urls.discussTopics) {
+				config.mainResponder.urls.discussTopics = basediscussurl + "topics"}};
+		bundle { //resources urls
+			local (baseresourcesurl = "http://" + localhost + "/resources/");
+			if not defined (config.mainResponder.urls.frontierLogo) {
+				config.mainResponder.urls.frontierLogo = baseresourcesurl + "logos/logoWinNT.gif"};
+			if not defined (config.mainResponder.urls.icons) {
+				config.mainResponder.urls.icons = baseresourcesurl + "icons/"};
+			if not defined (config.mainResponder.urls.imageCowSkull) {
+				config.mainResponder.urls.imageCowSkull = baseresourcesurl + "userlandIcons/skull"}};
+		bundle { //member urls
+			local (basememberurl = "http://" + localhost + "/htmlInterfaces/logon/");
+			if not defined (config.mainResponder.urls.memberCheckMail) {
+				config.mainResponder.urls.memberCheckMail = basememberurl + "checkYourMail"};
+			if not defined (config.mainResponder.urls.memberHome) {
+				config.mainResponder.urls.memberHome = basememberurl + "welcome"};
+			if not defined (config.mainResponder.urls.memberLogoff) {
+				config.mainResponder.urls.memberLogoff = basememberurl + "logoffConfirm"};
+			if not defined (config.mainResponder.urls.memberLogon) {
+				config.mainResponder.urls.memberLogon = basememberurl}};
+		bundle { //misc urls
+			if not defined (config.mainResponder.urls.newsHome) {
+				config.mainResponder.urls.newsHome = "http://" + localhost + "/"};
+			if not defined (config.mainResponder.urls.searchHome) {
+				config.mainResponder.urls.searchHome = "http://" + localhost + "/search/"};
+			local (basepeopleurl = "http://" + localhost + "/htmlInterfaces/people/");
+			if not defined (config.mainResponder.urls.prefsHome) {
+				config.mainResponder.urls.prefsHome = basepeopleurl + "prefs/"};
+			if not defined (config.mainResponder.urls.profilesHome) {
+				config.mainResponder.urls.profilesHome = basepeopleurl + "profiles/"}}};
+	bundle { //config.mainResponder.callbacks
+		suretable (@config.mainResponder.callbacks);
+		suretable (@config.mainResponder.callbacks.addMessage);
+		suretable (@config.mainResponder.callbacks.controlAccess);
+		suretable (@config.mainResponder.callbacks.editMessage);
+		suretable (@config.mainResponder.callbacks.lightweightMacros);
+		suretable (@config.mainResponder.callbacks.nightlyBackup);
+		suretable (@config.mainResponder.callbacks.searchEngineSecurity); //PBS 3/9/99
+		
+		«Add search engine callbacks.
+		if not defined (config.mainResponder.callbacks.addMessage.index) {
+			script.newScriptObject ("mainResponder.search.client.addMessageCallback (adrNewMsg)", @config.mainResponder.callbacks.addMessage.index);
+			script.compile (@config.mainResponder.callbacks.addMessage.index)};
+		if not defined (config.mainResponder.callbacks.editMessage.index) {
+			script.newScriptObject ("mainResponder.search.client.addMessageCallback (adrEditedMsg)", @config.mainResponder.callbacks.editMessage.index);
+			script.compile (@config.mainResponder.callbacks.editMessage.index)};
+		
+		«Add security callback
+		if not defined (config.mainResponder.callbacks.controlAccess.blockByIP) { //AR 11/04/1999
+			script.newScriptObject ("mainResponder.security.blockHttpByIP ()", @config.mainResponder.callbacks.controlAccess.blockByIP)};
+		
+		«Add pathEvaluation callback for the Admin site
+		if not defined (config.mainResponder.callbacks.pathEvaluation) { //JES 8/18/02
+			new (tableType, @config.mainResponder.callbacks.pathEvaluation)};
+		if not defined (config.mainResponder.callbacks.pathEvaluation.frontierAdminSite) { //JES 8/18/02
+			config.mainResponder.callbacks.pathEvaluation.frontierAdminSite = @mainResponder.adminSite.callbacks.pathEvaluation}};
+	bundle { //config.mainResponder.controlPanel
+		suretable (@config.mainResponder.controlPanel);
+		suretable (@config.mainResponder.controlPanel.wizards)};
+	bundle { //config.mainResponder.data
+		suretable (@config.mainResponder.data);
+		};«suretable (@config.mainResponder.data.searchQueue)
+	bundle { //config.mainResponder.domains
+		suretable (@config.mainResponder.domains);
+		if sizeof (config.mainResponder.domains) == 0 {
+			config.mainResponder.domains.default = Frontier.getSubFolder ("/www/")}};
+	bundle { //config.mainResponder.globals
+		suretable (@config.mainResponder.globals);
+		if not defined (config.mainResponder.globals.allowDirectoryListings) { //PBS 11/19/99: default is now false
+			config.mainResponder.globals.allowDirectoryListings = false};
+		if not defined (config.mainResponder.globals.allowScriptListings) {
+			config.mainResponder.globals.allowScriptListings = false};
+		if not defined (config.mainResponder.globals.allowScriptsToRun) {
+			config.mainResponder.globals.allowScriptsToRun = false};
+		if not defined (config.mainResponder.globals.defaultDirectoryItems) {
+			config.mainResponder.globals.defaultDirectoryItems = {"default.html", "default", "index.html", "index"}};
+		if not defined (config.mainResponder.globals.defaultMembershipGroup) {
+			config.mainResponder.globals.defaultMembershipGroup = "default"};
+		if not defined (config.mainResponder.globals.flRender) {
+			config.mainResponder.globals.flRender = false};
+		if not defined (config.mainResponder.globals.flRenderingCache) {
+			config.mainResponder.globals.flRenderingCache = false}};
+	bundle { //config.mainResponder.search
+		suretable (@config.mainResponder.search);
+		if not defined (config.mainResponder.search.domain) {
+			config.mainResponder.search.domain = "localhost"};
+		if not defined (config.mainResponder.search.port) {
+			config.mainResponder.search.port = 80};
+		if not defined (config.mainResponder.search.addToIndex) {
+			config.mainResponder.search.addToIndex = "mainResponder.search.index"};
+		if not defined (config.mainResponder.search.restartIndex) {
+			config.mainResponder.search.restartIndex = "mainResponder.search.restartIndex"};
+		if not defined (config.mainResponder.search.sites) {
+			suretable (@config.mainResponder.search.sites)};
+		if not defined (config.mainResponder.search.prefs) {
+			new (tableType, @config.mainResponder.search.prefs)};
+		if not defined (config.mainResponder.search.prefs.flLogEnabled) {
+			config.mainResponder.search.prefs.flLogEnabled = false};
+		if not defined (config.mainResponder.search.prefs.flLogSearches) {
+			config.mainResponder.search.prefs.flLogSearches = true};
+		if not defined (config.mainResponder.search.prefs.flLogIndex) {
+			config.mainResponder.search.prefs.flLogIndex = true};
+		if not defined (config.mainResponder.search.prefs.flLogNoIndex) {
+			config.mainResponder.search.prefs.flLogNoIndex = true};
+		if not defined (config.mainResponder.search.prefs.flStoreFullText) {
+			config.mainResponder.search.prefs.flStoreFullText = false};
+		if not defined (config.mainResponder.search.prefs.minutesBetweenIndexes) {
+			config.mainResponder.search.prefs.minutesBetweenIndexes = 60};
+		if not defined (config.mainResponder.search.prefs.hoursToCacheSearchResults) {
+			config.mainResponder.search.prefs.hoursToCacheSearchResults = 24}};
+	bundle { //config.mainResponder.stats
+		if not defined (config.mainResponder.stats) {
+			new (tabletype, @config.mainResponder.stats)};
+		if not defined (config.mainResponder.stats.ctDiscussionGroupReads) {
+			config.mainResponder.stats.ctDiscussionGroupReads = 0}};
+	bundle { //port 5335 listener
+		if not defined (user.inetd.config.http2) {
+			user.inetd.config.http2 = user.inetd.config.http;
+			user.inetd.config.http2.port = 5336;
+			if user.inetd.config.http2.startup {
+				try {
+					inetd.startOne (@user.inetd.config.http2)}}}};
+	try { //register admin site callbacks
+		if not defined (user.rootUpdates.callbacks) {
+			rootUpdates.init ()};
+		if not defined (user.rootUpdates.callbacks.afterInstallPart.mainResponder) {
+			user.rootUpdates.callbacks.afterInstallPart.mainResponder = @mainResponder.adminSite.callbacks.logRootUpdate}};
+	bundle { //miscellaneous clean-up
+		if not defined (system.environment.isRadio) {
+			system.environment.isRadio = false}};
+	bundle { //update all #changes tables, in a separate thread
+		thread.callScript (@mainResponder.subscriptions.updateAllChangesTables, {})};
+	try { //ensure admin group has correct cookie domain
+		if defined ([system.temp.mainResponder.membersRootFile].admin.cookieDomain) {
+			if [system.temp.mainResponder.membersRootFile].admin.cookieDomain == "" {
+				[system.temp.mainResponder.membersRootFile].admin.cookieDomain = "*"}}};
+	«bundle //hook in to user.scheduler
+		«if not defined (user.scheduler.everyMinute.nirvanaServer)
+			«user.scheduler.everyMinute.nirvanaServer = @mainresponder.background.everyminute
+		«if not defined (user.scheduler.hourly.nirvanaServer)
+			«user.scheduler.hourly.nirvanaServer = @mainresponder.background.everyHour
+		«if not defined (user.scheduler.overnight.nirvanaServer)
+			«user.scheduler.overnight.nirvanaServer = @mainresponder.background.everynight
+	return (@config.mainResponder)};
+
+«bundle //test code
+	«local (ticks = clock.ticks ())
+	«for i = 1 to 100
+		«init ()
+	«dialog.notify ((double (clock.ticks ()) - ticks) / 60 + " secs.")
+	«

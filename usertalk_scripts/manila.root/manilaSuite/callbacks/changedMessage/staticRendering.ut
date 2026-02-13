@@ -1,0 +1,5 @@
+«Possibly do a static rendering of the new or changed page.
+	«04/04/00; 10:04:23 PM by PBS
+manilaSuite.staticRendering.discussCallback (adrMsg, adrSite);
+
+return (true)

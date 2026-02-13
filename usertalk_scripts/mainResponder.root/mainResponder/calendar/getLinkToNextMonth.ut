@@ -1,0 +1,19 @@
+on getLinkToNextMonth (adrcal, d, url) {
+	«Get a link to the next month in the calendar.
+		«03/20/01; 3:19:06 PM by PBS
+	
+	local (lastDay = mainResponder.calendar.getLastDay (adrCal));
+	if lastDay <= date.lastOfMonth (d) {
+		local (day, month, year, hour, minute, second);
+		date.get (date.firstOfMonth (date.nextMonth (d)), @day, @month, @year, @hour, @minute, @second);
+		return (mainResponder.getString ("date.abbrevMonthNames." + string.padWithZeros (month, 2)))};
+	local (nextDay = mainResponder.calendar.getNextDay (adrCal, date.firstOfMonth (date.nextMonth (d))));
+	local (lastOfMonth = date.lastOfMonth (nextDay));
+	local (lastDayInMonth = mainResponder.calendar.getMostRecentDay (adrCal, lastOfMonth));
+	local (day, month, year, hour, minute, second);
+	date.get (lastDayInMonth, @day, @month, @year, @hour, @minute, @second);
+	day = string.padWithZeros (day, 2);
+	month = string.padWithZeros (month, 2);
+	local (monthString = mainResponder.getString ("date.abbrevMonthNames." + month));
+	local (link = "<a href=\"" + url + year + "/" + month + "/" + day + "\">" + monthstring + "</a>");
+	return (link)}

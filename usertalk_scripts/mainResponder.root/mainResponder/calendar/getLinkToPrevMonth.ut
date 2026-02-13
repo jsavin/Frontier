@@ -1,0 +1,19 @@
+on getLinkToPrevMonth (adrcal, d, url) {
+	«Get a link to the previous month in the calendar.
+		«03/20/01; 4:51:35 PM by PBS
+	
+	local (firstDay = mainResponder.calendar.getFirstDay (adrCal));
+	if firstDay >= date.firstOfMonth (d) {
+		local (day, month, year, hour, minute, second);
+		date.get (date.prevMonth (d), @day, @month, @year, @hour, @minute, @second);
+		return (mainResponder.getString ("date.abbrevMonthNames." + string.padWithZeros (month, 2)))};
+	local (prevDay = mainResponder.calendar.getMostRecentDay (adrCal, date.lastOfMonth (date.prevMonth (d))));
+	local (lastOfMonth = date.lastOfMonth (prevDay));
+	local (lastDayInMonth = mainResponder.calendar.getMostRecentDay (adrCal, lastOfMonth));
+	local (day, month, year, hour, minute, second);
+	date.get (lastDayInMonth, @day, @month, @year, @hour, @minute, @second);
+	day = string.padWithZeros (day, 2);
+	month = string.padWithZeros (month, 2);
+	local (monthString = mainResponder.getString ("date.abbrevMonthNames." + month));
+	local (link = "<a href=\"" + url + year + "/" + month + "/" + day + "\">" + monthstring + "</a>");
+	return (link)}

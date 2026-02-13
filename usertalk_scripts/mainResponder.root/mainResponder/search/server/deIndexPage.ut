@@ -1,0 +1,94 @@
+on deIndexPage (url, flDialogs=false, indexName=nil) {
+	«Remove a page from the index.
+		«Changes:
+			«07/19/00; 1:14:58 AM by PBS
+				«Don't use string.nthField -- instead, always get the first word from the content string. Then delete that first word. Repeat until the string is "".
+	
+	msg ("Search Engine: de-indexing " + url + "...");
+	
+	local (indexPath = mainResponder.search.utilities.getIndexPath (indexName));
+	local (adrPageInfo = @[indexPath].pageInfo.[url]);
+	
+	if defined (adrPageInfo^) { //this page was previously indexed
+		local (content);
+		
+		if defined (adrPageInfo^.content) and adrPageInfo^.content != "" {
+			content = string (adrPageInfo^.content)}
+		else {
+			if defined (adrPageInfo^.text) {
+				content = adrPageInfo^.text}};
+		
+		if content == nil { //the text hasn't been saved, use brute force
+			searchEngine.deIndexPage (url, @[indexPath].index)}
+		else { //smart de-indexing
+			«local (wordCount = string.countFields (content, ' '))
+			local (i);
+			local (ct = 0);
+			«for i = 1 to wordCount
+				«local (oneWord = string.nthField (content, ' ', i))
+				«
+				«sys.systemTask ()
+				«
+				«if sizeOf (oneWord) > 0
+					«local (letter = oneWord [1])
+					«
+					«oneWord = string.popTrailing (oneWord, 's')
+					«local (adrLetter = @[indexPath].index.[letter])
+					«if defined (adrLetter^)
+						«local (adrWord = @adrLetter^.[oneWord])
+						«if defined (adrWord^) //is this word in the index?
+							«local (adrRef = @adrWord^.[url])
+							«if defined (adrRef^) //is this page in the index under this word?
+								«delete (adrRef)
+							«if sizeOf (adrWord^) == 0
+								«delete (adrWord)
+							«if sizeOf (adrLetter^) == 0
+								«delete (adrLetter)
+					«
+					«msg (oneWord)
+			while sizeOf (content) > 0 { //PBS 07/18/00: don't use string.nthField, but get the leading word, then delete from the content string
+				content = string.trimWhiteSpace (content);
+				local (oneWord = string.nthField (content, ' ', 1));
+				local (wordSize = sizeOf (oneWord));
+				oneWord = string.dropNonAlphas (oneWord);
+				oneWord = string.lower (oneWord);
+				oneWord = string.trimWhiteSpace (oneWord);
+				oneWord = string.popTrailing (oneWord, 's'); //pop off trailing s's
+				if oneWord == "" {
+					content = string.delete (content, 1, wordSize);
+					continue};
+				if sizeOf (oneWord) > 0 {
+					local (letter = oneWord [1]);
+					
+					oneWord = string.popTrailing (oneWord, 's');
+					local (adrLetter = @[indexPath].index.[letter]);
+					if defined (adrLetter^) {
+						local (adrWord = @adrLetter^.[oneWord]);
+						if defined (adrWord^) { //is this word in the index?
+							local (adrRef = @adrWord^.[url]);
+							if defined (adrRef^) { //is this page in the index under this word?
+								delete (adrRef)};
+							if sizeOf (adrWord^) == 0 {
+								delete (adrWord)};
+							if sizeOf (adrLetter^) == 0 {
+								delete (adrLetter)}}}};
+				
+				content = string.delete (content, 1, wordSize);
+				
+				«ct++
+				«if ct > 500 //relax on occassion
+					«thread.sleepFor (0)
+					«ct = 0}}}
+	else {
+		if flDialogs {
+			dialog.alert ("Can't de-index " + url + " because it isn't in the index.")}};
+	
+	if defined (adrPageInfo^) {
+		msg ("Search Engine: deleting page info for " + url + "...");
+		delete (adrPageInfo);
+		if flDialogs {
+			dialog.notify (url + " has been deleted from the index.")}};
+	
+	msg ("");
+	
+	return (true)}

@@ -1,0 +1,12 @@
+on isControlledMessage (adrMsg) {
+	«manilaSuite.accessControl.isControlledMessage : 04/05/23, 08:55:40 by DAB
+		«returns true if the message has non empty cohorts list
+	if not defined(adrMsg^.accesscontrol) {
+		return false};
+	case true {
+		defined(adrMsg^.accessControl.expirydate) and adrMsg^.accessControl.expirydate != nil;
+		defined(adrMsg^.accessControl.releasedate) and adrMsg^.accessControl.releasedate != nil;
+		defined(adrMsg^.accessControl.permittedCohorts) and adrMsg^.accessControl.permittedCohorts != nil;
+		defined(adrMsg^.accessControl.permittedROCohorts) and adrMsg^.accessControl.permittedROCohorts != nil {
+			return true}};
+	return false}

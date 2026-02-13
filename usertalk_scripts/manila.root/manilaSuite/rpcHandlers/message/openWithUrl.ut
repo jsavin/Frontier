@@ -1,0 +1,87 @@
+on openWithUrl (username, password, url) {
+	«Get a message -- via its URL. The sitename and msgNum aren't known by the caller. This mirrors the manilaSuite.rpcHandlers.homePage.getCurrentContent handler.
+		«04/19/00; 6:08:03 PM by PBS
+	«Changes:
+		«11/14/00; 10:59:02 PM by JES
+			«Bug fix: on Macs, latinToMac.macToLatin was being called on storyInfoTable.body, instead of storyInfo.body. This failed because storyInfoTable is not defined.
+			«Return a table of tables instead of a list of tables, since lists of tables can't be encoded by the SOAP encoder.
+	
+	local (siteName);
+	siteName = manilaSuite.rpcUtils.urlToSiteName (url);
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrSite = config.manila.sites.[siteName]);
+	local (siteUrl = adrSite^.["#ftpSite"].url);
+	local (relativePath = string.delete (url, 1, sizeOf (siteUrl)));
+	local (t); new (tableType, @t);
+	
+	local (msgNum);
+	bundle { //get the msgNum of the page
+		if relativePath contains "$" { //storyReader or msgReader page
+			local (lastField = string.nthField (relativePath, '$', string.countFields (relativePath, '$')));
+			msgNum = lastField}
+		else {
+			if relativePath == "default" or relativePath == "" { //home page?
+				msgNum = adrNewsSite^.discussLinks.homePageMsgNum}
+			else { //calendar page?
+				local (firstField = string.nthField (relativePath, '/', 1));
+				local (year);
+				try { //will fail if it's not a calendar page
+					number (firstField);
+					local (adrYear = @adrSite^.[year]);
+					local (month);
+					month = string.nthField (relativePath, '/', 2);
+					number (month);
+					local (adrMonth = @adrYear^.[month]);
+					local (day = string.nthField (relativePath, '/', 3));
+					number (day);
+					local (adrDay = @adrMonth^.[day]);
+					if string.countFields (relativePath, '/') > 3 {
+						local (essay = string.nthField (relativePath, '/', 4));
+						if string.trimWhiteSpace (essay) != "" {
+							adrDay = @adrDay^.[essay]}};
+					msgNum = adrDay^.[msgNum]};
+				if msgNum == nil { //site structure page?
+					local (path = relativePath);
+					if not (path beginsWith "/") {
+						path = "/" + path};
+					if defined (adrSite^.["#hierarchy"].paths.[path]) {
+						msgNum = adrSite^.["#hierarchy"].paths.[path]}}}}};
+	
+	if msgNum == nil {
+		scriptError ("Can't get the content of " + url + " because the server could not find the message number for that page.")};
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't get message \"" + msgNum + "\" because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMember, adrMsgTable);
+	bundle { //make sure the story is available to be checked out
+		local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+		adrMember = mainResponder.members.getMemberTable (groupName, username);
+		adrMsgTable = @adrDiscuss^.messages.[string.padwithzeros (msgNum, 7)];
+		if not (manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, adrMember, adrSite, true)) { //true because it's a message
+			local (title = adrMsgTable^.subject);
+			scriptError ("Can't edit \"" + title + "\" because it's already being edited by another member.")}};
+	bundle { //PBS 02/10/00: check out the story
+		manilaSuite.custody.checkOut (adrMsgTable, adrMember, adrSite, true)}; //true because it's a message
+	
+	t.storyInfo = manilaSuite.rpcUtils.getMessageContent (siteName, msgNum);
+	t.storyInfo.url = url;
+	if defined (t.storyInfo.outline) {
+		t.storyInfo.body = string (t.storyInfo.outline)};
+	if system.environment.isMac { //PBS 04/10/99: convert from Mac to Latin text
+		t.storyInfo.body = latinToMac.macToLatin (t.storyInfo.body)};
+	
+	bundle { //build the site info
+		new (tableType, @t.siteInfo);
+		t.siteInfo.host = tcp.myDottedId ();
+		t.siteInfo.port = user.inetd.config.http.port;
+		t.siteInfo.rpcPath = "/RPC2"; //the Frontier default
+		t.siteInfo.siteName = siteName;
+		t.siteInfo.displaySiteName = manilaSuite.getNewsSitePref ("siteName", adrSite);
+		t.siteInfo.url = siteUrl;
+		t.siteInfo.username = username;
+		t.siteInfo.password = password};
+	
+	return (t)}

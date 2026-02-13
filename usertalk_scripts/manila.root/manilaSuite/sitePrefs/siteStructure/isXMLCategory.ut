@@ -1,0 +1,2 @@
+on isXMLCategory (adr) {
+	return  (string.lower(nameof(adr^)) endswith "category")}

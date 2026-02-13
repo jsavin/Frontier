@@ -1,0 +1,41 @@
+on adminMenu (color = "#FFFFFF") {
+	«Changes
+		«10/10/06; 10:30:13 AM by LL
+			«Use manilaSuite.version to generate the version number in the admin menu.
+		«12/16/03; 4:07:37 AM by JES
+			«Added Updates link to the Pending Updates page.
+		«7/3/03; 3:21:42 PM by JES
+			«Don't add the admin menu if we're serving a mainResponder error page.
+		«6/6/02; 1:16:37 PM by JES
+			«Created. Cribbed from radioCommunityServerSuite.websites.macros.menu.
+	local (pta = html.getPageTableAddress ());
+	if pta^.adrObject == @mainResponder.adminSite.website.errorPage {
+		return ("")};
+	local (fontopen = "<font class=\"adminMenuLinkFont\" \" color=\"" + color + "\">", fontclose = "</font>");
+	local (uriWithSearchArgs = pta^.uri);
+	if sizeof (pta^.searchargs) > 0 {
+		uriWithSearchArgs =  uriWithSearchArgs + "?" + pta^.searchargs};
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext +  s};
+	on addCommand (linetext, url, fllastcommand = false) {
+		local (flhot = true);
+		if uriWithSearchArgs == url {
+			flhot = false};
+		if flhot {
+			add ("<a class=\"adminMenuLink\" href=\"" + url + "\">" + fontopen + linetext + fontclose + "</a>")}
+		else {
+			add ("<b><font class=\"adminMenuLinkFontCurrent\">" + linetext + "</font></b>")};
+		if not fllastcommand {
+			add (fontopen + "&nbsp;<b>|</b>&nbsp;" + fontclose)}};
+	
+	add (fontopen + "<b>Manila&nbsp;" + manilaSuite.version () + "</b>:&nbsp;" + fontclose);
+	addCommand ("Home", mainResponder.adminSite.urls.home);
+	addCommand ("Readouts", mainResponder.adminSite.urls.readouts);
+	addCommand ("Settings", mainResponder.adminSite.urls.settings);
+	addCommand ("Maintenance", mainResponder.adminSite.urls.maintenance);
+	addCommand ("Updates", mainResponder.adminSite.urls.updates);
+	addCommand ("Tools", mainResponder.adminSite.urls.tools);
+	addCommand ("Help", mainResponder.adminSite.urls.help, fllastcommand:true);
+	
+	return (htmltext)}

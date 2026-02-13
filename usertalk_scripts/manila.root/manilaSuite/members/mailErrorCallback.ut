@@ -1,0 +1,5 @@
+on mailErrorCallback (adrMsg) {
+	if defined (adrMsg^.ctErrors) {
+		if adrMsg^.ctErrors > 1 { //you get two errors only
+			adrMsg^.flDelete = true}};
+	return (true)}

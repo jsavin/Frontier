@@ -1,0 +1,59 @@
+on storePageForIndexing (title, url, bodyText, siteName, siteUrl, client=nil, flShowText=false, createdDate=nil, lastModDate=nil) {
+	«Changes:
+		«8/8/02; 5:38:33 PM by JES
+			«Don't save the database after every stored page -- it take a lot of server resources to do this. Instead, let mainResponder's everyMinute task do it for us, according to pref settings.
+		«8/2/02; 2:48:34 AM by JES
+			«Store the queue in its own database as created by a call to Frontier.openDataFile.
+		«9/27/99; 11:21:21 PM by PBS
+			«Added storePageForIndexing callbacks. This callback allows the sysop to filter any of the information, including URL, title, bodyText, etc. It also allows the sysop to specify an index other than index.root.
+		«Store a page in a queue for later indexing.
+			«The queue is at config.mainResponder.data.searchQueue.
+	
+	local (pageInfoTable); //PBS 9/27/99: this table will contain information about the page. The callback will have access to it.
+	new (tableType, @pageInfoTable);
+	
+	bundle { //set up the pageInfoTable
+		pageInfoTable.title = title;
+		pageInfoTable.url = url;
+		pageInfoTable.bodyText = bodyText + " " + title + " " + url + " " + siteName + " " + siteURL;
+		pageInfoTable.siteName = siteName;
+		pageInfoTable.siteUrl = siteUrl;
+		pageInfoTable.client = client;
+		pageInfoTable.flShowText = flShowText;
+		pageInfoTable.createdDate = createdDate; //PBS 3/16/99
+		pageInfoTable.lastModDate = lastModDate; //PBS 3/16/99
+		
+		pageInfoTable.indexName = file.fileFromPath (mainResponder.search.utilities.getIndexPath ()); //PBS 9/27/99: get the default index name
+		
+		pageInfoTable.flIndex = true}; //PBS 9/27/99: if a callback sets this to false, then the page won't be indexed
+	
+	bundle { //call the callback, allow it to filter the contents of the pageInfoTable, allow it to say not to store this page for indexing
+		«If pageInfoTable.flIndex gets set to false by a callback, then don't index this page.
+		try {
+			mainResponder.callbackLoop (@config.mainResponder.callbacks.storePageForIndexing, @pageInfoTable)};
+		
+		if not pageInfoTable.flIndex { //index only if pageInfoTable.flIndex is still true; a callback may have set it to false
+			return (true)}};
+	
+	«local (adrStoredPagesTable = @config.mainResponder.data.searchQueue) //the address of the queue
+	local (adrStoredPagesTable = frontier.openDataFile ("mainResponderSearchQueue")); //the address of the queue
+	local (adrStorage = @adrStoredPagesTable^.[url]); //the address of this page in the queue
+	
+	«Because of asynchronous XML-RPC, we may have already stored a newer version of this page. Check first.
+	bundle {
+		if pageInfoTable.lastModDate != nil {
+			if defined (adrStorage^.lastModDate) {
+				if adrStorage^.lastModDate > pageInfoTable.lastModDate { //the page in the queue already is newer
+					return (true)}}; //don't do anything, discard this
+			local (indexPath = mainResponder.search.utilities.getIndexPath (pageInfoTable.indexName));
+			mainResponder.search.utilities.assureIndex (pageInfoTable.indexName); //create and/or open the index gdb, if necessary
+			if defined ([indexPath].pageInfo.[url].lastModDate) {
+				if [indexPath].pageInfo.[url].lastModDate > lastModDate { //the page in the index is newer
+					return (true)}}}}; //don't index this page
+	
+	adrStorage^ = pageInfoTable; //copy the page info table into the search queue
+	
+	«Save the database (config.root) containing the index queue.
+	«fileMenu.saveMyRoot (adrStorage)
+	
+	return (true)}

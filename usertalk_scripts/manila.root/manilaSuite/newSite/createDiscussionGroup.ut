@@ -1,0 +1,147 @@
+on createDiscussionGroup (adrSiteInfo) {
+	«Create the discussion group for this site, if needed.
+		«10/21/99; 12:29:04 PM by PBS
+		«Changes:
+			«3/14/03; 1:57:41 AM by JES
+				«If the new site is a news items site, create a first news item as a welcome message.
+			«11/1/99; 9:24:02 AM by PBS
+				«Don't create a profile page for the managing editor.
+				«Create a spacer GIF in the dg.
+			«01/29/00; 12:25:53 PM by PBS
+				«Give the home page a creation date of yesterday so that the Flip Home Page button appears for sites that have just been created.
+	
+	local (dgName = adrSiteInfo^.discussionGroupName);
+	local (adrDg = @adrSiteInfo^.adrSite^.["#discussionGroup"]);
+	local (adrNewsSite = @adrSiteInfo^.adrSite^.["#newsSite"]);
+	
+	bundle { //if the dg already exists, do nothing
+		local (adrDiscuss = @[system.temp.mainResponder.discussRootFile].[dgName]);
+		if defined (adrDiscuss^) {
+			if typeOf (adrDiscuss^) == addressType or typeOf (adrDiscuss^) == stringType {
+				adrDiscuss = adrDiscuss^};
+			adrSiteInfo^.adrDiscussionGroup = adrDiscuss; //save the address in the site info table
+			return (true)}}; //no need to continue, the dg storage already exists
+	
+	adrSiteInfo^.adrDiscussionGroup = adrDg;
+	
+	bundle { //create the top-level tables for the dg
+		new (tableType, @adrDg^.calendar);
+		new (tableType, @adrDg^.editorialPrefs);
+		new (tableType, @adrDg^.messages);
+		new (tableType, @adrDg^.prefs);
+		new (tableType, @adrDg^.stats)};
+	
+	bundle { //build the editorialPrefs table
+		adrDg^.editorialPrefs.membershipGroup = adrSiteInfo^.membershipGroupName};
+	
+	bundle { //build the prefs table
+		local (adrPrefs = @adrDg^.prefs);
+		adrPrefs^.nextMsgNum = 1;
+		adrPrefs^.adrMsgReader = @adrSiteInfo^.adrSite^.discuss.msgReader;
+		adrPrefs^.msgReaderUrl = adrSiteInfo^.adrSite^.["#urls"].discussMsgReader;
+		adrPrefs^.url = adrSiteInfo^.adrSite^.["#urls"].storyReader};
+	
+	bundle { //add the dg address to discuss.root
+		[system.temp.mainResponder.discussRootFile].[dgName] = adrDg};
+	
+	bundle { //build the messages table (add default messages)
+		local (adrMessages = @adrDg^.messages);
+		local (member = adrSiteInfo^.sysopEmail);
+		local (adrDiscussLinks = @adrSiteInfo^.adrSite^.["#newsSite"].discussLinks);
+		
+		on simpleAdd (subject, flStory=true, flHomePage=false, flPicture=false, text="", d=clock.now ()) {
+			local (msgNum);
+			msgNum = mainResponder.discuss.addMessage (subject, member, 0, "", postTime:d, flcallback:false, adrRoot:adrDg, groupName:adrSiteInfo^.membershipGroupName, flEmptyBodyOk:true);
+			
+			«Make it a story and possibly a home page.
+			local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)]);
+			local (storiesCategory, homePagesCategory);
+			storiesCategory = adrSiteInfo^.adrSite^.["#newsSite"].storiesListedIn;
+			homePagesCategory = adrSiteInfo^.adrSite^.["#newsSite"].homePagesListedIn;
+			picturesCategory = adrSiteInfo^.adrSite^.["#newsSite"].picturesListedIn;
+			adrMsgTable^.alsoListedIn = {};
+			if flHomePage {
+				adrMsgTable^.alsoListedIn = adrMsgTable^.alsoListedIn + homePagesCategory};
+			if flStory {
+				adrMsgTable^.alsoListedIn = adrMsgTable^.alsoListedIn + storiesCategory};
+			if flPicture {
+				adrMsgTable^.alsoListedIn = adrMsgTable^.alsoListedIn + picturesCategory};
+			
+			if text != "" {
+				adrMsgTable^.body = text};
+			return (msgNum)};
+		
+		«bundle //add a spacer gif
+			«local (msgNum = simpleAdd ("Transparent Spacer GIF", false, false, true))
+			«Add the image bits to the dg message.
+			«local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)])
+			«new (tableType, @adrMsgTable^.image)
+			«adrMsgTable^.image.bits = html.data.images.space //this is the image data
+			«adrMsgTable^.image.mimeType = "image/gif"
+			«adrMsgTable^.image.height = 1
+			«adrMsgTable^.image.width = 1
+			«local (spaceUrl = adrSiteInfo^.adrSite^.["#urls"].imageViewer + msgNum)
+			«adrSiteInfo^.adrSite^.["#prefs"].spaceGif = spaceUrl
+			«
+			«Update the template to use the spacer gif.
+			«local (s)
+			«s = string (adrSiteInfo^.adrSite^.["#template"])
+			«s = string.replaceAll (s, "[spaceGif]", "<img src=\"" + spaceUrl + "\" width=\"1\" height=\"1\" alt=\"\">")
+			«wp.newTextObject (s, @adrSiteInfo^.adrSite^.["#template"])
+		bundle { //add home page and first news item
+			bundle { //home page
+				local (title, text);
+				title = manilaData.defaultText.homeTitle;
+				text = string (manilaData.defaultText.home);
+				local (d = date.yesterday (clock.now ()));
+				local (msgNum = simpleAdd (title, flHomePage:true, text:text, d:d));
+				adrDiscussLinks^.homePageMsgNum = msgNum};
+			try { //first news item
+				local (flNewsItemSite = false);
+				if defined (adrNewsSite^.flNewsItemSite) {
+					flNewsItemSite = adrNewsSite^.flNewsItemSite};
+				if flNewsItemSite {
+					local (title = manilaData.defaultText.firstNewsItemTitle);
+					local (description = manilaData.defaultText.firstNewsItem);
+					local (t);
+					bundle { //set news item attributes
+						new (tableType, @t);
+						t.title = title;
+						t.url = "";
+						t.department = "";
+						t.description = description};
+					local (body = manilaSuite.news.tableToXml (@t));
+					local (msgnum = simpleAdd (title, false, false, false, body));
+					local (adrmsg = @adrSiteInfo^.adrDiscussionGroup^.messages.[string.padWithZeros (msgnum, 7)] );
+					manilaSuite.news.setMessageAttributes (adrmsg, @t);
+					manilaSuite.news.updateIndexes (adrmsg, adrSiteInfo^.adrSite);
+					manilaSuite.news.postItemToHomePage (adrmsg, adrSiteInfo^.adrSite)}}};
+		«bundle //add feedback page
+			«local (title, text)
+			«title = manilaData.defaultText.feedbackTitle
+			«text = string (manilaData.defaultText.feedback)
+			«local (msgNum = simpleAdd (title, text:text))
+			«adrDiscussLinks^.emailMsgNum = msgNum
+		«bundle //add faq page
+			«local (title, text)
+			«title = manilaData.defaultText.faqTitle
+			«text = string (manilaData.defaultText.faq)
+			«local (msgNum = simpleAdd (title, text:text))
+			«adrDiscussLinks^.faqMsgNum = msgNum
+		«bundle //add the default header graphic
+			«local (msgNum = simpleAdd ("Default Header Graphic", false, false, true))
+			«adrDiscussLinks^.headerMsgNum = msgNum
+			«
+			«Add the image bits to the dg message.
+			«local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)])
+			«new (tableType, @adrMsgTable^.image)
+			«adrMsgTable^.image.bits = manilaData.myManilaSite //this is the image data
+			«adrMsgTable^.image.mimeType = "image/gif"
+			«local (hwList = html.getGifHeightWidth (@adrMsgTable^.image.bits))
+			«adrMsgTable^.image.height = hwList [1]
+			«adrMsgTable^.image.width = hwList [2]
+		«bundle //add the profile page for the sysop
+			«local (msgNum = simpleAdd ("Profile page for " + adrSiteInfo^.sysopName, false, false, false))
+			«adrDiscussLinks^.[adrSiteInfo^.sysopEmail] = msgNum};
+	
+	return (true)}

@@ -1,0 +1,25 @@
+on deletePost (appkey, postid, username, password, publish) {
+	«Changes:
+		«8/23/01; 12:39:24 AM by JES
+			«Wrapper script for manila.newsItem.delete.
+			«Parameters:
+				«appkey is ignored.
+				«postid is the id of the post as returned by blogger.newPost. It takes the form of [canonicalSiteName]#[msgnum] where [canonicalSiteName] is the internal identifier of the Manila site, and [msgnum] is the message number containing the post.
+					«Example: jakeManilaWebsite#123
+				«username and password are the username and password of a managing editor.
+				«publish is a boolean, which is ignored. (See notes below.)
+			«Notes: there are a couple of conceptual difference between Blogger and Manila.
+				«In Blogger, posts are stored completely separately from all content which is visible on the site.
+				«In Manila, news items are visible as soon as they're published.
+				«This means that the publish parameter is irrelevant. Here's why:
+					«In Manila, an item is published as soon as it's posted to the home page. If you delete it, it disappears from the home page immediately.
+					«In Blogger, an item is published separately from being deleted. If you delete it, nobody will see the changes until you evoke the publish function.
+					«Deleting a post which has not yet been published will have the same effect in both systems.
+	local (sitename = string.nthfield (postid, "#", 1));
+	local (msgnum = number (string.nthfield (postid, "#", 2)));
+	«local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl))
+	local (title = "", url = "", department = ""); //edit won't set an attribute if it's the empty string
+	manilaSuite.rpcHandlers.newsItem.delete (username, password, sitename, msgnum);
+	return (true)};
+«bundle //testing
+	«deletePost ("xxx", "createASiteManilaWebsite#6", "jake@userland.com", user.prefs.manilaPassword, false)

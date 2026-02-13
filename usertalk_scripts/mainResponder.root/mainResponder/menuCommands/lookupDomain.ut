@@ -1,0 +1,3 @@
+if dialog.ask ("Find the IP address for which domain?", @config.mainResponder.prefs.lastDomainNameLookup) {
+	local (ip = tcp.dns.getDottedId (config.mainResponder.prefs.lastDomainNameLookup));
+	dialog.alert (ip)}

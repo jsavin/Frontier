@@ -1,0 +1,36 @@
+on getDayAddress (adrcalendar, d, flcreate=true, objtype=tabletype) { //turn a date into an address
+	«Tue, May 23, 2000 at 5:41:38 PM by AR
+		«Old code
+			«on getDayAddress (adrcalendar, d, flcreate=true, objtype=tabletype) //turn a date into an address
+				«this is the bottleneck
+					«give me some address in the root that contains a calendar, probably "this"
+					«give me a date, and tell me whether I'm allowed to create things
+					«I will return the address of a table for that day in your root
+					«if you want me to create an outline, set objtype to outlinetype
+					«if you just want the address for the day, set objtype to nil
+					«10/10/98; 9:06:23 AM by DW
+				«1/1/99; 7:34:26 AM by DW
+					«in diveinto we were supposed to be checking if type != nil, instead we were checking of objtype != nil. this meant that for scriptingNews.root, it would never create new tables.
+				«Wed, 03 Mar 1999 02:53:20 GMT by AR
+					«Removed some legacy code to handle the case when adrcalendar was not a table.
+				«
+				«local (day, month, year, hour, minute, second)
+				«date.get (d, @day, @month, @year, @hour, @minute, @second)
+				«year = string (year)
+				«month = string.padwithzeros (month, 2)
+				«day = string.padwithzeros (day, 2)
+				«
+				«local (adr = adrcalendar)
+				«on diveinto (name, type=tabletype)
+					«adr = @adr^.[name]
+					«if (not defined (adr^)) and flcreate and (type != nil)
+						«new (type, adr)
+				«diveinto (year)
+				«diveinto (month)
+				«diveinto (day, objtype)
+				«return (adr)
+	kernel (mrcalendar.getdayaddress)};
+«bundle //debugging code
+	«dialog.notify (getDayAddress (@AndresFirstSiteManilaWebsite.["#discussionGroup"].calendar, clock.now ()))
+	«dialog.notify (getDayAddress (@AndresFirstSiteManilaWebsite.["#discussionGroup"].calendar, clock.now (), objtype:stringtype))
+	«dialog.notify (getDayAddress (@AndresFirstSiteManilaWebsite.["#discussionGroup"].calendar, clock.now (), flcreate:false))

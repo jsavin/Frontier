@@ -1,0 +1,4 @@
+on sendInitialMailToSysop (recipient, subject, body) {
+	local (sender = recipient);
+	local (params = {recipient, subject, body, sender, "", "", "text/plain"});
+	return (betty.rpc.client ("subhonker3.userland.com", 80, "mailSender", @params, flAsynch:true, adrErrorCallback:@manilaSuite.members.mailErrorCallback))}

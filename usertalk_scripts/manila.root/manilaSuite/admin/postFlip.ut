@@ -1,0 +1,98 @@
+on postFlip () {
+	«Flip the home page.
+		«Changes:
+			«1/30/04; 5:14:02 PM by JES
+				«Add the new home page to the home page index.
+			«5/16/03; 12:16:18 PM by JES
+				«Log the event.
+			«4/8/03; 11:36:47 PM by JES
+				«Add the client's IP address to the message table of the new home page.
+			«9/10/01; 11:29:14 AM by PBS
+				«Expand referer check -- it's okay if the referer is the news page.
+			«05/11/00; 6:58:08 PM by JES
+				«merged in Brent's security fix for client side trojan horse
+			«05/09/00; 10:33:58 PM by PBS
+				«Check the referer to defeat the client side trojan horse.
+			«04/18/00; 3:22:58 PM by JES
+				«localized
+			«04/04/00; 10:53:10 AM by PBS
+				«Don't send out email notification when flipping the home page -- since the title may be incorrect and the body text is empty, allow the system to wait until the home page is no longer empty before sending out email notification.
+			«04/03/00; 11:00:36 AM by PBS
+				«Support for time zones in Manila.
+			«12/26/99; 2:26:37 PM by PBS
+				«Allow for empty subjects -- it's okay if the home page has an empty title.
+				«The website gdb was being saved 3 times -- now it's just saved once. The other saves were redundant and costly.
+			«10/31/99; 1:02:25 PM by PBS
+				«Only a managing editor can flip the home page.
+				«Minor code clean-up.
+	
+	local (pta = html.getPageTableAddress ());
+	pta^.title = manilaSuite.getString ("admin.messageReceiver"); // 4/18/00 JES: localized
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	
+	bundle { //PBS 05/09/00: check method and referer to defeat client side trojan horse
+		if string.lower (pta^.method) != "post" {
+			scriptError ("Can't flip the home page because this is not a POST request from the flip home page confirmation page.")};
+		try { //flip home page page
+			manilaSuite.referer.check ("flipHomePage")}
+		else { //home page
+			try {
+				manilaSuite.referer.check ("newsHome")}
+			else { //home page + default
+				local (expectedReferer = pta^.urls^.newsHome + "default");
+				if string.lower (expectedReferer) != string.lower (pta^.requestHeaders.referer) {
+					scriptError (manilaSuite.getString ("admin.refererDoesntMatchError"))}}}};
+	
+	if not (manilaSuite.editors.managingEditorTest (pta)) { //only a managing editor can flip the home page
+		scriptError (manilaSuite.getString ("admin.cantFlipHomepageNotME"))}; // 4/18/00 JES: localized
+	
+	local (startticks = clock.ticks ());
+	local (now = manilaSuite.convertTime ()); //PBS 04/02/00: support for time zone prefs
+	local (adrCalendar = manilaSuite.getSiteAddress (pta));
+	local (adrDay = mainResponder.calendar.getDayAddress (adrCalendar, now, true, tableType));
+	
+	if sizeof (adrDay^) == 0 { //flip the home page only if there is no home page for today
+		local (member = nameOf (pta^.adrMemberInfo^));
+		local (adrPrevMsg = mainResponder.discuss.getMessageTable (manilaSuite.getDiscussLinksAddress ()^.homePageMsgNum));
+		local (discussRoot = pta^.newsSite^.discussionRoot);
+		
+		local (subject = adrPrevMsg^.subject);
+		local (flEmptySubject = false);
+		if subject == "" { //PBS: 12/26/99: empty subjects will cause mainResponder to return an error, so work around the problem.
+			subject = manilaSuite.getString ("admin.untitled");
+			flEmptySubject = true};
+		
+		local (body = "");
+		local (adrDiscussTable = mainResponder.discuss.openRoot (pta));
+		local (msgNum);
+		
+		local (data); new (tableType, @data);
+		bundle { //add client IP address to the data table
+			data.ipAddress = pta^.client};
+		
+		msgNum = mainResponder.discuss.addMessage (subject, member, 0, body, true, false, now, adrDiscussTable, flEmptyBodyOk:true, flCallback:false, adrdata:@data); //PBS 04/03/00: use converted current time: time zone support
+		adrDay^.msgNum = msgNum;
+		adrDay^.discussionRoot = discussRoot;
+		manilaSuite.getDiscussLinksAddress ()^.homePageMsgNum = msgNum; //set the home page message number
+		
+		local (adrMsg);
+		adrMsg = mainResponder.news.getMessageTable (discussRoot, msgNum);
+		
+		if flEmptySubject { //PBS 12/26/99: handle empty subjects. It's okay for the home page to have an empty subject.
+			adrMsg^.subject = ""};
+		
+		bundle { //JES 1/30/04: add to home page category
+			local (homepagesCategory = manilaSuite.discuss.getHomepagesCategory (adrSite));
+			manilaSuite.discuss.addCategoryToMessage (adrMsg, homepagesCategory, adrSite)}};
+	
+	bundle { //log the event
+		if defined (manilaSuite.log) {
+			try {
+				local (t); new (tabletype, @t);
+				t.memberLink = manilaSuite.members.linkToMember (pta^.defaultMembershipGroup, nameOf (pta^.adrMemberInfo^));
+				manilaSuite.log.addEvent ("flipHomePage", startticks, @t)}}};
+	
+	mainResponder.redirect (pta^.urls^.newsHome); //redirect to the home page
+	
+	return ("")}

@@ -1,0 +1,87 @@
+on downloadMessageEnclosure (msgnum) {
+	«Changes:
+		«03/15/00; 5:35:47 PM by PBS
+			«If the fatPages icon doesn't exist in the website, use the version that's stored in mainResponder.resources.
+			«This policy prevents breakage -- in case someone has put a custom fatPages icon in their website.
+			«Another change: delete application/x-frontier- from the type string only if the type string begins with application/x-frontier-.
+		«04/10/00; 3:29:18 PM by JES
+			«Localized string constants using mainResponder.getString
+		«05/01/00; 2:25:04 PM by JES
+			«call getString with a replacement table address, not a list
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s) {
+		add ("<td valign=\"top\"><font size=\"-0\">" + s + "&nbsp;</font></td>")};
+	on tr (name, value) { // JES note: this isn't getting called anywhere
+		add ("<tr>"); indentlevel++;
+		td (name + ":");
+		td (value);
+		add ("</tr>"); indentlevel--};
+	
+	local (adrmsg = mainresponder.discuss.getmessagetable (msgnum));
+	local (typestring = adrMsg^.enclosureType);
+	bundle { //set typestring
+		«PBS 03/15/00: delete application/x-frontier- from the type string only if it's actually present.
+		local (prefix = "application/x-frontier-");
+		temp.ts = typestring;
+		if typeString beginsWith prefix {
+			typestring = string.delete (adrmsg^.enclosuretype, 1, sizeof (prefix))};
+		typestring = string.typeToString (typestring) - "Type";
+		bundle { // Try to translate the string for localization. 4/10/00; 4:09:20 PM by JES
+			local (languageTableAddress = mainResponder.localization.getLanguageTableAddress ());
+			if defined (languageTableAddress^.strings.types.["a" + typeString]) {
+				typestring = languageTableAddress^.strings.types.["a" + typeString]}}};
+	
+	local (bits);
+	bundle { //fart around with the bits
+		pack (adrmsg^.enclosurebits, @bits);
+		bits = base64.encode (bits, infinity)};
+	
+	bundle { //if it has an enclosure, add a fat page comment
+		if adrmsg^.enclosureaddress != "" {
+			bundle { //add a user-visible comment
+				add ("<br><br><br><br>");
+				add ("<center>"); indentlevel++;
+				add ("<p><table width=\"65%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\"><tr><td>"); indentlevel++;
+				add ("<table border=\"0\" cellpadding=\"5\" cellspacing=\"0\">"); indentlevel++;
+				add ("<tr bgcolor=\"beige\">"); indentlevel++;
+				add ("<td valign=\"top\">"); indentlevel++;
+				try { //there may be a fatPages icon in the website
+					add (html.data.standardmacros.imageref ("fatpage"))}
+				else { //PBS 03/15/00: use the fatPages icon from mainResponder.resources
+					local (hwList = html.getGifHeightWidth (@mainResponder.resources.userlandIcons.fatPage));
+					add ("<img src=\"/resources/userlandIcons/fatPage\" height=\"" + hwList [1] + "\" width=\"" + hwList [2] + "\">")};
+				add ("</td>"); indentlevel--;
+				add ("<td bgcolor=\"beige\" valign=\"middle\"><font size=\"+0\">"); indentlevel++;
+				local (replacementList); new (tableType, @replacementList); // 05/01/00 JES: use replacement table, not a list
+				replacementList.athing = typeString;
+				replacementList.adr = adrmsg^.enclosureaddress;
+				add (mainResponder.getString ("discuss.thisIsAFatPageContainingAThing", @replacementList));
+				local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+				replacementTable.size = sizeOf (bits);
+				add (mainResponder.getString ("discuss.howBigIsItInBytes", @replacementTable));
+				add ("<p>" + mainResponder.getString ("discuss.howToLoadAFatPageObject"));
+				add ("<p>" + mainResponder.getString ("discuss.forMoreInfoAboutFatPages"));
+				add ("</font></td>"); indentlevel--;
+				add ("</tr>"); indentlevel--;
+				add ("</table>"); indentlevel--;
+				add ("</td></tr></table>"); indentlevel--;
+				add ("</center>"); indentlevel--};
+			bundle { //add the fatpage comment
+				add ("<!--");
+				add ("#fatPage");
+				on addHint (name, value, flencode=false) {
+					local (s = string (value));
+					if flencode {
+						s = base64.encode (string (value), 0)};
+					add ("#" + name + " " + s)};
+				addHint ("version", 1);
+				addHint ("docs", "http://www.scripting.com/fatPages/about.html");
+				addHint ("adrPageData", adrmsg^.enclosureaddress);
+				addHint ("objectType", adrmsg^.enclosuretype);
+				addHint ("pageData", string (bits), false);
+				add ("-->")}}};
+	
+	return (htmltext)}

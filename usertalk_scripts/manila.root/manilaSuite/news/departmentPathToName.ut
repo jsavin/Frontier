@@ -1,0 +1,13 @@
+on departmentPathToName (adrsite, path) {
+	«Changes
+		«9/3/03; 1:02:15 PM by JES
+			«Created. Given the url path-part for a department, find the department and return its name.
+	local (adrdepts = manilaSuite.news.getDepartmentTableAddress (adrsite));
+	
+	local (adr);
+	for adr in adrdepts {
+		local (thispath = manilaSuite.news.departmentNameToPath (nameOf (adr^)) );
+		if string.lower (thispath) == string.lower (path) {
+			return (nameOf (adr^))}};
+	
+	return ("")}

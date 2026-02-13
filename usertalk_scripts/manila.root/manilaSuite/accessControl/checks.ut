@@ -1,0 +1,176 @@
+on checks () {
+	«manilaSuite.AccessControl.checks : 04/05/20, 16:19:46 by DAB
+		«returns true or false depending on whether the pagetable allows the member access to the message
+		«this is a crucial routine and not to be trifled with lightly because it is called so often
+		«was manilafixer.accesscontrol.checks : 02/02/25, 16:10:37 by DAB
+	local (pta = html.getPagetableAddress());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	«local (adrStorage = @adrNewsSite^.accesscontrol)    //commented 05/06/03, 13:38:07 by DAB
+	local (adrMsg );
+	local (msgNum); //moved up scope 02/07/21, 15:23:51 by DAB
+	bundle { //compute message table address or return
+		case true {
+			defined (pta^.msgNum) {
+				msgNum = pta^.msgNum};
+			defined(pta^.pathArgs) and pta^.pathArgs != "" { //not defined for static renders 02/08/13, 11:29:04 by DAB
+				msgNum = number (pta^.pathArgs)};
+			pta^.adrObject == @adrSite^.default { //04/05/20, 12:11:03 by DAB
+				msgnum = manilaSuite.getDiscussLinksAddress (adrSite)^.homePageMsgnum}}
+		else {
+			if manilaSuite.sitePrefs.siteStructure.pathToSiteStructureValue("msgnum") {
+				msgnum = pta^.msgNum}};
+		
+		if msgNum == 0 {
+			return true}; //no message, grant access
+		
+		adrMsg = manilaSuite.discuss.getCurrentMessageTable (msgnum, pta:pta)};
+	
+	if defined (pta^.adrMemberInfo) and mainResponder.discuss.memberCanEdit(adrMsg, pta^.adrMemberInfo, pta) {
+		return true}; // you can always see your editable messages
+	
+	adrOriginalMsg = manilaSuite.accessControl.goToOriginal(pta, adrmsg); //adrOriginalMsg is top of thread 02/05/06, 17:13:34 by DAB
+	
+	«if not defined(adrOriginalMsg^.accessControl)
+		«return true    //unrestricted
+	
+	pta^.manilaFixer_accessControlledMessage = true; //02/05/14, 17:52:06 by DAB
+	
+	on goAway(url, flOkToappendMsgnum=true) { «flOkToappendMsgnum added 05/06/04, 15:36:10 by DAB
+		if pta^.adrObject == @adrSite^.picture {
+			scriptError ("!redirect " + pta^.ftpSite^.url + "accessControl/AccessDeniedGIF$" + msgnum)}
+		else {
+			url = pta^.ftpSite^.url  + url; //02/03/06, 21:32:01 by DAB
+			if flOkToappendMsgnum { «made conditional 05/06/04, 15:35:58 by DAB
+				url = url + "$" + msgnum}; //02/07/21, 15:25:07 by DAB
+			pta^.code = 302; //non-permanent redirect 
+			pta^.responseBody = webserver.util.buildErrorPage ("302 FOUND", "Found the page.");
+			pta^.responseHeaders.location = url;
+			pta^.responseHeaders.URI = url;
+			try {delete (@pta^.responseHeaders.["Content-Type"])};
+			scripterror("!")}};
+	
+	on dateChecks() { //release/expiry date checks
+		if not defined(adrOriginalMsg^.accessControl.releaseDate) {
+			adrOriginalMsg^.accessControl.releaseDate = nil};
+		if not defined(adrOriginalMsg^.accessControl.expiryDate) {
+			adrOriginalMsg^.accessControl.expiryDate = nil}; //02/05/09, 18:42:05 by DAB
+		
+		local (now = clock.now());
+		case true {
+			(adrOriginalMsg^.accessControl.releaseDate==nil) and (adrOriginalMsg^.accessControl.expiryDate == nil) {
+				return true}; //unrestricted
+			(adrOriginalMsg^.accessControl.expiryDate==nil) {
+				return (now > adrOriginalMsg^.accessControl.releaseDate)};
+			(adrOriginalMsg^.accessControl.releaseDate==nil) {
+				return (adrOriginalMsg^.accessControl.expiryDate > now)}}
+		else {
+			return (now > adrOriginalMsg^.accessControl.releaseDate) and (now < adrOriginalMsg^.accessControl.expiryDate)}};
+	
+	if defined(adrOriginalMsg^.accessControl) { «made conditional 05/06/04, 14:05:09 by DAB
+		if not dateChecks() {
+			goAway("accessControl/nonCurrent")}}; //02/03/06, 21:31:45 by DAB
+	
+	local (flDoReadOnlyChecks = true); //02/09/28, 14:17:26 by DAB
+	
+	on checkMessageValues() {
+		case true {
+			not defined(adrOriginalMsg^.accessControl); «moved 05/06/04, 14:03:16 by DAB
+			not defined(adrOriginalMsg^.accessControl.permittedCohorts);
+			adrOriginalMsg^.accessControl.permittedCohorts == {}; //{} == everyone has access
+			manilaSuite.accessControl.checkMemberCohorts(pta, adrOriginalMsg^.accessControl.permittedCohorts) {
+				};
+			flDoReadOnlyChecks { //try for read only status, if permitted
+				case true {
+					not defined(adrOriginalMsg^.accessControl.permittedROCohorts);
+					adrOriginalMsg^.accessControl.permittedROCohorts == {} { //{} == nobody has read access
+						goAway("accessControl/inaccessible")}; //02/03/06, 21:31:41 by DAB
+					manilaSuite.accessControl.checkMemberCohorts(pta, adrOriginalMsg^.accessControl.permittedROCohorts) {
+						try {table.rename(@pta^.adrMemberInfo, "manilaFixer_roAdrMemberInfo")}}}
+				else {
+					goAway("accessControl/inaccessible")}}} //02/03/06, 21:31:41 by DAB
+		else {
+			goAway("accessControl/inaccessible")}}; //02/03/06, 21:31:41 by DAB
+	
+	«bundle    //check site structure cohorts, they override if they exist 02/09/19, 00:30:52 by DAB
+		«on restricted(pathAttname)
+			«local (s = manilaSuite.sitePrefs.siteStructure.getPathAttValue(pathAttname,  flInherit:true))
+			«if s  == ""      //no path attribute means no restriction
+				«return false    //05/06/03, 14:02:01 by DAB
+					«return true    //02/10/02, 18:34:02 by DAB
+			«local (pattAttCohorts = {})    //02/08/25, 21:18:52 by DAB
+			«pattAttCohorts = pattAttCohorts +  ("{\"" +string.replaceAll(s, ",", "\",\"") + "\"}")
+			«if pattAttCohorts == {}
+				«return false    //05/06/03, 14:02:06 by DAB
+					«return true    //02/10/02, 18:34:10 by DAB
+			«temp.[pathAttname] = pattAttCohorts
+			«return  not manilaSuite.accessControl.checkMemberCohorts(pta, pattAttCohorts)
+		«
+		«case true    
+			«not defined(adrNewsSite^.accesscontrol.siteStructureCohorts) 
+			«not adrNewsSite^.accesscontrol.siteStructureCohorts   
+				«checkMessageValues()
+			«not restricted("mlac")
+				«
+			«flDoReadOnlyChecks and  not restricted("romlac")     //try for read only status, if permitted
+			«flDoReadOnlyChecks and not restricted("romlac")     //try for read only status, if permitted
+				«try {table.rename(@pta^.adrMemberInfo, "manilaFixer_roAdrMemberInfo")}
+		«else    //check message cohorts 02/09/19, 12:35:31 by DAB
+			«checkMessageValues()
+	
+	bundle { //check site structure cohorts, they override if they exist 05/06/03, 14:43:44 by DAB/PR
+		on getPathAttribute(pathAttname, adrPattAttCohorts) {
+			local (s = manilaSuite.sitePrefs.siteStructure.getPathAttValue(pathAttname,  flInherit:true));
+			if s  == "" { //no path attribute returns false
+				return false}; //05/06/03, 14:02:01 by DAB
+			adrPattAttCohorts^ = {};
+			adrPattAttCohorts^ = adrPattAttCohorts^ +  ("{\"" +string.replaceAll(s, ",", "\",\"") + "\"}");
+			«if adrPattAttCohorts^ == {}    //no path attribute returns false commented 05/06/04, 14:50:02 by DAB
+				«return false   
+			return  true};
+		
+		if  defined(adrNewsSite^.accesscontrol.siteStructureCohorts)  and adrNewsSite^.accesscontrol.siteStructureCohorts { //testing paths 
+			local (cohorts);
+			if  getPathAttribute("mlac", @cohorts) {
+				«authorised goes on to test date stuff; unauthorised can try read only access
+				if  manilaSuite.accessControl.checkMemberCohorts(pta, cohorts) {
+					}
+				else {
+					«read write access failed; try for read only, or fail
+					if  getPathAttribute("romlac", @cohorts) {
+						if  manilaSuite.accessControl.checkMemberCohorts(pta, cohorts) {
+							try {table.rename(@pta^.adrMemberInfo, "manilaFixer_roAdrMemberInfo")}}
+						else {
+							goAway("accessControl/inaccessible", false)}} «hide message number
+					else {
+						goAway("accessControl/inaccessible", false)}}} «hide message number    
+			else {
+				 if getPathAttribute("romlac", @cohorts) {
+					«if RO restrictions exists and we don't satisfy fail
+					if manilaSuite.accessControl.checkMemberCohorts(pta, cohorts) {
+						try {table.rename(@pta^.adrMemberInfo, "manilaFixer_roAdrMemberInfo")}}
+					else {
+						goAway("accessControl/inaccessible", false)}} «hide message number
+				else { //check message cohort values only 
+					checkMessageValues()}}}
+		else { //check message cohort values only 
+			checkMessageValues()}};
+	
+	if defined(adrOriginalMsg^.accessControl.expiryDate) and typeof(adrOriginalMsg^.accessControl.expiryDate) == dateType { //02/10/31, 08:45:21 by DAB
+		if not manilaSuite.staticRendering.isStaticRendering(pta) { //02/10/31, 08:46:49 by DAB
+			pta^.responseHeaders.Expires = adrOriginalMsg^.accessControl.expiryDate
+				«pta^.responseHeaders.Expires = adrMsgStorage^.accessControl.expiryDate}};
+	
+	if defined(adrNewsSite^.accessControl.flTrackAccess) and adrNewsSite^.accessControl.flTrackAccess { //02/08/24, 15:27:01 by DAB
+		«we track access to actual message not topic head message 
+		if defined(pta^.adrMemberInfo) { //may not be, especially if read-only
+			local (memberKey = nameof(pta^.adrMemberInfo^));
+			if not defined(adrMsg^.accessControl) { //02/09/28, 15:08:50 by DAB
+				new(tabletype, @adrMsg^.accessControl)};
+			if not defined(adrMsg^.accessControl.trackAccess) {
+				new(tabletype, @adrMsg^.accessControl.trackAccess)};
+			if not defined(adrMsg^.accessControl.trackAccess.[memberKey]) {
+				new(tabletype, @adrMsg^.accessControl.trackAccess.[memberKey])};
+			adrMsg^.accessControl.trackAccess.[memberKey].lastaccess = clock.now()}};
+	
+	return true}

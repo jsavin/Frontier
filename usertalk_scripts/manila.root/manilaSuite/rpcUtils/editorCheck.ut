@@ -1,0 +1,13 @@
+on editorCheck (sitename, username, password, beginningErrorString) {
+	«Make sure the person is a contributing, content or managing editor of this site. Generate a scriptError if not.
+		«beginningErrorString should contain the first part of the error message, of the form "Can't xxx because "
+	manilaSuite.rpcUtils.memberCheck (sitename, username, password, beginningErrorString);
+	
+	if manilaSuite.rpcUtils.isContributingEditor (sitename, username) { //is this person a contributing editor?
+		return (true)};
+	if manilaSuite.rpcUtils.isContentEditor (sitename, username) { //is this person a content editor?
+		return (true)};
+	if manilaSuite.rpcUtils.isManagingEditor (sitename, username) { //is this person a managing editor?
+		return (true)};
+	
+	scriptError (beginningErrorString + "\"" + username + "\" is not an editor.")}

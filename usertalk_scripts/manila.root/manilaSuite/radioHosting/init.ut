@@ -1,0 +1,61 @@
+on init (adrsite=nil) {
+	«Changes
+		«1/31/06; 3:41:12 AM by JES
+			«Init flCommentsModerated to false, preserving existing behavior for legacy sites. New sites will have this feature enabled by default.
+		«12/15/05; 12:04:42 AM by JES
+			«Init flLoginRequired to false.
+		«7/22/03; 4:56:33 PM by JES
+			«Init data tables needed to support trackback for Radio Hosting.
+		«10/6/02; 8:40:57 PM by JES
+			«New optional parameter, adrsite. If supplied, this script can be called outside the website framework context.
+		«7/12/02; 3:09:14 PM by JES
+			«Initialize postLink preference.
+		«2/23/02; 1:29:01 AM by JS
+			«Initialize the counterScriptCache sub-table of the radioHosting.comments sub-table in the #newsSite table.
+		«2/17/02; 11:02:53 PM by JS
+			«Created. Initialize the comments sub-table of a Manila site's newsSite table.
+	if adrsite == nil {
+		adrsite = manilaSuite.getSiteAddress ()};
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	local (adrhosting = @adrnewssite^.radioHosting);
+	if not defined (adrhosting^) {
+		new (tableType, adrhosting)};
+	bundle { //comments sub-table
+		local (adrcomments = @adrhosting^.comments);
+		if not defined (adrcomments^) {
+			new (tableType, adrcomments)};
+		if not defined (adrcomments^.template) {
+			adrcomments^.template = manilaSuite.radioHosting.data.initialTemplate};
+		if not defined (adrcomments^.itemTemplate) {
+			adrcomments^.itemTemplate = manilaSuite.radioHosting.data.initialItemTemplate};
+		if not defined (adrcomments^.header) {
+			adrcomments^.header = manilaSuite.radioHosting.data.initialHeader};
+		if not defined (adrcomments^.footer) {
+			adrcomments^.footer = manilaSuite.radioHosting.data.initialFooter};
+		if not defined (adrcomments^.postLink) {
+			adrcomments^.postLink = manilaSuite.radioHosting.data.initialPostLink};
+		if not defined (adrcomments^.colors) {
+			new (tableType, @adrcomments^.colors)};
+		if not defined (adrcomments^.colors.bgcolor1) {
+			adrcomments^.colors.bgcolor1 = "white"};
+		if not defined (adrcomments^.colors.bgcolor2) {
+			adrcomments^.colors.bgcolor2 = "#CCCCCC"};
+		if not defined (adrcomments^.users) {
+			new (tableType, @adrcomments^.users)};
+		if not defined (adrcomments^.counterScriptCache) {
+			new (tableType, @adrcomments^.counterScriptCache)}};
+	bundle { //trackback sub-table
+		local (adrtrackback = @adrhosting^.trackback);
+		if not defined (adrtrackback^) {
+			new (tableType, adrtrackback)};
+		if not defined (adrtrackback^.users) {
+			new (tableType, @adrtrackback^.users)};
+		if not defined (adrtrackback^.counterScriptCache) {
+			new (tableType, @adrtrackback^.counterScriptCache)}};
+	if not defined (adrhosting^.flEnabled) {
+		adrhosting^.flEnabled = false};
+	if not defined (adrhosting^.flLoginRequired) {
+		adrhosting^.flLoginRequired = false}; //default to old behavior for existing sites
+	if not defined (adrhosting^.flCommentsModerated) {
+		adrhosting^.flCommentsModerated = false}; //default to old behavior for existing sites
+	return (adrhosting)}

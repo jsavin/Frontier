@@ -1,0 +1,13 @@
+on getScriptAddress (urlName, adrScript) {
+	«manilaSuite.plugins.ETPoverride.getScriptAddress : 04/06/17, 18:05:26 by DAB
+		«returns address of substitute form builder/handler
+	local (pta = html.getPageTableAddress());
+	if not defined(pta^.ETPformSubstitutes^.[urlName]) {
+		return false};
+	
+	local (adr);
+	adr = address(pta^.ETPformSubstitutes^.[urlName]);
+	while typeof(adr^) == addressType {
+		adr = adr^};
+	adrScript^ = adr;
+	return true}

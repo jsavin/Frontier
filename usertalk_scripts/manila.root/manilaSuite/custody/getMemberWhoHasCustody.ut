@@ -1,0 +1,19 @@
+on getMemberWhoHasCustody (adrObject, adrSite, flMessage=false) {
+	«Return the address of the member who has custody of the given object.
+		«02/12/00; 2:20:18 AM by PBS
+	
+	local (adrObjectsTable = manilaSuite.custody.getObjectsTableAddress (adrSite, flMessage));
+	local (adrItem);
+	
+	if flMessage {
+		local (msgNum = adrObject^.msgNum);
+		adrItem = @adrObjectsTable^.[msgNum]}
+	else {
+		«adrItem = @adrObjectsTable^.[adrObject]
+		adrItem = @adrObjectsTable^.[string.popFileFromAddress(adrObject)]}; //04/06/23, 15:42:04 by DAB
+	
+	local (groupName = adrItem^.group);
+	local (memberKey = adrItem^.user);
+	local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey));
+	
+	return (adrMember)}

@@ -1,0 +1,11 @@
+on removeFromIndex (adrSite, categoryName, adrMsg) {
+	«This message was (probably) in the index for category name. Remove it from the index.
+		«10/09/00; 9:46:08 PM by PBS
+	
+	local (name = manilaSuite.discuss.getCanonicalCategoryName (categoryName, adrSite));
+	local (adrIndex = manilaSuite.discuss.getIndexTable (adrSite, name));
+	local (msgNum = adrMsg^.msgNum);
+	local (itemName = string.padWithZeros (msgNum, 7));
+	if defined (adrIndex^.index.[itemName]) {
+		delete (@adrIndex^.index.[itemName])};
+	return (true)}

@@ -1,0 +1,53 @@
+on getSummary (adrmsg, maxlen=150) {
+	«Changes
+		«1/31/06; 5:16:05 PM by JES
+			«Add ability to get summaries for messages which aren't news items.
+			«New optional parameter, maxlen, specifies the maximum length of the summary. Defaults to 150.
+		«9/14/05; 2:21:01 AM by JES
+			«Fix a bug which caused the summary to always be in the 150 character range. Auto-generated summaries are now between 100 and 150 characters, with at least one full sentence if possible.
+		«8/31/05; 1:57:14 AM by JES
+			«Instead of attempting to balance tags, just strip all HTML markup from the summary. Prevents text from being split in the middle of a tag, which would break the final HTML rendering.
+				«It's questionable how useful the markup would have been in the first place.
+		«8/4/05; 4:24:30 AM by JES
+			«Call through mainResponder.neuterText to ensure that partial macros end up neutered, and that HTML is balanced according to the site's legal tags prefs.
+		«7/9/05; 3:38:16 AM by JES
+			«Generate a summary for a news item.
+			«Summaries are the first sentence or first 150 characters not breaking in the middle of a word.
+	if defined (adrmsg^.newsItem.summary) {
+		if sizeOf (adrmsg^.newsItem.summary) > 0 {
+			return (adrmsg^.newsItem.summary)}};
+	local (s);
+	if defined (adrmsg^.newsItem.description) {
+		s = string (adrmsg^.newsItem.description)}
+	else {
+		s = string (adrmsg^.body)};
+	s = searchEngine.stripMarkup (s);
+	if sizeOf (s) <= maxlen {
+		return (s)};
+	s = string.mid (s, 1, maxlen);
+	«on balance (s)
+		«try
+			«local (pta = html.getPageTableAddress ())
+			«return (mainResponder.neuterText (s, false, true, @pta^.newsSite^.legalTags))
+		«return (s)
+	on trimToSentence (ch) {
+		local (ix, sizeString = sizeOf (s));
+		for ix = sizeString downto 1 {
+			if s[ix] == ch {
+				break}};
+		if ix < 100 { //summary is at least 100 characters
+			return (string.popSuffix (s, " ") + "&nbsp;...")};
+		return (string.mid (s, 1, ix) + "&nbsp;...")};
+	case true { //does the shortened string contain a complete sentence?
+		s contains "." {
+			return (trimToSentence ("."))};
+		s contains "?" {
+			return (trimToSentence ("?"))};
+		s contains "!" {
+			return (trimToSentence ("!"))}};
+	return (string.popSuffix (s, " ") + "&nbsp;...")};
+«bundle //test code
+	«local (t); new (tableType, @t)
+	«new (tableType, @t.newsItem)
+	«t.newsItem.description = "<P class=MsoNormal style=\"MARGIN: 0in 0in 0pt\"><B><SPAN style=\"FONT-SIZE: 10pt; FONT-FAMILY: Arial; mso-bidi-font-size: 12.0pt\">Some Microsoft Cruft?</SPAN></B><SPAN style=\"FONT-SIZE: 10pt; FONT-FAMILY: Arial; mso-bidi-font-size: 12.0pt\"><BR></SPAN></P>"
+	«dialog.notify (getSummary (@t))

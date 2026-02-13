@@ -1,0 +1,132 @@
+on setUpSafeScripts (pta=nil) {
+	«Set up the safe identifiers.
+		«Changes:
+			«3/12/07; 2:24:03 PM by LL
+				«Support the new login box template.
+			«11/8/06; 3:48:46 PM by LL
+				«Removed the text included in the whoAmI macro since it wasn't localized and makes the macro more usable in different situations.
+			«12/17/99; 10:07:13 PM by PBS
+				«Call the new manilaSuite.html.bodyTag script rather than html.data.standardMacros.bodyTag. This improves performance, and fixes one of the two known ways of making your site inacessible as a result of editing your template.
+			«02/24/00; 11:52:06 AM by PBS
+				«Don't build the Editors only menu here -- it now gets built in the finalFilter, since it's contents may change during the course of building the page. This is part of plug-ins support.
+			«04/03/00; 11:16:42 AM by PBS
+				«When building date macros, use the time zone settings for this site.
+			«05/22/00; 01:25:20 AM by JES
+				«Added DHTML menus JavaScript
+			«05/29/00; 4:15:27 AM by JES
+				«added DHTML menus CSS
+			«05/31/00; 12:10:24 PM by JES
+				«Localized monthName and dayName macros
+			«12/3/01; 6:13:19 PM by PBS
+				«Navigator links will be done in the finalFilter, since the rendered page may change which navigator to use.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	local (adrSite = pta^.adrSiteRootTable);
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	
+	bundle { //dates and times
+		local (adrLanguageTable = mainResponder.localization.getLanguageTableAddress (pta)); // 05/31/00 JES
+		local (d = manilaSuite.convertTime ()); //PBS 04/03/00: use time zone settings
+		pta^.day = date.day (d);
+		«pta^.dayName = date.dayOfWeekToString (date.dayOfWeek (d))
+		pta^.dayName = adrLanguageTable^.strings.date.dayOfWeekNames.[date.dayOfWeek (d)];
+		
+		pta^.month = date.month (d);
+		«pta^.monthName = date.monthToString (date.month (d))
+		pta^.monthName = adrLanguageTable^.strings.date.monthNames.[string.padWithZeros (date.month (d), 2)];
+		
+		pta^.year = date.year (d);
+		
+		pta^.now = d;
+		
+		pta^.postTime = manilaSuite.convertTime (timeCreated (pta^.adrObject));
+		pta^.lastUpdate = manilaSuite.convertTime (timeModified (pta^.adrObject));
+		pta^.lastUpdateString = "[[lastUpdateString]]"};
+	
+	bundle { //graphics, menus, navbars, tagLine, calendar
+		local (adrDiscussLinks = manilaSuite.getDiscussLinksAddress ());
+		if defined (adrDiscussLinks^.headerMsgNum) {
+			try {
+				pta^.headerGraphic = manilaSuite.pictures.imgTagFromMsgNum (adrDiscussLinks^.headerMsgNum)}};
+		if not defined (pta^.headerGraphic) {
+			pta^.headerGraphic = ""};
+		«pta^.editorialMenu = manilaSuite.html.editorialLinks (pta)
+		pta^.editorialMenu = "{replaceEditorialMenuInFinalFilter}"; //PBS 02/04/00: it now gets built in the finalFilter, since it may change during the course of building a page
+		«pta^.navigatorLinks = manilaSuite.html.drawNavigator (pta)
+		pta^.navigatorLinks = "{replaceNavLinksInFinalFilter}"; //PBS 12/03/01
+		pta^.tagLine = string (adrNewsSite^.tagLine);
+		pta^.hierarchyPath = "";
+		pta^.calendar = ""; //PBS 8/10/99
+		if not defined (adrNewsSite^.siteName) {
+			local (siteName = nameOf (adrSite^));
+			siteName = manilaSuite.getShortSiteName (siteName);
+			adrNewsSite^.siteName = siteName};
+		pta^.siteName = adrNewsSite^.siteName;
+		
+		bundle { //spacepixels
+			if not defined (adrSite^.["#images"].space) {
+				adrSite^.["#images"].space = html.data.images.space};
+			adrSite^.["#prefs"].spaceGif = "space"}};
+	
+	bundle { //body tag
+		«pta^.body = html.data.standardMacros.bodyTag ()
+		pta^.body = manilaSuite.html.bodyTag ()};
+	
+	bundle { //JavaScript, css, meta
+		local (s);
+		if defined (pta^.newsSite^.javaScript) {
+			s = string (pta^.newsSite^.javaScript)};
+		if defined (pta^.javaScript) {
+			if string.lower (pta^.javaScript) == "maniladata.siteprefs.javascript" {
+				s = s + "\r" + string (manilaData.sitePrefs.javaScript)};
+			if string.lower (pta^.javaScript) == "maniladata.prefs.javascript" {
+				s = s + "\r" + string (manilaData.prefs.javaScript)};
+			delete (@pta^.javaScript)};
+		if manilaSuite.html.clientSupportsDHTMLMenu (pta) {
+			if defined (html.menubar.includeJavaScript) { // 05/22/00 JES: add JavaScript for DHTML Menus if supported
+				s = s + "\r" + html.menubar.includeJavaScript ()}};
+		pta^.javaScript = s;
+		
+		if not defined (pta^.cascadingStyleSheet) {
+			pta^.cascadingStyleSheet = "";
+			if defined (adrNewsSite^.cascadingStyleSheet) {
+				pta^.cascadingStyleSheet = string (adrNewsSite^.cascadingStyleSheet)}};
+		if defined (html.menubar.includeStyleSheet) { // 05/28/00 JES
+			if manilaSuite.html.clientSupportsDHTMLMenu (pta) {
+				pta^.cascadingStyleSheet = string (pta^.cascadingStyleSheet) + "\r" + html.menubar.includeStyleSheet () + "\r"}};
+		
+		if not defined (pta^.meta) {
+			pta^.meta = ""}};
+	
+	bundle { //membership box
+		pta^.membershipBox = manilaSuite.html.drawMembershipBox (pta);
+		«if defined (pta^.newsSite^.flMembership) and pta^.newsSite^.flMembership
+		«else
+			«pta^.membershipBox = ""};
+	
+	bundle { //whoAmI, prefsBasedBodyTag (member-specific scripts)
+		if defined (pta^.adrMemberInfo) {
+			«whoAmI
+			if defined (pta^.adrMemberInfo^.personalInfo.name) {
+				pta^.whoAmI = pta^.adrMemberInfo^.personalInfo.name}
+			else {
+				pta^.whoAmI = nameOf (pta^.adrMemberInfo^)};
+			
+			«prefsBasedBodyTag
+			local (adrappearance = @pta^.adrMemberInfo^.appearance);
+			if defined (adrAppearance^.bgcolor) {
+				pta^.bgcolor = adrAppearance^.bgcolor};
+			if defined (adrAppearance^.alink) {
+				pta^.alink = adrAppearance^.alink};
+			if defined (adrAppearance^.vlink) {
+				pta^.vlink = adrAppearance^.vlink};
+			if defined (adrAppearance^.link) {
+				pta^.link = adrAppearance^.link};
+			if defined (adrAppearance^.text) {
+				pta^.text = adrappearance^.text}}
+		else {
+			pta^.whoAmI = ""};
+		pta^.prefsBasedBodyTag = "<body bgcolor=\"" + pta^.bgcolor + "\" text=\"" + pta^.text + "\" link=\"" + pta^.link + "\" vlink=\"" + pta^.vlink + "\" alink=\"" + pta^.alink + "\">"};
+	
+	return (true)}

@@ -1,0 +1,109 @@
+on addOrEditAdministrator () {
+	«Changes
+		«9/20/06; 1:28:33 PM by LL
+			«Modification to edit administrator form with change password in it's own section.
+			«Bug fix: Correct an issue that prevented an error message from being display if there was a problem adding or editing an administrator.
+		«9/30/03; 12:35:15 PM by JES
+			«Store passwords in the admin membership group as binary values.
+		«6/27/02; 12:06:52 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + ("\r\n" + s);};
+	on stringPref (name, prompt, type="text", size=50, maxlength=100, default="") {
+		return ("<tr><td align=\"left\">" + prompt + ":</td><td valign=\"top\" width=\"70%\"><input type=\"" + type + "\" name=\"" + name + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + default + "\"></td></tr>")};
+	on checkPref (name, prompt, flChecked=false) {
+		local (checkedtext = "");
+		if flChecked {
+			checkedText = " checked"};
+		return ("<tr><td colspan=\"2\"><input type=\"checkbox\" name=\"" + name + "\" value=\"xxx\"" + checkedtext + " />&nbsp;" + prompt + "</td></tr>")};
+	
+	local (name = "", email = "", password="", flWebEdit = false);
+	local (errorMessage = "", flError = false);
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.addAdministrator) or defined (adrargs^.editAdministrator) {
+			name = adrargs^.name;
+			email = adrargs^.email;
+			flWebEdit = defined (adrargs^.enableWebEdit);
+			local (repeatPassword);
+			if adrargs^.password != "" {
+				password = adrargs^.password;
+				if sizeOf (password) < 4 {
+					errorMessage = "Can't create admin user, \"" + name + "\" because the password is not at least four characters long.";
+					flError = true};
+				if not flError { //compare passwords
+					repeatPassword = adrargs^.repeatPassword;
+					if password != repeatPassword {
+						errorMessage = "Can't create admin user, \"" + name + "\" because the password and repeat password don't match.";
+						flError = true}}};
+			local (adrmember);
+			if not flError { //get adrmember, check to see if it already exists
+				adrmember = mainResponder.members.getMemberTable ("admin", email);
+				if not defined (adrargs^.editAdministrator) {
+					if defined (adrmember^) {
+						errorMessage = "Can't create admin user, \"" + name + "\" because there is already an admin user with same email address.";
+						flError = true}}};
+			if not flError { //create member, possibly create WebEdit member
+				if not defined (adrmember^) {
+					new (tableType, adrmember)};
+				if password != "" {
+					adrmember^.password = binary (password)};
+				new (tableType, @adrmember^.personalInfo);
+				adrmember^.personalInfo.name = name;
+				if flWebEdit { //create the webedit user
+					people.newService ("Custody");
+					people.newService ("WebEdit");
+					people.newUser (name, password, email);
+					people.attachServiceToUser (name, "Custody");
+					people.attachServiceToUser (name, "WebEdit")};
+				if defined (user.people.users.[name]) {
+					user.people.users.[name].password = binary (password);
+					if not flWebEdit {
+						if people.serviceIsAttachedToUser ("Custody", name) {
+							user.people.users.[name].services.Custody.enabled = false};
+						if people.serviceIsAttachedToUser ("WebEdit", name) {
+							user.people.users.[name].services.WebEdit.enabled = false}}}}};
+		bundle { //redirect after post
+			if not flError {
+				local (args = pta^.searchArgTable);
+				try {delete (@args.adminUser)};
+				mainResponder.redirect ("http://" + pta^.host + pta^.uri + "?" + webserver.encodeArgs (@args));
+				return ("")}}}
+	else {
+		if defined (pta^.searchArgTable.adminUser) {
+			email = pta^.searchArgTable.adminUser;
+			local (adrmember = mainResponder.members.getMemberTable ("admin", email));
+			«password = string (adrmember^.password)
+			try {name = adrmember^.personalInfo.name}};
+		if name != "" {
+			if defined (user.people.users.[name]) {
+				flWebEdit = people.serviceIsAttachedToUser ("WebEdit", name)}}};
+	
+	if not defined (pta^.searchArgTable.adminUser) {
+		add ("<p><b>Add an administrator</b></p>")}
+	else {
+		add ("<p><b>Edit an administrator</b></p>")};
+	
+	if flError { //add the error message, if any
+		add ("<tr><td colspan=\"2\"><i>" + errorMessage + "</i></td></tr>")};
+	bundle { //add the new admin user fields
+		add (stringPref ("name", "Name", size:40, default:name));
+		add (stringPref ("email", "Email", size:30, default:email));
+		if defined (pta^.searchArgTable.adminUser) {
+			add (checkPref ("enableWebEdit", "Check this box to grant WebEdit access to this administrator.", flWebEdit));
+			add ("<tr><td colspan=\"2\"><br><b>Change password</b></td></tr>");
+			add (stringPref ("password", "Password", "password", 12));
+			add (stringPref ("repeatPassword", "Repeat", "password", 12))}
+		else {
+			add (stringPref ("password", "Password", "password", 12));
+			add (stringPref ("repeatPassword", "Repeat", "password", 12));
+			add (checkPref ("enableWebEdit", "Check this box to grant WebEdit access to this administrator.", flWebEdit))}};
+	bundle { //Submit button
+		if defined (pta^.searchArgTable.adminUser) { //edit user
+			add ("<tr><td colspan=\"2\"><input type=\"submit\" name=\"editAdministrator\" value=\"Submit\" /></td></tr>")}
+		else { //create new user
+			add ("<tr><td colspan=\"2\"><input type=\"submit\" name=\"addAdministrator\" value=\"Add Administrator\" /></td></tr>")}};
+	
+	return (htmltext)}

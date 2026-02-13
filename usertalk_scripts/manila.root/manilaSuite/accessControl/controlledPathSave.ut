@@ -1,0 +1,44 @@
+on controlledPathSave (adrSite, pathID, permittedCohorts) {
+	«12/11/07; 9:45:47 PM by LL
+		«Bug fix: When leaving the controlled path set to everyone unchanged, fix a bug where it tried to delete a value that didn't exist. 
+	«manilaSuite.accessControl.controlledPathSave ; 05/05/16, 00:01:16 by DAB
+		«create/modify the cohorts permitted to access a known path. 
+		«you can modify a non standard path, biut not add it here
+	local (adrTable = adrSite);
+	on pathToAddress() {
+		local (sx = string.popTrailing(string.popLeading(adrNewsSite^.accessControl.controlledPaths.[pathid].path, "/"), "/"));
+		for ix = 1 to string.countFields(sx, "/") {
+			try {
+				adrTable = @adrTable^.[string.nthField(sx, "/", ix)]}
+			else {
+				return false}};
+		return true};
+	
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+	if not defined(adrNewsSite^.accessControl) {
+		manilaSuite.accessControl.init(adrSite)};
+	if not defined(adrNewsSite^.accessControl.controlledPaths) {
+		new(tabletype, @adrNewsSite^.accessControl.controlledPaths)};
+	
+	case true {
+		permittedCohorts == {}; «falls back to default
+		permittedCohorts contains "Everyone" { «same as no restriction
+			if defined(adrNewsSite^.accessControl.controlledPaths.[pathid].cohorts) {
+				delete(@adrNewsSite^.accessControl.controlledPaths.[pathid].cohorts)};
+			if pathToAddress() {
+				if defined(adrTable^.["#security"]) {
+					delete(@adrTable^.["#security"])}}}}
+	else {
+		if not defined(adrNewsSite^.accessControl.controlledPaths.[pathid]) {
+			table.assign(@adrNewsSite^.accessControl.controlledPaths.[pathid], manilaData.accesscontrol.controlledPaths.[pathID])};
+		case true {
+			not defined(adrNewsSite^.accessControl.controlledPaths.[pathid].cohorts);
+			adrNewsSite^.accessControl.controlledPaths.[pathid].cohorts != permittedCohorts {
+				adrNewsSite^.accessControl.controlledPaths.[pathid].cohorts = permittedCohorts;
+				if pathToAddress() {
+					manilasuite.accessControl.generateSecurityScript(adrTable, @adrNewsSite^.accessControl.controlledPaths.[pathid].cohorts)}}}};
+	
+	return true};
+bundle {
+	«controlledPathSave (@funkymanilawebsite, "stats", {"Members Only"})
+	controlledPathSave (@funkymanilawebsite, "stats", {"Everyone"})}

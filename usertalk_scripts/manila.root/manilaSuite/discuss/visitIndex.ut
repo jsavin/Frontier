@@ -1,0 +1,71 @@
+on visitIndex (adrSite, categoryName, adrCallback, flReverse=false, start=1, ct=infinity) {
+	«Changes:
+		«5/9/03; 7:00:42 PM by JES
+			«categoryName can now be the empty string to visit all messages in the site's discussion group.
+		«03/22/01; 4:07:11 PM by PBS
+			«start and ct are new optional parameters, which support breaking a stories or pictures page into multiple screens.
+		«03/22/01; 3:25:48 PM by PBS
+			«Small performance optimizations: don't call out to external scripts when not necessary.
+		«10/09/00; 9:03:08 PM by PBS
+			«Created. Visit all the messages in an index. Return false to stop the visit.
+	local (adrRoot = manilaSuite.discuss.getRootFromSiteAddress (adrSite));
+	local (adrIndex, adrMessages);
+	local (listedIn = "");
+	bundle { //set adrIndex, adrMessages and listedIn
+		if categoryName == "" { //all messages
+			adrMessages = @adrRoot^.messages}
+		else { //only messages in an index
+			listedIn = manilaSuite.discuss.getCategoryName (categoryName, adrSite);
+			adrIndex = manilaSuite.discuss.getIndexTable (adrSite, categoryName);
+			adrMessages = @adrIndex^.index}};
+	local (lowerListedIn = string.lower (listedIn));
+	local (i, sizeMessages = sizeOf (adrMessages^));
+	local (end);
+	end = (start + ct) - 1;
+	if end > sizeMessages {
+		end = sizeMessages};
+	if sizeMessages == 0 { //empty index?
+		return (true)};
+	if flReverse {
+		start = (sizeMessages - start) + 1;
+		end = (start - ct) + 1;
+		if end < 1 {
+			end = 1}};
+	i = start;
+	loop {
+		local (adrMsgTable);
+		if listedIn == "" {
+			adrMsgTable = @adrMessages^ [i]}
+		else {
+			local (adr = @adrMessages^ [i]);
+			local (msgNum = number (nameOf (adr^)));
+			adrMsgTable = @adrRoot^.messages.[string.padWithZeros (msgNum, 7)]};
+		local (flCallCallback = true);
+		bundle { //validation is performed here -- it's defensive, but needed, because someone may have made a change by hand
+			if defined (adrMsgTable^.flDeleted) {
+				if adrMsgTable^.flDeleted {
+					flCallCallback = false}}; //PBS 12/20/00: was a continue statement -- which led to an infinite loop
+			if listedIn != "" { //if the caller asked for a category instead of all messages
+				if not defined (adrMsgTable^.alsoListedIn) { //PBS 03/22/01: performance optimization -- do validation here instead of calling to manilaSuite.discuss.isInCategory
+					flCallback = false}
+				else {
+					if not (string.lower (adrMsgTable^.alsoListedIn) contains lowerListedIn) {
+						flCallback = false}};
+				«if not (manilaSuite.discuss.isInCategory (adrMsgTable, listedIn)) //is it in this category?
+					«flCallCallback = false //PBS 12/20/00: was a continue statement -- which led to an infinite loop}};
+		if flCallCallback {
+			if not (adrCallback^ (adrMsgTable)) {
+				return (false)}}; //false means a callback stopped the loop
+		if flReverse {
+			i--;
+			if i < end {
+				break}}
+		else {
+			i++;
+			if i > end {
+				break}}};
+	return (true)};
+«bundle //test code
+	«on callback (adr)
+		«msg (adr^.msgnum + ":" + adr^.subject)
+	«visitIndex (@jaketest2ManilaWebsite, "stories", @callback, true)

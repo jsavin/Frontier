@@ -1,0 +1,166 @@
+on gemsList (flCreateLink=true) {
+	«Changes:
+		«11/10/05; 3:02:48 AM by JES
+			«Moved upload link to above the list, to match the stories and pictures page change released with 9.5.
+		«03/24/05, 21:56:45 by DAB
+			«Call manilaSuite.gems.markDeleted instead of doing deletion here.
+		«12/22/04; 12:07:14 PM by LL
+			«Localize the dates used in the gems list.
+		«9/23/03; 4:44:29 PM by JES
+			«Allow content editors to delete gems.
+		«04/20/00; 7:48:34 PM by JES
+			«Localized.
+		«05/25/00; 1:41:43 AM by JES
+			«Don't test that the delete button was named "delete" because localized sites fail the test.
+		«06/30/00; 11:16:47 AM by PBS
+			«Don't scriptError if the gem file isn't found, just skip it.
+		«9/28/01; 2:49:47 PM by PBS
+			«Support for print-friendly template.
+		«1/25/02; 6:23:24 PM by PBS
+			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		«04/14/00; 5:47:03 PM by PBS
+			«Created. Display the list of gems, with checkboxes and a Delete button if you're an ME.
+	
+	local (pta = html.getPageTableAddress ());
+	local (flEditor = manilaSuite.editors.editorialTest ());
+	local (flCanDelete = (manilaSuite.editors.managingEditorTest () or manilaSuite.editors.contentEditorTest ()) );
+	local (flPost = (string.lower (pta^.method) == "post"));
+	local (newUrl = manilaSuite.getUrl ("gemNewMessage"));
+	local (editGemUrl = manilaSuite.getUrl ("gemEditInBrowser")); //04/06/24, 22:05:15 by DAB
+	local (flGemsAreEditable = manilaSuite.plugins.ETPoverride.isOverridden("gemEditInBrowser")); //04/08/28, 09:41:20 by DAB
+	local (adrSite = manilaSuite.getManilaSiteAddress ());
+	local (htmlText);
+	
+	if pta^.flPrintFriendlyTemplate { //PBS 09/28/01: no editor stuff with print-friendly version
+		flEditor = false;
+		flCanDelete = false};
+	
+	pta^.activeUrls = false;
+	
+	on add (s) {
+		htmlText = htmlText + (s + "\r");};
+	
+	if flPost { //handle delete command
+		if flCanDelete { //managing editors only may delete from a list
+			if defined (pta^.postArgs.delete) {
+				«if string.lower (pta^.postArgs.delete) == "delete" // 05/25/00 JES: this test fails if the site is not in English
+				local (lowerCategory = "gems");
+				local (adrItem);
+				for adrItem in @pta^.postArgs {
+					local (itemName = nameOf (adrItem^));
+					local (lowerName = string.lower (itemName));
+					if lowerName beginsWith lowerCategory {
+						lowerName = string.delete (lowerName, 1, sizeOf (lowerCategory));
+						local (flDelete = false);
+						local (num);
+						try {
+							num = number (lowerName);
+							flDelete = true};
+						«if flDelete
+							«local (adrTable = manilaSuite.gems.getGemAddress (adrSite, num))
+							«manilaSuite.gems.deleteAssociatedFile (adrTable)
+							«manilaSuite.gems.deleteAssociatedShortcut (adrTable)
+							«manilaSuite.gems.deleteFromGemsList (adrTable)
+							«
+							«bundle //call delete gems callbacks, if any 04/08/23, 14:50:01 by DAB
+								«local (t)
+								«bundle //build context data for callback
+									«new(tabletype, @t)
+									«t.adrSite = adrSite
+									«t.adrGemTable = adrTable
+									«t.adrMember = pta^.adrMemberInfo
+									«t.flDeleting = true
+								«
+								«manilaSuite.callbacks.deleteGemCallback(@t)
+						if flDelete { //05/03/24, 21:56:45 by DAB
+							manilaSuite.gems.markDeleted(adrSite, num, pta^.adrMemberInfo)}}}}}};
+	
+	on listTopics () {
+		on td (s, align="", flBold=false) { // 4/20/00 JES: added flBold parameter
+			if flBold {
+				s = "<b>" + s + "</b>"};
+			add ("<td nowrap " + align + " valign=\"middle\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
+		
+		local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+		local (adrMessages = manilaSuite.gems.getSiteDataAddress (adrSite));
+		
+		if flCanDelete { //add start form
+			local (actionUrl = manilaSuite.unTaint (pta^.fname));
+			add ("<form method=\"post\" action=\"" + actionUrl + "\">")};
+		
+		add ("<table cellspacing=\"3\" border=\"0\">");
+		
+		bundle { //column headings
+			add ("<tr>");
+			if flCanDelete {
+				td ("&nbsp;")};
+			«04/20/00; 8:02:10 PM by JES: localized column headings
+			td (manilaSuite.getString ("common.dateColumnName"), flBold: true);
+			td (manilaSuite.getString ("common.titleColumnName"), flBold: true);
+			td (manilaSuite.getString ("common.originatorColumnName"), flBold: true);
+			td (manilaSuite.getString ("common.sizeColumnName"), "right", true);
+			td (manilaSuite.getString ("common.typeColumnName"), flBold: true);
+			«td ("<b>URL</b>")
+			add ("</tr>")};
+		
+		local (i, ct = sizeOf (adrMessages^));
+		for i = ct downTo 1 {
+			local (adrMsgTable = @adrMessages^ [i]);
+			if defined (adrMsgTable^.flDeleted) {
+				if adrMsgTable^.flDeleted {
+					continue}};
+			if not defined (adrMsgTable^.["Content-type"]) {
+				continue};
+			if not defined (adrMsgTable^.f) { //PBS 06/30/00: sanity check
+				continue};
+			if not (file.exists (adrMsgTable^.f)) { //PBS 06/30/00: if file is deleted, just skip it
+				continue};
+			add ("<tr>");
+			if flCanDelete { //add checkbox
+				td ("<input type=\"checkbox\" name=\"gems" + adrMsgTable^.num + "\">")};
+			td (date.shortString (adrMsgTable^.postTime));
+			«td (adrMsgTable^.title)
+			if flGemsAreEditable { //04/08/28, 09:41:09 by DAB
+				if defined(adrMsgTable^.shortcut) and (adrMsgTable^.title != adrMsgTable^.shortcut) { //03/04/17, 18:47:52 by DAB
+					td (html.getLink(adrMsgTable^.title, editGemURL + i) + " (&quot;" + adrMsgTable^.shortcut + "&quot;)")} //05/02/14, 16:11:30 by DAB
+				else {
+					td (html.getLink(adrMsgTable^.title, editGemURL + i))}} //05/02/14, 16:11:48 by DAB
+			else {
+				if defined(adrMsgTable^.shortcut) and (adrMsgTable^.title != adrMsgTable^.shortcut) { //03/04/17, 18:47:52 by DAB
+					td (adrMsgTable^.title + " (&quot;" + adrMsgTable^.shortcut + "&quot;)")}
+				else {
+					td (adrMsgTable^.title)}};
+			td (mainResponder.members.getMemberName (membershipGroup, adrMsgTable^.member));
+			local (size = manilaSuite.gems.getFileSize (adrMsgTable));
+			td (string.megabyteString (size), "right");
+			td (adrMsgTable^.["Content-type"]);
+			add ("</tr>");
+			add ("<tr>");
+			if flCanDelete {
+				add ("<td>&nbsp;</td>")};
+			«add ("<td>&nbsp;</td>")
+			local (cols = 5);
+			add ("<td colspan=\"" + cols + "\"><font size=\"-1\">&nbsp;");
+			local (url = adrMsgTable^.url);
+			add (html.getLink (url, url));
+			add ("</font></td>");
+			add ("</tr>")};
+		
+		add ("</table>");
+		
+		if flCanDelete { //add Delete button, close form
+			add ("<p><input type=\"submit\" name=\"delete\" value=\"" + manilaSuite.getString ("common.deleteButton") + "\">"); // 4/20/00 JES: localized
+			add ("</form>")};
+		
+		return (htmltext)};
+	
+	add (manilaSuite.getString ("gems.thisIsAListOfAllTheGems") + "<p>"); // 4/20/00 JES: localized
+	
+	if (flEditor) and (flCreateLink) {
+		add ("<p>");
+		newLink = "<b>" + html.getLink (manilaSuite.getString ("gems.createNewGem"), newUrl) + "</b>";
+		add (newLink)};
+	
+	listTopics ();
+	
+	return (htmlText)}

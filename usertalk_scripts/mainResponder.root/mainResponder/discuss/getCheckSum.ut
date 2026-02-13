@@ -1,0 +1,30 @@
+on getCheckSum (msgnum, adrmemberinfo) {
+	«Changes
+		«8/8/02; 3:08:47 PM by JES
+			«Support for passwords stored as binaries instead of as clear-text strings.
+	if not defined (adrmemberinfo^.randomnumber) {
+		adrmemberinfo^.randomNumber = random (0, 1000);
+		filemenu.savemyroot (adrmemberinfo)};
+	local (checksum = 0);
+	on addtochecksum (s) {
+		local (i);
+		for i = 1 to sizeof (s) {
+			checksum = checksum + number (s [i])}};
+	addtochecksum (string (msgnum));
+	addtochecksum (string (adrmemberinfo^.password));
+	addtochecksum (string (adrmemberinfo));
+	addtochecksum (string (adrmemberinfo^.randomNumber));
+	«bundle //debugging code
+		«if not defined (scratchpad.checksums)
+			«new (tabletype, @scratchpad.checksums)
+		«local (adrtable = @scratchpad.checksums.[string (clock.now ())])
+		«new (tabletype, adrtable)
+		«adrtable^.msgnum = string (msgnum)
+		«adrtable^.password = string (adrmemberinfo^.password)
+		«adrtable^.adrmemberinfo = string (adrmemberinfo)
+		«adrtable^.randomnumber = string (adrmemberinfo^.randomNumber)
+		«adrtable^.checksum = checksum
+	return (checksum)};
+«bundle //test code
+	«local (adr = @["C:\\Palm Springs\\Nirvana Server\\ops\\members.root"].scriptingNews.users.["aduncan@webwerks.co.nz"])
+	«dialog.alert (getchecksum (902, "ABCDEFG", adr))

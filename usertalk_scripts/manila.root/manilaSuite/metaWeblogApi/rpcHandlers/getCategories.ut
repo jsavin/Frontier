@@ -1,0 +1,35 @@
+on getCategories (blogid, username, password) {
+	«Changes
+		«10/18/05; 4:10:47 AM by JES
+			«Change "HomePage" category to "Home Page".
+		«10/17/05; 2:44:12 AM by JES
+			«Bug fix: set adrsite to the address of the site, not the address of the site's #newsSite table.
+		«10/17/05; 2:41:25 AM by JES
+			«Add support for Home Page category if support for multiple departments is enabled.
+		«7/3/02; 12:02:06 AM by JES
+			«Created.
+	local (siteurl = blogid);
+	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
+	local (returnedcats);
+	new (tableType, @returnedcats);
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrnewssite = @adrsite^.["#newsSite"]);
+	local (flMultipleDepartmentsEnabled = manilaSuite.getNewsSitePref ("newsItems.prefs.flMultipleDepartments", adrSite, false));
+	if flMultipleDepartmentsEnabled {
+		new (tableType, @returnedcats.["Home Page"]);
+		returnedcats.["Home Page"].description = "Home Page";
+		returnedcats.["Home Page"].htmlUrl = manilaSuite.getSiteUrl (adrsite);
+		returnedcats.["Home Page"].rssUrl = manilaSuite.getSiteUrl (adrsite) + "xml/rss.xml"};
+	try {
+		local (adrdepts = address (string (adrnewssite + "." + "newsItems.departments")));
+		local (adr);
+		for adr in adrdepts {
+			local (catname = nameOf (adr^));
+			local (adrreturnedcat = @returnedcats.[catname] );
+			new (tabletype, adrreturnedcat);
+			adrreturnedcat^.description = catname;
+			adrreturnedcat^.htmlUrl = siteUrl + "newsItems/viewDepartment$" + string.urlEncode (nameOf (adr^));
+			adrreturnedcat^.rssUrl = ""}};
+	return (returnedcats)};
+«bundle //testing
+	«getCategories ("http://127.0.0.1/blogger/", "jake@userland.com", "boldnoti")

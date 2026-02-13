@@ -1,0 +1,3 @@
+on getPrefsAddress (sitename) {
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	return (@adrSite^.["#prefs"])}

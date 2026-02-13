@@ -1,0 +1,39 @@
+on dive (adrsite, path, indexPageNames={"default", "index"}, flCreate=false, typeToCreate="story") {
+	«Changes
+		«4/27/06; 6:20:12 PM by JES
+			«Created. Given the address of a Manila site and a path, dive into the site's hierarchy.
+			«Returns the address of the item specified by path, or false if not found.
+			«Can be called outside the web server context.
+	
+	path = string.popLeading (path, "/");
+	local (adrTable = @adrsite^.["#hierarchy"]);
+	local (nomad = @adrTable^.structure [1]);
+	local (pagename = string.nthField (path, "/", string.countFields (path, "/")) );
+	
+	while (sizeOf (path) > 0) {
+		local (pathPart = string.nthField (path, "/", 1));
+		path = string.delete (path, 1, sizeOf (pathPart));
+		path = string.popLeading (path, '/');
+		local (adritem = manilaSuite.siteStructure.getItemAddress (nomad, pathPart, pagename, indexPageNames));
+		if not adritem { //not found -- either create category or bail
+			if flCreate {
+				if path == "" {
+					adritem = xml.addTable (nomad, typeToCreate);
+					new (tableType, @adritem^.["/atts"]);
+					adritem^.["/atts"].pathname = pathPart;
+					adritem^.["/atts"].name = pathPart;
+					case typeToCreate {
+						"story" {
+							adritem^.["/atts"].msgNum = 1};
+						"redirect" {
+							adritem^.["/atts"].url = ""}}}
+				else { //create category on the way to the item
+					adritem = xml.addTable (nomad, "category");
+					new (tableType, @adritem^.["/atts"]);
+					adritem^.["/atts"].pathname = pathPart;
+					adritem^.["/atts"].name = pathPart}}
+			else {
+				return (false)}};
+		nomad = adritem};
+	
+	return (nomad)}

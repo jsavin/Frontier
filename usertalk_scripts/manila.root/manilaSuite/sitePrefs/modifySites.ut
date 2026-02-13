@@ -1,0 +1,14 @@
+on modifySites (editorialMode) {
+	«Changes
+		«3/14/07; 11:47:16 PM by LL
+			«Created.
+	local (adrItem);
+	local (htmltext);
+	
+	htmltext = "The editorial mode of all installed sites have been reset.";
+	
+	for adrItem in @config.manila.sites {
+		if defined (adrItem^) {
+			try {
+				manilaSuite.sitePrefs.resetEditorialMode (adrItem^, editorialMode)}}};
+	manilaSuite.sendMail (config.manila.backups.notifyList, "Manila editorial mode reset " + tcp.dns.getmydottedid (), htmltext, mimetype:"text/html")}

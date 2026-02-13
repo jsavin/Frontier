@@ -1,0 +1,93 @@
+«Changes
+	«10/23/04; 1:15:12 AM by JES
+		«For new installs, initialize config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites to false.
+
+bundle { //perform deletions
+	try {delete (@user.scheduler.hourly.mainResponder)}; //we do this from the agent
+	try {delete (@system.startup.mainResponder)}; //it's now called nirvanaServer
+	«try {delete (@user.betty.rpcHandlers.mainResponder)} //it's now called nirvanaServer
+	try {delete (@user.menus.mainResponder)}; //it's now called nirvanaServer
+	try {delete (@user.webeditserver.callbacks.checkin.mainResponder)}; //it's now called nirvanaServer
+	try {delete (@system.agents.mainResponder)}; //it's now called nirvanaServer
+	try {delete (@config.mainresponder.prefs.nextBackupNumber)}; //backups work differently now
+	try {delete (@config.mainResponder.log)}; //each day's log is kept in its own file
+	try {delete (@config.mainresponder.tickets)}; //data is now stored in tickets.root.prefs
+	try {delete (@system.startup.nirvanaServer)}; //startup code is run thru user.databases setting
+	try {delete (@system.agents.nirvanaServer)}; //startup code is run thru user.scheduler
+	try {delete (@user.scheduler.tasks.nirvanaServer)}; //we install an everyMinute script instead
+	try {delete (@user.scheduler.overnight.nirvanaServer)}; //it's now an address
+	try {delete (@user.scheduler.everyminute.nirvanaServer)}; //it's now an address
+	try {delete (@user.scheduler.tasks.overnight)}; //it'll get recreated by scheduler.init
+	try {delete (@user.scheduler.tasks.hourly)}; //it'll get recreated by scheduler.init
+	
+	«Delete old code from mainResponder.root.
+	try {delete (@mainResponder.pounder)};
+	try {delete (@mainResponder.discuss.macros)};
+	try {delete (@mainResponder.readMe)};
+	try {delete (@mainResponder.suiteName)};
+	try {delete (@mainResponder.tickets)};
+	
+	try {delete (@mainResponder.discuss.addSystemEvent)}; //Wed, 10 Mar 1999 05:09:55 GMT by AR
+	try {delete (@mainResponder.discuss.server)};
+	try {delete (@mainResponder.discuss.transitionDiscussionGroup)};
+	try {delete (@mainResponder.getFolder)};
+	try {delete (@mainResponder.log.addOld)};
+	try {delete (@mainResponder.log.oldRoll)};
+	try {delete (@mainResponder.news.oldstuff)};
+	try {delete (@mainResponder.rpcHandlers.oldnews)};
+	try {delete (@mainResponder.subscriptions.testing)};
+	try {delete (@mainResponder.testing.ticketRPC)};
+	try {delete (@mainResponder.writing)};
+	try {delete (@mainResponder.calendar.getPostTime)}; //Wed, 10 Mar 1999 13:53:17 GMT by AR
+	try {delete (@mainResponder.discuss.link)};
+	try {delete (@mainResponder.discuss.threadRedirect)};
+	try {delete (@mainResponder.log.getCurrentFile)};
+	
+	try {delete (@mainResponder.search.utilities.isTablePage)}}; //PBS 3/10/99
+
+local (adrparts = @mainresponder.data.parts, adritem, i);
+for i = 1 to sizeof (adrparts^) { //move all the parts that live outside mainResponder
+	adritem = @adrparts^ [i];
+	adritem^.adr^ = adritem^.data;
+	if adritem^.adr == @system.verbs.builtins.log {
+		log.startup ()};
+	export.addtolog (adritem^.adr)};
+bundle { //be sure config.root exists and is open and is initialized
+	local (f = frontier.getSubFolder ("apps") + "config.root");
+	if not window.isopen (f) {
+		try {
+			filemenu.open (f)}
+		else {
+			filemenu.new (f)}};
+	local (adrtable = @[f].config);
+	if not defined (adrtable^) {
+		new (tabletype, adrtable)};
+	mainResponder.init (); //sets up config.mainresponder
+	config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites = false; // new installs set this to false. 10/22/04; 4:43:57 PM by EDS
+	filemenu.save (f)};
+scheduler.init (); //upgrades user.scheduler if it needs it
+user.scheduler.overnight.nirvanaServer = @mainresponder.background.everynight;
+user.scheduler.everyMinute.nirvanaServer = @mainresponder.background.everyminute;
+user.scheduler.hourly.searchEngine = @mainResponder.search.server.indexStoredPages;
+
+bundle { //update rootUpdates prefs for mainResponder.root.
+	«Wednesday, March 03, 1999 at 11:40:43 AM by PBS
+	local (adrTable = @user.rootUpdates.servers.mainResponder);
+	if not defined (adrTable^) {
+		new (tableType, adrTable)};
+	if not defined (adrTable^.autobackup) {
+		adrTable^.autobackup = true};
+	if not defined (adrTable^.dbname) {
+		adrTable^.dbname = "mainResponder.root"};
+	if not defined (adrTable^.dialogs) {
+		adrTable^.dialogs = true};
+	adrTable^.lastUpdate = "Wed, 03 Mar 1999 19:00:00 GMT";
+	adrTable^.method = "mainResponder.subscriptions.update";
+	adrTable^.port = 80;
+	if not defined (adrTable^.serialNum) {
+		adrTable^.serialNum = 1};
+	adrTable^.server = "madrid.userland.com";
+	adrTable^.URL = "http://developers.userland.com/"};
+
+webEditServer.init (); //create user.webEditServer
+filemenu.save ()

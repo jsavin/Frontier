@@ -1,0 +1,166 @@
+on defaultPage (pta = nil) {
+	«This is broken out into a separate script in case we need to add more to it -- we could update this script rather than update the wp-text in the Manila site.
+		«Changes:
+			«3/11/05; 7:32:00 PM by JES
+				«Pass flEvaluateConditions as true to prefsSuite.browser. Needed for support of conditional prefs and pop-up menu selections (in this case for a pop-up item for file uploads in enclosure prefs.)
+			«3/9/05; 4:09:02 AM by JES
+				«Turn off autoParagraphs, clayVompatibily and activeUrls, so we don't end up with unwanted data in the prefs fields themselves.
+			«3/1/05; 1:06:27 AM by JES
+				«Fixed issue where titles on prefs pages would be rendered twice at the top of the page -- once by the template, and once in this script.
+			«5/26/03; 6:57:52 PM by JES
+				«Only display the discussion group syndication pref if the option is enabled on the server.
+			«5/9/03; 6:10:18 PM by JES
+				«Don't display Mail-to-Weblog page if it's not available.
+			«4/29/03; 10:13:23 AM by EDS
+				«Added section to deal with ftp rendering preferences.
+			«2/20/02; 11:24:03 AM by PBS
+				«Use a try because the radioHosting strings haven't been localized yet.
+			«2/20/02; 4:05:47 AM by JS
+				«Don't display the radio hosting page if it's not available.
+			«2000:
+				«02/24/00; 11:17:12 AM by PBS
+					«Added the plug-ins page, where one can enable and disable plug-ins.
+				«03/14/00; 2:21:10 PM by PBS
+					«Added static rendering prefs page.
+				«04/18/00; 3:58:57 PM by JES
+					«localized
+					«added optional pta parameter to make debugging easier
+				«05/09/00; 10:35:04 PM by PBS
+					«Check the referer to defeat the client side trojan horse.
+				«05/11/00; 7:08:02 PM by JES
+					«merged in Brent's security fix for the client side trojan horse attack.
+				«05/12/00; 3:59:26 PM by JES
+					«replace "Yes" and "No" in the prefs browser with localized strings
+				«06/10/00; 6:57:49 PM by JES
+					«Added localized themes page support (merged with Brent's changes)
+				«06/17/00; 11:31:58 PM by JES
+					«support for English pathArgs, with translated panel titles
+				«10/27/00; 3:04:54 PM by JES
+					«Added discussThemes page.
+			«1999:
+				«10/28/99; 2:14:11 PM by PBS
+					«Success message now appears in green.
+					«If error, cancel the refresh after post.
+				«10/30/99; 1:41:25 PM by PBS
+					«Pick up the managing editor's preferred separator and separator text colors.
+				«11/6/99; 2:32:06 AM by PBS
+					«The legal tags page is not implemented in prefs.root, so it needs to be called specially.
+				«12/21/99; 8:06:51 PM by PBS
+					«Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	bundle { //PBS 05/09/00:check referer to defeat client side trojan horse
+		local (flPost = string.lower (pta^.method) == "post");
+		if flPost {
+			manilaSuite.referer.check ("editorialPrefs")}};
+	
+	pta^.wizard = manilaSuite.admin.getSitePrefsWizardAddress (pta); // 05/29/00 JES
+	bundle { //turn off auto-links, paragraphs and the like
+		pta^.autoParagraphs = false; //prevents extraneous <p> tags
+		pta^.clayCompatibility = false; //prevents expansion of ***
+		pta^.activeUrls = false; //prevents mailto expansion, among others
+		};«pta^.processMacros = false
+	
+	if not defined (pta^.javaScript) {
+		pta^.javaScript = string (manilaData.prefs.javaScript)};
+	
+	local (lowerPathArgs = string.lower (pta^.pathArgs));
+	if lowerPathArgs == "legaltags" { //is this the legal tags page?
+		return (manilaSuite.admin.legalTagsPage ())};
+	«if lowerPathArgs == "advanced" //is this the advanced page?
+		«return (manilaSuite.admin.advancedPage ())
+	if lowerPathArgs beginsWith "advanced" { //is this one of the advanced pages?
+		return manilaSuite.sitePrefs.advancedPage()}; //04/05/14, 18:24:31 by DAB
+	if lowerPathArgs == "plugins" { //is this the plug-ins page?
+		return (manilaSuite.admin.pluginsPage ())};
+	if lowerPathArgs == "themes" { //is this the themes page?
+		return (manilaSuite.themes.themesPage (pta))};
+	if lowerPathArgs == "discussthemes" { //is this the DG themes page?
+		return (manilaSuite.discussThemes.themesPage (pta))};
+	if lowerPathArgs == "versioning" { //is this the versioning page
+		return (manilaSuite.sitePrefs.versioning (pta))};
+	if lowerPathArgs == "accesscontrol" { //is this the accesscontrol page
+		return (manilaSuite.sitePrefs.accesscontrolpage(pta))};
+	if lowerPathArgs == "permissions" { //is this the permissions page    05/05/15, 20:18:01 by DAB
+		return (manilaSuite.sitePrefs.permissionspage(pta))};
+	
+	if lowerPathArgs == "" { // the default is the welcome page
+		lowerPathArgs = "welcome"};
+	if string.isNumeric (lowerPathArgs[1]) { // convert numbered path args to panel name for localization support
+		prefsSuite.compileIfDirty ();
+		local (panelNum = number (lowerPathArgs), wizardStructureAddress, panelAddressList);
+		wizardStructureAddress = xml.getAddress (@pta^.wizard^.structure, "wizard");
+		panelAddressList = xml.getAddressList (wizardStructureAddress, "panel");
+		lowerPathArgs = string.lower (string.innerCaseName (xml.getAttribute (panelAddressList[panelNum], "title")^))};
+	
+	bundle { //don't display static rendering page if it's not available
+		if lowerPathArgs == string.lower (manilaSuite.admin.getSitePrefsPanelName ("rendering", pta)) {
+			if not (manilaSuite.staticRendering.isAvailable (pta^.adrSiteRootTable)) {
+				pta^.title = manilaSuite.getString ("admin.rendering");
+				«local (htmlText = "<h2>" + manilaSuite.getString ("admin.rendering") + "</h2>\r") // 5/2/00 JES: localized
+				htmlText = htmlText + manilaSuite.getString ("admin.staticRenderingNotAvailableError"); // 4/18/00 JES: localized
+				return (htmlText)}}};
+	bundle { //don't display radio hosting page if it's not available
+		try {
+			if lowerPathArgs == string.lower (manilaSuite.admin.getSitePrefsPanelName ("radioHosting", pta)) {
+				if not config.manila.prefs.flRadioHostingEnabled {
+					pta^.title = manilaSuite.getString ("admin.radioHosting");
+					«local (htmlText = "<h2>" + manilaSuite.getString ("admin.radioHosting") + "</h2>\r") // 5/2/00 JES: localized
+					htmlText = htmlText + manilaSuite.getString ("admin.radioHostingNotAvailableError"); // 4/18/00 JES: localized
+					return (htmlText)}}}};
+	bundle { //don't display Mail-to-Weblog page if it's not available
+		try {
+			if lowerPathArgs == string.lower (manilaSuite.admin.getSitePrefsPanelName ("mail-to-weblog", pta)) {
+				local (flMailToWeblogEnabled = false);
+				if defined (config.manila.prefs.flMailToWeblogEnabled) {
+					flMailToWeblogEnabled = config.manila.prefs.flMailToWeblogEnabled};
+				if not flMailToWeblogEnabled {
+					pta^.title = manilaSuite.getString ("admin.mail-to-weblogPageTitle");
+					«local (htmlText = "<h2>" + manilaSuite.getString ("admin.mail-to-weblogPageTitle") + "</h2>\r") // 5/2/00 JES: localized
+					htmlText = htmlText + manilaSuite.getString ("admin.mailToWeblogNotAvailableError"); // 4/18/00 JES: localized
+					return (htmlText)}}}};
+	bundle { //don't display TrackBack page if it's not available
+		try {
+			if lowerPathArgs == string.lower (manilaSuite.admin.getSitePrefsPanelName ("trackback", pta)) {
+				if not config.manila.prefs.flTrackbackEnabled {
+					pta^.title = manilaSuite.getString ("admin.trackbackPageTitle");
+					«local (htmlText = "<h2>" + manilaSuite.getString ("admin.trackbackPageTitle") + "</h2>\r") // 5/2/00 JES: localized
+					htmlText = htmlText + manilaSuite.getString ("admin.trackbackNotAvailableError"); // 4/18/00 JES: localized
+					return (htmlText)}}}};
+	
+	local (htmlText = "");
+	local (separatorColor, separatorTextColor);
+	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+	
+	bundle { // get the prefs browser HTML, and replace "Yes" and "No" with localized strings, and add the title to the HTML
+		local (s);
+		s = prefsSuite.browser (flIncludeTitle:false, separatorColor:separatorColor, separatorTextColor:separatorTextColor, pta:pta, flEvaluateConditions:true);
+		s = string.replaceAll (s, "{", "&#123;");
+		s = string.replaceAll (s, ">Yes\r", ">" + manilaSuite.getString ("common.yes", pta: pta) + "\r");
+		s = string.replaceAll (s, ">No\r", ">" + manilaSuite.getString ("common.no", pta: pta) + "\r");
+		s = string.replace (s, "value=\" Submit \"", "value=\" " + manilaSuite.getString ("common.submitButton", pta: pta) + " \"");
+		
+		local (panelTitle = manilaSuite.getString ("admin." + lowerPathArgs + "PageTitle", pta: pta));
+		pta^.title = panelTitle;
+		«htmlText = htmlText + "<h2>" + panelTitle + "</h2>\r" + s
+		htmlText = htmlText + s};
+	
+	on insertAfterTitle (s) {
+		s = manilaSuite.unTaint (s);
+		local (ix = string.patternMatch ("</h2>", string.lower (htmlText)));
+		if ix > 0 {
+			htmlText = string.insert (s, htmlText, ix + 6)};
+		return (true)};
+	
+	if defined (pta^.sitePrefsErrorMessage) {
+		«Add the error message to the HTML and cancel the refresh after post.
+		if defined (pta^.responderAttributes.redirectUrl) {
+			delete (@pta^.responderAttributes.redirectUrl)};
+		insertAfterTitle ("<font color=\"red\">" + pta^.sitePrefsErrorMessage + "</font><p>")};
+	
+	if defined (pta^.sitePrefsSuccessMessage) {
+		insertAfterTitle ("<font color=\"green\">" + pta^.sitePrefsSuccessMessage + "</font><p>")};
+	
+	return (htmlText)}

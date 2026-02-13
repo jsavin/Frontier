@@ -1,0 +1,13 @@
+on errorPage (title, body) {
+	local (htext = "", indentlevel = 0);
+	on add (s) {
+		htext = htext + (string.filledString ("\t", indentlevel) + s + "\r\n")};
+	add ("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">");
+	add ("<html>"); indentlevel++;
+	add ("<head><title>" + title + "</title></head>");
+	add ("<body bgcolor=\"white\" text=\"black\" link=\"blue\" vlink=\"purple\" alink=\"red\">"); indentlevel++;
+	add ("<h2>" + title + "</h2>");
+	add (body);
+	add ("</body>"); indentlevel--;
+	add ("</html>"); indentlevel--;
+	return (htext)}

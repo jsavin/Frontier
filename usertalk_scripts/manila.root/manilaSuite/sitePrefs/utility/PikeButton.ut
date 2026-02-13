@@ -1,0 +1,17 @@
+on PikeButton (pta, adrObject, sectionName) {
+	«manilaSuite.sitePrefs.utility.PikeButton : 04/05/16, 14:27:58 by DAB
+		«factored from manilaSuite.sitePrefs.advancedPage
+	«messages at manilaData.localization.languages.english.strings.admin
+	local (editInPikeUrl = "editInPike?" + string.urlEncode (sectionName));
+	local (appendTable);
+	new (tableType, @appendTable);
+	local (itemType = sectionName);
+	case string.lower (itemType) {
+		 "cascading style sheet" {
+			itemType = "CSS"};
+		 "external style sheet" {
+			itemType = "ExternalCSS"}};
+	appendTable.itemType = string.dropNonAlphas (itemType);
+	local (pikeHelpdescription = manilaSuite.getString ("admin.edit" + appendTable.itemType + "WithPike", pta: pta));
+	editInPikeUrl = manilaSuite.pike.buildPikeButtonUrl (adrObject, "editAdvancedItem", @appendTable);
+	return manilaSuite.pike.pikeButton (editInPikeUrl, adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false, pikeHelpDescription, pta)}

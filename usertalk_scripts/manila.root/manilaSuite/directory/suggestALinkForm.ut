@@ -1,0 +1,60 @@
+on suggestALinkForm () {
+	«Changes:
+		«12/19/01; 2:39:39 PM by PBS
+			«Call manilaSuite.sendMail instead of tcp.sendMail.
+	local (pta = html.getpagetableaddress ());
+	pta^.title = "Suggest a Link";
+	
+	«scratchpad.params = pta^; edit (@scratchpad.params)
+	
+	local (referer, editorname, editoremail, crumblist = {});
+	case pta^.method {
+		"GET" {
+			local (args); new (tabletype, @args);
+			webserver.parseargs (pta^.searchargs, @args);
+			«scratchpad.args = args; edit (@scratchpad.args)
+			local (adrlastxstruct, rules);
+			local (adritem = manilasuite.directory.walk (pta^.discussionGroup, args.msgnum, args.path, @crumblist, @adrlastxstruct, @rules));
+			
+			referer = "fill in later";
+			editorname = "Bull Mancuso";
+			editoremail = "bull@mancuso.com";
+			
+			«referer = args.referer
+			«editorname = base64.decode (args.ownername)
+			};«editoremail = base64.decode (args.owneremail)
+		"POST" {
+			local (recipient = base64.decode (pta^.postargs.editor));
+			local (subject = "Suggested Link: " + pta^.postargs.title);
+			local (s = "");
+			s = s + "Category: " + pta^.postargs.referer + "\r\n\r\n";
+			s = s + "Title: " + pta^.postargs.title + "\r\n\r\n";
+			s = s + "Link: " + pta^.postargs.url + "\r\n\r\n";
+			s = s + "Description: " + pta^.postargs.description + "\r\n\r\n";
+			s = s + clock.now ();
+			«tcp.sendMail (recipient, subject, s)
+			manilaSuite.sendMail (recipient, subject, s); //PBS 12/19/01: call manilaSuite.sendMail so user callbacks get called, so text gets converted (bug fix from David Bayly on Frontier-Server list)
+			local (args); new (tabletype, @args); args.message = "Your suggestion was sent to the editor of this page. Thanks for participating.";
+			mainresponder.redirect (pta^.postargs.referer + "?" + webserver.encodeArgs (@args));
+			return ("")}};
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	add ("<h2>" + pta^.title + "</h2>");
+	bundle { //add the crumb list
+		add ("<font size=\"-1\">" + manilaSuite.directory.getBreadcrumbString (crumblist, "/companies/userland/projects/superopendirectory/toDo/searchCommand") + "</font>");
+		add ("<p>")};
+	add ("Please enter a site name, URL and (optionally) explain why you believe the link should be in this category.");
+	add ("<form method=\"POST\" action=\"" + pta^.uri + "\">"); indentlevel++;
+	add ("<table cellspacing=\"10\" cellpadding=\"0\">"); indentlevel++;
+	add ("<tr><td>Site name:</td><td><input type=text size=\"50\" name=\"title\" value=\"\"></td></tr>");
+	add ("<tr><td>URL:</td><td><input type=text size=\"50\" name=\"url\" value=\"http://\"></td></tr>");
+	add ("<tr><td valign=\"top\" width=\"100\">Why should this link be in this category?</td><td><textarea rows=\"3\" cols=\"38\" wrap=\"virtual\" name=\"description\"></textarea></td></tr>");
+	add ("<tr><td>&nbsp;</td><td><input type=\"submit\" name=\"submit\" value=\"Submit\"></td></tr>");
+	add ("</table>"); indentlevel--;
+	add ("<input name=\"referer\" type=\"hidden\" value=\"" + referer + "\">");
+	add ("<input name=\"editor\" type=\"hidden\" value=\"" + base64.encode (editoremail, infinity) + "\">");
+	add ("</form>"); indentlevel--;
+	add ("When you click on Submit, an email will be sent to " + editorname + ", the editor of the directory <a href=\"" + referer + "\">page</a> you came from. There is no guarantee that your site will appear in this directory. Important: You can <a href=\"/howtousesuperopendirectory\">create</a> your own directories on this site, or even <a href=\"/iwantone\">start</a> your own site. That's why we call this the Super<i>Open</i>Directory.");
+	return (htmltext)}

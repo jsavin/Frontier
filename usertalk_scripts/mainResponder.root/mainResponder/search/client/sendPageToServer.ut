@@ -1,0 +1,7 @@
+on sendPageToServer (adrTable) {
+	adrTable^.bodyText = base64.encode (adrTable^.bodyText, 0);
+	
+	local (paramList = {adrTable^.title, adrTable^.url, adrTable^.bodyText, adrTable^.siteName, adrTable^.siteUrl, adrTable^.createdDate, adrTable^.lastModDate});
+	local (s = betty.rpc.client (adrTable^.server, adrTable^.port, adrTable^.procedure, @paramList, flShowMessages:false, ticksToTimeOut:60*10, flAsynch:true));
+	
+	return (true)}

@@ -1,0 +1,81 @@
+on pictureViewer (pta=nil) {
+	«Changes:
+		«1/31/06; 2:51:44 AM by JES
+			«Same behavior for pending pictures as for deleted ones.
+		«9/26/05; 4:27:33 PM by JES
+			«If the message is flagged as deleted, don't add the shortcut explanatory text or the cowskull link.
+		«9/26/05; 4:20:34 PM by JES
+			«Small formatting fix -- removed unwanted <p> tags.
+		«9/26/05; 4:10:49 PM by JES
+			«Include the Admin/Confirm box on pictureViewer pages.
+			«Removed a bunch of commented-out code.
+			«Only add the skull link HTML if the skull image is non-empty.
+		«1999-2000
+			«05/01/00; 2:50:03 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«04/21/00; 3:26:37 AM by JES
+				«localized
+			«1/12/00; 5:06:20 PM by PBS
+				«Don't calculate and update the shortcut here, just get the shortcut name and display it. The shortcut is now updated when the picture is uploaded, not when it's viewed on this page. This was leading to side effects with pictures saved on a static server: the shortcuts were getting confused. The problem also meant that you could never delete a shortcut to a picture, since the pictureViewer page would always recreate it.
+			«11/8/99; 10:52:00 AM by PBS
+				«The glossary entry is now the title of the picture. The title does not point to the pictureViewer page: it's an img tag referencing the picture.
+			«?/?/99 by PBS
+				«Display a picture in a page.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (msgNum = number (pta^.pathArgs));
+	local (adrTable = mainResponder.discuss.getMessageTable (msgNum));
+	
+	if not (manilaSuite.discuss.isPicture (adrTable)) {
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.msgNum = msgNum;
+		return (manilaSuite.getString ("pictures.notAPictureError", @replacementTable, pta: pta))}; // 4/21/00 JES: localized
+	
+	pta^.title = adrTable^.subject;
+	pta^.lastUpdate = adrTable^.lastUpdate;
+	local (htmlText = "", indentLevel = 0);
+	local (flAutoShortcuts = false);
+	local (flEditor = manilaSuite.editors.editorialTest ());
+	
+	local (adrMsg = manilaSuite.discuss.getMessageTable (msgNum, pta^.adrSiteRootTable));
+	local (flDeleted = false, flPending = false);
+	if defined (adrMsg^.flDeleted) {
+		flDeleted = adrMsg^.flDeleted};
+	if defined (adrMsg^.flPending) {
+		flPending = adrMsg^.flPending};
+	
+	on add (s) {
+		if sizeOf (s) > 0 {
+			htmlText = htmlText + string.filledString ("\t", indentLevel) + string.trimWhiteSpace (s) + "\r"}};
+	
+	local (flAdminBox);
+	bundle { //JES 9/26/05: set flAdminBox
+		flAdminBox = manilaSuite.getNewsSitePref ("flAdminBoxOnStoryPages", pta^.adrSiteRootTable, true, true);
+		if manilaSuite.staticRendering.isStaticRendering (pta) {
+			flAdminBox = false}};
+	
+	if flAdminBox { //add confirm box
+		add (manilaSuite.html.confirmBox (pta))};
+	
+	add (mainResponder.discuss.readMessage (msgNum, false, false, false, flStoryHeaderOnly:true, flEditButtonsInHeader:true, editPageURL:pta^.responderAttributes.urls^.pictureEditInBrowser));
+	
+	if not (flDeleted or flPending) { //PBS 1/12/00: build the text explaining how to include the picture in a page
+		local (shortcut);
+		if manilaSuite.pictures.findShortcut (adrTable, @shortcut) {
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.shortcut = shortcut;
+			add ("<p>" + manilaSuite.getString ("pictures.howToIncludePicture", @replacementTable, pta: pta))}}; // 4/21/00 JES: localized
+	
+	if flEditor and (not (flDeleted or flPending)) {
+		local (skullImage = mainResponder.discuss.cowSkullImage (pta));
+		if skullImage != "" {
+			add ("<p><a href=\"" + pta^.responderAttributes.urls^.discussMsgReader + msgNum + "\">" + skullImage + "</a>")}};
+	
+	if flAdminBox { //add admin box
+		add (manilaSuite.html.adminBox (pta))};
+	
+	htmlText = manilaSuite.unTaint (htmlText); //no curly brace macros in this text
+	
+	return (htmlText)}

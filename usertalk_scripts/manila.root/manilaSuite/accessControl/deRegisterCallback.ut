@@ -1,0 +1,15 @@
+on deRegisterCallback (sitename, id, callbackType = "changedCohorts") {
+	«manilaSuite.AccessControl.deRegisterCallback
+		«forget about a callback 
+		«was manilaFixer.accessControl.deRegisterCallback : 03/08/11, 13:25:24 by DAB
+	local (adrSite = manilaSuite.rpcutils.getSiteAddress(sitename));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
+	bundle {
+		if not defined(adrStorage^.accessControl) {
+			return false};
+		if not defined(adrStorage^.accessControl.callbacks) {
+			return false};
+		if not defined(adrStorage^.accessControl.callbacks.[callbackType]) {
+			return false};
+		try {return delete(@adrStorage^.accessControl.callbacks.[callbackType].[id])};
+		return false}}

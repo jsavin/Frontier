@@ -1,0 +1,13 @@
+on neuterOutline (adroutline) { //delete #directives in the outline
+	local (oldtarget = target.set (adroutline));
+	op.firstsummit ();
+	op.go (down, infinity);
+	loop {
+		if op.getlinetext () beginswith "#" {
+			op.deleteline ()}
+		else {
+			if not op.go (up, 1) {
+				break}}};
+	target.set (oldtarget)};
+«bundle //test code
+	«neuterOutline (@system.temp.editorialOutline)

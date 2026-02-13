@@ -1,0 +1,34 @@
+on pictureRefCallback () {
+	«Changes
+		«5/27/05; 2:10:38 AM by JES
+			«Created. Copy pictures referenced in templates in a Manila site into the site's theme table when creating the theme.
+	
+	local (adrpics = @adrTheme^.pictures);
+	if not defined (adrpics^) {
+		new (tableType, adrpics)};
+	local (adrpic = @adrpics^.[shortcutName]);
+	
+	new (tableType, adrpic);
+	adrpic^.height = imageTable.height;
+	adrpic^.width = imageTable.width;
+	adrpic^.shortcut = shortcutName;
+	
+	bundle { //get the image data and mime type -- if on this server, get from the message table, if on another server, load it
+		local (flThisServer = (imageTable.src beginswith adrsite^.["#urls"].imageViewer));
+		if flThisServer { //pull the image from the ODB
+			local (adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrsite, string.nthField (imageTable.src, "$", 2)) );
+			adrpic^.bits = adrmsg^.image.bits;
+			adrpic^.mimeType = adrmsg^.image.mimeType}
+		else { //read the image from wherever it happens to be
+			local (headers);
+			local (urlparts = string.urlSplit (imageTable.src));
+			local (htResult = tcp.httpClient (server:urlparts[2], path:urlparts[3], flMessages:false));
+			adrpic^.bits = binary (string.httpResultSplit (htResult, @headers));
+			adrpic^.mimeType = headers.["Content-Type"];
+			local (adrtype);
+			for adrtype in @user.webserver.prefs.type2MIME {
+				if adrpic^.mimeType == adrtype^ {
+					setBinaryType (@adrpic^.bits, nameOf (adrtype^));
+					break}}}};
+	
+	return (false)} //let the <img> tag get rendered by the caller

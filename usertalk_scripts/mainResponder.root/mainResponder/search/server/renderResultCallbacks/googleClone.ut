@@ -1,0 +1,74 @@
+on googleClone (adrinfo, ranking) {
+	«Changes
+		«8/11/02; 2:05:13 AM by JES
+			«Created. A clone of the Google search result look/feel.
+	local (pta = html.getPageTableAddress ());
+	local (flIncludeSiteName = true);
+	if defined (pta^.flIncludeSiteNameInSearchResults) {
+		flIncludeSiteName = pta^.flIncludeSiteNameInSearchResults};
+	if not defined (pta^.lastSearchResultUrl) {
+		pta^.lastSearchResultUrl = ""};
+	if not defined (pta^.searchString) {
+		local (t); new (tableType, @t);
+		webserver.parseArgs (pta^.searchArgs, @t);
+		pta^.searchString = t.q};
+	local (htext);
+	on add (s) {
+		htext = htext + (s + "\r");};
+	local (urlForDisplay = adrinfo^.url);
+	bundle { //clean urlForDisplay
+		urlForDisplay = string.delete (urlForDisplay, 1, 7);
+		if urlForDisplay endswith "/index.html" {
+			urlForDisplay = string.mid (urlForDisplay, 1, sizeOf (urlForDisplay) - 10)}
+		else {
+			if urlForDisplay endswith "/default" {
+				urlForDisplay = string.mid (urlForDisplay, 1, sizeOf (urlForDisplay) - 7)}
+			else {
+				if urlForDisplay endswith "/default.html" {
+					urlForDisplay = string.mid (urlForDisplay, 1, sizeOf (urlForDisplay) - 12)}
+				else {
+					if urlForDisplay endswith "/index" {
+						urlForDisplay = string.mid (urlForDisplay, 1, sizeOf (urlForDisplay) - 5)}}}}};
+	local (flIndent = false);
+	if (urlForDisplay beginswith pta^.lastSearchResultUrl) {
+		flIndent = true}
+	else {
+		pta^.lastSearchResultUrl = urlForDisplay};
+	if flIndent {
+		add ("<tr><td style=\"padding-left:30px; padding-bottom:8px;\">")}
+	else {
+		add ("<tr><td style=\"padding-bottom:8px;\">")};
+	local (title = adrinfo^.title);
+	if flIncludeSiteName {
+		if defined (adrinfo^.sitename) {
+			if sizeOf (adrinfo^.sitename) > 0 {
+				if string.lower (adrinfo^.sitename) != string.lower (title) {
+					title = adrinfo^.sitename + ": " + title}}}};
+	bundle { //embolden search terms in the title
+		local (words = string.replaceAll (pta^.searchString, "\"", ""));
+		local (ctwords = string.countFields (words, " "));
+		local (lowertitle = string.lower (title));
+		for i = 1 to ctwords {
+			local (lowerword = string.lower (string.nthField (words, " ", i)));
+			lowertitle = string.replaceAll (lowertitle, lowerword, "<b>" + lowerword + "</b>")};
+		local (ct = sizeOf (lowertitle) - 3);
+		for i = 1 to ct {
+			if lowertitle[i] == '<' {
+				if lowertitle[i+1] == 'b' {
+					title = string.insert ("<b>", title, i)}
+				else { //closing tag
+					title = string.insert ("</b>", title, i)}}}};
+	add (html.getLink (title, adrinfo^.url) + "<br />");
+	local (lastline = urlForDisplay);
+	if defined (adrinfo^.text) { //add snippet
+		local (ct = sizeOf (adrinfo^.text));
+		if ct > 0 {
+			add (string.replaceAll (mainResponder.search.server.getSnippet (adrinfo^.text, pta^.searchString), "://", ":\\//") + "<br />");
+			lastline = lastline + (" - " + string.megabyteString (ct));}};
+	lastline = lastline + " - " + date.shortString (adrinfo^.lastModDate);
+	add ("<font color=\"#008000\" size=\"-1\" class=\"small\">" + lastline + "</font>");
+	if flIndent {
+		add ("</td></tr>")}
+	else {
+		add ("</td></tr>")};
+	return (htext)}

@@ -1,0 +1,16 @@
+on sendMailCallback (adrContextTable) {
+	«This callback runner allows the server manager to place a set of callback scripts to over-ride tcp.sendMail, add logging of email, do email filtering, whatever. Put callback scripts in config.manila.sendMail. Each script has the parameters to this script in its context table.
+		«08/07/00; 3:28:36 PM by PBS
+	
+	local (adrUserCallbacks = @config.manila.callbacks.sendMail);
+	
+	if defined (adrUserCallbacks^) { //loop through the callbacks
+		local (adrScript);
+		for adrScript in adrUserCallbacks {
+			try { //scriptErrors can't stop sendMail callbacks
+				while typeOf (adrScript^) == addressType {
+					adrScript = adrScript^};
+				if typeOf (adrScript^) == scriptType {
+					callScript (adrScript, {}, adrContextTable)}}}};
+	
+	return (true)} //return the table 

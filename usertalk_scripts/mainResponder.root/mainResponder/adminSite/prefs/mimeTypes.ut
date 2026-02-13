@@ -1,0 +1,152 @@
+on mimeTypes () {
+	«Changes
+		«8/21/02; 2:17:21 AM by JES
+			«Made the table look good in the admin site. Use alternating table row colors, and smaller fonts in the table.
+		«12/7/01; 2:42:24 PM by PBS
+			«Configure MIME types for serving files from disk.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrTable = @user.webserver.prefs.ext2Mime);
+	local (htmlText = "");
+	local (indentLevel = 0);
+	local (flPost = (pta^.method == "POST"));
+	local (flEditing = false);
+	local (adrItemToEdit);
+	local (nameItemToEdit);
+	
+	on add (s) {
+		htmlText = htmlText + (string.filledString ('\t', indentLevel) + s + "\r");};
+	
+	on addSeparator (s) {
+		add ("<p><b>" + s + "</b></p>");
+		«bundle //original code
+			«add ("<table width=\"100%\" border=\"0\" cellpadding=\"2\" cellspacing=\"0\"><tr>")
+			«add ("<td bgcolor=\"#DCDCFF\" colspan=\"6\"><b>" + s + "</td>")
+			«add ("</tr></table>")};
+	
+	bundle { //handle POSTed form
+		if flPost {
+			if defined (pta^.postArgs.delete) { //deleting?
+				local (adrItem);
+				for adrItem in @pta^.postArgs {
+					local (itemName = string.lower (nameOf (adrItem^)));
+					if itemName == "delete" {
+						continue};
+					if defined (adrTable^.[itemName]) {
+						delete (@adrTable^.[itemName])}}}
+			else { //must be adding or editing
+				local (name = string.trimWhiteSpace (pta^.postArgs.suffix));
+				if name != "" {
+					name = string.lower (name);
+					name = string.popLeading (name, '.'); //be forgiving
+					local (type = string.trimWhiteSpace (pta^.postArgs.type));
+					adrTable^.[name] = type;
+					}};«add ("<font color=\"blue\">." + name + " has been set to " + type + ".</font><p>")
+			local (args = pta^.searchArgTable);
+			try {delete (@args.itemToEdit)};
+			mainResponder.redirect ("http://" + pta^.host + pta^.uri + "?" + webserver.encodeArgs (@args));
+			return ("")}};
+	
+	bundle { //editing?
+		if not flPost {
+			if pta^.searchArgs != "" {
+				local (t);
+				new (tableType, @t);
+				webserver.parseArgs (pta^.searchArgs, @t);
+				if defined (t.itemToEdit) {
+					if string.trimWhiteSpace (t.itemToEdit) != "" {
+						if defined (adrTable^.[t.itemToEdit]) {
+							flEditing = true;
+							adrItemToEdit = @adrTable^.[t.itemToEdit];
+							nameItemToEdit = nameOf (adrItemToEdit^)}}}}}};
+	
+	bundle { //Create New or edit
+		local (defaultName = "", defaultValue = "");
+		if flEditing {
+			addSeparator ("Edit type for ." + nameItemToEdit + ":");
+			defaultName = nameItemToEdit;
+			defaultValue = adrItemToEdit^}
+		else {
+			addSeparator ("Add new type:")};
+		add ("<form method=\"post\" action=\"" + pta^.uri + "\">"); indentLevel++;
+		add ("<table border=\"0\" cellpadding=\"7\" cellspacing=\"0\">"); indentLevel++;
+		add ("<tr>"); indentLevel++;
+		add ("<td>Suffix:</td>");
+		if flEditing {
+			add ("<td>." + defaultName + "<input name=\"suffix\" type=\"hidden\" value=\"" + defaultName + "\"></td>")}
+		else {
+			add ("<td><input size=\"5\" name=\"suffix\" value=\"\"></td>")};
+		add ("</tr>"); indentLevel--;
+		add ("<tr>"); indentLevel++;
+		add ("<td>Type:</td>");
+		add ("<td><input size=\"30\" name=\"type\" value=\"" + defaultValue + "\"></td>");
+		add ("</tr>"); indentLevel--;
+		add ("<tr>"); indentLevel++;
+		add ("<td>&nbsp;</td>");
+		if flEditing {
+			add ("<td><input type=\"submit\" value=\"Submit\" name=\"editSubmit\"></td>")}
+		else {
+			add ("<td><input type=\"submit\" value=\"Add New Type\" name=\"newTypeSubmit\"></td>")};
+		add ("</tr>"); indentLevel--;
+		add ("</table>"); indentLevel--;
+		add ("</form>"); indentLevel--};
+	
+	if not flEditing {
+		bundle { //top of form
+			addSeparator ("Current types:");
+			add ("<form method=\"post\" action=\"" + "http://" + pta^.host + pta^.uri + "?" + pta^.searchArgs + "\">");
+			indentLevel++};
+		
+		bundle { //top of table
+			add ("<table border=\"0\" cellpadding=\"5\" cellspacing=\"0\">");
+			indentLevel++;
+			add ("<tr>"); indentLevel++;
+			add ("<td>&nbsp;</td><td>&nbsp;</td><td align=\"left\"><b>Suffix</b></td><td align=\"left\"><b>Type</b></td><td>&nbsp;</td><td>&nbsp;</td>");
+			add ("</tr>"); indentLevel--};
+		
+		local (bgcolors = {pta^.trbg2, pta^.trbg1});
+		local (adr, flDidSpacers = false, cttypes=0);
+		for adr in adrTable { //build table
+			local (extension = nameOf (adr^));
+			local (value = adr^);
+			
+			add ("<tr bgcolor=\"" + bgcolors [ (++cttypes % 2) + 1] + "\">"); indentLevel++;
+			
+			«Delete checkbox.
+			add ("<td><input type=\"checkbox\" name=\"" + extension+ "\" value=\"delete\"></td>");
+			
+			if not flDidSpacers {
+				add ("<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>")} //spacer
+			else {
+				add ("<td></td>")};
+			
+			add ("<td class=\"small\" align=\"left\">." + extension + "</td>"); //extension
+			add ("<td class=\"small\" align=\"left\">" + value + "</td>"); //MIME type
+			
+			if not flDidSpacers {
+				add ("<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>"); //spacer
+				flDidSpacers = true}
+			else {
+				add ("<td></td>")};
+			
+			add ("<td class=\"small\"><a href=\"" + pta^.uri + "?" + pta^.searchArgs + "&itemToEdit=" + extension + "\">edit</a></td>"); //edit button
+			
+			add ("</tr>"); indentLevel--};
+		
+		bundle { //buttons and bottom of table
+			add ("<tr>"); indentLevel++;
+			add ("<td colspan=\"6\"><input type=\"Submit\" name=\"Delete\" value=\"Delete\"></td>");
+			add ("</tr>"); indentLevel--;
+			add ("</table>");
+			indentLevel--};
+		
+		bundle { //bottom of form
+			add ("</form>");
+			indentLevel--}};
+	
+	bundle { //neuter macros
+		htmlText = string.replaceAll (htmlText, "<%", "&#60;")};
+	
+	pta^.flAddSubmitButton = false; //suppress the default submit button
+	
+	return (htmltext)}

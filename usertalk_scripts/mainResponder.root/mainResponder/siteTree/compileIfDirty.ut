@@ -1,0 +1,27 @@
+on compileIfDirty (adrDomain) {
+	«Changes
+		«9/26/05; 5:28:40 PM by JES
+			«Fix bug caused by empty <siteTree> elements in site tree outlines.
+			«Mod date on site tree outline and compiled site tree must now be equal to prevent re-compile. Set mod date on compiled site tree to that of site tree outline, after compiling.
+		«8/6/02; 1:27:54 AM by JES
+			«Created.
+	local (adrtree = @adrdomain^.siteTree);
+	local (adrdir = @adrtree^.directory);
+	local (adroutline = @adrdir^.outline);
+	local (adrstruct = @adrdir^.structure);
+	local (flCompile = true);
+	if defined (adrstruct^) {
+		if timeModified (adroutline) == timeModified (adrstruct) {
+			flCompile = false};
+		if sizeOf (adrstruct^) == 0 {
+			flCompile = true}
+		else {
+			if typeOf (adrstruct^[1]) == stringType { //check side effect of empty siteTree XML element
+				if adrstruct^[1] == "" {
+					flCompile = true}}}};
+	if flCompile {
+		xml.compile (string (adroutline^), adrstruct);
+		setTimeModified (adrstruct, timeModified (adroutline))};
+	return (true)};
+«bundle //test code
+	«mainResponder.siteTree.compileIfDirty (@config.mainResponder.domains.["manila95beta.userland.com"])

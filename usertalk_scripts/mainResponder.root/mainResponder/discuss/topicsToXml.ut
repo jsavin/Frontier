@@ -1,0 +1,22 @@
+on topicsToXml () {
+	local (f = mainresponder.discuss.openfile ());
+	local (adrmsgs = @[f].discuss.messages);
+	local (xmltext = "", indentlevel = 0);
+	on add (s) {
+		xmltext = xmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	add ("<?xml version=\"1.0\"?>");
+	add ("<topics>"); indentlevel++;
+	local (i, ct = sizeof (adrmsgs^), adrstorage);
+	for i = ct downto 1 {
+		adrstorage = @adrmsgs^ [i];
+		if adrstorage^.inResponseTo == 0 {
+			add ("<topic>"); indentlevel++;
+			add ("<title>" + adrstorage^.msgnum + "</title>");
+			add ("<subject>" + adrstorage^.subject + "</subject>");
+			add ("<postTime>" + adrstorage^.posttime + "</postTime>");
+			add ("<member>" + adrstorage^.member + "</member>");
+			add ("</topic>"); indentlevel--}};
+	add ("</topics>"); indentlevel--;
+	return (xmltext)};
+bundle { //test code
+	wp.newtextobject (topicsToXml (), @scratchpad.xxxxx)}

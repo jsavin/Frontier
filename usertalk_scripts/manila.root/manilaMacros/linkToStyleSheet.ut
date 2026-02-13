@@ -1,0 +1,14 @@
+on linkToStyleSheet (flUseImportCommand=false) {
+	«Changes
+		«4/30/03; 9:31:12 PM by JES
+			«Use <link...></link> instead of <link... /> for validation.
+		«4/20/03; 1:17:43 AM by JES
+			«Created. Generates a link to the CSS file created via the Advanced prefs page.
+	local (gemsUrl = manilaSuite.getUrl ("editorialGems"));
+	local (cssUrl = gemsUrl + "styleSheet.txt");
+	local (linktext);
+	if flUseImportCommand { //Netscape 4 can't see the style sheet in this case
+		linktext = "<style type=\"text/css\">\r@import url(\"" + cssUrl + "\");\r</style>"}
+	else {
+		linktext = "<link rel=\"stylesheet\" type=\"text/css\" href=\"" + cssUrl + "\"></link>"};
+	return (linktext)}

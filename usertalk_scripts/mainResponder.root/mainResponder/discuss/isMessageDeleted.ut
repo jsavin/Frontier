@@ -1,0 +1,18 @@
+on isMessageDeleted (msgNum, adrMsgTable=nil, pta=nil) {
+	«Has a discussion group message been deleted?
+		«Dg messages are never destroyed -- an flDeleted flag in the message table is set to true.
+		«This flag may not exist, so it's important to test for existence before checking whether or not it's true. (Let this script do it for you.)
+		«Changes:
+			«8/2/1999; 3:09:01 PM by PBS
+				«Added adrMsgTable and pta optional parameters, because often these addresses are known before calling this script. Performance improves if they don't have to be recomputed.
+	
+	if adrMsgTable == nil { //get the address of the message table
+		if pta == nil { //get the address of the page table
+			pta = html.getPageTableAddress ()};
+		
+		adrMsgTable = mainResponder.discuss.getMessageTable (msgNum, pta)};
+	
+	if not defined (adrMsgTable^.flDeleted) { //if the flDeleted flag isn't defined, the message hasn't been deleted: return false
+		return (false)};
+	
+	return (adrMsgTable^.flDeleted)} //the flag exists, so return the value of the flag

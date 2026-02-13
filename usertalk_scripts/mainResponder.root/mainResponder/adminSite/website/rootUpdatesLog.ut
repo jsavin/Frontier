@@ -1,0 +1,30 @@
+on rootUpdatesLog (maxitems = infinity) {
+	«Changes
+		«9/8/02; 4:37:58 PM by JES
+			«Set the correct title -- fix a copy/paste bug.
+		«8/29/02; 12:17:23 AM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Root Updates Log";
+	local (colors = {pta^.trbg1, pta^.trbg2});
+	local (columns = {""});
+	on renderItemCallback (adritem) {
+		local (name = xml.convertToDisplayName (nameOf (adritem^)) );
+		local (notes = adritem^.changenote);
+		bundle { //do a little text-bashing
+			notes = string.trimWhitespace (notes);
+			if sizeOf (notes) > 0 {
+				notes = string.replaceAll (notes, "\r", "<br />");
+				notes = "<p class=\"small\" style=\"padding-left:5px\">" + notes + "</p>"}};
+		local (s = "<p class=\"small\" style=\"padding-top:5px; padding-left:5px\"><b>" + name + "</b></p>" + notes);
+		on td (s, align="") {
+			if align != "" {
+				align = " align=\"" + align + "\""};
+			return ("<td" + align + "><font size=\"-1\" class=\"small\">" + s + "</font></td>")};
+		return (td (s))};
+	local (ctitems);
+	local (logtext = mainResponder.log.browseAny ("rootUpdates", @renderItemCallback, colors, columns, 3, maxitems, {}, @ctitems));
+	if ctitems {
+		return (logtext)}
+	else {
+		return (logtext + "<p>There are no items to list at this time.</p>")}}

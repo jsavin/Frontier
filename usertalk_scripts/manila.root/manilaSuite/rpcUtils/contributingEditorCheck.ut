@@ -1,0 +1,8 @@
+on contributingEditorCheck (sitename, username, password) {
+	
+	manilaSuite.rpcUtils.memberCheck (sitename, username, password);
+	
+	if not manilaSuite.rpcUtils.isContributingEditor (sitename, username) {
+		scriptError ("Can't complete this operation because \"" + username + "\" is not a contributing editor.")};
+	
+	return (true)}

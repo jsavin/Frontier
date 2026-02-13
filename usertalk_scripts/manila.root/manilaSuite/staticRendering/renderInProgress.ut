@@ -1,0 +1,11 @@
+on renderInProgress (adrSite, adrRenderInfo) {
+	«Return true if a render is already in progress for this site. If a rendering is currently in progress, adrRenderInfo^ will contain information about the current rendering: flWholeSite and currentUrl.
+		«03/14/00; 3:47:04 PM by PBS
+	
+	local (t);
+	t = manilaSuite.staticRendering.getRenderingStatus (adrSite);
+	
+	adrRenderInfo^.flWholeSite = t.flWholeSite;
+	adrRenderInfo^.currentUrl = t.currentUrl;
+	
+	return (t.flRenderInProgress)}

@@ -1,0 +1,16 @@
+local (pta = html.getPageTableAddress ());
+pta^.title = manilaSuite.getString ("discuss.editMessagePageTitle"); // 4/19/00 JES: localized
+local (msgNum);
+if defined (pta^.postArgs.msgNum) {
+	msgNum = pta^.postArgs.msgNum;
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum, pta));
+	if manilaSuite.discuss.isModule (adrMsgTable) {
+		return ("Edit Module")}};
+
+local (referer);
+if defined (pta^.requestHeaders.referer) {
+	referer = pta^.requestHeaders.referer;
+	if not (string.lower (referer) contains "discuss") {
+		return (manilaSuite.getString ("discuss.editStoryPageTitle"))}}; // 4/19/00 JES: localized
+
+return (manilaSuite.getString ("discuss.editMessagePageTitle")) // 4/19/00 JES: localized

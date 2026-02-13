@@ -1,0 +1,265 @@
+on adminBox (pta=nil, msgNum=nil) {
+	«Draw the admin box, which has checkboxes for the actions you can perform on a story or message.
+		«Do you want to make this message a story?
+		«Do you want to delete this message?
+		«Do you want to un-delete this message?
+		«Do you want to remove this story from the stories list?
+		«Do you want to remove this picture from the pictures list?
+		«Do you want to make this the home page?
+		«Do you want to set a path for this message?
+		«Do you want to enable/disable bylines for this story?
+	«Changes:
+		«1/31/06; 2:29:21 AM by JES
+			«Add commands for editorial approval, and revert to approval pending. Change width of admin box from 300 to 350 pixels.
+		«9/14/05; 1:51:30 AM by JES
+			«Allow news items to be made into stories and to set a relative path.
+			«Re-sorted change notes.
+		«7/2/05; 3:04:06 AM by JES
+			«If doing content-only rendering, return the empty string.
+		«10/16/03; 3:28:49 PM by JES
+			«Added labels for admin box commands to make them easier to select. Added JavaScript onfocus handler to automatically select the Set Path command when entering a path. Factored code that generates Radio buttons and labels.
+		«9/23/03; 1:44:54 PM by JES
+			«Added the Admin box for Content Editors. Required for static rendering.
+		«4/25/03; 3:41:39 PM by JES
+			«Enabled the delete option on story and picture pages.
+		«4/18/03; 2:31:57 PM by JES
+			«Default is to have no command selected, instead of defaulting to the delete command.
+		«12/16/02; 9:17:58 PM by JES
+			«Added support for storyReader and hierarchy pages.
+		«9/28/01; 2:02:10 PM by PBS
+			«If print-friendly template, just return "".
+		«10/09/00; 12:44:16 AM by JES
+			«Add the msgNum as a hidden input, if specified
+		«07/01/00; 12:31:54 AM by JES
+			«Localized story byline options.
+		«06/29/00; 10:40:44 PM by PBS
+			«You can now enable and disable bylines on a story-by-story basis.
+		«04/25/00; 1:20:50 PM by PBS
+			«Support for news items. If the message is a news item, you can't make it the home page. If news items are turned on, you can't make other messages the home page.
+		«04/21/00; 12:35:50 AM by JES
+			«Localized.
+		«03/03/00; 9:47:19 PM by PBS
+			«Added support for setting the path to a message via the Admin box.
+		«12/13/99; 11:21:19 AM by PBS
+			«Respect the managing editor's color preferences for Admin boxes.
+		«11/8/99; 1:41:36 PM by PBS
+			«Now works with storyReader pages, not just msgReader pages.
+			«If the dg message is a picture, or contains an image table, then you can add or remove it from the pictures list.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	if not (manilaSuite.editors.managingEditorTest (pta)) { //MEs only
+		if not (manilaSuite.editors.contentEditorTest (pta)) { //...or content editor
+			return ("")}};
+	
+	if defined (pta^.searchArgTable.["content-only"]) {return ("")};
+	if pta^.flPrintFriendlyTemplate { //PBS 09/28/01: return ""
+		return ("")};
+	
+	local (s = "");
+	local (flStory = false);
+	local (flPicture = false);
+	local (flNewsItem = false);
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (flNewsItemsEnabled = manilaSuite.news.newsItemsEnabled (adrSite));
+	local (flImageTable = false);
+	local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
+	
+	bundle { //PBS 12/13/99:get the color preferences
+		manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor)};
+	
+	local (flInDg = false);
+	bundle { //is this a dg msgReader page?
+		local (msgReaderUrl = pta^.urls^.discussMsgReader, msgEditUrl = pta^.urls^.discussEditInBrowser);
+		local (thisUrl = pta^.url);
+		if pta^.pathArgs != "" {
+			thisUrl = thisUrl + "$" + pta^.pathArgs;
+			msgReaderUrl = msgReaderUrl + pta^.pathArgs;
+			msgEditUrl = msgEditUrl + pta^.pathArgs};
+		if (thisUrl == msgReaderUrl) or (thisUrl == msgEditUrl) {
+			flInDg = true}};
+	
+	local (adrMsgTable = manilaSuite.discuss.getCurrentMessageTable (msgnum, pta));
+	if manilaSuite.discuss.isStory (adrMsgTable) {
+		flStory = true};
+	if manilaSuite.discuss.isPicture (adrMsgTable) {
+		flPicture = true};
+	
+	bundle { //build the top of the table
+		«bundle //old code
+			«local (action = pta^.fname)
+			«local (action = pta^.urls^.discussMsgReader)
+			«if not (action endsWith "$")
+				«action = action + "$"
+			«if pta^.pathArgs != ""
+				«action = action + pta^.pathArgs
+			«else
+				«action = action + adrMsgTable^.msgNum
+		local (action = pta^.fname);
+		if action beginsWith "#objectNotFoundHandler" {
+			action = pta^.uri}
+		else {
+			«local (action = pta^.urls^.discussMsgReader)
+			if not (action endsWith "$") {
+				action = action + "$"};
+			if pta^.pathArgs != "" {
+				action = action + pta^.pathArgs}
+			else {
+				action = action + adrMsgTable^.msgNum}};
+		action = manilaSuite.unTaint (action);
+		
+		s = "<br><br><br>\r<table border=\"0\" cellpadding=\"3\" cellspacing=\"1\" bgcolor=\"" + headerColor + "\" width=\"350\">";
+		s = s + "\r<tr bgcolor=\"" + headerColor +"\"><td align=\"left\"><b><font color=\"" + headerTextColor + "\">" + manilaSuite.getString ("html.admin", pta: pta) + "</font></b></td></tr>"; // 4/21/00 JES: localized
+		s = s + "\r<tr bgcolor=\"" + backgroundColor + "\"><td><font color=\"" + backgroundTextColor + "\">" + manilaSuite.getString ("html.doYouWantTo", pta: pta) + "<form method=\"POST\" action=\"" + action + "\">"}; // 4/21/00 JES: localized
+	
+	bundle { //build the middle of the table, the command's radio buttons
+		local (message = "message");
+		local (flBr = false);
+		local (flDeleted = defined (adrMsgTable^.flDeleted) and adrMsgTable^.flDeleted);
+		local (flPending = defined (adrMsgTable^.flPending) and adrMsgTable^.flPending);
+		
+		on radioButton (command, label, flChecked=false) {
+			local (checked = "");
+			if flChecked {
+				checked = " checked"};
+			if flBr {
+				s = s + "<br>"};
+			s = s + "<input type=\"radio\" name=\"adminCommand\" id=\"" + command + "\" value=\"" + command + "\"" + checked + ">" + "<label for=\"" + command + "\">" + label + "</label>";
+			«s = s + "<input type=\"radio\" name=\"adminCommand\" value=\"" + command + "\"" + checked + ">" + label
+			return};
+		
+		if defined (adrMsgTable^.image) {
+			flImageTable = true};
+		if manilaSuite.news.isNewsItem (adrMsgTable) {
+			flNewsItem = true};
+		
+		if flStory {
+			message = "story"};
+		if flPicture {
+			message = "picture"};
+		if flNewsItem {
+			message = "news item"};
+		
+		«Delete this message?
+		if true { //flInDg
+			if not flDeleted {
+				local (prompt); // 4/21/00 JES: localize prompt text
+				case  string.lower (message) {
+					"message" {
+						prompt = manilaSuite.getString ("html.deleteThisMessage", pta: pta)};
+					"story" {
+						prompt = manilaSuite.getString ("html.deleteThisStory", pta: pta)};
+					"picture" {
+						prompt = manilaSuite.getString ("html.deleteThisPicture", pta: pta)};
+					"news item" {
+						prompt = manilaSuite.getString ("html.deleteThisNewsItem", pta: pta)}};
+				radioButton ("delete", prompt);
+				flBr = true}};
+		
+		«Undelete this message?
+		if true { //flInDg
+			if flDeleted {
+				local (prompt); // 4/21/00 JES: localize prompt text
+				case  string.lower (message) {
+					"message" {
+						prompt = manilaSuite.getString ("html.undeleteThisMessage", pta: pta)};
+					"story" {
+						prompt = manilaSuite.getString ("html.undeleteThisStory", pta: pta)};
+					"picture" {
+						prompt = manilaSuite.getString ("html.undeleteThisPicture", pta: pta)};
+					"news item" {
+						prompt = manilaSuite.getString ("html.undeleteThisNewsItem", pta: pta)}};
+				radioButton ("undelete", prompt);
+				flBr = true}};
+		
+		«Approve this message?
+		if flPending and (not flDeleted) {
+			local (prompt);
+			case string.lower (message) {
+				"message" {
+					prompt = manilaSuite.getString ("html.approveThisMessage", pta: pta)};
+				"story" {
+					prompt = manilaSuite.getString ("html.approveThisStory", pta: pta)};
+				"picture" {
+					prompt = manilaSuite.getString ("html.approveThisPicture", pta: pta)};
+				"news item" {
+					prompt = manilaSuite.getString ("html.approveThisNewsItem", pta: pta)}};
+			radioButton ("approve", prompt);
+			flBr = true};
+		
+		«Revert this message to pending approval?
+		if (not flPending) and (not flDeleted) {
+			local (prompt);
+			case string.lower (message) {
+				"message" {
+					prompt = manilaSuite.getString ("html.makeThisMessagePending", pta: pta)};
+				"story" {
+					prompt = manilaSuite.getString ("html.makeThisStoryPending", pta: pta)};
+				"picture" {
+					prompt = manilaSuite.getString ("html.makeThisPicturePending", pta: pta)};
+				"news item" {
+					prompt = manilaSuite.getString ("html.makeThisNewsItemPending", pta: pta)}};
+			radioButton ("makepending", prompt);
+			flBr = true};
+		
+		«Remove from stories list?
+		if flStory and (not flDeleted) {
+			radioButton ("unmakeStory", manilaSuite.getString ("html.removeFromStoriesList", pta: pta) );
+			flBr = true};
+		
+		«Remove from pictures list?
+		if flPicture and (not flDeleted) {
+			radioButton ("unmakePicture", manilaSuite.getString ("html.removeFromPicturesList", pta: pta) );
+			flBr = true};
+		
+		«Make this message a story?
+		if (not flStory) and (not flDeleted) and (not flImageTable) { //and (not flNewsItem)
+			radioButton ("makeStory", manilaSuite.getString ("html.makeThisMessageAStory", pta: pta) );
+			flBr = true};
+		
+		«Make this message a picture?
+		if (not flPicture) and (not flDeleted) and (flImageTable) and (not flNewsItem) {
+			radioButton ("makePicture", manilaSuite.getString ("html.makeThisMessageAPicture", pta: pta) );
+			flBr = true};
+		
+		«Make this the home page?
+		if (not flDeleted) and (not flPicture) and (not flImageTable) and (not flNewsItem) and (not flNewsItemsEnabled) {
+			radioButton ("makeHomePage", manilaSuite.getString ("html.makeThisTheHomepage", pta: pta) );
+			flBr = true};
+		
+		«Enable/disable bylines?
+		if flStory and (not flDeleted) and (not flNewsItem) { //if it's a story
+			local (flSiteBylines = false);
+			if defined (pta^.newsSite^.flBylinesOnStories) {
+				flSiteBylines = pta^.newsSite^.flBylinesOnStories};
+			local (flBylineAppears = flSiteBylines);
+			if defined (adrMsgTable^.flByline) {
+				flBylineAppears = adrMsgTable^.flByline};
+			local (message, value);
+			if flBylineAppears {
+				message = manilaSuite.getString ("admin.turnOffBylineForStory", pta: pta); // 06/31/00 JES: localized
+				value = "setBylineToFalse"}
+			else {
+				message = manilaSuite.getString ("admin.turnOnBylineForStory", pta: pta); // 06/31/00 JES: localized
+				value = "setBylineToTrue"};
+			radioButton (value, message);
+			flBr = true};
+		
+		«Set a path for this page?
+		if (not flDeleted) and (not flPicture) and (not flImageTable) { //and (not flNewsItem)
+			local (currentPath = manilaSuite.siteStructure.getRelativePathToMessage (adrMsgTable^.msgNum, pta^.adrSiteRootTable));
+			currentPath = string.popLeading (currentPath, '/');
+			currentPath = manilaSuite.unTaint (currentPath);
+			radioButton ("makePathForPage", manilaSuite.getString ("html.setRelativePath", pta: pta) );
+			local (onfocus = " onfocus=\"this.form.makePathForPage.checked=true;\"");
+			s = s + "<p>\r&nbsp;&nbsp;" + manilaSuite.getString ("html.pathPrompt", pta: pta) + " <input type=\"text\" size=\"30\" name=\"path\" value=\"" + currentPath + "\"" + onfocus + ">"}}; // 4/21/00 JES: localized
+	
+	bundle { //JES 10/09/00: add the msgNum if specified
+		if msgNum != nil {
+			s = s + "<input type=\"hidden\" name=\"msgNum\" value=\"" + msgNum + "\">"}};
+	
+	bundle { //build the bottom of the table
+		s = s + "<p align=\"right\"><input type=\"submit\" name=\"admin\" value=\"" + manilaSuite.getString ("common.submitButton", pta: pta) + "\">&nbsp;&nbsp;</p></font></form></td></tr></table>"}; // 4/21/00 JES: localized
+	
+	return (s)}

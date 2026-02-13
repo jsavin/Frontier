@@ -1,0 +1,50 @@
+on saveMostReadSitesXml (adrSitesTable, n, d, fname) {
+	«Generate an XML report listing the n most read sites.
+		«05/08/00; 9:03:49 PM by PBS
+	
+	local (xmlText = "", indentLevel = 0);
+	on add (s) {
+		xmlText = xmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+	
+	add ("<?xml version=\"1.0\"?>");
+	add ("<!DOCTYPE foo SYSTEM \"http://msdn.microsoft.com/xml/general/htmlentities.dtd\">");
+	add ("<mostReadSites version=\"1\" updated=\"" + date.netStandardString (clock.now ()) + "\">"); indentLevel++;
+	
+	on encodeWithAmpersands (s) {
+		s = string.replaceall (s, "&", "&amp;");
+		s = string.replaceall (s, "<", "&lt;");
+		s = string.replaceall (s, ">", "&gt;");
+		s = html.iso8859encode (s, @html.data.iso8859.win);
+		return (s)};
+	
+	local (adrTable = @config.manila.stats.sites.allTime);
+	
+	bundle { //build the XML from the intermediate table
+		local (i, ct = 0);
+		for i = sizeOf (adrSitesTable^) downTo 1 {
+			local (itemName = nameOf (adrSitesTable^ [i]));
+			local (adrItem = @adrTable^.[itemName]);
+			
+			local (displaySiteName, siteUrl, reads);
+			displaySiteName = adrItem^.displaySiteName;
+			siteUrl = adrItem^.siteUrl;
+			reads = adrSitesTable^ [i];
+			if defined (adrItem^.flPublic) {
+				if not adrItem^.flPublic {
+					continue}};
+			
+			add ("<site>");
+			indentLevel++;
+			add ("<name>" + encodeWithAmpersands (displaySiteName) + "</name>");
+			add ("<url>" + encodeWithAmpersands (siteUrl) + "</url>");
+			add ("<pageReads>" + encodeWithAmpersands (reads) + "</pageReads>");
+			add ("</site>");
+			indentLevel--;
+			
+			ct++;
+			if ct >= n {
+				break}}};
+	
+	add ("</mostReadSites>"); indentlevel--;
+	
+	return (manilaSuite.hosting.staticFileWriteToCalendar (xmlText, fname, d))}

@@ -1,0 +1,24 @@
+on maintenanceMode () {
+	«12/30/09; 1:24:53 AM by JES
+		«Created. Access control callback for the maintenance page feature.
+	local (pta = parentOf (port));
+	if config.mainResponder.prefs.maintenanceMode.flEnabled {
+		local (flReturn = false);
+		try {
+			local (adminPort = 5336);
+			if defined (user.inetd.config.http2.port) {
+				adminPort = user.inetd.config.http2.port};
+			if pta^.port != adminPort {
+				pta^.code = 200;
+				local (htext);
+				on add (s) {
+					htext = htext + s;};
+				add ("<html><head>");
+				add ("<title>" + config.mainResponder.prefs.maintenanceMode.pageTitle + "</title>");
+				add ("</head>");
+				add (string (config.mainResponder.prefs.maintenanceMode.pageText));
+				add ("</html>");
+				pta^.responseBody = htext;
+				flReturn = true}};
+		if flReturn {
+			scriptError ("!return")}}}

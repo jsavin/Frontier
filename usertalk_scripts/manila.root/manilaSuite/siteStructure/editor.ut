@@ -1,0 +1,649 @@
+on editor (itemToEdit=nil) {
+	«Changes
+		«5/8/06; 2:51:03 AM by JES
+			«Reduce input element maximum width to 45 from 55, and 340px from 400px.
+		«5/2/06; 12:52:00 AM by JES
+			«Set page title even if there's an error. Redirect back to the home page when done, instead of to the admin page.
+		«5/1/06; 3:37:10 PM by JES
+			«Add shortname attribute, even if not present. Used by manilaMacros.advancedNavigator. Add expand/collapse all links. Add tooltip and expansion state preservation to parent links in attribute editor.
+		«5/1/06; 4:48:32 AM by JES
+			«Hot up msgnum links in sub-items list when editing attributes for a category.
+		«5/1/06; 4:32:58 AM by JES
+			«Fix links to editing attributes for redirect elements. Handle special case of story with a url attribute instead of a msgNum attribute.
+		«5/1/06; 4:17:55 AM by JES
+			«Indext pixel-wise instead of by em. Default to 2 levels of expansion instead of 3.
+		«5/1/06; 3:57:18 AM by JES
+			«Hot up message numbers to link to the DG.
+		«5/1/06; 3:22:36 AM by JES
+			«Use tables instead of divs to do the layout of the top-level site structure editing, so that they flow better.
+		«4/30/06; 7:48:57 PM by JES
+			«Bug fix: Fix error working around <description> sub-elements. Cosmetic changes: For expand/collapse links, ensure link has text-decoration:none. Simplified HTML generated for outline-view of full site structure. Made HTML more readable.
+		«4/30/06; 4:24:52 PM by JES
+			«Bug fix: Skip <description> elements when gathering sub-items from a category, while editing category attributes.
+		«4/30/06; 2:38:47 PM by JES
+			«Bug fixes: Edit descriptions as sub-elements of site structure items, not as attributes. Ignore <description> elements when figuring out how to move items around within a <category>.
+		«4/27/06; 5:12:47 PM by JES
+			«Created. Full featured site structure and attribute editor.
+				«itemToEdit can be a message number, or a slash-delimited path (with leading slash) to an item in the site structure.
+	
+	local (pta = html.getPageTableAddress (), htext="");
+	pta^.title = "Edit Site Structure";
+	
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	bundle { //managing/content editor test
+		if not manilaSuite.editors.managingEditorTest (pta) {
+			if not manilaSuite.editors.contentEditorTest (pta) {
+				scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}}};
+	
+	local { //set adrsite, adrobj, adrhierarchy, adrpaths, adrmember, indexPageNames
+		adrsite = manilaSuite.getSiteAddress (pta);
+		siteurl = manilaSuite.getSiteUrl (adrsite);
+		adrobj = manilaSuite.custody.getAdvancedItemAddress ("siteStructure", adrSite);
+		adrhierarchy = parentOf (adrobj^);
+		adrpaths = @adrhierarchy^.multiplePaths;
+		adrmember = pta^.adrMemberInfo;
+		indexPageNames = list (pta^.responderAttributes.defaultDirectoryItems)};
+	
+	local (t); new (tableType, @t); //used for localized messages
+	bundle { //custody test
+		if not manilaSuite.custody.checkOut (adrobj, adrmember, adrsite, false) {
+			t.displayName = manilaSuite.getString ("admin.siteStructureSectionName");
+			add ("<p><b><font color=\"red\">" + manilaSuite.getString ("admin.cantEditCheckedOutItemError", @t) + "</font></b></p>");
+			return (htext)}};
+	
+	manilaSuite.siteStructure.compileIfDirty (adrsite);
+	
+	if not defined (pta^.searchArgsTable) {
+		new (tableType, @pta^.searchArgsTable);
+		webserver.parseArgs (pta^.searchArgs, @pta^.searchArgsTable)};
+	if itemToEdit == nil { //get from pathArgs
+		itemToEdit = pta^.pathArgs};
+	if itemToEdit == "" { //default to top-level
+		itemToEdit = "/"};
+	
+	local (adrmsg=nil, pathsToEdit={});
+	bundle { //set adrmsg, pathsToEdit, page title: t.itemToEdit
+		if itemToEdit[1] == '/' { //a slash-delimited path in the site structure
+			pathsToEdit = {itemToEdit};
+			t.itemToEdit = itemToEdit}
+		else { //messasge number
+			itemToEdit = number (itemToEdit);
+			adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrsite, itemToEdit);
+			local (adr, adrpath = @adrpaths^.[itemToEdit]);
+			for adr in adrpath {
+				pathsToEdit = pathsToEdit + adr^};
+			t.itemToEdit = adrmsg^.subject};
+		pta^.title = manilaSuite.getString ("admin.siteStructureEditAttribtesPageName", @t)};
+	
+	local (redirectUrl = pta^.url);
+	if pta^.searchArgs {
+		redirectUrl = redirectUrl + "?" + pta^.searchArgs};
+	bundle { //set redirectUrl -- order of preference: permalink, msgReader, referer, postArg
+		«bundle //unused code to redriect to item for which we're editing attributes, or referer
+			«if adrmsg
+				«redirectUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsg)
+			«else
+				«redirectUrl = siteurl + string.popLeading (itemToEdit, "/")
+			«if defined (pta^.requestHeaders.referer)
+				«redirectUrl = pta^.requestHeaders.referer
+		if defined (pta^.searchArgsTable.r) {
+			redirectUrl = pta^.searchArgsTable.r};
+		if defined (pta^.postArgs.r) {
+			redirectUrl = pta^.postArgs.r};
+		redirectUrl = string.urlEncode (redirectUrl)};
+	
+	on structureToOutline () {
+		local (adrstruct = @adrhierarchy^.structure[1]); //top level of the compiled XML we're working on
+		local (xtext = "<hierarchy/>");
+		if sizeOf (adrstruct^) {
+			xtext = xml.decompile (adrstruct)};
+		xtext = string.trimWhiteSpace (string.delete (xtext, 1, string.patternMatch ("\r", xtext)) );
+		wp.newTextObject (xtext, adrobj);
+		local (now = clock.now ());
+		setTimeModified (adrobj, now);
+		setTimeModified (@adrhierarchy^.structure, now);
+		manilaSuite.siteStructure.buildPathsTable (adrSite)};
+	
+	if itemToEdit == "/" { //editing top-level
+		
+		if pta^.method == "POST" { //handle shuffling of sub-items
+			local (adrargs = @pta^.postArgs);
+			if defined (adrargs^.cancel) {
+				manilaSuite.custody.undoCheckOut (adrobj, adrmember, adrsite);
+				scriptError ("!redirect " + siteUrl)};
+			local (action = nameOf (adrargs^[1]));
+			local (dir = string.nthField (action, "/", 1));
+			local (pathToMove = string.delete (action, 1, sizeOf (dir)));
+			pathToMove = string.mid (pathToMove, 1, sizeOf (pathToMove) - 2);
+			local (adrItemToMove = manilaSuite.siteStructure.dive (adrsite, pathToMove, indexPageNames));
+			if adrItemToMove { //reality check
+				local (adrParent = parentOf (adrItemToMove^));
+				local (adrSibling);
+				case dir {
+					"up" {
+						adrSibling = @adrParent^[indexOf (adrItemToMove^) - 1];
+						if nameOf (adrSibling^) endswith "\tdescription" {
+							adrSibling = @adrParent^[indexOf (adrItemToMove^) - 2]}};
+					"down" {
+						adrSibling = @adrParent^[indexOf (adrItemToMove^) + 1];
+						if nameOf (adrSibling^) endswith "\tdescription" {
+							adrSibling = @adrParent^[indexOf (adrItemToMove^) + 2]}}};
+				local (ixItem = string.nthField (nameOf (adrItemToMove^), "\t", 1));
+				local (itemType = string.nthField (nameOf (adrItemToMove^), "\t", 2));
+				local (ixSibling = string.nthField (nameOf (adrSibling^), "\t", 1));
+				local (siblingType = string.nthField (nameOf (adrSibling^), "\t", 2));
+				table.rename (adrItemToMove, "_temp_");
+				adrItemToMove = @adrParent^._temp_;
+				table.rename (adrSibling, ixItem + "\t" + siblingType);
+				table.rename (adrItemToMove, ixSibling + "\t" + itemType);
+				structureToOutline ()}};
+		
+		on stringToList (s) {
+			local (l={}, i, ct=string.countFields (s, ","));
+			for i = 1 to ct {
+				l = l + string.nthField (s, ",", i)};
+			return (l)};
+		on listToString (l) {
+			local (s = "");
+			if sizeOf (l) == 0 {return (s)};
+			local (item);
+			for item in l {
+				s = s + (item + ",");};
+			return (string.delete (s, sizeOf (s), 1))};
+		
+		local (depth=2, expState={});
+		if defined (pta^.searchArgsTable.depth) {
+			depth = number (pta^.searchArgsTable.depth)};
+		if defined (pta^.searchArgsTable.expState) {
+			expState = stringToList (pta^.searchArgsTable.expState)};
+		
+		local (upArrowUrl, downArrowUrl, editIcon);
+		bundle { //set upArrowUrl, downArrowUrl, editIcon
+			upArrowUrl = "http://" + pta^.host + "/mainResponderResources/icons/upArrow";
+			downArrowUrl = "http://" + pta^.host + "/mainResponderResources/icons/downArrow";
+			editIcon = "<img src=\"http://" + pta^.host + "/mainResponderResources/userlandIcons/magGlass\" height=\"11\" width=\"11\" border=\"0\">"};
+		
+		local (currLevel=0, currPath, itemPath, nomad=@adrhierarchy^.structure[1]);
+		on addItem (adritem) {
+			local (flCategory = nameOf (adritem^) endswith "\tcategory");
+			local (name, pathname, description="", msgnum, subs="");
+			pathname = adritem^.["/atts"].pathname;
+			if defined (adritem^.["/atts"].name) {
+				name = adritem^.["/atts"].name}
+			else {
+				name = pathname};
+			try {description = " - " + xml.getValue (adritem, "description")};
+			if defined (adritem^.["/atts"].msgnum) {
+				msgnum = number (adritem^.["/atts"].msgnum)};
+			if flCategory and sizeOf (adritem^) > 1 {
+				subs = " (" + (sizeOf (adritem^) - 1) + ")"};
+			local (url = siteurl + string.mid (itemPath, 2, infinity) + string.delete ("/", 1, not flCategory));
+			local (editurl = pta^.url + "$");
+			if msgnum and (not flCategory) {
+				editurl = editurl + itemPath}
+			else {
+				if msgnum {
+					editurl = editurl + msgnum}
+				else {
+					editurl = editurl + itemPath}};
+			if redirectUrl {
+				editurl = editurl + "?r=" + redirectUrl};
+			local (expandLink = "", collapseLink = "");
+			if flCategory and currLevel >= depth {
+				if expState contains itemPath { //expanded already
+					collapseLink = html.getLink ("&ndash;", pta^.url + "$/?depth=" + depth + "&expState=" + listToString (expState - itemPath));
+					collapseLink = string.replace (collapseLink, ">", " style=\"text-decoration:none\">")}
+				else { //collapsed
+					expandLink = html.getLink ("+", pta^.url + "$/?depth=" + depth + "&expState=" + listToString (expState + itemPath));
+					expandLink = string.replace (expandLink, ">", " style=\"text-decoration:none\">")}};
+			local (sMsgnum = "");
+			if msgnum {
+				sMsgnum = " - " + html.getLink ("#" + msgnum, manilaSuite.getUrl ("discussMsgReader", pta) + msgnum, whatTarget:"_new", title:"Open this discussion group message in a new window...")};
+			local (itemLink = html.getLink (name, url, whatTarget:"_new", title:"Click to open this page in a new window..."));
+			«local (editAttsLink = html.getLink ("edit", editurl, title:"Click to edit the attributes for this item..."))
+			local (editAttsLink = html.getLink (editIcon, editurl, title:"Click to edit the attributes for this item..."));
+			local (upArrow = "\t\t\t<div><input type=\"image\" name=\"up" + itemPath + "\" src=\"" + upArrowUrl + "\"></div>");
+			local (downArrow = "\t\t\t<div style=\"padding-top:1px\"><input type=\"image\" name=\"down" + itemPath + "\" src=\"" + downArrowUrl + "\"></div>");
+			local (arrows = "");
+			local (adrparent = parentOf (adritem^));
+			local (ixItem = indexOf (adritem^), sizeParent = sizeOf (adrparent^));
+			try { //eliminate <description> from sibling calculation
+				local (adrdesc = xml.getAddress (adrparent, "description"));
+				sizeParent--;
+				if indexOf (adrdesc^) < indexOf (adritem^) {
+					ixItem--}};
+			if defined (adrparent^.["/atts"]) {
+				ixItem--;
+				sizeParent--};
+			if defined (adrparent^.["/pcdata"]) {
+				ixItem--;
+				sizeParent--};
+			if ixItem == 1 {
+				if sizeParent > 1 {
+					arrows = string.replace (downArrow, "1px", "8px")}}
+			else {
+				if ixItem < sizeParent {
+					arrows = upArrow + "\r" + downArrow}
+				else {
+					arrows = upArrow}};
+			if arrows {arrows = arrows + "\r"};
+			
+			add ("<tr>");
+			
+			if expandLink or collapseLink {
+				add ("<td valign=\"top\" align=\"center\" style=\"padding:.75em 0 0 0;width:2.2em\">[" + expandLink + collapseLink + "]</td>")}
+			else {
+				add ("<td />")};
+			
+			add ("<td valign=\"top\" style=\"padding-top:10px\">");
+			
+			add ("<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin-left:" + ((currLevel-1)*30) + "px\">");
+			add ("<tr>");
+			add ("<td valign=\"top\" style=\"padding-right:6px\">" + arrows + "</td>");
+			add ("<td valign=\"top\" style=\"padding:3 6 0 0\">" + editAttsLink + "</td>");
+			add ("<td>" + itemLink + subs + description + sMsgnum + "</td>");
+			add ("</tr>");
+			add ("</table>");
+			
+			add ("</td>");
+			
+			add ("</tr>")};
+		
+		on visit (nomad) {
+			if currLevel == 0 {
+				currPath = "/"}
+			else {
+				currPath = string.popTrailing (currPath, "/") + "/" + nomad^.["/atts"].pathname;
+				addItem (nomad)};
+			currLevel++;
+			local (adr);
+			for adr in nomad {
+				local (name = nameOf (adr^));
+				if name[1] == "/" {continue};
+				name = xml.convertToDisplayName (name);
+				if name == "description" {continue};
+				itemPath = string.popLeading (string.popTrailing (currPath, "/"), "/") + "/" + adr^.["/atts"].pathname;
+				if itemPath[1] != "/" {itemPath = "/" + itemPath};
+				case name {
+					"story";
+					"redirect" {
+						addItem (adr)};
+					"category" { //recurse
+						if currLevel < depth or expState contains itemPath {
+							visit (adr)}
+						else {
+							addItem (adr)}}}};
+			currPath = string.popSuffix (currPath, "/");
+			currLevel--};
+		
+		bundle { //expand/collapse all links
+			add ("<p><a href=\"" + pta^.url + "?depth=100\">Expand All</a>&nbsp;<b>|</b>&nbsp;<a href=\"" + pta^.url + "?depth=1\">Collapse All</a></p>")};
+		
+		add ("<form method=\"POST\">");
+		add ("<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\">");
+		visit (nomad);
+		add ("</table>");
+		
+		add ("<p style=\"padding-left:20px\"><input type=\"submit\" name=\"cancel\" value=\"&nbsp;Done&nbsp;\" /></p>");
+		
+		add ("</form>")}
+	else { //editing sub-level
+		if pta^.method == "POST" {
+			manilaSuite.referer.checkSelf ();
+			local (adrargs = @pta^.postArgs);
+			local (flRedirect = false);
+			case true {
+				defined (adrargs^.submit) {
+					local (paths); new (tableType, @paths);
+					local (pathsToMove); new (tableType, @pathsToMove);
+					local (pathsToDelete = {});
+					
+					local (adr);
+					for adr in adrargs { //collect submitted attribute values for each path
+						local (name = nameOf (adr^));
+						if name[1] != "/" {
+							continue};
+						local (path = string.nthField (name, "$", 1));
+						local (adrpath = @paths.[path]);
+						if not defined (adrpath^) {
+							new (tableType, adrpath)};
+						local (att = string.nthField (name, "$", 2));
+						if att endswith ":delete" { //deleting an attribute or a path
+							if att == ":path:delete" { //deleting a path
+								pathsToDelete = pathsToDelete + path}
+							else { //deleting an attribute
+								adrpath^.[":" + string.nthField (att, ":", 1)] = true}}
+						else { //setting or creating an attribute, or changing a path
+							local (value = adr^);
+							case att {
+								"_newAttributeValue_" { //skip -- we pick these up from _newAttribute_
+									continue};
+								"_newAttribute_" { //add new attribute
+									att = adr^;
+									if not att {continue}; //empty field
+									value = adrargs^.[path + "$_newAttributeValue_"]};
+								":path" { //move item to a different path
+									if value != path {
+										pathsToMove.[path] = value}}};
+							adrpath^.[att] = value}};
+					
+					local (adrpath);
+					for adrpath in @paths { //remove deleted attributes from path tables
+						if not (pathsToDelete contains nameOf (adrpath^)) { //skip paths to be deleted
+							for adr in adrpath {
+								local (name = nameOf (adr^));
+								if name[1] == ":" {
+									name = string.delete (name, 1, 1);
+									if defined (adrpath^.[name]) {
+										delete (@adrpath^.[name])}}
+								else {
+									break}}}};
+					
+					for adrpath in @paths {
+						if not (pathsToDelete contains nameOf (adrpath^)) { //skip paths to be deleted
+							if sizeOf (adrpath^) {
+								local (path = nameOf (adrpath^));
+								local (adritem = manilaSuite.siteStructure.dive (adrsite, path, indexPageNames));
+								if adritem {
+									for adr in adrpath {
+										local (attname = nameOf (adr^));
+										if attname[1] == ":" {
+											attname = string.delete (attname, 1, 1);
+											if attname == "description" {
+												try {
+													local (adrdesc = xml.getAddress (adritem, "description"));
+													delete (adrdesc)}}
+											else { //regular attribute
+												if defined (adritem^.["/atts"].[attname]) {
+													delete (@adritem^.["/atts"].[attname])}}}
+										else {
+											if attname == "flNavigator" and adr^ {
+												adr^ = ""}; //defaults to true, so delete it
+											if adr^ == "" {
+												case attname { //description, name, template and msgnum should be deleted if present, but empty
+													"msgNum";
+													"template";
+													"flNavigator";
+													"shortname";
+													"name" {
+														if defined (adritem^.["/atts"].[attname]) {
+															delete (@adritem^.["/atts"].[attname])};
+														continue};
+													"description" { //special case -- not an attribute, but a sub-element
+														try {
+															local (adrdesc = xml.getAddress (adritem, "description"));
+															delete (adrdesc)};
+														continue}}};
+											if attname == "description" { //not an attribute at all, but rather a sub-element
+												try { //set value of pre-existing description element
+													local (adrdesc = xml.getAddress (adritem, "description"));
+													if typeOf (adrdesc^) == tableType {
+														adrdesc^.["/pcdata"] = adr^}
+													else {
+														adrdesc^ = adr^}}
+												else { //no description element found -- create a new one
+													xml.addValue (adritem, "description", adr^)}};
+											adritem^.["/atts"].[attname] = adr^}}}}}};
+					
+					on deleteItem (adritem) { //pop up to the top or a level with at least one sibling
+						loop {
+							local (adrparent = parentOf (adritem^));
+							if nameOf (adrparent^) endswith "\tcategory" {
+								local (sizecat = sizeOf (adrparent^));
+								if defined (adrparent^.["/atts"]) {sizecat--};
+								if sizecat > 1 {
+									break};
+								adritem = adrparent}
+							else { //don't delete top-level hierarchy element
+								break}};
+						delete (adritem)};
+					
+					local (pathToDelete);
+					for pathToDelete in pathsToDelete {
+						local (adrPathToDelete = manilaSuite.siteStructure.dive (adrsite, pathToDelete, indexPageNames));
+						if adrPathToDelete {deleteItem (adrPathToDelete)}};
+					
+					for adrpath in @pathsToMove {
+						local (adrorig = manilaSuite.siteStructure.dive (adrsite, nameOf (adrpath^), indexPageNames));
+						local (origType = xml.convertToDisplayName (nameOf (adrorig^)));
+						local (adrnew = manilaSuite.siteStructure.dive (adrsite, adrpath^, indexPageNames, true, origType));
+						local (newPathname = adrnew^.["/atts"].pathname);
+						local (adritem);
+						for adritem in adrorig {
+							local (itemname = nameOf (adritem^));
+							if itemname[1] == "/" {
+								table.copyContents (adritem, @adrnew^.[itemname])}
+							else {
+								local (adrdest = xml.addTable (adrnew, xml.convertToDisplayName (itemname)));
+								adrdest^ = adritem^}};
+						adrnew^.["/atts"].pathname = newPathname;
+						deleteItem (adrorig)};
+					
+					if defined (adrargs^._newPath_) { //possibly create a new path for the message
+						if adrargs^._newPath_ {
+							manilaSuite.siteStructure.setPathForMessage (adrargs^._newPath_, adrmsg, adrsite)}};
+					
+					structureToOutline ();
+					manilaSuite.custody.checkIn (adrobj, adrmember, adrsite);
+					flRedirect = true};
+				defined (adrargs^.cancel) {
+					manilaSuite.custody.undoCheckOut (adrobj, adrmember, adrsite);
+					flRedirect = true}};
+			if flRedirect {
+				if defined (adrargs^.r) {
+					scriptError ("!redirect " + string.urlDecode (adrargs^.r))}
+				else {
+					if defined (pta^.responderAttributes.referer) {
+						scriptError ("!redirect " + pta^.responderAttributes.referer)}
+					else {
+						scriptError ("!redirect " + siteurl + "admin/editSiteStructure")}}}};
+		bundle { //attribute editor form
+			
+			local (flFormHasFields = false);
+			
+			on addOneAttribute (path, name, value, type, flCanDelete=false, values={}, command=nil) {
+				flFormHasFields = true;
+				local (prompt = name);
+				case name { //Manila-specific prompts
+					"path" {
+						prompt = "Relative Path"};
+					"name" {
+						prompt = "Page Name"};
+					"shortname" {
+						prompt = "Short Name"};
+					"description" {
+						prompt = "Description"};
+					"flNavigator" {
+						prompt = "Include in site structure-<br>based advancedNavigator"}};
+				add ("<tr>");
+				add ("<td width=\"25\"></td>");
+				add ("<td valign=\"top\" align=\"right\"><b>" + prompt + ":</b></td>");
+				local (inputName = path + "$" + name);
+				if command {inputName = path + "$:" + command};
+				if type == booleanType { //treat as list with true/false values
+					values = {"true", "false"};
+					type = listType};
+				case type { //textarea, number or pop-up
+					wpTextType {
+						add ("<td valign=\"top\"><textarea name=\"" + inputName + "\" cols=\"45\" rows=\"4\" style=\"width:340px\">" + value + "</textarea></td>")};
+					doubleType {
+						add ("<td valign=\"top\"><input type=\"text\" name=\"" + inputName + "\" value=\"" + value + "\" size=\"10\" /></td>")};
+					listType {
+						if not (values contains value) { //ensure current value is an option
+							values = values + value};
+						add ("<td valign=\"top\">");
+						add ("<select name=\"" + inputName + "\">");
+						local (i);
+						for i in values {
+							local (selected = "");
+							if string.lower (value) == string.lower (i) {
+								selected = " selected"};
+							add ("<option" + selected + ">" + i + "</option>")};
+						add ("</select>");
+						add ("</td>")}}
+				else { //stringType -- implicit
+					add ("<td valign=\"top\"><input type=\"text\" name=\"" + inputName + "\" value=\"" + value + "\" size=\"45\" style=\"width:340px\" /></td>")};
+				if flCanDelete { //checkbox to delete
+					add ("<td valign=\"top\"><input type=\"checkbox\" name=\"" + inputName + ":delete\" value=\"xxx\" />&nbsp;" + manilaSuite.getString ("common.deleteButton") + "</td>")};
+				add ("</tr>")};
+			on addTemplateAttribute (path, name, value, flCanDelete=false) {
+				local (adrtemplates = manilaSuite.custody.getAdvancedItemAddress ("auxiliarytemplates", adrsite));
+				local (templates = {""});
+				local (adrtemplate);
+				for adrtemplate in adrtemplates {
+					local (templateName = nameOf (adrtemplate^));
+					if not (templateName contains "-") { //names with hypens are special cases -- internal use only
+						templates = templates + nameOf (adrtemplate^)}};
+				addOneAttribute (path, name, value, listType, flCanDelete, templates)};
+			
+			add ("<form method=\"POST\">");
+			add ("<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\">");
+			
+			if not adrmsg { //editing a category or redirect
+				if string.popLeading (itemToEdit, "/") { //not already at the top level
+					local (parentPath = string.popLeading (string.popSuffix (itemToEdit, "/"), "/") );
+					local (tooltip = "Click to edit attributes for the parent of this item...");
+					local (editParentUrl = pta^.url + "$" + "/" + parentPath);
+					if parentPath == "" {
+						tooltip = "Click to view the site structure at the top level...";
+						if redirectUrl {
+							editParentUrl = string.urlDecode (redirectUrl)}
+						else {
+							editParentUrl = pta^.url}}
+					else { //append redirect URL
+						if redirectUrl {
+							editParentUrl = editParentUrl + "?r=" + redirectUrl}};
+					add ("<tr><td></td><td align=\"right\"><b>Parent:</b></td><td>" + html.getLink (string.replace (siteurl, "//", "/\\/") + parentPath, editParentUrl, title:tooltip) + "</td></tr>")}};
+			
+			local (path);
+			for path in pathsToEdit { //add form fields for each path's attributes
+				local (adritem = manilaSuite.siteStructure.dive (adrsite, path, indexPageNames));
+				if not adritem {continue}; //path no longer exists
+				local (itemType = xml.convertToDisplayName (nameOf (adritem^)));
+				
+				if itemType != "hierarchy" { //don't allow attribute editing on top-level
+					addOneAttribute (path, "path", path, stringType, true, command:"path");
+					
+					local (adratts = @adritem^.["/atts"]);
+					
+					local (name="", description="", shortname="", flNavigator=true);
+					if defined (adratts^.name) {name = adratts^.name};
+					if defined (adratts^.shortname) {shortname = adratts^.shortname};
+					if defined (adratts^.flNavigator) {flNavigator = boolean (adratts^.flNavigator)};
+					try {description = xml.getValue (adritem, "description")};
+					
+					addOneAttribute (path, "name", name, stringType);
+					addOneAttribute (path, "shortname", shortname, stringType);
+					addOneAttribute (path, "description", description, wpTextType);
+					addOneAttribute (path, "flNavigator", flNavigator, booleanType);
+					
+					case string.lower (itemType) {
+						"category" { //msgnum is only editable for categories, not for stories
+							local (msgnum = "");
+							if defined (adratts^.msgnum) {msgnum = adratts^.msgnum};
+							addOneAttribute (path, "msgNum", msgnum, doubleType, defined (adratts^.msgnum))};
+						"story" { //special case for story with url and no msgnum
+							if defined (adratts^.url) {
+								addOneAttribute (path, "url", adratts^.url, stringType, true);
+								local (msgnum = "");
+								if defined (adratts^.msgnum) {
+									msgnum = adratts^.msgnum};
+								addOneAttribute (path, "msgNum", msgnum, doubleType, true)}};
+						"redirect" {
+							local (url = adratts^.url);
+							addOneAttribute (path, "url", url, stringType)}};
+					
+					local (flTemplateAdded = false);
+					if manilaSuite.getNewsSitePref ("flUseAuxTemplates", adrSite, false, true) { //if enabled, add template popup
+						case string.lower (itemType) {
+							"story";
+							"category" {
+								local (template = "");
+								if defined (adratts^.template) {template = adratts^.template};
+								addTemplateAttribute (path, "template", template, defined (adratts^.template));
+								flTemplateAdded = true}}};
+					
+					local (adr);
+					for adr in adratts { //add fields for editing existing attributes
+						local (name = nameOf (adr^), lowername = string.lower (name));
+						case lowername { //special cases
+							"name";
+							"shortname";
+							"description";
+							"msgnum";
+							"url";
+							"flnavigator";
+							"pathname" { //either not editable, or already added at the top
+								continue};
+							"template" {
+								if not flTemplateAdded {
+									addTemplateAttribute (path, name, adr^, not manilaSuite.getNewsSitePref ("flUseAuxTemplates", adrSite, false, true))};
+								continue}};
+						case string (adr^) {
+							"true";
+							"false" {
+								addOneAttribute (path, name, adr^, booleanType, true)}}
+						else {
+							try { //see if it's a number
+								number (adr^);
+								addOneAttribute (path, name, adr^, doubleType, true)}
+							else {
+								addOneAttribute (path, name, adr^, stringType, true)}}};
+					
+					bundle { //fields for adding new attributes to a given path
+						add ("<tr>");
+						add ("<td></td>");
+						add ("<td align=\"right\"><input type=\"text\" name=\"" + path + "$_newAttribute_\" size=\"12\" /><b>:</b></td>");
+						add ("<td><input type=\"text\" name=\"" + path + "$_newAttributeValue_\" size=\"45\" style=\"width:340px\" /></td>")}};
+				
+				case itemType { //links to edit attributes for sub-paths of hierarchy and category
+					"hierarchy";
+					"category" {
+						local (editlinks = "<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\">");
+						for adr in adritem {
+							if nameOf (adr^) beginswith "/" {continue};
+							if nameOf (adr^) endswith "\tdescription" {continue};
+							local (flStory = (xml.convertToDisplayName (nameOf (adr^)) == "story") );
+							local (subpath = string.popLeading (path, "/") + "/" + adr^.["/atts"].pathname);
+							local (subPathUrl = string.popTrailing (siteUrl, "/") + "/" + string.popLeading (subpath, "/"));
+							local (editSubPathUrl);
+							if flStory {
+								editPathUrl = pta^.url + "$" + adr^.["/atts"].msgNum}
+							else {
+								editPathUrl = pta^.url + "$" + string.popTrailing (itemToEdit, "/") + "/" + adr^.["/atts"].pathname};
+							if redirectUrl {
+								editPathUrl = editPathUrl + "?r=" + redirectUrl};
+							local (name = adr^.["/atts"].pathname);
+							if defined (adr^.["/atts"].name) {name = adr^.["/atts"].name};
+							local (editSubPathLink = html.getLink (adr^.["/atts"].pathname, editPathUrl, title:"Click to edit the attributes of this item..."));
+							if defined (adr^.["/atts"].msgNum) {editSubPathLink = editSubPathLink + "</td><td align=\"right\" style=\"padding-left:15px\">" + html.getLink ("#" + adr^.["/atts"].msgNum, manilaSuite.getUrl ("discussMsgReader") + adr^.["/atts"].msgNum, whatTarget:"_new", title:"Open this message in a new window...")};
+							editlinks = editlinks + "<tr><td style=\"padding-right:15px\">" + xml.convertToDisplayName (nameOf (adr^)) + "</td><td style=\"padding-right:10px\">" + html.getLink (name, subPathUrl, whatTarget:"_new", title:"Click to open this item in a new window...") + "</td><td>" + editSubPathLink + "</td></tr>"};
+						editlinks = editlinks + "</table>";
+						add ("<tr><td></td><td valign=\"top\"><b>Sub-items:</b></td><td>" + editlinks + "</td></tr>")}};
+				
+				add ("<tr><td></td><td colspan=\"3\"><hr size=\"1\" width=\"100%\"></td></tr>")};
+			
+			if adrmsg { //field for adding a new path
+				add ("<tr>");
+				add ("<td></td><td valign=\"top\"><b>New path:</b></td>");
+				add ("<td valign=\"top\"><input name=\"_newPath_\" size=\"45\" style=\"width:340px\" /></td>");
+				add ("</tr>")};
+			
+			if flFormHasFields { //submit/cancel buttons
+				add ("<tr>");
+				local (redirInput = "");
+				if redirectUrl {
+					redirInput = "<input type=\"hidden\" name=\"r\" value=\"" + redirectUrl + "\" />"};
+				add ("<td colspan=\"2\">" + redirInput + "</td>");
+				add ("<td colspan=\"2\"><input type=\"submit\" name=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\" />&nbsp;&nbsp;&nbsp;<input type=\"submit\" name=\"cancel\" value=\"" + manilaSuite.getString ("common.cancelButton") + "\" /></td></tr>")};
+			
+			add ("</table>");
+			add ("</form>")}};
+	
+	return (htext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«editor ()
+	«html.deletePageTableAddress ()

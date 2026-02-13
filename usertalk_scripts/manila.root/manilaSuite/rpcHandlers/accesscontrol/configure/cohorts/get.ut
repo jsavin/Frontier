@@ -1,0 +1,20 @@
+on get (username, password, siteName, cohort) {
+	«manilaSuite.rpcHandlers.accesscontrol.configure.cohorts.get : 04/05/21, 09:53:13 by DAB
+		«returns list of members in cohort
+		«manilaFixer.rpcHandlers.accesscontrol.configure.cohorts.get : 02/03/15, 15:02:32 by DAB
+	local (errStr = "Can't get members of cohort " + cohort + " because ");
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, errStr);
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	
+	if not defined(adrCohorts^.[cohort]) {
+		scriptError (errStr + " it doesn't exist.")};
+	local (members = {});
+	local (adr, memberKey);
+	for adr in @adrGroup^.users {
+		memberKey = nameof(adr^);
+		if defined(adrCohorts^.[cohort].memberdata.[memberKey]) {
+			members[0] = memberKey}};
+	
+	return members}

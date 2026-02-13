@@ -1,0 +1,16 @@
+local (adroutline = @controlpanelsuite.utilities.initialXml);
+new (outlinetype, adroutline);
+edit (adroutline);
+target.set (adroutline);
+
+local (adritem, name, type, adr);
+for adritem in @config.mainresponder.urls {
+	name = nameof (adritem^);
+	type = typeof (adritem^);
+	adr = "config.mainResponder.urls." + name;
+	msg (name);
+	case type {
+		booleantype {
+			op.insert ("<item title=\"" + name + "\" type=\"boolean\" adr=\"" + adr + "\"/>", down)};
+		stringtype {
+			op.insert ("<item title=\"" + name + "\" type=\"string\" adr=\"" + adr + "\"/>", down)}}}

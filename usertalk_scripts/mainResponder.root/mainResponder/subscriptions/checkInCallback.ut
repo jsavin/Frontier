@@ -1,0 +1,22 @@
+on checkInCallback (adrobject, username, now, description) { //called after an object has been checked in
+	«Changes
+		«6/17/05; 8:13:24 PM by JES
+			«Store the actual object in the #changes sub-table as an object named data.
+			«In a changes sub-table, what is now a string, not an address, for portablibity across platforms and different Frontier installations.
+	local (nomad = adrobject, adrchanges);
+	loop {
+		nomad = parentof (nomad^);
+		if nomad == "" {
+			break};
+		adrchanges = @nomad^.["#changes"];
+		if defined (adrchanges^) {
+			local (adrtable = xml.addtable (adrchanges, nameof (adrobject^)));
+			adrtable^.what = string.popFileFromAddress (adrobject);
+			adrtable^.when = now;
+			adrtable^.who = username;
+			adrtable^.data = adrobject^;
+			wp.newtextobject (description, @adrtable^.why);
+			break}}};
+«bundle //test code
+	«local (adr = table.getcursoraddress ())
+	«checkincallback (adr, "Bull Mancuso", clock.now (), "No information available at this time.")

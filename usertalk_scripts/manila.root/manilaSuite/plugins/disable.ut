@@ -1,0 +1,16 @@
+on disable (pluginName, adrSite) {
+	«Disable a plug-in for a given site.
+		«02/22/00; 1:57:51 PM by PBS
+	
+	local (adrEnabledTable = @adrSite^.["#plugins"].enabled);
+	if defined (adrEnabledTable^.[pluginName]) {
+		delete (@adrEnabledTable^.[pluginName])};
+	
+	local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
+	if defined (adrConfig^.disableScript) {
+		local (adrDisableScript = @adrConfig^.disableScript);
+		if typeOf (adrConfig^.disableScript) == addressType {
+			adrDisableScript = adrConfig^.disableScript};
+		adrDisableScript^ (adrSite)};
+	
+	return (true)}

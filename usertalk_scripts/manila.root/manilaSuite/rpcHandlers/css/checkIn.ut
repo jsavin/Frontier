@@ -1,0 +1,9 @@
+on checkIn (username, password, siteName) {
+	«Release custody of the cascading style sheet.
+		«02/11/00; 11:01:43 AM by PBS
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject = @adrNewsSite^.cascadingStyleSheet);
+	local (itemName = "cascading style sheet");
+	
+	return (manilaSuite.rpcUtils.releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName))}

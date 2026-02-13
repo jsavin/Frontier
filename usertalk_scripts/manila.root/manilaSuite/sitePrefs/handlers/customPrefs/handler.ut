@@ -1,0 +1,91 @@
+on handler (pta, adrObject) {
+	«manilaSuite.sitePrefs.handlers.customPrefs.handler : 04/05/15, 17:36:04 by DAB
+		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	«messages at manilaData.localization.languages.english.strings.admin
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf(this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName(pta, sectionName));
+	local (value = manilaSuite.sitePrefs.utility.exportOutline (string (adrObject^)));
+	
+	local (description = manilaSuite.getString ("admin." + shortName + "SectionDescription", pta: pta));
+	add("\r<p>");
+	add(description);
+	add("\r</p>");
+	
+	if defined(pta^.postargs.[shortname]) {
+		local (replacementTable);
+		bundle { //set up replacement table
+			new (tableType, @replacementTable);
+			replacementTable.displayName = displayName};
+		
+		case true {
+			defined (pta^.postArgs.restoreToDefault) {
+				add(manilaSuite.sitePrefs.utility.confirmBox(pta, shortname, "admin.restoreDefaultConfirmText", @replacementTable))};
+			defined (pta^.postArgs.doRestoreDefault) { //restore to default
+				local (siteInfo);
+				new (tableType, @siteInfo);
+				siteInfo.adrSite = adrSite;
+				siteInfo.manilaLanguageTableAddress = manilaSuite.getLanguageTableAddress (pta); //10/31/00 JES: tell create scripts what language the site is using.
+				manilaSuite.newSite.createCustomPrefsWizard (@siteInfo);
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				value = manilaSuite.sitePrefs.utility.exportOutline(string (adrObject^));
+				add(manilaSuite.sitePrefs.utility.successMessage (pta, "admin.restoredDefaultSuccessPlural", @replacementTable))};
+			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
+				}}
+		else { //try to update
+			local (s = string(pta^.postArgs.[shortName]));
+			local (adrStructure = @adrNewsSite^.prefsWizard.structure);
+			s = string.replaceAll (s, lf, "");
+			s = manilaSuite.unTaint (s);
+			local (t);
+			try {
+				xml.compile (s, @t);
+				wp.newTextObject (s, adrObject);
+				xml.compile (s, @adrNewsSite^.prefsWizard.structure);
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				«add(manilaSuite.sitePrefs.utility.successMessage (pta, "admin.updatedSuccessPlural", @replacementTable))
+				value = manilaSuite.sitePrefs.utility.exportOutline(string (adrObject^));
+				
+				bundle { //PBS 07/22/00: localization bug fix -- the custom sign up wizard wasn't being created
+					local (adrSignUpWizard = @adrNewsSite^.signupWizard);
+					if not defined (adrSignupWizard^) {
+						adrSignupWizard^ = adrNewsSite^.prefsWizard};
+					local (adrRequiredStructure = manilaSuite.getWizardAddress ("signUpPanelStructure", @manilaData.SignUpPanelStructure, pta));
+					manilaSuite.prefs.buildSignUpStructure (@adrNewsSite^.prefsWizard, @adrSignUpWizard^.structure, adrRequiredStructure)}}
+			else {
+				replacementTable.tryError = tryError;
+				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.couldntUpdateBecausePlural", @replacementTable));
+				value = manilaSuite.sitePrefs.utility.exportOutline(s)}}}; //PBS 03/20/01: the carets need to be escaped
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	bundle { //row for textarea
+		add ("\r\t<tr>");
+		add ("\r\t\t<td align='left' valign='top' colspan='2'>");
+		add("&nbsp;&nbsp;");
+		add("<textarea name='" + shortName + "' cols='" + manilaSuite.sitePrefs.data.cols + "' rows='" + manilaSuite.sitePrefs.data.rowsBig + "' style='width:" + manilaSuite.sitePrefs.data.textareaWidthPixels + "; height:" + manilaSuite.sitePrefs.data.textareaHeightPixels + "'>" + value + "</textarea>");
+		add ("\r\t\t</td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //row for buttons
+		add(manilaSuite.sitePrefs.utility.addButtons(pta, adrObject, sectionName, flMemberHasPike))};
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

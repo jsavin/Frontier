@@ -1,0 +1,86 @@
+on robotsTxt (adrsite=nil, flIncluded=false) {
+	«Changes
+		«3/7/06; 1:53:57 AM by JES
+			«Possible fix for crashing bug when recursively adding sub-site paths to top-level robots.txt file.
+			«Add to disable recursion in sib-sites robots.txt for top-level sites. Default preserves existing behavior.
+		«7/14/03; 11:39:47 AM by JES
+			«Added global pref for enabling or disabling robots.txt at config.manila.prefs.flRobotsTxtEnabled. Defaults to enabled.
+		«7/8/03; 1:59:30 PM by JES
+			«Created. Generate a robots.txt file.
+	
+	local (pta);
+	
+	local (adrdata = manilaSuite.robots.init (adrsite));
+	
+	if not defined (config.manila.prefs.flRobotsTxtEnabled) {
+		config.manila.prefs.flRobotsTxtEnabled = true};
+	if not defined (config.manila.prefs.flRobotsTxtRecursive) {
+		config.manila.prefs.flRobotsTxtRecursive = true};
+	if not config.manila.prefs.flRobotsTxtEnabled { //404 page
+		return (manilaSuite.notFound.page ())};
+	if not adrdata^.flEnabled { //404 page
+		return (manilaSuite.notFound.page ())};
+	
+	if not flIncluded {
+		pta = html.getPageTableAddress ();
+		bundle { //set up the page table to return a plain text file
+			pta^.responseHeaders.["Content-Type"] = "text/plain";
+			pta^.autoParagraphs = false;
+			pta^.clayCompatibility = false;
+			pta^.activeUrls = false;
+			wp.newTextObject ("{bodytext}", @pta^.template)};
+		if adrsite == nil {
+			adrsite = manilaSuite.getManilaSiteAddress (pta)}};
+	
+	local (urlsite = manilaSuite.getSiteUrl (adrsite));
+	local (urlparts = string.urlSplit (urlsite));
+	local (domain = urlparts[2]);
+	local (mypath = urlparts[3]);
+	
+	local (txt = "");
+	on add (s) {
+		txt = txt + (s + "\r");};
+	
+	if not flIncluded {
+		add ("User-agent: *")};
+	bundle { //add disallowed paths
+		local (adrpath);
+		for adrpath in @adrdata^.paths {
+			local (onepath = nameOf (adrpath^));
+			if onepath beginswith "/" {
+				onepath = string.delete (onepath, 1, 1)};
+			add ("Disallow:   /" + mypath + onepath)}};
+	if config.manila.prefs.flRobotsTxtRecursive { //include sub-sites -- necessary because bots only look for robots.txt at the domain-level
+		local (adrdomain = @config.mainResponder.domains.[domain]);
+		if not defined (adrdomain^) {
+			adrdomain = @config.mainResponder.domains.default};
+		if mainResponder.siteTree.domainIsSiteTree (adrdomain) {
+			try { //should never fail
+				if not flIncluded {
+					mainResponder.siteTree.compileIfDirty (adrdomain)};
+				local (nomad = @adrdomain^.siteTree);
+				nomad = @nomad^.directory;
+				nomad = @nomad^.structure;
+				nomad = xml.getAddress (nomad, "siteTree");
+				nomad = xml.getAddress (nomad, "site");
+				if sizeOf (mypath) > 0 { //this site is a sub-site
+					nomad = mainResponder.siteTree.dive (nomad, urlparts[3])};
+				local (adr);
+				for adr in nomad { //loop over sub-sites at this level, and get their robots.txt paths
+					try { //one site should never cause the others to fail
+						local (name = xml.convertToDisplayName (nameOf (adr^)));
+						if name == "site" {
+							if defined (adr^.["/atts"].address) { //may be a manila site
+								local (adronesite = address (adr^.["/atts"].address));
+								if adronesite != adrsite {
+									if defined (adronesite^) {
+										if manilaSuite.isManilaSite (adronesite) {
+											txt = txt + manilaSuite.robots.robotsTxt (adronesite, true)}}}}}}}}}};
+	if not flIncluded {
+		add ("");
+		add ("")};
+	
+	return (txt)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«robotsTxt (@homeManilaWebsite)

@@ -1,0 +1,74 @@
+on httpLog (maxitems=200) {
+	«Changes
+		«4/15/08; 10:51:35 PM by LL
+			«If HTTP logging is not enabled, return message with instructions to enable the setting.
+		«8/2/02; 2:23:36 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "HTTP Server Log";
+	local (colors = {pta^.trbg1, pta^.trbg2});
+	local (columns = {"Time", "Code", "Threads", "Secs", "Size", "Client", "Host", "URL"});
+	local (colsToAlignRight = {"Code", "Threads", "Secs", "Size"});
+	on renderItemCallback (adritem) {
+		local (itemtext = "");
+		on add (s) {
+			itemtext = itemtext + (s + "\r");};
+		on td (s, align="") {
+			if align != "" {
+				align = " align=\"" + align + "\""};
+			return ("<td" + align + " valign=\"top\"><font size=\"-1\" class=\"small\">" + s + "</font></td>")};
+		with adritem^ {
+			local (secsstring = "");
+			try { //get ticks, expressed in a fraction of a second, it's complicated
+				secsstring = string.ratio (ticks, 60, 2);
+				if sizeOf (string.nthField (secsString, ".", 2)) == 1 {
+					secsString = secsString + "0"};
+				if ticks > 120 { //more than two seconds
+					secsstring = "<b><font color=\"deeppink\">" + secsstring + "</font></b>"}};
+			add (td (string.replaceAll (string.popLeading (string.nthField (time, ";", 2), ' '), " ", "&nbsp;")));
+			add (td (code, "right"));
+			add (td ("&nbsp;" + threads + "&nbsp;", "right"));
+			add (td ("&nbsp;" + secsstring + "&nbsp;", "right"));
+			add (td (string.megabytestring (size), "right"));
+			bundle { //add the member name, if we have it, otherwise do a DNS lookup
+				if defined (member) {
+					local (groupname = config.mainResponder.globals.defaultMembershipGroup);
+					if defined (adritem^.group) {
+						groupname = adritem^.group};
+					local (link = mainResponder.members.linktomember (groupname, adritem^.member, urlprefix:"/memberProfile?g=[[group]]&m="));
+					add (td (link))}
+				else {
+					local (client = xml.convertToDisplayName (nameof (adritem^)));
+					«try {client = tcp.dns.getDomainName (client)}
+					add (td (client))}};
+			bundle { //add the host and link
+				local (link = "http://");
+				if defined (host) {
+					link = link + host}
+				else {
+					link = link + tcp.dns.getMyDomainName ()};
+				add (td (host));
+				link = link + url;
+				if defined (pathargs) {
+					if pathargs != "" {
+						link = link + "$" + pathargs}};
+				if defined (searchargs) {
+					if searchargs != "" {
+						link = link + "?" + searchargs}};
+				add (td ("<a href=\"" + link + "\">" + url + "</a>"))};
+			bundle { //add the referrer
+				if defined (referrer) {
+					add (td ("<a href=\"" + referrer + "\">*</a>"))}
+				else {
+					add (td ("&nbsp"))}}};
+		return (itemtext)};
+	local (ctitems);
+	local (logtext = mainResponder.log.browseAny ("mainResponder", @renderItemCallback, colors, columns, 3, maxitems, colsToAlignRight, @ctitems));
+	if ctitems {
+		return (logtext)}
+	else {
+		if config.mainresponder.prefs.flLog {
+			return (logtext + "<p>There are no items to list at this time.</p>")}
+		else {
+			return (logtext + "<p>There are no items to list at this time. You should first enable logging of HTTP requests on the <a href=\"/settings?page=1.9\">Logging and Statistics Settings</a> page.</p>")}};
+	}«return (mainResponder.log.browser (50, colors, "small", true, 12, false, maxitems))

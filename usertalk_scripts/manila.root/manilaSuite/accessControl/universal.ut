@@ -1,0 +1,5 @@
+on universal (pta) {
+	«manilaSuite.AccessControl.universal : 04/05/20, 18:10:40 by DAB
+		«dummy access script for "Everyone"  cohort
+		«manilaFixer.accessControl.universal  : 02/02/21, 15:40:52 by DAB
+	return true}

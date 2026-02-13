@@ -1,0 +1,4 @@
+if config.mainResponder.prefs.flControlPanel {
+	config.mainResponder.prefs.flControlPanel = false}
+else {
+	config.mainResponder.prefs.flControlPanel = true}

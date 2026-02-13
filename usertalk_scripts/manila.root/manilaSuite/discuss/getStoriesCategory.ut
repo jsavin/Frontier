@@ -1,0 +1,6 @@
+on getStoriesCategory (adrSite=nil) {
+	«Get the alsoListedIn category for stories.
+		«This script can run outside the page rendering context if adrSite is not nil.
+		«10/19/99; 3:42:23 PM by PBS
+	
+	return (manilaSuite.discuss.getCategoryName ("stories", adrSite))}

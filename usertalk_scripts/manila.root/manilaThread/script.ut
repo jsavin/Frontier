@@ -1,0 +1,31 @@
+«Changes:
+	«3/15/03; 4:55:37 PM by JES
+		«If not defined, create the manilaThread.stats table.
+	«10/27/00; 3:46:35 AM by JES
+		«Added scanning for DG themes.
+	«11/05/00; 6:12:23 PM by PBS.
+		«Don't attempt to load theme files while Frontier is still starting up: wait until after startup is finished.
+	«12/29/00; 10:36:31 AM by PBS
+		«Call manilaSuite.init to enable any new legal macros, make sure callbacks exist, and so on.
+	«1/15/02; 6:06:50 PM by PBS
+		«Created an agents sub-table. More modular, easier to maintain, follows current best practices.
+loop {
+	local (flStartingUp = false);
+	if defined (system.temp.Frontier.startingUp) {
+		if system.temp.Frontier.startingUp {
+			flStartingUp = true}};
+	if not flStartingUp { //PBS 11/05/00: don't scan for themes or run reports while Frontier is starting up
+		manilaSuite.init (); //PBS 12/29/00: enable new legal macros, ensure callbacks, etc.
+		bundle { //init thread stats table
+			if not defined (manilaThread.stats) {
+				new (tableType, @manilaThread.stats)}};
+		bundle { //run all the scripts in the agents sub-table
+			local (adr);
+			for adr in @manilaThread.agents {
+				local (startticks = clock.ticks ());
+				try {
+					adr^ ()}}}};
+	bundle { //schedule wakeup for next whole minute
+		local (secsintominute = 0);
+		date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+		thread.sleepFor (60 - second + secsintominute)}} //wake up once a minute

@@ -1,0 +1,37 @@
+«Change Notes
+	«Thursday, November 04, 1999 at 11:34:58 PM by AR
+		«If config.mainResponder.prefs.flAllowByIpOnly is true, block all requests except those originating from IP addresses listed in config.mainResponder.prefs.allowedIpAddresses.
+		«This script is intended to be called from config.mainResponder.callbacks.controlAccess.blockByIP.
+	«04/16/00; 1:25:29 AM by JES
+		«localized error message
+	«05/01/00; 6:42:47 PM by JES
+		«Changed getString calls to use a replacement table address instead of a lists
+
+local (pt);
+bundle { // 4/16/00; 4:50:45 PM by JES: temporary page table for localization support
+	«for localization, we have to have a page table with at least the language, so we make a temporary one
+	new (tableType, @pt);
+	if defined (config.mainResponder.globals.language) {
+		pt.language = config.mainResponder.globals.language}
+	else {
+		if defined (user.prefs.language) {
+			pt.language = user.prefs.language}
+		else {
+			pt.language = "English"}}};
+
+if defined (config.mainResponder.prefs.flAllowByIpOnly) {
+	if config.mainResponder.prefs.flAllowByIpOnly {
+		local (s, ix = 1);
+		loop {
+			s = string.nthField (config.mainResponder.prefs.allowedIpAddresses, ",", ix++);
+			if string.length (s) == 0 {
+				break};
+			if client == string.trimWhiteSpace (s) {
+				return (true)}};
+		code = 403; //if we get here, the client is calling from a blocked IP address
+		local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+		replacementTable.client = client;
+		responseBody = webserver.util.buildErrorPage ("403 FORBIDDEN", mainResponder.getString ("security.blockHttpByIp", @replacementTable, pta: @pt)); // 4/16/00 JES: localized
+		scriptError ("!return")}}; //prevent mainResponder.respond from overwriting our response
+
+return (true)

@@ -1,0 +1,20 @@
+on renderArchivePage (adrTable, pta=nil, flUseNewsDayTemplate=false) {
+	«Render all the posts for a given day.
+		«04/24/00; 3:51:01 PM by PBS
+		«Changes:
+			«05/02/00; 5:02:43 PM by PBS
+				«Support for the news day template.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (newsItemTemplate);
+	if defined (pta^.newsSite^.newsItems.template) {
+		newsItemTemplate = string (pta^.newsSite^.newsItems.template)};
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (n = infinity); //all posts for this day
+	
+	local (minDate, maxDate);
+	minDate = mainResponder.calendar.getAddressDay (adrTable);
+	maxDate = date.tomorrow (minDate) - 1; //midnight - 1
+	return (manilaSuite.news.formatLastNItems (n, flEditLinks:true, newsItemTemplate:newsItemTemplate, maxDate:maxDate, minDate:minDate, flUseNewsDayTemplate:flUseNewsDayTemplate))}

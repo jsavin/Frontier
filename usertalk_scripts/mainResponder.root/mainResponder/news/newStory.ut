@@ -1,0 +1,58 @@
+on newStory (username, password, sitename, storytitle, storytext) {
+	«Changes:
+		«Wed, 26 May 1999 11:56:04 GMT by AR
+			«Added groupname parameter to call to mainresponder.discuss.addmessage. 
+		«05/01/00; 6:46:33 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+		«06/29/00; 1:28:38 AM by JES
+			«After adrdiscusstable is initially set, take account the possibility that it may be an address, or a string coercible to an address.
+	local (now = clock.now ());
+	local (adrnewstable = mainResponder.news.openRoot (sitename));
+	local (adrprefs = @adrnewstable^.["#newsSite"]);
+	bundle { //check that username is the sysop and password is correct
+		if string.lower (username) != adrprefs^.sysopMail {
+			scriptError (mainResponder.getString ("news.cantSetNewsNotSysop"))}; // 4/16/00 JES: localized
+		local (groupname = adrprefs^.sysopMemberOfGroup);
+		mainresponder.members.getMemberTableWithPassword (groupname, username, password)}; //scriptErrors if password is incorrect
+	local (tablename);
+	bundle { //innerCase the title, and perform other filtering, setting tablename
+		local (i, ch);
+		tablename = string.innerCaseName (storytitle);
+		for i = sizeof (tablename) downto 1 {
+			ch = tablename [i];
+			if (not string.isAlpha (ch)) and (not string.isNumeric (ch)) {
+				tablename = string.delete (tablename, i, 1)}};
+		if sizeof (tablename) > 31 {
+			tablename = string.mid (tablename, 1, 31)}};
+	local (adrdiscusstable = @[system.temp.mainResponder.discussRootFile].[adrprefs^.discussionRoot]);
+	if typeOf (adrdiscusstable^) == addressType or typeOf (adrdiscusstable^) == stringType { //06/29/00; JES
+		if not defined (adrdiscusstable^^) {
+			scriptError ("There is no discussion root named \"" + discussionroot + "\".")};
+		adrdiscusstable = adrdiscusstable^};
+	local (adrstory, pathToStory);
+	bundle { //navigate to the storage location for the story
+		local (adrstoriestable = @adrnewstable^.stories);
+		if not defined (adrstoriestable^) {
+			new (tabletype, adrstoriestable)};
+		local (adryear = @adrstoriestable^.[date.year ()]);
+		if not defined (adryear^) {
+			new (tabletype, adryear)};
+		local (adrmonth = @adryear^.[string.padwithzeros (date.month (), 2)]);
+		if not defined (adrmonth^) {
+			new (tabletype, adrmonth)};
+		adrstory = @adrmonth^.[tablename];
+		if defined (adrstory^) {
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.storytitle = storytitle;
+			scriptError (mainResponder.getString ("news.cantCreateStoryNotUniqueURL", @replacementTable))}; // 4/16/00 JES: localized
+		pathToStory = date.year () + "/" + string.padwithzeros (date.month (), 2) + "/" + tablename};
+	msgnum = mainResponder.discuss.addMessage (storytitle, username, 0, storytext, true, false, now, adrdiscusstable, flcallback:false, groupname:adrprefs^.sysopMemberOfGroup);
+	adrmsg = mainresponder.news.getmessagetable (adrprefs^.discussionRoot, msgnum);
+	«adrmsg^.inNewsSite = sitename //if this is set then the static page will be rebuilt when it's edited, we don't want this 3/9/99 DW
+	adrmsg^.alsoListedIn = {adrprefs^.storiesListedIn};
+	fileMenu.saveMyRoot (adrmsg);
+	new (tabletype, adrstory);
+	adrstory^.discussionRoot = adrprefs^.discussionRoot;
+	adrstory^.msgnum = msgnum;
+	fileMenu.saveMyRoot (adrstory);
+	return (pathToStory)}

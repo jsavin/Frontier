@@ -1,0 +1,2 @@
+on editStory (username, password, sitename, pathToStory, storytitle, storytext) {
+	return (mainResponder.news.editStory (username, password, sitename, pathToStory, storytitle, storytext))}

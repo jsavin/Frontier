@@ -1,0 +1,37 @@
+on memberProfile () {
+	«Changes
+		«8/14/02; 8:33:40 PM by JES
+			«Created.
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	local (pta = html.getPageTableAddress ());
+	local (bgcolors = {pta^.trbg1, pta^.trbg2});
+	
+	local (group = pta^.searchArgTable.g);
+	local (member = pta^.searchArgTable.m);
+	
+	local (adrmember = mainResponder.members.getMemberTable (group, member));
+	local (name = member);
+	if defined (adrmember^.personalInfo.name) {
+		name = adrmember^.personalInfo.name};
+	pta^.title = "Profile for " + name;
+	
+	local (ctrows = 0);
+	on tr (label, value) {
+		local (bgcolor = "bgcolor=\"" + bgcolors[ (ctrows++%2) + 1] + "\"");
+		add ("<tr " + bgcolor + "><td valign=\"top\">" + label + ":</td><td valign=\"top\" style=\"padding-left:10px;\">" + value + "</td></tr>")};
+	
+	add ("<blockquote><table cellpadding=\"3\" cellspacing=\"0\" border=\"0\" width=\"65%\">");
+	tr ("Name", name);
+	tr ("Email address", member);
+	tr ("Membership group", group);
+	if defined (adrmember^.hitcount) {
+		tr ("Hit count", string.addCommas (adrmember^.hitcount))};
+	if defined (adrmember^.discussionGroupInfo.["#discussionGroup"].highestMessageRead) {
+		tr ("Highest message read", adrmember^.discussionGroupInfo.["#discussionGroup"].highestMessageRead)};
+	if defined (adrmember^.lastVisit) {
+		tr ("Last visit", adrmember^.lastVisit)};
+	add ("</blockquote></table>");
+	
+	return (htmltext)}

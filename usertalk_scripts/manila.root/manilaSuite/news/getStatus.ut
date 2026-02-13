@@ -1,0 +1,15 @@
+on getStatus (msgNum, adrSite, adrMsgTable=nil) {
+	«Get the status of a news item. It's either Editing, Released, or Posted.
+		«04/19/00; 10:28:00 PM by PBS
+	
+	if adrMsgTable == nil {
+		adrMsgTable = manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, msgNum)};
+	
+	if defined (adrMsgTable^.newsItem.flPosted) {
+		if adrMsgTable^.newsItem.flPosted { //was it posted?
+			return ("Posted")}};
+	if defined (adrMsgTable^.newsItem.flReleased) {
+		if adrMsgTable^.newsItem.flReleased { //was it released?
+			return ("Released")}};
+	
+	return ("Editing")} //neither posted nor released, it's in editing

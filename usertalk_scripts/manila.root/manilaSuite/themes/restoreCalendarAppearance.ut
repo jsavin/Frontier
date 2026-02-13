@@ -1,0 +1,9 @@
+on restoreCalendarAppearance (adrSiteInfo) {
+	«Restore the calendar appearance to the default.
+		«06/06/00; 3:51:53 PM by PBS
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	local (objectName = "calendarTemplates");
+	manilaSuite.themes.restoreToDefault (adrSite, objectName);
+	
+	return (true)}

@@ -1,0 +1,47 @@
+on shortTimeString (d, pta=nil) {
+	«Gets the localized version of a short time string for a given date value.
+		«d is a date or a string that can be coerced to a date
+	«4/13/00; 2:34:36 PM by JES
+	«Changes:
+		«05/17/00 6:38:19 PM by JS
+			«optimized -- no longer call mainResponder.localization.getDateTimeReplacementTable, rather build the table here
+		«06/28/00; 1:05:16 AM by JES
+			«Fixed problem with midnight hour on 12-hour clocks displaying as 0:xx
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrLanguageTable = mainResponder.localization.getLanguageTableAddress (pta));
+	local (langName = nameOf (adrLanguageTable^));
+	if defined (temp.mainResponder.localizationCache.[langName].shortDates.[d]) {
+		return (temp.mainResponder.localizationCache.[langName].shortDates.[d])};
+	local (fl24HourClock = adrLanguageTable^.strings.date.use24HourClock);
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	local (yr, mo, day, hr, min, sec);
+	date.get (d, @day, @mo, @yr, @hr, @min, @sec);
+	if fl24HourClock {
+		replacementTable.hour = hr;
+		replacementTable.["am/pm"] = ""}
+	else { // 12-hour clock
+		if hr > 11 {
+			if hr > 12 {
+				hr = hr - 12};
+			replacementTable.hour = hr;
+			replacementTable.["am/pm"] = adrLanguageTable^.strings.date.meridianNames.pm}
+		else {
+			if hr == 0 { //06/28/00 JES: fixed zero-hour problem with 12-hour clocks
+				hr = 12};
+			replacementTable.hour = hr;
+			replacementTable.["am/pm"] = adrLanguageTable^.strings.date.meridianNames.am}};
+	replacementTable.mm = string.padWithZeros (min, 2);
+	
+	local (s);
+	s = mainResponder.getString ("date.shortTime", @replacementTable, pta: pta);
+	
+	if defined (temp.mainResponder.localizationCache.[langName]) {
+		local (adrCache = @temp.mainResponder.localizationCache.[langName].shortDates);
+		if not defined (adrCache^) {
+			new (tableType, adrCache)};
+		adrCache^.[d] = s};
+	
+	return (s)}

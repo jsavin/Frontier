@@ -1,0 +1,12 @@
+on initPluginsTable (adrSite) {
+	«Make sure the site has a #plugins table with all the needed subtables.
+		«02/22/00; 1:47:39 PM by PBS
+	
+	if not defined (adrSite^.["#plugins"]) {
+		new (tableType, @adrSite^.["#plugins"])};
+	if not defined (adrSite^.["#plugins"].data) {
+		new (tableType, @adrSite^.["#plugins"].data)};
+	if not defined (adrSite^.["#plugins"].enabled) {
+		new (tableType, @adrSite^.["#plugins"].enabled)};
+	
+	return (true)}

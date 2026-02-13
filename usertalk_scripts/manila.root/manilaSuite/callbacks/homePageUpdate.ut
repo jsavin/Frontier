@@ -1,0 +1,108 @@
+on homePageUpdate (adrMsg, adrSite, adrMember, newText, flNewsItem=false) {
+	«Changes:
+		«3/2/07; 1:29:22 PM by LL
+			«Ping the Google BlogSearch server if the homepage updates.
+		«8/31/06; 10:53:45 AM by LL
+			«Commented out call to weblogUpdates.publicRssPing since the service is no longer running.
+		«2003 and earlier
+			«7/24/03; 2:05:33 PM by DW
+				«Call weblogUpdates.ping and weblogUpdates.publicRssPing in a thread so the user doesn't have to wait for them to return.
+			«10/30/02; 3:23:19 AM by JES
+				«Added support for Weblogs.Com for RSS pings.
+				«See: http://www.xmlrpc.com/weblogsComForRss
+			«8/13/02; 2:40:31 PM by JES
+				«If RCS is installed, call its weblogUpdates.ping function so Manila sites will show up on the RCS updates page (public home page).
+			«1/17/02; 11:25:50 AM by PBS
+				«We now have a table of home page update callbacks to call.
+			«10/2/01; 8:32:38 PM by PBS
+				«New optional parameter, flNewsItem, needed to fix bug with News Items sites not sending notifications.
+			«10/1/01; 4:26:42 PM by PBS
+				«Support per-site pref for sending home page update notices to Weblogs.Com.
+			«9/28/01; 9:26:27 AM by PBS
+				«Don't send ping to old updates server.
+			«9/27/01; 9:17:02 PM by PBS
+				«Call the new weblog updates server.
+			«11/10/00; 2:10:25 PM by PBS
+				«If the pref exists and is true, send update notices to UserLand's Updates page: http://www.userland.com/updates
+				«It's opt-in -- by default, it's false.
+			«05/12/00; 3:54:40 PM by PBS
+				«Don't add private sites to the updates table.
+			«04/05/00; 1:35:40 AM by PBS
+				«Implement the homePageUpdate callbacks.
+	
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	local (msgNum = adrMsg^.msgNum);
+	local (homePageMsgNum = adrNewsSite^.discussLinks.homePageMsgNum);
+	if not flNewsItem {
+		if msgNum != homePageMsgNum { //is this the home page?
+			return (true)}};
+	
+	local (currText = string (adrMsg^.body));
+	local (sizeCurrText = sizeOf (currText));
+	local (sizeNewText = sizeOf (newText));
+	
+	local (flIsUpdate = false);
+	if flNewsItem { //if it's a news item, it was just posted to the home page
+		flIsUpdate = true}
+	else { //a change of at least 50 characters is necessary to be considered an update.
+		if (sizeCurrText > (sizeNewText + 50)) or (sizeNewText > (sizeCurrText + 50)) {
+			flIsUpdate = true}};
+	
+	if flIsUpdate { //a home page was changed. Call the callback scripts.
+		local (adrCallbacks = @manilaSuite.callbacks.homePageUpdateCallbacks); //PBS 01/17/02
+		local (adrUserCallbacks = @config.manila.callbacks.homePageUpdate);
+		local (url = adrSite^.["#ftpSite"].url);
+		manilaSuite.callbacks.callbackLoop (adrCallbacks, adrUserCallbacks, adrMsg, adrSite, url, adrMember, newText);
+		
+		try { //PBS 05/06/00: add to changed home pages calendar
+			local (flAddToChangesTable = true);
+			if defined (adrSite^.["#newsSite"].flEditorsOnlyAccessToSite) { //PBS 05/12/00: don't add private sites to changes table
+				if (adrSite^.["#newsSite"].flEditorsOnlyAccessToSite) {
+					flAddToChangesTable = false}};
+			if defined (adrSite^.["#newsSite"].flMembersOnlyAccessToSite) { //Don't add members only sites
+				if (adrSite^.["#newsSite"].flMembersOnlyAccessToSite) {
+					flAddToChangesTable = false}};
+			if flAddToChangesTable {
+				local (url, siteName);
+				url = adrSite^.["#ftpSite"].url;
+				if manilaSuite.staticRendering.isEnabled (adrSite) { //get static home page URL
+					if defined (adrSite^.["#newsSite"].staticSite.["#ftpSite"].url) {
+						local (staticUrl = adrSite^.["#newsSite"].staticSite.["#ftpSite"].url);
+						if string.trimWhiteSpace (staticUrl) != "" {
+							url = staticUrl}}};
+				siteName = adrSite^.["#newsSite"].siteName;
+				manilaSuite.hosting.addChangedHomePage (url, siteName);
+				
+				bundle { //ping Weblogs.Com and Google BlogSearch
+					if defined (config.manila.prefs.flSendUpdateNoticesToUserLand) {
+						if config.manila.prefs.flSendUpdateNoticesToUserLand {
+							if (not defined (adrNewsSite^.flSendUpdateNoticesToUserLand)) or (adrNewsSite^.flSendUpdateNoticesToUserLand) {
+								«local (server = "www.userland.com")
+								«local (port = 80)
+								«local (method = "serverMonitor.updates.add")
+								«local (updateTime = date.netStandardString (clock.now ()))
+								«local (params = {siteName, url, updateTime})
+								
+								«PBS 09/28/01: don't send ping to old updates server.
+								«betty.rpc.client (server, port, method, @params, flAsynch: true) //asynch request
+								
+								«PBS 09/27/01: New updates server.
+								thread.callscript (@weblogUpdates.ping, {siteName, url});
+								
+								local (flSyndicate = manilaSuite.getNewsSitePref ("flSyndicate", adrSite));
+								if flSyndicate {
+									local (rssLink= url + "xml/rss.xml");
+									thread.callscript (@googleBlogSearch.ping, {siteName, url, url, rssLink})};
+								
+								«JES 10/30/02: Weblogs.Com for RSS ping.
+								«if manilaSuite.getNewsSitePref ("flSyndicate", adrSite, false)
+									«local (xmlurl = url + "xml/rss.xml")
+									«thread.callscript (@weblogUpdates.publicRssPing, {siteName, xmlurl})}}}};
+				
+				bundle { //JES 8/13/02: if RCS is running locally, ping there as well
+					if defined (radioCommunityServerSuite.weblogUpdates.ping) {
+						if defined (config.manila.prefs.flRcsUpdatesListsManilaSites) {
+							if config.manila.prefs.flRcsUpdatesListsManilaSites {
+								radioCommunityServerSuite.weblogUpdates.ping (siteName, url)}}}}}}};
+	
+	return (true)}

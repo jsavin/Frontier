@@ -1,0 +1,8 @@
+local (ct = 0);
+window.about ();
+loop {
+	local (params = {random (1, 50)});
+	local (tc = clock.ticks () + 30);
+	scratchpad.statename = betty.rpc.client ("www.scripting.com", 81, "examples.getstatename", @params, false);
+	msg (ct++ + "; " + scratchpad.statename + "; " + (double (clock.ticks () - tc) / 60 ) + " seconds.");
+	while clock.ticks () < (tc + 30) {}}

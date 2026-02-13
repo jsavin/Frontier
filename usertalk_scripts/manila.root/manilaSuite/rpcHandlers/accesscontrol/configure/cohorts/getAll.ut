@@ -1,0 +1,16 @@
+on getAll (username, password, siteName) {
+	« manilaSuite.rpcHandlers.accesscontrol.configure.cohorts.getAll : 04/05/21, 09:53:49 by DAB
+		« returns a list of cohorts defined in the membership group of the site at sitename
+		«was manilaFixer.rpcHandlers.accesscontrol.configure.cohorts.getAll :02/03/15, 14:53:57 by DAB
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get cohorts because ");
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
+	local (adrCohorts = @adrGroup^.cohorts);
+	local (userCohorts = {});
+	local (adr);
+	for adr in adrCohorts {
+		if defined(adr^.systemdefinition) and adr^.systemdefinition {
+			continue};
+		userCohorts[0] = string.popfileFromAddress(adr)};
+	
+	return userCohorts}

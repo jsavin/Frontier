@@ -1,0 +1,31 @@
+on setMessageText (adrMsg, messageText, flNeuterMacros=true, flNeuterText=true, lastUpdateTime=nil, adrLegalTags=nil) {
+	«Set the text of a discussion group message.
+		«Changes:
+			«Tue, 25 May 1999 20:14:13 GMT by AR
+				«Bug Fix: After setting the message text, all items whose name ends with "cache" are deleted from the message table.
+			«04/03/00; 10:46:12 AM by PBS
+				«lastUpdateTime is a new optional parameter: you can set the last update time for a message. This is used by Manila's time zone support.
+			«03/28/01; 5:54:58 PM by PBS
+				«adrLegalTags is a new optional parameter. It's needed when called from an XML-RPC handler, so mainResponder.neuterText knows where the legal tags table for the site is.
+	
+	messageText = mainResponder.neutertext (messageText, flNeuterMacros, flNeuterText, adrLegalTags:adrLegalTags); //PBS 03/28/01: pass the address of the legal tags table
+	
+	if typeOf (adrMsg^.body) == wpTextType {
+		wp.newTextObject (messageText, @adrMsg^.body)}
+	else {
+		delete (@adrMsg^.body);
+		adrMsg^.body = messageText};
+	
+	local (i);
+	for i = sizeOf (adrMsg^) downTo 1 {
+		if string.lower (nameOf (adrMsg^[i])) endsWith "cache" {
+			delete (@adrMsg^[i])}};
+	
+	if lastUpdateTime == nil { //PBS 04/02/00: new parameter needed for time zone support in Manila
+		lastUpdateTime = clock.now ()};
+	adrMsg^.lastUpdate = lastUpdateTime;
+	
+	mainResponder.news.newsSiteUpdate (adrMsg); //schedule static page update if it's in a news site
+	mainResponder.discuss.archiveMessage (adrMsg); //8/14/99; 8:00:38 AM by DW
+	
+	return (true)}

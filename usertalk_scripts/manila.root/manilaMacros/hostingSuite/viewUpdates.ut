@@ -1,0 +1,4 @@
+on viewUpdates (n) {
+	«Macro for viewing the n most recently updated home pages.
+		«05/12/00; 11:52:26 AM by PBS
+	return (manilaSuite.hosting.displayLastUpdatedHomePages (n))}

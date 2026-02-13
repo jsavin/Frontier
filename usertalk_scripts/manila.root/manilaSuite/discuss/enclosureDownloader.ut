@@ -1,0 +1,4 @@
+local (pta = html.getPageTableAddress ());
+pta^.title = manilaSuite.getString ("discuss.enclosureDownloaderPageTitle"); // 4/19/00 JES: localized
+pta^.template = "{pageheader (title)}\r{bodytext}\r{pagefooter ()}";
+return (mainResponder.discuss.downloadMessageEnclosure (number (pta^.pathArgs)))

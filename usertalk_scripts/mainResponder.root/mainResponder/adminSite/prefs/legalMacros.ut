@@ -1,0 +1,76 @@
+on legalMacros () {
+	«Changes
+		«9/5/02; 2:32:40 PM by JES
+			«Add () after the name of a macro in the list of legal macros, to indicate that the macro takes parameters.
+		«8/20/02; 8:17:17 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (bgcolors = {pta^.trbg2, pta^.trbg1});
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	local (adrmacros = @config.mainResponder.prefs.legalMacros);
+	local (message = "");
+	
+	if pta^.method == "POST" {
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.addMacro) { //add a new legal macro
+			local (name = adrargs^.macroName);
+			local (flParams = defined (adrargs^.macroTakesParameters));
+			local (adrmacro = @adrmacros^.[name]);
+			if flParams {
+				new (tableType, adrmacro);
+				adrmacro^.flLegal = true;
+				adrmacro^.flParams = true}
+			else {
+				table.assign (adrmacro, true)};
+			if flParams {
+				name = name + " ()"};
+			message = "The macro, \"" + name + "\" has been added to the legal macros for this server."};
+		if defined (adrargs^.removeMacros) { //remove one or more legal macros
+			for adr in adrargs {
+				local (name = string.urlDecode (nameOf (adr^)) );
+				if defined (adrmacros^.[name]) {
+					delete (@adrmacros^.[name])}};
+			message = "The selected macros have been removed from the list of macros which are legal on this server. <i>Note that this will not remove these macro calls from sites which already include them.</i>"}};
+	
+	bundle { //add message if there is one
+		if message != "" {
+			add ("<p><b>" + message + "</b></p>")}};
+	
+	bundle { //make macro legal form
+		add ("<p>To make a macro legal, enter its name below, check the box for whether or not the macro takes parameters, and click the Add button.</p>");
+		add ("<p>Macro name:&nbsp;&nbsp;<input type=\"text\" name=\"macroName\" /></p>");
+		add ("<p><input type=\"checkbox\" name=\"macroTakesParameters\" checked />&nbsp;Check this box if the macro takes parameters.</p>");
+		add ("<p><input type=\"submit\" name=\"addMacro\" value=\"Add\" /></p>")};
+	
+	bundle { //legal macros
+		bundle { //explanatory text
+			add ("<p><br />The following table lists all of the macros which are legal on this server. To remove one or more legal macros, check the box next to its name, and click the Remove button at the end of the page.</p>")};
+		
+		add ("<table cellpadding=\"3\" cellspacing=\"0\" border=\"0\" width=\"80%\">");
+		
+		local (adr, ctmacros = 0);
+		for adr in adrmacros {
+			local (flParams = false);
+			if typeOf (adr^) == tableType {
+				if not defined (adr^.flLegal) {continue};
+				if not adr^.flLegal {continue};
+				if defined (adr^.flParams) {flParams = adr^.flParams}}
+			else { //boolean -- continue if false
+				if not adr^ {continue}};
+			local (name = nameOf (adr^));
+			add ("<tr bgcolor=\"" + bgcolors[ (++ctmacros % 2) + 1] + "\">");
+			add ("<td>&nbsp;&nbsp;<input type=\"checkbox\" name=\"" + string.urlEncode (name) + "\" />&nbsp;</td>");
+			if flParams {name = name + "&nbsp;()"};
+			add ("<td class=\"small\">" + name + "</td>");
+			add ("</tr>")};
+		
+		add ("</table>");
+		
+		add ("<p><input type=\"submit\" name=\"removeMacros\" value=\"Remove\" /></p>")};
+	
+	pta^.flAddSubmitButton = false; //suppress the default submit button
+	
+	return (htmltext)}

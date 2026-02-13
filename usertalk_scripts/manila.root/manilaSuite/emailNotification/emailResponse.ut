@@ -1,0 +1,65 @@
+on emailResponse (adrMsg, adrSite, url, adrMember, language = nil) {
+	«Changes:
+		«11/2/05; 4:31:38 AM by JES
+			«Call through manilaSuite.members.getMemberEmail to get member email addresses.
+		«10/15/05; 4:51:00 AM by JES
+			«If defined, use personalInfo.email for the recipient's email address.
+		«08/07/00; 9:12:01 PM by PBS
+			«Call manilaSuite.sendMail rather than tcp.sendMail.
+		«05/20/00; 9:30:06 PM by JES
+			«localized
+		«04/05/00; 2:51:05 PM by PBS
+			«Created. If a poster requested the responses be sent via email, send the response.
+	
+	if not defined (adrMsg^.inResponseTo) {
+		return (true)};
+	
+	local (parentMsgNum = adrMsg^.inResponseTo);
+	local (adrMessages = parentOf (adrMsg^));
+	local (parentMessageTable = @adrMessages^.[string.padWithZeros (parentMsgNum, 7)]);
+	local (memberKey = nameOf (adrMember^));
+	
+	if defined (parentMessageTable^.emailSubscribers) {
+		local (emailSubject, emailMessage);
+		bundle { //create the email message to send
+			local (t); //a table that will contain two elements: subject and text.
+			local (url); //must always be a msgReader URL
+			bundle { //get the msgReader URL
+				local (msgReaderUrl = adrSite^.["#urls"].discussMsgReader);
+				if not (msgReaderUrl endsWith "$") {
+					msgReaderUrl = msgReaderUrl + "$"};
+				url = msgReaderUrl + adrMsg^.msgNum};
+			local (member = manilaSuite.emailNotification.getMemberName (adrMember), language);
+			t = manilaSuite.emailNotification.createEmailMessage (string (adrMsg^.body), adrMsg^.subject, url, member, true, "Message", language); // 05/19/00 JES: localization support
+			emailSubject = t.subject;
+			emailMessage = t.text};
+		
+		bundle { //send the email messages
+			local (sender);
+			bundle { //get the sender email address
+				sender = "webmaster@userland.com";
+				local (adrNewsSite = @adrSite^.["#newsSite"]);
+				if defined (adrNewsSite^.notifySender) {
+					sender = adrNewsSite^.notifySender}};
+			
+			local (adrSubscriber);
+			local (recipients = "");
+			local (i, sizeTable);
+			sizeTable = sizeOf (parentMessageTable^.emailSubscribers);
+			for i = 1 to sizeTable {
+				local (adrSubscriber = @parentMessageTable^.emailSubscribers [i]);
+				try {
+					local (emailAddress = manilaSuite.members.getMemberEmail (adrSubscriber));
+					«case true //05/10/13, 16:39:22 by DAB
+						«not defined (adrSubscriber^.personalinfo)
+						«not defined (adrSubscriber^.personalinfo.email)
+						«adrSubscriber^.personalinfo.email == ""
+							«emailAddress = nameOf (adrSubscriber^)
+					«else
+						«emailAddress = adrSubscriber^.personalinfo.email
+					recipients = recipients + emailAddress;
+					recipients = recipients + ", "}};
+			recipients = string.popSuffix (s, ",");
+			try {manilaSuite.sendMail ("", emailSubject, emailMessage, sender, bcc:recipients)}}};
+	
+	return (true)}

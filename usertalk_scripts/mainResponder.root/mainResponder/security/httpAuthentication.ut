@@ -1,0 +1,330 @@
+on httpAuthentication (realm, pta=nil, groupname="default", memberList=nil, securityLevel=0, fldebug=false, domain="/", noncesExpireAfterMinutes=15) {
+	«Change Notes
+		«Docs: http://docserver.userland.com/mainResponder/security/httpAuthentication
+		«8/8/02; 3:01:37 PM by JES
+			«Support for passwords stored as binaries instead of as clear-text strings.
+		«Changes before 1/1/2001
+			«06/19/00; 9:55:54 AM by JES
+				«localization bug fix: when outside wsf context, html.getPageTableAddress was failing in mainResponder.getString
+				«Added support for Frontier language setting in user.prefs
+			«05/01/00; 6:40:25 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«Sunday, December 19, 1999 at 4:30:04 PM by AR
+				«Closed a security hole in the Basic Authentication process.
+			«Sunday, November 07, 1999 at 9:26:41 PM by AR
+				«username is now case-insensitive
+			«Tuesday, October 26, 1999 at 4:12:49 PM by AR
+				«Basic Access Authentication as well as Digest Access Authentication are supported per RFC 2617
+				«We assume that we are called from a mainResponder #security script. If we aren't, please pass us the address of the param table.
+			«4/16/00; 1:21:20 AM by JES
+				«localized all error strings
+	
+	«4/16/00; 4:50:45 PM by JES: temporary page table for localization support
+		«for localization, we have to have a page table with at least the language, so we make a temporary one
+	local (tempTable); new (tableType, @tempTable);
+	if pta != nil { // if in wsf context, use the language defined by the site, if any
+		if defined (pta^.language) {
+			tempTable.language = pta^.language}};
+	if not defined (tempTable.language) { // outside wsf context, or no language defined for site
+		if defined (config.mainResponder.globals.language) {
+			tempTable.language = config.mainResponder.globals.language}
+		else {
+			if defined (user.prefs.language) {
+				tempTable.language = user.prefs.language}
+			else {
+				tempTable.language = "English"}}};
+	
+	on H (s) { //MD5 hash function
+		return (string.hashMD5 (s))};
+	on KD (secret, data) { //Section 3.2.1 of RFC 2617
+		return (H (secret + ":" + data))};
+	on A1 () { //Section 3.2.2.2 of RFC 2617
+		return (authTable.username + ":" + realm + ":" + string (adrMember^.password))};
+	on A2 () { //Section 3.2.2.3 of RFC 2617
+		if flAuthInt {
+			return (pta^.method + ":" + authTable.uri + ":" + H (pta^.requestBody))}
+		else {
+			return (pta^.method + ":" + authTable.uri)}};
+	on requestDigest () { //Section 3.2.2.1 of RFC 2617
+		if flAuth or flAuthInt {
+			return (KD (H (A1 ()), authTable.nonce + ":" + authTable.nc + ":" + authTable.cnonce + ":" + authTable.qop + ":" + H (A2 ())))}
+		else {
+			return (KD (H (A1 ()), authTable.nonce + ":" + H (A2 ())))}};
+	
+	on initNonces () {
+		if not defined (adrNonces^) {
+			new (tableType, adrNonces)}};
+	on generateNonce () {
+		local (nonce, now  = clock.now ());
+		nonce = H (now + ":" + temp.Frontier.startupTime + ":" + pta^.client + ":" + domain + ":" + memAvail () + ":" + string.padWithZeros (random (0, infinity), 8));
+		local (adrNonce = @adrNonces^.[nonce]);
+		new (tableType, adrNonce);
+		adrNonce^.nc = 1;
+		adrNonce^.expires = now + noncesExpireAfterMinutes * 60;
+		return (nonce)};
+	on deleteNonce () {
+		try {delete (@adrNonces^.[authTable.nonce])};
+		return (true)};
+	
+	on httpUnauthorized (flStale=false) { //try again with proper credentials
+		on addToAuthHeader (s) {
+			local (adr = @pta^.responseHeaders.["WWW-Authenticate"]);
+			if defined (adr^) {
+				if typeOf (adr^) == listType {
+					adr^ = adr^ + {s}}
+				else {
+					adr^ = {adr^} + {s}}}
+			else {
+				adr^ = s};
+			return};
+		if flAcceptDigest {
+			initNonces ();
+			deleteNonce ();
+			local (s = "");
+			s = s + "Digest realm=\"" + realm + "\",";
+			s = s + " domain=\"" + domain + "\",";
+			s = s + " nonce=\"" + generateNonce () + "\",";
+			if flStale {
+				s = s + " stale=true,"};
+			s = s + " algorithm=MD5,";
+			s = s + " qop=\"auth,auth-int\"";
+			addToAuthHeader (s)};
+		if flAcceptBasic {
+			addToAuthHeader ("Basic realm=\"" + realm + "\"")};
+		pta^.responseBody = webserver.util.buildErrorPage ("401 UNAUTHORIZED", mainResponder.getString ("security.http401Error", pta: @tempTable)); // 4/16/00 JES: localized
+		pta^.code = 401;
+		if flDebug {
+			adrDebugTable^.["WWW-Authenticate"] = pta^.responseHeaders.["WWW-Authenticate"];
+			adrDebugTable^.code = pta^.code};
+		scriptError ("!return")}; //prevent mainResponder.respond from overwriting our response
+	on httpForbidden (s=nil) { //don't bother to try again, permanent failure
+		pta^.code = 403;
+		if s == nil {
+			s = mainResponder.getString ("security.http403Error", pta: @tempTable)}; // 4/16/00 JES: localized
+		pta^.responseBody = webserver.util.buildErrorPage ("403 FORBIDDEN", s);
+		if flDebug {
+			adrDebugTable^.code = pta^.code};
+		scriptError ("!return")}; //prevent mainResponder.respond from overwriting our response
+	on httpBadRequest (s=nil) { //don't bother to try again, malformed request
+		pta^.code = 400;
+		if s == nil {
+			s = mainResponder.getString ("security.http400Error", pta: @tempTable)}; // 4/16/00 JES: localized
+		pta^.responseBody = webserver.util.buildErrorPage ("400 BAD REQUEST", s);
+		if flDebug {
+			adrDebugTable^.code = pta^.code};
+		scriptError ("!return")}; //prevent mainResponder.respond from overwriting our response
+	
+	on checkMember (username, password = nil) { //set adrMember or throw an error
+		adrMember = mainResponder.members.getMemberTable (groupname, username);
+		if not defined (adrMember^) {
+			httpUnauthorized ()};
+		if (password != nil) and (password != string (adrMember^.password)) {
+			httpUnauthorized ()};
+		if memberList != nil { //make sure the client is in the specified list of members
+			local (lowerName = string.lower (username));
+			if typeOf (memberList) == listType {
+				local (memberName, flAuthorized = false);
+				for memberName in memberList {
+					if string.lower (memberName) == lowerName {
+						flAuthorized = true;
+						break}};
+				if not flAuthorized {
+					httpUnauthorized ()}}
+			else {
+				if string.lower (memberList) != lowerName {
+					httpUnauthorized ()}}}};
+	on fakeCookie (username, password) { //add a cookie to the request headers so mainResponder.members.checkMembership won't complain
+		if not defined (pta^.requestHeaders.cookies) {
+			new (tableType, @pta^.requestHeaders.cookies)};
+		local (adrMembers = mainResponder.members.getMembershipTable (groupname));
+		local (myCookieName = string.innerCaseName (adrMembers^.cookieName));
+		pta^.requestHeaders.cookies.[myCookieName] = string.urlEncode (username + "\t" + password)};
+	
+	local (adrMember);
+	local (flAuth = false, flAuthInt = false); //our internal state, don't mess with these
+	local (adrNonces = @system.temp.httpDigestAuthentication);
+	local (authTable, adrDebugTable);
+	
+	if pta == nil {
+		pta = parentOf (client)}; //assume we're called from a #security script
+	
+	if flDebug {
+		adrDebugTable = log.addToGuestDatabase ("debugHttpAuthentication");
+		adrDebugTable^.securityLevel = securityLevel;
+		if defined (pta^.requestHeaders.Authorization) {
+			adrDebugTable^.Authorization = pta^.requestHeaders.Authorization};
+		if defined (pta^.requestHeaders.["User-Agent"]) {
+			adrDebugTable^.["User-Agent"] = pta^.requestHeaders.["User-Agent"]};
+		if defined (pta^.client) {
+			adrDebugTable^.client = pta^.client};
+		if defined (pta^.uri) {
+			adrDebugTable^.uri = pta^.uri}};
+	
+	local (flAcceptDigest = false, flAcceptBasic = false, flOneTimeNonces = false);
+	if (securityLevel > 0) and (not defined (string.hashMD5)) { //for compatibility with 6.0
+		httpForbidden (mainResponder.getString ("security.httpUnsupportedSecurityLevel", pta: @tempTable))}; // 4/16/00 JES: localized
+	case securityLevel { //initialize the above based on specified security level
+		0 {
+			flAcceptBasic = true};
+		1 {
+			flAcceptBasic = true;
+			flAcceptDigest = true};
+		2 {
+			flAcceptDigest = true};
+		3 {
+			flAcceptDigest = true;
+			flOneTimeNonces = true}}
+	else {
+		httpForbidden (mainResponder.getString ("security.httpUnspecifiedSecurityLevel", pta: @tempTable))}; // 4/16/00 JES: localized
+	
+	if not defined (pta^.requestHeaders.Authorization) {
+		httpUnauthorized ()};
+	
+	local (s, authScheme);
+	s = string (pta^.requestHeaders.Authorization);
+	authScheme = string.nthField (string.lower (s), " ", 1);
+	s = string.trimWhiteSpace (string.delete (s, 1, string.length (authScheme)));
+	case authScheme {
+		"basic" {
+			if not flAcceptBasic {
+				httpUnauthorized ()};
+			
+			local (credentials, value, username, password);
+			credentials = string.nthField (s, " ", 1);
+			credentials = string.popTrailing (s, ',');
+			value = string (base64.decode (credentials));
+			username = string.nthField (value, ":", 1);
+			password  = string.delete (value, 1, string.length (username) + 1);
+			
+			if flDebug {
+				adrDebugTable^.username = username;
+				adrDebugTable^.password = password};
+			
+			if (string.length (username) == 0) or (string.length (password) == 0) { //AR 12/19/1999
+				httpUnauthorized ()};
+			
+			checkMember (username, password);
+			
+			fakeCookie (username, password)};
+		"digest" {
+			if not flAcceptDigest {
+				httpUnauthorized ()};
+			
+			new (tableType, @authTable);
+			loop { //parse Authorization header
+				local (name, value);
+				bundle { //loop over white-space and delimiters
+					local (ix = 1);
+					while " \t," contains string.nthChar (s, ix) {
+						ix++};
+					s = string.mid (s, ix, string.length (s))};
+				bundle { //extract name
+					name = string.nthField (s, "=", 1);
+					if string.length (name) == 0 {
+						break};
+					s = string.delete (s, 1, string.length (name) + 1)};
+				bundle { //extract value
+					local (ix = 2);
+					if string.nthChar (s, 1) == "\"" {
+						while ix <= string.length (s) {
+							case s[ix] {
+								'"' {
+									value = string.mid (s, 2, ix-2);
+									value = string.replaceAll (value, "\\\"", "\""); //unquote
+									break};
+								'\\' {
+									ix++}};
+							ix++}}
+					else {
+						while ix <= string.length (s) {
+							case s[ix] {
+								' ';
+								'\t';
+								',' {
+									break}};
+							ix++};
+						value = string.mid (s, 1, ix-1)};
+					if sizeof (value) == 0 {
+						break};
+					s = string.delete (s, 1, ix)};
+				authTable.[name] = value};
+			
+			if flDebug {
+				table.assign (@adrDebugTable^.authTable, authTable)};
+			
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			
+			bundle { //check for bad requests
+				on checkRequiredField (field) {
+					if not defined (authTable.[field]) {
+						replacementTable.field = field;
+						httpBadRequest (mainResponder.getString ("security.httpMissingFieldError", @replacementTable, pta: @tempTable))}}; // 4/16/00 JES: localized
+				on checkForbiddenField (field) {
+					if defined (authTable.[field]) {
+						replacementTable.field = field;
+						httpBadRequest (mainResponder.getString ("security.httpIllegalFieldError", @replacementTable, pta: @tempTable))}}; // 4/16/00 JES: localized
+				
+				checkRequiredField ("username");
+				
+				checkRequiredField ("realm");
+				
+				checkRequiredField ("nonce");
+				
+				checkRequiredField ("uri");
+				bundle { //check URI
+					local (requestURI = string.nthField (pta^.firstLine, " ", 2));
+					if requestURI beginsWith "http://" { //it's a future-style full URL
+						local (pathParts = string.urlSplit (requestURI));
+						requestURI = "/" + pathParts[3]};
+					if requestURI != authTable.uri {
+						httpBadRequest (mainResponder.getString ("security.httpBadURIDirective", pta: @tempTable))}}; // 4/14/00 JES: localized
+				
+				checkRequiredField ("response");
+				
+				if defined (authTable.qop) {
+					local (qop = string.lower (authTable.qop));
+					flAuth = (qop == "auth");
+					flAuthInt = (qop == "auth-int");
+					if not (flAuth or flAuthInt) {
+						httpBadRequest (mainResponder.getString ("security.httpBadQopField", pta: @tempTable))}; // 4/14/00 JES: localized
+					checkRequiredField ("cnonce");
+					checkRequiredField ("nc")}
+				else {
+					checkForbiddenField ("cnonce");
+					checkForbiddenField ("nc")};
+				
+				if defined (authTable.algorithm) and (authTable.algorithm != "MD5") {
+					httpBadRequest (mainResponder.getString ("security.httpUnsupportedDigestAlgorithm", pta: @tempTable))}}; // 4/14/00 JES: localized
+			
+			if (string.length (authTable.username) == 0) { //AR 12/19/1999
+				httpUnauthorized ()};
+			
+			checkMember (authTable.username);
+			
+			initNonces ();
+			local (adrNonce = @adrNonces^.[authTable.nonce]);
+			if not defined (adrNonce^) {
+				httpUnauthorized ()};
+			if flAuth or flAuthInt { //check nonce-count
+				local (s = string.hex (adrNonce^.nc));
+				s = string.delete (s, 1, 2); //delete "0x"
+				s = string.filledString ("0", 8 - string.length (s)) + s;
+				s = string.lower (s);
+				if s != authTable.nc { //nonce count out of sequence
+					httpUnauthorized ()};
+				adrNonce^.nc++};
+			if authTable.response != requestDigest () {
+				httpUnauthorized ()};
+			if clock.now () > adrNonce^.expires { //is nonce stale?
+				httpUnauthorized (flStale:true)};
+			if flOneTimeNonces and not (flAuth or flAuthInt) { //send a new nonce, expire the current one
+				adrNonce^.expires = clock.now () - 1;
+				pta^.responseHeaders.["Authentication-Info"] = "nextnonce=\"" + generateNonce () + "\"";
+				if flDebug {
+					adrDebugTable^.["Authentication-Info"] = pta^.responseHeaders.["Authentication-Info"]}};
+			
+			fakeCookie (authTable.username, string (adrMember^.password))}}
+	else {
+		httpUnauthorized ()};
+	
+	return (true)}

@@ -1,0 +1,29 @@
+on includeItem (adr) {
+	«Changes
+		«7/14/03; 5:22:19 PM by JES
+			«Created. Return true if an item is to be included, or false if not. Called by prefsSuite.browser.
+	local (pta = html.getPageTableAddress ());
+	local (loweradr = string.lower (adr));
+	if loweradr contains "trackback" {
+		if not defined (config.manila.prefs.flTrackbackEnabled) {
+			return (false)};
+		if not config.manila.prefs.flTrackbackEnabled {
+			return (false)}};
+	case loweradr {
+		"newsroom.flsyndicatediscussiongroup" {
+			if defined (config.manila.prefs.flDiscussRssEnabled) {
+				return (config.manila.prefs.flDiscussRssEnabled)}
+			else {
+				return (false)}};
+		"ftpaccountseparator";
+		"newsroom.staticrenderingurl";
+		"newsroom.staticrenderinghost";
+		"newsroom.staticrenderingusername";
+		"newsroom.staticrenderingpassword";
+		"newsroom.staticrenderingpath" {
+			return (manilaSuite.staticRendering.isFtpAvailable (manilaSuite.getSiteAddress (pta)))};
+		"newsroom.newsitems.prefs.flcommentoptionsenabled";
+		"newsroom.newsitems.prefs.flemailcommentsbydefault" {
+			if not defined (manilaSuite.news.editor) {
+				return (false)}}};
+	return (true)}

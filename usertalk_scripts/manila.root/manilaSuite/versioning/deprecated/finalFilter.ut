@@ -1,0 +1,147 @@
+on finalFilter (pta) {
+	«manilaFixer.versioning.finalFilter : 02/04/11, 18:07:37 by DAB
+		«adds to the new story form
+		«adds to the change story form
+	local (adrSite = manilasuite.getSiteAddress(pta));
+	local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite));
+	
+	local (currentmsgNum = 0); //02/03/06, 12:30:05 by DAB
+	bundle { //see if path is of interest  
+		local (flPageOfInterest);
+		local(ppath = string.lower(pta^.path));
+		case true {
+			ppath endswith "discuss/edit/editinbrowser" {
+				flPageOfInterest = true;
+				currentmsgNum = pta^.pathargs}; //02/03/06, 12:30:11 by DAB
+			ppath endswith "discuss/edit/newstory" {
+				flPageOfInterest = false}; //02/04/18, 10:30:15 by DAB
+			ppath endswith "discuss/edit/newtopic" {
+				flPageOfInterest = false}; //02/04/18, 10:30:12 by DAB 
+			ppath endswith "pictures/edit/editpicture" {
+				flPageOfInterest = true;
+				currentmsgNum = pta^.pathargs}; //02/03/06, 12:30:18 by DAB
+			ppath endswith "pictures/edit/newpicture" {
+				flPageOfInterest =  false}}; //02/04/18, 10:30:34 by DAB
+		if  not flPageOfInterest {
+			return false}};
+	
+	local(flISO8859encoding = html.getPref("isoFilter", pta)); //02/04/25, 12:13:44 by DAB
+	«local (maxFilesOpened = config.manilaFixer.versioning.maxLogs)
+	«local (maxVersions = config.manilaFixer.versioning.maxVersions)
+	local (maxFilesOpened, maxVersions); //04/05/18, 21:50:36 by DAB
+	manilaSuite.versioning.getConfiguration(@maxFilesOpened, @maxVersions); //04/05/18, 21:50:07 by DAB
+	local (rollbackForm = "");
+	bundle { //build rollback menu
+		on add(s) {
+			rollbackForm = rollbackForm + s;};
+		local (filesOpened=0, versionsFound=0);
+		local (adrMsg = manilaSuite.discuss.getCurrentMessageTable(currentmsgNum, pta));
+		local (currentMsgSubject = adrMsg^.subject);
+		
+		on openRoot(f) {
+			if file.exists (f) {
+				if window.isOpen (f) {
+					return true};
+				try {
+					fileMenu.open (f, true);
+					filesOpened++;
+					return true}};
+			return false};
+		
+		local (adrLinkTbl);
+		loop {
+			if filesOpened == maxFilesOpened {
+				break};
+			if versionsFound == maxVersions {
+				break};
+			
+			local (adrPIStorage = manilaFixer.utilities.getMessageStorageAddress(adrMsg));
+			if not defined(adrPIStorage^) {
+				break};
+			adrLinkTbl = @adrPIStorage^.versioning;
+			if not defined(adrLinkTbl^) {
+				break};
+			
+			local (f = adrLinkTbl^.logFile);
+			if not openRoot(f) {
+				break};
+			adrMsg = @[f];
+			with adrMsg^ {
+				adrMsg = address(adrLinkTbl^.logEntry)};
+			if not defined(adrMsg^) {
+				break};
+			
+			if versionsFound == 0 { //start form here
+				local (baseFragmentURL = manilaSuite.plugins.getSiteFragmentUrl("manilaFixer", adrSite));
+				add("\r<form method = 'post' name = 'rollback' action = '" + baseFragmentURL + "versioning/rollback'>");
+				add("\r\t<input type = 'hidden' name = 'msgnum' value = '" + currentMsgnum + "'>");
+				if defined (pta^.requestHeaders.referer) {
+					add ("<input type='hidden' name='referer' value='" + pta^.requestHeaders.referer + "'>")};
+				add("\r\t<table>\r\t\t\<tr>");
+				add( "\r\t\t\t<th>" + manilaFixer.getString("versioning.ETPRollbacktoLabel", pta:pta)  + ":</th>");
+				add("\r\t\t<td>\r\t\t\t<select name = 'rollbackTo'>");
+				add("\r\t\t\t\t<option value = '' selected>" + manilaFixer.getString("versioning.ETPRollbackMenuDefault", pta:pta)  + "</option>")};
+			
+			«add("\r\t\t\t\t<option value = '" + adrLinkTbl^.logentry + "'>" + string(adrLinkTbl^.timeStamp) + "</option>")
+			add("\r\t\t\t\t<option value = '" + string(adrLinkTbl^.timeStamp) + "'>" + string(adrLinkTbl^.timeStamp));
+			if adrMsg^.subject != currentMsgSubject {
+				«add("[" + string.ellipsize(adrMsg^.subject, 20) + "]")
+				local (subject = string.ellipsize(adrMsg^.subject, 20)); //02/04/25, 12:12:11 by DAB
+				if flISO8859encoding { //02/04/25, 12:12:22 by DAB
+					subject = bayly.iso8859encode(subject)};
+				add("[" + subject + "]"); //02/04/25, 12:09:03 by DAB
+				currentMsgSubject = adrMsg^.subject}; //02/04/18, 23:38:00 by DAB
+			add("</option>");
+			
+			versionsFound++};
+		if versionsFound == 0 {
+			return false};
+		add("\r</select>");
+		add("</td>");
+		local (checked = ""); //space for making optional later maybe
+		add("\r\t\t<td>" + "<input type = 'checkbox' name ='rollBackDiscard'" + checked  + ">" + manilaFixer.getString("versioning.ETPRollbackCheckboxLabel", pta:pta) + "</td>");
+		add("\r\t\t<td><input type = 'submit' name='submit' value = '" +  manilaFixer.getString("versioning.ETPRollbackSubmitButton", pta:pta) + "'></td>");
+		add("\r\t</tr>\r\t</table>\r</form>")};
+	
+	local (theText = pta^.renderedText);
+	«
+	on checkThisForm(adrStr, thisForm, matchOffset, matchLength) {
+		local (formtag = tagExtractionKit.getoneTag(thisForm, "form", ""));
+		local (formname = tagExtractionKit.getAttributeValue(formtag, "name"));
+		case true {
+			formname == "";
+			string.lower(formname) == "metaform" {
+				bundle { //ensure that textarea called body is in the form   02/03/06, 16:59:11 by DAB
+					local (textAreaTag = tagExtractionKit.getoneTag(thisForm, "textarea", {"name=text"}));
+					if textAreaTag == "" {
+						textAreaTag = tagExtractionKit.getoneTag(thisForm, "textarea", {"name=body"}); //02/03/10, 19:51:17 by DAB
+						if textAreaTag == "" {
+							return true}}}; //look for next
+				
+				if currentmsgNum != 0 { //look for hidden called msgnum    02/03/06, 12:29:52 by DAB
+					local (hiddentag = tagExtractionKit.getoneTag(thisForm, "input", {"type=hidden","name=msgNum", "value=" + currentmsgNum}));
+					if hiddenTag == "" {
+						return true}; //look for next
+					}};«msg(hiddentag)
+			defined(pta^.addedValues.manilaETPform) and (pta^.addedValues.manilaETPform == formName); //03/08/10, 13:18:16 by DAB
+			string.lower(formname)  == "editmessageform" { //WYSIWYG form 02/03/04, 17:08:43 by DAB
+				}}
+		else {
+			return true}; //look for next
+		
+		local (firstpart = string.mid(pta^.renderedText, 1, matchOffset-1));
+		local (lastpart = string.mid(pta^.renderedText, matchOffset, infinity));
+		
+		pta^.renderedText = firstpart + rollbackForm + lastpart;
+		
+		return true};
+	«
+	tagExtractionKit.containerVisit(theText, "form", "", @checkthisForm); //02/03/06, 14:29:42 by DAB
+	
+	return true};
+bundle {
+	local (tbl = temp.pta.["131"].finalFilter);
+	html.setPageTableAddress(@tbl);
+	finalFilter(@tbl);
+	wp.newtextObject(tbl.renderedText, @temp.vfinalFilter);
+	edit(@temp.vfinalFilter)}

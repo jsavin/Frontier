@@ -1,0 +1,18 @@
+on page (pta=nil) {
+	«Build a 404 page and set the return code.
+		«10/15/01; 9:01:21 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	pta^.code = 404;
+	pta^.title = "404 Not Found";
+	pta^.template = string (manilaData.notFoundTemplate);
+	local (url = string.nthField (pta^.request, ' ', 2));
+	if defined (pta^.host) {
+		url = "http://" + pta^.host + url};
+	local (htmlText = "The requested URL " + url + " was not found on this server.");
+	
+	pta^.activeUrls = false;
+	
+	return (manilaSuite.unTaint (htmlText))}

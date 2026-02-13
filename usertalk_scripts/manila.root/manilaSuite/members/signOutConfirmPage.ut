@@ -1,0 +1,10 @@
+local (htmltext, pta = html.getPageTableAddress ());
+
+pta^.title = manilaSuite.getString ("members.signOutConfirmPageTitle");
+
+on add (s) {
+	htmltext = htmltext + s + "\r"};
+
+add (manilaSuite.getString ("members.signOutConfirmPageBody"));
+
+return (htmltext)

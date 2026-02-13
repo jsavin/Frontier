@@ -1,0 +1,7 @@
+on getItemsPerPagePref (adrSite) {
+	«Get the number of items that should be rendered on the home page.
+		«04/24/00; 3:32:07 PM by PBS
+	
+	if not defined (adrSite^.["#newsSite"].numNewsItemsToRender) {
+		adrSite^.["#newsSite"].numNewsItemsToRender = 10};
+	return (adrSite^.["#newsSite"].numNewsItemsToRender)}

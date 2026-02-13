@@ -1,0 +1,2 @@
+on newStory (username, password, sitename, storytitle, storytext) {
+	return (mainResponder.news.newStory (username, password, sitename, storytitle, storytext))}

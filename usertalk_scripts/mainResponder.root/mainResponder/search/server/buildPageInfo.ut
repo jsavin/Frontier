@@ -1,0 +1,45 @@
+on buildPageInfo (bodyText, title, url, lastModDate, siteName, siteUrl, flShowText, indexName=nil) {
+	«Create a table in Index.root with info about this page.
+		«Changes:
+			«07/18/00; 10:40:21 PM by PBS
+				«Build the table in memory then copy the whole table into the index.
+	
+	local (t);
+	local (adrPageInfo = @t);
+	new (tableType, adrPageInfo);
+	
+	«Set URL, title and last modified date.
+	bundle {
+		adrPageInfo^.url = string.nthField (url, "@", 1);
+		adrPageInfo^.title = title;
+		adrPageInfo^.lastModDate = lastModDate};
+	
+	«Set the site name.
+		«If the site name is Misc., then site name becomes the empty string.
+	bundle {
+		if string.lower (siteName) == "misc." {
+			siteName = ""};
+		adrPageInfo^.siteName = siteName};
+	
+	«Set the site URL.
+	adrPageInfo^.siteUrl = siteUrl;
+	
+	«If flShowText is true, then it's like Scripting News: the actual text is used,
+		«rather than the title of the page.
+	bundle {
+		adrPageInfo^.showText = flShowText;
+		adrPageInfo^.text = "";
+		if flShowText {
+			adrPageInfo^.text = bodyText}};
+	
+	«The stored content is a stripped version of the content.
+	adrPageInfo^.content = mainResponder.search.utilities.compactText (bodyText);
+	
+	«The compact title is a stripped version of the title.
+	adrPageInfo^.compactTitle = mainResponder.search.utilities.compactText (title);
+	
+	«Copy into the index root.
+	table.assign (@[mainResponder.search.utilities.getIndexPath (indexName)].pageInfo.[url], adrPageInfo^);
+	adrPageInfo = @[mainResponder.search.utilities.getIndexPath (indexName)].pageInfo.[url];
+	
+	return (adrPageInfo)}

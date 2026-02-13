@@ -1,0 +1,12 @@
+on deleteDepartment (adrSite, name) {
+	«Delete a department from the departments list. Return true if a department was deleted, false otherwise.
+		«04/20/00; 9:06:12 PM by PBS
+	
+	local (adrDepartmentsTable = manilaSuite.news.getDepartmentTableAddress (adrSite));
+	local (adrDepartment = @adrDepartmentsTable^.[name]);
+	
+	if defined (adrDepartment^) {
+		delete (adrDepartment);
+		return (true)};
+	
+	return (false)}

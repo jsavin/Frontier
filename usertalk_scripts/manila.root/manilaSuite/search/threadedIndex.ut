@@ -1,0 +1,4 @@
+on threadedIndex (adrMsgTable) {
+	«Launch a separate thread to send an item in the dg to the search engine indexing server.
+	thread.evaluate ("manilaSuite.search.indexMessage (@" + adrMsgTable + ")");
+	return (true)}

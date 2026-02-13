@@ -1,0 +1,22 @@
+on getRecentPosts (blogid, username, password, numberOfPosts) {
+	«Changes
+		«10/17/05; 3:01:40 AM by JES
+			«Add support for Home Page 'category'.
+		«10/17/05; 2:13:37 AM by JES
+			«Pass flIncludePendingItems as true to manilaSuite.news.getLastNMessageNumbers. Includes pending posts.
+		«1/9/03; 6:34:49 PM by JES
+			«Created.
+	local (sitename = manilaSuite.rpcUtils.urlToSiteName (blogid));
+	manilaSuite.rpcUtils.memberCheck (siteName, username, password, "Can't get the post because ");
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	local (flMultipleDepartmentsEnabled = manilaSuite.getNewsSitePref ("newsItems.prefs.flMultipleDepartments", adrSite, false));
+	local (adrdiscuss = manilaSuite.rpcUtils.getDiscussAddress (sitename));
+	local (msgs = manilaSuite.news.getLastNMessageNumbers (numberOfPosts, adrSite:adrsite, flIncludePendingItems:true));
+	local (msg, returnArray = {});
+	for msg in msgs {
+		local (adrmsg = mainResponder.discuss.getMessageTable (msg, adrRoot:adrdiscuss));
+		local (postid = sitename + "#" + number (nameOf (adrmsg^)) );
+		returnArray = returnArray + {manilaSuite.metaWeblogApi.getOnePost (adrmsg, postid, flMultipleDepartmentsEnabled)}};
+	return (returnArray)};
+«bundle //test code
+	«scratchpad.posts = getRecentPosts ("http://127.0.0.1/test/", user.prefs.manila.username, user.prefs.manila.password, 10)

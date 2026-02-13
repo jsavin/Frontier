@@ -1,0 +1,24 @@
+on lowLevelBrowser (logname) { //no formatting on the tables
+	«12/18/98; 8:07:13 AM by DW
+		«We can use this displayer to see logs before they have special code for displaying them.
+		«A useful tool for debugging logs.
+	local (adrlog = log.getGuestSubTable (logname));
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s) {
+		return ("<td valign=\"top\"><font size=\"-1\">" + s + "</font></td>")};
+	add ("<table border=\"1\">"); indentlevel++;
+	local (ct = sizeof (adrlog^), i, adritem);
+	for i = ct downto 1 {
+		adritem = @adrlog^ [i];
+		add ("<tr>"); indentlevel++;
+		bundle { //add time
+			local (s = xml.convertToDisplayName (nameof (adritem^)));
+			s = string.nthfield (s, ';', 2);
+			add (td (s));
+			add (td (html.data.standardMacros.nestedTableDisplayer (adritem)))};
+		add ("</tr>"); indentlevel--};
+	«return (user.html.macros.nestedTableDisplayer (adrlog))
+	add ("</table>"); indentlevel--;
+	return (htmltext)}

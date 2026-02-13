@@ -1,0 +1,29 @@
+on listAll (username, password, siteName) {
+	«Get a struct containing info about all the shortcuts for this site.
+	«Changes
+		«9/24/04; 3:43:07 AM by JES
+			«Yield processor time in the main loop.
+	
+	bundle { //make sure this person is an editor of this site
+		local (beginningErrorString = "Can't list all shortcuts because ");
+		manilaSuite.rpcUtils.editorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrGlossary = @adrSite^.["#glossary"]);
+	
+	if not defined (adrGlossary) {
+		new (tableType, adrGlossary)};
+	
+	local (url, adr, adrItem, shortcutsTable);
+	new (tableType, @shortcutsTable);
+	for adrItem in adrGlossary {
+		if typeOf (adrItem^) == tableType {
+			adr = @shortcutsTable.[nameOf (adrItem^)];
+			new (tableType, adr);
+			adr^.linktext = string (adrItem^.linktext);
+			adr^.path = string (adrItem^.path)}
+		else {
+			shortcutsTable.[nameOf (adrItem^)] = string (adrItem^)};
+		thread.sleepfor (0)};
+	
+	return (shortcutsTable)}

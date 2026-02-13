@@ -1,0 +1,23 @@
+«Changes:
+	«05/01/00; 5:30:12 PM by PBS
+		«Support for news items, which have slightly different rules. Only MEs can edit released items.
+	«11/26/01; 10:41:50 AM by PBS
+		«Support content editors.
+
+local (pta = html.getPageTableAddress ());
+local (adrTable = pta^.adrMsgToEdit);
+
+if manilaSuite.isManilaSite (pta^.adrSiteRootTable) {
+	if manilaSuite.news.isNewsItem (adrTable) { //different rules: only MEs can edit released items
+		local (adrMember = pta^.adrMemberInfo);
+		pta^.flMemberCanEdit = manilaSuite.news.memberCanEdit (adrTable, adrMember)}
+	else { //normal rules: it's a message, story, home page, or picture.
+		if manilaSuite.editors.canEditContent () { // was: if manilaSuite.editorialTest ()
+			pta^.flMemberCanEdit = true} //this message can be edited by a contributing editor
+		else {
+			if defined (adrTable^.alsoListedIn) and adrTable^.alsoListedIn != {} {
+				if defined (pta^.newsSite^.flContributingEditorsEditStories) and pta^.newsSite^.flContributingEditorsEditStories {
+					if manilaSuite.editors.editorialTest () {
+						pta^.flMemberCanEdit = true}}}}}}; //this message can be edited by a contributing editor
+
+return (true)

@@ -1,0 +1,114 @@
+on pathEvaluation () {
+	«Changes
+		«7/19/05; 3:00:50 AM by JES
+			«Handle admin site database downloads.
+		«6/12/02; 4:33:05 PM by JES
+			«Allow loads of controlPanel and mainResponderResources URLs to pass through unmodified.
+		«6/6/02; 12:26:36 PM by JES
+			«Created. If the port is the one specified by user.inetd.config.http2, set the address of the object to serve, to the address of the specified object in the admin site table.
+	local (pta, port);
+	if defined (host) { //This strange construction allows for easier debugging. See notes below.
+		«When called from mainResponder.respond, host will be defined, and its parent is the page table.
+		pta = parentOf (host);
+		port = pta^.port;
+		«bundle //debugging code. NOTE: comment this out when done debugging.
+			«workspace.pt = pta^}
+	else { //for debugging
+		«Since host was not defined, we assume that we've got a saved page table from a previous browser hit, and get the port and pageTableAddress from there.
+		port = workspace.pt.port;
+		pta = @workspace.pt};
+	on gatherAttributes () {
+		local (adratt);
+		pta^.responderAttributes.allowScriptsToRun = true;
+		for adratt in @mainResponder.adminSite.website.["#prefs"] {
+			pta^.[nameOf (adratt^)] = adratt^}};
+	on adminSiteDive (pathstring) {
+		local (flSetPageTableAddress = false);
+		local (nomad = @mainResponder.adminSite.website);
+		if pathstring == "" { //the admin site home page
+			pta^.adrObjectToServe = @nomad^.default;
+			return (true)};
+		if string.lower (pathstring) beginswith "downloaddatabase/" { //special case
+			pta^.adrObjectToServe = @nomad^.downloadDatabase;
+			return (true)};
+		while sizeOf (pathstring) > 0 {
+			if flSetPageTableAddress {
+				html.setPageTableAddress (pta)}
+			else {
+				flSetPageTableAddress = true};
+			local (s = string.nthField (pathstring, "/", 1));
+			pathstring = string.delete (pathstring, 1, sizeOf (s) + 1);
+			nomad = @nomad^.[s];
+			if not defined (nomad^) {
+				return (false)}};
+		pta^.title = nameOf (nomad^); //default title
+		pta^.adrObjectToServe = nomad;
+		«gatherAttributes ()
+		return (true)};
+	on toolsDive (pathstring) {
+		local (pathpart = string.nthfield (pathstring, "/", 1));
+		pathstring = string.delete (pathstring, 1, sizeOf (pathpart) + 1);
+		local (nomad = @user.tools.databases);
+		if defined (nomad^.[pathpart]) {
+			nomad = @nomad^.[pathpart]}
+		else {
+			return (false)};
+		if nomad^.flInstalled {
+			if nomad^.flEnabled {
+				local (toolname = Frontier.tools.cleanToolName (file.fileFromPath (nomad^.path)) );
+				nomad = @[nomad^.path]; //the Tool's database
+				nomad = @nomad^.[toolname + "Website"];
+				if defined (nomad^) {
+					if not defined (system.temp.mainResponder.misc) {
+						new (tableType, @system.temp.mainResponder.misc)};
+					local (adrtempsite = @system.temp.mainResponder.misc.adminSite);
+					if not defined (adrtempsite^) {
+						adrtempsite^ = mainResponder.adminSite.website};
+					if pathstring == "" { //default or index page
+						if defined (nomad^.default) {
+							table.assign (@adrtempsite^.default, nomad^.default);
+							pta^.title = "default";
+							pta^.adrObjectToServe = @adrtempsite^.default;
+							return (true)};
+						if defined (nomad^.index) {
+							table.assign (@adrtempsite^.index, nomad^.index);
+							pta^.title = "index";
+							pta^.adrObjectToServe = @adrtempsite^.index;
+							return (true)}};
+					while sizeOf (pathstring) > 0 {
+						local (s = string.nthField (pathstring, "/", 1));
+						pathstring = string.delete (pathstring, 1, sizeOf (s) + 1);
+						nomad = @nomad^.[s];
+						if not defined (nomad^) {
+							return (false)};
+						if typeOf (nomad^) == tableType {
+							adrtempsite = @adrtempsite^.[s];
+							new (tableType, adrtempsite);
+							continue}; //recurse
+						adrtempsite^.[s] = nomad^;
+						pta^.title = s;
+						pta^.adrObjectToServe = @adrtempsite^.[s];
+						«gatherAttributes ()
+						return (true)}}}};
+		return (false)};
+	
+	if port == user.inetd.config.http2.port {
+		local (pathstring = string.popLeading (pta^.uri, "/"));
+		if string.lower (pathstring) beginsWith "controlpanel" {
+			return (true)};
+		if string.lower (pathstring) beginsWith "mainresponderresources" {
+			return (true)};
+		if adminSiteDive (pathstring) {
+			return (true)};
+		if toolsDive (pathstring) {
+			return (true)};
+		bundle { //didn't find the page in the admin site or in a Tool -- return a 404 page
+			pta^.code = 404;
+			pta^.responseBody = mainResponder.adminSite.html.errorPage ("404 Not Found", "The requested URL http://" + pta^.host + pta^.uri + " was not found on this server.");
+			try {delete (@pta^.responseHeaders.["Content-Type"])};
+			scriptError ("!404 notFound")}};
+	
+	return (true)};
+
+bundle { //test code
+	pathEvaluation ()}

@@ -1,0 +1,9 @@
+on checkIn (username, password, siteName) {
+	«Release custody of the news item template.
+		«04/30/00; 11:31:40 PM by PBS
+	
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject = @adrNewsSite^.newsItems.template);
+	local (itemName = "news item template");
+	
+	return (manilaSuite.rpcUtils.releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName))}

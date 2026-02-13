@@ -1,0 +1,74 @@
+on indexStoredPages () {
+	«Index all the pages in the index queue.
+		«Changes:
+			«8/2/02; 2:51:46 AM by JES
+				«Index pages stored in the queue database, mainResponderSearchQueue.root, as opened by Frontier.openDataFile. We still support the queue in config.root, but new pages submitted for indexing are now in their own database. This cuts down on database bloat in config.root.
+			«9/28/99; 2:12:37 PM by PBS
+				«An indexName item may be stored with the page. If it is, then use the specified index, otherwise use the default index.
+	
+	bundle { //is this a search engine server? If not, don't index any pages.
+		if not config.mainResponder.prefs.flSearchEngine {
+			return (true)}};
+	
+	on doIndex (adrTable) {
+		local (sizetable = sizeOf (adrtable^));
+		
+		if sizetable == 0 { // do nothing -- no messages -- no closing or re-opening of databases -- nothing!
+			return (true)};
+		
+		local (defaultIndex = file.fileFromPath (mainResponder.search.utilities.getIndexPath ())); //the name of the default index
+		local (indexesUsed = {}); //the list of indexes that will need saving
+		
+		bundle { //loop through the queue of pages to be indexed
+			local (i);
+			for i = sizetable downTo 1 {
+				if typeOf (adrTable^ [i]) == tableType {
+					with adrTable^ [i] {
+						msg ("Search Engine: Indexing: " + url + "...");
+						
+						local (index = defaultIndex);
+						if defined (adrTable^ [i].indexName) { //PBS 9/28/99: get the specified index name from the stored page info
+							index = adrTable^ [i].indexName};
+						
+						mainResponder.search.server.index (title, url, bodyText, siteName, siteUrl, client, flShowText, lastModDate, index);
+						
+						if not (indexesUsed contains string.lower (index)) { //PBS 9/28/99: save this index name so we can save the index gdb later
+							indexesUsed = indexesUsed + string.lower (index)};
+						
+						sys.systemTask ()}};
+				
+				delete (@adrTable^ [i])}}; //delete this page from the queue
+		
+		bundle { //save config.root and any indexes that need saving
+			«Save config.root.
+			msg ("Search Engine: Saving search queue...");
+			fileMenu.saveMyRoot (adrTable);
+			msg ("");
+			
+			if indexesUsed != {} { //at least one index needs saving
+				local (i);
+				for i = 1 to sizeOf (indexesUsed) { //loop through the indexes
+					local (indexPath = mainResponder.search.utilities.getIndexPath (indexesUsed [i]));
+					
+					«Save the index.
+					msg ("Search Engine: Saving " + indexesUsed [i] + "...");
+					fileMenu.save (indexPath);
+					
+					«Close the index.
+					msg ("Search Engine: Closing " + indexesUsed [i] + "...");
+					fileMenu.close (indexPath);
+					
+					«Re-open the index.
+					msg ("Search Engine: Opening " + indexesUsed [i] + "...");
+					fileMenu.open (indexPath, true); //open it hidden
+					msg ("")}}};
+		return (true)};
+	if defined (config.mainResponder.data.searchQueue) { //support original index
+		doIndex (@config.mainResponder.data.searchQueue); //but only index it one last time, and then...
+		delete (@config.mainresponder.data.searchQueue)}; //... delete it: this table is no more
+	doIndex (frontier.openDataFile ("mainResponderSearchQueue"));
+	msg ("");
+	return (true)};
+
+bundle { //test code
+	indexStoredPages ()}

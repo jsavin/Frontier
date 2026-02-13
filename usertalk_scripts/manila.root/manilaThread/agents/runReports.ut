@@ -1,0 +1,12 @@
+«Run stats reports.
+	«1/15/02; 6:08:38 PM by PBS
+local (adrTable = parentOf (parentOf (this^)^));
+date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
+local (timeString = string.padwithzeros (hour, 2) + ":" + string.padWithZeros (minute, 2));
+adrTable^.lastTimeString = timeString;
+if adrTable^.schedule contains timeString { //run the stats reports
+	if defined (config.manila.stats) {
+		local (d = clock.now ());
+		if timeString beginsWith "00:" {
+			d = date.yesterday (clock.now ())};
+		manilaSuite.hosting.runReports (d)}}

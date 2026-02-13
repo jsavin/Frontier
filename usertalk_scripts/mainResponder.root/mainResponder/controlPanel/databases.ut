@@ -1,0 +1,45 @@
+local (pta = html.getPageTableAddress ());
+local (htmlText = "", indentLevel = 0);
+
+on add (s) {
+	htmlText = htmlText + s + "\r"};
+
+local (i);
+local (infoTable);
+new (tableType, @infoTable);
+
+for i = 1 to sizeof (system.compiler.files) { //build an intermediate table of info about the site
+	local (f);
+	f = nameOf (system.compiler.files [i]);
+	if file.exists (f) { //avoid listing Untitled windows
+		«Get the path, folder, and file name of this database.
+		local (folder = file.folderFromPath (f));
+		local (folderName = file.fileFromPath (folder));
+		local (fname = file.fileFromPath (f));
+		
+		«Create a new entry for this database.
+		local (adrItem = @infoTable.[fname]);
+		new (tableType, adrItem);
+		
+		«Populate the table entry for this database.
+		adrItem^.name = fname;
+		adrItem^.size = file.size (f);
+		adrItem^.modified = file.modified (f);
+		adrItem^.folder = folderName}};
+
+local (adrTable = html.table.new (border:0, cellSpacing:5, cellPadding:3));
+bundle { //build the Frontier table that gets rendered as an HTML table
+	html.table.addColumn (adrtable, "Name");
+	html.table.addColumn (adrtable, "Size", align:right);
+	html.table.addColumn (adrtable, "Modified");
+	html.table.addColumn (adrtable, "Folder");
+	
+	for i = 1 to sizeOf (infoTable) {
+		local (adrItem = @infoTable [i]);
+		html.table.addRow (adrTable)^.cells = {adrItem^.name, string.megabyteString (adrItem^.size), adrItem^.modified, adrItem^.folder}}};
+
+pta^.title = "Databases";
+add (html.table.render (adrTable));
+html.table.delete (adrTable);
+
+return (htmlText)

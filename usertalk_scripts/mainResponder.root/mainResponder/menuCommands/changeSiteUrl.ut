@@ -1,0 +1,24 @@
+local (adr = table.getCursorAddress ());
+while (sizeOf (string.parseAddress (adr)) > 2) {
+	adr = parentOf (adr^)};
+
+local (siteName = nameOf (adr^));
+if string.lower (siteName) endsWith "manilawebsite" {
+	siteName = string.delete (siteName, sizeOf (siteName) - 12, 13)};
+
+if not (manilaSuite.isManilaSite (adr)) {
+	dialog.alert ("Can't change the site URL for \"" + siteName + "\" because it isn't a Manila site.");
+	return (false)};
+
+local (newUrl = "http://");
+if dialog.ask ("New site URL for " + siteName + ":", @newUrl) {
+	local (oldUrl = adr^.["#ftpSite"].url);
+	if not (newUrl endsWith "/") {
+		newUrl = newUrl + "/"};
+	if not (string.lower (newUrl) beginsWith "http://") {
+		newUrl = "http://" + newUrl};
+	manilaSuite.admin.changeSiteUrl (oldUrl, newUrl, adr);
+	
+	return (true)};
+
+return (false)

@@ -1,0 +1,56 @@
+on getMembershipTable (groupName) {
+	«Get the address of a membership group.
+		«groupName is either a string, the name of a membership group, or is an address pointing to a membership group. Most commonly it's a string.
+		«Changes:
+			«4/14/00; 8:46:55 PM by JES
+				«localized error message
+			«10/2/99; 6:32:05 PM by PBS
+				«Added support for addresses (and strings that can be coerced to addresses) in members.root. An address in members.root can point to a membership group stored anywhere.
+			«06/19/00; 10:45:11 AM by JES
+				«fixed bug when called outside the WSF context
+			«07/17/00; 1:02:28 PM by PBS
+				«Fixed a typo in the localization code -- missing parens after call to html.getPageTableAddress.
+	
+	on error () {
+		«4/14/00; 8:47:35 PM by JES: localized
+		local (pta, tempTable); new (tableType, @tempTable);
+		try {
+			pta = html.getPageTableAddress (); //PBS 07/17/00: typo fixed -- parens were missing
+			if defined (pta^.language) {
+				tempTable.language = pta^.language}};
+		if not defined (tempTable.language) { // outside wsf context, or no language defined for site
+			if defined (config.mainResponder.globals.language) {
+				tempTable.language = config.mainResponder.globals.language}
+			else {
+				if defined (user.prefs.language) {
+					tempTable.language = user.prefs.language}
+				else {
+					tempTable.language = "English"}}};
+		scriptError (mainResponder.getString ("members.membersAttributeError", pta: @tempTable))}; //PBS 10/2/99: error message reflects new support for addresses and strings
+	
+	case typeOf (groupName) {
+		stringType {
+			local (f = system.temp.mainResponder.membersRootFile);
+			local (adrTable = @[f].[groupName]);
+			if not defined (adrTable^) {
+				error ()};
+			
+			case typeOf (adrTable^) { //PBS 10/2/99: handle tables, strings, and addresses
+				tableType { //if it's a table, return the address of the table
+					return (adrTable)};
+				stringType; //strings are okay if they coerce to an address: this makes remote admin via WebEdit easier
+				addressType { //an address must point to a table elsewhere
+					adrTable = adrTable^; //de-reference to get the real address of the membership group
+					if not defined (adrTable^) { //make sure the de-referenced group exists
+						error ()};
+					return (adrTable)}}
+			else {
+				error ()}};
+		addressType {
+			if not defined (groupName^) or (typeOf (groupName^) != tableType) {
+				error ()};
+			return (groupName)}}
+	else {
+		error ()}};
+«bundle //test code
+	«dialog.alert (getMembershipTable (config.mainresponder.globals.defaultMembershipGroup))

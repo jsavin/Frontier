@@ -1,0 +1,18 @@
+on stripTitle (pta=nil) {
+	«Strip the title so it doesn't appear in the text of a page. It will still appear in the window title.
+		«Broken out from manilaSuite.html.stripTitleFromTemplate
+		«04/24/00; 3:17:52 PM by PBS
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	if typeOf (pta^.template) == stringType { //the template should be a string
+		local (s = string.lower (pta^.template));
+		local (ixCloseTitle = string.patternMatch ("</title>", s));
+		if ixCloseTitle > 0 {
+			local (ixTitle = string.patternMatch ("{title}", s));
+			if ixTitle < ixCloseTitle {
+				pta^.template = string.replace (pta^.template, "{title}", "{homePageTitle}", false)}};
+		pta^.template = string.replaceAll (pta^.template, "{title}", "", false); //remove {title} from template
+		pta^.template = string.replace (pta^.template, "{homePageTitle}", "{title}", false)}; //{title} should remain in head section, so there's a title in the window bar
+	
+	return (true)}

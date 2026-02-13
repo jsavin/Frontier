@@ -1,0 +1,41 @@
+on nothingFound (adrSearch) {
+	«Changes
+		«8/11/02; 2:39:52 AM by JES
+			«Localized.
+	local (s = "");
+	local (pta);
+	if defined (adrSearch^.ignoredList) {
+		if adrSearch^.ignoredList != {} {
+			if sizeOf (adrSearch^.ignoredList) == 1 {
+				s = s + "<font size=1>Ignored common word:"}
+			else {
+				s = s + "<font size=1>Ignored common words:"};
+			for i = 1 to sizeOf (adrSearch^.ignoredList) {
+				s = s + " " + adrSearch^.ignoredList [i];
+				if i != sizeOf (adrSearch^.ignoredList) {
+					s = s + ";"}};
+			s = s + "</font><p>\r"};
+		try {
+			s = s + "<p>" + mainResponder.getString ("search.nothingFound") + "</p>"}
+		else {
+			s = s + "<p>Nothing found."};
+		if adrSearch^.ignoredList != {} {
+			s = s + " Try re-phrasing your search more specifically."}}
+	else {
+		try {
+			s = "<p>" + mainResponder.getString ("search.nothingFound") + "</p>"}
+		else {
+			s = "<p>Nothing found."}};
+	
+	«Log this search.
+	local (clientIp, url);
+	try {
+		pta = html.getPageTableAddress ();
+		clientIp = pta^.client;
+		url = pta^.url;
+		searchArgs = pta^.searchArgs;
+		url = url + "?" + searchArgs};
+	
+	mainResponder.search.server.logSearch (adrSearch, 0, clientIp, url);
+	
+	return (s)}

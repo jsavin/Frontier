@@ -1,0 +1,613 @@
+on renderNewsPage (msgNum, flShowFlipButton=false, pta=nil) {
+	«Render a news page.
+	«Changes:
+		«3/30/07; 11:53:30 AM by LL
+			«Include discuss links for all items displayed on homepage.
+		«1/31/06; 2:57:12 AM by JES
+			«Add support for flPending message status
+		«9/28/05; 1:21:51 PM by JES
+			«Remove reference to userlandWidgets.
+		«2004
+			«10/22/04; 10:30:49 AM by EDS
+				«incorporating DAB. link urls can't end in /> unless you're using xhtml. 
+		«2003
+			«8/22/03; 12:56:30 PM by JES
+				«Fixed a bug where the edited text may not be picked up when submitting an edited home page using the IE5 WYSIWYG editor.
+			«8/22/03; 12:17:49 PM by JES
+				«If html.editor is not defined, use the old style editor.
+			«8/15/03; 4:34:23 PM by JES
+				«Added support for the IE and Mozilla WYSIWYG editors in traditional sites, when the pref for an editing form on the home page is set to true.
+			«4/4/03; 2:31:15 PM by JES
+				«Added support for <link rel="subscriptions".../>.
+		«2002
+			«12/13/02; 1:48:25 PM by JES
+				«Added  support for RSD.
+				«Spec: http://archipelago.phrasewise.com/rsd
+			«11/15/02; 3:03:42 AM by JES
+				«Add border="0" attribute to the table used to add the calendar when the template contains no {calendar} macro.
+			«6/2/02; 6:01:41 PM by JES
+				«Changed the type attribute of the RSS <link> to application/rss+xml, and the title attribute to RSS. See this note from Mark Pilgrim:
+				«http://diveintomark.org/archives/2002/06/02.html#important_change_to_the_link_tag
+			«6/1/02; 1:50:11 PM by JES
+				«Add the <link> to pta^.meta in a try block, since some *very* old sites don't have an flSyndicate pref. For those sites, assume that syndication is off.
+			«5/31/02; 3:53:22 PM by JES
+				«Add a <link> to the site's RSS file, to pta^.meta, if syndication is turned on.
+			«1/25/02; 6:27:14 PM by PBS
+				«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		«2001
+			«12/2/01; 9:58:21 PM by PBS
+				«Pop off a trailing carriage return that can mess up formatting.
+			«9/28/01; 1:41:22 PM by PBS
+				«Added support for print-friendly templates.
+			«9/27/01; 9:28:44 AM by PBS
+				«Fixed a bug -- the Edit button wasn't showing up on newly flipped home pages.
+			«9/26/01; 1:59:56 PM by PBS
+				«If you have an empty home page day, the wrong number of days could be displayed on your home page. That day would be skipped, but the day count would be incremented.
+			«9/14/01; 2:36:05 PM by PBS
+				«Support for custom permanent link.
+			«9/13/01; 3:33:19 PM by PBS
+				«Support for alternate date formats.
+			«03/14/01; 2:25:31 PM by PBS
+				«Minor performance optimization: call the local isDeleted routine rather than mainResponder.discuss.isMessageDeleted.
+				«Also: reference prefs directly -- avoid calling manilaSuite.getNewsSitePref.
+		«2000
+			«06/23/00; 12:30:00 PM by PBS
+				«Fixed a typo in the daily archive link -- the border attribute didn't have a closing quote.
+			«06/20/00; 6:09:56 PM by PBS
+				«Various small optimizations, like passing adrMsgTable when we have it.
+			«06/15/00; 10:33:48 PM by JES
+				«merged last changes with localization
+			«06/14/00; 1:57:51 PM by PBS
+				«Add an alt attribute for the archive link icon, so pages that use this feature validate.
+				«Get the newsHome URL once at the top of the script instead of for each instance of the archive link icon.
+				«Call manilaSuite.staticRendering.isStaticRendering once at the top of the script instead of once for each news day.
+			«06/10/00; 7:14:21 PM by JES
+				«merged Brent's doubled paragraphs tag fix
+			«06/02/00; 12:07:31 AM by PBS
+				«Fix for doubled paragraph tags on the home page -- don't let mainResponder.discuss.readMessage do autoParagraphs, let html.processMacros alone do it.
+			«05/31/00; 12:36:22 PM by JES
+				«localized {newsPostTime} rendering
+			«05/14/00; 6:07:10 PM by JES
+				«localized
+			«05/09/00; 10:44:48 PM by PBS
+				«Check the referer to defeat the client side trojan horse.
+			«05/08/00; 5:49:04 PM by PBS
+				«Store the address of the current message in the page table, so the Manila postFilter can pick it up, so it can maintain stats by individual pages.
+			«05/01/00; 5:33:30 PM by PBS
+				«Support for news items. If news items is enabled, call manilaSuite.news.renderNewsItemsPage. 
+			«04/09/00; 4:17:18 PM by PBS
+				«newsArchiveLink is a new news day template macro: it produces a link to the permanent URL of a news day.
+				«Support for a new pref that allows one to turn off title display for archived home pages.
+		«1999
+			«12/26/99; 5:28:05 PM by PBS
+				«Commented out unnecessary call to fileMenu.saveMyRoot. This should boost performance.
+			«12/13/99; 2:14:58 PM by PBS
+				«Don't display a news day if the message has been deleted.
+			«12/13/99; 1:06:54 PM by PBS
+				«For each day being rendered, make sure there's a msgNum. If not, skip it. One of the sites on EditThisPage.Com was missing a msgNum, which made the home page unreadable.
+			«12/11/99; 5:23:44 PM by PBS
+				«Don't display multiple news days when this is an old page linked to from the calendar.
+			«12/10/99; 11:35:47 AM by PBS
+				«Support for multiple news days on the home page, like on http://www.scripting.com/. You can set a pref in the Appearance panel that specifies how many news days to display on the home page. In the Advanced panel, you can set the mini template for each news day.
+			«11/1/99; 9:57:01 AM by PBS
+				«Display an edit form on the home page only if flEditFormOnHomePage is true in the #newsSite table. It's false by default.
+			«9/4/99; 5:19:25 PM by PBS
+				«When edited from the home page, update the title.
+			«8/10/99; 11:58:21 by PBS
+				«The ME can control the placement of the calendar by including the {calendar} safe script.
+				«If the template includes this safe script, then the right side of the home page table is not built.
+				«The calendar will still appear only on the home page.
+			«7/13/99; 11:48:33 by PBS
+				«Don't display the edit text area if the page is an archived page in the calendar.
+				«The idea is that archived pages should be considered finished pages. (You can still edit them in the dg of course.)
+			«7/12/99; 12:36:06 by PBS
+				«The home page edit box must be stripped in later so macro and glossary entries don't get processed.
+					«So this script creates a string, stuffs it in the page table at pta^.homePageEditField, and the finalFilter adds it to the page after macros have been processed.
+			«7/7/99; 6:52:39 AM by DW
+				«Add a meta tag that forces the page to refresh every time it's visited. These are news pages.
+			«7/5/99; 9:19:50 AM by DW
+				«This is turning into a very important central routine, and there's a bit of functionality that I keep tripping over that I don't think belongs in this routine. It can render a set of days, but I want it to just render one day. There's only one site that uses this, the Frontier News page, but it's in the middle of our biggest disarray right now. I'm going to break this page so I can take Manila forward.
+				«Here's the code I took out:
+					«if not defined (pta^.newsSite^.numNewsDaysToRender)
+						«pta^.newsSite^.numNewsDaysToRender = 1
+					«local (ctDays = pta^.newsSite^.numNewsDaysToRender)
+					«bundle //listing ctdays worth of news
+						«local (i)
+						«local (postTime = clock.now ())
+						«postTime = mainResponder.discuss.getMessageTable (msgNum)^.postTime
+						«pta^.title = ""
+						«local (boxtext)
+						«
+						«on addBody (body, ct, d=clock.now ())
+							«boxtext = boxtext + "<b>" + date.abbrevString (d) + "</b><p>" + body + "<p>"
+						«
+						«for i = 1 to ctDays
+							«local (adrCal = pta^.adrSiteRootTable)
+							«local (adrDay)
+							«try
+								«adrDay = mainResponder.calendar.getMostRecentAddress (adrCal, postTime)
+							«else
+								«break
+							«postTime = mainResponder.calendar.getAddressDay (adrDay)
+							«local (body)
+							«if i == 1
+								«if pta^.newsSite^.discussLinks.homePageMsgNum == msgNum
+									«body = getBody (msgnum)
+								«else
+									«adrMsg = mainResponder.discuss.getMessageTable (adrDay^.msgNum)
+									«body = string (adrMsg^.body)
+								«addBody (body, i, postTime)
+							«else
+								«adrMsg = mainResponder.discuss.getMessageTable (adrDay^.msgNum)
+								«body = string (adrMsg^.body)
+								«addBody (body, i, postTime)
+							«postTime = date.yesterday (postTime)
+						«if pta^.newsSite^.flCalendarOnHomePage
+							«add ("<table cellspacing=\"0\" cellpadding=\"0\">"); indentLevel++
+							«add ("<tr>"); indentLevel++
+							«add ("<td valign=\"top\">" + boxtext + "</td>")
+							«add ("<td width=\"20\">&nbsp;</td>")
+							«add ("<td valign=\"top\">")
+							«add (manilaSuite.drawCalendar ())
+							«if flShowFlipButton
+								«add (manilaSuite.flipHomePageButton ())
+							«add ("</td>")
+							«add ("</tr>"); indentLevel--
+							«add ("</table>"); indentLevel--
+						«return (htmlText)
+			«7/4/99; 6:05:44 AM by DW
+				«Add a callback for getting the body of the news page. We loop over scripts in #newsSite.callbacks.renderNewsPage, usually there will be just one (it's hard to imagine the need for more than one). 
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	try { //12/13/02 JES: add <link> tag with the rsd.xml URL to pta^.meta
+		«<link rel="EditURI" type="application/rsd+xml" title="RSD" href="http://www.mysite.com/xml/rsd.xml">
+		local (flEditable = defined (user.betty.rpcHandlers.manila));
+		flEditable = (flEditable or defined (user.betty.rpcHandlers.metaWeblog) );
+		flEditable = (flEditable or defined (user.betty.rpcHandlers.blogger) );
+		if flEditable {
+			local (rsdurl = manilaSuite.getSiteUrl (pta:pta) + "xml/rsd.xml");
+			local (linkstring = "<link rel=\"EditURI\" type=\"application/rsd+xml\" title=\"RSD\" href=\"" + rsdurl + "\" >"); // 10/22/04; 10:32:36 AM by EDS
+			if defined (pta^.meta) {
+				pta^.meta = pta^.meta + "\r" + linkstring}
+			else {
+				pta^.meta = linkstring}}};
+	try { //05/31/02 JES: add <link> tag with the RSS URL to pta^.meta
+		local (flSyndicate = manilaSuite.getNewsSitePref ("flSyndicate", pta^.adrSiteRootTable));
+		if flSyndicate { //add the link to pta^.meta
+			local (siteUrl = manilaSuite.getSiteUrl (pta^.adrSiteRootTable, pta));
+			local (channelName = manilaSuite.getNewsSitePref ("rssInfo.channelTitle", pta^.adrSiteRootTable));
+			local (urlParts = string.urlSplit (siteUrl));
+			local (rssUrl = siteUrl + "xml/rss.xml");
+			local (linkString = "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"RSS\" href=\"" + rssUrl + "\" >"); // 10/22/04; 10:32:39 AM by EDS
+			if defined (pta^.meta) {
+				pta^.meta = pta^.meta + "\r" + linkstring}
+			else {
+				pta^.meta = linkString}}};
+	try { //04/04/03 JES: add <link> tag with the URL of mySubscriptions.opml to pta^.meta
+		«<link rel="subscriptions" type="text/x-opml" title="Subscriptions" href="http://www.mysite.com/gems/mySubscriptions.opml"> 
+		local (adrprefs = manilaSuite.aggregator.init ());
+		local (flAggregatorEnabled = false);
+		if defined (aggregatorData.prefs.enabled) {
+			flAggregatorEnabled = aggregatorData.prefs.enabled};
+		if flAggregatorEnabled {
+			local (adrmyservices = @adrprefs^.services);
+			if sizeOf (adrmyservices^) > 0 {
+				local (subsurl = manilaSuite.getSiteUrl (pta:pta) + "gems/mySubscriptions.opml");
+				local (linkstring = "<link rel=\"subscriptions\" type=\"text/x-opml\" title=\"Subscriptions\" href=\"" + subsurl + "\" >"); // 10/22/04; 10:32:55 AM by EDS
+				if defined (pta^.meta) {
+					pta^.meta = pta^.meta + "\r" + linkstring}
+				else {
+					pta^.meta = linkstring}}}};
+	
+	bundle { //render news items if the pref is turned on
+		if pta^.adrObject == @pta^.adrSiteRootTable^.default {
+			if manilaSuite.news.newsItemsEnabled (manilaSuite.getManilaSiteAddress (pta)) {
+				return (manilaSuite.news.renderNewsItemsPage ())}}};
+	
+	on untaint (adrText) { //PBS 03/14/01: local routine; avoid string copy
+		adrText^ = string.replaceAll (adrText^, "{", "&#123;");
+		return (true)};
+	
+	local (adrRoot = mainResponder.discuss.openRoot (pta)); //PBS 06/20/00: use this in subsequent calls to get the address of a message table
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (msgTable = mainResponder.discuss.getMessageTable (msgNum, pta, adrRoot)); //PBS 06/20/00: send adrRoot parameter since it's available
+	local (flByline = true);
+	local (htmlText = "", indentLevel = 0);
+	local (calendarHtml = "");
+	local (flPost = (pta^.method == "POST"));
+	local (now = clock.now ());
+	local (newsHomeUrl = pta^.urls^.newsHome); untaint (@newsHomeUrl);
+	local (flStaticRendering = manilaSuite.staticRendering.isStaticRendering (pta)); //PBS 6/14/00: call once at top of script instead of once for each news day
+	local (flManagingEditor = pta^.flManagingEditor); //is this the managing editor?
+	local (adrNewsSite = pta^.newsSite);
+	
+	on add (s) {
+		htmlText = htmlText + (string.filledString ("\t", indentLevel) + s + "\r");};
+	on isDeleted (adrMsgTable) { //PBS 03/14/01: optimization -- local routine
+		if defined (adrMsgTable^.flDeleted) and adrMsgTable^.flDeleted {
+			return (true)};
+		if defined (adrMsgTable^.flPending) and adrMsgTable^.flPending {
+			return (true)};
+		return (false)};
+	
+	pta^.title = msgTable^.subject; untaint (@pta^.title); //the title comes from the dg message table
+	if isDeleted (msgTable) { //PBS 12/13/99: no title if message has been deleted
+		pta^.title = ""};
+	bundle { //the editor may not want a title to appear on the home page
+		local (flDisplayTitle = true);
+		if pta^.adrObject == @pta^.adrSiteRootTable^.default or pta^.adrObject == @pta^.adrSiteRootTable^.index { //if this is the home page
+			flDisplayTitle = adrNewsSite^.flHomePageDisplayTitle}
+		else { //PBS 04/0/099: support for turning off the title on back issues (archived home pages)
+			flDisplayTitle = manilaSuite.getNewsSitePref ("flBackIssueDisplayTitle", default:true, flCreate:true)};
+		if not flDisplayTitle {
+			if typeOf (pta^.template) == stringType { //the template should be a string
+				local (s = string.lower (pta^.template));
+				local (ixCloseTitle = string.patternMatch ("</title>", s));
+				if ixCloseTitle > 0 {
+					local (ixTitle = string.patternMatch ("{title}", s));
+					if ixTitle < ixCloseTitle {
+						pta^.template = string.replace (pta^.template, "{title}", "{homePageTitle}", false)}};
+				pta^.template = string.replaceAll (pta^.template, "{title}", "", false); //remove {title} from template
+				pta^.template = string.replace (pta^.template, "{homePageTitle}", "{title}", false)}}}; //{title} should remain in head section, so there's a title in the window bar
+	
+	bundle { //add a meta tag
+		«This is a news page, so it should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.
+		manilaSuite.html.addExpiresMetaTag (pta)}; //PBS 06/20/00: call bottleneck script shared with News Items
+	
+	bundle { //get the postTime and lastUpdate time for this page
+		pta^.postTime = msgTable^.postTime; //postTime is always defined for messages
+		
+		if defined (msgTable^.lastUpdate) { //if the message was never edited, lastUpdate won't be defined
+			pta^.lastUpdate = msgTable^.lastUpdate}
+		else {
+			pta^.lastUpdate = msgTable^.postTime}}; //the message was never edited, so lastUpdate is the same as postTime
+	
+	bundle { //determine whether or not to display a byline
+		«flByline = boolean (manilaSuite.getNewsSitePref ("flBylinesOnHomePage", default:false, flCreate:true))
+		flByline = adrNewsSite^.flBylinesOnHomePage};
+	
+	if flManagingEditor and flPost { //update the home page text, build the static page
+		«If the ME has edited the home page, add update string, replace the dg message text, and build the static page.
+		if defined (pta^.postArgs.homePageEditForm) { //PBS 06/20/00: don't do update if some other form has been posted
+			manilaSuite.referer.checkSelf (); //PBS 05/09/00: check referer to defeat client side trojan horse
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.date = manilaSuite.convertTime (); // 05/15/00 JES: use the site's timezone
+			add (manilaSuite.getString ("admin.homePageUpdateMessage", @replacementTable, pta: pta) + "</i><p>"); //add update string for ME's benefit
+			
+			try { //if the site is not in news.root, the static page updating will fail
+				mainResponder.discuss.setMessageText (msgTable, pta^.postArgs.body)}; //replace the dg message text
+			
+			msgTable^.subject = mainResponder.neuterText (pta^.postArgs.subject);
+			pta^.title = msgTable^.subject}};
+	
+	bundle { //display the current news and calendar if turned on
+		local (flSysopPlacesCalendar = string.lower (pta^.template) contains "{calendar}");
+		
+		if not flSysopPlacesCalendar { //PBS 06/20/00: don't do the table if the sysop places the calendar
+			add ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">"); indentLevel++;
+			add ("<tr>"); indentLevel++;
+			add ("<td valign=\"top\">"); indentLevel++};
+		
+		pta^.adrMsgTable = msgTable; //PBS 05/08/00: postFilter watches for this. //PBS 06/20/00: we already have the msg table address, don't get it again
+		
+		bundle { //add the stuff that goes in the middle of the window
+			on getBody (msgNum, adrMsgTable) { //get the message body text
+				local (flHaveBody = false, body = "");
+				
+				if defined (adrNewsSite^.callbacks) { //callbacks in the #newsSite table can get the body text
+					local (params);
+					new (tableType, @params);
+					params.msgNum = msgNum;
+					params.renderedText = ""; //if this is non-empty, we got a response
+					mainResponder.callbackLoop (@adrNewsSite^.callbacks.renderNewsPage, @params);
+					if params.renderedText != "" { //the callback returned text, the body
+						body = params.renderedText;
+						flHaveBody = true}}; //yes, we have the body
+				
+				if not flHaveBody { //get the body by calling mainResponder.discuss.readMessage
+					pta^.flReadMessageProcessMacros = false;
+					pta^.flReadMessageAutoParagraphs = false; //PBS 06/02/00: paragraphs tags were getting doubled up: don't let mainResponder.discuss.readMessage create paragraphs tags
+					pta^.flReadMessageExpandUrls = false;
+					if pta^.flPrintFriendlyTemplate { //PBS 09/28/01: always false in this case
+						flCowSkull = false};
+					body = mainResponder.discuss.readMessage (msgnum, flResponses:false, flResponseForm:false, flShowMsgNums:false, flShowAuthor:false, flShowPostTime:false, flShowReads:false, flStoryHeaderOnly:flByline, flEditButtonsInHeader:false, flShowEnclosure:false, flShowCowSkullLink:flCowSkull, adrMsgTable:adrMsgTable)}; //PBS 6/20/00: send the adrMsgTable parameter since it's available
+				
+				body = body + manilaSuite.staticRendering.displayRenderButton (pta);
+				
+				return (body)};
+			
+			local (ctDays = pta^.newsSite^.numNewsDaysToRender);
+			local (flCowSkull = manilaSuite.discuss.dgReadAccess (pta));
+			
+			if ctDays == 1 {
+				add (getBody (msgNum, msgTable))}
+			else { //PBS 12/10/99: render multiple news days on the home page
+				if not defined (adrNewsSite^.newsDayTemplate) {
+					adrNewsSite^.newsDayTemplate = "<b>{newsPostTime}</b>\r<p>\r{newsContent}\r<p>"};
+				local (templateText = string (adrNewsSite^.newsDayTemplate));
+				
+				if string.lower (templateText) contains "{discusslink}" {
+					flCowSkull = false};
+				
+				if pta^.flPrintFriendlyTemplate { //PBS 09/28/01: use print friendly template
+					templateText = string (manilaData.printFriendlyTemplates.newsDay)};
+				
+				local (i);
+				«local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum, pta, adrRoot))
+				local (adrMsgTable = msgTable);
+				«local (postTime = now)
+				local (postTime = adrMsgTable^.postTime);
+				local (boxtext);
+				local (ct = 0);
+				
+				local (dateFormat = "dwmdy"); //PBS 09/13/01: get the date format
+				if defined (adrNewsSite^.homePageDateFormat) {
+					dateFormat = adrNewsSite^.homePageDateFormat};
+				
+				on addBody (body, ct, d=clock.now (), title="", adrMsgTable) {
+					«3/27/00; 6:06:27 AM by DW -- add support for newsArchiveLink
+					local (archiveLink);
+					bundle { //set archiveLink
+						local (day, month, year, hour, minute, second);
+						date.get (d, @day, @month, @year, @hour, @minute, @second);
+						month = string.padwithzeros (month, 2);
+						day = string.padwithzeros (day, 2);
+						local (replacementTable); new (tableType, @replacementTable);
+						replacementTable.date = mainResponder.localization.shortDateString (d, pta);
+						local (archiveLinkTitle = manilaSuite.getString ("news.archiveLinkTitle", @replacementTable, pta: pta)); //PBS 06/14/00: this string is used twice: once as link title, once as alt attribute for the image //06/15/00 JES: merge with localized version
+						local (imgSrc = manilaData.newSiteTemplate.["#newsSite"].permanentLinkImage); //PBS 09/14/01: get the img tag for the permanent link icon
+						if defined (adrNewsSite^.permanentLinkImage) {
+							imgSrc = adrNewsSite^.permanentLinkImage};
+						if (imgSrc contains "<img") and (not (imgSrc contains "alt=")) { //add alt tag
+							imgSrc = string.replace (imgSrc, "<img ", "<img alt=\"" + archiveLinkTitle + "\" ")};
+						«archiveLink = "<a href=\"" + newsHomeUrl + year + "/" + month + "/" + day + "\" title=\"" + archiveLinkTitle + "\"><img src=\"http://static.userland.com/misc/snImages/dailyLinkIcon.gif\" height=\"15\" width=\"12\" border=\"0\" alt=\"" + archiveLinkTitle + "\"></a>"
+						archiveLink = "<a href=\"" + newsHomeUrl + year + "/" + month + "/" + day + "\" title=\"" + archiveLinkTitle + "\">" + imgSrc + "</a>";
+						if flStaticRendering {
+							archiveLink = manilaSuite.staticRendering.patchLocalUrls (archiveLink)}};
+					local (s = templateText);
+					local (tempTable); // 05/04/00 JES: a dummy page table for getString
+					bundle { // figure out what language to render with
+						new (tableType, @tempTable);
+						if pta == nil { // we have to figure out what language to render in
+							if defined (adrSite^.["#prefs"].language) { // try to get the setting from the site
+								tempTable.language = adrSite^.["#prefs"].language}}
+						else { // we have a page table -- see if we can get the language from there
+							if defined (pta^.language) {
+								tempTable.language = pta^.language}};
+						if not defined (tempTable.language) { // fallback to server or Frontier settings, then to English
+							if defined (config.mainResponder.globals.language) {
+								tempTable.language = config.mainResponder.globals.language}
+							else { // does Frontier have a language setting?
+								if defined (user.prefs.language) {
+									tempTable.language = user.prefs.language}
+								else { // fall back to English
+									tempTable.language = "English"}}}};
+					local (dateString);
+					local (day, month, year, hour, minute, second);
+					date.get (d, @day, @month, @year, @hour, @minute, @second);
+					case dateFormat { //PBS 09/13/01: support for date formats
+						"dwmdy" { //default
+							dateString = mainResponder.localization.longDateString (d, pta)};
+						"dmy" { //26 March 2001
+							dateString = day + " " + mainResponder.getString ("date.monthNames." + string.padWithZeros (month, 2)) + " " + year};
+						"mdy" { //March 26, 2001
+							dateString = mainResponder.getString ("date.monthNames." + string.padWithZeros (month, 2)) + " " + day +", " + year};
+						"m/d/y" { //03/26/2001
+							dateString = string.padWithZeros (month, 2) + "/" + string.padWithZeros (day, 2) + "/" + year};
+						"d/m/y" { //26/03/2001
+							dateString = string.padWithZeros (day, 2) + "/" + string.padWithZeros (month, 2) + "/" + year};
+						"m.d.y" { //03.26.2001
+							dateString = string.padWithZeros (month, 2) + "." + string.padWithZeros (day, 2) + "." + year};
+						"d.m.y" { //26.03.2001
+							dateString = string.padWithZeros (day, 2) + "." + string.padWithZeros (month, 2) + "." + year}};
+					local (discussLink);
+					bundle { //set discussLink
+						local (discussLineText = manilaSuite.getString ("editorialLinks.discuss", pta: @tempTable));
+						local (ctResponses = 0);
+						if defined (adrMsgTable^.responses) {
+							ctResponses = manilaSuite.discuss.getResponseCount (adrMsgTable);
+							};«ctResponses = sizeOf (adrMsgTable^.responses)
+						local (discussUrl = adrSite^.["#urls"].discussMsgReader + adrMsgTable^.msgNum);
+						discussLink = html.getLink (discussLineText, discussUrl);
+						if ctResponses > 0 {
+							if ctResponses == 1 {
+								discussLink = discussLink + " " + manilaSuite.getString ("news.oneResponse", pta: @tempTable)}
+							else {
+								local (replacementTable); new (tableType, @replacementTable);
+								replacementTable.count = ctResponses;
+								discussLink = discussLink + " " + manilaSuite.getString ("news.nResponses", @replacementTable, pta: @tempTable)}}};
+					«s = string.replaceAll (s, "{newsPostTime}", mainResponder.localization.longDateString (d, pta), false) // 05/31/00 JES: localized
+					s = string.replaceAll (s, "{newsPostTime}", dateString, false); // 05/31/00 JES: localized
+					s = string.replaceAll (s, "{newsContent}", body, false);
+					untaint (@title);
+					s = string.replaceAll (s, "{newsTitle}", title, false);
+					s = string.replaceAll (s, "{newsArchiveLink}", archiveLink, false);
+					s = string.replaceAll (s, "{discussLink}", discussLink, false);
+					boxtext = boxtext + s};
+				
+				loop { //PBS 09/26/01: was for i = 1 to ctDays
+					local (adrCal = pta^.adrSiteRootTable);
+					local (adrDay);
+					try {
+						adrDay = mainResponder.calendar.getMostRecentAddress (adrCal, postTime)}
+					else {
+						break};
+					postTime = mainResponder.calendar.getAddressDay (adrDay);
+					local (body);
+					if ct == 0 {
+						if not (isDeleted (adrMsgTable)) { //PBS 06/20/00: send adrMsgTable parameter since it's available
+							body = getBody (msgnum, adrMsgTable);
+							local (subject = adrMsgTable^.subject); untaint (@subject);
+							«addBody (body, i, postTime, manilaSuite.unTaint (adrMsgTable^.subject))
+							addBody (body, i, postTime, subject, adrMsgTable:adrMsgTable);
+							ct++;
+							if msgNum != pta^.newsSite^.discussLinks.homePageMsgNum {
+								break}}}
+					else {
+						if defined (adrDay^.msgNum) { //PBS 12/13/99: make sure it exists, because on at least one site there was a day without a msgNum
+							adrMsg = mainResponder.discuss.getMessageTable (adrDay^.msgNum, pta, adrRoot);
+							if not (isDeleted (adrMsg)) {
+								body = string (adrMsg^.body);
+								«body = getBody (adrDay^.msgNum, adrMsg)
+								addBody (body, i, postTime, adrMsg^.subject, adrMsgTable:adrMsg);
+								ct++}}};
+					postTime = date.yesterday (postTime);
+					
+					if ct >= ctDays { //PBS 09/26/01: terminate
+						break}};
+				
+				add (boxtext);
+				htmltext = string.popTrailing (htmltext, '\r')}; //PBS 12/02/01: pop off extraneous extra return that messes up formatting
+			
+			bundle { //if you're the managing editor, and you want an editing form on the home page, you get an edit box
+				if flManagingEditor {
+					«local (flEditForm)
+					«flEditForm = manilaSuite.getNewsSitePref ("flEditFormOnHomePage", default:false, flCreate:true)
+					if adrNewsSite^.flEditFormOnHomePage {
+						if string.popSuffix (string.lower (pta^.url), "/") == string.popSuffix (string.lower (newsHomeUrl), "/") { //PBS 7/13/99: don't display edit box if the page is an archived page in the calendar
+							local (flHomePage = true);
+							
+							pta^.homePageEditField = ""; //store the edit box here: it will be stripped in later, by the finalFilter, to avoid macro processing
+							
+							on add (s) { //PBS 7/12/99: add the text area to the page table: it will get stripped in later, by the finalFilter, so its contents don't get macro processed
+								pta^.homePageEditField = pta^.homePageEditField + s};
+							
+							«pta^.autoparagraphs = false //don't add <p>s before pairs of \r's
+							pta^.addLineFeeds = false;
+							
+							«Build the top of the form.
+							try { //get the wizzy editor if the pref is set
+								local (lowerEditingTool = string.lower (html.editor.getEditingTool (pta)));
+								if lowerEditingTool beginsWith "wysiwyg" {
+									try {
+										add (html.editor.formStart ("body", nameOf (pta^.adrObject^), "editHomePageForm", pta:pta))}
+									else {
+										add ("<form name=\"editHomePageForm\" method=\"POST\" onsubmit=\"setMode(true);document.editHomePageForm.body.value = document.frames('idEdit').document.body.innerHTML;\">"); indentLevel++;
+										add ("<input type=\"hidden\" name=\"body\">")}}
+								else { //non-wizzy
+									add ("<form method=\"POST\" action=\"" + nameOf (pta^.adrObject^) + "\">"); indentLevel++}}
+							else { //can't get the editor -- fall back to plain text area
+								local (flWys = false, flTags = false);
+								try {
+									local (editingToolName = "none");
+									if defined (pta^.editingToolName) {
+										editingToolName = pta^.editingToolName;
+										if string.lower (pta^.editingToolName) == "wysiwyg" {
+											flWys = true;
+											flTags = false}};
+									if string.lower (editingToolName) == "none" { //no editor
+										flWys = false;
+										flTags = false};
+									if defined (pta^.responderAttributes.flDiscussHtmlEditor) {
+										if not (pta^.responderAttributes.flDiscussHtmlEditor) {
+											flWys = false;
+											flTags = false}}
+									else {
+										local (lowerUserAgent = string.lower (pta^.requestHeaders.["User-Agent"]));
+										flIeWin5OrGreater = lowerUserAgent contains "msie 5";
+										flIeWin5OrGreater = flIeWin5OrGreater or (lowerUserAgent contains "msie 6");
+										flIeWin5OrGreater = flIeWin5OrGreater and (lowerUserAgent contains "windows");
+										if not flIeWin5OrGreater {
+											flWys = false;
+											flTags = false}}};
+								if flWys {
+									add ("<form name=\"editHomePageForm\" method=\"POST\" onsubmit=\"setMode(true);document.editHomePageForm.body.value = document.frames('idEdit').document.body.innerHTML;\">"); indentLevel++;
+									add ("<input type=\"hidden\" name=\"body\">")}
+								else {
+									add ("<form method=\"POST\" action=\"" + nameOf (pta^.adrObject^) + "\">"); indentLevel++}};
+							add ("<p><input type=\"submit\" value=\"" + "Update Home Page" + "\">");
+							add ("<input type=\"hidden\" name=\"msgnum\" value=\"" + msgTable^.msgnum + "\">");
+							add ("<input type=\"hidden\" name=\"homePageEditForm\" value=\"1\">"); //PBs 06/20/00: add hidden identifier so we know we can watch for pta^.postArgs.homePageEditForm -- this lets us know, later, that this is indeed the form that has been posted.
+							«add ("<input type=\"hidden\" name=\"subject\" value=\"" + msgTable^.subject + "\">")
+							
+							«Add the input box for the title.
+							add ("<p><b>Title:</b><br>");
+							add ("<input name=\"subject\" value=\"" + msgTable^.subject + "\" size=\"40\">");
+							
+							add ("<input type=\"hidden\" name=\"redirect\" value=\"" + pta^.url + "\">");
+							
+							local (s = string (msgTable^.body)); //get the text of the page from the discussion group
+							
+							bundle { //lightly massage the string
+								s = string.replaceAll (s, "&", "&amp;");
+								s = string.replaceAll (s, "\n", "")};
+							
+							local (rows = sizeOf (s) / 40); //calculate the number of rows to display
+							if rows < 10 {
+								rows = 10};
+							
+							«Add the rest of the form.
+							add ("<p><b>Text:</b><br>");
+							
+							local (editor);
+							bundle { //possibly get the HTML editor
+								on translateToEntities (s) {
+									«It's not necessary to translate everything, just ampersands, quotes, and left carets.
+									s = string.replaceAll (s, "&", "&amp;");
+									s = string.replaceAll (s, "<", "&lt;"); //PBS 01/31/00: convert carets to entities
+									s = string.replaceAll (s, "\"", "&quot;"); //PBS 01/31/00: convert quotes to entities
+									s = string.replaceAll (s, "{", "&#123;"); //PBS 03/19/00: convert { to HTML entities
+									return (s)};
+								editor = mainResponder.discuss.getHtmlEditor (translateToEntities (s), pta, rows*14, "body", "editHomePageForm")};
+							if editor == "" {
+								add ("<textarea name=\"body\" rows=\"" + rows + "\" cols=\"50\" wrap=\"soft\">" + s + "</textarea>")}
+							else { //WYSIWYG
+								add (editor)};
+							add ("</form>"); indentLevel--;
+							
+							«Add the [[homePageEditField]] token to htmlText -- the finalFilter will replace this with the actual form.
+							htmlText = htmlText + "[[homePageEditField]]"}}}}}; //PBS 7/12/99: strip in the edit text area later so macros and glossary items don't get processed
+		
+		if not flSysopPlacesCalendar {
+			add ("</td>"); indentLevel--;
+			add ("<td width=\"20\">&nbsp;</td>"); indentLevel++};
+		
+		bundle { //add the stuff that goes down the right edge
+			if not flSysopPlacesCalendar {
+				add ("<td valign=\"top\">")};
+			
+			bundle { //add the calendar
+				if pta^.newsSite^.flCalendarOnHomePage {
+					calendarHtml = calendarHtml + manilaSuite.html.drawCalendar (pta);
+					if flShowFlipButton {
+						calendarHtml = calendarHtml + manilaSuite.html.flipHomePageButton ()};
+					if not flSysopPlacesCalendar { //PBS 8/10/99
+						add (calendarHtml)}}};
+			bundle { //add the UserLand bookmarks
+				if defined (pta^.newsSite^.siteNavigationBox) and not flSysopPlacesCalendar { //PBS 8/10/99
+					add ("<p><center>" + string (pta^.newsSite^.siteNavigationBox) + "</center>")};
+				«else
+					«if defined (pta^.newsSite^.flNavBoxOnHomePage) and pta^.newsSite^.flNavBoxOnHomePage
+						«add ("<p><center>" + string (userlandWidgets.standardElements.navBox) + "</center>")};
+			bundle { //add the user bookmarks
+				«local (flShowBookmarks = manilaSuite.getNewsSitePref ("flShowMemberBookmarksOnHomePage", default:false, flCreate:true))
+				if defined (adrNewsSite^.flShowMemberBookmarksOnHomePage) {
+					if adrNewsSite^.flShowMemberBookmarksOnHomePage {
+						«if flShowBookmarks
+						if defined (pta^.adrMemberInfo) and not flSysopPlacesCalendar { //PBS 8/10/99
+							local (memberName = nameof (pta^.adrMemberInfo^));
+							local (adrMember = mainResponder.members.getMemberTable (pta^.defaultMembershipGroup, memberName));
+							if defined (adrMember^.bookmarks.htmlText) {
+								local (s = string (adrMember^.bookmarks.htmlText));
+								s = mainResponder.neuterText (s, true, true);
+								if s != "" {
+									s = string.replaceAll (s, "\r", "<br>");
+									s = "<font size=\"-1\">" + s + "</font>";
+									s = mainResponder.macros.drawPanel (s);
+									local (bookmarksUrl);
+									bookmarksUrl = manilaSuite.getUrl ("prefsHome", pta);
+									bookmarksUrl = string.popSuffix (bookmarksUrl, '$') + "$Bookmarks";
+									local (editLink = "<font size=\"-1\"><a href=\"" + bookmarksUrl + "\">Edit</a></font>");
+									s = "<p><center>" + s + editLink + "</center>";
+									add (s)}}}}}}};
+		
+		if not flSysopPlacesCalendar {
+			add ("</td>"); indentLevel--;
+			add ("</tr>"); indentLevel--;
+			add ("</table>"); indentLevel--}};
+	
+	pta^.calendar = calendarHtml; //PBS 8/10/99
+	
+	return (htmlText)}

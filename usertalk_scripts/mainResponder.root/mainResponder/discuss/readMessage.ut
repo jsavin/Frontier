@@ -1,0 +1,437 @@
+on readMessage (msgNum, flResponses=true, flResponseForm=true, flShowMsgNums=true, flShowAuthor=true, flShowPostTime=true, flShowReads=true, flStoryHeaderOnly=false, flEditButtonsInHeader=true, flShowEnclosure=true, editPageURL="", flShowCowSkullLink=false, pta=nil, adrMsgTable=nil, adrData=nil, adrGetBodyCallback=nil, searchArgs="", flUseMappedMemberKeys=false) {
+	«This is the main bottleneck script for displaying discussion group messages.
+		«It's used in discussion groups -- but also any time you want to display a discussion group message as a page outside of the discussion group interface. Most of the parameters govern whether or not to display the various discussion group message headers.
+	«Changes:
+		«11/12/06; 12:39:01 PM by LL
+			«Don't include a link to the member profile page in the byline.
+		«5/5/06; 10:48:30 PM by JES
+			«Remove leading <p> tag when rendering without headers. (Extends the change made for content-only pages, to include all pages which don't have headers, not just content-only pages.)
+		«7/2/05; 2:47:43 AM by JES
+			«If we're rendering a content-only page in a Manila site, don't add a leading <p> tag before the content.
+		«10/05/05; 6:51:47 PM by PR
+			«don't die if bylines are enabled and the creator has been deleted
+		«4/18/03; 6:06:50 PM by JES
+			«New optional parameter, flUseMappedMemberKeys -- if true, we use the newer style numeric member keys instead of the older email address style member keys.
+		«2000:
+			«11/27/00; 6:22:13 PM by PBS
+				«pta is named parameter in call to manilaSuite.pike.editMessageButton.
+			«11/26/00; 8:13:51 PM by PBS
+				«Use the new bottleneck routine for displaying an external editor button.
+			«10/18/00; 10:50:08 PM by JES
+				«Commented out the code that adds the Edit in Frontier button.
+			«10/12/00; 12:35:42 AM by JES
+				«New optional parameter: searchArgs - if provided, it's appended to URLs of links to messages. This is how support for multi-mode (topic-based vs. day-based) DGs are handled.
+			«07/13/00; 3:00:29 AM by JES
+				«Fixed problem where the byline would sometimes appear in Manila's discussion group interface, even though there was already an Author header -- only display the byline if flShowAuthor is false.
+			«05/01/00; 7:41:17 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«05/01/00; 5:19:31 PM by PBS
+				«New optional parameter: adrGetBodyCallback. This allows the caller to specify a script that gets the body of the discussion group message. This is used by the news items feature, which needs to convert from XML to HTML when displaying a news item dg message.
+				«If adrGetBodyCallback^ () returns "", then the normal get-body routine runs.
+			«01/17/00; 4:48:31 PM by PBS
+				«Preliminary server support for Pike.
+		«1999:
+			«11/18/99; 3:55:29 PM by PBS
+				«Removed <font size="+0"></font> tags from around message text, as they did nothing, but they made it hard for a designer to specify the font of the message text.
+			«10/20/99; 4:12:18 PM by PBS
+				«If an image is stored with the message in the dg, display the picture below the title and headers but above the text. Call the new script mainResponder.discuss.buildImageTag to create the image tag.
+			«10/5/99; 5:06:24 PM by PBS
+				«Sometimes the headers section would be empty, there would be an empty table adding an extra blank line to the page. This is now fixed.
+			«Mon, Aug 2, 1999 at 2:38:39 PM by PBS
+				«New optional parameters: pta, adrMsgTable, and adrData. These were added because sometimes these addresses are known before calling this script, and there's no sense in re-computing them. This is a minor performance enhancement.
+				«Added some comments to this script to make it easier to follow.
+				«Remove the unused local variable pagetable.
+			«Sat, 12 Jun 1999 13:42:51 GMT by AR
+				«Bug fix: The Topics header now works properly if the displayed message is part of the response tree of a message that has been deleted.
+			«Fri, Jun 11, 1999 at 10:33:25 AM by PBS
+				«New page table attribute: if pta^.readMessageByLineFormat is "DaveNet," then the byline will appear like this:
+					«Tuesday, March 16, 1999; by Dave Winer.
+			«Wednesday, June 09, 1999 at 4:47:49 PM by PBS
+				«Call mainResponder.discuss.memberCanEdit to determine if the member may edit this message.
+			«Monday, June 07, 1999 at 2:25:39 PM by PBS
+				«New pagetable attributes: flReadMessageAutoParagraphs, flReadMessageProcessMacros, and flReadMessageExpandUrls give more control over what happens when reading a discussion group message. When calling this script from a web page that's a script, it's best to set these all to false. When calling from a macro, it's not necessary to define these attributes: previous behavior is conserved, there's no breakage.
+			«Wed, 26 May 1999 01:33:57 GMT by AR
+				«Real names of message authors are now looked up in the membership group specified thru pta^.responderAttributes.defaultMembershipGroup instead of formerly config.mainresponder.globals.defaultMembershipGroup, allowing greater flexibility while retaining backwards-compatibility.
+			«Sat, 22 May 1999 15:32:02 GMT by AR
+				«Added optional parameter flShowCowSkullLink. The default is false. If it's set to true, a cowskull linking to the standard msgReader page for this message is added. This feature probably only makes sense for sites like stories.userland.com where messages are displayed outside of the standard discussion group context.
+			«Fri, 21 May 1999 16:58:48 GMT by AR
+				«Added optional editPageURL parameter for setting the action URL of the Edit This Page button. If it's the empty string, we use pta^.responderattributes.urls^.discussEditInBrowser.
+			«Wed, 19 May 1999 18:50:24 GMT by AR
+				«Added three new parameters: flShowAuthor, flShowPostTime, flShowReads. Default: true.
+				«Added a new parameter: flStoryHeaderOnly. Default: false.
+				«Inserted missing </tr> tag after header section.
+				«Added a new parameter: flEditButtonsInHeader. Default: true.
+			«5/12/99; 6:43:55 AM by DW
+				«Added Topic line for non-top-level messages. It takes you to the top-level topic that the message is in response to.
+			«Thu, 22 Apr 1999 15:00:04 GMT by AR
+				«Modified after closing a security hole in htmlInterfaces.root
+					«http://frontier.userland.com/security/htmlInterfacesRoot
+			«Mon, 01 Mar 1999 17:45:42 GMT by AR
+				«Changed code in the "set member info" section to no longer reference config.mainResponder.prefs.defaultDiscussRoot. Instead we get the discussion group rootname by dereferencing adrdata which is set by mainresponder.discuss.openroot.
+			«5/19/99; 10:19:48 PM by DW
+				«Changed "By Dave Winer" to "Posted by Dave Winer". This makes more sense because I might post articles written by other people.
+	
+	bundle { //get page table, discussion group, and message table addresses
+		if pta == nil { //PBS 8/2/99: get the page table address
+			pta = html.getPageTableAddress ()};
+		if adrData == nil { //PBS 8/2/99: get the address of the root of this discussion group
+			adrData = mainResponder.discuss.openRoot (pta)};
+		if adrMsgTable == nil { //PBS 8/2/99: get the address of the table for this discussion group message
+			adrMsgTable = @adrData^.messages.[string.padWithZeros (msgNum, 7)]};
+		try { //JES 4/19/03: not particularly pretty, but makes sure that any manila code that calls us will get the right value for flUseMappedMemberKeys
+			if manilaSuite.isManilaSite (manilaSuite.getSiteAddress ()) {
+				flUseMappedMemberKeys = true}}};
+	
+	local (membershipGroup = pta^.responderAttributes.defaultMembershipGroup);
+	local (flShowEditButtons, flEditButtonsAtTop, flEditButtonsAtBottom, flShowMessageHeaders);
+	local (htmlText = "", indentLevel = 0);
+	local (flMember = defined (pta^.adrMemberInfo));
+	
+	on add (s) {
+		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
+	
+	bundle { //increment read stats
+		adrMsgTable^.ctReads++;
+		config.mainResponder.stats.ctDiscussionGroupReads++}; //1/17/99; 9:20:18 AM by DW
+	
+	bundle { //was this message deleted?
+		if mainResponder.discuss.isMessageDeleted (msgNum, adrMsgTable, pta) {
+			«4/10/00; 12:17:54 AM by JES - added localization
+			add (mainResponder.getString ("discuss.messageDeleted"));
+			return (htmlText)}};
+	
+	bundle { //calculate lots of booleans in advance to avoid spitting out unwanted empty table cells etc.
+		flShowEnclosure = flShowEnclosure and (defined (adrMsgTable^.enclosureAddress) and (adrMsgTable^.enclosureAddress != ""));
+		flShowEditButtons = (flMember and (mainResponder.discuss.memberCanEdit (adrMsgTable, pta^.adrMemberInfo))); //PBS 6/9/99: a member other than the poster may be able to edit this message
+		flEditButtonsAtTop = (flShowEditButtons and flEditButtonsInHeader);
+		flEditButtonsAtBottom = (flShowEditButtons and not flEditButtonsInHeader);
+		flShowMessageHeaders = (not flStoryHeaderOnly) and (flShowAuthor or flShowPostTime or flShowMsgNums or flShowEnclosure or flShowReads);
+		if not flShowMessageHeaders { //PBS 9/22/99: make it possible to have a byline and message headers: example -- the Samples site needs a byline plus enclosure header
+			if defined (pta^.flReadMessageStoryHeaderAndMessageHeaders) {
+				if pta^.flReadMessageStoryHeaderAndMessageHeaders {
+					flShowMessageHeaders = true}}}};
+	
+	on addEditButtons () { //add Edit button (or buttons) to the page
+		«4/10/00; 12:17:54 AM by JES - added localization
+		local (editableInFrontier = false);
+		
+		«if defined (pta^.adrMemberInfo^.isFrontierSixAlpha) //edit in Frontier button
+			«bundle //old code
+				«add ("<hr><b>Frontier 6 Alphas</b><p>")
+				«add ("According to our records, you are a Frontier 6 alpha tester, and you created the message that you're viewing. That means that you can edit this message using Frontier 6's wrapping headlines outliner.")
+				«add ("To use this feature, be sure Frontier is running, and you have suites.editorial installed. Then click on the following link. <i>Please follow the instructions carefully.</i><p>")
+				«add ("<a href=\"" + pta^.responderattributes.urls^.discussEditInFrontier + msgnum + "\">Edit message #" + msgnum + " in Frontier</a>")
+				«add ("<font size=\"-2\"><br>You can edit this message<br>because you are a Frontier 6<br>alpha tester and you are<br>the author of this message.</font>")
+			«local (url = pta^.responderAttributes.urls^.discussEditInFrontier + msgNum)
+			«
+			«Build the Edit in Frontier button.
+			«add ("<td valign=\"middle\"><center>"); indentLevel++
+			«add ("<form method=\"POST\" action=\"" + url + "\">"); indentLevel++
+			«add ("<input name=\"msgnum\" type=\"hidden\" value=\"" + msgNum + "\">")
+			«add ("<input type=\"submit\" value=\"" + mainResponder.getString ("discuss.editInFrontier") + "\">")
+			«add ("</form>"); indentLevel--
+			«add ("</center></td>"); indentLevel--
+			«
+			«editableInFrontier = true
+		bundle { //edit in web browser button
+			if editPageURL == "" {
+				editPageURL = pta^.responderAttributes.urls^.discussEditInBrowser};
+			
+			add ("<td valign=\"middle\"><center>"); indentLevel++;
+			add ("<form method=\"POST\" action=\"" + editPageURL + msgNum + "\">"); indentLevel++;
+			add ("<input name=\"msgnum\" type=\"hidden\" value=\"" + msgNum + "\">");
+			local (buttonValue = mainResponder.getString ("discuss.editThisPage"));
+			
+			if editableInFrontier {
+				buttonValue = mainResponder.getString ("discuss.editInBrowser"); //change button name from Edit this Page to Edit in Browser
+				add ("&nbsp;")};
+			
+			add ("<input type=\"submit\" value=\"" + buttonValue + "\">");
+			add ("</form>"); indentLevel--;
+			
+			add ("</center>");
+			
+			bundle { //PBS 01/13/00: Add the Edit in Pike button
+				if defined (pta^.responderAttributes.urls^.editInPike) {
+					«Pike support is a feature not of mainResponder but of Manila. However, this script, which displays the discussion group message and the Edit this Page, needs to be Pike-aware enough to display the Pike button.
+					«if manilaSuite.pike.memberHasPike (pta)
+						«local (editInPikeUrl = pta^.responderAttributes.urls^.editInPike)
+						«if not (editInPikeUrl endsWith "$")
+							«editInPikeUrl = editInPikeUrl + "$"
+						«editInPikeUrl = editInPikeUrl + msgNum
+						«local (adrSite = pta^.adrSiteRootTable)
+						«local (adrMember = pta^.adrMemberInfo)
+						«add (manilaSuite.pike.pikeButton (editInPikeUrl, adrMsgTable, adrMember, adrSite, true, mainResponder.getString ("discuss.editThisStoryInPikeOutline"), pta)) //true because this is a message
+					add (manilaSuite.pike.editMessageButton (adrMsgTable, pta:pta))}}; //PBS 11/27/00: pta is named parameter
+			
+			add ("</td>"); indentLevel--}};
+	
+	bundle { //put up message headers section
+		«4/10/00; 12:17:54 AM by JES - added localization
+			«bundle // non-localized version
+				«add ("<i>" + date.abbrevString (adrMsgTable^.postTime) + "; by " + name + ".</i>")
+		local (flByline = flStoryHeaderOnly); //PBS 06/22/00: message table can over-ride byline display
+		if defined (adrMsgTable^.flByline) { //an attribute in the message table can over-ride the site setting
+			if not adrMsgTable^.flByline {
+				flByline = false}
+			else {
+				flByline = true}};
+		if flByline and !flShowAuthor { //07/13/00 JES: added !flShowAuthor -- never show a Byline if we have an Author header
+			«Support DaveNet-style bylines: PBS 6/11/99
+				«Like: Friday, June 11, 1999; by Dave Winer (no link to author)
+			if defined (pta^.readMessageBylineFormat) and string.lower (pta^.readMessageBylineFormat) == "davenet" {
+				local (adrMember = mainResponder.members.getMemberTable (membershipGroup, adrMsgTable^.member));
+				local (name = nameOf (adrMember^)); // 10/05/05; 7:01:56 PM by PR default to the member key
+				if defined (adrMember^.personalInfo.name) {
+					name = adrMember^.personalInfo.name}
+				else {
+					if name contains '@' {
+						name = string.replace (string.mid (name, 1, string.patternMatch ('@', name)+2) + "...", '@', "&#64;")}};
+				add ("<i>" + mainResponder.macros.byline (name, adrMsgTable^.postTime, "DaveNet") + "</i>")}
+			else { // standard byline format
+				«local (authorLink = mainResponder.members.linkToMember (membershipGroup, adrMsgTable^.member, useMap:flUseMappedMemberKeys))
+				local (adrMember = mainResponder.members.getMemberTable (membershipGroup, adrMsgTable^.member));
+				local (name = nameOf (adrMember^)); // 10/05/05; 7:01:56 PM by PR default to the member key
+				if defined (adrMember^.personalInfo.name) {
+					name = adrMember^.personalInfo.name}
+				else {
+					if name contains '@' {
+						name = string.replace (string.mid (name, 1, string.patternMatch ('@', name)+2) + "...", '@', "&#64;")}};
+				add ("<i>" + mainResponder.macros.byline (name, adrMsgTable^.postTime) + "</i>")}};
+		local (flDoHeaders = false); //PBS 10/5/99: fix for blank headers section, which messages up the formatting
+		if flEditButtonsAtTop {
+			flDoHeaders = true}
+		else {
+			if flShowMessageHeaders {
+				case true {
+					flShowAuthor;
+					flShowPostTime;
+					flShowMsgNums;
+					flShowEnclosure;
+					flShowReads {
+						flDoHeaders = true}}}};
+		if flDoHeaders { //PBS 10/5/99: was: if (flShowMessageHeaders or flEditButtonsAtTop)
+			add ("<p>");
+			add ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">"); indentLevel++;
+			add ("<tr>"); indentLevel++;
+			
+			if flShowMessageHeaders { //add author, posted, msg#, etc
+				add ("<td>"); indentLevel++;
+				add ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">"); indentLevel++;
+				
+				on tr (label, val) {
+					add ("<tr>"); indentLevel++;
+					add ("<td valign=\"top\"><font size=\"+0\"><b>" + label + "</b>&nbsp;</font></td>");
+					add ("<td valign=\"top\"><font size=\"+0\">" + val + "</font></td>");
+					add ("</tr>"); indentLevel--};
+				on msgLink (msgNum) {
+					return ("<a href=\"" + pta^.responderAttributes.urls^.discussMsgReader + msgNum + searchArgs + "\">" + msgNum + "</a>")};
+				
+				if flShowAuthor {
+					tr (mainResponder.getString ("discuss.authorHeader"), mainResponder.members.linkToMember (membershipGroup, adrMsgTable^.member, useMap:flUseMappedMemberKeys))}; // 4/13/00 JES: localized the header
+				if flShowPostTime {
+					tr (mainResponder.getString ("discuss.postedHeader"), mainResponder.localization.dateTimeString (adrMsgTable^.postTime))}; // 4/13/00 JES: localized the header and the date
+				if flShowMsgNums and (adrMsgTable^.inResponseTo > 0) { //spit out the Topic line
+					local (nomad = adrMsgTable);
+					while (nomad^.inResponseTo > 0) {
+						nomad = mainResponder.discuss.getMessageTable (nomad^.inResponseTo)};
+					tr (mainResponder.getString ("discuss.topicHeader"), "<a href=\"" + pta^.responderAttributes.urls^.discussMsgReader + nomad^.msgNum + searchArgs + "\">" + nomad^.subject + "</a>")}; // 4/13/00 JES: localized the header
+				if flShowMsgNums { // put out the Msg# line
+					local (val = msgNum);
+					if adrMsgTable^.inResponseTo > 0 {
+						try {
+							local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+							replacementTable.msglink = msgLink (adrMsgTable^.inResponseTo);
+							val = val + " (" + mainResponder.getString ("discuss.inResponseTo", @replacementTable) + ")"}} // 4/13/00 JES: localized the header
+					else {
+						val = val + " (" + mainResponder.getString ("discuss.topMsgInThread") + ")"}; // 4/13/00 JES: localized
+					tr (mainResponder.getString ("discuss.msgNumHeader"), val)};
+				if flShowEnclosure { //regurgitate the Enclosure line
+					«http://discuss.userland.com/enclosures/view$868
+					local (viewingUrl = pta^.responderAttributes.urls^.discussEnclosureViewer + msgNum);
+					«4/13/00; 5:52:43 PM by JES: localized enclosure text
+					local (listingLink = "<a href=\"" + viewingUrl + "\">" + mainResponder.getString ("discuss.viewEnclosure") + "</a>");
+					local (fatPageLink = "<a href=\"" + pta^.responderAttributes.urls^.discussEnclosureDownloader + msgNum + "\">" + mainResponder.getString ("discuss.fatPageEnclosure") + "</a>");
+					local (rpcLink = "<a href=\"" + pta^.responderAttributes.urls^.discussEnclosureRPCer + msgNum + "\">" + mainResponder.getString ("discuss.RPCenclosure") + "</a>");
+					
+					tr (mainResponder.getString ("discuss.enclosureHeader"), listingLink + ", " + fatPageLink + ", " + rpcLink)};
+				if flShowMsgNums { //throw up Prev/Next
+					local (ixPrev = -1, ixNext = -1);
+					local (ixLastMsg = adrData^.prefs.nextMsgNum - 1);
+					
+					for i = (msgNum - 1) downTo 1 { //find the previous message
+						local (adrMsg = mainResponder.discuss.getMessageTable (i, pta, adrData));
+						if not (mainResponder.discuss.isMessageDeleted (i, adrMsg, pta:pta)) {
+							ixPrev = i;
+							break}};
+					for i = (msgNum + 1) to ixLastMsg { //find the next message
+						local (adrMsg = mainResponder.discuss.getMessageTable (i, pta, adrData));
+						if not (mainResponder.discuss.isMessageDeleted (i, adrMsg, pta:pta)) {
+							ixNext = i;
+							break}};
+					
+					«4/13/00; 5:53:22 PM by JES: localized next/prev header and link display
+					if ixPrev == -1 {
+						if ixNext != -1 {
+							tr (mainResponder.getString ("discuss.nextMsgHeader"), msgLink (ixNext))}}
+					else {
+						if ixNext == -1 {
+							if ixPrev != -1 {
+								tr (mainResponder.getString ("discuss.prevMsgHeader"), msgLink (ixPrev))}}
+						else {
+							local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+							replacementTable.prevmsglink = msgLink (ixPrev);
+							replacementTable.nextmsglink = msgLink (ixNext);
+							tr (mainResponder.getString ("discuss.prevNextMsgHeader"), mainResponder.getString ("discuss.prevNextMsgNums", @replacementTable))}}};
+				if flShowReads { //show the number of times this message has been read
+					tr (mainResponder.getString ("discuss.readsHeader"), adrMsgTable^.ctReads)}; // 4/13/00 JES: localized
+				
+				add ("</table>"); indentLevel--;
+				add ("</td>"); indentLevel--};
+			if flEditButtonsAtTop { //add edit in Frontier button, possibly other stuff
+				if (flStoryHeaderOnly or flShowMessageHeaders) { //add a bit of horizontal space
+					add ("<td width=\50\">&nbsp;</td>")};
+				
+				addEditButtons ()};
+			
+			add ("</tr>"); indentLevel--;
+			add ("</table>"); indentLevel--;
+			add ("<p>")};
+		«else //JES 5/5/06: commented out
+			«if not defined (pta^.searchArgTable.["content-only"])
+				«add ("<p>")};
+	
+	bundle { //add the body of the story
+		local (flCallbackReturnedBody = false);
+		if adrGetBodyCallback != nil {
+			local (s);
+			s = adrGetBodyCallback^ (adrMsgTable);
+			if s != "" {
+				add (s);
+				flCallbackReturnedBody = true}};
+		if not flCallbackReturnedBody {
+			bundle { //PBS 10/20/99: if an image is attached to this message, display it above the body
+				if defined (adrMsgTable^.image) {
+					if defined (pta^.responderAttributes.urls^.imageViewer) { //must be defined: it's the link to the imageViewer script
+						«The imageViewer script takes a msgNum as pathArgs and displays the picture attached to that dg message.
+						add (mainResponder.discuss.buildImageTag (adrMsgTable^.msgNum));
+						add ("<p>")}}};
+			if typeOf (adrMsgTable^.body) == outlineType { //outlines get passed through an outline renderer
+				local (oldRenderOutlineWith = nil);
+				
+				if defined (pta^.renderOutlineWith) {
+					oldRenderOutlineWith = pta^.renderOutlineWith};
+				if defined (pta^.renderDiscussOutlinesWith) {
+					pta^.renderOutlineWith = pta^.renderDiscussOutlinesWith};
+				
+				if defined (pta^.flReadMessageProcessMacros) and pta^.flReadMessageProcessMacros {
+					try {add (html.processMacros (html.tenderRender (@adrMsgTable^.body), false, pta))}}
+				else {
+					if defined (pta^.flReadMessageExpandUrls) and not pta^.flReadMessageExpandUrls {
+						try {add (html.tenderRender (@adrMsgTable^.body))}}
+					else { //default, original behavior
+						try {add (html.expandURLs (html.tenderRender (@adrMsgTable^.body)))}}};
+				
+				if oldRenderOutlineWith != nil {
+					pta^.renderOutlineWith = oldRenderOutlineWith}}
+			else { //it's not an outline
+				local (s = string (adrMsgTable^.body));
+				s = string.replaceAll (s, "\n", ""); //2/15/99 DW, inside <pre>s these cause extra line-skips
+				
+				if not (defined (pta^.flReadMessageAutoParagraphs)) or pta^.flReadMessageAutoParagraphs {
+					s = string.replaceAll (s, "\r\r", "\r\r<p>")};
+				if not (defined (pta^.flReadMessageProcessMacros)) or pta^.flReadMessageProcessMacros {
+					s = html.processMacros (s, false, pta);
+					};
+				«add ("<font size=\"+0\">" + s + "</font>")
+				add (s)}}}; //PBS 11/18/99: removed <font> tags from around message text, as they didn't do anything, but made it harder for a designer to specify the font for the page
+	
+	if flEditButtonsAtBottom { //add edit buttons to the bottom
+		add ("<p>");
+		add ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">"); indentLevel++;
+		add ("<tr>"); indentLevel++;
+		
+		addEditButtons ();
+		
+		add ("</tr>"); indentLevel--;
+		add ("</table>"); indentLevel--;
+		add ("<p>")};
+	
+	if flShowCowSkullLink { //add cowskull link to standard msgReader page
+		«The cowskull link is a link to the discussion group interface version of this page.
+		try {add ("<p><a href=\"" + pta^.responderAttributes.urls^.discussMsgReader + msgNum + "\">" + mainResponder.discuss.cowSkullImage (pta) + "</a>")}};
+	
+	if flResponses { //list message response structure
+		«4/10/00; 12:17:54 AM by JES - added localization
+			«bundle // non-localized version
+				«add ("<i>" + date.abbrevString (adrMsgTable^.postTime) + "; by " + name + ".</i>")
+		if sizeof (adrMsgTable^.responses) > 0 {
+			local (stack = {});
+			
+			on addResponses (adrItem) {
+				local (adrTable, msgNum, replyMember, i, ct = sizeOf (adrItem^.responses), flDeleted);
+				
+				add ("<ul>"); indentLevel++;
+				
+				for i = ct downTo 1 {
+					msgNum = adrItem^.responses [i];
+					if stack contains msgNum { //avoid infinite recursion
+						continue;
+						};
+					adrTable = mainResponder.discuss.getMessageTable (msgNum, pta, adrData);
+					if not defined (adrTable^) {
+						continue};
+					
+					if not (mainResponder.discuss.isMessageDeleted (msgNum, adrTable, pta)) {
+						replyMember = mainResponder.members.getMemberName (membershipGroup, adrTable^.member);
+						add ("<li><a href=\"" + pta^.responderAttributes.urls^.discussMsgReader + msgNum + searchArgs + "\">" + adrTable^.subject + "</a>, " + replyMember + ", " + mainResponder.localization.dateTimeString (adrTable^.postTime, pta: pta) + "<p>"); // 4/13/00 JES: localized the date display
+						if sizeof (adrTable^.responses) > 0 {
+							stack = stack + {adrTable^.msgNum};
+							addResponses (adrTable);
+							delete (@stack [sizeof (stack)])}}};
+				
+				add ("</ul>"); indentLevel--;
+				};
+			add ("<p><hr><b>" + mainResponder.getString ("discuss.thereAreResponsesToThisMsg") + "</b>");
+			
+			addResponses (adrMsgTable)}}; //it's recursive
+	
+	if flResponseForm { //provide a response form
+		«4/10/00; 12:17:54 AM by JES - added localization
+			«bundle // non-localized version
+				«add ("<i>" + date.abbrevString (adrMsgTable^.postTime) + "; by " + name + ".</i>")
+		if flMember { //only members can add messages
+			local (subject = adrMsgTable^.subject);
+			
+			if not (string.lower (subject) beginswith string.lower (string.trimWhiteSpace (mainResponder.getString ("discuss.rePrefix")))) {
+				subject = mainResponder.getString ("discuss.rePrefix") + subject};
+			
+			local (subjectprompt, buttontext, bodyprompt);
+			subjectprompt = mainResponder.getString ("discuss.responseSubjectPrompt");
+			buttontext = mainResponder.getString ("discuss.postResponseButtonText");
+			bodyprompt = mainResponder.getString ("discuss.responseBodyPrompt");
+			add (mainResponder.discuss.newMessageForm (msgNum, subject, "<p><hr>" + subjectprompt, buttontext, bodyprompt: bodyprompt, pta:pta))}};
+	
+	bundle { //set member info
+		«For every member, store the highest message read for the current discussion group.
+			«First make sure the discussionGroupInfo table exists for this member, then make sure there's a table for this dg, then set highestMessageRead for this dg for this member.
+		if flMember { //is this a member?
+			local (adrMember = pta^.adrMemberInfo);
+			
+			if not defined (adrMember^.discussionGroupInfo) {
+				new (tabletype, @adrmember^.discussionGroupInfo)};
+			
+			local (rootName = nameOf (adrData^));
+			local (adrTable = @adrMember^.discussionGroupInfo.[rootName]);
+			
+			if not defined (adrTable^) {
+				new (tableType, adrTable)};
+			if not defined (adrTable^.highestMessageRead) {
+				adrTable^.highestMessageRead = 0};
+			if msgNum > adrTable^.highestMessageRead {
+				adrTable^.highestMessageRead = msgNum}}};
+	
+	return (htmltext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«readMessage (22, false, false, false, false, false, false, false, false, false, "", false, @workspace.pt)

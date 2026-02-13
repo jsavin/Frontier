@@ -1,0 +1,2 @@
+on viewDirectory (msgnum) {
+	return (manilaSuite.directory.viewDirectory (true, msgnum))}

@@ -1,0 +1,46 @@
+on downloadPage (adrSite) {
+	«10/27/00; 2:21:23 AM by JES
+		«Cribbed from manilaSuite.themes.downloadPage
+	local (themeTable);
+	new (tableType, @themeTable);
+	
+	local (pta = parentOf (code));
+	local (adrNewsSite = pta^.responderAttributes.newsSite);
+	local (themeName = adrNewsSite^.discussTheme.name);
+	local (displayThemeName = themeName);
+	
+	themeName = string.dropNonAlphas (string.innerCaseName (themeName));
+	local (siteUrl = adrSite^.["#ftpSite"].url);
+	local (author = adrNewsSite^.discussTheme.authorName);
+	local (email = adrNewsSite^.discussTheme.authorEmail);
+	local (description = string (adrNewsSite^.discussTheme.description));
+	
+	manilaSuite.discussThemes.siteToTheme (adrSite, @themeTable, themeName, displayThemeName, author, email, siteUrl, description);
+	
+	on buildPageAtts () {
+		local (htmltext = "");
+		on add (s) {
+			htmltext = htmltext + s};
+		add ("\r<!--\r#fatPage\r"); //Wed, Feb 26, 1997 at 7:44:57 AM by DW, added extra \r before #
+		on addHint (name, value, flencode=false) {
+			local (s = string (value));
+			if flencode {
+				s = base64.encode (string (s), 0)};
+			add ("#" + name + " " + s + "\r")};
+		addHint ("version", 1);
+		addHint ("docs", "http://www.scripting.com/fatPages/faq.html");
+		addHint ("adrObject", "config.manila.discussionGroupThemes.[\"" + themeName + "\"]");
+		addHint ("netAddress", html.getPref ("serverNetAddress"));
+		addHint ("objectCreated", date.netStandardString (clock.now ()));
+		addHint ("objectModified", date.netStandardString (clock.now ()));
+		addHint ("lastBuildTime", date.netStandardString (clock.now ()));
+		addHint ("adrPageData", "config.manila.discussionGroupThemes.[\"" + themeName + "\"]");
+		addHint ("objectType", "application/x-frontier-tabl");
+		addHint ("pageData", fatPages.encodePageData (@themeTable), true);
+		add ("-->\r");
+		return (htmltext)};
+	local (s = buildPageAtts ());
+	
+	responseHeaders.["Content-Type"] = "application/x-frontier-tabl";
+	
+	return (s)}

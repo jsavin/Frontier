@@ -1,0 +1,31 @@
+on newPost (appkey, blogid, username, password, content, publish) {
+	«Changes
+		«7/19/04; 6:32:03 PM by JES
+			«Decode &quot; and &apos; to the " and ' characters in the title and description, since they're not decoded by xml.compile, when the RPC call comes in.
+		«8/27/01; 2:36:58 PM by JES
+			«Changed the name of the siteurl parameter to blogid, so it agrees with the parameter names as defined by the Blogger API docs. This prevents possible errors if SOAP becomes a supported protocol for the Blogger API.
+		«8/23/01; 1:25:36 AM by JES
+			«Changed the format of the postid to [canonicalSiteName]#[msgnum].
+		«8/20/01; 10:12:46 PM by JES
+			«Make sure siteurl starts with http:// and ends with /.
+			«The URL for the post is the discussion group message containing the post (news item).
+		«Friday, August 17, 2001 at 9:05:43 AM by DW
+			«Created.
+			«See http://plant.blogger.com/api/xmlrpc_newPost.html.
+	local (siteurl = blogid); //these are synonymous for Manila sites
+	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
+	local (title = "Blogger News Item", url = "", description = content, department = "");
+	bundle { //decode &quot; and &apos; in title and description
+		title = string.replaceAll (title, "&quot;", "\"");
+		title = string.replaceAll (title, "&apos;", "\'");
+		description = string.replaceAll (description, "&quot;", "\"");
+		description = string.replaceAll (description, "&apos;", "\'")};
+	bundle { //make sure siteurl starts with http:// and ends with /
+		if not (string.lower (siteurl) beginsWith "http://") {
+			siteurl = "http://" + siteurl};
+		if not (siteurl endsWith "/") {
+			siteurl = siteurl + "/"}};
+	local (msgnum = manilaSuite.rpcHandlers.newsItem.create (username, password, sitename, title, url, description, department, publish));
+	return (sitename + "#" + msgnum)};
+«bundle //test code
+	«dialog.alert (newPost ("xxx", "http://127.0.0.1/blogger/", "jake@userland.com", user.prefs.manilaPassword, "This item should <i>not</i> immediately appear on the home page.", false))

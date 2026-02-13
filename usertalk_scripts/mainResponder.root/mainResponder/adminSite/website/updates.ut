@@ -1,0 +1,24 @@
+on updates () {
+	«Changes
+		«12/16/03; 3:33:02 AM by JES
+			«Created. Display the pending feature updates and bug fixes which have yet to be downloaded.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Pending Updates";
+	
+	local (htext = "");
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	bundle { //explanatory text
+		add ("<p>The pending updates page displays features and bug fixes available from UserLand, which have not yet been installed on this server. To download the recent updates, click the Update Now button.</p>")};
+	
+	bundle { //update now button and processing
+		add ("<form method=\"POST\">");
+		add ("<table cellpadding=0 cellspacing=0 border=0>" + mainResponder.adminSite.prefs.updateNowButton (false) + "</table><br><br>");
+		add ("</form>")};
+	
+	local (dbsToUpdate = {"Frontier", "mainResponder", "manila", "prefs"});
+	try {rootUpdates.getPendingUpdatesList (@config.mainResponder.stats, mainResponder.data.featureListRssUrl, dbsToUpdate)};
+	add (rootUpdates.listPendingUpdates (@config.mainResponder.stats));
+	
+	return (htext)}

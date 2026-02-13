@@ -1,0 +1,31 @@
+on initSite (adrsite) {
+	«Changes
+		«5/8/03; 5:42:05 PM by JES
+			«Created. Initialize prefs for mail-to-weblog for a given site.
+	local (adrdata = @adrsite^.["#newsSite"].mailToWeblog);
+	if not defined (adrdata^) {
+		new (tableType, adrdata)};
+	if not defined (adrdata^.flEnabled) {
+		adrdata^.flEnabled = false};
+	if not defined (adrdata^.titleFormat) {
+		titleFormat = "dateTime"};
+	if not defined (adrdata^.account) {
+		adrdata^.account = ""};
+	if not defined (adrdata^.password) {
+		adrdata^.password = ""};
+	if not defined (adrdata^.server) {
+		adrdata^.server = ""};
+	if not defined (adrdata^.flPostToHomePage) {
+		adrdata^.flPostToHomePage = true};
+	if not defined (adrdata^.secretSubject) {
+		adrdata^.secretSubject = states.nthState (random (1, 50)) + " " + states.nthState (random (1, 50))};
+	if not defined (adrdata^.authorizationStyle) {
+		adrdata^.authorizationStyle = "beginsWithSecretSubject"};
+	if not defined (adrdata^.flAllowAuthorizedSendersOnly) {
+		adrdata^.flAllowAuthorizedSendersOnly = true};
+	if not defined (adrdata^.authorizedSenders) {
+		local (senders = adrsite^.["#newsSite"].sysopMail);
+		if typeOf (senders) != listType {
+			senders = {senders}};
+		adrdata^.authorizedSenders = senders};
+	return (adrdata)}

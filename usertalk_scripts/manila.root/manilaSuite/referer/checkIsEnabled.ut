@@ -1,0 +1,8 @@
+on checkIsEnabled (adrsite=nil) {
+	«Changes
+		«7/14/05; 3:10:06 PM by JES
+			«Created. Bottleneck for determining if referer checking is enabled in a site.
+				«Can be called outside the website framework if adrsite is non-nil.
+	if adrsite == nil {
+		adrsite = manilaSuite.getSiteAddress ()};
+	return (manilaSuite.getNewsSitePref ("flRefererCheckEnabled", adrsite, true))}

@@ -1,0 +1,39 @@
+on newStory (subject, pta=nil) {
+	«Send a message to Pike: please open up a new, untitled story window.
+		«01/13/00; 3:44:04 PM by PBS
+		«Changes:
+			«03/23/00; 5:26:20 PM by PBS
+				«Send default rendererInfo table as part of storyInfoTable. This table contains the name of the preferred renderer and a boolean stating that the content should be rendered on entry.
+			«11/14/00; 10:54:26 AM by PBS
+				«If the server accepts OPML, let the editor know.
+	
+	local (pikeIp, pikePort, pikeRpcPath);
+	bundle { //get information about the machine running Pike
+		local (pikeInfoTable);
+		pikeInfoTable = manilaSuite.pike.getPikeInfo (pta);
+		pikeIp = pikeInfoTable.ipAddress;
+		pikePort = pikeInfoTable.port;
+		pikeRpcPath = pikeInfoTable.rpcPath};
+	
+	local (procedureName = "pike.newStory");
+	
+	local (siteInfoTable);
+	siteInfoTable = manilaSuite.pike.buildSiteInfo (pta);
+	
+	local (storyInfoTable);
+	new (tableType, @storyInfoTable);
+	storyInfoTable.subject = subject;
+	
+	new (tableType, @storyInfoTable.rendererInfo);
+	storyInfoTable.rendererInfo.name = "pikeRenderer";
+	storyInfoTable.rendererInfo.flRenderOnEntry = true;
+	if not date.versionLessThan (Frontier.version (), "7.0b21") { // only accept opml if the server is 7.0b21 or later
+		storyInfoTable.flServerAcceptsOpml = true; //11/02/00 JES: always true because we already know the server is up-to-date.
+		siteInfoTable.flAcceptsOpml = true};
+	
+	local (params = {siteInfoTable, storyInfoTable});
+	
+	local (result);
+	result = betty.rpc.client (pikeIp, pikePort, procedureName, @params, fldebug:false);
+	
+	return (result)}

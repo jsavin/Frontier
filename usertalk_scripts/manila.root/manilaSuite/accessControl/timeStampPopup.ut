@@ -1,0 +1,107 @@
+on timeStampPopup (pta, selectPrefix, defaultValue = clock.now(), adrValue = nil, fl12Clock=false) {
+	«manilaSuite.AccessControl.timeStampPopup : 04/05/20, 18:07:00 by DAB
+		«build a web control for a timestamp using localised popups
+		«was manilaFixer.accessControl.timeStampPopup : 02/02/25, 13:26:31 by DAB
+	local (nowdd, nowmm, nowyy, nowH, nowM, NowS);
+	date.get(defaultValue, @nowdd, @nowmm, @nowyy, @nowH, @nowM, @nowS);
+	
+	local (valuedd, valuemm, valueyy, valueH, valueM, valueS);
+	if adrValue != nil {
+		date.get(adrValue, @valuedd, @valuemm, @valueyy, @valueH, @valueM, @valueS)};
+	
+	on monthPopup() {
+		local (htmltext = "");
+		on add(s) {
+			htmltext = htmltext + s;};
+		add("\r<select name = '" + selectPrefix + "Month'>");
+		local (ix, monthname, selection);
+		for ix = 1 to 12 {
+			selection = "";
+			if adrValue == nil {
+				if ix == nowMM {
+					selection = "selected"}}
+			else {
+				if valueMM == ix {
+					selection = " selected"}};
+			monthname = mainResponder.getString ("date.monthNames." + string.padWithZeros(ix, 2), pta: pta);
+			add("\r\t<option value = '" + ix + "' " + selection + ">" + monthName + "</option>")}; //02/03/24, 11:40:22 by DAB
+		add("\r</select>");
+		return htmlText};
+	
+	on rangePopup(id, min, max, defaultValue, currentValue, precision=2) {
+		local (htmltext = "");
+		on add(s) {
+			htmltext = htmltext + s;};
+		add("\r<select name = '" + selectPrefix + id + "'>");
+		local (ix, selection);
+		for ix = min to max {
+			selection = "";
+			if adrValue == nil {
+				if ix == defaultValue {
+					selection = "selected"}}
+			else {
+				if currentValue == ix {
+					selection = " selected"}};
+			add("\r\t<option value = '" + ix + "' " + selection + ">" + string.padWithZeros(ix, precision)  + "</option>")};
+		add("\r</select>");
+		return htmltext};
+	
+	on rangePopupValues(id, valueList, nameList, defaultValue, currentValue) {
+		local (htmltext = "");
+		on add(s) {
+			htmltext = htmltext + s;};
+		add("\r<select name = '" + selectPrefix + id + "'>");
+		local (ix, selection);
+		for ix  = 1 to sizeof(valueList) {
+			selection = "";
+			if adrValue == nil {
+				if valueList[ix]  == defaultValue {
+					selection = "selected"}}
+			else {
+				if currentValue == valueList[ix] {
+					selection = " selected"}};
+			add("\r\t<option value = '" + valueList[ix] + "' " + selection + ">" + nameList[ix] + "</option>")};
+		add("\r</select>");
+		return htmltext};
+	
+	local (htmltext = "");
+	on add(s) {
+		htmltext = htmltext + s;};
+	
+	bundle {
+		local (checked = "");
+		if adrValue != nil {
+			checked = " checked"};
+		add("<input type = 'checkbox' name = '"+ selectPrefix + "OK'" + checked + ">")};
+	add(rangePopUp("dd", 1, 31, nowdd, valueDD));
+	add(monthPopup());
+	bundle { //year
+		local (minYY = nowYY);
+		if adrValue != nil {
+			if valueYY < minYY {
+				minYY = valueYY}};
+		local (maxYY = minYY + 5);
+		if adrValue != nil {
+			if valueyy > maxYY {
+				maxYY = valueYY}};
+		add(rangePopUp("YY", minYY, maxYY, nowYY, valueYY, 4))};
+	add("&nbsp;");
+	if fl12Clock { //02/03/15, 16:01:52 by DAB
+		add(rangePopupValues("h", {0,1,2,3,4,5,6,7,8,9,10,11}, {12, 1,2,3,4,5,6,7,8,9, 10, 11}, nowh % 12, valueh % 12));
+		add(":");
+		add(rangePopUp("m", 0, 59, nowM, valueM));
+		local (meridians = {}); //02/03/24, 11:39:46 by DAB
+		bundle { //compute meridians
+			meridians[0] = mainResponder.getString ("date.meridiannames.am", pta: pta);
+			meridians[0] = mainResponder.getString ("date.meridiannames.pm", pta: pta)};
+		add(rangePopupValues("hourOffset",{0, 12}, meridians, 12*(nowh /12), 12*(valueh/12)))} //02/03/24, 11:40:09 by DAB
+	else {
+		add(rangePopUp("h", 0, 23, nowh, valueh));
+		add(":");
+		add(rangePopUp("m", 0, 59, nowM, valueM));
+		add("<input type = 'hidden' name = '" + selectPrefix + "hourOffset' value = '0'>")}; //02/03/15, 16:01:58 by DAB
+	
+	return htmltext};
+bundle {
+	wp.newtextObject(timeStampPopup("what",  date("02/03/15; 12:31:26"), fl12Clock:true), @temp.timeStampPopup);
+	edit(@temp.timeStampPopup)}

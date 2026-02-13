@@ -1,0 +1,8 @@
+on associateDepartmentGraphic (adrSite, name, pictureShortcut) {
+	«Associate a picture with a department.
+		«04/20/00; 9:10:02 PM by PBS
+	
+	«Ensure the department exists -- which will also set the picture shortcut.
+	manilaSuite.news.addDepartment (adrSite, name, pictureShortcut);
+	
+	return (true)}

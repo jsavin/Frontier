@@ -1,0 +1,117 @@
+on buildSearchTable (adrObject, adrSearchTable, adrSitesTable=nil) {
+	«Build a table containing the search preferences for this object.
+		«Params:
+			«adrObject is the address of the page.
+			«adrSearchTable is the address of the search table to build.
+			«adrSitesTable (optional) points to a table in config.mainResponder.search.sites to use.
+		«The search table contains:
+			«supportsIndexing: does this database support indexing? This value is the value from user.databases.[dbName].supportsIndexing.
+			«flIndexOnCheckIn: does this website want indexing turned on?
+			«addToIndex: XML-RPC procedure name for adding to an index. This comes from config.mainResponder.search, the sites table, or the #search table.
+			«restartIndex: XML-RPC procedure name for restarting a site index.
+			«domain: the domain name of the search engine server.
+			«port: the port number of the search engine server.
+			«siteName: the name of the site this page is in.
+			«siteUrl: the URL of the home page of this site.
+			«url: the url of this page.
+			«The search table may contain additional items or fewer items, it's not guaranteed to contain the above and the above only.
+	
+	local (adrUserTable, adrSearchDirectiveTable);
+	local (dbPath);
+	
+	on copyPrefs (adrSource) { //copy preferences from a table into the search table
+		«Copy everything but subtables.
+		if defined (adrSource^) {
+			local (i);
+			for i = 1 to sizeOf (adrSource^) {
+				local (adrItem = @adrSource^ [i]);
+				if typeOf (adrItem^) != tableType {
+					table.copy (adrItem, adrSearchTable)}};
+			return (true)}};
+	
+	on getSiteRoot (adrObject) { //get the root address of this website
+		local (nomad = adrObject);
+		if typeOf (nomad^) != tableType {
+			nomad = parentOf (nomad^)};
+		loop {
+			if defined (nomad^.["#ftpSite"]) {
+				return (nomad)};
+			if defined (nomad^.["#prefs"].ftpSite) {
+				return (nomad)};
+			if defined (nomad^.["#prefs"].["#ftpSite"]) {
+				return (nomad)};
+			nomad = parentOf (nomad^);
+			if nomad == nil or nomad == @root {
+				return (nomad)}}};
+	
+	on getSearchTable (adrObject) { //get the address of the search table for this website
+		local (nomad = adrObject);
+		if typeOf (nomad^) != tableType {
+			nomad = parentOf (nomad^)};
+		loop {
+			if defined (nomad^.["#search"]) {
+				return (@nomad^.["#search"])};
+			if defined (nomad^.["#prefs"].search) {
+				return (@nomad^.["#prefs"].search)};
+			if defined (nomad^.["#prefs"].["#search"]) {
+				return (@nomad^.["#prefs"].["#search"])};
+			nomad = parentOf (nomad^);
+			if nomad == nil or nomad == @root {
+				return (false)}}};
+	
+	«Get the path to this database.
+	dbPath = window.getFile (table.getRootAddress (adrObject));
+	
+	«Find the entry for this database in user.databases.
+	bundle {
+		«local (dbName = file.fileFromPath (dbPath))
+		«if defined (user.databases.[dbName])
+			«adrUserTable = @user.databases.[dbName]
+		
+		«Loop through the user.databases table, looking for an entry where the paths match.
+		local (i);
+		local (lowerPath = string.lower (dbPath));
+		for i = 1 to sizeOf (user.databases) {
+			if defined (user.databases [i].f) {
+				if string.lower (user.databases [i].f) == lowerPath {
+					adrUserTable = @user.databases [i];
+					break}}}};
+	
+	«If the user.databases table doesn't exist, or supportsIndexing doesn't exist or is false, return right away.
+	bundle {
+		if adrUserTable == nil {
+			return (false)};
+		if not defined (adrUserTable^.supportsIndexing) {
+			return (false)};
+		if not adrUserTable^.supportsIndexing {
+			return (false)}};
+	
+	«Copy the user.databases table into the search table.
+	copyPrefs (adrUserTable);
+	
+	«Copy preferences from config.mainResponder.search.
+	copyPrefs (@config.mainResponder.search);
+	
+	«Next get the sites table from config.mainResponder.search.sites. (It might not exist, that's okay.)
+	bundle {
+		if adrSitesTable == nil {
+			local (adrSiteRoot = getSiteRoot (adrObject)); //get the root address of this website
+			if (adrSiteRoot != nil) and (adrSiteRoot != @root) {
+				local (i);
+				local (adrTable = @config.mainResponder.search.sites);
+				for i = 1 to sizeOf (adrTable^) {
+					if defined (adrTable^ [i].adrSite) {
+						if adrTable^ [i].adrSite == adrSiteRoot {
+							adrSitesTable = @adrTable^ [i];
+							break}}}}}};
+	
+	«Copy prefs from the sites table.
+	copyPrefs (adrSitesTable);
+	
+	«Find the #search table for this site. It might not exist, that's okay.
+	adrSearchDirectiveTable = getSearchTable (adrObject);
+	
+	«Copy prefs from the #search table.
+	copyPrefs (adrSearchDirectiveTable);
+	
+	return (true)}

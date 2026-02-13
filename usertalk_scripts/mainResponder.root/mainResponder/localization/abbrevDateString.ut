@@ -1,0 +1,25 @@
+on abbrevDateString (d, pta=nil) {
+	«Gets the localized version of an abbreviated date string for a given date value.
+		«d is a date or a string that can be coerced to a date
+	«4/13/00; 2:36:23 PM by JES
+	«Changes:
+		«05/17/00 6:38:19 PM by JS
+			«optimized -- no longer call mainResponder.localization.getDateTimeReplacementTable, rather build the table here
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrLanguageTable = mainResponder.localization.getLanguageTableAddress (pta));
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	local (yr, mo, day, hr, min, sec);
+	date.get (d, @day, @mo, @yr, @hr, @min, @sec);
+	«bundle // safer but slower way of getting abbreviated items
+		«replacementTable.dow = mainResponder.getString ("date.abbrevDayOfWeekNames." + date.dayOfWeek (d), pta: pta)
+		«replacementTable.mon = mainResponder.getString ("date.abbrevMonthNames." + string.padWithZeros (mo, 2), pta: pta)
+	bundle { // not-so-safe, but faster way of getting abbreviated items
+		replacementTable.dow = adrLanguageTable^.strings.date.abbrevDayOfWeekNames.[date.dayOfWeek (d)];
+		replacementTable.mon = adrLanguageTable^.strings.date.abbrevMonthNames.[string.padWithZeros (mo, 2)]};
+	replacementTable.day = day;
+	replacementTable.year = yr;
+	
+	return (mainResponder.getString ("date.abbrevDate", @replacementTable, pta: pta))}

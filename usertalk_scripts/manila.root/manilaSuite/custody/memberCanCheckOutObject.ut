@@ -1,0 +1,18 @@
+on memberCanCheckOutObject (adrObject, adrMember, adrSite, flMessage=false) {
+	«Can this member check out this object? Return true if the object is not checked out, or if it's checked out by this member. Here we don't deal with access privileges; that's done at a different layer.
+		«02/08/00; 11:36:15 PM by PBS
+	
+	local (adrObjectsTable = manilaSuite.custody.getObjectsTableAddress (adrSite, flMessage));
+	local (objectIdentifier = manilaSuite.custody.getObjectIdentifier (adrObject, flMessage));
+	local (adrItem = @adrObjectsTable^.[objectIdentifier]);
+	
+	if not defined (adrItem^) { //is it not checked out?
+		return (true)};
+	
+	if manilaSuite.custody.hasLockTimedOut (adrItem, adrSite) { //has the lock expired?
+		return (true)};
+	
+	if manilaSuite.custody.isCheckedOutByUser (adrItem, adrMember, adrSite, flMessage) { //is it already checked out by this user?
+		return (true)};
+	
+	return (false)}

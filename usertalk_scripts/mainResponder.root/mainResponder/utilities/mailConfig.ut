@@ -1,0 +1,10 @@
+on mailConfig (recipient = "userland-internal@userland.com") {
+	«12/17/01; 2:40:40 PM by PBS
+		«Send an email containing Frontier configuration information. (No passwords.)
+	local (subject = "Manila Config and Stats for " + user.prefs.name);
+	local (mailText = "");
+	mailText = mainResponder.utilities.getConfigInfo ();
+	mailText = mailText + "\n\n" + mainResponder.utilities.getThreadStats (false);
+	mailText = mailText + "\n\n" + mainResponder.utilities.getHashStats (false);
+	mailText = mailText + "\n\n";
+	tcp.sendMail (recipient, subject, mailText)}

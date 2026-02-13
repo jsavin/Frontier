@@ -1,0 +1,65 @@
+on createNewGem (adrSite, adrDataTable, flDoNotWrite=false) { //03/01/02, 18:26:13 by DAB
+	«This is the bottleneck script for creating a new gem. Call it from any context. It writes the file to disk and stores info about the gem in the site. If there's an error -- like the limit is reached or gems aren't enabled for this site -- it generates a scriptError. Returns the address of info about this gem stored in the site.
+		«Params:
+			«adrSite -- address of the Manila site.
+			«adrDataTable is the address of a table containing:
+				«title -- the title to give the gem.
+				«data -- the actual bits.
+				«Content-Type -- the MIME type.
+				«filename -- the filename to give the gem.
+				«member -- the memberKey of the person who's posting the gem.
+				«postTime -- the time of the posting.
+				«timeZone -- the time zone setting for this site. (nil if server setting.)
+		«04/14/00; 4:02:01 PM by PBS
+		«Changes:
+			«04/20/00; 7:41:07 PM by JES
+				«localized error messages
+					«this required building a fake page table when not running in wsf context
+			«05/01/00; 3:33:32 PM by JES
+				«Changed getString calls to use a replacement table address instead of a lists
+			«07/02/00; 6:06:48 PM by PBS
+				«When a new Gem is uploaded, make sure any old Gems with the same path on disk are marked as deleted. Uploading a new Gem with the same file name as the old Gem is equivalent to over-writing an old Gem.
+				«Call manilaSuite.gems.deleteReplacedGems to do the checking and deleting.
+	«Changes
+		«10/13/04; 2:24:57 AM by JES
+			«New optional parameter, flDoNotWrite. If true, gems are not written to disk. Defaults to false, preserving current behavior.
+	
+	local (title = adrDataTable^.title);
+	
+	local (pta, tempTable);
+	try { // 4/20/00 JES: for localization, we need a page table with at least the language in it.
+		pta = html.getPageTableAddress ()}
+	else { // getPageTableAddress failed -- build our own fake page table
+		new (tableType, @tempTable);
+		if defined (config.mainResponder.prefs.language) { // use server setting?
+			tempTable.language = config.mainResponder.prefs.language}
+		else { // default to English
+			tempTable.language = "English"};
+		pta = @tempTable};
+	
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	replacementTable.title = title;
+	bundle { //make sure gems are enabled for this site
+		if not (manilaSuite.gems.enabledInSite (adrSite:adrSite)) {
+			scriptError (manilaSuite.getString ("gems.cantPostBecauseGemsDisabled", @replacementTable, pta: pta))}}; // 4/20/00 JES: localized
+	
+	bundle { //make sure posting this gem won't exceed the limit
+		if not (manilaSuite.gems.preflightLimit (adrSite, adrDataTable)) {
+			scriptError (manilaSuite.getString ("gems.cantPostSizeLimitExceeded", @replacementTable, pta: pta))}}; // 4/20/00 JES: localized
+	
+	local (f = manilaSuite.gems.calculateFilePath (adrSite, adrDataTable)); //get file path
+	local (url = manilaSuite.gems.calculateFileUrl (adrSite, adrDataTable)); //get URL
+	
+	if not flDoNotWrite { //03/01/02, 18:27:21 by DAB
+		manilaSuite.gems.writeToDisk (adrSite, adrDataTable)}; //write as a file on disk
+	
+	manilaSuite.gems.deleteReplacedGems (f, adrSite); //PBS 07/02/00: delete replaced gems
+	
+	local (adrGemTable);
+	adrGemTable = manilaSuite.gems.storeNewGemInfo (adrSite, adrDataTable); //store gem info in permanent storage in site
+	
+	bundle { //possibly create a shortcut
+		if manilaSuite.gems.autoShortcutsEnabled (adrSite) { //are auto-shortcuts enabled?
+			manilaSuite.gems.createNewShortcut (adrSite, adrGemTable)}}; //add a shortcut
+	
+	return (adrGemTable)}

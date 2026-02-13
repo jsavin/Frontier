@@ -1,0 +1,29 @@
+on setup (pta, cohorts, adrTbl) {
+	«Changes
+		«10/15/05; 4:11:24 AM by JES
+			«Edit script to UserLand code style.
+		«10/09/05, 13:49:29 by DAB
+			«Created. Given a list of cohorts, initialise yabl at adrTbl tro do bulk testing. Cohorts may be empty.
+	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+	local (adrGroup = mainResponder.members.getMembershipTable (pta^.responderAttributes.defaultMembershipGroup));
+	local (adrCohorts = @adrGroup^.cohorts);
+	
+	new (tabletype, adrTbl);
+	
+	if manilaSuite.AccessControl.isControlledSite (adrSite) {
+		local (cohort, adrCohort, adrScript);
+		for cohort in cohorts {
+			adrCohort = @adrCohorts^.[cohort];
+			if not defined (adrCohort^) {
+				continue};
+			if not defined (adrCohort^.containsTest) {
+				continue};
+			adrScript = @adrCohort^.containsTest;
+			while typeOf (adrScript^) == addressType {
+				adrScript = adrScript^};
+			xml.addValue (adrTbl, "entry", adrScript)};
+		
+		if sizeOf (adrTbl^) > 0 {
+			adrTbl^.pageTable = pta^}}; //copy page table
+	
+	return (true)}

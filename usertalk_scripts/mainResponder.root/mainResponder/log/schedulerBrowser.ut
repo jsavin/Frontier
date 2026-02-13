@@ -1,0 +1,37 @@
+on schedulerBrowser (logname="schedulerMonitor") { //no formatting on the tables
+	«12/18/98; 8:07:13 AM by DW
+		«We can use this displayer to see logs before they have special code for displaying them.
+		«A useful tool for debugging logs.
+		«Changes:
+			«4/14/00; 5:49:59 PM by JES
+				«localized
+			«11/4/99; 11:34:26 PM by PBS
+				«Fixed the call to hierarchicTableDisplayer: it's actually in html.data.standardMacros, not user.html.macros.
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	local (adrlog);
+	bundle { //set adrlog to point to the scheduler log for the current hour
+		adrlog = log.getGuestSubTable (logname);
+		local (ct = sizeof (adrlog^));
+		if ct == 0 {
+			add (mainResponder.getString ("log.theSchedulerLogIsEmpty")); // 4/14/99 JES: localized
+			return (htmltext)};
+		adrlog = @adrlog^ [ct]};
+	on td (s) {
+		return ("<td valign=\"top\"><font size=\"-0\">" + s + "</font></td>")};
+	add ("<table cellpadding=\"5\" border=\"1\">"); indentlevel++;
+	local (ct = sizeof (adrlog^), i, adritem);
+	for i = ct downto 1 {
+		adritem = @adrlog^ [i];
+		add ("<tr>"); indentlevel++;
+		bundle { //add time
+			local (s = xml.convertToDisplayName (nameof (adritem^)));
+			s = string.nthfield (s, ';', 2);
+			add (td ("<b><pre>" + (s - " " - " ") + "</pre></b>"));
+			add (td (html.data.standardMacros.hierarchicTableDisplayer (adritem)))}; //PBS 11/4/99: fix call to hierarchicTableDisplayer
+		add ("</tr>"); indentlevel--};
+	add ("</table>"); indentlevel--;
+	return (htmltext)};
+«bundle //test code
+	«schedulerBrowser ()

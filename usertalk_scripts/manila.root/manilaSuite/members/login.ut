@@ -1,0 +1,272 @@
+on login () {
+	«Changes:
+		«11/29/06; 11:14:04 AM by LL
+			«Use a plain template if the site is set to editors only or members only.
+		«1/5/06; 4:47:50 AM by JES
+			«Add callback support for complete override of the login page, via config.manila.callbacks.loginPage. The first script that returns a string (presumably some HTML), gets to be the login page. Scripts which return false are ignored. Errors are *not* trapped, so be careful when writing your callback code.
+				«Callbacks take no parameters, but can get pretty much all they need from the page table, just like we normally do.
+				«The first tool to use this is UserLand's LDAP.root, which overrides the login page mechanism completely.
+		«2005
+			«11/12/05; 11:17:17 PM by JES
+				«Pass password as string when calling manilaSuite.sendMail. Bug fix: recipient was nil when calling manilaSuite.sendMail, instead of being the member's email address.
+			«11/12/05; 11:08:01 PM by JES
+				«Make sure the correct email address is shown to the user after mailing them their password.
+			«11/8/05; 4:41:16 AM by JES
+				«Only send the password in email when checking membership in the site's membership group, not when falling back to the admin group.
+			«11/8/05; 4:34:32 AM by JES
+				«When checking admin group in case of an error, don't pass @errorText to the checkUser routine, instead pass the address of a dummy string.
+					«Prevents a false error message from being presented to the user after sending their password in email.
+			«11/2/05; 4:36:47 AM by JES
+				«Call through manilaSuite.members.getMemberEmail to get member's email address. Fix bug introduced with admin login feature, which masked the true error message when login of a normal member fails.
+			«10/15/05; 5:00:36 AM by JES
+				«When sending password reminder, use personalInfo.email for recipient address, if defined.
+					«Change by DAB.
+			«9/22/05; 3:09:07 AM by JES
+				«If the login fails, possibly check the admin group in addition to the group for this site, and set the cookie for the admin user.
+			«9/21/05; 2:17:08 PM by JES
+				«Comment out all event logging.
+		«1999-2003
+			«5/15/03; 4:43:07 PM by JES
+				«Log an event when a member logs in.
+			«4/18/03; 3:41:39 PM by JES
+				«When getting the email address out of the postArgs table, call string.trimWhiteSpace on it in case the user accidentally added a space.
+			«9/3/02; 3:07:02 AM by JES
+				«Don't redirect to the home page if we just changed our password -- we want confirmation.
+			«9/12/01; 3:48:31 PM by PBS
+				«Support for expiring cookies at end of session.
+			«03/20/01; 10:34:38 PM by PBS
+				«The password check was not case-sensitive, but it needs to be, because everywhere else the password is a case-sensitive check.
+				«Also: when setting the cookie, don't use the email address as typed into the form; use the name of the person's membership record.
+			«01/31/01; 4:36:17 PM by PBS
+				«Removed the maxLength restriction for the email address.
+			«08/07/00; 9:13:47 PM by PBS
+				«Call manilaSuite.sendMail rather than tcp.sendMail.
+			«05/01/00; 3:06:33 PM by JES
+				«Changed getString calls to use a replacement table address instead of a list.
+			«04/21/00; 2:45:20 AM by JES
+				«Localized.
+			«04/10/00; 3:48:39 PM by PBS
+				«Major re-write for efficiency. Also now supports the new membership cookies format.
+			«12/26/99; 5:21:15 PM by PBS
+				«Commented out an unneccesary call to fileMenu.saveMyRoot, which should boost performance.
+			«10/30/99; 3:59:25 PM by PBS
+				«Don't set table and font colors in the login form, there's no need for that. They should just pick up the colors from the page.
+				«Code clean-up. Removed some duplicated code.
+			«07/6/99; 8:08:55 AM by DW
+				«When the user enters a mail address and an empty password, we send the password to the mail address. This is not an error, it's part of the standard interface.
+				«Changed the error color from maroon to red to be consistent with other sites, and other parts of our sites.
+			«?/?/99 PBS
+				«Created. Handle logging in to the site.
+	
+	bundle { //JES 1/5/06: callback support for overriding the login page
+		if defined (config.manila.callbacks.loginPage) {
+			local (adrcallback);
+			for adrcallback in @config.manila.callbacks.loginPage {
+				try {
+					while typeOf (adrcallback^) == addressType {
+						adrcallback = adrcallback^}};
+				local (retval = adrcallback^ ());
+				if typeOf (retval) == stringType {
+					return (retval)}}}};
+	
+	local (pta = html.getPageTableAddress ());
+	
+	bundle { //set template
+		local (adrSite = manilaSuite.getManilaSiteAddress (pta));
+		local (adrNewsSite = pta^.newsSite);
+		local (flPlainTemplate = false);
+		if defined (adrNewsSite^.flEditorsOnlyAccessToSite) {
+			if adrNewsSite^.flEditorsOnlyAccessToSite {
+				flPlainTemplate = true}};
+		if defined (adrNewsSite^.flMembersOnlyAccessToSite) {
+			if adrNewsSite^.flMembersOnlyAccessToSite {
+				flPlainTemplate = true}};
+		if flPlainTemplate {
+			pta^.template = "<html><head><title>{title}</title></head><body bgcolor=\"#FFFFFF\">\r\r<blockquote><h2>{title}</h2>{bodytext}</blockquote>{pagefooter ()}"}};
+	
+	local (groupName = pta^.defaultMembershipGroup);
+	local (htmlText = "", indentLevel = 0);
+	local (defaultMailAddress = "");
+	local (flPost = string.lower (pta^.method) == "post");
+	local (flExpireAtEndOfSession);
+	
+	bundle { //PBS 09/12/01: get pref for cookie expiration
+		if not defined (pta^.newsSite^.flCookiesExpireAtEndOfSession) {
+			pta^.newsSite^.flCookiesExpireAtEndOfSession = false};
+		flExpireAtEndOfSession = pta^.newsSite^.flCookiesExpireAtEndOfSession};
+	
+	pta^.title = manilaSuite.getString ("members.loginPageTitle"); //4/21/00 JES: localized
+	pta^.meta = "<META HTTP-EQUIV=\"Expires\" CONTENT=\"Mon, 01 Jan 1990 01:00:00 GMT\">";
+	
+	on add (s) {
+		htmlText = htmlText + string.filledString ('\t', indentLevel) + s + cr;};
+	
+	bundle { //add the top of the page
+		«4/21/00; 2:31:43 AM by JES: localized instructions
+		add (manilaSuite.getString ("members.loginPageInstructions"));
+		if defined (pta^.newsSite^.flMembership) and pta^.newsSite^.flMembership {
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.url = pta^.urls^.memberSignup;
+			add (manilaSuite.getString ("members.loginPageNotMember", @replacementTable) + "<p>")}};
+	
+	on logonForm () { //build form (cribbed from mainResponder.members.logonForm)
+		add ("<table border=\"0\"><tr><td>"); indentLevel++;
+		add ("<form action=\"" + pta^.url + "\" method=\"POST\">"); indentLevel++;
+		add ("<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\">"); indentLevel++;
+		
+		add ("<tr>"); indentLevel++;
+		add ("<td>" + manilaSuite.getString ("members.emailAddressPrompt") + "</td>"); // 4/21/00 JES: localized
+		add ("<td>&nbsp;<input name=\"mailAddress\" value=\"" + defaultMailAddress + "\" size=\"30\"></td>"); //PBS 01/31/01: removed the maxLength restriction
+		add ("</tr>"); indentLevel--;
+		
+		add ("<tr>"); indentLevel++;
+		add ("<td>" + manilaSuite.getString ("members.passwordPrompt") + "</td>"); // 4/21/00 JES: localized
+		add ("<td>&nbsp;<input type=\"password\" name=\"password\" size=\"30\" maxlength=\"60\"></td>");
+		add ("</tr>"); indentLevel--;
+		
+		bundle { //PBS 09/12/01: add Remember Login checkbox
+			if flExpireAtEndOfSession {
+				add ("<tr>"); indentLevel++;
+				add ("<td>Remember Login?</td>");
+				add ("<td><input type=\"checkbox\" name=\"rememberLogin\"></td>");
+				add ("</tr>"); indentLevel--}};
+		
+		add ("<tr>"); indentLevel++;
+		add ("<td>&nbsp;</td>");
+		add ("<td align=\"right\"><input type=\"submit\" value=\"" + manilaSuite.getString ("members.loginButton") + "\"></td>"); // 4/21/00 JES: localized
+		add ("</tr>"); indentLevel--;
+		
+		add ("</table>"); indentLevel--;
+		
+		bundle { //add the referer
+			local (referer);
+			if defined (pta^.postArgs.referer) {
+				referer = pta^.postArgs.referer}
+			else {
+				if pta^.searchArgs != "" and pta^.searchArgs beginsWith "http://" {
+					referer = pta^.searchArgs}
+				else {
+					if defined (pta^.requestHeaders.referer) {
+						referer = pta^.requestHeaders.referer}
+					else {
+						referer = pta^.urls^.newsHome}}};
+			add ("<input type=\"hidden\" name=\"referer\" value=\"" + referer+ "\">")};
+		
+		add ("</form>"); indentLevel--;
+		add ("</td></tr></table>"); indentLevel--};
+	
+	if flPost { //handle login command
+		on checkUser (mailAddress, password, groupName, adrErrorText, myCookieName) {
+			local (adrMembers = mainResponder.members.getMembershipTable (groupName));
+			local (adrUsers = @adrMembers^.users);
+			
+			bundle { //PBS 09/12/01: find out if user wants the login to be remembered
+				if defined (pta^.postArgs.rememberLogin) {
+					if string.lower (pta^.postArgs.rememberLogin) == "on" {
+						flExpireAtEndOfSession = false}}};
+			
+			on sendCookie () {
+				local (memberKey = nameOf (adrUser^)); //)PBS 03/20/01: don't use the username as typed into the form, use the name of the person's membership record
+				mainResponder.members.setCookie (memberKey, password, adrMembers, pta, groupName, flExpireAtEndOfSession); //PBS 09/12/01: send flExpireAtEndOfSession parameter
+				adrUser^.timeReceivedCookie = clock.now ();
+				add (manilaSuite.getString ("members.youHaveBeenSentTheCookie"))}; // 4/21/00 JES: localized
+			
+			local (adrUser = @adrUsers^.[mailAddress]);
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.mailAddress = mailAddress;
+			if not defined (adrUser^) {
+				«manilaSuite.log.addEvent ("loginFailedUnknownMember", adrReplacementTable:@replacementTable)
+				adrErrorText^ = "<font color=\"red\">" + manilaSuite.getString ("members.cantLoginNotMemberError", @replacementTable) + "</font><p>";
+				return (false)};
+			
+			replacementTable.memberLink = manilaSuite.members.linkToMember (pta^.defaultMembershipGroup, mailAddress);
+			if string (adrUser^.password) != string (password) { //PBS 03/20/01: case sensitive check
+				if password == "" { //mail the password to the user, 7/6/99; 8:02:22 AM by DW
+					«tcp.sendMail (mailAddress, "Password", string (adrUser^.password), pta^.newsSite^.emailConfirmationSender)
+					local (startticks = clock.ticks ());
+					local (recipient);
+					try {
+						recipient = manilaSuite.members.getMemberEmail (adrUser);
+						replacementTable.mailAddress = recipient}
+					else {
+						adrErrorText^ = "<font color=\"red\">" + manilaSuite.getString ("members.cantSendPasswordNoEmailAddress", @replacementTable) + "</font><p>";
+						return (false)};
+					«bundle //old code
+						«case true //05/10/13, 16:39:22 by DAB
+							«not defined (adrUser^.personalinfo)
+							«not defined (adrUser^.personalinfo.email)
+							«adrUser^.personalinfo.email == ""
+								«recipient = mailAddress
+						«else
+							«recipient = adrUser^.personalinfo.email
+					manilaSuite.sendMail (recipient, "Password", string (adrUser^.password), pta^.newsSite^.emailConfirmationSender); //05/10/13, 16:54:51 by DAB
+					«manilaSuite.log.addEvent ("passwordSentInEmail", startticks, @replacementTable)
+					adrErrorText^ = "<font color=\"red\">" + manilaSuite.getString ("members.passwordMailedTo", @replacementTable) + "</font><p>"}
+				else {
+					«manilaSuite.log.addEvent ("loginFailedWrongPassword", adrReplacementTable:@replacementTable)
+					adrErrorText^ = "<font color=\"red\">" + manilaSuite.getString ("members.cantLoginIncorrectPassword", @replacementTable) + "</font><p>"};
+				defaultMailAddress = mailAddress;
+				return (false)};
+			
+			«local (startticks = clock.ticks ())
+			sendCookie ();
+			manilaSuite.members.callbacks (manilaSuite.getManilaSiteAddress(pta), adrUser, "login"); //05/03/24, 23:19:29 by DAB
+			«bundle //log the event
+				«manilaSuite.log.addEvent ("memberLogin", startticks, @replacementTable)
+			
+			return (true)};
+		
+		on redirect () {
+			local (siteUrl = pta^.ftpSite^.url);
+			local (referer = pta^.postArgs.referer);
+			local (lowerReferer = string.lower (referer));
+			if not (lowerReferer endsWith "/changepassword") {
+				case true {
+					lowerReferer contains "/signout";
+					lowerReferer contains "/signup";
+					lowerReferer contains "/member"; //PBS 07/05/00: check for /member, not /members
+					lowerReferer contains "/admin" {
+						referer = pta^.urls^.newsHome}}};
+			return (mainResponder.redirect (referer))};
+		
+		local (adrThisSiteMembers = mainResponder.members.getMembershipTable (groupName));
+		local (myCookieName = adrThisSiteMembers^.cookieName);
+		local (mailAddress = string.trimWhiteSpace (pta^.postArgs.mailAddress));
+		local (password = pta^.postArgs.password);
+		local (errorText);
+		if checkUser (mailAddress, password, groupName, @errorText, myCookieName) {
+			return (redirect ())}
+		else {
+			if defined (config.mainResponder.prefs.flAdminGroupAlwaysAllowed) {
+				if config.mainResponder.prefs.flAdminGroupAlwaysAllowed {
+					local (dummyError);
+					if checkUser (mailAddress, password, "admin", @dummyError, myCookieName) {
+						return (redirect ())}}};
+			add (errorText);
+			logonForm ();
+			htmlText = manilaSuite.untaint (htmlText);
+			return (htmlText)}}
+	else { //build the logon form
+		bundle { //handle the case where the member is already logged in
+			if defined (pta^.adrMemberInfo) { //PBS 04/10/00: is this an already logged-in member?
+				if defined (pta^.adrMemberInfo^) {
+					local (memberKey = nameOf (pta^.adrMemberInfo^));
+					memberKey = string.replace (memberKey, "@", "\\@");
+					local (name = memberKey);
+					if defined (pta^.adrMemberInfo^.personalInfo.name) {
+						local (realName = string.trimWhiteSpace (pta^.adrMemberInfo^.personalInfo.name));
+						if realName != "" {
+							name = realName + " (" + memberKey + ")"}};
+					local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+					replacementTable.name = name;
+					htmlText = manilaSuite.getString ("members.alreadyLoggedInAs", @replacementTable); // 4/21/00 JES: localized
+					return (manilaSuite.unTaint (htmltext))}}};
+		
+		logonForm ()};
+	
+	htmlText = manilaSuite.unTaint (htmlText); //no curly brace macros in this text
+	
+	return (htmlText)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«login ()

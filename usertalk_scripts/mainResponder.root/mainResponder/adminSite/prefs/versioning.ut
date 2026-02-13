@@ -1,0 +1,144 @@
+on versioning () {
+	«mainResponder.adminSite.prefs.versioning : 04.05.19, 15:05:07 by DAB
+	«Changes
+		«12/21/06; 3:56:36 PM by LL
+			«Fix layout issue when displaying versioning preferences for sites.
+		«10/7/05; 2:43:02 PM by JES
+			«Fix typo.
+		«2/17/05; 2:35:42 PM by JES
+			«Rework HTML rendering to fix with UserLand's server prefs style. May still want to change from radio buttons to checkboxes. Also, this page will most likely fail to load on servers with a very large number of sites.
+		«04.05.19, 15:05:07 by DAB
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (bgcolors = {pta^.trbg2, pta^.trbg1});
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	local (message = "");
+	
+	local (adrEntry);
+	if pta^.method == "POST" {
+		config.manila.prefs.versioning.maxLogs = pta^.postargs.maxlogs;
+		config.manila.prefs.versioning.maxVersions = pta^.postargs.maxversions;
+		config.manila.prefs.versioning.availability = pta^.postargs.availability;
+		
+		for adrEntry in  @config.manila.sites {
+			local (sitename = nameof(adrEntry^));
+			local  (adrSite = adrEntry^);
+			if not defined(adrSite^) {
+				continue};
+			
+			local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+			if not defined(adrNewsSite^.versioning) {
+				new(tabletype, @adrNewsSite^.versioning)};
+			
+			adrNewsSite^.versioning.enabled = boolean(pta^.postargs.["versioning_" + sitename]);
+			adrNewsSite^.versioning.flRestoreWanted = boolean(pta^.postargs.["rollback_" + sitename])}};
+	
+	bundle { //add message if there is one
+		if message != "" {
+			add ("<p><b>" + message + "</b></p>")}};
+	
+	local (availabilityLevel, maxLogs, maxVersions);
+	availabilityLevel =  manilaSuite.versioning.getConfiguration(@maxLogs, @maxVersions);
+	
+	add ("<table border='0'>");
+	«add("Configure Manila versioning, the sites for which it is enabled, and the level in each site.")
+	
+	bundle { //row for versioning availability 
+		add("<tr>");
+		add("<td>Enable versioning:</td>");
+		
+		add ("<td>");
+		add ("<select name='availability'>");
+		local (ix, selected="", str);
+		for ix = 0 to 4 {
+			case ix {
+				0 {
+					str = "Disabled for all sites"};
+				1 {
+					str = "Disabled by default; managing editors can enable"};
+				2 {
+					str = "Enabled by default; managing editors can disable"};
+				3 {
+					str =  "Enabled for all sites"};
+				4 {
+					str = "Enabled by Administrators only"}};
+			selected = "";
+			if ix == availabilityLevel {
+				selected = " selected"};
+			add("<option value='" + ix + "'" + selected + ">" + str + "</option>")};
+		add("</select>");
+		add("</td>");
+		
+		add ("</tr>")};
+	
+	bundle { //row for maximum logs to open
+		add("<tr>");
+		add("<td>" + "Maximum version logs simultaneously open" + ":</td>");
+		add ("<td>");
+		add("<input type='text' name='maxlogs' value='" + maxLogs + "' size='2' maxlength='2' dir='rtl'>");
+		add("</td>");
+		add ("</tr>")};
+	
+	bundle { //row for maximum Versions to support
+		add("<tr>");
+		add("<td>" + "Maximum depth of rollback" + ":</td>");
+		add ("<td>");
+		add("<input type='text' name='maxversions' value='" + maxVersions + "' size='2' maxlength='2' dir='rtl'>");
+		add("</td>");
+		add ("</tr>")};
+	
+	add ("</table>");
+	
+	bundle { //add row(s) for sites
+		add("<tr>");
+		add ("<td colspan='2'>");
+		add ("<br>");
+		
+		add("\r<table cellpadding='0' cellspacing='5' border='0'>");
+		add("\r\t<tr>\r\t\t<td><b>Site</b></td>\r\t\t<td colspan='2'><b>Versioning</b></td>\r\t\t<td colspan='2'><b>Restore</b></td>\r\t\t</tr>");
+		
+		for adrEntry in  @config.manila.sites {
+			local (sitename = nameof(adrEntry^));
+			local  (adrSite = adrEntry^);
+			«msg("Processing " + sitename)
+			if not defined(adrSite^) {
+				continue};
+			local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
+			
+			local (url = adrSite^.["#urls"].newsHome);
+			local (flSiteRestoreEnabled=false);
+			try {flSiteRestoreEnabled = adrNewsSite^.versioning.flRestoreWanted };
+			
+			add("\r\t<tr>");
+			add("\r\t<td style='padding-right:25px'>" + html.getLink(sitename, url)  + "</td>");
+			
+			local (yes = "", no = " checked");
+			if defined(adrNewsSite^.versioning) {
+				if defined(adrNewsSite^.versioning.enabled) and adrNewsSite^.versioning.enabled {
+					yes = " checked";
+					no = ""}};
+			
+			add("<td><input type = 'radio' name='versioning_" + sitename + "' value='true'" + yes + ">&nbsp;On</td>");
+			add("<td style='padding-right:25px'><input type = 'radio' name='versioning_" + sitename + "' value='false'" + no + ">&nbsp;Off</td>");
+			
+			«add column for restore  02/04/25, 15:35:17 by DAB
+			if flSiteRestoreEnabled or (defined(adrNewsSite^.versioning.enabled) and adrNewsSite^.versioning.enabled) {
+				bundle { //set yes and no for restore
+					yes = "";
+					no = " checked";
+					if flSiteRestoreEnabled {
+						no = "";
+						yes = " checked"}};
+				add("<td><input type = 'radio' name='rollback_" + sitename + "' value='true'" + yes + ">&nbsp;On</td>");
+				add("<td><input type = 'radio' name='rollback_" + sitename + "' value='false'" + no + ">&nbsp;Off</td>")}
+			else {
+				add("<input type = 'hidden' name='rollback_" + sitename + "' value='false'>")};
+			
+			add("\r\t</tr>")};
+		add("\r\t</table>");
+		};
+	
+	return (htmltext)}

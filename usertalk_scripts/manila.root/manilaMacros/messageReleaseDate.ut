@@ -1,0 +1,40 @@
+on messageReleaseDate () {
+	«05/04/10, 14:34:47 by DAB
+		«Created.
+	local (pta = html.getPageTableAddress());
+	local (adrMsgTable);
+	bundle {
+		«based on mainResponder.discuss.getMessageTable
+			«but works with new messages
+		case true {
+			defined (pta^.adrMsgTable) {
+				adrMsgTable = pta^.adrMsgTable};
+			defined (pta^.adrNewMsg) {
+				adrMsgTable = pta^.adrNewMsg};
+			defined (pta^.adrEditedMsg) {
+				adrMsgTable = pta^.adrEditedMsg}}
+		else {
+			local (msgnum);
+			if defined (pta^.msgNum) {
+				msgNum = pta^.msgNum}
+			else {
+				if pta^.pathArgs != "" {
+					«msgNum = number (pta^.pathArgs)
+					try {msgNum = number (pta^.pathArgs)}}}; // 14/05/05; 9:18:26 AM by PR pathArg could be a non-coerceable string, such as 'advanced_template'
+			if msgnum != 0 {
+				adrMsgTable = mainResponder.discuss.getMessageTable (msgNum)}}};
+	
+	if not defined(adrMsgTable^) {
+		return ""};
+	
+	adrMsgTable = manilaSuite.accessControl.goToOriginal(pta, adrMsgTable); //establish adrMsg as top of thread 02/05/06, 17:13:34 by DAB
+	
+	if not defined(adrMsgTable^.accessControl) {
+		return ""};
+	if not defined(adrMsgTable^.accessControl.releaseDate) {
+		return ""};
+	
+	if typeOf(adrMsgTable^.accessControl.expiryDate) != dateType { //02/07/22, 17:48:24 by DAB
+		return ""};
+	
+	return adrMsgTable^.accessControl.releaseDate}

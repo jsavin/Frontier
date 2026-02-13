@@ -1,0 +1,24 @@
+on delete (username, password, siteName, msgNum) {
+	«Delete a message from message storage.
+	«Changes:
+		«3/31/05; 12:03:14 PM by JES
+			«Call manilaSuite.discuss.changeMessageDeletion, which handles custody and calls callbacks when messages are deleted.
+		«3/19/05; 11:26:47 PM by JES
+			«Set adrSite with a call to manilaSuite.rpcUtils.getSiteAddress.
+		«10/09/00; 10:28:20 PM by PBS
+			«Update indexes.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't delete message \"" + msgNum + "\" because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName)); //moved up 05/03/24, 22:23:17 by DAB
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss));
+	
+	bundle { //update indexes
+		manilaSuite.discuss.removeFromAllIndexes (adrSite, adrMsg)};
+	
+	manilaSuite.discuss.changeMessageDeletion (adrmsg, manilasuite.members.getMemberTableFromSiteAddress(adrSite, username), adrSite, true); //05/03/24, 22:24:12 by DAB
+	
+	return (true)}

@@ -1,0 +1,25 @@
+on getWizardAddress (wizardName, defaultWizardAddress=nil, pta=nil) {
+	«5/29/00; 1:21:22 AM by JES
+		«Gets the address of a localized prefs wizard
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrWizard);
+	local (adrLanguageTable = manilaSuite.getLanguageTableAddress (pta: pta));
+	if defined (adrLanguageTable^.wizards.[wizardName]) { // is there a localized wizard for our current lanugage?
+		adrWizard = @adrLanguageTable^.wizards.[wizardName]}
+	else { // no localized wizard exists -- find server/Frontier default wizard, or use the one in manilaData instead.
+		local (adrLanguagesTable = parentOf (adrLanguageTable^));
+		if defined (config.mainResponder.globals.language) { // is there a default language for the server?
+			if defined (adrLanguagesTable^.[config.mainResponder.globals.language].wizards.[wizardName]) {
+				adrWizard = @adrLanguagesTable^.[config.mainResponder.globals.language].wizards.[wizardName]}};
+		if not adrWizard { // no server default, what about Frontier?
+			if defined (user.prefs.language) {
+				if defined (adrLanguagesTable^.[user.prefs.language].wizards.[wizardName]) {
+					adrWizard = @adrLanguagesTable^.[user.prefs.language].wizards.[wizardName]}}};
+		if not adrWizard { // no server or Frontier default, use manilaData.sitePrefs.wizard
+			if defaultWizardAddress == nil {
+				scriptError ("Can't find a localized prefs wizard named '" + wizardName + "'.")};
+			adrWizard = defaultWizardAddress}};
+	return (adrWizard)}

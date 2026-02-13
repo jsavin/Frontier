@@ -1,0 +1,54 @@
+on tableToXml (adrTable) {
+	«Changes:
+		«7/6/05; 3:39:16 AM by JES
+			«Handle multiple departments defined as a list. (Preliminary support for multiple departments.)
+		«4/24/03; 5:00:02 PM by JES
+			«Add all sub-elements of the newsItem table -- not just the ones that we knew about in advance.
+		«10/26/00; 11:33:55 PM by PBS
+			«Escape ampersands in the URL -- so the page can be validated.
+		«05/02/00; 11:11:03 AM by PBS
+			«Remove whitespace from around the value: make it <tag>value</tag>.
+		«04/20/00; 1:10:26 AM by PBS
+			«Created. Convert a table to XML.
+	
+	local (xmlText = "");
+	
+	on add (s) {
+		xmlText = xmlText + s};
+	
+	on addTag (tagName, value) {
+		value = string.replaceAll (value, "<", "&lt;");
+		add ("\t<" + tagName + ">");
+		add (value);
+		add ("</" + tagName + ">\r")};
+	
+	add ("<newsItem>\r");
+	local (adrItem);
+	for adrItem in adrTable {
+		local (itemName = nameOf (adrItem^));
+		case string.lower (itemName) {
+			"flposted";
+			"flreleased";
+			"posttime" {
+				continue};
+			"url" {
+				local (val = adrItem^);
+				if val contains "&amp;" { //PBS 10/26/00: escape ampersands -- important for validation
+					val = string.replaceAll (val, "&", "&amp;")};
+				addTag (itemName, val)};
+			"department" {
+				local (val = adrItem^);
+				if typeOf (val) == listType {
+					if sizeOf (val) == 0 {
+						addTag (itemName, "")}
+					else {
+						local (oneDept);
+						for oneDept in val {
+							addTag (itemName, oneDept)}}}
+				else {
+					addTag (itemName, val)}}}
+		else {
+			addTag (itemName, adrItem^)}};
+	add ("\t</newsItem>");
+	
+	return (xmlText)}

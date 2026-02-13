@@ -1,0 +1,58 @@
+on refGlossary (s) {
+	«Changes
+		«3/22/06; 3:07:29 AM by JES
+			«Fix a bug in the way we were handling gem glossary entries from sub- and parent-sites, which caused them not to get expanded properly.
+		«3/22/06; 1:30:32 AM by JES
+			«Created. Entry point for Manila's glossary (shortcut) processor.
+	local (pta = html.getPageTableAddress ());
+	if manilaSuite.isManilaSite (pta^.adrSiteRootTable) {
+		if config.manila.prefs.flShortcutLookupInSubSites or config.manila.prefs.flShortcutLookupInParentSites {
+			local (adrsite = manilaSuite.getSiteAddress (pta));
+			local (adrGloss = @adrsite^.["#glossary"]);
+			if defined (adrGloss^.[s]) { //don't override local glossary
+				return};
+			
+			on myGlossRef (s, adrsite) {
+				if s[1] == "{" { //handle gems
+					local (msgnum = number (string.popSuffix (string.nthField (s, "(", 2), ")")));
+					return (manilaSuite.gems.includeGem (msgnum, adrsite))};
+				return (s)};
+			
+			local (siteUrl = manilaSuite.getSiteUrl (adrsite));
+			local (urlparts = string.urlSplit (siteUrl));
+			
+			if config.manila.prefs.flShortcutLookupInParentSites { //parent sites first
+				local (path = "/" + urlparts[3]);
+				while sizeOf (path) > 1 { //might there be parent sites? -- they don't have to be Manila sites
+					path = string.popSuffix (string.popTrailing (path, "/"), "/");
+					local (parentUrl = urlparts[1] + urlparts[2] + path + "/");
+					try {
+						local (parentName = manilaSuite.rpcUtils.urlToSiteName (parentUrl));
+						local (adrParent = manilaSuite.rpcUtils.getSiteAddress (parentName));
+						local (adrParentGloss = @adrParent^.["#glossary"]);
+						if defined (adrParentGloss^.[s]) {
+							return (myGlossRef (adrParentGloss^.[s], adrParent))}}}};
+			if config.manila.prefs.flShortcutLookupInSubSites { //sub-sites second
+				local (adrdom = @config.mainResponder.domains.default);
+				if defined (config.mainResponder.domains.[urlparts[2]]) {
+					adrdom = @config.mainResponder.domains.[urlparts[2]]};
+				if mainResponder.siteTree.domainIsSiteTree (adrdom) { //must be in a site tree to find sub-sites
+					try {
+						local (adrstruct = @adrdom^.siteTree.directory.structure);
+						local (adrtree = xml.getAddress (adrstruct, "siteTree"));
+						local (adrTopSite = xml.getAddress (adrtree, "site"));
+						local (adrInTree = adrTopSite);
+						if sizeOf (urlparts[3]) > 0 { //we're not a top-level site, so we're checking sub-sub-sites
+							adrInTree = mainResponder.siteTree.dive (adrTopSite, urlparts[3])};
+						local (adr);
+						for adr in adrInTree { //now we're on to sub-sites in the compiled XML for the domain
+							if defined (adr^.["/atts"].address) { //of course this will only work for sites in the ODB
+								try {
+									local (adrsub = address (adr^.["/atts"].address));
+									local (adrSubGloss = @adrsub^.["#glossary"]);
+									if defined (adrSubGloss^[s]) {
+										return (myGlossRef (adrSubGloss^.[s], adrsub))}}}}}}}};
+		if not config.manila.prefs.flShortcutLookupGlobal { //skip global glossary
+			if defined (user.html.glossary.[s]) {
+				return ("\"" + s + "\"")}}};
+	return}

@@ -1,0 +1,61 @@
+on readouts () {
+	«Changes
+		«8/29/02; 12:35:19 AM by JES
+			«Added recent root updates log section.
+		«8/4/02; 9:16:02 PM by JES
+			«Created. Display the last n items in all of the logs, with a link to the full logs.
+	local (pta = html.getPageTableAddress ());
+	
+	local (n = 5);
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	bundle { //explanatory text
+		add ("<p>The readouts page displays the most recent events in various logs, and information about open databases and disks on this server.</p>")};
+	
+	with mainResponder.adminSite {
+		bundle { //logs
+			add ("<h3><a name=\"logs\">Logs</a></h3>");
+			bundle { //http log
+				add ("<p><b>HTTP Log</b><br /><br />The <a href=\"" + urls.http + "\" title=\"Click to see the full log.\">HTTP log</a> displays the most recent HTTP requests, including time status code, number of bytes, and path.</p>");
+				add (website.httpLog (n));
+				add ("<br />")};
+			bundle { //rpc log
+				add ("<p><b>RPC Log</b><br /><br />The <a href=\"" + urls.rpc + "\" title=\"Click to see the full log.\">RPC log</a> displays the most recent XML-RPC and SOAP requests, with information about each one, including the XML-RPC procedure name.</p>");
+				add (website.rpcLog (n));
+				add ("<br />")};
+			if config.mainresponder.prefs.flSearchEngine and config.mainresponder.search.prefs.flLogEnabled {
+				if config.mainresponder.search.prefs.flLogSearches { //search log
+					add ("<p><b>Search Log</b><br /><br />The <a href=\"" + urls.searchLog + "\" title=\"Click to see the full log.\">search log</a> displays recent searches including the number of results, a link to the search, which index was searched, and the client. You can search all the sites indexed by this server using the <a href=\"" + mainResponder.adminSite.urls.search + "\">search page</a>.</p>");
+					add (website.searchEngineLog (n));
+					add ("<br />")};
+				if config.mainresponder.search.prefs.flLogIndex { //search indexer log
+					add ("<p><b>Search Indexing Log</b><br /><br />The <a href=\"" + urls.searchIndexer + "\" title=\"Click to see the full log.\">indexing log</a> displays recent pages indexed by the search engine server. Included is a link to the page and to the site, the client that indexed the page, and which index the page is stored in.</p>");
+					add (website.searchEngineIndexerLog (n));
+					add ("<br />")}};
+			bundle { //rootUpdates log
+				add ("<p><b>Recent Root Updates</b><br /><br />The <a href=\"" + urls.rootUpdatesLog + "\" title=\"Click to see the full log.\">root updates log</a> displays root updates downloaded today, along with associated change notes if available.</p>");
+				add (website.rootUpdatesLog (n));
+				add ("<br />")};
+			«bundle //inetd log
+				«add ("<p><b>inetd Log</b><br /><br />The <a href=\"" + urls.inetd + "\" title=\"Click to see the full log.\">inetd log</a> displays recent low-level inetd errors.</p>")
+				«add (website.inetdLog (n))
+				«add ("<br />")
+			«bundle //scheduler log
+				«add ("<p><b>Scheduler Log</b><br /><br />The <a href=\"" + urls.scheduler + "\" title=\"Click to see the full log.\">scheduler log</a> displays recent scheduler events.</p>")
+				«add (website.schedulerLog (n))
+				«add ("<br />")};
+		bundle { //database info
+			add ("<h3><a name=\"databases\">Databases</a></h3>");
+			add ("<p>Below is a list of all the currently open databases sorted by folder. Included is the size of each database, the number of top-level tables it contains, and when it was last modified.</p>");
+			add (macros.databaseInfo ());
+			add ("<br />")};
+		bundle { //disk info
+			add ("<h3><a name=\"disks\">Disks</a></h3>");
+			add ("<p>Below is a list of disk volumes on the server, including size and free space.</p>");
+			add (macros.diskInfo ());
+			add ("<br />")}};
+	
+	pta^.title = "Readouts";
+	return (htmltext)}

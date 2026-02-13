@@ -1,0 +1,7 @@
+on restoreNewsItemsTemplate (adrSiteInfo) {
+	«Restore the news items template to the default.
+		«06/06/00; 4:39:56 PM by PBS
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	manilaSuite.themes.restoreToDefault (adrSite, "newsItemsTemplate");
+	return (true)}

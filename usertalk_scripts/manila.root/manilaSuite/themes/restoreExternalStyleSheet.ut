@@ -1,0 +1,8 @@
+on restoreExternalStyleSheet (adrSiteInfo) {
+	«Changes
+		«4/20/03; 12:43:19 AM by JES
+			«Created. Restore the external CSS to the default.
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	manilaSuite.themes.restoreToDefault (adrSite, "externalStyleSheet");
+	return (true)}

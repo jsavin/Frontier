@@ -1,0 +1,57 @@
+on logBrowser (linecount, colors) { //a macro that returns HTML for the log
+	local (adrlog = log.getGuestSubTable ("Search Engine"));
+	linecount = number (linecount); //I keep getting bit by this, when called thru a macro, it's a string DW
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	on td (s) {
+		return ("<td><font size=\"-1\">" + s + "</font></td>")};
+	
+	local (i, j, adrhourtable, adritem, sizelog = sizeof (adrlog^), ixlog, sizehourtable);
+	add ("<table width=\"92%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">"); indentlevel++;
+	
+	«Add headers.
+	add ("<tr>");
+	indentlevel++;
+	add ("<td height=\"28\"></td>"); //a dummy table cell to establish row height
+	add (td ("<b>Time</b>"));
+	add (td ("<b>Search String</b>"));
+	add (td ("<b>Hits</b>"));
+	add (td ("<b>Index Name</b>"));
+	add (td ("<b>Client</b>"));
+	add ("</tr>");
+	indentlevel--;
+	
+	adrhourtable = @adrlog^ [sizelog]; //generate for the most recent hour
+	sizehourtable = sizeof (adrhourtable^);
+	ixlog = sizehourtable - linecount + 1;
+	if ixlog < 1 {
+		ixlog = 1};
+	for j = sizehourtable downto ixlog {
+		adritem = @adrhourtable^ [j];
+		add ("<!-- " + j + " -->");
+		local (ixhtmltext = sizeof (htmltext));
+		add ("<tr bgcolor=\"" + colors [(j % sizeof (colors)) + 1] + "\">"); indentlevel++;
+		add ("<td height=\"28\"></td>"); //a dummy table cell to establish row height
+		add (td (xml.convertToDisplayName (nameOf (adrItem^))));
+		local (link);
+		if defined (adrItem^.url) {
+			link = html.getLink (adrItem^.searchString, adrItem^.url)};
+		add (td (link));
+		add (td (adrItem^.hits));
+		add (td (adrItem^.index));
+		bundle { //add the member name, if we have it, otherwise do a DNS lookup
+			if defined (member) {
+				local (groupname = config.mainResponder.globals.defaultMembershipGroup);
+				local (link = mainResponder.members.linktomember (groupname, adritem^.member));
+				add (td (link))}
+			else {
+				local (client = adrItem^.client);
+				try {client = tcp.dns.getDomainName (adrItem^.client)};
+				add (td (client))}};
+		add ("</tr>"); indentlevel--};
+	
+	add ("</table>"); indentlevel--;
+	
+	return (htmltext)}

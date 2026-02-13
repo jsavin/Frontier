@@ -1,0 +1,57 @@
+on viewFullItem (msgNum=0) {
+	«Changes:
+		«4/13/07; 4:28:59 PM by JES
+			«Reworked code that works around duplicate titles -- now the title will render in the <head> section, but won't be duplicated in the <body>, if both the full-item template and page template have {title} macros.
+			«Made it possible for callers to specify the message to render in one of two ways:
+				«1. Pass in a value for the msgNum parameter.
+				«2. Set pta^.msgNum.
+				«If not passed, or if 0 is passed, we pull the message number from pta^.pathArgs as before.
+		«4/13/07; 4:07:19 PM by JES
+			«Add admin/confirm box, respecting prefs, just as story-reader page does.
+		«4/23/03; 6:56:30 PM by JES
+			«Created. View the full text of a news item through the (new) news items fullTextTemplate.
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = pta^.adrSiteRootTable);
+	local (groupName = pta^.defaultMembershipGroup);
+	if msgNum == 0 {
+		if defined (pta^.msgNum) {
+			msgNum = pta^.msgNum}
+		else {
+			msgNum = number (pta^.pathArgs)}};
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+	if not defined (pta^.newsSite^.newsItems.fullItemTemplate) {
+		pta^.newsSite^.newsItems.fullItemTemplate = pta^.newsSite^.newsItems.template};
+	local (template = string (pta^.newsSite^.newsItems.fullItemTemplate) );
+	
+	local (htext="");
+	on add (s) {
+		htext = htext + (s + "\r");};
+	
+	local (flAdminBox = manilaSuite.getNewsSitePref ("flAdminBoxOnStoryPages", pta^.adrSiteRootTable, true, true));
+	if flAdminBox {
+		add (manilaSuite.html.confirmBox (pta))};
+	add (manilaSuite.news.formatNewsItem (adrMsgTable, template, true, adrSite, groupName, flFullItemPage:true));
+	if flAdminBox {
+		add (manilaSuite.html.adminBox (pta))}; //PBS 12/14/99: commented out: no Admin box
+	
+	bundle { //set page title
+		if defined (adrMsgTable^.newsItem.title) {
+			pta^.title = adrMsgTable^.newsItem.title}
+		else {
+			pta^.title = adrMsgTable^.subject};
+		case true { //work around double-title problem -- if the full item template and page template both contain {title}, the page title is empty
+			string.lower (template) contains "{link}";
+			string.lower (template) contains "{title}" {
+				local (lowerT = string.lower (pta^.template));
+				local (ixBody = 0);
+				if lowerT contains "</head>" {
+					ixBody = string.patternMatch ("</head>", lowerT) + 7};
+				if ixBody {
+					lowerT = string.delete (lowerT, 1, ixBody)};
+				if lowerT contains "{title}" {
+					pta^.title = ""}}}};
+	
+	return (htext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«viewFullItem ()

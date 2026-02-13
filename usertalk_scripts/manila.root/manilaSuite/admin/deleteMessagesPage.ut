@@ -1,0 +1,183 @@
+on deleteMessagesPage () {
+	«Changes
+		«3/26/07; 3:47:23 PM by LL
+			«Created.
+			«Search by email address or content (subject and body)
+	local (pta = html.getpagetableaddress ());
+	«bundle //testing
+		«workspace.pt = pta^; edit (@workspace.pt)
+	bundle { //managing editor test
+		if not manilaSuite.editors.managingEditorTest () {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}};
+	
+	pta^.title = manilaSuite.getString ("admin.deleteMessagesPageTitle");
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	
+	local (htext = "");
+	local (searchQuery = "");
+	on add (s) {
+		htext = (htext + s + "\r");};
+	
+	add ("<p>" + manilaSuite.getString ("admin.deleteMessagesPageDescription") + "</p>");
+	
+	add ("<form name=\"deletemessages\" method=\"POST\">");
+	if pta^.method == "POST" {
+		on renderOnePost (adrmsg) {
+			add ("<tr>");
+			
+			add ("<td valign=\"top\">" + "<input type=\"checkbox\" name=\"delete" + adrMsg^.msgNum + "\">" + "</td>");
+			add ("</td>");
+			
+			add ("<td valign=\"top\">");
+			local (memberLink = manilaSuite.members.linkToMember (pta^.defaultMembershipGroup, adrmsg^.member));
+			add (memberLink);
+			add ("</td>");
+			
+			add ("<td valign=\"top\">");
+			local (emailAddress = adrmsg^.member);
+			emailAddress = string.replace (emailAddress, "@", "\\@");
+			add (emailAddress);
+			add ("</td>");
+			
+			add ("<td valign=\"top\">");
+			if defined (adrmsg^.ipaddress) {
+				add (adrmsg^.ipaddress)};
+			add ("</td>");
+			
+			add ("<td valign=\"top\">");
+			local (msgnum = adrmsg^.msgnum);
+			local (msgUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsg));
+			local (msgLink = "<a href=\"" + msgUrl + "\">" + searchEngine.stripMarkup (adrmsg^.subject) + "</a>");
+			add (msgLink + "<br />" + manilaSuite.news.getSummary (adrmsg, 75));
+			add ("</td>");
+			
+			add ("<td valign=\"top\">");
+			add (date.longString (adrmsg^.postTime));
+			add ("</td>");
+			add ("</tr>");
+			
+			return (true)};
+		add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+		add ("<tr><td>");
+		add ("<p><input type=\"submit\" name=\"deleteMessages\" value=\"" + manilaSuite.getString ("admin.deleteMessagesPageButton") + "\"></p>");
+		add ("</td></tr>");
+		add ("</table>");
+		
+		add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+		local (ct = 0, matchedMsgNum);
+		local (adrDg = @adrSite^.["#discussionGroup"].messages);
+		local (sizeTable = sizeOf (adrDg^));
+		local (searchUntil = 1);
+		
+		add (string (manilaData.admin.deleteMessagesJavaScript));
+		
+		bundle { //column headers
+			add ("<tr><td><b><input type=\"checkbox\" onclick=\"checkAll(this);\" /></td><td><b>" + manilaSuite.getString ("admin.nameHeader") + "</b></td><td><b>" + manilaSuite.getString ("admin.emailAddressHeader") + "</b></td><td><b>" + manilaSuite.getString ("admin.ipAddressHeader") + "</b></td><td><b>" + manilaSuite.getString ("admin.contentHeader") + "</b></td><td><b>" + manilaSuite.getString ("admin.dateHeader") + "</b></td></tr>")};
+		
+		local (adrargs = @pta^.postArgs);
+		if defined (adrargs^.q) {
+			searchQuery = adrargs^.q};
+		if defined (adrargs^.newSearch) {
+			delete (@adrargs^.newSearch);
+			
+			if sizeTable > 500 {
+				searchUntil = sizeTable - 500}};
+		if defined (adrargs^.continueSearch) {
+			delete (@adrargs^.continueSearch);
+			
+			if defined (adrargs^.searchUntil) {
+				sizeTable = number (adrargs^.searchUntil);
+				if sizeTable > 500 {
+					searchUntil = sizeTable - 500}}
+			else {
+				if sizeTable > 500 {
+					searchUntil = sizeTable - 500}}};
+		if defined (adrargs^.deleteMessages) {
+			delete(@pta^.postargs.deleteMessages);
+			
+			local (ix);
+			for ix = 1 to sizeOf (pta^.postArgs) {
+				local (oneArg = nameOf (pta^.postArgs [ix]));
+				local (msgNum);
+				oneArg = string.lower (oneArg);
+				if oneArg beginsWith "delete" { //delete from the discussion group
+					msgNum = string.popLeading (oneArg - "delete", '0');
+					local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+					adrMsgTable^.flDeleted = true;
+					adrMsgTable^.body = "";
+					adrMsgTable^.subject = "";
+					adrMsgTable^.inResponseTo = -2;
+					}};«manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, storiesCategory, adrSite) //PBS 10/09/00: update indexes
+			
+			if defined (adrargs^.searchUntil) {
+				sizeTable = number (adrargs^.searchUntil);
+				if sizeTable > 500 {
+					searchUntil = sizeTable - 500}}
+			else {
+				if sizeTable > 500 {
+					searchUntil = sizeTable - 500}}};
+		
+		for i = sizeTable downTo searchUntil {
+			local (adrDgMsg = @adrDg^ [i]);
+			local (flDeleted = defined (adrDgMsg^.flDeleted) and adrDgMsg^.flDeleted);
+			if not flDeleted {
+				local (body = string.lower (adrDgMsg^.body));
+				local (flMatched = false);
+				if body contains searchQuery { //search body text
+					renderOnePost (adrDgMsg);
+					ct++;
+					flMatched = true};
+				if not (flMatched) { //search subject
+					if string.lower (adrDgMsg^.subject) contains searchQuery {
+						renderOnePost (adrDgMsg);
+						flMatched = true;
+						ct++}};
+				if not (flMatched) { //search member email address
+					if string.lower (adrDgMsg^.member) contains searchQuery {
+						renderOnePost (adrDgMsg);
+						ct++;
+						flMatched = true}};
+				matchedMsgNum = adrDgMsg^.msgNum};
+			if ct >= 20 {
+				break}};
+		local (replacementTable); new (tableType, @replacementTable);
+		replacementTable.sizetable = sizeTable;
+		replacementTable.searchuntil = searchUntil;
+		add ("<p>" + manilaSuite.getString ("admin.searchingMessages", @replacementTable, pta: pta) + "</p>");
+		add ("</table>");
+		
+		add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+		add ("<tr><td>");
+		if ct == 0 {
+			add ("<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No messages found.</p>")};
+		add ("</td></tr>");
+		add ("</table>");
+		
+		add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+		add ("<tr><td>");
+		
+		if matchedMsgNum > 1 {
+			searchUntil = matchedMsgNum - 1;
+			add ("<input type=\"hidden\" name=\"searchUntil\" value=\"" + searchUntil + "\">");
+			add ("<p><input type=\"submit\" name=\"continueSearch\" value=\"" + manilaSuite.getString ("admin.continueSearchingButton") + "\"></p>")};
+		add ("</td></tr>");
+		add ("</table>")};
+	
+	
+	local (ctPending = 0);
+	
+	add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
+	add ("<tr><td>");
+	add ("<p>Search for (email address, body text and subject):&nbsp;</p>\r");
+	add ("<input type=\"text\" name=\"q\" size=\"30\" value=\"" + searchQuery + "\">&nbsp;&nbsp;&nbsp;");
+	add ("<p><input type=\"submit\" name=\"newSearch\" value=\"" + manilaSuite.getString ("common.searchButton") + "\"></p>");
+	
+	add ("</form>");
+	add ("</table>");
+	
+	
+	return (htext)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«deleteMessagesPage ()

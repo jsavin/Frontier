@@ -1,0 +1,39 @@
+on listAll (username, password, siteName) {
+	«Get a struct containing the names of all the members.
+	«Changes:
+		«03/19/01; 3:18:58 PM by JES
+			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		«05/23/01; 1:15:21 AM by JES
+			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't list all members because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
+	local (flSoap = false);
+	if string.upper (responder) == "SOAP" {
+		adrRequest^.customStructType = manilaData.soap.constants.customArrayTypes.member;
+		adrRequest^.customNamespace = manilaData.soap.constants.manilaNamespace;
+		adrRequest^.customNamespaceURI = manilaData.soap.constants.manilaNamespaceURI;
+		flSoap = true};
+	local (members, adrMember, ct = 1);
+	if flSoap {
+		members = {}}
+	else {
+		new (tableType, @members)};
+	for adrMember in @adrGroup^.users {
+		local (memberTable); new (tableType, @memberTable);
+		memberTable.email = nameOf (adrMember^);
+		if defined (adrMember^.personalInfo.name) {
+			memberTable.name = string (adrMember^.personalInfo.name)}
+		else {
+			memberTable.name = memberTable.email};
+		if flSoap {
+			members[ct] = memberTable}
+		else {
+			adrMember = @members.["member" + string.padWithZeros (ct, 7)];
+			adrMember^ = memberTable};
+		ct++};
+	
+	return (members)}

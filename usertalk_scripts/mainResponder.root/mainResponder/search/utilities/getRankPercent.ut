@@ -1,0 +1,45 @@
+on getRankPercent (rank, min=0) {
+	«Changes
+		«8/7/02; 3:56:03 PM by JES
+			«Created. Factored from mainResponder.search.server.buildHtml.
+	rank = rank - min;
+	case true {
+		rank > 2615 {
+			rank = 100};
+		rank > 2609 {
+			rank = 99};
+		rank > 2599 {
+			rank = rank - 2600;
+			rank = 90 + rank};
+		rank > 2009 {
+			rank = 89};
+		rank > 1999 {
+			rank = rank - 2000;
+			rank = 80 + rank};
+		rank > 1209 {
+			rank = 79};
+		rank > 1199 {
+			rank = rank - 1200;
+			rank = 70 + rank};
+		rank > 1000 {
+			rank = rank - 1000;
+			rank = 70 + rank};
+		rank > 609 {
+			rank = 69};
+		rank > 599 {
+			rank = rank - 600;
+			rank = 60 + rank};
+		rank > 500 and rank < 1001 {
+			rank = 60};
+		rank > 500 {
+			rank = rank - 500;
+			rank = 50 + rank};
+		rank > 109 {
+			rank = 49};
+		rank > 99 {
+			rank = rank - 100;
+			rank = rank + 40};
+		rank < 100 {
+			if rank > 39 {
+				rank = 39}}};
+	return (rank)}

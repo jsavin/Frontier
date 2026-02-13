@@ -1,0 +1,2 @@
+on isXMLStory (adr) {
+	return  (string.lower(nameof(adr^)) endswith "story")}

@@ -1,0 +1,9 @@
+on getCurrentSiteFolderSize (adrSite) {
+	«Return the number of bytes in the folder this site.
+		«04/13/00; 9:23:24 PM by PBS
+	
+	local (folder = manilaSuite.gems.getSiteFolder (adrSite));
+	if file.exists (folder) {
+		return (file.bytesInFolder (folder))};
+	
+	return (0)} //the folder doesn't exist

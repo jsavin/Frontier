@@ -1,0 +1,17 @@
+on getPost (appkey, postid, username, password) {
+	local (sitename = string.nthfield (postid, "#", 1));
+	manilaSuite.rpcUtils.memberCheck (siteName, username, password, "Can't get the post because ");
+	local (msgnum = number (string.nthfield (postid, "#", 2)));
+	local (adrdiscuss = manilaSuite.rpcUtils.getDiscussAddress (sitename));
+	local (adrmsg = mainResponder.discuss.getMessageTable (msgnum, adrRoot:adrdiscuss));
+	on getPost (adrmsg) {
+		local (t); new (tableType, @t);
+		t.userid = adrmsg^.member;
+		t.dateCreated = adrmsg^.postTime;
+		t.content = adrmsg^.newsItem.description;
+		t.postid = siteName + "#" + adrmsg^.msgnum;
+		return (t)};
+	return (getPost (adrmsg))};
+«bundle //test code
+	«local (post = getPost ("xxx", "blogger#18", "jake@userland.com", user.prefs.manilaPassword))
+	«dialog.alert (post.postid)

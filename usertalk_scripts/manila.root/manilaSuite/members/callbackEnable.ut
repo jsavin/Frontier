@@ -1,0 +1,36 @@
+on callbackEnable (adrSite, whichCallback, key, adrCallback) {
+	«manilaSuite.members.callbackEnable : 05/04/02, 16:05:20 by DAB
+		«set up the member shipgroup of adrsite to have  callback 
+		«values for whichCallback 
+			«signup (also called for manual and rpchandler member create operations)
+			«modify
+			«login
+			«block 
+			«unblock
+			«signout
+			«delete   (from admin page)
+	case true { «reasons to disallow this enabling
+		key != string.trimWhiteSpace(key);
+		typeof(adrCallback) != addressType;
+		not defined(adrCallback^) {
+			return false}};
+	whichCallback = string.lower(whichCallback);
+	case whichCallback {
+		"signup";
+		"modify";
+		"login";
+		"block";
+		"unblock";
+		"signout";
+		"delete" {
+			}}//these are all ok
+	else { //not a valid callback name
+		return false};
+	
+	local (adrMemberGroup = manilasuite.members.getGroupFromSiteAddress(adrSite));
+	if not defined(adrMemberGroup^.callbacks) {
+		new(tabletype, @adrMemberGroup^.callbacks)};
+	if not defined(adrMemberGroup^.callbacks.[whichCallback]) {
+		new(tabletype, @adrMemberGroup^.callbacks.[whichCallback])};
+	adrMemberGroup^.callbacks.[whichCallback].[key] = adrCallback;
+	return @adrMemberGroup^.callbacks.[whichCallback].[key]}

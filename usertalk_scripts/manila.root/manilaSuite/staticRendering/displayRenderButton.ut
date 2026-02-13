@@ -1,0 +1,79 @@
+on displayRenderButton (pta=nil) {
+	«Changes:
+		«9/23/03; 1:47:58 PM by JES
+			«Added the Render This Page button for Content Editors.
+		«5/17/03; 8:55:16 PM by JES
+			«Log an event when a page is rendered.
+		«9/28/01; 2:26:40 PM by PBS
+			«Don't display button if this is a print-friendly version.
+			«This form now gets a name.
+		«05/24/00; 7:29:54 PM by JES
+			«localized
+		«03/14/00; 6:42:11 PM by PBS
+			«Created. Display an edit this page button if the conditions are correct.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	bundle { //check the various reasons not to display a button
+		if pta^.flPrintFriendlyTemplate { //PBS 09/28/01: print-friendly template support
+			return ("")};
+		
+		if not (manilaSuite.editors.managingEditorTest (pta)) { //must be ME
+			if not (manilaSuite.editors.contentEditorTest (pta)) { //...or content editor
+				return ("")}};
+		
+		if manilaSuite.staticRendering.isStaticRendering () { //don't display if this is a static rendering that's going on
+			return ("")};
+		
+		if not (manilaSuite.staticRendering.isEnabled (pta^.adrSiteRootTable)) { //static rendering must be enabled
+			return ("")};
+		
+		if not (manilaSuite.getNewsSitePref ("flStaticRenderingButton", default:false, flCreate:true)) { //the site must want a render this page button
+			return ("")}};
+	
+	local (relativePath, flRenderable = false);
+	bundle { //determine if this is a render-able page and get the path
+		relativePath = manilaSuite.staticRendering.getRelativePath (pta);
+		relativePath = string.popLeading (relativePath, '/');
+		if relativePath == "" {
+			flRenderable = true}
+		else {
+			local (firstPart = string.nthField (relativePath, '/', 1));
+			try {
+				number (firstPart); //it might be a calendar page
+				flRenderable = true};
+			if not flRenderable {
+				if not defined (pta^.adrSiteRootTable^.[firstPart]) {
+					flRenderable = true}}}};
+	
+	if not (flRenderable) {
+		return ("")};
+	
+	bundle { //handle actually rendering the page, if this is a post
+		if string.lower (pta^.method) == "post" {
+			if defined (pta^.postArgs.renderThisPage) {
+				local (startticks = clock.ticks ());
+				local (oldPta = pta);
+				html.deletePageTableAddress ();
+				local (pt);
+				pt = manilaSuite.staticRendering.renderPage (relativePath, pta^.adrSiteRootTable);
+				html.setPageTableAddress (oldPta);
+				bundle { //log the event
+					if defined (manilaSuite.log) {
+						local (t); new (tableType, @t); t.url = pt.url;
+						manilaSuite.log.addWithAttribution ("renderPage", startticks, @t)}};
+				«Weird, but a delay is needed for the sake of the static server.
+				thread.sleepTicks (30);
+				mainResponder.redirect (pt.url);
+				scriptError ("!redirect " + pt.url)}}};
+	
+	local (htmlText);
+	on add (s) {
+		htmlText = htmlText + s};
+	
+	add ("<form method=\"post\" action=\"" + pta^.uri + "\" name=\"renderThisPageForm\">\r");
+	add ("<input type=\"submit\" value=\"" + manilaSuite.getString ("admin.renderThisPageButton") + "\" name=\"renderThisPage\">\r");
+	add ("</form>\r");
+	
+	return (manilaSuite.unTaint (htmlText))}

@@ -1,0 +1,24 @@
+on getServicesXml () {
+	«Changes
+		«4/2/03; 11:52:39 PM by JES
+			«Created. Return an OPML document containing all the RSS feeds this Manila site is subscribed to.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrprefs = manilaSuite.aggregator.init ());
+	local (adrmyservices = @adrprefs^.services);
+	
+	on includeCallback (adrservice) {
+		local (url = nameOf (adrservice^));
+		if defined (adrmyservices^.[url]) {
+			return (adrmyservices^.[url])};
+		return (false)};
+	
+	bundle { //set up the pagetable to return some XML instead of HTML
+		pta^.responseHeaders.["Content-Type"] = "text/x-opml";
+		«pta^.responseHeaders.["Content-Type"] = "text/xml"
+		pta^.autoParagraphs = false;
+		pta^.clayCompatibility = false;
+		pta^.activeUrls = false;
+		wp.newTextObject ("{bodytext}", @pta^.template)};
+	
+	return (xml.aggregator.getServicesXml (adrIncludeCallback:@includeCallback))}

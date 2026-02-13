@@ -1,0 +1,7 @@
+«Changes
+	«Mon, 01 Mar 1999 12:25:01 GMT by AR
+		«Replaced the code in this script with a call to mainResponder.calendar.getDayAddress.
+		«If you are writing new code, instead of calling this verb, call mainResponder.calendar.getDayAddress directly.
+		«It's sole purpose of existence is backward compatibility.
+on addTo (adrcalendar, d) {
+	return (mainResponder.calendar.getDayAddress (adrcalendar, d, flcreate:true))}

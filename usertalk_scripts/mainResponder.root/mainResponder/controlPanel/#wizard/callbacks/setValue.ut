@@ -1,0 +1,290 @@
+on setValue (partialAddress, adrVal) {
+	«Set one value for the Control Panel settings.
+		«Changes:
+			«7/3/02; 12:44:16 AM by JES
+				«Added support for the Meta-Weblog API. See http://frontier.userland.com/metaWeblogApi
+			«1/28/02; 2:07:53 PM by PBS
+				«Support enabling and disable Manila RSS publish-and-subscribe.
+			«1/21/02; 8:53:23 PM by PBS
+				«Turn on and off the Blogger API.
+			«2001:
+				«02/06/01; 2:08:13 AM by JES
+					«Added site download preferences.
+				«03/16/01; 4:30:59 PM by PBS
+					«Make it easier to set folder paths and URLs that point to folders -- add a \, :, or / as needed.
+				«12/6/01; 10:04:44 PM by PBS
+					«Common log prefs.
+			«2000:
+				«01/18/00; 6:25:02 PM by PBS
+					«Support for enabling/disabling Manila RPC and for setting the base URL for Manila sites created via the New Site page.
+				«02/24/00; 3:04:34 PM by PBS
+					«Added support for enabling and disabling RPC interfaces for Manila plug-ins.
+				«03/01/00; 2:53:18 PM by PBS
+					«Added support for Manila writing pictures. to disk.
+				«03/13/00; 9:36:48 PM by PBS
+					«Added support for Manila static rendering prefs.
+				«04/07/00; 6:47:23 PM by PBS
+					«Support for the discussion group email subscription pref.
+				«04/10/00; 8:46:54 PM by PBS
+					«Support for hashed cookies global pref.
+				«04/15/00; 6:07:01 PM by PBS
+					«Support for gems Manila prefs.
+				«05/10/00; 4:23:41 PM by PBS
+					«Support a pref for writing out an XML listing the top 100 most-read sites on a server.
+				«07/11/00; 3:20:27 PM by PBS
+					«Added prefs for common log logging and root updates logging.
+				«07/12/00; 5:47:19 PM by PBS
+					«Added pref for sharing the membership group that the create site uses.
+				«09/02/00; 1:24:17 PM by PBS
+					«You couldn't set the default file name for Manila static rendering sites -- the address of the pref was incorrect. Fixed.
+				«11/10/00; 12:06:36 PM by PBS
+					«Set the home page updates pref for sending notices of home page updates to UserLand.
+				«11/19/00; 4:19:11 PM by PBS
+					«Command for enabling the Manila SOAP interface.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	local (adrList = @config.mainResponder.prefs.updateNightlyList);
+	local (pc = file.getPathChar ());
+	on checkUpdateList (gdbName) {
+		local (lowerGdbName = string.lower (gdbName));
+		local (i);
+		for i = 1 to sizeOf (adrList^) {
+			local (oneItem = adrList^ [i]);
+			if string.lower (oneItem) == lowerGdbName {
+				return (i)}};
+		return (false)};
+	on addToUpdateList (gdbName) {
+		if not (checkUpdateList (gdbName)) {
+			adrList^ = adrList^ + gdbName};
+		return (true)};
+	on removeFromUpdateList (gdbName) {
+		local (ix = checkUpdateList (gdbName));
+		if ix > 0 {
+			delete (@adrList^ [ix])};
+		return (true)};
+	on addOrRemoveFromUpdateList (gdbName) {
+		if adrVal^ {
+			addToUpdateList (gdbName)}
+		else {
+			removeFromUpdateList (gdbName)};
+		return (true)};
+	
+	on fixPath (s, flFilePath = true) { //PBS 03/16/01: fool-proof folder paths and URLs
+		if string.trimWhiteSpace (s) == "" {
+			return ("")};
+		local (endChar = pc);
+		if not flFilePath { //it's a URL path
+			endChar = "/"};
+		if not (s endsWith endChar) {
+			s = s + endChar};
+		return (s)};
+	
+	case partialAddress {
+		"controlPanel.manila.flDiscussAllowEmailSubscriptions" {
+			config.manila.prefs.flDiscussAllowEmailSubscriptions = boolean (adrVal^)};
+		"controlPanel.manila.flEnableBloggerApi" {
+			if boolean (adrVal^) {
+				user.betty.rpcHandlers.blogger = @manilaSuite.bloggerApi.rpcHandlers}
+			else {
+				if defined (user.betty.rpcHandlers.blogger) {
+					delete (@user.betty.rpcHandlers.blogger)}}};
+		"controlPanel.manila.flEnableMetaWeblogApi" {
+			if boolean (adrVal^) {
+				user.betty.rpcHandlers.metaWeblog = @manilaSuite.metaWeblogApi.rpcHandlers;
+				user.soap.rpcHandlers.metaWeblog = @manilaSuite.metaWeblogApi.rpcHandlers}
+			else {
+				if defined (user.betty.rpcHandlers.metaWeblog) {
+					delete (@user.betty.rpcHandlers.metaWeblog)};
+				if defined (user.soap.rpcHandlers.metaWeblog) {
+					delete (@user.soap.rpcHandlers.metaWeblog)}}};
+		"controlPanel.manila.flEnableRpc" {
+			if boolean (adrVal^) {
+				user.betty.rpcHandlers.manila = @manilaSuite.rpcHandlers}
+			else {
+				if defined (user.betty.rpcHandlers.manila) {
+					delete (@user.betty.rpcHandlers.manila)}}};
+		"controlPanel.manila.flEnablePluginsRpc" {
+			if boolean (adrVal^) {
+				manilaSuite.plugins.enableRpcHandlers ()}
+			else {
+				manilaSuite.plugins.disableRpcHandlers ()}};
+		"controlPanel.manila.flEnableSoap" {
+			if boolean (adrVal^) {
+				user.soap.rpcHandlers.manila = @manilaSuite.rpcHandlers; //link in RPC handlers
+				user.webserver.responders.soap.enabled = true} //make sure SOAP responder is enabled
+			else {
+				if defined (user.soap.rpcHandlers.manila) {
+					delete (@user.soap.rpcHandlers.manila)}}};
+		"controlPanel.manila.flGemsEnabled" {
+			config.manila.prefs.flGemsEnabled = boolean (adrVal^)};
+		"controlPanel.manila.flSiteDownloadsEnabled" { //JES 02/06/00
+			config.manila.prefs.flSiteDownloadsEnabled = boolean (adrVal^)};
+		"controlPanel.manila.flFrontierServesDownloadedSites" { //JES 02/06/00
+			config.manila.prefs.flFrontierServesDownloadedSites = boolean (adrVal^)};
+		"controlPanel.manila.flRssPubSub" { //PBS 01/28/02: Manila RSS pub-sub
+			if boolean (adrVal^) {
+				user.betty.rpcHandlers.manilaRss = @manilaSuite.rss.rpcHandlers}
+			else {
+				if defined (user.betty.rpcHandlers.manilaRss) {
+					delete (@user.betty.rpcHandlers.manilaRss)}}};
+		"controlPanel.manila.flSendUpdateNoticesToUserLand" { //PBS 11/10/00
+			config.manila.prefs.flSendUpdateNoticesToUserLand = boolean (adrVal^)};
+		"controlPanel.manila.flStaticRenderingEnabled" {
+			config.manila.prefs.flStaticRenderingEnabled = boolean (adrVal^)};
+		"controlPanel.manila.flWritePicturesToStaticServer" {
+			config.manila.prefs.flWritePicturesToStaticServer = boolean (adrVal^)};
+		"controlPanel.manila.flXmlSitesReport" {
+			config.manila.prefs.flXmlSitesReport = boolean (adrVal^)};
+		"controlPanel.manila.gemsFolder" {
+			config.manila.prefs.gemsFolder = fixPath (string (adrVal^))};
+		"controlPanel.manila.gemsLimit" {
+			local (mbLimit = double (adrVal^));
+			config.manila.prefs.gemsLimit = number ((1000 * 1024) * mbLimit)};
+		"controlPanel.manila.gemsUrl" {
+			config.manila.prefs.gemsUrl = fixPath (string (adrVal^), false)};
+		"controlPanel.manila.siteDownloadFolder" { //JES 02/06/00
+			config.manila.prefs.siteDownloadFolder = fixPath (string (adrVal^))};
+		"controlPanel.manila.siteDownloadUrl" { //JES 02/06/00
+			config.manila.prefs.siteDownloadUrl = fixPath (string (adrVal^), false)};
+		"controlPanel.manila.hostingBaseDomain" {
+			local (adrPrefs = @config.manila.hosting.sites.default, val = string (adrVal^));
+			if val beginsWith '.' {val = val - '.'};
+			adrPrefs^.baseDomain = val};
+		"controlPanel.manila.hostingFlSubSites" {
+			local (adrPrefs = @config.manila.hosting.sites.default);
+			if string.lower (adrVal^) == "subsites" {
+				adrPrefs^.flSubSites = true}
+			else {
+				adrPrefs^.flSubSites = false}};
+		"controlPanel.manila.hostingWhoCreatesSites" {
+			local (adrPrefs = @config.manila.hosting.sites.default);
+			if string.lower (adrVal^) == "editors" {
+				adrPrefs^.flEditorsOnlyCreateSites = true}
+			else {
+				adrPrefs^.flEditorsOnlyCreateSites = false}};
+		"controlPanel.manila.staticFilesFolder" {
+			config.manila.prefs.staticFilesFolder = fixPath (string (adrVal^))};
+		"controlPanel.manila.staticFilesUrl" {
+			config.manila.prefs.staticFilesUrl = fixPath (string (adrVal^), false)};
+		"controlPanel.manila.staticRenderingDefaultFilename" {
+			config.manila.prefs.staticRenderingDefaultFilename = string (adrVal^)}; //PBS 09/02/00: address of pref corrected
+		"controlPanel.manila.staticRenderingFolder" {
+			config.manila.prefs.staticRenderingFolder = fixPath (string (adrVal^))};
+		"controlPanel.manila.staticRenderingUrl" {
+			config.manila.prefs.staticRenderingUrl = fixPath (string (adrVal^), false)};
+		"controlPanel.webEditServer.flEnabled" {
+			if adrVal^ { //true, enable WebEditServer
+				user.betty.rpcHandlers.webEdit = @webEditServer.rpcHandlers.webEdit}
+			else { //false, disable
+				if defined (user.betty.rpcHandlers.webEdit) {
+					delete (@user.betty.rpcHandlers.webEdit)}}};
+		"controlPanel.webEditServer.newUserEmailPassword" {
+			«Add a WebEditServer user.
+			people.newService ("Custody");
+			people.newService ("WebEdit");
+			local (username, email, password);
+			password = adrVal^;
+			if defined (pta^.postArgs.["controlPanel.webEditServer.newUserName"]) {
+				username = pta^.postArgs.["controlPanel.webEditServer.newUserName"]};
+			if defined (pta^.postArgs.["controlPanel.webEditServer.newUserEmailAddress"]) {
+				email = pta^.postArgs.["controlPanel.webEditServer.newUserEmailAddress"]};
+			if username != nil and email != nil and password != nil {
+				people.newUser (username, password, email);
+				people.attachServiceToUser (username, "Custody");
+				people.attachServiceToUser (username, "WebEdit")}};
+		"controlPanel.webEditServer.denyAccessTo" {
+			if adrVal^ != "" {
+				people.newService ("Custody");
+				people.newService ("WebEdit");
+				people.detachServiceFromUser (adrVal^, "Custody");
+				people.detachServiceFromUser (adrVal^, "WebEdit")}};
+		"controlPanel.webEditServer.grantAccessTo" {
+			if adrVal^ != "" {
+				people.newService ("Custody");
+				people.newService ("WebEdit");
+				people.attachServiceToUser (adrVal^, "Custody");
+				people.attachServiceToUser (adrVal^, "WebEdit")}};
+		"controlPanel.webEditServer.editUserEmailPassword" {
+			local (username, password, email);
+			password = adrVal^;
+			if password != nil {
+				if defined (pta^.postArgs.["controlPanel.webEditServer.userToEdit"]) {
+					username = pta^.postArgs.["controlPanel.webEditServer.userToEdit"];
+					if username != nil {
+						if defined (pta^.postArgs.["controlPanel.webEditServer.editUserEmailAddress"]) {
+							email = pta^.postArgs.["controlPanel.webEditServer.editUserEmailAddress"];
+							if email != nil {
+								people.setUserPassword (username, password);
+								people.setUserEmailAddress (username, email)}}}}}};
+		"controlPanel.flUpdateFrontier" {
+			local (gdbName = "Frontier.root");
+			addOrRemoveFromUpdateList (gdbName)};
+		"controlPanel.flUpdateMainResponder" {
+			local (gdbName = "mainResponder.root");
+			addOrRemoveFromUpdateList (gdbName)};
+		"controlPanel.flUpdateManila" {
+			local (gdbName = "manila.root");
+			addOrRemoveFromUpdateList (gdbName)};
+		"controlPanel.flUpdatePrefs" {
+			local (gdbName = "prefs.root");
+			addOrRemoveFromUpdateList (gdbName)};
+		"controlPanel.flCommonLog" {
+			if adrVal^ {
+				local (scriptText = "on commonLog (pta)\r\treturn (webserver.postFilters.commonLog (pta, true))");
+				script.newScriptObject (scriptText, @user.webserver.postFilters.commonLog)}
+			else {
+				if defined (user.webserver.postFilters.commonLog) {
+					delete (@user.webserver.postFilters.commonLog)}}};
+		"controlPanel.flRootUpdatesLogging" {
+			if adrVal^ {
+				user.rootUpdates.prefs.flShowUpdatesToUser = true;
+				user.rootUpdates.prefs.adrOutlineForUser = @user.rootUpdates.updateOutline}
+			else {
+				user.rootUpdates.prefs.flShowUpdatesToUser = false;
+				user.rootUpdates.prefs.adrOutlineForUser = ""}};
+		"controlPanel.flHostingShareMembershipGroup" { //PBS 07/12/00
+			adrPrefs = @config.manila.hosting.sites.default;
+			adrPrefs^.flUseHostingSiteMembershipGroup = boolean (adrVal^)};
+		"user.prefs.mailaddress";
+		"user.prefs.name";
+		"user.prefs.organization";
+		"user.prefs.mailHost";
+		"config.mainResponder.prefs.backupFolder";
+		"config.mainResponder.prefs.discussArchiveFolder";
+		"config.mainResponder.prefs.logFolder";
+		"config.mainResponder.prefs.allowedIpAddresses";
+		"config.manila.prefs.baseUrl";
+		"user.betty.prefs.allowedIpAddresses" {
+			address (partialAddress)^ = string (adrVal^)};
+		"user.betty.prefs.flAllowByIpOnly";
+		"user.betty.prefs.flKeepServerLog";
+		"user.scheduler.prefs.logInGuestDatabase";
+		"user.webserver.prefs.flDomainStats";
+		"config.mainResponder.globals.allowDirectoryListings";
+		"config.mainResponder.globals.allowScriptListings";
+		"config.mainResponder.globals.allowScriptsToRun";
+		"config.mainResponder.prefs.flBackupNightly";
+		"config.mainResponder.prefs.flArchiveDiscuss";
+		"config.mainResponder.prefs.flLog";
+		"config.mainResponder.prefs.flDiscussStatsNightly";
+		"config.mainResponder.prefs.flLogMemavail";
+		"config.mainResponder.prefs.flLogReopenHourly";
+		"config.mainResponder.prefs.flAllowByIpOnly";
+		"config.mainResponder.prefs.flUpdateNightly";
+		"config.mainResponder.prefs.flSaveDatabasesEveryMinute";
+		"config.mainResponder.prefs.flLogDatabaseOpens";
+		"config.mainResponder.prefs.flSubscriptions";
+		"config.mainResponder.prefs.flBuildPagesInBackground";
+		"config.mainResponder.prefs.flSearchEngine";
+		"config.mainResponder.prefs.flDebug";
+		"config.mainResponder.prefs.flKeepParamTable";
+		"config.mainResponder.prefs.flProfiling";
+		"config.mainResponder.prefs.flMembershipHashedCookies"; //PBS 04/10/00
+		"user.webserver.prefs.commonLog.flIncludeVirtualHosts"; //PBS 12/06/01: new common log prefs
+		"user.webserver.prefs.commonLog.flIncludeReferers";
+		"user.webserver.prefs.commonLog.flIncludeUserAgents";
+		"user.webserver.prefs.commonLog.flUseCommonLogDateFormat" {
+			address (partialAddress)^ = boolean (adrVal^)}};
+	
+	return (true)}

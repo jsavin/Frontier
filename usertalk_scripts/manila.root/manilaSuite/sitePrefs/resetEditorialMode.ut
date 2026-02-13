@@ -1,0 +1,40 @@
+on resetEditorialMode (adrSite, editorialMode) {
+	«Changes
+		«3/19/07; 6:37:48 PM by LL
+			«Added another editorial mode for sites that require email confirmation and editor approval for new members.
+		«3/14/07; 11:47:16 PM by LL
+			«Created.
+	if editorialMode == "none" {
+		return (true)};
+	case editorialMode {
+		"intranet" {
+			adrSite^.["#newsSite"].flSendUpdateNoticesToUserLand = false;
+			adrSite^.["#newsSite"].trackback.flEnabled = false};
+		"editorsonly" {
+			adrSite^.["#newsSite"].flEditorsOnlyAccessToSite = true;
+			adrSite^.["#newsSite"].flSendUpdateNoticesToUserLand = false;
+			adrSite^.["#newsSite"].trackback.flEnabled = false};
+		"membersonly" {
+			adrSite^.["#newsSite"].flMembersOnlyAccessToSite = true;
+			adrSite^.["#newsSite"].flSendUpdateNoticesToUserLand = false;
+			adrSite^.["#newsSite"].trackback.flEnabled = false};
+		"publicrestricted" {
+			adrSite^.["#newsSite"].flMembership = false;
+			adrSite^.["#newsSite"].flAlwaysDisplayMembersBox = true;
+			adrSite^.["#newsSite"].flPublicMembersDgAccess = false;
+			adrSite^.["#newsSite"].newsItems.flCommentsEnabledByDefault = false;
+			adrSite^.["#newsSite"].flMemberMailtoLink = false};
+		"publicmoderated" {
+			adrSite^.["#newsSite"].flMembership = true;
+			adrSite^.["#newsSite"].flAlwaysDisplayMembersBox = true;
+			adrSite^.["#newsSite"].flNewMembersModerated = true;
+			adrSite^.["#newsSite"].radioHosting.flLoginRequired = true;
+			adrSite^.["#newsSite"].flMemberSignupEmailConfirmation = true;
+			adrSite^.["#newsSite"].flPublicMembersDgAccess = true;
+			adrSite^.["#newsSite"].flMemberMailtoLink = false};
+		"public" {
+			adrSite^.["#newsSite"].flMembership = false;
+			adrSite^.["#newsSite"].flAlwaysDisplayMembersBox = true;
+			adrSite^.["#newsSite"].flPublicMembersDgAccess = true;
+			adrSite^.["#newsSite"].flMemberMailtoLink = false}};
+	return (true)}

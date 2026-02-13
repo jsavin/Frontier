@@ -1,0 +1,39 @@
+on createNewShortcut (adrSite, adrGemTable) {
+	«Create a new shortcut for this gem. We know we need a new shortcut, there's no question about it. Create a unique name if needed.
+		«04/13/00; 1:44:01 AM by PBS
+	
+	local (shortcut = manilaSuite.unTaint (adrGemTable^.title));
+	local (adrGlossary = @adrSite^.["#glossary"]);
+	
+	on addToGlossary (adrGlossItem) {
+		local (s);
+		local (msgNum = adrGemTable^.num);
+		s = "{manilaSuite.gems.includeGem (" + msgNum + ")}";
+		adrGlossItem^ = s;
+		local (shortcutName = nameOf (adrGlossItem^));
+		adrGemTable^.shortcut = shortcutName;
+		local (title = adrGemTable^.title);
+		local (url = adrGemTable^.url);
+		adrGemTable^.shortcutText = html.getLink (title, url);
+		return (true)};
+	
+	«Best case, most common case: no item exists in the glossary with this name.
+	bundle {
+		if not defined (adrGlossary^.[shortcut]) {
+			addToGlossary (@adrGlossary^.[shortcut]);
+			return (true)}};
+	
+	«Worst case -- there's already a glossary item with the same name, but we already know it's not the same shortcut, a new shortcut is needed. Create a new one by appending a number.
+	bundle {
+		local (ix = 2);
+		loop {
+			local (newGlossaryName = shortcut + " " + ix);
+			local (adr = @adrGlossary^.[newGlossaryName]);
+			if not defined (adr^) { //found a unique name
+				addToGlossary (adr);
+				return (true)};
+			ix++; //keep looping until a unique name is found
+			if ix > 100 { //no infinite loops: 100 entries with same name is a large limit
+				break}}};
+	
+	return (false)} //we tried 100 unique names and gave up

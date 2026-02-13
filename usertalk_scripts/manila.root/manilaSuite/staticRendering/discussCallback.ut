@@ -1,0 +1,46 @@
+on discussCallback (adrMsgTable, adrSite=nil) {
+	«This is called when a dg message is new or changes, so Manila has a chance to render the page.
+		«10/22/04; 10:47:29 AM by EDS
+			«incorporated error recovery and logging from DAB
+		«03/14/00; 5:14:26 PM by PBS
+	
+	local (oldPta);
+	try {
+		oldPta = html.getPageTableAddress ()};
+	
+	bundle { //get the address of the Manila site
+		if adrSite == nil {
+			local (adrMessages = parentOf (adrMsgTable^));
+			local (adrDiscuss = parentOf (adrMessages^));
+			local (adrPrefs = @adrDiscuss^.prefs);
+			local (adrMsgReader = adrPrefs^.adrMsgReader);
+			if not defined (adrMsgReader^) {
+				return (true)};
+			local (nomad = parentOf (adrMsgReader^));
+			loop {
+				if manilaSuite.isManilaSite (nomad) {
+					adrSite = nomad;
+					break};
+				nomad = parentOf (nomad^);
+				if nomad == nil {
+					return (false)}}}};
+	
+	bundle { //static rendering and auto-rendering must both be enabled
+		if not (manilaSuite.staticRendering.isEnabled (adrSite)) {
+			return (true)};
+		if not (manilaSuite.staticRendering.isAutoRenderingEnabled (adrSite)) {
+			return (true)}};
+	
+	try { //maybe render this message, if it's part of a renderable page
+		manilaSuite.staticRendering.renderMessage (adrMsgTable, adrSite)}
+	else { // 10/22/04; 10:46:54 AM by EDS incorporating DAB
+		if oldPta != nil {
+			try {html.setPageTableAddress (oldPta)}};
+		local (s = tryError);
+		log.add("Can't static render " + string.popFilefromAddress(adrMsg) + " because " + s, "manila Static Rendering");
+		scriptError("Can't render static page because " + s)};
+	
+	if oldPta != nil {
+		try {html.setPageTableAddress (oldPta)}};
+	
+	return (true)}

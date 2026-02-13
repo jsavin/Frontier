@@ -1,0 +1,24 @@
+on editorsOnlyMessage (pta=nil, flMembersOnly=false) {
+	«Changes
+		«12/14/05; 1:57:07 AM by JES
+			«New optional parameter, flMembersOnly. If true, we display the members only page instead of the editors only page.
+		«01/21/00; 11:33:16 AM by PBS
+			«Created. Display a message stating that this site is for editors only.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	bundle { //set template
+		pta^.template = "<html><head><title>{title}</title></head><body bgcolor=\"#FFFFFF\">\r\r<blockquote><h2>{title}</h2>{bodytext}</blockquote>{pagefooter ()}"};
+	
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
+	
+	local (messageText);
+	if flMembersOnly {
+		pta^.title = pta^.newsSite^.membersOnlyMessageTitle;
+		messageText = string (adrNewsSite^.membersOnlyMessage)}
+	else {
+		pta^.title = pta^.newsSite^.editorsOnlyMessageTitle;
+		messageText = string (adrNewsSite^.editorsOnlyMessage)};
+	
+	return (messageText)}

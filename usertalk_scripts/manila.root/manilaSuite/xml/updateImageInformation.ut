@@ -1,0 +1,15 @@
+on updateImageInformation () {
+	«The channel graphic may have changed, so update its associated info.
+		«10/28/99; 12:42:29 AM by PBS
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrPrefs = manilaSuite.xml.getRssPrefsAddress ());
+	local (msgNum = pta^.newsSite^.discussLinks.channelGraphicMsgNum);
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+	
+	try {
+		adrPrefs^.imageUrl = pta^.urls^.imageViewer + msgNum;
+		adrPrefs^.userlandExtensions.imageHeight = adrMsgTable^.image.height;
+		adrPrefs^.userlandExtensions.imageWidth = adrMsgTable^.image.width};
+	
+	return (true)}

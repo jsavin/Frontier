@@ -1,0 +1,38 @@
+«Note: This script runs outside the context of the website framework.
+«Changes:
+	«04/19/00 at 6:09:29 PM by JES
+		«localized
+	«05/01/00; 3:48:06 PM by JES
+		«Changed getString calls to use a replacement table address instead of a lists
+
+local (msgNum = number (pathArgs));
+local (discussRoot = config.mainResponder.prefs.defaultDiscussRoot);
+try {discussRoot = responderAttributes.discussionRoot};
+
+local (adrRoot = @[system.temp.mainResponder.discussRootFile].[discussRoot]);
+if typeOf (adrRoot^) == addressType or typeOf (adrRoot^) == stringType {
+	adrRoot = adrRoot^};
+
+local (adrTable = @adrRoot^.messages);
+local (adrMsg = @adrTable^.[string.padWithZeros (msgNum, 7)]);
+local (s = "");
+if adrMsg^.enclosureBits != "" {
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	replacementTable.name = adrMsg^.subject;
+	case typeOf (adrMsg^.enclosureBits) {
+		tabletype {
+			s = html.data.standardMacros.nestedTableDisplayer (@adrMsg^.enclosureBits);
+			s = "<html><head><title>" + manilaSuite.getString ("discuss.viewEnclosurePageTitle", @replacementTable, pta: @responderAttributes) + "</title></head><body> " + s + "</body></html>"}; // 4/19/00 JES: localized -- note @responderAttributes is passed in instead of a page table address because we're not in the context of the wsf
+		binarytype {
+			s = adrMsg^.enclosureBits;
+			responseHeaders.["Content-Type"] = mainResponder.getODBMimeType (@adrMsg^.enclosureBits)}}
+	else {
+		s = string (adrMsg^.enclosureBits);
+		s = string.replaceAll (s, "&", "&amp;");
+		s = string.replaceAll (s, "<", "&lt;");
+		s = string.replaceAll (s, ">", "&gt;");
+		s = string.replaceAll (s, "\t", "     ");
+		s = "<pre>" + s + "</pre>";
+		s = "<html><head><title>" + manilaSuite.getString ("discuss.viewEnclosurePageTitle", @replacementTable, pta: @responderAttributes) + "</title></head><body> " + s + "</body></html>"}}; // 4/19/00 JES: localized
+
+return (s)

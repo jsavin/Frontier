@@ -1,0 +1,471 @@
+on advancedNavigator (start=0, depth=1, itemTemplate=nil, currentItemTemplate=nil, itemSeparator=nil, levelStart=nil, levelEnd=nil, levelSeparator=nil, levelOffset=0, levelMultiplier=1, flThisSiteOnly=true, flIncludeCategories=true, flIncludeTopCategory=false, flIncludeRedirects=false, flIncludeItemsWithoutTitles=true, flIncludeItemsWithoutDescriptions=true, countTemplate=nil, descriptionTemplate=nil, header=nil, footer=nil, headerNextItemTemplate=nil, headerPrevItemTemplate=nil, headerCurrentItemTemplate=nil, headerParentItemTemplate=nil, flSiteStructurePagesOnly=true, flAlwaysIncludeCurrentPage=false, flUseShortTitle=false, titleMaxChars=infinity, descriptionMaxChars=infinity, depthBelowCurrent=0, flEditButton=true) {
+	«Changes
+		«5/7/06; 2:17:24 AM by JES
+			«Bug fix: If flNavigator is present, use its value correctly.
+		«5/1/06; 7:06:45 PM by JES
+			«New param, flEditButton. If true, we add an Edit button that goes to /admin/editSiteStructure, after our HTML.
+		«3/28/06; 1:20:25 AM by JES
+			«New optional parameter, depthBelowCurrent. If non-zero, we always render at least this many levels below the current category, if they exist.
+		«3/28/06; 12:39:46 AM by JES
+			«New paramters: flUseShortTitle, titleMaxChars and descriptionMaxChars. flUseShortTitle uses the value of the shortname attribute of stories and categories instead of name. The other two cause truncation of {title} and {description} when rendering items. For the full title or full description, sans truncation, use {fullTitle} and {fullDescription} in item templates.
+		«3/27/06; 5:41:54 PM by JES
+			«Replace spaces with non-breaking spaces in {title}s when rendering links.
+		«3/27/06; 5:01:30 AM by JES
+			«Bug fix: Don't convert parent links to all lower-case.
+		«3/27/06; 3:52:29 AM by JES
+			«Add flSiteStructurePagesOnly parameter. Fix bug finding the start node given an offset from the current page for start (a number, instead of a path or URL). Fix various bugs generating next/prev/current/parent URLs for header and footer.
+		«3/27/06; 3:04:59 AM by JES
+			«Added flIncludeTopCategory parameter. Fixed a bug finding sub-sites in config.mainResponder.domains site trees.
+		«3/24/06; 4:01:38 AM by JES
+			«Created. High-powered macro for rendering multi-level site structure-based navigators.
+				«Parameters
+					«start -- a relative path within the site, a number, or a URL in some site on the server -- if a relative path, we start from that path's category; if a number, we pop up [start] levels from the current page; if a URL, we start from the corresponding node in the site
+					«depth -- the depth to render the navigator (zero-based)
+					«itemTemplate -- the template for items -- individual links
+					«currentItemTemplate -- the template for items which correspond to the current page
+					«itemSeparator -- included between items
+					«levelStart -- template for starting a level of links
+					«levelEnd -- template for ending a level of links
+					«levelSeparator -- included between levels
+					«levelOffset, levelMultiplier -- used when rendering {level} within an item -- offset is applied first
+					«flThisSiteOnly -- if true, we follow links across between other sites on this server
+					«flIncludeCategories -- if true, categories are rendered as items, or if false, they're not -- categories are always rendered using levelStart/levelEnd -- to eliminate them entirely, leave these templates blank
+					«flIncludeTopCategory -- if true, the top-level category (the starting point) is included
+					«flIncludeRedirects -- if true, redirects are rendered, and if false, they're skipped; if a redirect is into another site on the same server, we render that site's hierarchy starting at the redirect URL
+					«flIncludeItemsWithoutTitles -- if false, we skip items which have no title (name attribute) or whose title is identical to the path (case-sensitive)
+					«flIncludeItemsWithoutDescriptions -- if false, we skip items whose description is missing or empty
+					«countTemplate -- the template for the counters next to categories
+					«descriptionTemplate -- the template for the description when present and non-empty
+					«header, footer -- included before and after the levels and links
+					«headerNextItemTemplate, headerPrevItemTemplate, headerCurrentItemTemplate, headerParentItemTemplate -- item templates used for {nextItem}, {prevItem} and {currentItem} in header and footer
+				«Macros
+					«The following macros are valid in itemTemplate, currentItemTemplate, levelStart levelEnd, header and footer:
+						«{url} -- the URL of the page or category
+						«{title} -- the title of the page or category, or the pathname if there is no title
+						«{link} -- the title as a link to the page
+						«{description} -- the description of the page or category, or the empty string if there is no URL
+						«{count} -- the count if sub-items of a category rendered through the countTemplate, or the empty string if there are no sub-items
+						«{level} -- the current level being rendered, plus levelOffset, and then multiplied by levelMultiplier
+					«In header and footer, the macros listed above correspond to the category at the current level. Additional macros which are valid in the header and footer are:
+						«{prevItem} -- the previous sibling to the current page, rendered through the itemTemplate, or the empty string if there is no previous sibling
+						«{nextItem} -- the subsequent sibling to the current page, rendered through the itemTemplate, or the empty string if there is no subsequent sibling
+						«{currentItem} -- the item for the current page, rendered through the currentItemTemplate
+						«{parentItem} -- the item for the current page, rendered through the currentItemTemplate
+					«The countTemplate has a single macro, {count} which is replaced with the count itself.
+					«There are no macros for itemSeparator, and levelSeparator.
+				«Notes
+					«Any story, category or redirect may have an attribute named flNavigator. If its value is false, the item is not included.
+	
+	local (pta = html.getPageTableAddress ());
+	«workspace.pt = pta^
+	
+	if flSiteStructurePagesOnly {
+		if not defined (pta^.remainingPath) {
+			return ("")}};
+	
+	bundle { //set up default templates
+		if typeOf (itemTemplate) == unknownType {
+			itemTemplate = "<li><a href=\"{url}\">{title}</a>\r"};
+		if typeOf (currentItemTemplate) == unknownType {
+			currentItemTemplate = "<li><b>{title}</b>\r"};
+		if typeOf (levelStart) == unknownType {
+			levelStart = "<ul>\r"};
+		if typeOf (levelEnd) == unknownType {
+			levelEnd = "</ul>\r"};
+		if typeOf (countTemplate) == unknownType {
+			countTemplate = "({count})"};
+		if typeOf (descriptionTemplate) == unknownType {
+			descriptionTemplate = " - {description}"};
+		if typeOf (header) == unknownType {
+			header = "<ul>\r"};
+		if typeOf (footer) == unknownType {
+			footer = "</ul>"};
+		if typeOf (headerNextItemTemplate) == unknownType {
+			headerNextItemTemplate = "<a href=\"{url}\">{title}</a>"};
+		if typeOf (headerPrevItemTemplate) == unknownType {
+			headerPrevItemTemplate = headerNextItemTemplate};
+		if typeOf (headerCurrentItemTemplate) == unknownType {
+			headerCurrentItemTemplate = headerNextItemTemplate};
+		if typeOf (headerParentItemTemplate) == unknownType {
+			headerParentItemTemplate = headerNextItemTemplate}};
+	
+	local (htext="");
+	on add (s) {
+		htext = htext + s;};
+	on getTextCallback (s) {
+		return (s)};
+	
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	local (adrThisSite = adrsite);
+	local (siteurl = manilaSuite.getSiteUrl (adrsite));
+	local (currentUrl, lowerCurrentUrl, lowerCurrentDefaultUrl);
+	bundle { //set currentUrl
+		local (parts = string.urlSplit (pta^.url));
+		currentUrl = parts[1] + parts[2] + pta^.uri;
+		lowerCurrentUrl = string.lower (currentUrl);
+		lowerCurrentDefaultUrl = lowerCurrentUrl;
+		if lowerCurrentDefaultUrl endswith "/" {
+			lowerCurrentDefaultUrl = lowerCurrentDefaultUrl + "default"}};
+	
+	manilaSuite.siteStructure.compileIfDirty (adrsite);
+	
+	local (categoryStack); new (tableType, @categoryStack);
+	
+	on urlError (url) {
+		scriptError ("Can't render the advanced navigator starting at \"" + url + "\" because there are no Manila sites containing the URL.")};
+	on startLevelToUrl (level) {
+		local (url);
+		level = abs (level);
+		local (path = pta^.uri); //pta^.uri always starts with a '/' character
+		if not (path endswith "/") { //pop to nearest directory
+			path = string.popSuffix (path, "/") + "/"};
+		for i = 1 to level {
+			path = string.popSuffix (url, "/") + "/"};
+		local (parts = string.urlSplit (pta^.url));
+		url = parts[1] + parts[2] + path;
+		if not (url endswith "/") {
+			url = url + "/"};
+		return (url)};
+	on findNodeWithAttValue (adrnode, adrnomad, attName, attValue, flCaseSensitive=false) {
+		local (adr);
+		if not flCaseSensitive {attValue = string.lower (attValue)};
+		for adr in adrnode {
+			if defined (adr^.["/atts"].[attName]) {
+				if flCaseSensitive {
+					if adr^.["/atts"].[attName] == attValue {
+						adrnomad^ = adr;
+						return (true)}}
+				else {
+					if string.lower (adr^.["/atts"].[attName]) == attValue {
+						adrnomad^ = adr;
+						return (true)}}}};
+		return (false)};
+	on findParentNode (adr, adrAdrParent) {
+		local (adrparent = parentOf (adr^));
+		local (parentname = nameOf (adrparent^));
+		case true {
+			parentname endswith "\thierarchy";
+			parentname endswith "\tcategory" {
+				adrAdrParent^ = adrparent;
+				return (true)}};
+		return (false)};
+	on findSiblingNode (adr, direction, adrAdrSibling) {
+		local (offset);
+		case direction {
+			up {
+				offset = -1};
+			down {
+				offset = 1}}
+		else {
+			return (false)};
+		local (ix = indexOf (adr^));
+		local (adrtable = parentOf (adr^));
+		local (ct = sizeOf (adrtable^) );
+		local (nomad);
+		loop {
+			ix = ix + offset;
+			if ix < 1 or ix > ct {
+				return (false)};
+			nomad = @adrtable^[ix];
+			case true {
+				nameOf (nomad^) endswith "\tstory";
+				nameOf (nomad^) endswith "\tcategory" and flIncludeCategories;
+				nameOf (nomad^) endswith "\tredirect" and flIncludeRedirects {
+					if defined (nomad^.["/atts"].flNavigator) {
+						if not nomad^.["/atts"].flNavigator {continue}};
+					if not flIncludeItemsWithoutTitles {
+						if not defined (nomad^.["/atts"].name) {
+							continue};
+						if nomad^.["/atts"].name == nomad^.["/atts"].pathname {
+							continue}};
+					if not flIncludeItemsWithoutDescriptions {
+						try {
+							local (adrdesc = xml.getAddress (nomad, "description"))}
+						else {
+							continue}};
+					break}}}; //found
+		adrAdrSibling^ = nomad;
+		return (true)};
+	on findStartNode (url, adradrsite) {
+		local (siteUrlNomad = url, nomad = adradrsite^);
+		siteUrlNomad = string.popSuffix (siteUrlNomad, "/");
+		
+		if flThisSiteOnly { //check that we're in this site
+			if not (string.lower (siteUrlNomad + "/") beginswith string.lower (siteurl)) {
+				scriptError ("Can't render the advanced navigator starting at \"" + url + "\" because the URL is not within this site and flThisSiteOnly is true.")}}
+		else { //find the starting site
+			loop {
+				local (flFound = false);
+				try { //find the lowest-leve site that contains the URL
+					local (siteName = manilaSuite.rpcUtils.urlToSiteName (siteUrlNomad + "/"));
+					local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+					if adrsite != adrThisSite {
+						if defined (adrsite^.["#newsSite"].flEditorsOnlyAccessToSite) {
+							if adrsite^.["#newsSite"].flEditorsOnlyAccessToSite {
+								scriptError ("Editors only site.")}}}; //skip this one -- break out of try block
+					nomad = adrsite;
+					flFound = true};
+				if flFound {
+					break};
+				
+				siteUrlNomad = string.popSuffix (string.popSuffix (siteUrlNomad, "/") + "/", "/");
+				if string.countFields (siteUrlNomad, "/") < 3 {urlError (url)};
+				};
+			adradrsite^ = nomad}; //this is the site address
+		
+		local (path = string.delete (url, 1, sizeOf (manilaSuite.getSiteUrl (nomad))) );
+		nomad = @nomad^.["#hierarchy"].structure; //start in this site's site structure...
+		nomad = xml.getAddress (nomad, "hierarchy"); //...at the top-level node
+		
+		while sizeOf (path) { //follow the path...
+			local (pathpart = string.nthField (path, "/", 1));
+			path = string.delete (path, 1, sizeOf (pathpart) + 1);
+			
+			if not findNodeWithAttValue (nomad, @nomad, "pathname", pathpart) {urlError (url)};
+			
+			if not flThisSiteOnly { //follow links to other sites
+				if defined (nomad^.["/atts"].url) and (nomad^.["/atts"].url beginswith "http") { //valid offsite link
+					if nomad^.["/atts"].url endswith "/" { //must be a link to a directory, not a specific page
+						try { //dive into the cross-linked site's hierarchy
+							local (siteName = manilaSuite.rpcUtils.urlToSiteName (nomad^.["/atts"].url));
+							local (adrCrossSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+							local (flEditorsOnly = false);
+							if adrCrossSite != adrThisSite {
+								if defined (adrCrossSite^.["#newsSite"].flEditorsOnlyAccessToSite) {
+									flEditorsOnly = adrCrossSite^.["#newsSite"].flEditorsOnlyAccessToSite}};
+							if not flEditorsOnly { //don't include editors-only sites (members-only sites are ok)
+								manilaSuite.siteStructure.compileIfDirty (adrCrossSite);
+								nomad = @adrCrossSite^.["#hierarchy"].structure;
+								nomad = xml.getAddress (nomad, "hierarchy");
+								adradrsite^ = adrCrossSite}}}}}};
+		return (nomad)};
+	on flowItem (adr, url, template, level, adrAddFunc=nil) {
+		
+		if not (template contains "{") {add (template); return}; //shortcut
+		
+		if not flIncludeRedirects {
+			if nameOf (adr^) endswith "\tredirect" {
+				return}};
+		if not flIncludeCategories {
+			if nameOf (adr^) endswith "\tcategory" {
+				return}};
+		if defined (adr^.["/atts"].flNavigator) {
+			if not adr^.["/atts"].flNavigator {continue}};
+		
+		local (title="", fullTitle="", description="", fullDescription="", count=1);
+		
+		local (adratts = @adr^.["/atts"]);
+		if defined (adratts^) {
+			title = adratts^.pathname;
+			if defined (adratts^.name) {
+				title = adratts^.name};
+			fullTitle = title;
+			if flUseShortTitle {
+				if defined (adratts^.shortname) {
+					title = adratts^.shortname}};
+			if sizeOf (title) > titleMaxChars {
+				title = string.popSuffix (string.mid (title, 1, titleMaxChars), " ") + "..."};
+			if not flIncludeItemsWithoutTitles {
+				if title == adratts^.pathname {
+					return}};
+			try {
+				local (adrdesc = xml.getAddress (adr, "description"));
+				description = adrdesc^};
+			fullDescription = description;
+			if sizeOf (description) > descriptionMaxChars {
+				description = string.popSuffix (string.mid (description, 1, descriptionMaxChars), " ") + "..."};
+			if not flIncludeItemsWithoutDescriptions {
+				if description == "" {
+					return}};
+			local (count = 1);
+			if nameOf (adr^) endswith "\tcategory" {
+				local (ct = sizeOf (adr^));
+				count = ct;
+				local (i);
+				for i = 1 to ct {
+					if nameOf (adr^[i]) beginswith "/" {
+						count--}
+					else {
+						break}}}}
+		else { //top-level of a site's <hierarchy>
+			title = adrsite^.["#newsSite"].siteName;
+			description = string (adrsite^.["#newsSite"].tagline)};
+		
+		template = string.replaceAll (template, "{url}", url, false);
+		template = string.replaceAll (template, "{title}", string.replaceAll (title, " ", "&nbsp;"), false);
+		template = string.replaceAll (template, "{fullTitle}", fullTitle, false);
+		if description == "" {
+			template = string.replaceAll (template, "{description}", "", false)}
+		else {
+			template = string.replaceAll (template, "{description}", string.replace (descriptionTemplate, "{description}", description, false), false)};
+		if fullDescription == "" {
+			template = string.replaceAll (template, "{fullDescription}", "", false)}
+		else {
+			template = string.replaceAll (template, "{fullDescription}", string.replace (descriptionTemplate, "{description}", fullDescription, false), false)};
+		template = string.replaceAll (template, "{link}", html.getLink (title, url), false);
+		template = string.replaceAll (template, "{count}", string.replace (countTemplate, "{count}", count, false), false);
+		template = string.replaceAll (template, "{level}", (level + levelOffset) * levelMultiplier, false);
+		
+		if adrAddFunc == nil {
+			adrAddFunc = @add};
+		return (adrAddFunc^ (template))};
+	on doCategory (nomad, catUrl, currDepth, depthToInclude, flIncludeThisCat=true, flIncludeSubs=true) {
+		if not (catUrl endswith "/") {catUrl = catUrl + "/"};
+		
+		if ++currDepth > depthToInclude {
+			local (flInclude = false);
+			if depthBelowCurrent > 0 {
+				if string.lower (catUrl) beginswith lowerCurrentUrl {
+					if currDepth - depthBelowCurrent <= depthToInclude {
+						flInclude = true;
+						if string.lower (catUrl) == lowerCurrentUrl {
+							flIncludeSubs = false}}}};
+			if flAlwaysIncludeCurrentPage { //also includes siblings -- we include this whole category level
+				if lowerCurrentUrl beginswith string.lower (catUrl) {
+					flInclude = true;
+					if lowerCurrentUrl == string.lower (catUrl) {
+						flIncludeSubs = false};
+					flIncludeSubs = true}};
+			if not flInclude {return}}; //skip this category
+		if defined (categoryStack.[catUrl]) {return}; //avoid infinite recursion
+		categoryStack.[catUrl] = true;
+		if defined (nomad^.["/atts"].flNavigator) {
+			if not nomad^.["/atts"].flNavigator {return}};
+		
+		local (adr);
+		if flIncludeCategories and flIncludeThisCat {
+			local (t = itemTemplate);
+			case string.lower (catUrl) {
+				lowerCurrentUrl;
+				lowerCurrentDefaultUrl {
+					t = currentItemTemplate}};
+			flowItem (nomad, catUrl, string.replaceAll (levelStart, "{item}", t, false), currDepth-1)};
+		local (adrlast = @nomad^[sizeOf (nomad^)] );
+		if flIncludeSubs {
+			for adr in nomad {
+				if defined (adr^.["/atts"].pathname) or defined (adr^.["/atts"].url) {
+					local (flCategory = (nameOf (adr^) endswith "\tcategory") );
+					if flCategory {
+						if not flIncludeCategories {
+							continue}};
+					local (flFullUrl = false);
+					if defined (adr^.["/atts"].url) {
+						flFullUrl = true}
+					else {
+						if adr^.["/atts"].pathname beginswith "http://" {
+							flFullUrl = true}};
+					local (flSimpleLink = true);
+					if flFullUrl and not flThisSiteOnly {
+						flSimpleLink = false;
+						try {
+							local (siteurl);
+							if defined (adr^.["/atts"].url) {
+								siteurl = adr^.["/atts"].url}
+							else {
+								siteurl = adr^.["/atts"].pathname};
+							local (sitename = manilaSuite.rpcUtils.urlToSiteName (siteurl));
+							local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+							local (flEditorsOnly = false);
+							if adrsite != adrThisSite {
+								if defined (adrsite^.["#newsSite"].flEditorsOnlyAccessToSite) {
+									if adrsite^.["#newsSite"].flEditorsOnlyAccessToSite {
+										flEditorsOnly = true}}};
+							if not flEditorsOnly {
+								manilaSuite.siteStructure.compileIfDirty (adrsite);
+								local (adrinsite = findStartNode (siteurl, @adrsite));
+								doCategory (adrinsite, siteurl, currDepth, depthToInclude, flIncludeSubs:flIncludeSubs)}}};
+					if flSimpleLink {
+						local (template, pageUrl, subpath);
+						if defined (adr^.["/atts"].pathname) {
+							subpath = adr^.["/atts"].pathname}
+						else {
+							subpath = adr^.["/atts"].url};
+						if subpath beginswith "http://" {
+							pageUrl = subpath}
+						else {
+							pageUrl = catUrl + subpath};
+						if flCategory {pageurl = pageurl + "/"};
+						if string.lower (pageUrl) == lowerCurrentUrl {
+							template = currentItemTemplate}
+						else {
+							template = itemTemplate};
+						flowItem (adr, pageUrl, template, currDepth)};
+					if flCategory {
+						doCategory (adr, catUrl + adr^.["/atts"].pathname, currDepth, depthToInclude, flIncludeSubs:flIncludeSubs)};
+					if adr != adrlast {
+						add (levelSeparator)}}}};
+		if flIncludeCategories and flIncludeThisCat {
+			local (t = itemTemplate);
+			case string.lower (catUrl) {
+				lowerCurrentUrl;
+				lowerCurrentDefaultUrl {
+					t = currentItemTemplate}};
+			flowItem (nomad, catUrl, string.replaceAll (levelEnd, "{item}", t, false), currDepth-1)};
+		return};
+	
+	local (url);
+	if typeOf (start) == longType { //popping up URL-wise from current page -- find start node
+		url = startLevelToUrl (start)}
+	else { //find start node based on the path or URL passed in for start
+		if start beginswith "http://" {
+			url = start}
+		else {
+			start = string.popLeading (start, "/");
+			url = siteurl + start}};
+	local (nomad = findStartNode (url, @adrsite));
+	
+	if header contains "{" or footer contains "{" { //handle next/prev/current/parent items in header/footer
+		local (adrnext=nil, adrprev=nil, adrparent=nil, adrcurrent=nil, nextItem="", prevItem="", currentItem="", parentItem="", nextPrevBaseUrl=currentUrl);
+		
+		if currentUrl endswith "/" {
+			adrcurrent = nomad;
+			nextPrevBaseUrl = string.popSuffix (string.popSuffix (nextPrevBaseUrl, "/"), "/") + "/"}
+		else { //current node is under nomad
+			findNodeWithAttValue (nomad, @adrcurrent, "pathname", string.nthField (pta^.remainingPath, "/", string.countFields (pta^.remainingPath, "/")));
+			nextPrevBaseUrl = string.popSuffix (nextPrevBaseUrl, "/") + "/"};
+		if not (nameOf (adrcurrent^) endswith "\thierarchy") { //set adrnext and adrprev and adrparent
+			findSiblingNode (adrcurrent, down, @adrnext);
+			findSiblingNode (adrcurrent, up, @adrprev);
+			findParentNode (adrcurrent, @adrparent);
+			
+			if adrnext != nil {
+				local (nextUrl = nextPrevBaseUrl + adrnext^.["/atts"].pathname);
+				if nameOf (adrnext^) endswith "\tcategory" {
+					nextUrl = nextUrl + "/"};
+				nextItem = flowItem (adrnext, nextUrl, headerNextItemTemplate, 0, @getTextCallback)};
+			if adrprev != nil {
+				local (prevUrl = nextPrevBaseUrl + adrprev^.["/atts"].pathname);
+				if nameOf (adrprev^) endswith "\tcategory" {
+					prevUrl = prevUrl + "/"};
+				prevItem = flowItem (adrprev, prevUrl, headerPrevItemTemplate, 0, @getTextCallback)};
+			if adrparent != nil {
+				local (parentUrl = string.popSuffix (currentUrl, "/") + "/");
+				if currentUrl endswith "/" {
+					parentUrl = string.popSuffix (string.popSuffix (parentUrl, "/"), "/") + "/"};
+				parentItem = flowItem (adrparent, parentUrl, headerParentItemTemplate, 0, @getTextCallback)}};
+		currentItem = flowItem (adrcurrent, currentUrl, headerCurrentItemTemplate, 0, @getTextCallback);
+		header = string.replace (header, "{nextItem}", nextItem, false);
+		header = string.replace (header, "{prevItem}", prevItem, false);
+		header = string.replace (header, "{currentItem}", currentItem, false);
+		header = string.replace (header, "{parentItem}", parentItem, false);
+		footer = string.replace (footer, "{nextItem}", nextItem, false);
+		footer = string.replace (footer, "{prevItem}", prevItem, false);
+		footer = string.replace (footer, "{currentItem}", currentItem, false);
+		footer = string.replace (footer, "{parentItem}", parentItem, false)};
+	
+	
+	flowItem (nomad, url, header, 0);
+	case true { //if we're pointed at a story or redirect, pop up one level
+		nameOf (nomad^) endswith "\tstory";
+		nameOf (nomad^) endswith "\tredirect" {
+			nomad = parentOf (nomad^)}};
+	doCategory (nomad, url, 0, depth, flIncludeTopCategory);
+	flowItem (nomad, url, footer, 0);
+	
+	if flEditButton {
+		add ("<input type=\"button\" onclick=\"window.location='" + siteurl + "admin/editSiteStructure';\" value=\"" + manilaSuite.getString ("common.editButton") + "\" />")};
+	
+	return (htext)};
+«bundle //testing
+	«html.setPageTableAddress (@workspace.pt)
+	«advancedNavigator ("http://jsavin.dyndns.org/about", levelStart:"", levelEnd:"", header:"{prevItem} {currentItem} {nextItem}", footer:"", flThisSiteOnly:false)

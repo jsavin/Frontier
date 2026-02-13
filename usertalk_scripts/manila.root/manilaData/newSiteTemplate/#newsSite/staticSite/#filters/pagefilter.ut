@@ -1,0 +1,2 @@
+on pageFilter (pta) {
+	return (manilaSuite.staticRendering.filters.pageFilter (pta))}

@@ -1,0 +1,104 @@
+on get (username, password, siteName, itemName) {
+	«Get the text of an advanced pref item.
+		«11/17/00; 7:55:10 PM by JES
+		«Changes:
+			«11/26/00; 7:54:49 PM by PBS
+				«Added the directory template.
+			«12/18/00; 4:30:17 PM by PBS
+				«Slides template.
+			«02/21/01; 11:55:10 PM by JES
+				«Convert Mac text to Latin if the server is a Mac.
+			«10/2/01; 2:47:10 PM by PBS
+				«Support for print friendly template.
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
+	local (adrObject, adrCreateScript, windowInfoTableName = itemName);
+	case string.lower (itemName) {
+		"css" {
+			adrObject = @adrNewsSite^.cascadingStyleSheet;
+			adrCreateScript = @manilaSuite.newSite.createStyleSheet;
+			itemName = "cascading style sheet";
+			windowInfoTableName = "cascadingStyleSheet"};
+		"customprefs" {
+			adrObject = @adrNewsSite^.prefsWizard.outline;
+			adrCreateScript = @manilaSuite.newSite.createCustomPrefsWizard;
+			itemName = "custom prefs"};
+		"homepagetemplate" {
+			adrObject = @adrSite^.["#homePageTemplate"];
+			if not defined (adrObject^) { // the homepage template doesn't have a create script
+				wp.newTextObject ("", adrObject)};
+			itemName = "home page template";
+			windowInfoTableName = itemName};
+		"javascript" {
+			adrObject = @adrNewsSite^.javaScript;
+			adrCreateScript = @manilaSuite.newSite.createJavaScript;
+			itemName = "JavaScript"};
+		"joinnowmembersbox" {
+			adrObject = @adrNewsSite^.membersBoxTemplates.signInBox;
+			if not defined (adrObject^) { // the members boxes don't have create scripts
+				local (adrDefaultObject = @manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signInBox);
+				wp.newTextObject (string (adrDefaultObject^), adrObject)};
+			itemName = "join now members box"};
+		"navigation" {
+			adrObject = @adrSite^.["#navigator"].outline;
+			adrCreateScript = @manilaSuite.newSite.createNavigator;
+			itemName = "navigation"};
+		"newsdaytemplate" {
+			adrObject = @adrNewsSite^.newsDayTemplate;
+			adrCreateScript = @manilaSuite.newSite.createNewsDayTemplate;
+			itemName = "news day template"};
+		"newsitemtemplate" {
+			adrObject = @adrNewsSite^.newsItems.template;
+			if not defined (adrObject^) { // the news item template doesn't have a create script
+				local (adrDefaultObject = @manilaData.newSiteTemplate.["#newsSite"].newsItems.template);
+				wp.newTextObject (string (adrDefaultObject^), adrObject)};
+			itemName = "news item template"};
+		"signoutmembersbox" {
+			adrObject = @adrNewsSite^.membersBoxTemplates.signOutBox;
+			if not defined (adrObject^) { // the members boxes don't have create scripts
+				local (adrDefaultObject = @manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signOutBox);
+				wp.newTextObject (string (adrDefaultObject^), adrObject)};
+			itemName = "sign out members box"};
+		"sitestructure" {
+			adrObject = @adrSite^.["#hierarchy"].outline;
+			adrCreateScript = @manilaSuite.newSite.createHierarchy;
+			itemName = "site structure"};
+		"template" {
+			adrObject = @adrSite^.["#template"];
+			adrCreateScript = @manilaSuite.newSite.createTemplate;
+			itemName = "template"};
+		"directorytemplate" {
+			adrObject = @adrSite^.["#newsSite"].directory.template;
+			if not defined (adrObject^) { //there's no create script
+				if not defined (adrSite^.["#newsSite"].directory) {
+					adrSite^.["#newsSite"].directory = manilaData.newSiteTemplate.["#newsSite"].directory};
+				if not defined (adrSite^.["#newsSite"].directory.template) {
+					adrSite^.["#newsSite"].directory.template = manilaData.newSiteTemplate.["#newsSite"].directory.template}};
+			itemName = "directorytemplate"};
+		"printfriendlytemplate";
+		"slidestemplate" {
+			adrObject = manilaSuite.custody.getAdvancedItemAddress (itemName, adrSite)}}
+	else {
+		scriptError ("Can't get the text of the " + itemName + " because it doesn't exist.")};
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't get the " + itemName + " because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	if not defined (adrObject^) { //if it doesn't exist, create the default advanced pref item
+		local (siteInfo);
+		new (tableType, @siteInfo);
+		siteInfo.adrSite = adrSite;
+		adrCreateScript^ (@siteInfo)};
+	
+	local (t);
+	new (tableType, @t);
+	t.body = string (adrObject^);
+	if system.environment.isMac {
+		t.body = latinToMac.macToLatin (t.body)};
+	bundle { //get window info table
+		new (tableType, @t.windowInfo);
+		manilaSuite.rpcUtils.getWindowInfoTable (windowInfoTableName, adrSite, @t.windowInfo)};
+	
+	return (t)}

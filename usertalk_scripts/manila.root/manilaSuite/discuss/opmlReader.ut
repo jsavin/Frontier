@@ -1,0 +1,72 @@
+on opmlReader (msgNum=nil) {
+	«Changes:
+		«1/31/06; 2:18:36 AM by JES
+			«Add support for pending messages.
+		«5/24/02; 12:46:02 PM by JES
+			«Fixed a bug where the <title> element in the returned OPML would be "localOutline" instead of the correct title. If the message is the current home page, <title> is the siteName.
+		«1/5/02; 11:13:08 PM by PBS
+			«msgNum is now an optional parameter so other pages (other than /discuss/reader) can return OPML.
+		«12/05/00; 4:30:27 PM by PBS
+			«Since we're not storing OPML directly anymore, convert from the outline object to OPML and return that.
+		«10/06/00; 6:18:17 PM by PBS
+			«Convert a Manila message to OPML and return the OPML as text/x-opml. What's tricky is that messages are not stored in OPML format. We need to convert. Sometimes we have window info, sometimes not. So we create an outline and pass it to op.outlineToXml.
+	
+	local (pta = html.getPageTableAddress ());
+	pta^.responseHeaders.["Content-Type"] = "text/x-opml"; //MIME type
+	
+	if msgNum == nil {
+		msgNum = pta^.pathArgs - ".opml"};
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum, pta));
+	
+	local (membershipGroupName = pta^.defaultMembershipGroup);
+	local (adrMember = mainResponder.members.getMemberTable (membershipGroupName, adrMsgTable^.member));
+	local (email, name);
+	email = nameOf (adrMember^);
+	if defined (adrMember^.personalInfo.name) {
+		name = adrMember^.personalInfo.name}
+	else { //empty string
+		name = ""};
+	
+	local (title = adrMsgTable^.subject); //default to the message subject
+	bundle { //if the message is current home page, set title to the siteName
+		if manilaSuite.getNewsSitePref ("discussLinks.homePageMsgnum") == msgNum {
+			title = manilaSuite.getNewsSitePref ("siteName")}};
+	
+	local (localOutline, adrOutline);
+	if defined (adrMsgTable^.flDeleted) {
+		if adrMsgTable^.flDeleted {
+			scriptError ("Can't download this outline because it's been deleted.")}};
+	if defined (adrMsgTable^.flPending) {
+		if adrMsgTable^.flPending {
+			if not (manilaSuite.editors.managingEditorTest () or manilaSuite.editors.contentEditorTest ()) {
+				scriptError ("Can't download this outline because it's pending editor approval.")}}};
+	if defined (adrMsgTable^.outline) { //is there already an outline version?
+		adrOutline = @adrMsgTable^.outline}
+	else { //no outline, just get body
+		adrOutline = @localOutline;
+		op.newOutlineObject (adrMsgTable^.body, adrOutline);
+		local (oldTarget = target.set (adrOutline));
+		op.firstSummit ();
+		try {target.set (oldTarget)}};
+	local (oldTarget = target.set (adrOutline)); //the window title is only preserved if the window is targetted
+	window.setTitle (adrOutline, title);
+	setTimeCreated (adrOutline, adrMsgTable^.postTime);
+	setTimeModified (adrOutline, adrMsgTable^.lastUpdate);
+	local (s);
+	try { //try modern version first -- it might not be installed, however, in which case it will fail
+		s = op.outlineToXml (adrOutline, name, email)}
+	else { //original version is installed
+		s = op.outlineToXml (adrOutline)};
+	try {target.set (oldTarget)};
+	
+	bundle { //set template to "" -- this needs to have no template
+		pta^.indirectTemplate = false;
+		wp.newTextObject ("{bodytext}", @pta^.template);
+		pta^.activeUrls = "";
+		pta^.autoParagraphs = "";
+		pta^.clayCompatibility = false;
+		pta^.expandGlossaryItems = false;
+		pta^.processMacros = false;
+		};
+	
+	return (s)}

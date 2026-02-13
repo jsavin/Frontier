@@ -1,0 +1,489 @@
+on formatNewsItem (adrMsgTable, s=nil, flAddEditLink=false, adrSite=nil, groupName=nil, flDgLink=true, flIncrementReadCount=true, flFullItemPage=false, department=nil, flSupressAnchors=false) {
+	«Changes:
+		«3/25/13; 4:01:09 PM by JES
+			«New parameter: flSupressAnchors.
+				«Defaults to false. If true, then we only include the anchor tag if the template contains {permalink}.
+			«Bug fix: No more double anchor links!
+		«3/22/07; 1:12:10 PM by LL
+			«Bug fix: Call manilaSuite.discuss.getResponseCount when counting the number of responses to check for deleted or pending messages.
+		«3/19/07; 2:53:34 PM by LL
+			«Bug fix: Support a new news item macro: {itemPostTime} to prevent conflicts with a macro replacement in the page filter.
+		«2006
+			«12/10/06; 1:30:46 PM by LL
+				«Optimized macro replacement by checking the news item template for macros before generating values for the macros.
+			«12/5/06; 11:05:15 AM by LL
+				«Don't generate TrackBack link data if the template doesn't include the TrackBack macro.
+			«11/3/06; 7:19:51 PM by LL
+				«Added support for a new alternate date/time format for the postTime macro
+			«8/31/06; at 10:56:19 AM by LL
+				«Optimized macro replacements by replacing the description macro last which allows the other macro replacements to work with a smaller string.
+			«8/7/06; 8:39:07 PM by LL
+				«Fix a bug when static rendering that caused the home page and archive pages not to publish on a news item site.
+			«1/31/06; 1:36:44 AM by JES
+				«Update comment counter to handle new flPending flag.
+		«2005
+			«10/18/05; 4:44:55 AM by JES
+				«New optional parameter, department. If specified, use it for all applicable items, including permalink, picture and commentLink.
+			«9/14/05; 2:31:18 AM by JES
+				«Add support for news items as stories, and news items with site structure paths.
+			«9/14/05; 2:22:57 AM by JES
+				«Fix a bug which caused manually-entered summaries to not be used if automatic summaries have subsequently been turned on.
+			«9/13/05; 8:24:05 PM by JES
+				«Added support for ETP callback, newsReader. Callback takes two parameters, adrMsgTable and adrHtmlText. adrMsgTable is the address of the news item being rendered and adrHtmlText is the address of the string containing the rendered news item.
+			«7/9/05; 2:59:31 AM by JES
+				«Substantial re-write for summary support
+					«New optional parameter, flFullItemPage. If true, then this is a page linked to from a summary item. We flow through a different template.
+					«If false (the default), and summaries are enabled, then we use the summary instead of description, and change the link to the URL of the full item page instead of the permalink or supplied URL.
+			«7/7/05; 7:06:56 PM by JES
+				«If the news item is in multiple departments, use the first department for picture, and create a comma-separated list of departments for {department} and {departmentLink}.
+			«3/21/05; 1:34:04 PM by JES
+				«Don't break the home page if an enclosure doesn't have a length defined.
+			«3/20/05; 2:42:30 AM by JES
+				«Added support for enclosure macros.
+		«2004
+			«12/21/04; 12:45:49 PM by LL
+				«Support for alternate news item date and time formats.
+			«10/27/04; 3:54:16 PM by JES
+				«Factored code that generates trackback RDF snippets into a new routing, manilaSuite.trackback.getAutoDiscoveryXml.
+			«7/31/04; 12:46:17 AM by JES
+				«Fix comment counter to handle the case where the first comment (or parent DG message) had been deleted.
+			«4/28/04; 1:00:56 AM by JES
+				«New pseudo-macro for news item templates: encodedPermalinkUrl -- a URL-encoded string for the permalink of the news item.
+		«Changes 2003 and earlier:
+			«10/14/03; 1:13:10 AM by JES
+				«When rendering links to departments, call manilaSuite.news.getDepartmentUrl instead of calculating the link here.
+			«9/2/03; 11:09:03 AM by JES
+				«Increment the read count of the message containing the news item whenever a news item is rendered.
+			«8/30/03; 12:49:21 PM by JES
+				«Add TrackBack auto-discovery RDF bits inside an HTML comment. Fixes HTML validation errors.
+			«4/24/03; 11:46:28 PM by JES
+				«Display the comment link based on whether the global pref, or optionally the per-item pref says to display it.
+			«4/23/03; 3:49:43 PM by JES
+				«Added support for the following macros: summary, editButton, fullItemUrl, wordCount, characterCount, and permalinkUrl.
+			«4/18/03; 6:43:08 PM by JES
+				«Add ?home=true to the edit link, so that the news item editor knows to redirect back to the home page.
+			«4/18/03; 5:23:35 PM by JES
+				«When linking to the author, call through manilaSuite.members.linkToMember instead of mainResponder.members.linkToMember.
+			«4/18/03; 3:15:45 PM by JES
+				«Remove the permalink url from the edit link.
+			«4/18/03; 12:00:50 AM by JES
+				«Add an #edit anchor to the edit link so we go straight from the home page to the editing form, skipping the preview at the top of the page.
+				«Add the item's permalink URL as a URL argument in the edit link, so that after posting the edited item, we can redirect back to it on the home page.
+			«4/17/03; 1:29:44 PM by JES
+				«In the comment link template, default to using square brackets around the counter.
+			«4/1/03; 4:13:08 PM by JES
+				«Added support for {departmentLink} macro. Links to the viewDepartment page for the given department, if specified in the news item. If no department is specified, {departmentLink} expands to the empty string.
+			«4/1/03; 12:17:51 PM by JES
+				«Don't throw an error if the news item doesn't define a department.
+			«2/21/03; 1:39:03 AM by JES
+				«When adding comment counts for the {commentLink} macro, don't include deleted messages.
+			«2/17/03; 5:25:43 PM by JES
+				«Expand the {commentLink} macro into a link to a pop-up comments page.
+			«2/13/03; 3:42:32 PM by JES
+				«Fixed a bug which would cause a macro error in news item renderings for items which have not yet been posted to the home page, when the news item template contains the {permalink} macro.
+			«2/12/03; 5:46:22 PM by JES
+				«Fixed a bug where the permalink url would be used for the {url} speudo-macro, even if the poster had specified a link for the news item.
+			«2/12/03; 4:37:04 PM by JES
+				«If no url is specified in the news item, use the permalink url for the news item in place of the {url} pseudo-macro. Also fixed a bug which could cause incorrect permalink urls to be generated depending on the system's date display settings.
+			«4/10/02; 6:43:21 PM by JES
+				«Added {itemTitle} as a synonym for {title}. Needed in order to be able to pass in a template which renders the titles to the viewNewsItems macro.
+			«2/13/02; 2:20:25 PM by PBS
+				«Generate permalinks.
+			«12/24/00; 1:56:26 AM by JES
+				«Use new bottleneck for displaying Edit With Radio button.
+			«09/05/00; 5:21:14 PM by PBS
+				«If the News Item is missing a URL or description field, use "". These errors should be non-fatal -- the rest of the page should render.
+			«09/01/00; 7:36:58 PM by PBS
+				«Always convert blank lines to paragraphs tags -- news items should look the same in all contexts, no matter what the setting of autoparagraphs is.
+			«07/08/00; 1:54:18 AM by PBS
+				«{link} generates a link using the title and URL of the News Item. If there's no URL, it's just the title. Also: there's a CSS class -- newsItemLink -- associated with this.
+			«05/04/00; 7:05:44 PM by JES
+				«Localized.
+			«04/20/00; 3:05:49 PM by PBS
+				«Created. Format a news item for HTML display.
+	
+	local (pta);
+	try {
+		pta = html.getPageTableAddress ()};
+	
+	if adrSite == nil {
+		local (pta = html.getPageTableAddress ());
+		adrSite = manilaSuite.getManilaSiteAddress (pta)};
+	local (adrNewsSite = @adrSite^.["#newsSite"]);
+	
+	if groupName == nil {
+		if pta == nil {
+			pta = html.getPageTableAddress ()};
+		groupName = pta^.defaultMembershipGroup};
+	
+	local (tempTable); // 05/04/00 JES: a dummy page table for getString
+	bundle { // figure out what language to render with
+		new (tableType, @tempTable);
+		if pta == nil { // we have to figure out what language to render in
+			if defined (adrSite^.["#prefs"].language) { // try to get the setting from the site
+				tempTable.language = adrSite^.["#prefs"].language}}
+		else { // we have a page table -- see if we can get the language from there
+			if defined (pta^.language) {
+				tempTable.language = pta^.language}};
+		if not defined (tempTable.language) { // fallback to server or Frontier settings, then to English
+			if defined (config.mainResponder.globals.language) {
+				tempTable.language = config.mainResponder.globals.language}
+			else { // does Frontier have a language setting?
+				if defined (user.prefs.language) {
+					tempTable.language = user.prefs.language}
+				else { // fall back to English
+					tempTable.language = "English"}}}};
+	
+	if s == nil { //s is the news item template; set up a default (should never happen)
+		s = "<b><a href=\"{url}\">{title}</a></b><br><i>{picture}From the {department} department...</i><br>{description}<br><font size=\"-2\">Post time: {itemPostTime}<br>Posted by {author}.<br>{discussLink}</font>{editLink}"};
+	
+	local (t);
+	try { //get the news item table
+		t = manilaSuite.news.xmlToTable (adrMsgTable^.body)}
+	else { //error -- don't render this item
+		return ("")}; //bad XML format
+	
+	local (flSummaryEnabledInSite = manilaSuite.getNewsSitePref ("newsItems.flSummariesEnabled", adrSite, false) );
+	local (flSummaryOnHomePage = manilaSuite.getNewsSitePref ("newsItems.flSummariesOnHomePage", adrSite, false) );
+	local (flSummaryAutomatic = manilaSuite.getNewsSitePref ("newsItems.flSummariesAutomatic", adrSite, false) );
+	local (flSummaryThisItem = flSummaryEnabledInSite and flSummaryOnHomePage and (not flFullItemPage) );
+	
+	bundle { //PBS 09/03/00: ensure URL, description, department and summary
+		if defined (t.url) { //trim white space
+			t.url = string.trimWhiteSpace (t.url)}
+		else { //empty string
+			t.url = ""};
+		if not defined (t.description) {
+			t.description = ""};
+		if not defined (t.department) {
+			t.department = ""};
+		local (flItemHasSummary = false);
+		if defined (t.summary) and sizeOf (t.summary) > 0 {
+			flItemHasSummary = true};
+		if not flItemHasSummary {
+			t.summary = "";
+			if flSummaryAutomatic {
+				t.summary = manilaSuite.news.getSummary (adrMsgTable)}}};
+	
+	bundle { //add permalink anchor to template
+		local (flAddAnchors = not flSupressAnchors);
+		if string.lower (s) contains "{permalink" { // {permalink} or {permalinkUrl}
+			flAddAnchors = true};
+		if flAddAnchors {
+			s = "<a name=\"a" + adrMsgTable^.msgNum + "\"></a>" + s}}; //items always can be linked even it there's no {permalink} in the template
+	
+	local (newsItemUrl="", newsItemLink="", permalinkUrl="", fullItemUrl="");
+	bundle { //set permalinkUrl -- all items have a permalink on the archive pages
+		try {permalinkUrl = manilaSuite.getPermalinkUrl (adrSite, adrMsgTable, department)}}; //fails if the news item hasn't gone on the home page yet
+	bundle { //set fullItemUrl -- url to full item viewer, linked from summarized news items on home/archive pages
+		fullItemUrl = manilaSuite.siteStructure.getRelativePathToMessage (adrMsgTable^.msgNum, adrSite);
+		if fullItemUrl == "" { //no path for this news item -- use the story path or full item path
+			if manilaSuite.discuss.isStory (adrMsgTable, adrSite) { //storyReader url
+				fullItemUrl = manilaSuite.getUrl ("storyReader", pta) + adrMsgTable^.msgNum}
+			else { //viewFullItem url
+				fullItemUrl = manilaSuite.getUrl ("newsItemViewFullItem", pta) + "$" + adrMsgTable^.msgNum}}};
+	bundle { //set newsItemUrl -- summarized items link to full item; non-summarized use user-supplied URL or permalinkUrl
+		if flSummaryThisItem and (t.summary != "") { //link to full item (from home/archive page)
+			newsItemUrl = fullItemUrl}
+		else { //user-supplied or permalink
+			if t.url { //user-supplied url
+				newsItemUrl = t.url}
+			else { //permalink url
+				newsItemUrl = permalinkUrl}}};
+	bundle { //set newsItemLink -- link on the title for the news item; if none was specified and can't be calculated, just use the title
+		if sizeOf (newsItemUrl) > 0 { //make it a real link
+			newsItemLink = html.getLink (adrMsgTable^.subject, newsItemUrl)}
+		else { //just use the subject
+			newsItemLink = adrMsgTable^.subject}};
+	
+	local (loweredNewsItemTemplate = string.lower (s));
+	
+	«Do macro replacements
+	bundle { //url, link, description, department, title, itemTitle (same as title)
+		s = string.replaceAll (s, "{url}", newsItemUrl, false);
+		s = string.replaceAll (s, "{link}", "<span class=\"newsItemLink\">" + newsItemLink + "</span>", false);
+		s = string.replaceAll (s, "{title}", adrMsgTable^.subject, false);
+		s = string.replaceAll (s, "{itemTitle}", adrMsgTable^.subject, false);
+		if loweredNewsItemTemplate contains "{department}" {
+			if typeOf (t.department) == listType {
+				local (oneDept, depts = "");
+				for oneDept in t.department {
+					depts = depts + oneDept + ", "};
+				depts = string.popSuffix (depts, ",");
+				s = string.replaceAll (s, "{department}", depts, false)}
+			else { //single department
+				s = string.replaceAll (s, "{department}", t.department, false)}}};
+	bundle { //author
+		if loweredNewsItemTemplate contains "{author}" {
+			s = string.replaceAll (s, "{author}", manilaSuite.members.linkToMember (groupName, adrMsgTable^.member), false)}};
+	bundle { //postTime, itemPostTime
+		local (postTime); //time posted to home page, not time posted to dg
+		if (loweredNewsItemTemplate contains "{posttime}") or (loweredNewsItemTemplate contains "{itemposttime}") {
+			bundle { //get the date string
+				local (dateFormat = "default"); //get the date format, set the default value
+				if defined (pta^.newsSite^.newsItems.postTimeFormat) {
+					dateFormat = pta^.newsSite^.newsItems.postTimeFormat};
+				try {
+					postTime = manilaSuite.news.getPostTime (adrMsgTable, adrSite);
+					
+					local (day, month, year, hour, minute, second);
+					date.get (postTime, @day, @month, @year, @hour, @minute, @second);
+					case dateFormat { //support for date formats
+						"default" { //default
+							postTime = mainResponder.localization.dateTimeString (postTime,  pta: @tempTable)};
+						"m/d/y; t" { //03/26/2001; 12:00:00 AM
+							postTime = string.padWithZeros (month, 2) + "/" + string.padWithZeros (day, 2) + "/" + year + "; " + mainResponder.localization.timeString (postTime,  pta: @tempTable)};
+						"d/m/y; t" { //26/03/2001; 12:00:00 AM
+							postTime = string.padWithZeros (day, 2) + "/" + string.padWithZeros (month, 2) + "/" + year + "; " + mainResponder.localization.timeString (postTime,  pta: @tempTable)};
+						"m.d.y; t" { //03.26.2001; 12:00:00 AM
+							postTime = string.padWithZeros (month, 2) + "." + string.padWithZeros (day, 2) + "." + year + "; " + mainResponder.localization.timeString (postTime,  pta: @tempTable)};
+						"d.m.y; t" { //26.03.2001; 12:00:00 AM
+							postTime = string.padWithZeros (day, 2) + "." + string.padWithZeros (month, 2) + "." + year + "; " + mainResponder.localization.timeString (postTime,  pta: @tempTable)};
+						"mdy; t" { //March 26, 2001; 12:00:00 AM
+							postTime = mainResponder.getString ("date.monthNames." + string.padWithZeros (month, 2)) + " " + day +", " + year + "; " + mainResponder.localization.timeString (postTime,  pta: @tempTable)};
+						"dmy; t" { //26 March 2001; 12:00:00 AM
+							postTime = day + " " + mainResponder.getString ("date.monthNames." + string.padWithZeros (month, 2)) + " " + year + "; " + mainResponder.localization.timeString (postTime,  pta: @tempTable)};
+						"D,mdy" { //Monday, March 26, 2001; 12:00:00 AM
+							postTime = mainResponder.getString ("date.dayOfWeekNames." + date.dayOfWeek (postTime)) + ", " + mainResponder.getString ("date.monthNames." + string.padWithZeros (month, 2)) + " " + day +", " + year};
+						"m/d/y" { //03/26/2001
+							postTime = string.padWithZeros (month, 2) + "/" + string.padWithZeros (day, 2) + "/" + year};
+						"d/m/y" { //26/03/2001
+							postTime = string.padWithZeros (day, 2) + "/" + string.padWithZeros (month, 2) + "/" + year};
+						"t:t:t" { //12:00:00 AM
+							postTime =  mainResponder.localization.timeString (postTime,  pta: @tempTable)}}}
+				else {
+					postTime = manilaSuite.getString ("news.notYetPostedToHomePage", pta: @tempTable)}}; // 05/04/00 JES: localized
+			s = string.replaceAll (s, "{postTime}", postTime, false);
+			s = string.replaceAll (s, "{itemPostTime}", postTime, false)}};
+	bundle { //departmentLink
+		local (deptLink = "");
+		if loweredNewsItemTemplate contains "{departmentlink}" {
+			try {
+				if sizeOf (t.department) > 0 {
+					«local (deptUrl = manilaSuite.getUrl ("newsItemViewDepartment", pta) + "$" + string.urlEncode (t.department))
+					if typeOf (t.department) == listType {
+						local (oneDept);
+						for oneDept in t.department {
+							local (deptUrl = manilaSuite.news.getDepartmentUrl (adrsite, oneDept));
+							deptLink = deptLink + html.getLink (oneDept, deptUrl) + ", "};
+						deptLink = string.popSuffix (deptLink, ",")}
+					else { //old style -- single department
+						local (deptUrl = manilaSuite.news.getDepartmentUrl (adrsite, t.department));
+						deptLink = html.getLink (t.department, deptUrl)}}};
+			s = string.replaceAll (s, "{departmentLink}", deptLink, false)}};
+	
+	bundle { //permalink, permalinkUrl, encodedPermalinkUrl, fullItemUrl
+		«s = "<a name=\"a" + adrMsgTable^.msgNum + "\"></a>" + s //items always can be linked even it there's no {permalink} in the template
+		local (permalink = "#");
+		if permalinkUrl {
+			permalink = html.getLink ("#", permalinkUrl)};
+		s = string.replaceAll (s, "{permaLink}",permalink , false);
+		s = string.replaceAll (s, "{permalinkUrl}", permalinkUrl, false);
+		s = string.replaceAll (s, "{encodedPermalinkUrl}", string.urlEncode (permalinkUrl), false);
+		s = string.replaceAll (s, "{fullItemUrl}", fullItemUrl, false)};
+	bundle { //picture
+		local (pictureShortcut = "");
+		if loweredNewsItemTemplate contains "{picture}" {
+			try {
+				local (firstDept = department);
+				if department == nil {
+					if typeOf (t.department) == listType { //use the picture from the first department that this news item is in
+						firstDept = t.department[1]}
+					else { //old-style single-department
+						firstDept = t.department}};
+				pictureShortcut = "\"" + manilaSuite.unTaint (manilaSuite.news.getDepartmentPictureShortcut (adrSite, firstDept)) + "\"";
+				local (url = manilaSuite.news.getDepartmentUrl (adrsite, firstDept));
+				if defined (adrSite^.["#glossary"].[pictureShortcut]) {
+					pictureShortcut = adrSite^.["#glossary"].[pictureShortcut]};
+				pictureShortcut = html.getLink (pictureShortcut, url);
+				pictureShortcut = manilaSuite.unTaint (pictureShortcut)};
+			s = string.replaceAll (s, "{picture}", pictureShortcut, false)}};
+	bundle { //discussLink
+		local (discussLink = "");
+		if loweredNewsItemTemplate contains "{discusslink}" {
+			if flDgLink {
+				local (discussLineText = manilaSuite.getString ("editorialLinks.discuss", pta: @tempTable));
+				local (ctResponses = 0);
+				if defined (adrMsgTable^.responses) {
+					ctResponses = manilaSuite.discuss.getResponseCount (adrMsgTable);
+					};«ctResponses = sizeOf (adrMsgTable^.responses)
+				local (discussUrl = adrSite^.["#urls"].discussMsgReader + adrMsgTable^.msgNum);
+				discussLink = html.getLink (discussLineText, discussUrl);
+				if ctResponses > 0 {
+					if ctResponses == 1 {
+						discussLink = discussLink + " " + manilaSuite.getString ("news.oneResponse", pta: @tempTable)}
+					else {
+						local (replacementTable); new (tableType, @replacementTable);
+						replacementTable.count = ctResponses;
+						discussLink = discussLink + " " + manilaSuite.getString ("news.nResponses", @replacementTable, pta: @tempTable)}}};
+			s = string.replaceAll (s, "{discussLink}", discussLink, false)}};
+	bundle { //commentLink
+		local (commentLink = "");
+		if loweredNewsItemTemplate contains "{commentlink}" {
+			if flDgLink { //{commentLink} -- only items which have been posted get comment links
+				try {
+					local (adrdata = manilaSuite.radioHosting.init ());
+					if config.manila.prefs.flRadioHostingEnabled and adrdata^.flEnabled {
+						local (flCommentLinkEnabled = manilaSuite.getNewsSitePref ("newsItems.flCommentsEnabledByDefault", default:true, flCreate:true));
+						if defined (adrMsgTable^.newsItem.flCommentLinkEnabled) {
+							flCommentLinkEnabled = adrMsgTable^.newsItem.flCommentLinkEnabled};
+						if flCommentLinkEnabled {
+							if not defined (adrNewsSite^.newsItems.commentLinkTemplate) {
+								adrNewsSite^.newsItems.commentLinkTemplate = "Comment [{commentCount}]"};
+							local (commentLineText = adrNewsSite^.newsItems.commentLinkTemplate);
+							local (commentPageUrl = manilaSuite.news.getCommentUrl (adrMsgTable, permalinkUrl));
+							on countMessages (msgnum) {
+								local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite));
+								local (ct = 0);
+								local (fldeleted = false, flpending = false);
+								if defined (adrmsg^.flDeleted) {
+									fldeleted = adrmsg^.flDeleted};
+								if defined (adrmsg^.flPending) {
+									flpending = adrmsg^.flPending};
+								if not (fldeleted or flpending) {
+									ct++};
+								local (responsenum);
+								for responsenum in adrmsg^.responses {
+									ct = ct + countMessages (responsenum)};
+								return (ct)};
+							local (count = countMessages (adrMsgTable^.msgNum) - 1);
+							commentLineText = string.replaceAll (commentLineText, "{commentCount}", count);
+							local (onclick = "window.open (this.href, \'comments\', \'width=515, height=480, location=0, resizable=1, scrollbars=1, status=0, toolbar=0, directories=0\'); return(false);");
+							local (tooltip = manilaSuite.getString ("news.clickToCommentOnThisPost"));
+							commentLink = "<a href=\"" + commentPageUrl + "\" onclick=\"" + onclick + "\" title=\"" + tooltip + "\" class=\"commentLink\">" + commentLineText + "</a>"}}}};
+			s = string.replaceAll (s, "{commentLink}", commentLink, false)}};
+	bundle { //trackbackLink and auto-discovery RDF snippet
+		local (tbLink = "");
+		if loweredNewsItemTemplate contains "{trackbacklink}" {
+			if defined (config.manila.prefs.flTrackbackEnabled) {
+				if config.manila.prefs.flTrackbackEnabled {
+					local (flTrackbackEnabled = manilaSuite.getNewsSitePref ("trackback.flEnabled", adrSite, false, true));
+					if defined (adrMsgTable^.newsItem.flAllowTrackbackPings) {
+						flTrackbackEnabled = adrMsgTable^.newsItem.flAllowTrackbackPings};
+					if flTrackbackEnabled {
+						try { //should never fail
+							bundle { //trackbackLink
+								local (tbLinetext = adrNewsSite^.trackback.trackbackLinkTemplate);
+								try { //this will fail for non-posted (pending) news items
+									local (tbPageUrl = manilaSuite.news.getTrackbackUrl (adrMsgTable));
+									local (count = 0);
+									if defined (adrMsgTable^.trackback.inbound.urls) {
+										local (adrurl);
+										for adrurl in @adrMsgTable^.trackback.inbound.urls {
+											local (flPosted = true);
+											if defined (adrurl^.flPosted) {
+												flPosted = adrurl^.flPosted};
+											if flPosted {
+												count++}}};
+									tbLinetext = string.replaceAll (tbLinetext, "{trackbackCount}", count);
+									local (onclick = "window.open (this.href, \'comments\', \'width=515, height=480, location=0, resizable=1, scrollbars=1, status=0, toolbar=0, directories=0\'); return(false);");
+									tbLink = "<a href=\"" + tbPageUrl + "\" onclick=\"" + onclick + "\" class=\"commentLink\">" + tbLinetext + "</a>"}};
+							if tblink != "" { //auto-discovery
+								«bundle //old code, now factored into manilaSuite.trackback.getAutoDiscoveryXml
+									«local (pingUrl = manilaSuite.getSiteUrl () + "newsItems/trackback/ping$" + adrMsgTable^.msgnum)
+									«local (author = "")
+									«if not manilaSuite.members.getMemberName (adrMsgTable^.member, @author)
+										«author = string.mid (author, 1, string.patternMatch ("@", adrMsgTable^.member) + 1) + "..."
+									«local (postTime = "")
+									«try {postTime = manilaSuite.news.getPostTime (adrMsgTable, adrSite)}
+									«local (description = string.firstsentence (searchengine.stripmarkup (t.description)))
+									«description = string.replaceAll (description, "\r\n\r\n", "\r\r")
+									«description = string.replaceAll (description, "\r\r", "")
+									«s = "<!--\r" + trackback.getAutodiscoveryXml (permalinkUrl, pingUrl, adrMsgTable^.subject, "", description, author, postTime) + "-->" + s
+								s = manilaSuite.trackback.getAutoDiscoveryXml (adrMsgTable, adrSite, permalinkUrl:permalinkUrl) + s}}}}};
+			s = string.replaceAll (s, "{trackbackLink}", tbLink, false)}};
+	bundle { //editLink, editButton
+		local (editLink="", editButton="");
+		if (loweredNewsItemTemplate contains "{editlink}") or (loweredNewsItemTemplate contains "{editbutton}") {
+			if flAddEditLink {
+				if defined (pta^.adrMemberInfo) {
+					if manilaSuite.news.memberCanEdit (adrMsgTable, pta^.adrMemberInfo, adrSite) {
+						local (editUrl);
+						editUrl = manilaSuite.getUrl ("newsItemEditInBrowser");
+						editUrl = editUrl + adrMsgTable^.msgNum;
+						if pta^.adrObject == @adrSite^.default { //add a searchArg so we'll redirect to the home page
+							editUrl = editUrl + "?home=true"}
+						else { //if editing from somewhere other than the home page or DG page, add a redirectUrl searchArg
+							if pta^.adrObject != @adrSite^.discuss.msgReader {
+								editUrl = editUrl + "?redirectUrl=" + string.urlEncode (pta^.url);
+								if defined (pta^.pathArgs) {
+									if sizeOf (pta^.pathArgs) > 0 {
+										editUrl = editUrl + string.urlEncode ("$" + adrMsgTable^.msgNum)}}}};
+						editUrl = editUrl + "#edit";
+						editLink = html.getLink (manilaSuite.getString ("common.editLink", pta: @tempTable), editUrl);
+						editButton = "<form type=\"link\" action=\"" + editUrl + "\"><input type=\"button\" onclick=\"window.location='" + editUrl + "';\" value=\"" + mainResponder.getString ("discuss.editThisPage") + "\" /></form>";
+						bundle { //Add the Edit in Pike button
+							if defined (pta^.responderAttributes.urls^.editInPike) {
+								if manilaSuite.pike.memberHasPike (pta) {
+									editLink = editLink + "<p>" + manilaSuite.pike.editMessageButton (adrMsgTable, manilaSuite.getString ("news.editInPike"), pta)}}}}}}; //12/24/00 JES: use new bottleneck for displaying Edit With Radio button
+			s = string.replaceAll (s, "{editLink}", editLink, false);
+			s = string.replaceAll (s, "{editButton}", editButton, false)}};
+	bundle { //msgNum, itemNum
+		s = string.replaceAll (s, "{msgNum}", adrMsgTable^.msgnum, false);
+		s = string.replaceAll (s, "{itemNum}", adrMsgTable^.msgnum, false)};
+	bundle { //wordCount, characterCount
+		local (wordCount="", characterCount ="");
+		if (loweredNewsItemTemplate contains "{wordcount}") or (loweredNewsItemTemplate contains "{charactercount}") {
+			wordCount = string.countFields (t.description, " ");
+			characterCount = sizeOf (t.description);
+			s = string.replaceAll (s, "{wordCount}", wordCount, false);
+			s = string.replaceAll (s, "{characterCount}", characterCount, false)}};
+	bundle { //enclosure stuff
+		if defined (adrMsgTable^.enclosure) {
+			local (adrE = @adrMsgTable^.enclosure);
+			local (enclosureUrl = adrE^.url);
+			local (enclosureName = string.nthField (enclosureUrl, "/", string.countFields (enclosureUrl, "/")));
+			enclosureName = manilaSuite.untaint (string.urlDecode (enclosureName));
+			local (enclosureSize = "");
+			if defined (adrE^.length) {
+				enclosureSize = string.gigabyteString (adrE^.length)};
+			local (enclosureLink = "<a href=\"" + enclosureUrl + "\" class=\"enclosureLink\">" + enclosureName + "</a>");
+			local (iconname = "unknown");
+			if enclosureName endswith ".root" {
+				iconname = "skull"};
+			if not defined (user.webserver.prefs.MIME2icon.["audio/mpeg"]) {
+				user.webserver.prefs.MIME2icon.["audio/mpeg"] = "sound1"};
+			try {iconname = user.webserver.prefs.MIME2icon.[adrE^.type]};
+			local (urlparts = string.urlSplit (pta^.ftpSite^.url));
+			local (baseIconUrl = "http://" + urlparts[2] + "/mainResponderResources/icons/");
+			local (enclosureIcon = "<img class=\"enclosureIcon\" src=\"" + baseIconUrl + iconname + "\" border=\"0\">");
+			s = string.replaceAll (s, "{enclosureLink}", enclosureLink, false);
+			s = string.replaceAll (s, "{enclosureUrl}", enclosureUrl, false);
+			s = string.replaceAll (s, "{enclosureName}", enclosureName, false);
+			s = string.replaceAll (s, "{enclosureSize}", enclosureSize, false);
+			s = string.replaceAll (s, "{enclosureIcon}", enclosureIcon, false)}
+		else { //no enclosure -- blank out all the macros
+			on clearIt (name) {
+				s = string.replaceAll (s, "{" + name + "}", "", false)};
+			clearIt ("enclosureLink");
+			clearIt ("enclosureUrl");
+			clearIt ("enclosureName");
+			clearIt ("enclosureSize");
+			clearIt ("enclosureIcon")}};
+	bundle { //description, summary
+		if flSummaryThisItem and (t.summary != "") { //use summary for {description}
+			s = string.replaceAll (s, "{description}", t.summary, false)}
+		else { //use description for {description}
+			if loweredNewsItemTemplate contains "{description}" {
+				s = string.replaceAll (s, "{description}", t.description, false)}};
+		s = string.replaceAll (s, "{summary}", t.summary, false)};
+	
+	bundle { //paragraph expansion
+		«PBS 09/01/00: Strip in paragraph tags. Always make blank lines paragraphs, no matter what the autoParagraphs setting is.
+		s = string.replaceAll (s, "\r\n\r\n", "\r\r");
+		s = string.replaceAll (s, "\r\r", "<p>\r")};
+	
+	bundle { //increment read count
+		if flIncrementReadCount {
+			adrMsgTable^.ctReads++}};
+	
+	bundle { //9/13/05: ETP callback support
+		local (adrAfterRead);
+		if manilaSuite.plugins.ETPoverride.getScriptAddress ("newsReader", @adrAfterRead) {
+			adrAfterRead^ (adrMsgTable, @s)}};
+	
+	return (s)};
+«bundle //test code
+	«html.setPageTableAddress (@workspace.pt)
+	«local (adrsite = @jaketest2ManilaWebsite)
+	«formatNewsItem (@adrSite^.["#discussionGroup"].messages[16], "{editButton}", true, adrSite, "jaketest2Discuss")

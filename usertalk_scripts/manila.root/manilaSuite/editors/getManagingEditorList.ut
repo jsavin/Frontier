@@ -1,0 +1,10 @@
+on getManagingEditorList (pta=nil) {
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (meList = pta^.newsSite^.sysopMail);
+	
+	if typeOf (meList) != listType {
+		meList = {meList}};
+	
+	return (meList)}

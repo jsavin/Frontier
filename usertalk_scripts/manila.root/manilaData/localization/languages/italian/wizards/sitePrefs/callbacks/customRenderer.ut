@@ -1,0 +1,2 @@
+on customRenderer (partialaddress, defaultvalue, adrxmltable) {
+	return (manilaData.sitePrefs.wizard.callbacks.customRenderer (partialaddress, defaultvalue, adrxmltable))}

@@ -1,0 +1,102 @@
+on installSite (adrSite) {
+	«Add this site to this server.
+		«Add addresses to discuss.root and members.root
+	«Changes:
+		«5/28/05; 5:46:22 PM by JES
+			«Add installed sites to config.mainResponder.domains, with support for XML siteTree if needed.
+		«10/31/00; 6:40:40 PM by JES
+			«Set prefs.adrMsgReader in the site's #discussionGroup table, since moving sites to new Frontier installations will cause this address to break.
+	
+	«Discussion group.
+	bundle {
+		local (adrDg = @adrSite^.["#discussionGroup"]);
+		if defined (adrDg^) {
+			bundle { //10/31/00 JES: set adrMsgReader
+				if string.lower (adrDg^.prefs.adrMsgReader) endsWith ".discuss.msgreader" {
+					adrDg^.prefs.adrMsgReader = @adrSite^.discuss.msgReader}
+				else { // custom msgReader -- deal with the case where the database containing the script (probably this one) has been moved
+					if defined (string.popFileFromAddress (adrDg^.prefs.adrMsgReader)^) {
+						adrDg^.prefs.adrMsgReader = address (string.popFileFromAddress (adrDg^.prefs.adrMsgReader))}
+					else { // fall back to the builtin msgReader
+						adrDg^.prefs.adrMsgReader = @adrSite^.discuss.msgReader}}};
+			local (dgName = adrSite^.["#prefs"].discussionRoot);
+			local (adrDiscussFile = @[system.temp.mainResponder.discussRootFile]);
+			if not defined (adrDiscussFile^.[dgName]) {
+				adrDiscussFile^.[dgName] = adrDg}}};
+	
+	«Membership group.
+	bundle {
+		local (adrMembers = @adrSite^.["#membershipGroup"]);
+		if defined (adrMembers^) {
+			local (groupName = adrSite^.["#prefs"].defaultMembershipGroup);
+			local (adrMembersFile = @[system.temp.mainResponder.membersRootFile]);
+			if not defined (adrMembersFile^.[groupName]) {
+				adrMembersFile^.[groupName] = adrMembers}}};
+	
+	«config.manila.sites
+	bundle {
+		if not defined (config.manila) {
+			new (tableType, @config.manila)};
+		if not defined (config.manila.sites) {
+			new (tableType, @config.manila.sites)};
+		local (siteName = nameOf (adrSite^));
+		siteName = manilaSuite.getShortSiteName (siteName);
+		config.manila.sites.[siteName] = adrSite};
+	
+	«user.databases.
+	bundle {
+		local (f);
+		f = window.getFile (table.getRootAddress (adrSite));
+		local (lowerF = string.lower (f));
+		local (i);
+		local (flFound = false);
+		for i = sizeOf (user.databases) downTo 1 {
+			local (adrItem = @user.databases [i]);
+			if defined (adrItem^.f) {
+				if string.lower (adrItem^.f) == lowerF {
+					flFound = true;
+					break}}};
+		if not flFound {
+			local (fname = file.fileFromPath (f));
+			local (adrTable = @user.databases.[fname]);
+			if not defined (adrTable^) {
+				new (tableType, adrTable);
+				adrTable^.f = f;
+				adrTable^.openOnStartup = true;
+				adrTable^.supportsSubscribe = false;
+				adrTable^.runStartupScript = false;
+				adrTable^.supportsIndexing = true;
+				fileMenu.save ()}}}; //save Frontier.root
+	
+	«config.mainResponder.domains
+	bundle {
+		local (siteurl = manilaSuite.getSiteUrl (adrSite));
+		local (urlparts = string.urlSplit (siteurl));
+		local (flTopLevelSite = sizeOf (urlparts[3]) == 0);
+		if flTopLevelSite {
+			if defined (config.mainResponder.domains.[urlparts[2]]) {
+				if mainResponder.siteTree.domainIsSiteTree (@config.mainResponder.domains.[urlparts[2]] ) {
+					mainResponder.siteTree.addSiteToTree (urlparts[2], "/" + urlparts[3], adrSite)}
+				else {
+					case typeOf (config.mainResponder.domains.[urlparts[2]]) {
+						addressType;
+						stringType;
+						filespecType {
+							config.mainResponder.domains.[urlparts[2]] = adrsite}}
+					else { //error
+						scriptError ("Can't add site to config.mainResponder.domains because there's already an existing domain, with an unknown format.")}}}
+			else { //simple add
+				config.mainResponder.domains.[urlparts[2]] = adrsite}}
+		else { //sub-site
+			local (flDefaultDomain = false);
+			if sizeOf (config.mainResponder.domains) == 1 {
+				if defined (config.mainResponder.domains.default) {
+					flDefaultDomain = true}};
+			if flDefaultDomain {
+				urlparts[2] = "default"};
+			mainResponder.siteTree.addSiteToTree (urlparts[2], "/" + urlparts[3], adrSite, true, true)}};
+	
+	try { //JES 6/9/02: Clear the site list cache
+		delete (@system.temp.mainResponder.siteListCache)};
+	
+	return (true)}

@@ -1,0 +1,29 @@
+on checkin (adrCheckoutInfo, adrObject, adrMember, adrSite, flMessage) {
+	«manilaSuite.versioning.checkin : 04/05/18, 21:09:07 by DAB
+		«Called  from manilaSuite.custody.checkIn
+		«must NOT require a page table as its called from rpchandlers
+		«was manilaFixer.versioning.checkin : 
+	«local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite))
+	local (adrStorage = manilaSuite.getNewsSiteAddress(adrSite)); //04/05/18, 21:10:08 by DAB
+	if not defined(adrStorage^.versioning) {
+		new(tabletype, @adrStorage^.versioning)};
+	
+	if defined(adrStorage^.versioning.enabled) and adrStorage^.versioning.enabled {
+		local (objectId = manilaSuite.custody.getObjectIdentifier (adrObject, flMessage));
+		«where to save the back links
+		local (adrBackLinkTable);
+		if flMessage { //adrObject is a message in the DG
+			«local (adrPIStorage = manilaFixer.utilities.getMessageStorageAddress(adrObject))
+			local (adrPIStorage = @adrObject^.versioning); //04/05/18, 21:13:40 by DAB
+			if not defined(adrPIStorage^) {
+				new(tabletype, adrPIStorage)};
+			adrBackLinkTable = adrPIStorage}
+		else {
+			«its an entity in the site
+			adrBackLinkTable = @adrStorage^.versioning.[objectID]};
+		
+		«local (sitename = manilaFixer.getCanonicalSiteNameSafely(adrSite))    //03/05/16, 11:15:23 by DAB
+		local (sitename = manilaSuite.getCanonicalSitename(adrSite));
+		manilaSuite.versioning.writeToAudit(@adrCheckoutInfo^.beforeImage, siteName, objectId, adrMember, adrBackLinkTable)};
+	
+	return true}

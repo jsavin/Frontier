@@ -1,0 +1,937 @@
+on commentsPage () {
+	«Changes:
+		«3/25/13; 11:53:12 PM by JES
+			«Don't moderate comments if the logged in user is an editor of the site.
+		«4/12/07; 3:20:25 PM by LL
+			«Support a new site level preference to support a limited set of HTML tags for members.
+		«3/25/07; 3:56:49 PM by LL
+			«Update to the commentSubmit callback to allow the callback to return an error message to the user.
+			«Changed error message text to red.
+		«2/6/07; 11:59:32 AM by LL
+			«Bug fix: To allow members or editors already logged in to post comments if the preference to require membership to post a comment was enabled.
+		«2/5/07; 12:56:37 PM by LL
+			«Don't display the comment and TrackBack pages if the features aren't enabled.
+			«Delete contents of messages when deleting comments.
+			«Restrict the body size of submitted comments to 15KB.
+		«2006
+			«11/7/06; 2:29:00 PM by LL
+				«Prevent a new comment from replacing values for an existing membership record.
+			«4/17/06 at 12:42:56 PM by LL
+				«Added support for a TrackBack submit callback.
+			«2/1/06; 2:21:56 AM by JES
+				«Fix bug if comment moderation is not enabled.
+			«1/31/06; 1:45:19 AM by JES
+				«Add moderation feature for comments posted in a Manila site.
+			«1/13/06; 4:00:15 AM by JES
+				«Various and sundry hand-waving needed in order for the Radio-hosting login-to-delete-trackback feature to work properly.
+		«2005
+			«12/15/05; 12:53:22 AM by JES
+				«Implement login-to-comment feature.
+			«11/1/05; 2:51:20 AM by JES
+				«Change call to tcp.sendMail to manilaSuite.sendMail.
+			«9/16/05; 1:26:06 AM by JES
+				«Removed debugging code.
+			«9/16/05; 1:05:12 AM by JES
+				«If a comment is in response to a post on this site, use the news item title for the subject of the comment DG message, but only if the news item title is non-empty. Fixed a bug which prevented us from properly recognising that a comment popup is for this site.
+			«9/14/05; 4:14:04 PM by JES
+				«In comment emails, make the commenter's website link an actual link, instead of just including the URL. Add some space below the comment text.
+			«9/14/05; 1:55:21 PM by JES
+				«Changed subject of comment notification emails to include the commented post's title, if available.
+				«Changed sender of comment notification emails to the email address of the comment poster, so that the recipient(s) can reply directly in email.
+				«Add comment permalink to the comment after the comment text in notification emails -- makes spam much easier to find and delete.
+				«Moved the commenter's web link, IP address and domain to below the comment text.
+			«9/14/05; 2:36:04 AM by JES
+				«Restore auto-paragraph functionality to comments windows, which had been lost durning work on comment moderation.
+			«3/30/05; 6:03:05 PM by JES
+				«Changed Cancel button to Close button.
+			«1/20/05; 1:53:02 AM by JES
+				«Set pta^.flAnchorRelNofollow to true. Causes Manila's finalFilter to add a rel="nofollow" attribute to all <a ... > tags.
+		«2004
+			«12/30/04; 2:29:42 PM by JES
+				«Address possible security issue.
+			«12/09/04; 11:56:34 AM by LL
+				«Fixed a bug in the comment moderation cookie to correctly calculate the expiration date of the cookie.
+			«11/22/04; 3:15:57 PM by JES
+				«Add referer checking, as a measure to prevent comment spam.
+			«11/14/04; 11:11:59 PM by SK
+				«Changed comment deletion prompt text to be more user friendly.
+			«22/10/04; 4:50:01 PM by PR
+				«re-enabled trackback, we'll use a radio pref...
+			«13/09/04; 1:59:55 PM by PR
+				«fixed a bug in count messages
+			«03/09/04; 10:43:13 AM by PR
+				«added initUserStats
+			«01/09/04; 1:01:34 PM by PR
+				«Added the comment count to the post storage and whenLastModified
+			«23/08/04; 11:33:10 AM by PR
+				«updated the validation scheme to use the userprefs password
+			«21/08/04; 10:06:17 AM by PR
+				«bugfix, changed comment logout link to use webserver.encodeArgs
+			«19/08/04; 9:46:59 AM by PR
+				«added radio comment moderation
+			«7/21/04; 2:46:25 PM by JES
+				«Added ability for Managing editors to delete comments. Added permalinks.
+		«2003
+			«9/16/03; 1:13:00 AM by JES
+				«Added support for sending comment notification via email to Radio users.
+			«9/11/03; 12:55:02 PM by JES
+				«Strip HTML markup from TrackBack excerpt, title, weblog name and URL. The trackBack spec doesn't allow markup.
+			«9/9/03; 1:24:09 AM by JES
+				«Added auto-discovery feature for Radio's comment notification via email feature.
+			«9/2/03; 11:42:25 AM by JES
+				«Don't increment the read count for comments after posting a new comment.
+			«8/1/03; 2:14:00 PM by JES
+				«Work around a bug in MovableType where it would send TrackBack pings using an HTTP GET instead of an HTTP POST. Clear TrackBack counter JavaScript cache when responding to a TrackBack ping sent using HTTP GET.
+			«7/22/03; 4:40:07 PM by JES
+				«Added support for TrackBack. If the pathArg, $trackback is present, then we're handling trackback instead of comments.
+			«4/8/03; 11:34:26 PM by JES
+				«Added support for the {ipAddress} macro in the comment item template.
+			«4/8/03; 2:44:27 AM by JES
+				«Limit the size of the returned message page to 100KB.
+			«2/21/03; 1:16:10 AM by JES
+				«When the comment link is to a message in the same site running the comments service (i.e. this site), render the entire DG thread, regardless of whether the comment was made through the comments UI or through the DG interface.
+			«2/17/03; 5:09:56 PM by JES
+				«If a posted comment is in response to a message in the same site doing the Radio Hosting, set the message's inResponseTo field so that it will link back to the message that the commenter is responding to.
+		«2002
+			«9/24/02; 1:05:39 AM by JES
+				«If running on MacOS, convert the text of posted comments to Mac text before creating the message.
+			«7/12/02; 3:08:27 PM by JES
+				«Added support for links back to the original post, if available.
+			«2/23/02; 1:27:37 AM by JS
+				«Added support for returning the JavaScript to render a comment count in the browser.
+			«2/17/02; 2:03:56 AM by JS
+				«Created. Render a comments page for an arbitrary site and postnum. Create new members for people who create comments, as needed. Set a cookie for membership, so the user doesn't have to re-enter their name, email and website url.
+	
+	local (adrdata = manilaSuite.radioHosting.init ());
+	local (flLoginRequiredForComments = adrdata^.flLoginRequired);
+	local (pta = html.getPageTableAddress ());
+	pta^.flAnchorRelNofollow = true; //JES 1/20/05: tell Manila's finalFilter to add rel="nofollow" to all <a ... > tags
+	«workspace.pt = pta^
+	
+	if (not config.manila.prefs.flRadioHostingEnabled) or (not adrdata^.flEnabled) { //return a 404 page
+		return (manilaSuite.notFound.page (pta))};
+	
+	local (getargs); new (tableType, @getargs);
+	webserver.parseArgs (string.replaceAll (pta^.searchArgs, "&amp;", "&"), @getargs);
+	
+	local (flTrackback = false);
+	if defined (pta^.pathArgs) { //set flTrackback
+		if string.lower (pta^.pathArgs) == "trackback" {
+			flTrackback = true}};
+	if flTrackback { //return a 404 page if the TrackBack or comment features are disabled
+		if not manilaSuite.getNewsSitePref ("trackback.flAcceptPingsAutomatically", default: false) {
+			return (manilaSuite.notFound.page (pta))}}
+	else {
+		if not manilaSuite.getNewsSitePref ("newsItems.flCommentsEnabledByDefault", default:false) {
+			return (manilaSuite.notFound.page (pta))}};
+	
+	bundle { // shortcut straight to the count
+		if defined (getargs.c) {
+			if getargs.c == "counts" {
+				pta^.template = "{bodytext}";
+				if flTrackback { //trackback counters
+					return ("{manilaSuite.radioHosting.renderCounterJavaScript (true)}")}
+				else { //comment counters
+					return ("{manilaSuite.radioHosting.renderCounterJavaScript ()}")}};
+			if getargs.c == "getRpcInfo" { // 27/09/04; 10:16:48 AM by PR: moved
+				pta^.template = "{bodytext}";
+				pta^.responseHeaders.["Content-Type"] = "text/xml";
+				return ("{manilaSuite.radioHosting.getRpcInfo ()}")}}};
+	
+	local (usernum = getargs.u);
+	if usernum contains "#" { //workaround a bug
+		usernum = string.nthField (usernum, "#", 1)};
+	
+	«23/08/04; 11:13:19 AM by PR: If the user prefs for this user contains a password then we can show the moderation form
+	local (flRadio = false, userPassword);
+	if defined (adrData^.userPrefs.[usernum].password) {
+		flRadio = true;
+		userPassword = adrData^.userPrefs.[usernum].password;
+		if defined (pta^.postargs.c) && !defined (getargs.c) && defined (pta^.postargs.password) {
+			if pta^.postargs.password != "" {
+				getargs.c = pta^.postargs.c}}}; // work around the fact that there is one big form on the page...
+	
+	local (flCanDeleteComments = false);
+	bundle { //set flCanDeleteComments
+		«7/21/04; 2:47:31 PM by JES: Right now, this is only implemented for Manila site Managing/Content Editors. Radio may come later.
+		«19/08/04; 9:41:53 AM by PR: implemented a Radio editor check
+		if flRadio {
+			flCanDeleteComments = manilaSuite.radioHosting.canEditComments (pta, getargs.u, userPassword)}
+		else {
+			flCanDeleteComments = manilaSuite.editors.canEditContent (pta)}};
+	
+	local (flCommentModerationEnabled = adrdata^.flCommentsModerated and (not manilaSuite.editors.editorialTest (pta)));
+	local (flModeratedCommentPosted = false);
+	if defined (getargs.postPending) {
+		flModeratedCommentPosted = true;
+		delete (@getargs.postPending)};
+	
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + (string.filledString ("\t", indentlevel) + string.trimWhiteSpace (s) + "\r");};
+	
+	local (adrsite = manilaSuite.getSiteAddress ());
+	
+	local (loginError = "");
+	
+	bundle { //process searchArgs: logout if c=logout. return counter JavaScript if c=counts
+		«on setRadioCookie (flClear=false) // 19/08/04; 9:35:34 AM by PR set or clear the cookie for the radio comment editor
+			«JES 1/13/06: Factored to manilaSuite.radioHosting.setRadioCookie.
+		if defined (getargs.c) {
+			if getargs.c == "logout" { //clear mainResponder cookie and redirect to clear comments cookie
+				local (groupname = pta^.defaultMembershipGroup);
+				local (adrmembers = mainResponder.members.getMembershipTable (groupname));
+				mainResponder.members.setCookie ("", "", adrmembers);
+				getargs.c = "logout2";
+				mainResponder.redirect (pta^.path + "?" + webserver.encodeArgs (@getargs));
+				return ("")};
+			if getargs.c == "logout2" { //clear comments cookie and redirect to comments page
+				manilaSuite.radioHosting.setCookie ("");
+				delete (@getargs.c);
+				mainResponder.redirect (pta^.path + "?" + webserver.encodeArgs (@getargs));
+				return ("")};
+			«if getargs.c == "counts" // 02/09/04; 1:21:16 PM by PR: moved
+				«pta^.template = "{bodytext}"
+				«if flTrackback //trackback counters
+					«return ("{manilaSuite.radioHosting.renderCounterJavaScript (flTrackBack:true)}")
+				«else //comment counters
+					«return ("{manilaSuite.radioHosting.renderCounterJavaScript ()}")
+			«if getargs.c == "getRpcInfo" // 27/09/04; 10:16:48 AM by PR: moved
+				«pta^.template = "{bodytext}"
+				«pta^.responseHeaders.["Content-Type"] = "text/xml"
+				«return ("{manilaSuite.radioHosting.getRpcInfo ()}")
+			if getargs.c == "radioLogin" { // 19/08/04; 9:34:57 AM by PR handle a radio user login
+				if flRadio {
+					if string.hashmd5(pta^.postargs.password) == userPassword {
+						manilaSuite.radioHosting.setRadioCookie (usernum, userPassword);
+						delete (@getargs.c);
+						local (pathArg = "");
+						if pta^.pathArgs != "" {
+							pathArg = "$" + pta^.pathArgs};
+						mainResponder.redirect (pta^.path + pathArg + "?" + webserver.encodeArgs (@getargs));
+						return ("")}
+					else {
+						delete (@getargs.c);
+						loginError = "Error: wrong password."}}};
+			if getargs.c == "radioLogout" { // 19/08/04; 9:35:07 AM by PR handle a radio user logout
+				if flRadio {
+					manilaSuite.radioHosting.setRadioCookie (usernum, userPassword, flClear:true);
+					delete (@getargs.c);
+					local (pathArg = "");
+					if pta^.pathArgs != "" {
+						pathArg = "$" + pta^.pathArgs};
+					mainResponder.redirect (pta^.path + pathArg + "?" + webserver.encodeArgs (@getargs));
+					return ("")}}}};
+	
+	local (postnum = getargs.p);
+	local (adruserstable);
+	bundle { //set adruserstable
+		if flTrackback {
+			adruserstable = @adrdata^.trackback.users}
+		else { //comments
+			adruserstable = @adrdata^.comments.users}};
+	local (postlink = "");
+	bundle { //set postlink
+		if defined (getargs.link) {
+			postlink = getargs.link}};
+	
+	local (adrcache);
+	bundle { //set adrcache
+		if flTrackback { //set adrcache for trackback cache
+			adrcache = @adrdata^.trackback.counterScriptCache.[string.padWithZeros (usernum, 7)]}
+		else { //set adrcache for comment cache
+			adrcache = @adrdata^.comments.counterScriptCache.[string.padWithZeros (usernum, 7)]}};
+	if pta^.method == "POST" { //clear the cached counter JavaScript
+		if defined (adrcache^) {
+			delete (adrcache)}};
+	
+	on getCommentsTable (usernum) {
+		local (adrtable = @adruserstable^.[string.padWithZeros (usernum, 7)] );
+		if not defined (adrtable^) {
+			new (tableType, adrtable)};
+		return (adrtable)};
+	local (adrcommentstable = getCommentsTable (usernum) );
+	on getComments (postid) {
+		return (@adrcommentstable^.[postid] )};
+	local (adrcomments = getComments (postnum) );
+	local (flComments = false, flCommentsInThisSite = false);
+	bundle { //set flComments
+		if defined (adrcomments^) {
+			if sizeOf (adrcomments^) > 0 {
+				flComments = true}};
+		try { //see if the comment is in this manila site -- if so, set flCommentsInThisSite to true
+			if string.lower (usernum) == string.lower (manilaSuite.getCanonicalSiteName (adrsite)) {
+				flCommentsInThisSite = true;
+				flComments = true};
+			if string.lower (postlink) beginsWith string.lower (manilaSuite.getSiteUrl (adrsite)) {
+				flCommentsInThisSite = true}}};
+	bundle { //convert to new style storage in a table
+		if defined (adrcomments^) {
+			if typeOf (adrcomments^) != tableType {
+				local (msgnum = adrcomments^);
+				new (tableType, adrcomments);
+				adrcomments^.msgnum = msgnum;
+				adrcomments^.link = ""}}};
+	
+	local (adrStats = manilaSuite.radioHosting.initUserStats(usernum, adrdata)); // 03/09/04; 10:30:28 AM by PR: init the user stats
+	
+	bundle { //set page title
+		if flTrackback {
+			pta^.title = manilaSuite.getString ("trackback.trackbackPageTitle")}
+		else { //comments
+			pta^.title = manilaSuite.getString ("radioHosting.commentsPageTitle")}};
+	
+	on getMemberTable (memberkey) {
+		local (groupname = pta^.defaultMembershipGroup);
+		local (adrmember = mainResponder.members.getMemberTable (groupname, memberkey));
+		return (adrmember)};
+	on addRadioModeration () {
+		«19/08/04; 9:34:06 AM by PR if this a radio comment display the moderation form
+		if flRadio {
+			local (s = "");
+			if !flCanDeleteComments {
+				if loginError != "" {
+					s = s +  ("<p><a name=\"error\"></a>" + loginError + "</p>\r")};
+				s = s + ("<p><hr size=\"1\" width=\"100%\"><p>" + manilaSuite.getString ("radioHosting.commentModerationPrompt") + "<br /><br /><b>Password:</b> <input name=\"password\" type=\"password\" /> <input type=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\" /></p>\r");
+				s = s + "<input type=\"hidden\" name=\"c\" value=\"radioLogin\" />"}
+			else {
+				«logout message
+				s = s + "<p><a target=\"_self\" href=\"" + pta^.path + "?c=radioLogout&" + webserver.encodeArgs (@getargs) + "\">" + manilaSuite.getString ("radioHosting.disableCommentDeletion") + "</a></p>"};
+			return (s)};
+		return ""};
+	
+	on forbiddenPage () {
+		pta^.template = string (manilaData.notFoundTemplate);
+		pta^.title = "403 Forbidden";
+		pta^.code = 403;
+		pta^.activeUrls = false;
+		return ("Request Forbidden.")};
+	
+	if flTrackback { //handle trackback posts (pings) and pop-up window rendering
+		«bundle //debugging
+			«if not defined (workspace.tbs)
+				«new (tableType, @workspace.tbs)
+			«workspace.tbs.[string (clock.now ()) + "_" + clock.ticks ()] = pta^
+		local (flPing = (pta^.method == "POST") );
+		if defined (pta^.postArgs.deleteTrackbacks) { //cause form posts for trackback deletion to get passed to manilaSuite.trackback.defaultPage
+			flPing = false};
+		bundle { //work around a bug in MovableType
+			«Ben Trott tells us that if the ping URL contains a query string, then MT uses a GET instead of a POST, for backward compatibility with older MT installations that implement the old version of the TrackBack spec.
+			if pta^.requestBody contains "url=" {
+				webserver.parseargs (pta^.requestBody, @getargs)};
+			if defined (getargs.title) {
+				if not defined (pta^.postArgs) {
+					new (tableType, @pta^.postArgs)};
+				table.copyContents (@getargs, @pta^.postArgs);
+				flPing = true;
+				if defined (adrcache^) { //clear counter cache
+					delete (adrcache)}}};
+		if flPing { //accept an incoming ping
+			«adrcomments is the address of a sub-table for this usernum and post
+				«we'll treat it as if it were a message table, and allow the trackback sub-system to store its data there.
+			bundle { //call trackbackSubmit callbacks
+				try {
+					local (adrcallbacks = @config.manila.callbacks.trackbackSubmit);
+					if not defined (adrcallbacks^) {
+						new (tableType, adrcallbacks)};
+					for adr in adrcallbacks {
+						local (adrscript = adr);
+						try {
+							while typeOf (adrscript^) == addressType { //follow addresses
+								adrscript = adrscript^};
+							if not adrscript^ (pta) {
+								return (forbiddenPage ())}}}}};
+			on respondCallback (url, title, excerpt, weblogName) {
+				url = manilaSuite.untaint (url);
+				bundle { //strip markup from the ping elements
+					url = searchEngine.stripMarkup (url);
+					title = searchEngine.stripMarkup (title);
+					excerpt = searchEngine.stripMarkup (excerpt);
+					weblogName = searchEngine.stripMarkup (weblogName)};
+				on countTrackbacks (adrUrls) {
+					local (ct = 0);
+					if defined (adrUrls) {
+						for adr in adrUrls {
+							if adr^.flPosted {
+								ct++}}};
+					return (ct)};
+				on initUrlTable (adrparent, url) {
+					trackback.initPost (adrparent);
+					return (@adrparent^.trackback.inbound.urls.[url])};
+				if not defined (adrcomments^) {
+					new (tableType, adrcomments)};
+				local (adrurl = initUrlTable (adrcomments, url));
+				if not defined (adrurl^) {
+					new (tableType, adrurl)};
+				adrurl^.weblogName = manilaSuite.untaint (weblogName);
+				adrurl^.title = manilaSuite.untaint (title);
+				adrurl^.excerpt = manilaSuite.untaint (excerpt);
+				adrurl^.whenPing = clock.now ();
+				adrurl^.flPosted = true;
+				if defined (adrcomments^.count) {
+					adrcomments^.count++}
+				else {
+					adrcomments^.count = countTrackbacks (@adrcomments^.trackback.inbound.urls)};
+				bundle { // 01/09/04; 1:10:56 PM by PR: set whenLastModified 
+					adrStats^.whenLastModified = clock.now()}};
+			return (trackback.respondToPing (@respondCallback))}
+		else { //render a trackback pop-up window
+			if defined (adrcomments^) {
+				return (manilaSuite.trackback.defaultPage (true, @adrcomments^.trackback, flCanDeleteComments))}
+			else {
+				return (manilaSuite.trackback.defaultPage (true, nil, flCanDeleteComments))}}}
+	else { //handle comment posts and pop-up window rendering
+		manilaSuite.radioHosting.setTemplate ();
+		local (header = string (adrdata^.comments.header));
+		local (footer = string (adrdata^.comments.footer));
+		local (linkback = "");
+		bundle { //set linkback
+			if defined (adrcomments^) {
+				if sizeOf (adrcomments^.link) > 0 {
+					linkback = string.replaceAll (string (adrdata^.comments.postLink), "{posturl}", adrcomments^.link);
+					manilaSuite.untaint (linkback)}}};
+		local (bgcolor1 = adrdata^.comments.colors.bgcolor1);
+		local (bgcolor2 = adrdata^.comments.colors.bgcolor2);
+		local (commentform = "");
+		bundle { //render commentform
+			on addToCommentForm (s) {
+				commentform = commentform + (string.trimWhiteSpace (s) + "\r");};
+			«addToCommentForm ("<form method=\"POST\" target=\"_self\">")
+			addToCommentForm ("<a name=\"newComment\"></a>");
+			if flModeratedCommentPosted {
+				addToCommentForm ("<p><b>" + manilaSuite.getString ("radioHosting.commentSubmittedForApproval") + "</b></p>")};
+			local (flHasCookie = false, adrmember, membername = "", memberurl = "");
+			if defined (pta^.adrMemberInfo) {
+				adrmember = pta^.adrMemberInfo;
+				membername = nameOf (adrmember^);
+				if defined (adrmember^.personalInfo) {
+					if defined (adrmember^.personalInfo.name) {
+						membername = adrmember^.personalInfo.name};
+					if defined (adrmember^.personalInfo.webSiteUrl) {
+						memberurl = adrmember^.personalInfo.webSiteUrl}};
+				flHasCookie = true};
+			if not flHasCookie { //try to get the email from the radioComments cookie
+				local (email);
+				if manilaSuite.radioHosting.getEmailFromCookie (@email) {
+					adrmember = manilaSuite.members.getMemberTableFromSiteAddress (adrsite, email);
+					if defined (adrmember^) {
+						memberName = nameOf (adrmember^);
+						if defined (adrmember^.personalInfo) {
+							if defined (adrmember^.personalInfo.name) {
+								membername = adrmember^.personalInfo.name};
+							if defined (adrmember^.personalInfo.webSiteUrl) {
+								memberurl = adrmember^.personalInfo.webSiteUrl}};
+						flHasCookie = true}}};
+			if flHasCookie { //add name, email and website as hidden fields
+				addToCommentForm ("<input type=\"hidden\" name=\"name\" value=\"" + membername + "\" />");
+				addToCommentForm ("<input type=\"hidden\" name=\"email\" value=\"" + nameOf (adrmember^) + "\" />");
+				addToCommentForm ("<input type=\"hidden\" name=\"url\" value=\"" + memberurl + "\" />")};
+			addToCommentForm ("<table cellpadding=\"4\" cellspacing=\"0\" border=\"0\" width=\"100%\">");
+			if flCanDeleteComments { //JES 7/21/04: delete button for comment deletion
+				local (deleteButton = "<input type=\"submit\" name=\"deleteComments\" value=\"" + manilaSuite.getString ("radioHosting.deleteCommnetsButton") + "\" />");
+				addToCommentForm ("<tr><td colspan=\"2\">" + deleteButton + "</td></tr>")};
+			local (logoutlink = "");
+			if flHasCookie { //set logoutlink
+				local (t); new (tableType, @t);
+				t.membername = membername;
+				local (linktext = manilaSuite.getString ("radioHosting.notSoAndSo", @t));
+				local (tooltip = manilaSuite.getString ("radioHosting.clickIfYoureNotSoAndSo", @t));
+				logoutlink = "<span>[<a href=\"" + pta^.uri + "?c=logout&" + webserver.encodeArgs (@getargs) + "\" title=\"" + tooltip + "\" target=\"_self\">" + linktext + "</a>]</span>";
+				};«logoutlink = "<span>[<a href=\"" + pta^.uri + "?u=" + usernum + "&p=" + postnum + "&c=logout\" title=\"" + tooltip + "\" target=\"_self\">" + linktext + "</a>]</span>"
+			addToCommentForm ("[[message]]");
+			bundle { //header
+				addToCommentForm ("<tr><td class=\"form\" colspan=\"2\" width=\"100%\"><b>" + manilaSuite.getString ("radioHosting.addYourCommentPrompt") + "</b>&nbsp;&nbsp;" + logoutlink + "</td></tr>")};
+			if not flHasCookie { //add name, email and website fields, -or- login fields
+				if flLoginRequiredForComments {
+					local (membershipRequiredPrompt);
+					if defined (pta^.newsSite^.flMembership) and pta^.newsSite^.flMembership { //membership is enabled
+						membershipRequiredPrompt = string.replace (manilaSuite.getString ("radioHosting.membershipRequiredSignUpHere"), "[[signupUrl]]", manilaSuite.getUrl ("memberSignUp", pta), false)}
+					else { //no membership for this site
+						membershipRequiredPrompt = manilaSuite.getString ("radioHosting.membershipRequiredForComments")};
+					addToCommentForm ("<tr><td colspan=\"2\" align=\"center\"><font size=\"-1\">" + membershipRequiredPrompt + "</font></td></tr>");
+					bundle { //email
+						local (usernamePrompt);
+						if manilaSuite.members.usernameMustBeEmail (adrsite) {
+							usernamePrompt = manilaSuite.getString ("radioHosting.emailPrompt")}
+						else {
+							usernamePrompt = manilaSuite.getString ("common.username")};
+						addToCommentForm ("<tr><td class=\"form\" valign=\"top\">" + usernamePrompt + "</td><td valign=\"top\"><input class=\"input\" type=\"text\" name=\"email\" size=\"50\" maxlength=\"255\" /></td></tr>")};
+					bundle { //password
+						addToCommentForm ("<tr><td class=\"form\" valign=\"top\">" + manilaSuite.getString ("members.passwordPrompt") + "</td><td valign=\"top\"><input class=\"input\" type=\"password\" name=\"password\" size=\"20\" maxlength=\"255\" /></td></tr>")}}
+				else { //old behavior, no login required
+					bundle { //name
+						addToCommentForm ("<tr><td class=\"form\" valign=\"top\" width=\"1%\">" + manilaSuite.getString ("radioHosting.namePrompt") + "</td><td valign=\"top\" width=\"99%\"><input class=\"input\" type=\"text\" name=\"name\" size=\"50\" maxlength=\"255\" /></td></tr>")};
+					bundle { //email
+						addToCommentForm ("<tr><td class=\"form\" valign=\"top\">" + manilaSuite.getString ("radioHosting.emailPrompt") + "</td><td valign=\"top\"><input class=\"input\" type=\"text\" name=\"email\" size=\"50\" maxlength=\"255\" /></td></tr>")};
+					bundle { //web site
+						addToCommentForm ("<tr><td class=\"form\" valign=\"top\">" + manilaSuite.getString ("radioHosting.webSitePrompt") + "</td><td valign=\"top\"><input class=\"input\" type=\"text\" name=\"url\" size=\"50\" maxlength=\"255\" /></td></tr>")}}};
+			bundle { //comment
+				addToCommentForm ("<tr><td class=\"form\" valign=\"top\" width=\"1%\">" + manilaSuite.getString ("radioHosting.commentPrompt") + "</td><td valign=\"top\"><textarea class=\"input\" name=\"comment\" rows=\"7\" cols=\"80\" style=\"width:100%\"></textarea></td></tr>")};
+			bundle { //submit / cancel
+				addToCommentForm ("<tr><td>&nbsp;</td><td><input type=\"submit\" name=\"submitComment\" value=\"" + manilaSuite.getString ("common.submitButton") + "\" />&nbsp;&nbsp;<input type=\"button\" name=\"cancelComment\" value=\"" + manilaSuite.getString ("common.closeButton") + "\" onclick=\"window.close()\" /></td>")};
+			addToCommentForm ("</table>");
+			bundle { //hidden fields
+				addToCommentForm ("<input type=\"hidden\" name=\"u\" value=\"" + usernum + "\" />");
+				addToCommentForm ("<input type=\"hidden\" name=\"p\" value=\"" + postnum + "\" />");
+				addToCommentForm ("<input type=\"hidden\" name=\"link\" value=\"" + string.urlEncode (postlink) + "\" />")};
+			bundle { // 19/08/04; 9:34:27 AM by PR add radio moderation
+				addToCommentForm (addRadioModeration())};
+			};«addToCommentForm ("</form>")
+		bundle { //do string replacements on header and footer
+			header = string.replaceAll (header, "{commentForm}", commentform, false);
+			footer = string.replaceAll (footer, "{commentForm}", commentform, false)};
+		
+		local (flError = false, errorMessage = "");
+		on countMessages (msgnum) { // 01/09/04; 12:59:40 PM by PR: added flDeleted checking
+			if msgnum == 0 {
+				return (0)};
+			local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite));
+			local (ct = 1);
+			local (responsenum);
+			if defined (adrmsg^.fldeleted) { // 01/09/04; 1:00:05 PM by PR: if deleted, set ct to 0
+				if adrmsg^.fldeleted {
+					ct = 0}}; //13/09/04; 1:59:27 PM by PR: fixed a bug where is was returning zero and ignoring responses
+			if defined (adrmsg^.flpending) and adrmsg^.flpending {ct = 0};
+			for responsenum in adrmsg^.responses {
+				ct = ct + countMessages (responsenum)};
+			return (ct)};
+		if pta^.method == "POST" { //post or delete comment(s)
+			try { //referer check -- may prevent some spam
+				manilaSuite.referer.checkSelf ()}
+			else { //don't give the spammers any hints about referers: return a 403 Forbidden
+				return (forbiddenPage ())};
+			local (postargs); new (tableType, @postArgs);
+			webserver.parseArgs (pta^.requestBody, @postargs);
+			if defined (postargs.submitComment) {
+				local (s = string.trimWhiteSpace (string.replaceAll (postargs.comment, "\r\n", "\r")));
+				if system.environment.isMac {
+					s = latinToMac.convert (s)};
+				if sizeOf (s) > 15360 { //15KB
+					flError = true;
+					errorMessage = manilaSuite.getString ("radioHosting.cantPostSizeLimitExceeded")};
+				if sizeOf (s) > 0 {
+					bundle { //call commentSubmit callbacks
+						local (adrcallbacks = @config.manila.callbacks.commentSubmit);
+						if not defined (adrcallbacks^) {
+							new (tableType, adrcallbacks)};
+						for adr in adrcallbacks {
+							local (adrscript = adr);
+							try {
+								while typeOf (adrscript^) == addressType { //follow addresses
+									adrscript = adrscript^};
+								if nameOf (adrscript^) != "item #1" {
+									if not adrscript^ (pta) {
+										return (forbiddenPage ())}}}
+							else {
+								errorMessage = tryerror;
+								flError = true}}};
+					local (usernum = manilaSuite.untaint (postargs.u));
+					local (postnum = manilaSuite.untaint (postargs.p));
+					local (email = manilaSuite.untaint (postargs.email));
+					local (name);
+					if flLoginRequiredForComments { //verify login, set name
+						local (adrmember);
+						local (flAuthorized = false);
+						if defined (postargs.password) {
+							adrmember = getMemberTable (email);
+							if defined (adrmember^) {
+								if string (adrmember^.password) == string.trimWhiteSpace (postargs.password) {
+									flAuthorized = true}}};
+						if defined (pta^.adrMemberInfo) {
+							flAuthorized = true};
+						if not flAuthorized {
+							flError = true;
+							if adrmember != nil and defined (adrmember^) {
+								errorMessage = manilaSuite.getString ("members.cantLoginIncorrectPassword")}
+							else {
+								errorMessage = manilaSuite.getString ("members.cantLoginNotMemberError")};
+							errorMessage = string.replaceAll (errorMessage, "[[mailAddress]]", email, false)}}
+					else { //get name from postargs
+						name = manilaSuite.untaint (postargs.name)};
+					if not flError { //login is good or is not required -- proceed with posting the comment
+						local (postlink = "");
+						bundle { //set postlink
+							if defined (postargs.link) {
+								postlink = manilaSuite.untaint (string.urlDecode (postargs.link))}};
+						local (url = "");
+						if defined (postargs.url) {
+							url = manilaSuite.untaint (string.trimWhiteSpace (postargs.url))};
+						if sizeOf (url) > 0 { //make sure the url starts with http://
+							if not (url contains "/") {
+								url = url + "/"};
+							if not (url contains "://") {
+								url = "http://" + url}};
+						local (msgnum, adrNewComment, adrmember);
+						bundle { //get adrmember, and if necessary, create member record and set cookie
+							if defined (pta^.adrMemberInfo) { //set adrmember
+								adrmember = pta^.adrMemberInfo}
+							else { //create member record or login; set cookie
+								try { //validate email address
+									mainResponder.members.validMailAddress (email)}
+								else { //error with email address
+									flError = true;
+									errorMessage = manilaSuite.getString ("radioHosting.cantPostCommentBadEmailAddress")};
+								if not flError { //create member, set cookie
+									adrmember = getMemberTable (email);
+									if not defined (adrmember^) { //create member record
+										local (password = manilaSuite.passwords.generate ());
+										new (tableType, adrmember);
+										adrmember^.password = binary (password);
+										new (tableType, @adrmember^.personalInfo);
+										adrmember^.personalInfo.name = name;
+										adrmember^.personalInfo.webSiteUrl = url};
+									if defined (adrmember^.blocked) {
+										if adrmember^.blocked {
+											flError = true;
+											errorMessage = "Can't post new comment because this account has been blocked."}};
+									flSetCookie = true;
+									if flSetCookie { //set cookie
+										local (memberkey = nameOf (adrmember^));
+										local (flExpireAtEndOfSession = false);
+										if defined (pta^.newsSite^.flCookiesExpireAtEndOfSession) {
+											flExpireAtEndOfSession = pta^.newsSite^.flCookiesExpireAtEndOfSession};
+										if flLoginRequiredForComments { //use a real cookie
+											local (groupname = pta^.defaultMembershipGroup);
+											local (adrmembers = mainResponder.members.getMembershipTable (groupname));
+											mainResponder.members.setCookie (memberkey, string (adrmember^.password), adrmembers, pta, groupname, flExpireAtEndOfSession)}
+										else { //comment window cookie
+											manilaSuite.radioHosting.setCookie (memberkey, flExpireAtEndOfSession)}}}};
+							if not flError { //set url and name, if specified
+								if not defined (adrmember^.personalInfo) {
+									new (tableType, @adrmember^.personalInfo)};
+								if not defined (adrmember^.personalInfo.webSiteUrl) {
+									if url != "" {
+										adrmember^.personalInfo.webSiteUrl = url}};
+								if not defined (adrmember^.personalInfo.name) {
+									if name != "" {
+										adrmember^.personalInfo.name = name}}}};
+						if not flError { //create a new manila message here, set adrcomment to the msgnum, and possibly notify via email
+							local (sitename = manilaSuite.getCanonicalSiteName (adrsite));
+							local (inResponseTo = 0);
+							bundle { //set inResponseTo
+								if defined (adrcomments^) {
+									if typeOf (adrcomments^) == tableType { //new format
+										inResponseTo = adrcomments^.msgnum}
+									else { //old format
+										inResponseTo = adrcomments^}}
+								else { //is the comment in this site?
+									if flCommentsInThisSite { //string.lower (postlink) beginsWith string.lower (manilaSuite.getSiteUrl (adrsite))
+										«The comment is in response to a message in this Manila site -- get the message number from the URL
+										try { //this shold never fail
+											inResponseTo = number (string.delete (string.nthField (postlink, "#", string.countFields (postlink, "#")), 1, 1) )}}}};
+							local (subject = "Comment on post " + postnum);
+							if flCommentsInThisSite {
+								try {
+									local (adrThread = manilaSuite.discuss.getMessageTable (postnum, adrsite));
+									if sizeOf (adrThread^.subject) > 0 {
+										subject = adrThread^.subject;
+										if not (string.lower (subject) beginswith "re:") {
+											subject = "Re: " + subject}}}}
+							else {
+								if inResponseTo > 0 {
+									subject = "Re: " + subject}};
+							local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+							local (groupname = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+							local (data); new (tableType, @data);
+							data.ipAddress = pta^.client;
+							bundle { //check legal tags for member
+								if not (pta^.flEditor == true) {
+									if not defined (config.manila.prefs.flRestrictHtmlForMembers) {
+										config.manila.prefs.flRestrictHtmlForMembers = true};
+									
+									if config.manila.prefs.flRestrictHtmlForMembers {
+										if manilaSuite.getNewsSitePref ("discussionGroup.flRestrictHtmlForMembers", adrSite, true) {
+											subject = searchEngine.stripMarkup (string (subject));
+											s = manilaSuite.html.stripHtmlAttributes (string (s))}}}};
+							msgnum = mainResponder.discuss.addMessage (subject, nameOf (adrmember^), inResponseTo, s, flcallback:false, adrroot:adrDiscuss, groupname:groupname, adrdata:@data);
+							adrNewComment = manilaSuite.discuss.getMessageTable (msgnum, adrsite);
+							if flCommentModerationEnabled {
+								adrNewComment^.flPending = true;
+								local (catname = manilaSuite.discuss.getCategoryName ("pending", adrsite));
+								manilaSuite.discuss.addCategoryToMessage (adrNewComment, catname, adrSite)};
+							bundle { //set adrcomments^
+								if not defined (adrcomments^) {
+									new (tabletype, adrcomments);
+									adrcomments^.msgnum = msgnum;
+									adrcomments^.link = postlink;
+									adrcomments^.count = 1} // 01/09/04; 1:00:37 PM by PR: add the count
+								else { // 01/09/04; 1:00:47 PM by PR increment or add the count
+									if defined (adrcomments^.count) {
+										adrcomments^.count++}
+									else {
+										adrcomments^.count = countmessages (adrcomments^.msgnum)}}};
+							bundle { //set manilaCommentInfo in page table; call callbacks, 8/25/03 by DW
+								try {
+									local (adr);
+									new (tabletype, @pta^.manilaCommentInfo);
+									pta^.manilaCommentInfo.siteName = sitename;
+									try {pta^.manilaCommentInfo.siteName = adrsite^.["#newsSite"].siteName};
+									pta^.manilaCommentInfo.inResponseToPostNum = postnum;
+									local (adrmsg = manilaSuite.discuss.getMessageTable (postnum, adrsite));
+									pta^.manilaCommentInfo.flCommentsInThisSite = flCommentsInThisSite;
+									if flCommentsInThisSite { //set pta^.manilaCommentInfo.inResponseToUrl and pta^.manilaCommentInfo.inResponseToTitle
+										pta^.manilaCommentInfo.inResponseToUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsg);
+										pta^.manilaCommentInfo.inResponseToTitle = adrmsg^.subject}
+									else {
+										try {
+											pta^.manilaCommentInfo.inResponseToUrl = adrcomments^.link;
+											pta^.manilaCommentInfo.inResponseToTitle = adrcomments^.link}
+										else {
+											pta^.manilaCommentInfo.inResponseToUrl = "";
+											pta^.manilaCommentInfo.inResponseToTitle = ""}};
+									try {
+										pta^.manilaCommentInfo.commenterEmail = nameOf (adrmember^)}
+									else {
+										pta^.manilaCommentInfo.commenterEmail = email};
+									pta^.manilaCommentInfo.commenterName = name;
+									pta^.manilaCommentInfo.commenterUrl = url;
+									pta^.manilaCommentInfo.commentUrl = pta^.urls^.discussMsgReader + msgnum;
+									pta^.manilaCommentInfo.commenterIpAddress = pta^.client;
+									pta^.manilaCommentInfo.commentText = s;
+									«pta^.manilaCommentInfo.flNotify = adrsite^.["#newsSite"].flNotifyNewMessages
+									pta^.manilaCommentInfo.flNotify = manilaSuite.getNewsSitePref ("flNotifyNewComments", adrsite, adrsite^.["#newsSite"].flNotifyNewMessages, true);
+									«pta^.manilaCommentInfo.emailSender = adrsite^.["#newsSite"].notifySender
+									pta^.manilaCommentInfo.emailSender = email; //commenter's email address -- so recipient can reply in email directly
+									pta^.manilaCommentInfo.emailRecipient = adrsite^.["#newsSite"].notifyList;
+									pta^.manilaCommentInfo.flPending = flCommentModerationEnabled;
+									if not defined (config.manila.callbacks.commentPost) {
+										new (tabletype, @config.manila.callbacks.commentPost)};
+									for adr in @config.manila.callbacks.commentPost {
+										try {
+											while typeOf (adr^) == addressType {
+												adr = adr^};
+											adr^ (pta)}}}};
+							bundle { //notify via email, if enabled, 8/25/03 by DW
+								try {
+									on sendMail (recipient, sender, subject, commentSiteName, inResponseToTitle, inResponseToUrl) {
+										local (msgtext = "", indentlevel = 0);
+										on add (s) {
+											msgtext = msgtext + string.filledstring ("\t", indentlevel) + s + "\r"};
+										
+										bundle { //start HTML mail
+											add ("<html>"); indentlevel++;
+											add ("<body>"); indentlevel++;
+											add ("<blockquote>"); indentlevel++};
+										add ("<p><b>New comment posted on " + commentSiteName + ".</b></p>");
+										if pta^.manilaCommentInfo.flPending { //add note about pending status, with link to approve
+											if manilaSuite.rpcUtils.isManagingEditor (sitename, recipient) or manilaSuite.rpcUtils.isContentEditor (sitename, recipient) { //only add this link if the recipient has ability to approve pending comments
+												local (pendingPostsUrl = manilaSuite.getUrl ("editorialAdmin", pta));
+												if not (pendingPostsUrl endswith "/") {
+													pendingPostsUrl = pendingPostsUrl + "/"};
+												pendingPostsUrl = pendingPostsUrl + "pendingPosts";
+												add ("<p><b>This comment will not appear on the site until approved by a managing editor or content editor via the <a href=\"" + pendingPostsUrl + "\">Pending Posts</a> page.</b></p>")}};
+										bundle { //comment data in an HTML table
+											add ("<table>"); indentlevel++;
+											add ("<tr><td>Commenter's&nbsp;name:&nbsp;</td><td>" + pta^.manilaCommentInfo.commenterName + "</td></tr>");
+											add ("<tr><td>Email&nbsp;address:&nbsp;</td><td><a href=\"mailto:" + pta^.manilaCommentInfo.commenterEmail + "\">" + pta^.manilaCommentInfo.commenterEmail + "</a></td></tr>");
+											if sizeOf (inResponseToTitle) > 0 { //only add this link if we have a title and url
+												add ("<tr><td>Commenting&nbsp;on:&nbsp;</td><td><a href=\"" + inResponseToUrl + "\">" + inResponseToTitle + "</a></td></tr>")}
+											else { //maybe just the url?
+												if sizeOf (inResponseToUrl) > 0 {
+													add ("<tr><td>Commenting&nbsp;on:&nbsp;</td><td><a href=\"" + inResponseToUrl + "\">" + inResponseToUrl + "</a></td></tr>")}};
+											local (commentPermalink);
+											bundle { //set commentPermalink
+												commentPermalink = "<a href=\"" + pta^.url + "?" + webserver.encodeArgs (@getargs) + "#a" + msgnum + "\" title=\"Permanent link to this comment.\">#</a>"};
+											local (s = string.replaceall (string.htmlToEmail (pta^.manilaCommentInfo.commentText), "\r", "<br>"));
+											s = pta^.manilaCommentInfo.commentText;
+											add ("<tr><td valign=\"top\" colspan=\"2\"><br>" + s + " " + commentPermalink + "<br><br></td></tr>");
+											add ("<tr><td>Web&nbsp;site:&nbsp;</td><td><a href=\"" + pta^.manilaCommentInfo.commenterUrl + "\">" + pta^.manilaCommentInfo.commenterUrl + "</a></td></tr>");
+											add ("<tr><td>IP&nbsp;address:&nbsp;</td><td>" + pta^.manilaCommentInfo.commenterIpAddress + "</td></tr>");
+											try { //domain name
+												add ("<tr><td>Domain&nbsp;name:&nbsp;</td><td>" + tcp.dns.getDomainName (pta^.manilaCommentInfo.commenterIpAddress) + "</td></tr>")};
+											add ("</table>"); indentlevel--};
+										bundle { //close out the HTML
+											add ("</blockquote>"); indentlevel--;
+											add ("</body>"); indentlevel--;
+											add ("</html>"); indentlevel--};
+										bundle { //send the email in its own thread
+											thread.callScript (@manilaSuite.sendmail, {recipient, subject, msgtext, sender, "", "", user.prefs.mailHost, "text/html"})}};
+									on getSubject (prefix, inResponseToTitle) {
+										local (subject = "");
+										if sizeOf (inResponseToTitle) > 0 {
+											if string.lower (inResponseToTitle) beginswith "re:" {
+												subject = prefix + " " + inResponseToTitle}
+											else {
+												subject = prefix + " Re: " + inResponseToTitle}};
+										return (subject)};
+									if flCommentsInThisSite {
+										if pta^.manilaCommentInfo.flNotify {
+											local (recipient = pta^.manilaCommentInfo.emailRecipient);
+											local (sender = pta^.manilaCommentInfo.emailSender);
+											«local (subject = "[Manila] New comment on \"" + pta^.manilaCommentInfo.siteName + "\"")
+											local (commentSiteName = pta^.manilaCommentInfo.siteName);
+											local (inResponseToTitle = pta^.manilaCommentInfo.inResponseToTitle);
+											local (inResponseToUrl = pta^.manilaCommentInfo.inResponseToUrl);
+											local (subject = getSubject ("[Manila]", inResponseToTitle));
+											if subject == "" { //old style subject
+												subject = "[Manila] New comment on \"" + pta^.manilaCommentInfo.siteName + "\""};
+											sendMail (recipient, sender, subject, commentSiteName, inResponseToTitle, inResponseToUrl)}}
+									else { //most likely a hosted Radio site
+										local (adrprefs = @adrdata^.userPrefs);
+										if not defined (adrprefs^) {
+											new (tableType, adrprefs)};
+										local (adruserprefs = @adrprefs^.[usernum]);
+										if defined (adruserprefs^) {
+											if defined (adruserprefs^.flNotifyNewComments) {
+												if adruserprefs^.flNotifyNewComments {
+													local (recipient = adruserprefs^.sendNotificationTo);
+													local (sender = pta^.manilaCommentInfo.commenterEmail);
+													if not (sender contains "@") {
+														sender = recipient};
+													local (subject = "[Radio] New comment on your Radio weblog");
+													local (commentSiteName = "your Radio weblog");
+													local (inResponseToTitle = "", inResponseToUrl = "");
+													if sizeOf (postlink) > 0 {
+														inResponseToUrl = postlink};
+													sendMail (recipient, sender, subject, commentSiteName, inResponseToTitle, inResponseToUrl)}}}}}};
+							bundle { // 01/09/04; 1:10:28 PM by PR: set whenLastModified 
+								adrStats^.whenLastModified = clock.now()}};
+						if not flError { //redirect so the new message will be displayed, and the cookie will take
+							local (anchor = "");
+							if defined (adrNewComment^.flPending) and adrNewComment^.flPending {
+								getargs.postPending = true;
+								anchor = "#newComment"}
+							else {
+								anchor = "#" + msgnum};
+							local (url = pta^.path + "?" + webserver.encodeArgs (@getargs) + anchor);
+							mainResponder.redirect (url);
+							return ("")}}}};
+			if defined (postargs.deleteComments) { //JES 7/21/04: handle comment deletion
+				if flCanDeleteComments { //security check -- must have cookie to delete
+					«workspace.pt = pta^; edit (@workspace.pt)
+					local (adr);
+					for adr in @postargs {
+						if adr^ == "xxx" {
+							try {
+								local (adrmsg = manilaSuite.discuss.getMessageTable (number (nameOf (adr^)), adrsite));
+								adrmsg^.flDeleted = true;
+								adrmsg^.body = "";
+								if defined (adrcomments^.count) { // 01/09/04; 1:01:16 PM by PR: add or increment the count
+									adrcomments^.count--}
+								else {
+									adrcomments^.count = countmessages (adrcomments^.msgnum)};
+								bundle { // 01/09/04; 1:10:56 PM by PR: set whenLastModified 
+									adrStats^.whenLastModified = clock.now()}}}}}}};
+		
+		local (bgcolor = bgcolor1, ctcomments = 0);
+		on addMessage (msgnum) {
+			local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite));
+			local (flDeleted = false, flPending = false);
+			if defined (adrmsg^.flDeleted) {
+				flDeleted = adrmsg^.flDeleted};
+			if defined (adrmsg^.flPending) {
+				flPending = adrmsg^.flPending};
+			if not (flDeleted or flPending) {
+				if sizeOf (adrmsg^.body) > 102400 {
+					return (false)};
+				local (s = string (adrdata^.comments.itemTemplate));
+				local (membermail = adrmsg^.member);
+				local (adrmember = getMemberTable (membermail));
+				local (membername = membermail);
+				if defined (adrmember^.personalInfo) {
+					if defined (adrmember^.personalInfo.name) {
+						membername = adrmember^.personalInfo.name}};
+				local (memberurl = "", memberlink = membername);
+				if defined (adrmember^.personalInfo.webSiteUrl) {
+					memberurl = adrmember^.personalInfo.webSiteUrl};
+				if memberurl != "" {
+					memberlink = html.getLink (memberlink, memberurl)};
+				«bundle // unused code
+					«local (posttime)
+					«bundle //set posttime
+						«local (day, month, year, hour, minute, second, amPmString = "am")
+						«date.get (adrmsg^.postTime, @day, @month, @year, @hour, @minute, @second)
+						«if hour > 12
+							«amPmString = "pm"
+							«hour = hour - 12
+						«if hour == 0
+							«hour = 12
+						«posttime = month + "/" + day + "/" + string.delete (year, 1, 2) + " " + hour + ":" + string.padWithZeros (minute, 2) + amPmString
+				bundle { //do string replacements
+					s = string.replaceAll (s, "{bgcolor}", bgcolor, false);
+					if flCanDeleteComments { //JES 7/21/04: add checkbox for deleting comment, below comment text
+						local (ix = sizeOf (s));
+						while ix > 0 {
+							if s[ix] == "}" {
+								local (checkbox = "<br /><input type=\"checkbox\" name=\"" + nameOf (adrmsg^) + "\" value=\"xxx\" /> " + manilaSuite.getString ("radioHosting.checkToDeleteThisComment") );
+								s = string.insert (checkbox, s, ix+1);
+								break};
+							ix--}};
+					s = string.replaceAll (s, "{comment}", "<a name=\"a" + msgnum + "\"></a>\r" + string.replaceAll (adrmsg^.body, "\r\n", "\r"), false);
+					s = string.replaceAll (s, "{name}", membername, false);
+					s = string.replaceAll (s, "{url}", memberurl, false);
+					s = string.replaceAll (s, "{memberLink}", memberlink, false);
+					s = string.replaceAll (s, "{email}", membermail, false);
+					local (postTime = mainResponder.localization.dateTimeString (adrmsg^.posttime, pta) );
+					bundle { //add permalink after post time
+						postTime = postTime + " <a href=\"#a" + msgnum + "\" title=\"Permanent link to this comment.\" target=\"_self\">#</a>"};
+					s = string.replaceAll (s, "{postTime}", postTime, false);
+					local (ipaddress = "");
+					if defined (adrmsg^.ipAddress) {ipaddress = adrmsg^.ipAddress};
+					s = string.replaceAll (s, "{ipAddress}", ipaddress, false)};
+				«bundle //1/15/05 by DW -- add rel="nofollow" on all anchors
+					«s = string.replaceall (s, "<a", "<a rel=\"nofollow\"", false)
+				add (s);
+				if not (pta^.method == "POST") {
+					adrmsg^.ctReads++};
+				ctcomments++;
+				
+				bundle { //flip the bgcolor
+					if bgcolor == bgcolor1 {
+						bgcolor = bgcolor2}
+					else {
+						bgcolor = bgcolor1}}};
+			
+			local (responsenum);
+			for responsenum in adrmsg^.responses {
+				if sizeOf (htmltext) > 102400 { //100 KB max
+					break};
+				addMessage (responsenum)};
+			
+			return (true)};
+		
+		bundle { //form start
+			add ("<form method=\"POST\" target=\"_self\">")};
+		add (header); indentlevel++;
+		add (linkback); //link to the original post
+		if flError { //replace the message with the error message
+			footer = string.replace (footer, "[[message]]", "<tr><td class=\"comment\" colspan=\"2\" width=\"100%\" style=\"color:red\"><b>" + errorMessage + "</b></td></tr>")};
+		if flComments { //add the comments
+			«if flCanDeleteComments //JES 7/21/04: form start for comment deletion
+				«add ("<form method=\"POST\" target=\"_self\">")
+			if flCommentsInThisSite {
+				local (msgnum = number (postnum));
+				local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite));
+				local (response);
+				for response in adrmsg^.responses {
+					if sizeOf (htmltext) > 102400 { //100 KB max
+						break};
+					addMessage (response)}}
+			else {
+				local (msgnum = adrcomments^.msgnum);
+				local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite));
+				addMessage (msgnum)};
+			«if flCanDeleteComments //JES 7/21/04: delete button for comment deletion, form end
+				«local (lowerTrimmedTemplate = string.lower (string.trimWhiteSpace (string (adrdata^.comments.itemTemplate) )) )
+				«local (flAddTableTags = false)
+				«if lowerTrimmedTemplate contains "<tr"
+					«if not (lowerTrimmedTemplate contains "<table")
+						«flAddTableTags = true
+				«local (deleteButton = "<input type=\"submit\" name=\"deleteComments\" value=\"" + manilaSuite.getString ("radioHosting.deleteCommnetsButton") + "\" />")
+				«if flAddTableTags
+					«add ("<tr bgcolor=\"" + bgcolor + "\"><td>" + deleteButton + "</td></tr>")
+				«else
+					«add ("<br /><br />" + deleteButton)
+				«add ("</form>")
+			footer = string.replace (footer, "[[message]]", "")};
+		if ctcomments < 1 { //no comments
+			footer = string.replace (footer, "[[message]]", "<tr><td class=\"comment\" colspan=\"2\" width=\"100%\" bgcolor=\"" + bgcolor + "\"><b>" + manilaSuite.getString ("radioHosting.noCommentsFound") + "</b></td></tr><tr><td colspan=\"2\">&nbsp;</td></tr>")};
+		add (footer); indentlevel--;
+		bundle { //form end
+			add ("</form>")}};
+	
+	return (htmltext)};
+«bundle //testing
+	«html.setPageTableAddress (@workspace.pt)
+	«commentsPage ()
+	«html.deletePageTableAddress ()

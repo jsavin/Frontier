@@ -1,0 +1,20 @@
+on getPost (postid, username, password) {
+	«Changes:
+		«10/17/05; 2:59:41 AM by JES
+			«Add support for Home Page 'category'.
+		«1/9/03; 6:29:48 PM by JES
+			«Call manilaSuite.metaWeblogApi.getOnePost to get the return struct. It works around a crashing bug in Apple's XML-RPC implementation.
+			«Details from Brent Simmons here: http://www.xmlrpc.com/discuss/msgReader$2380
+		«Tue, Jul 2, 2002 at 02:30:00 by JTC
+			«Created. Cobbled from bloggerAPI
+	local (sitename = string.nthfield (postid, "#", 1));
+	manilaSuite.rpcUtils.memberCheck (siteName, username, password, "Can't get the post because ");
+	local (msgnum = number (string.nthfield (postid, "#", 2)));
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	local (flMultipleDepartmentsEnabled = manilaSuite.getNewsSitePref ("newsItems.prefs.flMultipleDepartments", adrSite, false));
+	local (adrmsg = manilaSuite.discuss.getMessageTableFromSiteAddress (adrsite, msgnum));
+	return (manilaSuite.metaWeblogApi.getOnePost (adrmsg, postid, flMultipleDepartmentsEnabled))};
+«bundle //test code
+	«local (postID = "test#3")
+	«local (post = getPost (postID, user.prefs.manila.username, user.prefs.manila.password))
+	«dialog.alert (post.postid)

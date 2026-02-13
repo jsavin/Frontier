@@ -1,0 +1,47 @@
+on doWsfCallbacks (adrCallbacks, adrUserCallbacks, adrMsg, url=nil) {
+	«Changes:
+		«9/26/05; 3:50:43 PM by JES
+			«Bug fix: For stories which do not have a site structure path, and for pictures, the msgNum was being left off the URL used in the notification email.
+		«9/14/05; 12:42:46 PM by JES
+			«Modernized the URLs used to send email notifications: Use site structure URL if possible. If not, then use the most specific of: news item permalink or (edit news item link for pending items), story reader, picture reader, and finally DG.
+		«2000
+			«05/01/00; 5:21:13 PM by PBS
+				«It's now smarter about URLs. You can supply the URL as an optional parameter. If it's the URL of a news item, it gets the news item URL.
+			«04/06/00; 5:55:13 PM by PBS
+				«Instead of looking at pta^.postArgs.referer for the URL -- which is not always the right thing to do anyway -- construct a msgReader URL. This fixes two bugs: sometimes URLs were wrong, and sometimes notification didn't go out at all if no referer was present.
+			«04/04/00; 9:38:16 PM by PBS
+				«Created. Common code for website framework context callbacks, for both new and changed messages.
+	
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getSiteAddress (pta)); //get the site address
+	if not (manilaSuite.isManilaSite (adrSite)) {
+		return (true)};
+	
+	local (adrMember = pta^.adrMemberInfo);
+	
+	if url == nil { //get a URL if not supplied
+		url = manilaSuite.siteStructure.getRelativePathToMessage (adrMsg^.msgNum, adrSite);
+		if url == "" { //no site structure url -- use a built-in one
+			if manilaSuite.news.isNewsItem (adrMsg) {
+				if manilaSuite.news.isPosted (adrMsg) { //use the news item permalink
+					url = manilaSuite.getPermalinkUrl (adrSite, adrMsg)}
+				else { //use edit news item link
+					url = pta^.urls^.newsItemEditInBrowser;
+					if not (url endsWith "$") {
+						url = url + "$"};
+					url = url + adrMsg^.msgNum}}
+			else { //story, picture or DG message
+				case true { //story or picture?
+					manilaSuite.discuss.isStory (adrMsg, adrSite) {
+						url = pta^.urls^.storyReader};
+					manilaSuite.discuss.isPicture (adrMsg, adrSite) {
+						url = pta^.urls^.pictureReader}}
+				else { //fall back to discuss URL
+					url = pta^.urls^.discussMsgReader};
+				if not (url endsWith "$") {
+					url = url + "$"};
+				url = url + adrMsg^.msgNum}}};
+	
+	manilaSuite.callbacks.callbackLoop (adrCallbacks, adrUserCallbacks, adrMsg, adrSite, url, adrMember);
+	
+	return (true)}

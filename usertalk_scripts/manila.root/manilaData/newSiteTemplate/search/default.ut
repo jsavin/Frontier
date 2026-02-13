@@ -1,0 +1,5 @@
+on default () {
+	«Changes
+		«8/11/02; 1:47:51 AM by JES
+			«Created.
+	return (manilaSuite.search.searchThisSite ())}

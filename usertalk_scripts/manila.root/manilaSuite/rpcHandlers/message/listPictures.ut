@@ -1,0 +1,30 @@
+on listPictures (username, password, siteName) {
+	«Get a struct containing info about all the pictures.
+		«Changes:
+			«9/24/04; 3:40:38 AM by JES
+				«Yield processor time in the main loop.
+			«01/02/01; 1:39:23 AM by JES
+				«On Macs, convert the subject to Latin text.
+			«06/21/00; 2:27:31 PM by JES
+				«The script was broken because 1- it tried to create a table at a nil address, 2- the fields it looked up in the message table were incorrect.
+	
+	bundle { //make sure this person is a member of the site
+		local (beginningErrorString = "Can't list pictures because ");
+		manilaSuite.rpcUtils.memberCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrMessages = @adrDiscuss^.messages);
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (picturesCategory = manilaSuite.discuss.getPicturesCategory (adrSite));
+	
+	local (adrmsg, messagedata);
+	new (tableType, @messagedata);
+	for adrmsg in adrMessages {
+		if manilaSuite.discuss.isInCategory (adrmsg, picturesCategory) {
+			local (subject = string (adrmsg^.subject));
+			if system.environment.isMac { //01/02/01 JES: convert subject to latin text
+				subject = latinToMac.macToLatin (subject)};
+			messagedata.[nameOf (adrmsg^)] = {subject, string (adrmsg^.member)}};
+		thread.sleepfor (0)};
+	
+	return (messagedata)}

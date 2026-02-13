@@ -1,0 +1,30 @@
+on numberPopup (prompt, adrpref, min, max) {
+	«Changes
+		«6/27/02; 2:43:59 PM by JES
+			«Created.
+	local (pta = html.getPageTableAddress ());
+	local (htmltext = "");
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	if pta^.method == "POST" {
+		adrpref^ = number (pta^.postArgs.[string.popFileFromAddress (adrpref)] )};
+	
+	add ("<tr>");
+	bundle { //prompt
+		if prompt != "" {prompt = prompt + ":"};
+		add ("<td>" + prompt + "</td>")};
+	bundle { //popup
+		add ("<td>");
+		add ("<select name=\"" + string.popFileFromAddress (adrpref) + "\">");
+		local (i);
+		for i = min to max {
+			if i == adrpref^ {
+				add ("<option value=\"" + i + "\" selected>" + i + "</option>")}
+			else {
+				add ("<option value=\"" + i + "\">" + i + "</option>")}};
+		add ("</select>");
+		add ("</td>")};
+	add ("</tr>");
+	
+	return (htmltext)}

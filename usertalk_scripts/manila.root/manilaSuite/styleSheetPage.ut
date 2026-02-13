@@ -1,0 +1,18 @@
+on styleSheetPage () {
+	«Changes
+		«4/24/05; 4:11:22 AM by JES
+			«Add support for colors as pseudo-macros in the external style sheet.
+		«4/20/03; 1:07:29 AM by JES
+			«Created. Run the page that serves the external style sheet.
+	local (pta = html.getPageTableAddress ());
+	local (adrsite = manilaSuite.getSiteAddress (pta));
+	bundle { //set up the pagetable to return a style sheet instead of HTML
+		pta^.responseHeaders.["Content-Type"] = "text/css";
+		pta^.autoParagraphs = false;
+		pta^.clayCompatibility = false;
+		pta^.activeUrls = false;
+		pta^.processMacros = false;
+		wp.newTextObject ("{bodytext}", @pta^.template)};
+	local (s = string (adrsite^.["#newsSite"].externalStyleSheet));
+	s = string.multipleReplaceAll (s, @adrsite^.["#newsSite"].colors, false, "{", "}");
+	return (s)}

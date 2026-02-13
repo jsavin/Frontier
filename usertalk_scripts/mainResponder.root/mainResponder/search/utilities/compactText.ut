@@ -1,0 +1,35 @@
+on compactText (s) {
+	«Remove punctuation (but not spaces) from text.
+		«Changes:
+			«07/19/00; 11:29:59 AM by PBS
+				«Don't do the char-by-char loop, it's redundant, as searchEngine.cleanText does most of the text clean-up.
+	
+	s = string.lower (s);
+	
+	bundle { //a few punctuation characters aren't handled by searchEngine.cleanText
+		s = string.replaceAll (s, "\"", " ");
+		s = string.replaceAll (s, "'", " ");
+		s = string.replaceAll (s, ",", " ");
+		s = string.replaceAll (s, "~", " ");
+		s = string.replaceAll (s, "&nbsp;", " ", false)};
+	s = searchEngine.cleanText (s);
+	s = string.replaceAll (s, ">", " ");
+	s = string.replaceAll (s, "<", " ");
+	
+	local (i = sizeOf (s));
+	
+	«loop
+		«if i == 0
+			«break
+		«
+		«if string.isPunctuation (s [i])
+			«delete (@s [i])
+		«
+		«if mod (I, 500) == 0
+			«sys.systemTask ()
+		«
+		«i--
+	
+	s = string.trimWhiteSpace (s);
+	
+	return (s)}

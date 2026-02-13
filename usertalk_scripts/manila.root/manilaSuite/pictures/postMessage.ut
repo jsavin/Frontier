@@ -1,0 +1,33 @@
+on postMessage (flAcceptFileUploads=false, postTime=clock.now ()) {
+	«This message posting script allows empty message bodies, which is necessary when uploading pictures.
+		«11/8/99; 10:41:21 AM by PBS
+	«Changes:
+		«4/8/05; 3:54:53 AM by JES
+			«If inResponseTo is not defined as a post argument, default to 0. If text is not defined, default to the empty string. Makes it easier to call Manila's picture-posting code from other forms.
+		«4/8/03; 11:39:11 PM by JES
+			«Add the client IP address to the message table.
+		«04/03/00; 11:22:07 AM by PBS
+			«Support for time zones. New postTime optional parameter. Pass the postTime parameter to mainResponder's add message script.
+	local (pta = html.getPageTableAddress ());
+	local (subject = pta^.postArgs.subject);
+	local (memberKey = nameOf (pta^.adrMemberInfo^));
+	local (inResponseTo = 0);
+	if defined (pta^.postArgs.inResponseTo) {
+		inResponseTo = pta^.postArgs.inResponseTo};
+	local (thetext = "");
+	if defined (pta^.postArgs.text) {
+		thetext = string (pta^.postArgs.text)};
+	local (data); new (tableType, @data);
+	bundle { //populate data table
+		data.ipAddress = pta^.client};
+	local (memberGroupName);
+	if defined (pta^.members) {
+		memberGroupName = pta^.members}
+	else {
+		memberGroupName = manilaSuite.members.getGroupNameFromSiteAddress (pta^.adrSiteRootTable)};
+	local (msgNum = mainresponder.discuss.addMessage (subject, memberKey, inResponseTo, thetext, groupName:memberGroupName, flEmptyBodyOk:true, flCallback:false, postTime:postTime, adrdata:@data));
+	if flAcceptFileUploads {
+		if  (defined (pta^.postArgs.attachFile) and (typeOf (pta^.postArgs.attachFile) == tableType)) {
+			mainResponder.discuss.postAttachedFile (@pta^.postArgs.attachFile, msgNum, memberGroupName)}};
+	mainResponder.redirect (pta^.responderAttributes.urls^.discussMsgReader + msgNum);
+	return (msgNum)}

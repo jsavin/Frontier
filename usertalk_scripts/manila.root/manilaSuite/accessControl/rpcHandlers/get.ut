@@ -1,0 +1,26 @@
+on get (username, password, siteName, msgNum, attr) {
+	«manilaSuite.accessControl.rpcHandlers.get : 04/05/21, 09:41:54 by DAB
+		«get <attr> for <msgnum> 
+		«was manilaFixer.accessControl.rpcHandlers.get : 02/02/27, 14:44:50 by DAB
+	
+	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get " + attr + " for message #" + msgNum + " because ");
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrMsg = @adrDiscuss^.messages.[string.padwithzeros (msgNum, 7)]);
+	
+	if not defined (adrMsg^) {
+		scriptError ("Can't get " + attr + " for message #" + msgNum + " because the message does not exist.")};
+	if defined (adrMsg^.flDeleted) and adrMsg^.flDeleted {
+		scriptError ("Can't get " + attr + " formessage #" + msgNum + " because the message has been deleted.")};
+	
+	if not defined(adrMsg^.accesscontrol) {
+		return 0};
+	if not defined(adrMsg^.accesscontrol.[attr]) {
+		return 0};
+	
+	return adrMsg^.accesscontrol.[attr]};
+«bundle    //test logic
+	«window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "releasedate"))
+	«window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "expirydate"))
+	«window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "cohorts"))

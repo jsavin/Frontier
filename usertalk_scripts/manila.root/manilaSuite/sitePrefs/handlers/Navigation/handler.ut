@@ -1,0 +1,98 @@
+on handler (pta, adrObject) {
+	«manilaSuite.sitePrefs.handlers.Navigation.handler : 04/05/13, 18:39:38 by DAB
+		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	«messages at manilaData.localization.languages.english.strings.admin
+	local (advancedPageName = pta^.pathArgs);
+	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (htmlText = "");
+	on add (s) {
+		htmlText = htmlText + s;};
+	
+	local (sectionName = parentOf(this^)^.sectionName);
+	local (shortName = manilaSuite.sitePrefs.utility.getShortSectionName (sectionName));
+	local (displayname = manilaSuite.sitePrefs.utility.getDisplayName(pta, sectionName));
+	local (value = manilaSuite.sitePrefs.utility.exportOutline (string (adrObject^)));
+	
+	local (description = manilaSuite.getString ("admin." + shortName + "SectionDescription", pta: pta));
+	bundle { //see if template contains {navigatorlinks}"
+		local (adrTemplate = @adrSite^.["#template"]);
+		if not (string.lower (string (adrTemplate^)) contains "{navigatorlinks}") {
+			description = description + manilaSuite.getString ("admin.navigationRequiresNavLinksMacro", pta: pta)}};
+	add("\r<p>");
+	add(description);
+	add("\r</p>");
+	
+	if defined(pta^.postargs.[shortname]) {
+		local (replacementTable);
+		bundle { //set up replacement table
+			new (tableType, @replacementTable);
+			replacementTable.displayName = displayName};
+		
+		case true {
+			defined (pta^.postArgs.restoreToDefault) {
+				add(manilaSuite.sitePrefs.utility.confirmBox(pta, shortname, "admin.restoreDefaultConfirmText", @replacementTable))};
+			defined (pta^.postArgs.doRestoreDefault) { //restore to default
+				local (siteInfo);
+				new (tableType, @siteInfo);
+				siteInfo.adrSite = adrSite;
+				siteInfo.manilaLanguageTableAddress = manilaSuite.getLanguageTableAddress (pta); //10/31/00 JES: tell create scripts what language the site is using.
+				manilaSuite.newSite.createNavigator (@siteInfo);
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				value = manilaSuite.sitePrefs.utility.exportOutline(string (adrObject^));
+				add(manilaSuite.sitePrefs.utility.successMessage (pta, "admin.restoredDefaultSuccessSingular", @replacementTable))};
+			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
+				}}
+		else { //try to update
+			local (s = string(pta^.postArgs.[shortName]));
+			s = string.replaceAll (s, lf, "");
+			s = manilaSuite.unTaint (s);
+			local (t);
+			try {
+				xml.compile (s, @t);
+				wp.newTextObject (s, adrObject);
+				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
+				add(manilaSuite.sitePrefs.utility.successMessage (pta, "admin.updatedSuccessSingular", @replacementTable));
+				value = manilaSuite.sitePrefs.utility.exportOutline(string (adrObject^))}
+			else {
+				replacementTable.tryError = tryError;
+				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.couldntUpdateBecauseSingular", @replacementTable));
+				value = manilaSuite.sitePrefs.utility.exportOutline(s)}}; //PBS 03/20/01: the carets need to be escaped
+		pta^.newsSite^.flNavigatorEditButton = defined (pta^.postArgs.flNavigatorEditButton)};
+	
+	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
+	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");
+	
+	bundle { //row for textarea
+		add ("\r\t<tr>");
+		add ("\r\t\t<td align='left' valign='top' colspan='2'>");
+		add("&nbsp;&nbsp;");
+		add("<textarea name='" + shortName + "' cols='" + manilaSuite.sitePrefs.data.cols + "' rows='" + manilaSuite.sitePrefs.data.rows + "' style='width:" + manilaSuite.sitePrefs.data.textareaWidthPixels + "; height:" + manilaSuite.sitePrefs.data.textareaHeightPixels + "'>" + value + "</textarea>");
+		add ("\r\t\t</td>");
+		add ("\r\t</tr>")};
+	
+	bundle { //checkbox for displaying Edit button next to navigator
+		add ("\r\t<tr>");
+		add ("\r\t\t<td colspan='2'>");
+		local (checked="");
+		if manilaSuite.getNewsSitePref ("flNavigatorEditButton", adrSite, default:true, flCreate:true) {
+			checked = " checked"};
+		add("&nbsp;&nbsp;");
+		add("<input type='checkbox' name='flNavigatorEditButton'" + checked + "> ");
+		add(manilaSuite.getString ("admin.navEditButtonCheckPrompt", pta:pta));
+		add("\r\t\t</td>");
+		add("\r\t</tr>")};
+	
+	bundle { //row for buttons
+		add(manilaSuite.sitePrefs.utility.addButtons(pta, adrObject, sectionName, flMemberHasPike))};
+	
+	add ("\r</table>");
+	add ("\r</form>");
+	
+	return htmltext}

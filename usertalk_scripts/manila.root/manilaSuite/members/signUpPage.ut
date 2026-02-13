@@ -1,0 +1,230 @@
+on signUpPage (pta=nil) {
+	«Build a signup page.
+		«Changes:
+			«7/10/07; 10:53:24 PM by LL
+				«Bug fix: Correct problem with new user confirmation notifications not being sent.
+			«4/18/07; 8:37:55 AM by LL
+				«Change the default from address to the email confirmation From address.
+			«4/7/07; 1:22:26 PM by LL
+				«Include site name with member approval notification email.
+			«3/19/07; 5:56:54 PM by LL
+				«Support new member approval.
+			«11/2/05; 3:52:03 AM by JES
+				«Support for member table names which aren't email addresses -- pass in appropriate values for usernameFieldTitle and flUsernameMustBeEmail to prefsSuite.browser.
+			«3/10/05; 4:46:12 AM by JES
+				«Implement confirmation side of two-step email-confirmed new member signup.
+			«12/30/04; 4:03:54 PM by JES
+				«Ensure that the wizard has a setValue callback that calls Manila's setValue callback, if not already defined.
+			«2001
+				«02/07/01; 3:13:52 PM by PBS
+					«Fix too-short default maxLength of 25 or 40 -- make it 100. Both 25 and 40 are sometimes too short for people's long email addresses.
+			«2000
+				«10/28/00; 4:47:32 PM by PBS
+					«For sites with nested bulletins pref tables, make sure the correct sub-table name appears in the pref address.
+				«05/29/00; 2:05:29 AM by JES
+					«localized the prefs wizard
+				«04/21/00; 3:10:36 AM by JES
+					«localized
+			«1999
+				«12/21/99; 8:01:14 PM by PBS
+					«Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
+				«10/30/99; 2:10:50 PM by PBS
+					«Get managing editor's preferred separator and separator text colors.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	pta^.title = manilaSuite.getString ("members.signUpPageTitle", pta: pta); // 4/21/00 JES: localized
+	local (flMember = defined (pta^.adrMemberInfo));
+	
+	«The sign up page is only displayed if membership is on.
+	if not defined (pta^.newsSite^.flMembership) or not pta^.newsSite^.flMembership {
+		scriptError (manilaSuite.getString ("members.membershipFeaturesDisabledError", pta: pta))}; // 4/21/00 JES: localized
+	
+	if defined (pta^.searchArgs) {
+		local (args); new (tableType, @args);
+		webserver.parseArgs (pta^.searchArgs, @args);
+		if defined (args.m) and defined (args.c) and not defined (args.t) {
+			on error () {
+				scriptError (manilaSuite.getString ("members.invalidConfirmationRequest"))};
+			local (email = args.m);
+			local (code = args.c);
+			local (adrgroup = manilaSuite.members.getGroupFromSiteAddress (pta^.adrSiteRootTable));
+			local (adrPendingMembers = @adrgroup^.pendingUsers);
+			if not defined (adrPendingMembers) {
+				new (tableType, adrPendingMembers)};
+			local (adrPendingMember = @adrPendingMembers^.[email]);
+			if not defined (adrPendingMember^) {
+				error ()};
+			if code != adrPendingMember^.confirmationCode {
+				error ()};
+			if number (clock.now ()) - number (adrPendingMember^.whenConfirmationRequested) > (60*60*24) { //24 hours to confirm
+				error ()};
+			if manilaSuite.getNewsSitePref ("flNewMembersModerated", default:false) {
+				local (url);
+				delete (@adrPendingmember^.confirmationCode);
+				url = pta^.url + "?t=join&m=" + email;
+				return (mainResponder.redirect (url))}
+			else {
+				local (adrmember = @adrgroup^.users.[email]);
+				if defined (adrmember^) { //member already exists -- error
+					error ()};
+				«Everything below here is sleight of hand to take the pending member table, move it to the users sub-table, and send confirmation email.
+					«Creation of the pending member table is handled in manilaSuite.members.signupCallback, which does its own sleight of hand.
+					«3/10/05; 4:39:49 AM by JES
+				adrmember^ = adrPendingMember^;
+				delete (adrPendingMember);
+				delete (@adrmember^.whenConfirmationRequested);
+				delete (@adrmember^.confirmationCode);
+				pta^.adrMemberInfo = adrmember;
+				pta^.memberGroupName = pta^.defaultMembershipGroup;
+				«bundle //broken code
+					«pta^.method = "POST"
+					«new (tableType, @pta^.postArgs)
+					«pta^.postArgs.["personalInfo.email"] = email
+					«pta^.postArgs.scratchpassword1 = string (adrmember^.password)
+					«pta^.postArgs.scratchpassword2 = string (adrmember^.password)
+				return (manilaSuite.members.signupCallback (true))}};
+		if defined (args.m) and defined (args.t) {
+			local (htext);
+			on error () {
+				scriptError (manilaSuite.getString ("members.invalidApprovalRequest"))};
+			on add (s) {
+				htext = htext + s};
+			local (email = args.m);
+			local (mode = args.t);
+			local (errorMessage = "");
+			
+			local (adrgroup = manilaSuite.members.getGroupFromSiteAddress (pta^.adrSiteRootTable));
+			local (adrPendingMembers = @adrgroup^.pendingUsers);
+			if not defined (adrPendingMembers) {
+				new (tableType, adrPendingMembers)};
+			local (adrPendingMember = @adrPendingMembers^.[email]);
+			if not defined (adrPendingMember^) {
+				error ()};
+			if not defined (adrPendingMember^) {
+				error ()};
+			if defined (adrPendingMember^.comment) {
+				error ()};
+			
+			bundle { //remove pending users that have expired
+				local (adrItem, i);
+				local (now = clock.now ());
+				for i = sizeof (adrPendingMembers^) downto 1 {
+					adrItem = @adrPendingMembers^ [i];
+					if adrItem^.whenConfirmationRequested < date.prevWeek (now) {
+						delete (adrItem)}}};
+			
+			if pta^.method == "POST" {
+				manilaSuite.unTaintPostArgs ();
+				local (adrargs = @pta^.postArgs);
+				if defined (adrargs^.comment) {
+					local (comment = adrargs^.comment);
+					if comment == "" {
+						errorMessage = manilaSuite.getString ("members.joinSiteCommentEmpty")};
+					if string.length (comment) >= 200 {
+						errorMessage = manilaSuite.getString ("members.joinSiteCommentTooLong")};
+					if comment contains "<" {
+						errorMessage = manilaSuite.getString ("members.joinSiteCommentNoHtml")};
+					
+					if errorMessage == "" {
+						local (name="", emailAddress="");
+						if defined (adrPendingMember^.personalInfo.name) {
+							name = adrPendingMember^.personalInfo.name};
+						if defined (adrPendingMember^.personalInfo.email) {
+							emailAddress = adrPendingMember^.personalInfo.email};
+						adrPendingMember^.comment = manilaSuite.untaint (comment);
+						bundle { //notify the editor
+							local (subject, msgtxt);
+							
+							local (adrSite = pta^.adrSiteRootTable);
+							local (siteUrl = "");
+							siteUrl = adrSite^.["#ftpSite"].url;
+							local (pendingMembersUrl = manilaSuite.getUrl ("editorialAdmin", pta));
+							if not (pendingMembersUrl endswith "/") {
+								pendingMembersUrl = pendingMembersUrl + "/"};
+							pendingMembersUrl = pendingMembersUrl + "pendingMembers";
+							subject = "APPROVE -- New member request " + emailAddress;
+							
+							bundle { //send the email notifications
+								local (sender);
+								bundle { //get the sender email address
+									local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrsite));
+									sender = string (adrNewsSite^.emailConfirmationSender)};
+								
+								local (recipient);
+								bundle { //get the recipient list
+									recipient = adrSite^.["#newsSite"].sysopMail;
+									if typeOf (recipient) != listType {
+										recipient = manilaSuite.admin.stringToList (recipient)}};
+								
+								local (oneRecipient);
+								for oneRecipient in recipient {
+									manilaSuite.emailNotification.notifyPendingMember (oneRecipient, sender, subject, name, emailAddress, comment, pendingMembersUrl, siteUrl)}}};
+						add ("<p>" + manilaSuite.getString ("members.approvalReceived") + "</p>");
+						htext = manilasuite.untaint (htext);
+						return (htext)}}};
+			
+			add ("<form action=\"" + pta^.url + "?" + pta^.searchArgs + "\" method=\"POST\">");
+			add (manilaSuite.getString ("members.approvalRequestPrompt") + "<br />");
+			if errorMessage != "" {
+				add ("<p><font color=\"red\">" + errorMessage + "</font></p>")};
+			add ("<p><textarea name=\"comment\" cols=\"100\" rows=\"6\"></textarea></p>");
+			add ("<input type=\"submit\" value=\"" + manilaSuite.getString ("members.approvalSubmitButtonText") + "\">");
+			add ("</form>");
+			
+			htext = manilasuite.untaint (htext);
+			return (htext)}};
+	
+	local (flPost = string.lower (pta^.method) == "post");
+	local (htmlText);
+	
+	pta^.wizard = manilaSuite.getWizardAddress ("signup", @prefsSuite.signupWizard, pta: pta); // 05/29/00 JES
+	if defined (pta^.newsSite^.signupWizard) {
+		pta^.wizard = @pta^.newsSite^.signupWizard;
+		
+		«PBS 02/07/01: Fix default maxLength.
+		if pta^.wizard^.prefs.stringDefaultMaxLength == 25 or pta^.wizard^.prefs.stringDefaultMaxLength == 40 {
+			pta^.wizard^.prefs.stringDefaultMaxLength = 100}};
+	bundle { //ensure that the wizard has a setValue callback that calls Manila's setValue callback, if not already defined
+		if not defined (pta^.wizard^.callbacks) {
+			new (tableType, @pta^.wizard^.callbacks)};
+		if not defined (pta^.wizard^.callbacks.setValue) {
+			local (sScript = "on setValue (partialAddress, adrVal) {\r\treturn (manilaData.prefs.wizard.callbacks.setValue (partialAddress, adrVal))}");
+			script.newScriptObject (sScript, @pta^.wizard^.callbacks.setValue)}};
+	«if defined (pta^.newsSite^.bulletinsPrefName) //PBS 10/28/00: handle nested bulletins pref name
+		«pta^.oneShotWizard = pta^.wizard^
+		«pta^.wizard = @pta^.oneShotWizard
+		«local (adrOutline = @pta^.wizard^.outline)
+		«local (s = string (adrOutline^))
+		«local (bulletinsPrefName = pta^.newsSite^.bulletinsPrefName)
+		«s = string.replaceAll (s, "bulletins.inHtml", "bulletins." + bulletinsPrefName + ".inHtml")
+		«s = string.replaceAll (s, "bulletins.enabled", "bulletins." + bulletinsPrefName + ".enabled")
+		«op.newOutlineObject (s, adrOutline)
+	
+	local (separatorColor, separatorTextColor);
+	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+	
+	local (flUsernameMustBeEmail = manilaSuite.members.usernameMustBeEmail (pta^.adrSiteRootTable));
+	local (usernameFieldTitle);
+	if not flUsernameMustBeEmail { //get new title for the username field (personalInfo.email)
+		usernameFieldTitle = manilaSuite.getString ("members.usernamePrompt")};
+	if not flPost and flMember {
+		htmlText = prefsSuite.browser (flIncludeTitle:false, flSignUpForm:false, separatorColor:separatorColor, separatorTextColor:separatorTextColor, usernameFieldTitle:usernameFieldTitle, flUsernameMustBeEmail:flUsernameMustBeEmail)}
+	else {
+		htmlText = prefsSuite.browser (flIncludeTitle:false, flSignUpForm:true, adrSignupCallback:@manilaSuite.members.signupCallback, pta:pta, separatorColor:separatorColor, separatorTextColor:separatorTextColor, usernameFieldTitle:usernameFieldTitle, flUsernameMustBeEmail:flUsernameMustBeEmail)};
+	bundle { // replace "Yes", "No", and "Submit" with localized versions
+		htmlText = string.replaceAll (htmlText, ">Yes\r", ">" + manilaSuite.getString ("common.yes", pta: pta) + "\r");
+		htmlText = string.replaceAll (htmlText, ">No\r", ">" + manilaSuite.getString ("common.no", pta: pta) + "\r");
+		htmlText = string.replaceAll (htmlText, "value=\" Submit \"", "value=\" " + manilaSuite.getString ("common.submitButton", pta: pta) + " \"");
+		htmlText = string.replace (htmlText, "Required fields are marked with <b><font color=\"red\">*</font></b>", manilaSuite.getString ("members.requiredFieldsText", pta: pta), false)};
+	
+	«Re-set the membership box.
+	pta^.memberShipBox = manilaSuite.html.drawMembershipBox (pta);
+	
+	htmlText = manilaSuite.unTaint (htmlText); //no curly brace macros in this text
+	
+	local (adrStructure = @pta^.wizard^.structure);
+	pta^.lastUpdate = timeModified (adrStructure);
+	
+	return (htmlText)}

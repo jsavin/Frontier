@@ -1,0 +1,20 @@
+on updatePendingList (adrMsgTable, adrSite) {
+	«Update the pending list, if this item has not yet been posted.
+		«04/20/00; 2:22:54 PM by PBS
+	
+	local (flDelete = false);
+	
+	if defined (adrMsgTable^.flDeleted) {
+		if adrMsgTable^.flDeleted {
+			flDelete = true}};
+	
+	if not flDelete {
+		if manilaSuite.news.isPosted (adrMsgTable) {
+			flDelete = true}};
+	
+	if not flDelete {
+		manilaSuite.news.addToIndex ("pending", adrMsgTable, adrSite)}
+	else {
+		manilaSuite.news.deleteFromIndex ("pending", adrMsgTable, adrSite)};
+	
+	return (true)}

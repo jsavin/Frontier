@@ -1,0 +1,15 @@
+on updateRenderStatus (adrSite, url) {
+	«Update the current rendering status for a site.
+		«03/14/00; 4:04:49 PM by PBS
+	
+	local (adrSiteInfo = manilaSuite.staticRendering.getStatusAddress (adrSite));
+	if not defined (adrSiteInfo^) {
+		manilaSuite.staticRendering.startRenderSession (adrSite, false)};
+	
+	adrSiteInfo^.currentUrl = url;
+	adrSiteInfo^.countRenderedPages++;
+	if not defined (adrSiteInfo^.renderedUrls) {
+		adrSiteInfo^.renderedUrls = {}};
+	adrSiteInfo^.renderedUrls = adrSiteInfo^.renderedUrls + url;
+	
+	return (true)}

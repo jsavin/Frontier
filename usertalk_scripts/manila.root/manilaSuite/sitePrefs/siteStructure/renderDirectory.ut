@@ -1,0 +1,99 @@
+on renderDirectory (thePath) { «thpath added 06/07/04, 16:19:24 by DAB
+	«manilaSuite.sitePrefs.siteStructure.renderDirectory : 04/05/16, 17:32:06 by DAB
+	«messages at manilaData.localization.languages.english.strings.staticRendering
+	local (pta = html.getPageTableAddress ());
+	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
+	local (sitename = manilaSuite.getCanonicalSiteName(adrSite));
+	
+	local (htmlText = "");
+	on add(s) {
+		htmlText = htmlText + s;};
+	
+	local (replTbl);
+	bundle { «replacement table
+		new(tabletype, @replTbl);
+		replTbl.sitename = sitename;
+		replTbl.staticRenderEnableURL = string.popSuffix(pta^.urls^.editorialPrefs, "$") + "$rendering";
+		};«replTbl.staticRenderSetupURL =  manilaSuite.plugins.getSiteFragmentUrl ("manilaSuite") + "StaticSetup"
+	
+	if not manilaSuite.staticRendering.isEnabled (adrSite) {
+		add("<p align = 'center' style = 'color:red'>");
+		
+		add(manilaSuite.getString("staticRendering.errStaticRenderingOff", @replTbl, pta:pta)) «06/07/04, 17:13:19 by DAB
+			«add(manilaSuite.getString("staticRender.errStaticRenderingOff", @replTbl, pta:pta));
+		add("</p>");
+		return htmlText};
+	
+	on doRender(thisPath) {
+		local (oldPta = html.getPageTableAddress ()); «save pagetable
+		local (flErrorSeen = false);
+		replTbl.relativepath = thisPath;
+		
+		local (pageCnt=0, tickThisPage);
+		manilaSuite.staticRendering.startRenderSession (adrSite, true); «true means multiple pages
+		try { «do the render
+			on renderCallback (adrItem, relativePath) {
+				bundle { «check noStaticRender path attribute 7/29/06, 1:39:16 PM by DAB
+					local (adr = adrItem);
+					loop {
+						try {
+							if  xml.getAttributeValue(adr, "noStaticRender") == "true" {
+								return true}; «skip this one 
+							break}; «value is false
+						adr = parentof(adr^);
+						if not adr {
+							break}}};
+				
+				tickThisPage = clock.ticks(); «02/11/10, 08:46:13 by DAB
+				manilaSuite.staticRendering.renderPage (relativePath, adrSite, @pta^.newsSite^.staticSite);
+				tickThisPage = clock.ticks() - tickThisPage; «02/11/10, 08:46:17 by DAB
+				pageCnt++; «02/11/10, 08:58:24 by DAB
+				«manilaSuite.utilities.delayBetweenStaticRenderPages(tickThisPage, pageCnt)   «02/11/10, 09:00:00 by DAB  
+				return (true)};
+			
+			manilaSuite.sitePrefs.siteStructure.visitPagesWithin (adrSite, thisPath, @renderCallback)}
+		else {
+			replTbl.tryError = tryError;
+			flErrorSeen = true};
+		
+		local (t = manilaSuite.staticRendering.endRenderSession (adrSite));
+		
+		html.setPageTableAddress (oldPta); «restore page table
+		
+		add("\r<hr align = 'center' width = '50%'>");
+		
+		if flErrorSeen {
+			add("<p align = 'center' style = 'color:red'>");
+			add(manilaSuite.getString("staticRendering.errScriptError", @replTbl, pta:pta)) «06/07/04, 17:15:14 by DAB
+				«add(manilaSuite.getString("staticRender.errScriptError", @replTbl, pta:pta));
+			add("</p>")};
+		
+		bundle { «build the response
+			local (xurl, urlCntr);
+			if t.countRenderedPages > 0 {
+				for xurl in t.renderedUrls {
+					if urlCntr == 0 {
+						add("\r<p align = 'center' style = 'color:blue'>");
+						add(manilaSuite.getString("staticRendering.reportPagesRendered", @replTbl, pta:pta)) «06/07/04, 17:14:5 by DAB
+							«add(manilaSuite.getString("staticRender.reportPagesRendered", @replTbl, pta:pta));
+						add("</p>");
+						add("\r<ol>");
+						pta^.activeURLs = false};
+					xurl = manilaSuite.unTaint (xurl);
+					bundle {
+						local (bits = string.urlsplit(xurl));
+						xurl = bits[1] + bits[2] + "/" +  manilaSuite.sitePrefs.utility.pathEncoder(bits[3])};
+					add ("\r\t<li>" + html.getLink (xurl, xurl) + "</li>");
+					urlCntr++};
+				add("\r</ol>")}
+			else {
+				add("\r<p align = 'center' style = 'color:blue'>");
+				add(manilaSuite.getString("staticRendering.reportNoPagesRendered", @replTbl, pta:pta)) «06/07/04, 17:14:20 by DAB
+					«add(manila.getString("staticRender.reportNoPagesRendered", @replTbl, pta:pta));
+				add("</p>")}};
+		
+		return true};
+	
+	doRender(thePath); «06/07/04, 16:19:17 by DAB
+	
+	return htmltext}

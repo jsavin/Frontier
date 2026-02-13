@@ -1,0 +1,10 @@
+on getLastDate (username, password, siteName) {
+	«Get the last date in the message calendar.
+	
+	bundle { //make sure this user has access to the discussion group
+		local (beginningErrorString = "Can't get the last date in the message calendar because ");
+		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	
+	return (mainResponder.calendar.getLastDay (@adrDiscuss^.calendar))}

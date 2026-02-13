@@ -1,0 +1,2 @@
+«Run this script before taking this site off the server it's currently running on.
+manilaSuite.unInstallSite (parentOf (this^))

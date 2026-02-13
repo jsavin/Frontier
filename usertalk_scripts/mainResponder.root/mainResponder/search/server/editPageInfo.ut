@@ -1,0 +1,15 @@
+on editPageInfo (url) {
+	mainResponder.search.utilities.assureIndex ();
+	
+	local (indexPath = mainResponder.search.utilities.getIndexPath ());
+	local (adrPageInfoTable = @[indexPath].pageInfo);
+	local (adrPageInfo = @adrPageInfoTable^.[url]);
+	
+	if defined (adrPageInfo^) {
+		edit (adrPageInfo)}
+	else {
+		dialog.notify ("Can't edit info for " + url + " because it hasn't been indexed.")};
+	
+	return (true)};
+bundle { //test code
+	editPageInfo ("http://discuss.userland.com/msgReader$1590")}

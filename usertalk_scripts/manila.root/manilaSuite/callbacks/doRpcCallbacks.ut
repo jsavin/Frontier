@@ -1,0 +1,24 @@
+on doRpcCallbacks (adrCallbacks, adrUserCallbacks, adrMsg) {
+	«Common code for RPC callbacks, both new and changed story callbacks.
+		«04/05/00; 12:21:24 AM by PBS
+	
+	if not defined (adrSite) { //make sure adrSite is in our context table -- this script expects to be called from config.mainResponder.callbacks.rpcSaveMessage, which means there's a context table
+		return (true)};
+	if not (manilaSuite.isManilaSite (adrSite)) { //make sure it's a Manila site
+		return (true)};
+	
+	local (adrMember);
+	bundle { //get the address of this member
+		if not defined (username) {
+			return (true)};
+		local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
+		local (adrMembers = @adrGroup^.users);
+		adrMember = @adrMembers^.[username];
+		if not defined (adrMember^) {
+			return (true)}};
+	
+	if not defined (url) { //make sure URL is also in the context table
+		return (true)};
+	manilaSuite.callbacks.callbackLoop (adrCallbacks, adrUserCallbacks, adrMsg, adrSite, url, adrMember);
+	
+	return (true)}

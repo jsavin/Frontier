@@ -1,0 +1,17 @@
+on applyThemeCallback (adrSite, adrTheme, flNewSite, objectName="") {
+	«Notify the world that a theme has been applied.
+		«06/05/00; 10:40:16 PM by PBS
+	
+	local (adrCallbacks = @manilaSuite.callbacks.applyTheme);
+	local (adrUserCallbacks = @config.manila.callbacks.applyTheme);
+	
+	local (t);
+	new (tableType, @t);
+	t.adrSite = adrSite;
+	t.adrTheme = adrTheme;
+	t.flNewSite = flNewSite;
+	
+	try {mainResponder.callbackLoop (adrCallbacks, @t)};
+	try {mainResponder.callbackLoop (adrUserCallbacks, @t)};
+	
+	return (true)}

@@ -1,0 +1,53 @@
+on threadedSiteIndex (adrsite) {
+	«Changes
+		«8/3/02; 11:10:21 PM by JES
+			«Created. Index an entire Manila site. This script is intended to be run in its own thread. See manilaSuite.search.monitorIndexingSessions, which spawns indexing threads that run this script.
+			«Keeps information about the session in the search.indexQueue sub-table of the site's newsSite table.
+	local (adrdata = manilaSuite.search.init (adrsite));
+	bundle { //find reasons not to run the index
+		if not manilaSuite.getNewsSitePref ("search.flIndex", adrsite, false) { //indexing is off for this site
+			adrdata^.indexQueue.flRunning = false; //don't try to run this index again
+			return (false)}};
+	local (adrdiscuss = manilaSuite.discuss.getDiscussionGroupAddress (adrsite));
+	if not adrdata^.indexQueue.flRunning { //initialize a new session
+		adrdata^.indexQueue.whenIndexStarted = clock.now ();
+		adrdata^.indexQueue.whenLastIndexCompleted = date (0);
+		adrdata^.indexQueue.nextMsgToIndex = 1;
+		adrdata^.indexQueue.ctMsgsIndexed = 0;
+		adrdata^.indexQueue.lastError = "";
+		adrdata^.indexQueue.threadId = thread.getCurrentId ();
+		adrdata^.indexQueue.flRunning = true};
+	while adrdata^.indexQueue.flRunning { //loop to index msgs: if flRunning goes false, then we abort
+		local (msgnum = adrdata^.indexQueue.nextMsgToIndex, flAbort = false);
+		try {
+			local (ctwaits = 0);
+			while sizeOf (user.betty.queueOutgoing.table) > 5 { //don't load up more than 5 outgoing RPC requests, timeout after 5min
+				ctwaits++;
+				if ctwaits > 100 { //100 * 3sec == 5min -- abort
+					adrdata^.indexQueue.lastError = "Indexing of " + manilaSuite.getNewsSitePref ("sitename", adrsite) + " aborted after 5min due to high server load. [sizeOf (user.betty.queueOutgoing.table) > 15]";
+					adrdata^.indexQueue.flRunning = false;
+					flAbort = true;
+					scriptError (tryerror)};
+				thread.sleepTicks (180)}; //sleep for 3 seconds
+			local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrSite));
+			if not mainResponder.discuss.isMessageDeleted (msgnum, adrmsg) { //don't index deleted messages
+				manilaSuite.callbacks.utils.index (adrmsg, adrsite);
+				adrdata^.indexQueue.ctMsgsIndexed++};
+			thread.sleepTicks (60)} //sleep for 1 second
+		else {
+			if flAbort {
+				scriptError (tryError)}};
+		adrdata^.indexQueue.nextMsgToIndex++;
+		if adrdata^.indexQueue.nextMsgToIndex > adrdiscuss^.prefs.nextMsgNum { //done with last message -- stop
+			adrdata^.indexQueue.flRunning = false; //don't kick off this indexing run again until told to
+			adrdata^.indexQueue.whenLastIndexCompleted = clock.now ();
+			break}};
+	adrdata^.indexQueue.threadId = 0;
+	adrdata^.indexQueue.nextMsgToIndex = 1;
+	adrdata^.indexQueue.ctMsgsIndexed = 0;
+	
+	return (true)};
+
+«bundle //test code
+	«threadedSiteIndex (@searchTest1ManilaWebsite)
+	«threadedSiteIndex (@testManilaWebsite)

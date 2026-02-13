@@ -1,0 +1,19 @@
+«Changes
+	«Thu, 04 Mar 1999 03:04:25 GMT by AR
+		«config.mainresponder.urls is no longer referenced - we look at the page table instead
+on cowSkullLink (linetext, msgnum) {
+	local (picturelink = mainResponder.discuss.cowSkullImage ());
+	local (pta = html.getPageTableAddress ());
+	local (url = pta^.responderAttributes.urls^.discussMsgReader);
+	local (htmltext = "", indentlevel = 0);
+	on add (s) {
+		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
+	add ("<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">"); indentlevel++;
+	add ("<tr>"); indentlevel++;
+	add ("<td>" + linetext + "</td>");
+	add ("<td valign=\"top\" width=\"22\">" + "<a href=\"" + url + msgnum + "\">" + picturelink + "</a>" + "</td>");
+	add ("</tr>"); indentlevel--;
+	add ("</table>"); indentlevel--;
+	return (htmltext)};
+«bundle //test code
+	«dialog.alert (cowSkullLink ("blah blah blah", 716))

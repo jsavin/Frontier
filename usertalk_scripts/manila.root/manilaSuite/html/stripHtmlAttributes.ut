@@ -1,0 +1,69 @@
+on stripHtmlAttributes (text) {
+	«Changes
+		«4/19/07; 3:17:38 PM by LL
+			«If any errors encountered by re.extract, try recompiling the regex pattern.
+		«4/10/07; 7:17:11 PM by LL
+			«Created. Check attributes for a and img tags for any restricted attributes. Any restricted attributes are stripped from the tag.
+	on getHtmlTags (htmltext) {
+		local (markupList = {});
+		local (aPattern = manilaData.stripHtmlAttributes.patterns.aPattern);
+		local (imgPattern = manilaData.stripHtmlAttributes.patterns.imgPattern);
+		try {
+			markupList = re.extract (aPattern, htmltext);
+			markupList = markupList + re.extract (imgPattern, htmltext)}
+		else {
+			manilaData.stripHtmlAttributes.patterns.aPattern = re.compile (manilaData.stripHtmlAttributes.uncompiledPatterns.aPattern);
+			manilaData.stripHtmlAttributes.patterns.attrPattern = re.compile (manilaData.stripHtmlAttributes.uncompiledPatterns.attributesPattern);
+			manilaData.stripHtmlAttributes.patterns.imgPattern = re.compile (manilaData.stripHtmlAttributes.uncompiledPatterns.imgPattern);
+			
+			aPattern = manilaData.stripHtmlAttributes.patterns.aPattern;
+			imgPattern = manilaData.stripHtmlAttributes.patterns.imgPattern;
+			markupList = {};
+			markupList = re.extract (aPattern, htmltext);
+			markupList = re.extract (imgPattern, htmltext)};
+		return (markupList)};
+	on getAttributeList (htmltag) {
+		local (attributesPattern = manilaData.stripHtmlAttributes.patterns.attributesPattern);
+		local (attributeTagList = re.extract (attributesPattern, htmltag, {1, 2}));
+		return (attributeTagList)};
+	
+	
+	local (attribList);
+	local (p);
+	
+	taglist = getHtmlTags (text);
+	for p = 1 to sizeOf (tagList) {
+		attribList = getAttributeList (tagList[p]);
+		local (tag);
+		tag = tagList[p];
+		for i = 1 to sizeOf (attribList) {
+			local (loweredAttribute = string.lower (attribList [i][1]));
+			case true {
+				loweredAttribute == "alt";
+				loweredAttribute == "height";
+				loweredAttribute == "href";
+				loweredAttribute == "src";
+				loweredAttribute == "title";
+				loweredAttribute == "width" {
+					continue}}
+			else {
+				bundle { //remove attribute
+					local (startNum, endNum);
+					startNum = string.patternMatch (attribList [i][1], tag);
+					if i == sizeOf (attribList) {
+						endNum = string.patternMatch (">", tag);
+						endNum = endNum - startNum + 1;
+						startNum = startNum - 1}
+					else {
+						endNum = string.patternMatch (attribList [i+1][1], tag);
+						endNum = endNum - startNum;
+						startNum = startNum - 1};
+					tag = string.delete (tag, startNum, endNum)}}};
+		text = string.replaceAll (text, tagList[p], tag)};
+	local (adrLegalTags = @manilaData.stripHtmlAttributes.legalTagsMembers);
+	text = html.neuterTags (text, adrLegalTags);
+	if string.lower (text) contains "includehttp" {
+		text = manilaSuite.untaint (text)};
+	
+	return (text)};
+«stripHtmlAttributes (string (scratchpad.test))

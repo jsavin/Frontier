@@ -1,0 +1,33 @@
+on memberCanEdit (adrMsgTable, adrMemberInfo, pta=nil) {
+	«Can a member edit a given message?
+		«Default: only the original poster can edit a certain message.
+	«Changes:
+		«10/10/00; 6:27:03 PM by JES
+			«Added pta as an optional parameter.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	on defaultCheck () {
+		«The editor must be the original poster.
+		local (lowerMember = string.lower (nameOf (adrMemberInfo^)));
+		if lowerMember != string.lower (adrMsgTable^.member) {
+			return (false)};
+		return (true)};
+	
+	local (adrCallback = @config.mainResponder.callbacks.memberCanEdit);
+	if not defined (adrCallback^) {
+		new (tableType, adrCallback);
+		return (defaultCheck ())};
+	
+	pta^.flMemberCanEdit = defaultCheck (); //callbacks can now what the default says
+	pta^.adrMsgToEdit = adrMsgTable; //callbacks can get the address of the message table
+	
+	«If a callback scriptErrors, then no editing is permitted.
+		«Otherwise, look at pta^.flMemberCanEdit when finished.
+	try { //call the callbacks
+		mainResponder.callbackLoop (adrCallback, pta)}
+	else { //scriptError to over-ride all callbacks
+		return (false)};
+	
+	return (pta^.flMemberCanEdit)}

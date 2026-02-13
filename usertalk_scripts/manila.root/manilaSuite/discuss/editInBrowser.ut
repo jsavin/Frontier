@@ -1,0 +1,165 @@
+on editInBrowser (msgNum=nil, title=nil, flLinkToReferer=true, actionUrl=nil) {
+	«Edit this page in the browser.
+	«Changes:
+		«3/25/07; 4:45:16 PM by LL
+			«Display error message text if defined.
+		«1/31/06; 2:13:07 AM by JES
+			«Add support for pending posts.
+		«7/6/05; 2:40:31 AM by JES
+			«Comment out call to manilaSuite.getNewsSitePref("flNewsItemSite"), which was marked as a temporary fix, not to ship by DAB. This call was preventing the Edit This Page button from redirecting to the news item editor, and loading some XML in the DG page editor. Not fun for non-XML users.
+		«4/18/03; 1:02:53 AM by JES
+			«When redirecting to the news items edit in browser page, go to the #edit anchor so the user can edit the text right away without having to scroll down to the editing form.
+		«4/1/03; 12:43:29 PM by JES
+			«If this message is a news item, redirect to the news items edit in browser page.
+		«11/19/02; 7:22:00 PM by JES
+			«Comment out debugging code.
+		«11/19/02; 5:51:38 PM by JES
+			«Fix numerous problems with the admin box when it appears on editInBrowser pages.
+		«06/14/02; 12:46:27 AM by JES
+			«Don't use a maxlength attribute for the subject field.
+		«10/09/00; 1:29:44 AM by JES
+			«Add calls to manilaSuite.discuss.confirmBox and manilaSute.dicsuss.adminBox, when using the topics-based DG.
+		«05/01/00; 3:58:20 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+		«04/19/00 at 3:26:52 PM by JES
+			«localized
+		«03/19/00; 12:46:25 PM by PBS
+			«You can now specify the msgNum of the message to edit and the title of the page via optional parameters.
+			«You can turn off linking to the referer. You can specify an alternate actionUrl, in case you need to over-ride post handling.
+		«02/09/00; 6:51:27 PM by PBS
+			«Commented out obsolete code for sending a message to Pike on clicking the Edit this Page button. Added code for custody: if the member can't check out the object, an error is displayed instead of the editing form.
+	
+	local (pta = html.getPageTableAddress ());
+	«workspace.pt = pta^
+	if title == nil { //PBS 03/19/00: title is now an optional parameter
+		title = manilaSuite.getString ("discuss.editMessagePageTitle")}; // 4/19/00 JES: localized
+	pta^.title = title;
+	pta^.autoParagraphs = false;
+	pta^.addLineFeeds = false;
+	
+	local (flDiscussTopicBased = manilaSuite.getNewsSitePref ("discussionGroup.topicBased", default: false, flCreate: true));
+	
+	local (subjectPrompt = manilaSuite.getString ("common.subjectPrompt")); // 4/19/00 JES: localized
+	local (referer);
+	if defined (pta^.requestHeaders.referer) {
+		referer = manilaSuite.unTaint (pta^.requestHeaders.referer);
+		if not (string.lower (referer) contains "discuss") {
+			subjectPrompt = manilaSuite.getString ("common.titlePrompt"); // 4/19/00 JES: localized
+			pta^.title = manilaSuite.getString ("discuss.editStoryPageTitle")}}; // 4/19/00 JES: localized
+	
+	if msgNum == nil { //PBS 03/19/00: msgNum is now an optional parameter: get it from pathArgs if not supplied
+		msgNum = number (pta^.pathArgs)};
+	local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
+	local (flDeleted = false, flPending = false);
+	if defined (adrMsgTable^.flDeleted) {
+		flDeleted = adrMsgTable^.flDeleted};
+	if defined (adrMsgTable^.flPending) {
+		flPending = adrMsgTable^.flPending};
+	local (flPost = (pta^.method == "POST") );
+	
+	«if manilaSuite.getNewsSitePref("flNewsItemSite") //temporary fix; DO NOT SHIP 04.11.02, 15:44:24 by DAB
+	if manilaSuite.news.isNewsItem (adrMsgTable) { //if this is a news item, redirect to the edit news item page
+		if flPost and (not flDeleted) { //Edit this Page button is always a POST; if deleted, a post is an undelete command
+			local (editUrl = manilaSuite.getUrl ("newsItemEditInBrowser"));
+			editUrl = editUrl + adrMsgTable^.msgNum;
+			editUrl = editUrl + "?redirectUrl=" + manilaSuite.getUrl ("discussMsgReader") + adrMsgTable^.msgNum;
+			editUrl = editUrl + "#edit";
+			mainResponder.redirect (editUrl);
+			return ("")}}; //optimization: don't render the rest of the page
+	
+	manilaSuite.discuss.setLastUpdateTime (adrMsgTable);
+	
+	«bundle //possibly edit in Pike //PBS 02/09/00: commented out because we didn't wire the Edit this Page button to Pike. This code is obsolete.
+		«local (adrSite = manilaSuite.getSiteAddress (pta))
+		«local (sitename = manilaSuite.getSiteName (adrSite))
+		«local (username = nameOf (pta^.adrMemberInfo^))
+		«if manilaSuite.pikeUserLoggedOn (adrSite, username)
+			«local (params, msgtable, adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (sitename))
+			«msgtable = adrMsgTable^
+			«msgtable.url = adrDiscuss^.prefs.msgReaderUrl + msgnum
+			«manilaSuite.rpcUtils.cleanMessageTableForExport (@msgtable)
+			«params = {sitename, msgtable}
+			«betty.rpc.client (pta^.client, 1973, "pike.receiveMessage", @params)
+			«return ("true")
+	
+	local (htmlText = "", confirmbox = "");
+	bundle { //call confirmBox if needed, and make sure flDeleted is correct after confirmation
+		if pta^.method == "POST" {
+			if defined (pta^.postArgs.adminCommand) { //prevents referer errors when clicking the Edit This Page button
+				confirmbox = manilaSuite.html.confirmBox (pta);
+				flDeleted = false;
+				if defined (adrMsgTable^.flDeleted) {
+					flDeleted = adrMsgTable^.flDeleted};
+				flPending = false;
+				if defined (adrMsgTable^.flPending) {
+					flPending = adrMsgTable^.flPending}}}};
+	if flDeleted { //display a "this page has been deleted" message
+		htmltext = htmltext + manilaSuite.getString ("html.thisPageHasBeenDeleted")};
+	if flPending {
+		htmltext = htmltext + manilaSuite.getString ("html.thisPageIsPendingApproval")};
+	
+	local (flShowContent = true);
+	if flDeleted {
+		flShowContent = false};
+	if flPending {
+		if not (manilaSuite.editors.contentEditorTest () or manilaSuite.editors.managingEditorTest ()) {
+			flShowContent = false}};
+	local (flEditor = not flPost);
+	if flShowContent { //display story or editing form
+		if flPost {
+			if defined (pta^.postArgs.adminCommand) {
+				if pta^.postArgs.adminCommand == "undelete" {
+					flEditor = true};
+				if pta^.postArgs.adminCommand == "approve" {
+					flEditor = true}}
+			else {
+				flEditor = true}};
+		if not flEditor { //call storyReader
+			htmltext = htmltext + manilaSuite.storyReader (msgNum, pta);
+			bundle { //possibly reset flDeleted -- if undeleted, then we should show the editing form
+				flDeleted = false;
+				if defined (adrMsgTable^.flDeleted) {
+					flDeleted = adrMsgTable^.flDeleted};
+				flPending = false;
+				if defined (adrMsgTable^.flPending) {
+					flPending = adrMsgTable^.flPending}}};
+		if flEditor { //add the editor
+			local (restoreForm = manilaSuite.versioning.messageUndoForm(pta, adrMsgTable)); //versioning 04/05/20, 12:21:23 by DAB
+			local (errorText = "");
+			if defined (pta^.errorText) {
+				errorText = "<p><font color=\"red\">" + pta^.errorText + "</font></p>"};
+			
+			«htmlText = htmltext  + confirmbox + mainResponder.discuss.editMessageForm (msgNum, flLinkToReferer:flLinkToReferer, flShowFileList:false, flShowFileUpload:false, filePrompt:manilaSuite.getString ("discuss.attachImagePrompt"), subjectPrompt:subjectPrompt, actionUrl:actionUrl, flLimitSubjectLength:false) // 4/19/00 JES: localized
+			local (adrETPbuilder = @mainResponder.discuss.editMessageForm);
+			manilaSuite.plugins.ETPoverride.getScriptAddress("discussEditInbrowser", @adrETPbuilder);
+			local (editForm =  adrETPbuilder^ (msgNum, flLinkToReferer:flLinkToReferer, flShowFileList:false, flShowFileUpload:false, filePrompt:manilaSuite.getString ("discuss.attachImagePrompt"), subjectPrompt:subjectPrompt, actionUrl:actionUrl, flLimitSubjectLength:false)); //04.05.27, 13:41:33 by DAB
+			local (accessControls = manilaSuite.accesscontrol.ETPcontrols(pta, "discusseditInBrowser", adrMsgTable)); //accesscontrol 04.05.21, 22:03:59 by DAB
+			if accessControls != "" {
+				editForm = string.replaceAll(editForm, "</form>", accessControls + "</form>")};
+			htmlText = htmltext  + confirmbox + restoreForm + errorText + editForm}}; // 04.05.21, 22:01:17 by DAB accesscontrol
+	
+	bundle { //PBS 02/09/00: make sure the member can check out this object -- and actually check it out.
+		local (adrMember = pta^.adrMemberInfo);
+		local (adrSite = pta^.adrSiteRootTable);
+		
+		if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, adrMember, adrSite, true) { //true because it's a message
+			«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+			local (title = adrMsgTable^.subject);
+			title = manilaSuite.unTaint (title);
+			
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.title = title;
+			return (manilaSuite.getString ("discuss.cantEditBecauseSomeoneElseIs", @replacementTable))}; // 4/19/00 JES: localized
+		
+		manilaSuite.custody.checkOut (adrMsgTable, adrMember, adrSite, true)}; //true because it's a message
+	
+	if flDiscussTopicBased { //add admin box
+		local (flAdminBox = not flPost);
+		if not flAdminBox {
+			flAdminBox = flDeleted or flPending}; //show the admin box after deleting the message
+		if not flAdminBox {
+			flAdminBox = flEditor}; //show the admin box after undeleting the message
+		if flAdminBox {
+			htmltext = htmltext + manilaSuite.html.adminBox (pta, msgNum)}};
+	
+	return (htmlText)}

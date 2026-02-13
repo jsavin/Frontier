@@ -1,0 +1,41 @@
+on get (siteName, role, username, password) {
+	«Get info about editors in a given role. You must be an editor to access this information.
+		«10/28/00; 11:45:23 AM by PBS
+	«Changes:
+		«11/14/00; 3:08:44 AM by JES
+			«Made singular forms of role names legal, eg. managingEditor, vs. managingEditors.
+	
+	bundle { //make sure this person is an editor of the site.
+		local (beginningErrorString = "Can't get the editors list because ");
+		manilaSuite.rpcUtils.editorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (sitename));
+	local (editorsList);
+	local (lowerRole = string.lower (role));
+	case lowerRole {
+		"managingeditor";
+		"managingeditors" {
+			editorsList = adrSite^.["#newsSite"].sysopMail};
+		"contributingeditor";
+		"contributingeditors" {
+			editorsList = adrSite^.["#newsSite"].contributingEditors}}
+	else { //invalid role name
+		scriptError ("Can't get the editors list because \"" + role + "\" is not a valid role name.")};
+	
+	if typeOf (editorsList) != listType {
+		editorsList = {editorsList}};
+	
+	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+	
+	local (t);
+	new (tableType, @t);
+	local (oneEditor);
+	for oneEditor in editorsList { //add editors to table
+		local (editorName = oneEditor); //name is email address by default
+		local (adrMember = mainResponder.members.getMemberTable (groupName, oneEditor));
+		if defined (adrMember^.personalInfo.name) {
+			if string.trimWhiteSpace (adrMember^.personalInfo.name) != "" {
+				editorName = adrMember^.personalInfo.name}};
+		t.[editorName] = oneEditor};
+	
+	return (t)}

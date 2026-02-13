@@ -1,0 +1,25 @@
+if tcp.dns.getMyDomainName () == "HONKER" { //this was "nirvana.userland.com"
+	«local (folder = "L:\\Inetpub\\wwwroot\\nirvana\\")
+	«local (folder = "D:\\Nirvana Server\\www\\downloads\\nirvanaBootstrap\\")
+	«local (folder = "H:\\InetPub\\wwwroot\\downloads\\nirvanaBootstrap\\")
+	local (folder = "D:\\Frontier\\Guest Databases\\www\\downloads\\");
+	file.sureFolder (folder);
+	«bundle //other files
+		«file.copy (user.databases.["resources.root"].f, folder + "#resources.root")
+		«file.copy (user.databases.["htmlInterfaces.root"].f, folder + "#htmlInterfaces.root")
+		«file.copy (user.databases.["logbrowser.root"].f, folder + "#logbrowser.root")
+	bundle { //mainResponder.root
+		local (f = folder + "#mainResponder.root");
+		fileMenu.new (f);
+		window.setPosition (f, 30, 40);
+		window.setSize (f, 350, 525);
+		[f].["#startup"] = [system.temp.mainresponder.mainResponderRootFile].["#startup"];
+		try {delete (@[f].["item #1"])};
+		[f].mainResponder = mainResponder;
+		target.set (@[f]);
+		op.go (down, 1);
+		op.expand (1);
+		window.zoom (@[f]);
+		op.go (up, 1);
+		filemenu.save (f);
+		filemenu.close (f)}}

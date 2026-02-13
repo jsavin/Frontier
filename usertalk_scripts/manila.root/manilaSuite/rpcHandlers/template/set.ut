@@ -1,0 +1,33 @@
+on set (username, password, siteName, s, windowInfoTable) {
+	«Set the template text to s.
+		«Changes:
+			«02/06/00; 9:11:54 PM by PBS
+				«Save the window info table.
+			«02/22/01; 12:06:02 AM by JES
+				«Convert outgoing text from Mac to Latin, if the server is a Mac.
+			«12/10/01; 6:03:42 PM by PBS
+				«Toss the home page cache.
+	
+	bundle { //make sure this person is a managing editor of the site.
+		local (beginningErrorString = "Can't set the template because ");
+		manilaSuite.rpcUtils.managingEditorCheck (siteName, username, password, beginningErrorString)};
+	
+	local (pageTable, errorstring, adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	
+	if system.environment.isMac {
+		s = latinToMac.convert (s)};
+	manilaSuite.rpcUtils.cleanObjectForImport (@s, flEnableSafeMacros:true);
+	
+	if not manilaSuite.admin.isGoodTemplate (s, @errorstring) {
+		scriptError ("Can't set the template: " + errorstring)};
+	
+	wp.newTextObject (s, @adrSite^.["#template"]);
+	
+	bundle { //PBS 20/06/00: save the window info table
+		manilaSuite.rpcUtils.setWindowInfoTable (windowInfoTable, "template", adrSite)};
+	
+	manilaSuite.cache.tossHomePage (adrSite:adrSite); //PBS 12/10/01: toss the home page cache
+	
+	fileMenu.saveMyRoot (adrSite);
+	
+	return (true)}

@@ -1,0 +1,88 @@
+on minimiseSiteStructure (pta=nil) {
+	«manilaSuite.sitePrefs.siteStructure.minimiseSiteStructure : 04/05/16, 17:05:32 by DAB
+		«copy a minimal version of the site structure table to the pagetable
+		«Minimal means that all table entries except that required to walk to the the entry 
+		«representing the current url, and any substructure it has. (subdirectory) 
+		«manilaFixer.siteStructure.minimiseSiteStructure : 02/07/21, 13:07:48 by DAB
+	if pta == nil {
+		pta = html.getPageTableAddress()};
+	
+	if defined(pta^.minimalSiteStructure) {
+		return true};
+	
+	pta^.minimalSiteStructure =  pta^.hierarchy^.structure[1];
+	
+	on indexPage(nme) { //01/05/03, 20:39:35 by DAB
+		if not defined(pta^.responderAttributes.defaultDirectoryItems) {
+			return false};
+		return pta^.responderAttributes.defaultDirectoryItems contains string.lower(nme)};
+	
+	on trimByPath (renderObjPath) {
+		
+		on walk(adrTop,  pathRemaining, flDeleting) {
+			local (ix, adrEntry, entryName, pathname, flFound, str);
+			for ix = sizeof(adrTop^) downto 1 {
+				adrEntry = @adrTop^[ix];
+				entryName = string.lower(nameOf(adrEntry^));
+				case true {
+					string.nthField(entryName, '\t', 2) == "description"; //04/05/02, 13:06:08 by DAB
+					not (entryName contains "\t") {
+						continue};
+					flDeleting {
+						delete(adrEntry)};
+					(entryName endsWith "\tcategory") {
+						pathnameAtt = string.lower(string.urldecode(xml.getAttributeValue(adrEntry, "pathname")));
+						if pathRemaining beginsWith pathnameAtt { //is ancestor
+							str = string.delete(pathRemaining, 1, string.length(pathNameAtt));
+							str = string.popleading(str, "/");
+							if str == ""  or indexPage(str) {
+								pta^.minimalSiteStructureCurrentLocation = adrEntry;
+								flFound = true}
+							else {
+								if walk(adrEntry,str, false) {
+									flFound =  true}}}
+						else { //is not ancestor of page being rendered
+							walk(adrEntry, pathRemaining, flDeleting:true)}};
+					flFound {
+						continue};
+					(entryName endsWith "\tstory") {
+						pathnameAtt = string.lower(string.urldecode(xml.getAttributeValue(adrEntry, "pathname")));
+						if (pathnameAtt == pathRemaining) {
+							flFound =  true;
+							pta^.minimalSiteStructureCurrentLocation = adrEntry}}}};
+			
+			return flFound};
+		
+		return walk(@pta^.minimalSiteStructure,  string.popleading(string.lower(renderObjPath), "/"), false)};
+	
+	local (pathSought = "");
+	if defined(pta^.remainingPath) {
+		pathSought= string.urldecode(string.popLeading(pta^.remainingpath, "/"))}
+	else {
+		local (msgnum = 0);
+		case true {
+			defined(pta^.adrMsgTable^) {
+				msgNum = pta^.adrMsgTable^.msgNum};
+			defined (pta^.msgNum) {
+				msgNum = pta^.msgNum};
+			pta^.pathArgs != "" {
+				«msgNum = number (pta^.pathArgs)
+				if manilaSuite.sitePrefs.utility.isPositiveInteger(pta^.pathArgs) {
+					msgNum = number (pta^.pathArgs)}}};
+		if msgNum != 0 and defined(pta^.hierarchy^.paths.[msgnum]) { //
+			pathSought = string.lower(pta^.hierarchy^.paths.[msgnum])}};
+	
+	«Establish context from the  path and minimise the copy of the structure table
+	if not trimByPath (pathSought) {
+		local (referer = "");
+		try {referer = " (referer " +  pta^.requestHeaders.referer + ")"};
+		«manilaFixer.logger("setupHierarchy:No path " + pathSought + referer)   
+		if pathSought beginswith "http/" { //02/05/26, 05:53:00 by DAB
+			local (adr = system.verbs.builtins.log.addToGuestDatabase("setupHierarchy"));
+			adr^.pagetable = pta^}};
+	
+	return true};
+«bundle
+	«local (tbl = temp.pta.["123"].finalFilter)
+	«html.setpageTableaddress(@tbl)
+	«minimiseSiteStructure(@rbl)

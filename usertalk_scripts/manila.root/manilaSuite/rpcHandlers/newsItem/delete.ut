@@ -1,0 +1,33 @@
+on delete (username, password, siteName, msgNum) {
+	«Delete a news item message from message storage.
+		«8/23/01; 1:17:24 AM by JES
+			«Cribbed from manilaSuite.rpcHandlers.message.delete, with added checks for permissions.
+		«Changes:
+			«10/09/00; 10:28:20 PM by PBS
+				«Update indexes.
+			«08/23/01; 12:57:14 AM by JES
+				«News items may be deleted by both managing editors and the author of the news item.
+	
+	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
+	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
+	local (groupname = manilaSuite.rpcUtils.getMembersGroupName (siteName));
+	local (adrmember = mainResponder.members.getMemberTable (groupname, username));
+	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, adrRoot:adrDiscuss));
+	
+	bundle { //make sure this person has permission to delete the news item.
+		«Permission is the same as for creating the news item. For news items which have been posted to the home page, permissions are the same as for posting to the home page.
+		local (flPosted = manilaSuite.news.isPosted (adrmsg));
+		if flPosted { //permissions for posting to home page
+			if not manilaSuite.news.memberCanPostToHomePage (adrsite, adrmember) {
+				scriptError ("Can't delete the news item because '" + username + "' does not have permission to modify the home page.")}}
+		else { //permissions for creating
+			if not manilaSuite.news.memberMayCreateNewItems (adrsite:adrsite, adrmember:adrmember) {
+				scriptError ("Can't delete the news item because '" + username + "' does not have permission to modify the home page.")}}};
+	
+	bundle { //update indexes
+		local (adrSite = config.manila.sites.[siteName]);
+		manilaSuite.discuss.removeFromAllIndexes (adrSite, adrMsg)};
+	
+	adrmsg^.flDeleted = true;
+	
+	return (true)}

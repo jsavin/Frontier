@@ -1,0 +1,76 @@
+on scanFolder (folder=nil, adrThemes=nil) {
+	«Loop through the themes folder, importing all new and changed themes. This script is called by the Manila thread.
+		«06/06/00; 5:18:41 PM by PBS
+		«Changes:
+			«10/27/00; 3:47:43 AM by JES
+				«Added optional parameters: folder and adrThemes
+					«Support for DG themes
+			«05/16/01; 10:38:50 AM by PBS
+				«Skip invisible files -- especially important on OS X.
+			«11/26/01; 7:55:54 PM by PBS
+				«Skip files that begin with "."
+	
+	if folder == nil {
+		folder = Frontier.getSubFolder ("ops/themes/")};
+	if adrThemes == nil {
+		adrThemes = @config.manila.themes};
+	local (f);
+	
+	bundle { //JES 10/26/00 -- make sure the folder and the theme table exist
+		file.sureFolder (folder);
+		if not defined (adrThemes^) {
+			table.surePath (adrThemes);
+			new (tableType, adrThemes)}};
+	
+	fileloop (f in folder) {
+		if file.isBusy (f) {
+			continue};
+		if not (file.isVisible (f)) { //PBS 05/16/01: skip invisible files
+			continue};
+		local (fname = file.fileFromPath (f));
+		if fname beginsWith "." { //PBS 11/26/01
+			continue};
+		local (itemName = fname);
+		if string.lower (itemName) endsWith ".fttb" {
+			itemName = string.popSuffix (itemName, '.')};
+		
+		local (adrTheme = @adrThemes^.[itemName]);
+		if not defined (adrTheme^) {
+			try {
+				manilaSuite.themes.loadOneTheme (f, adrThemes)}} //load it, it doesn't exist
+		else { //it exists, check to see if it's new
+			local (fileModDate = file.modified (f));
+			local (tableModDate = timeModified (adrTheme));
+			if fileModDate > tableModDate {
+				try {
+					manilaSuite.themes.loadOneTheme (f, adrThemes)}}}}; //load it, it's new
+	
+	bundle { //PBS 06/15/00: now check for deleted themes
+		local (flInitialized = false);
+		if adrThemes == @config.manila.discussionGroupThemes {
+			if defined (config.manila.flDiscussThemesInitialized) {
+				flInitialized = config.manila.flDiscussThemesInitialized}}
+		else {
+			if defined (config.manila.flThemesInitialized) {
+				flInitialized = config.manila.flThemesInitialized}};
+		if flInitialized {
+			local (adrItem);
+			for adrItem in adrThemes {
+				local (itemName = nameOf (adrItem^));
+				
+				if string.lower (itemName) == "default" { //never delete default theme
+					continue};
+				if string.lower (itemName) == "isp" { //never delete ISP theme
+					continue};
+				
+				local (fname = itemName + ".fttb");
+				local (flExists = false);
+				if file.exists (folder + itemName) {
+					flExists = true};
+				if file.exists (folder + fname) {
+					flExists = true};
+				
+				if not flExists { //file doesn't exist, deactive
+					adrItem^.flEnabled = false}}}};
+	
+	return (true)}

@@ -1,0 +1,6 @@
+on setTemplate (appkey, blogid, username, password, template, templateType) {
+	«Changes
+		«3/28/07; 1:28:45 AM by JES
+			«Created. Implement now-deprecated Blogger API function in MetaWeblog API for Manila.
+				«http://www.xmlrpc.com/stories/storyReader$2460
+	return (manilaSuite.bloggerApi.rpcHandlers.setTemplate (appkey, blogid, username, password, template, templateType))}

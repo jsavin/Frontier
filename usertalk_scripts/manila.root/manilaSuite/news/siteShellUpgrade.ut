@@ -1,0 +1,33 @@
+on siteShellUpgrade (adrSite) {
+	«Add news items support to a site.
+		«04/25/00; 1:47:58 PM by PBS
+	
+	«Add the newsItems table.
+	if not defined (adrSite^.newsItems) {
+		adrSite^.newsItems = manilaData.newSiteTemplate.newsItems};
+	
+	«Add three new legal (XML) tags.
+	if not defined (adrSite^.["#newsSite"].legalTags.url) {
+		adrSite^.["#newsSite"].legalTags.url = true};
+	if not defined (adrSite^.["#newsSite"].legalTags.department) {
+		adrSite^.["#newsSite"].legalTags.department = true};
+	if not defined (adrSite^.["#newsSite"].legalTags.description) {
+		adrSite^.["#newsSite"].legalTags.description = true};
+	if not defined (adrSite^.["#newsSite"].legalTags.newsItem) {
+		adrSite^.["#newsSite"].legalTags.newsItem = true};
+	
+	«Add newsItems URLs.
+	local (siteUrl = adrSite^.["#ftpSite"].url);
+	local (adrUrls = @adrSite^.["#urls"]);
+	if not defined (adrUrls^.editorialNewsItems) {
+		adrUrls^.editorialNewsItems = siteUrl + "newsItems/"};
+	if not defined (adrUrls^.newsItemEditInBrowser) {
+		adrUrls^.newsItemEditInBrowser = siteUrl + "newsItems/edit/edit$"};
+	if not defined (adrUrls^.newsItemNew) {
+		adrUrls^.newsItemNew = siteUrl + "newsItems/edit/new"};
+	if not defined (adrUrls^.newsItemPostItem) {
+		adrUrls^.newsItemPostItem = siteUrl + "newsItems/edit/post"};
+	if not defined (adrUrls^.newsItemViewDepartment) {
+		adrUrls^.newsItemViewDepartment = siteUrl + "newsItems/viewDepartment"};
+	
+	return (true)}

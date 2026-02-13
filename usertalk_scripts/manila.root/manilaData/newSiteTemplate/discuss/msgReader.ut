@@ -1,0 +1,5 @@
+local (pta = html.getPageTableAddress ());
+pta^.title = manilaSuite.getStoryTitle ();
+pta^.flReadMessageProcessMacros = false;
+pta^.flReadMessageExpandUrls = false;
+return (manilaSuite.discuss.msgReader ())

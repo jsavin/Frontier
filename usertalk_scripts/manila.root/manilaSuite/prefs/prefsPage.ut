@@ -1,0 +1,48 @@
+on prefsPage () {
+	«Changes:
+		«10/18/05; 5:37:37 PM by JES
+			«Only set pta^.wizard if it's not already been set by someone else. This allows custom Manila-based apps to define their own prefs wizards somewhere separate from Manila's defaults.
+		«02/07/01; 3:16:36 PM by PBS
+			«The default string maxLength may be 25 or 40 -- both of which may be too short. If either case is true, change to 100.
+		«05/09/00; 10:44:25 PM by PBS
+			«Check referer to defeat the client side trojan horse.
+		«1999
+			«12/21/99; 8:12:28 PM by PBS
+				«Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
+			«11/1/99; 12:14:14 PM by PBS
+				«There may be a custom prefs wizard. If so, use it if the ME has so specified.
+			«10/30/99; 1:39:02 PM by PBS
+				«Pick up the managing editor's preferred separator and separator text colors.
+			«?/?/99 by PBS
+				«This is broken out into a separate script in case we need to add more to it -- we could update this script rather than update the wp-text in the Manila site.
+	
+	local (pta = html.getPageTableAddress ());
+	
+	bundle { //PBS 05/09/00: if POST, check referer to defeat client side trojan horse
+		local (flPost = string.lower (pta^.method) == "post");
+		if flPost {
+			manilaSuite.referer.checkSelf ()}};
+	
+	if not defined (pta^.wizard) { //only set if not already defined -- allows custom apps to override with their own wizard
+		
+		pta^.wizard = @manilaData.prefs.wizard;
+		
+		if defined (pta^.newsSite^.prefsWizard) {
+			pta^.wizard = @pta^.newsSite^.prefsWizard;
+			
+			«PBS 02/07/01: Fix default maxLength.
+			if pta^.wizard^.prefs.stringDefaultMaxLength == 25 or pta^.wizard^.prefs.stringDefaultMaxLength == 40 {
+				pta^.wizard^.prefs.stringDefaultMaxLength = 100}}};
+	
+	local (htmlText = "");
+	local (separatorColor, separatorTextColor);
+	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+	
+	htmlText = prefsSuite.browser (separatorColor:separatorColor, separatorTextColor:separatorTextColor);
+	
+	htmlText = manilaSuite.unTaint (htmlText); //no curly brace macros in this text
+	
+	local (adrOutline = @pta^.wizard^.outline);
+	pta^.lastUpdate = timeModified (adrOutline);
+	
+	return (htmlText)}

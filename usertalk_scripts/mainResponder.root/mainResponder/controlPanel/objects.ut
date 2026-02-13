@@ -1,0 +1,38 @@
+local (pta = html.getPageTableAddress ());
+local (htmlText = "");
+local (flDisplayedCheckedOutItemsList = false);
+
+on add (s) {
+	htmlText = htmlText + s + "\r"};
+
+pta^.title = "Objects";
+
+bundle { //add checked-out item list
+	local (itemList = custody.getCheckedOutItems ());
+	if (sizeof (itemList) > 0) {
+		add ("A list of objects currently checked out through WebEdit.<p>");
+		
+		local (adrTable = html.table.new (border:0, cellspacing:10, cellpadding:0));
+		html.table.addColumn (adrTable, "Object address", size:"-0");
+		html.table.addColumn (adrTable, "User", size:"-0");
+		html.table.addColumn (adrTable, "Date checked out", size:"-0");
+		
+		local (rec);
+		for rec in itemList {
+			html.table.addRow (adrTable)^.cells = {string.popFileFromAddress (rec["address"]), rec["user"], rec["checkedOutDate"]}};
+		
+		add (html.table.render (adrTable));
+		html.table.delete (adrTable);
+		
+		add ("<p>");
+		
+		flDisplayedCheckedOutItemsList = true}};
+
+bundle { //display something
+	if not flDisplayedCheckedOutItemsList {
+		if not defined (user.betty.rpcHandlers.webEdit) {
+			add ("WebEdit Server is disabled on this computer.")}
+		else {
+			add ("No objects are currently checked out.")}}};
+
+return (htmlText)

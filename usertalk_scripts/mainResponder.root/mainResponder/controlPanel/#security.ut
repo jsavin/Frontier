@@ -1,0 +1,9 @@
+if defined (config.mainResponder.prefs.flControlPanel) { //make sure this machine permits access to the control panel site
+	if config.mainResponder.prefs.flControlPanel {
+		local (securityLevel = 0);
+		if defined (config.mainResponder.prefs.controlPanelSecurityLevel) {
+			securityLevel = config.mainResponder.prefs.controlPanelSecurityLevel};
+		return (mainResponder.security.httpAuthentication ("Control Panel", groupName:"Admin", domain:"/controlPanel", securityLevel:securityLevel))}};
+code = 403;
+responseBody = webserver.util.buildErrorPage ("403 FORBIDDEN", "Access not allowed.");
+scriptError ("!return") //prevent mainResponder.respond from overwriting our response

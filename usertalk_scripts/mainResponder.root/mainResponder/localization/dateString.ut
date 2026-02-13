@@ -1,0 +1,20 @@
+on dateString (d, pta=nil) {
+	«Gets the localized version of a date string for a given date value.
+		«d is a date or a string that can be coerced to a date
+	«4/13/00; 2:39:54 PM by JES
+	«Changes:
+		«05/17/00 6:38:19 PM by JS
+			«optimized -- no longer call mainResponder.localization.getDateTimeReplacementTable, rather build the table here
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	
+	local (adrLanguageTable = mainResponder.localization.getLanguageTableAddress (pta));
+	local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+	local (yr, mo, day, hr, min, sec);
+	date.get (d, @day, @mo, @yr, @hr, @min, @sec);
+	replacementTable.day = day;
+	replacementTable.monthName = adrLanguageTable^.strings.date.monthNames.[string.padWithZeros (mo, 2)];
+	replacementTable.year = yr;
+	
+	return (mainResponder.getString ("date.date", @replacementTable, pta: pta))}

@@ -1,0 +1,50 @@
+on getCanonicalSiteName (adrSite, flUseCache=true) {
+	«Get the canonical name for a site. Started by AR 01/12/00.
+	«Changes:
+		«4/9/04; 4:51:28 PM by JES
+			«Optimization: Look for two additional common names for entries in config.manila.sites: one that matches the name of the site's root table, and one that matches the short name of the site, plus "Website", i.e. frontierWebsite.
+			«Bug fix: When caching the site name in the page table, store it in an address value whose name ends with the site's address. Prevents a case where the adrSite parameter is ignored if any site's canonical name has been stored in the page table.
+			«New optional parameter, flUseCache, determines whether the canonicalSiteName is saved in the page table. Defaults to true.
+		«11/3/03; 11:31:58 AM by JES
+			«Added support for static rendering.
+		«12/15/00; 12:41:18 PM by PBS
+			«Cache the canonical site name in the page table, for better performance.
+		«01/13/00; 4:17:06 PM by PBS
+			«Shortcut the process -- most times the actual name of the table matches an entry in config.manila.sites. In this common case, we can avoid the lengthy loop through config.manila.sites.
+	
+	«JES 5/17/03: support static rendering
+	if string (adrsite) endswith ".[\"#newsSite\"].staticSite" {
+		adrsite = parentOf (parentOf (adrsite^)^)};
+	
+	local (pta);
+	if flUseCache {
+		try {
+			pta = html.getPageTableAddress ();
+			if defined (pta^.["canonicalSiteName" + string.popFileFromAddress (adrSite)] ) { //PBS 12/15/00: cache name in page table
+				return (pta^.["canonicalSiteName" + string.popFileFromAddress (adrSite)])}}};
+	
+	local (siteTableName = nameOf (adrSite^));
+	local (shortSiteName = manilaSuite.getShortSiteName (siteTableName));
+	if defined (config.manila.sites.[shortSiteName]) { //site's table is fooManilaWebsite, and entry in config.manila.sites is named foo
+		if config.manila.sites.[shortSiteName] == adrSite {
+			return (shortSiteName)}};
+	if defined (config.manila.sites.[siteTableName]) { //next best case: site's table is fooManilaWebsite and entry in config.manila.sites is named the same
+		if config.manila.sites.[siteTableName] == adrSite {
+			return (siteTableName)}};
+	if string.lower (siteTableName) endswith "website" {
+		local (s = string.mid (siteTableName, 1, sizeOf (siteTableName) - 7));
+		if defined (config.manila.sites.[s]) {
+			if config.manila.sites.[s] == adrSite {
+				return (s)}}};
+	
+	«The above were the common and best cases. If they failed, loop through config.manila.sites.
+	local (adr);
+	for adr in @config.manila.sites {
+		try {
+			if adr^ == adrSite {
+				if flUseCache {
+					if pta != nil {
+						pta^.["canonicalSiteName" + string.popFileFromAddress (adrSite)] = nameOf (adr^)}}; //PBS 12/15/00: cache in page table
+				return (nameOf (adr^))}}};
+	
+	scripterror ("Can't get the name of this site because there is no address in config.manila.sites pointing to this Manila site.")}

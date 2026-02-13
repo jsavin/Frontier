@@ -1,0 +1,16 @@
+on listMemberMessages (discussroot, username, password) {
+	
+	if not mainResponder.editorial.authenticateMember (username, password, discussRoot) {
+		scriptError ("Can't get a list of documents because " + userName + " does not have editorial privileges.")};
+	
+	«build the table listing the messages
+	local (doclist); new (tableType, @doclist);
+	local (adrdiscuss = mainResponder.editorial.getDiscussTableAddress (discussRoot));
+	local (adrmessages = @adrdiscuss^.messages, i);
+	local (lowername = string.lower (username));
+	for i = 1 to sizeof (adrmessages^) {
+		local (adrmsg = @adrmessages^[i]);
+		if string.lower (adrmsg^.member) == lowername {
+			doclist.[nameof (adrmsg^)] = adrmsg^.subject}};
+	
+	return (doclist)}

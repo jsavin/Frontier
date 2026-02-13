@@ -1,0 +1,25 @@
+on getPreview (sitename) { //returns HTML that previews the current news page
+	«look for a script called #preview at the top level of the news site
+		«if it doesn't exist, the site can't be previewed, we scriptError
+		«if it exists, call it and return what it returns
+		«2/18/99; 3:57:34 AM by DW
+	«Changes:
+		«04/16/00; 6:50:46 PM by JES
+			«localized
+		«05/01/00; 6:51:02 PM by JES
+			«Changed getString calls to use a replacement table address instead of a lists
+	
+	local (adrnewstable = mainResponder.news.openRoot (sitename));
+	local (adrscript = @adrnewstable^.["#newsSite"].preview);
+	bundle { //error checking
+		local (flerror = true);
+		if defined (adrscript^) {
+			if typeof (adrscript^) == scriptType {
+				flerror = false}};
+		if flerror {
+			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
+			replacementTable.sitename = sitename;
+			scriptError (mainResponder.getString ("news.cantPreviewSiteNoPreviewScript", @replacementTable))}}; // 4/16/00 JES: loaclized
+	return (adrscript^ ())};
+bundle { //test code
+	webbrowser.displaytext (getPreview ("scriptingNews"))}

@@ -1,0 +1,7 @@
+on version (adrKernelVersion=nil) {
+	«Changes
+		«9/1/05; 12:26:45 PM by JES
+			«Created. Return Manila's version as a string, setting adrKernelVersion^ to the kernel version if passed in non-nil.
+	if adrKernelVersion != nil {
+		adrKernelVersion^ = Frontier.version ()};
+	return (manilaData.constants.manilaVersion)}

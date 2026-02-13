@@ -1,0 +1,204 @@
+on initSiteListCache () {
+	«Changes
+		«11/11/05; 3:33:34 AM by JES
+			«Call new bottleneck routine, mainResponder.adminSite.macros.initSiteListCacheForSite with flPlaceholder as true -- lazy-cache-style. We do the minimal data collection needed to render sites on the admin site home page.
+		«10/17/05; 12:46:44 AM by JES
+			«If the site name is manilaWebsite, don't strip it to the empty string when adding to the cache.
+		«12/12/03; 11:08:41 PM by JES
+			«Add sites to the site list cache in a try block. Prevents some possible errors from keeping the admin site home page from being displayed.
+			«Fix a bug which for very (very) old Manila sites would cause the site not to be listed on the home page.
+			«Fix a bug which could cause sites not to be listed if their membership group is outside of the site root table.
+		«9/19/02; 12:58:41 AM by JES
+			«Made the check for the www folder case-insensitive. Fixes a problem on some windows installations which would prevent sites from being listed on the admin site home page.
+		«6/9/02; 4:09:56 PM by JES
+			«Created. Initialize a cache of info tables about sites on this server, at system.temp.mainResponder.misc.siteListCache. Return the address of the cache table.
+	
+	local (adrmisc = @system.temp.mainResponder.misc);
+	if not defined (adrmisc^) {
+		new (tableType, adrmisc)};
+	local (adrcache = @adrmisc^.siteListCache);
+	if not defined (adrcache^) {
+		new (tableType, adrcache);
+		adrcache^.whenExpires = clock.now () + (60 * 10)}; //cache for 10 minutes
+	
+	local (adrincache = @adrcache^.sites);
+	local (flRebuild = false);
+	if not defined (adrincache^) {
+		flRebuild = true};
+	if adrcache^.whenExpires <= clock.now () {
+		flRebuild = true};
+	if flRebuild { //build cache
+		adrcache^.whenExpires = clock.now () + (60 * 10); //cache for 10 minutes
+		new (tableType, adrincache);
+		if defined (config.manila.sites) and defined (manilaSuite) { //make sure Manila is installed
+			local (adrSites = @config.manila.sites);
+			local (lowerWwwFolder = string.lower (Frontier.getSubFolder ("www")));
+			local (prefsRootFile = lowerWwwFolder + "prefs.root");
+			
+			on addOneSite (adrsite) {
+				
+				local (siteName = nameOf (adrSite^));
+				local (canonicalSiteName = siteName);
+				if string.lower (siteName) endsWith "manilawebsite" {
+					if string.lower (siteName) != "manilawebsite" { //special case needed at UL
+						siteName = string.delete (siteName, sizeOf (siteName) - 12, 13)}};
+				local (adrItem = @adrincache^.[siteName]);
+				
+				return (mainResponder.adminSite.macros.initSiteListCacheForSite (adrsite, adrItem, canonicalSiteName, siteName, flPlaceholder:true));
+				
+				«bundle //factored code
+					«local (siteName = nameOf (adrSite^))
+					«local (canonicalSiteName = siteName)
+					«if string.lower (siteName) endsWith "manilawebsite"
+						«if string.lower (siteName) != "manilawebsite" //special case needed at UL
+							«siteName = string.delete (siteName, sizeOf (siteName) - 12, 13)
+					«
+					«Create a new entry in the table for this site.
+					«local (adrItem = @adrincache^.[siteName])
+					«new (tableType, adrItem)
+					«
+					«adrItem^.adrsite = adrSite
+					«
+					«Get information about this site.
+					«try //the list should never fail to build, even if there's an abberant site out there
+						«local (displaySiteName = manilaSuite.getNewsSitePref ("siteName", adrsite, siteName))
+						«local (tagline = string (manilaSuite.getNewsSitePref ("tagline", adrsite, "")))
+						«local (siteUrl = adrSite^.["#ftpSite"].url)
+						«local (flInstalled = defined (config.manila.sites.[siteName]) or defined (config.manila.sites.[nameOf (adrSite^)]) )
+						«local (editor = adrSite^.["#newsSite"].sysopMail)
+						«if typeOf (editor) == listType
+							«editor = editor [1]
+						«local (dgName = adrSite^.["#prefs"].discussionRoot)
+						«local (dgUrl = adrSite^.["#urls"].discussHomePage)
+						«local (profilesUrl = adrSite^.["#urls"].profilesHome)
+						«if not (profilesUrl endsWith "$")
+							«profilesUrl = profilesUrl + "$"
+						«local (membershipGroupName = adrSite^.["#prefs"].defaultMembershipGroup)
+						«
+						«Populate the entry in the table.
+						«adrItem^.flInstalled = flInstalled
+						«adrItem^.site = siteName
+						«adrItem^.siteUrl = siteUrl
+						«adrItem^.managingEditor = editor
+						«adrItem^.discussionGroup = dgName
+						«adrItem^.dgUrl = dgUrl
+						«adrItem^.profilesUrl = profilesUrl
+						«adrItem^.membershipGroupName = membershipGroupName
+						«adrItem^.tagline = tagline
+						«adrItem^.displaySiteName = displaySiteName
+						«
+						«local (adrDiscuss, adrMembers)
+						«try //if the site is installed, use mainResponder.discuss.openRoot to get adrDiscuss and adrMembers
+							«local (t); new (tableType, @t)
+							«t.discussionRoot = dgName
+							«adrDiscuss = mainResponder.discuss.openRoot (@t)
+							«local (adrgroup = manilaSuite.members.getGroupFromSiteAddress (adrsite))
+							«adrMembers = @adrGroup^.users
+						«else //set adrDiscuss and adrMembers to the the discussion group in the site table
+							«adrDiscuss = @adrSite^.["#discussionGroup"]
+							«adrMembers = @adrsite^.["#membershipGroup"].users
+						«adrItem^.adrDiscuss = adrDiscuss
+						«adrItem^.adrMembers = adrMembers
+						«local (adrMessages = @adrDiscuss^.messages)
+						«local (ctMessages = sizeOf (adrMessages^))
+						«try
+							«adrItem^.modified = "unknown"
+							«local (adrMostRecentMessage = @adrMessages^ [ctMessages])
+							«local (lastModDate = adrMostRecentMessage^.postTime)
+							«adrItem^.modified = lastModDate
+						«adrItem^.ctMessages = ctMessages
+						«local (ctMembers = sizeOf (adrMembers^))
+						«adrItem^.ctMembers = ctMembers
+						«
+						«bundle //total hits all-time
+							«if defined (config.manila.stats.sites.allTime.[siteName])
+								«adrItem^.totalHits = config.manila.stats.sites.allTime.[siteName].totalHits
+							«else
+								«if defined (config.manila.stats.sites.allTime.[canonicalSiteName])
+									«adrItem^.totalHits = config.manila.stats.sites.allTime.[canonicalSiteName].totalHits
+								«else
+									«adrItem^.totalHits = 0
+						«bundle //total hits today
+							«if defined (config.manila.stats.sites.today.[siteName])
+								«adrItem^.hitsToday = config.manila.stats.sites.today.[siteName].totalHits
+							«else
+								«if defined (config.manila.stats.sites.today.[canonicalSiteName])
+									«adrItem^.hitsToday = config.manila.stats.sites.today.[canonicalSiteName].totalHits
+								«else
+									«adrItem^.hitsToday = 0
+					«else //garbage collection
+						«scriptError (tryError)
+						«delete (adrItem)
+					«return (true)};
+			on visitproc (f) {
+				try {
+					if not (string.lower (f) beginsWith lowerWwwFolder) { //skip everything outside of the www folder
+						return (true)};
+					case string.lower (f) { //skip config, discuss, index, members, mainResponder and manila.root
+						prefsRootFile {
+							return (true)}};
+					local (adrdb = @[f]);
+					if manilaSuite.isManilaSite (adrdb) {
+						addOneSite (adrdb)}
+					else {
+						local (adr);
+						for adr in adrdb {
+							if manilaSuite.isManilaSite (adr) {
+								addOneSite (adr)}}}};
+				return (true)}; //don't stop visiting databases
+			table.visitOpenDatabases (@visitproc);
+			
+			«bundle //original code
+				«for i = 1 to sizeOf (adrSites^)
+					«if defined (adrSites^ [i]^)
+						«try //PBS 01/05/01: moved sites or no longer existing sites can cause an error: the error should be non-fatal
+							«Get information about this site.
+							«local (adrSite = adrSites^ [i])
+							«if not (manilaSuite.isManilaSite (adrSite)) //PBS 02/23/00: don't list sites that aren't Manila sites
+								«continue
+							«
+							«local (siteName = nameOf (adrSite^))
+							«if string.lower (siteName) endsWith "manilawebsite"
+								«siteName = string.delete (siteName, sizeOf (siteName) - 12, 13)
+							«
+							«local (siteUrl = adrSite^.["#ftpSite"].url)
+							«local (editor = adrSite^.["#newsSite"].sysopMail)
+							«if typeOf (editor) == listType
+								«editor = editor [1]
+							«local (dgName = adrSite^.["#prefs"].discussionRoot)
+							«local (dgUrl = adrSite^.["#urls"].discussHomePage)
+							«local (profilesUrl = adrSite^.["#urls"].profilesHome)
+							«if not (profilesUrl endsWith "$")
+								«profilesUrl = profilesUrl + "$"
+							«local (membershipGroupName = adrSite^.["#prefs"].defaultMembershipGroup)
+							«
+							«Create a new entry in the table for this site.
+							«local (adrItem = @infoTable.[siteName])
+							«new (tableType, adrItem)
+							«
+							«Populate the entry in the table.
+							«adrItem^.site = siteName
+							«adrItem^.siteUrl = siteUrl
+							«adrItem^.managingEditor = editor
+							«adrItem^.discussionGroup = dgName
+							«adrItem^.dgUrl = dgUrl
+							«adrItem^.profilesUrl = profilesUrl
+							«adrItem^.membershipGroupName = membershipGroupName
+							«
+							«local (adrDiscuss)
+							«pta^.discussionRoot = dgName
+							«adrDiscuss = mainResponder.discuss.openRoot ()
+							«local (adrMessages = @adrDiscuss^.messages)
+							«local (ctMessages = sizeOf (adrMessages^))
+							«local (adrMostRecentMessage = @adrMessages^ [ctMessages])
+							«local (lastModDate = adrMostRecentMessage^.postTime)
+							«adrItem^.modified = lastModDate
+							«
+							«flFoundSites = true}};
+	
+	return (adrcache)};
+«bundle //test code
+	«local (pt); new (tableType, @pt)
+	«pt.pta = @pt
+	«with pt
+		«initSiteListCache ()

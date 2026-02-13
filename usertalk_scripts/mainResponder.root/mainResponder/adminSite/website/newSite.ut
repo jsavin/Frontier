@@ -1,0 +1,29 @@
+on newSite () {
+	«Changes
+		«8/21/02; 1:37:52 PM by JES
+			«Added explanatory text at the top of the page.
+		«8/16/02; 4:19:17 PM by JES
+			«Created.
+	manilaSuite.init ();
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "New Site";
+	local (htmltext);
+	on add (s) {
+		htmltext = htmltext + (s + "\r");};
+	
+	pta^.activeUrls = false;
+	
+	bundle { //new site form
+		add ("<p>This is a simple form you can use to create as many <a href=\"http://manila.userland.com/\">Manila</a> websites as you want, which you can edit in your Web browser. Fill in the form below. Click Submit. You'll instantly be transported to your new site.<br /><br /></p>");
+		add ("<blockquote>" + manilaSuite.hosting.createSiteForm () + "</blockquote>")};
+	
+	bundle { //themes popup
+		add ("<p><br /><br />To see a preview of a Theme, choose the Theme from the menu below, and click the Go button.</p>");
+		add ("<blockquote>" + manilaMacros.hostingSuite.themesPopup ("Preview", "Go") + "</blockquote>")};
+	
+	if pta^.method == "POST" { //clear site list cache
+		if defined (pta^.postArgs.createSiteButton) {
+			if defined (system.temp.mainResponder.misc.siteListCache) {
+				delete (@system.temp.mainResponder.misc.siteListCache)}}};
+	
+	return (htmltext)}

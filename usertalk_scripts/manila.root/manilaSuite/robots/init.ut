@@ -1,0 +1,25 @@
+on init (adrsite=nil) {
+	«Changes
+		«7/8/03; 1:25:51 PM by JES
+			«Created.
+	if adrsite == nil {
+		adrsite = manilaSuite.getSiteAddress ()};
+	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
+	local (adrdata = @adrnewssite^.robots);
+	
+	if not defined (adrsite^.["robots.txt"]) {
+		adrsite^.["robots.txt"] = manilaData.newSiteTemplate.["robots.txt"]};
+	if not defined (adrsite^.admin.editRobotsTxt) {
+		adrsite^.admin.editRobotsTxt = manilaData.newSiteTemplate.admin.editRobotsTxt};
+	
+	if not defined (adrdata^) {
+		new (tableType, adrdata)};
+	if not defined (adrdata^.flEnabled) {
+		adrdata^.flEnabled = true};
+	if not defined (adrdata^.paths) {
+		new (tableType, @adrdata^.paths);
+		adrdata^.paths.["/stats/referers"] = true};
+	
+	return (adrdata)};
+«bundle //test code
+	«init (@jaketest2ManilaWebsite)

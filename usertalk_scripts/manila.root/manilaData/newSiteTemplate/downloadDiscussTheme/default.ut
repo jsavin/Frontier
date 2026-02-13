@@ -1,0 +1,3 @@
+local (adrParent = parentOf (this^));
+local (adrScript = @adrParent^.["#objectNotFoundHandler"]);
+return (adrScript^ ())

@@ -1,0 +1,7 @@
+on restoreJavaScript (adrSiteInfo) {
+	«Restore the JavaScript to the default.
+		«06/06/00; 3:46:43 PM by PBS
+	
+	local (adrSite = adrSiteInfo^.adrSite);
+	manilaSuite.themes.restoreToDefault (adrSite, "javaScript");
+	return (true)}

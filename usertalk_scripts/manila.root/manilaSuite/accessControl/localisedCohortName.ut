@@ -1,0 +1,7 @@
+on localisedCohortName (adrCohort, pta) {
+	«manilaSuite.AccessControl.localisedCohortName : 04/05/20, 17:30:44 by DAB
+		«was manilaFixer.accessControl.localisedCohortName : 03/01/15, 18:48:44 by DAB
+	local (nme = nameof(adrCohort^));
+	if adrCohort^.systemdefinition {
+		nme = manilaSuite.getString("accesscontrol." + nme, pta:pta)};
+	return nme}

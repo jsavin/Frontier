@@ -1,0 +1,77 @@
+on removeSiteFromTree (domainName, path, flDeleteSubSites = false, flConvertToSiteTree = false, adrDomains = @config.mainResponder.domains) {
+	«Changes
+		«5/1/06; 8:03:37 PM by JES
+			«Touch the site tree outline before calling compileIfDirty, to make sure we re-compile the XML.
+		«9/22/04; 2:37:05 AM by JES
+			«Use a semaphore lock to prevent multiple threads from trying to update a given domain's site tree simultaneously.
+		«8/13/02; 4:55:17 PM by JES
+			«Pass adrDomains to mainResponder.siteTree.convertDomainToSiteTree.
+		«8/13/02; 3:48:55 PM by JES
+			«New optional parameter, adrDomains. Compile the site tree XML after removing the site from the tree.
+		«7/2/02; 3:59:52 AM by JES
+			«Created.
+	local (adrdomain = @adrDomains^.[domainName]);
+	
+	on lockDomain () { //semaphore lock for two seconds
+		try {
+			semaphore.lock (string.popFileFromAddress (this) + ":" + string.popFileFromAddress (adrdomain), 120)}
+		else {
+			scriptError ("Can't remove a site from \"" + domainName + "\" because the domain's site tree is being modified by another process.")}};
+	on unlockDomain () {
+		try {semaphore.unlock (string.popFileFromAddress (this) + ":" + string.popFileFromAddress (adrdomain))}};
+	lockDomain ();
+	
+	try {mainResponder.siteTree.compileIfDirty (adrdomain)};
+	if not defined (adrdomain^) { //make sure the domain exists
+		unlockDomain ();
+		scriptError ("Can't remove a site from \"" + domainName + "\" because the domain doesn't exist.")};
+	if not defined (adrdomain^.siteTree) { //make sure the domain is defined by an XML siteTree
+		if flConvertToSiteTree {
+			mainResponder.siteTree.convertDomainToSiteTree (domainName, adrDomains)}
+		else {
+			unlockDomain ();
+			scriptError ("Can't remove a site from \"" + domainName + "\" because the domain is not defined by an XML siteTree.")}};
+	local (xstruct);
+	local (adroutline = @adrdomain^.siteTree.directory.outline);
+	xml.compile (string (adroutline^), @xstruct);
+	local (adrtree = xml.getAddress (@xstruct, "siteTree"));
+	local (adrtopsite = xml.getAddress (adrtree, "site"));
+	local (nomad = mainResponder.siteTree.dive (adrtopsite, path));
+	on containsSubSites (adrsite) {
+		local (adr);
+		for adr in adrsite {
+			if string.lower (xml.convertToDisplayName (nameOf (adr^))) == "site" {
+				return (true)}};
+		return (false)};
+	if containsSubSites (nomad) {
+		if flDeleteSubSites { //delete the site and its sub-sites
+			delete (nomad)}
+		else { //don't delete the site -- just remove the reference to the object defined for the site
+			local (adratts = @nomad^.["/atts"]);
+			if defined (adratts^) { //delete address, folderpath or redirect attribute
+				if defined (adratts^.address) {
+					delete (@adratts^.address)};
+				if defined (adratts^.folderpath) {
+					delete (@adratts^.folderpath)};
+				if defined (adratts^.redirect) {
+					delete (@adratts^.redirect)}}}}
+	else { //no sub-sites -- delete the site
+		delete (nomad)};
+	bundle { //delete all /pcdata tables, since they prevent sub-elements from being decompiled
+		on visitproc (adrtable) {
+			if defined (adrtable^.["/pcdata"]) {
+				delete (@adrtable^.["/pcdata"])};
+			return (true)};
+		table.visit (@xstruct, @visitproc)};
+	local (xtext = xml.decompile (@xstruct));
+	xtext = string.trimWhiteSpace (string.delete (xtext, 1, sizeOf (string.nthField (xtext, "\r", 1) + 1)));
+	op.newOutlineObject (xtext, adroutline);
+	setTimeModified (adroutline, clock.now ());
+	mainResponder.siteTree.compileIfDirty (adrdomain);
+	unlockDomain ()};
+«bundle //test code
+	«removeSiteFromTree ("default", "foo")
+	«removeSiteFromTree ("default", "bar")
+	«removeSiteFromTree ("default", "baz")
+	«removeSiteFromTree ("default", "flim/flam")
+	«removeSiteFromTree ("default", "flim", true)

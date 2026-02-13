@@ -1,0 +1,14 @@
+on byline (author, postTime, style="default") {
+	«05/07/00 JES: Returns the text of a byline for a DG message or a story.
+	local (s, replacementTable);
+	new (tableType, @replacementTable);
+	replacementTable.name = author;
+	case string.lower (style) {
+		"davenet" {
+			replacementTable.date = mainResponder.localization.abbrevDateString (postTime);
+			s = mainResponder.getString ("discuss.davenetByline", @replacementTable);
+			return (s)}};
+	replacementTable.date = mainResponder.localization.shortDateString (postTime);
+	replacementTable.time = mainResponder.localization.timeString (postTime);
+	s = mainResponder.getString ("discuss.byline", @replacementTable);
+	return (s)}

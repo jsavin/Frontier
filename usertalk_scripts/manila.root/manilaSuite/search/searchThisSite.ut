@@ -1,0 +1,27 @@
+on searchThisSite () {
+	«Changes
+		«8/11/02; 1:51:43 AM by JES
+			«Created. Search a single Manila site.
+	local (pta = html.getPageTableAddress ());
+	pta^.title = "Search";
+	
+	local (flThisSiteOnly = false);
+	if pta^.searchArgs != "" {
+		local (args); new (tableType, @args);
+		webserver.parseArgs (pta^.searchArgs, @args);
+		if defined (args.searchThisSiteOnly) {
+			flThisSiteOnly = true}};
+	if flThisSiteOnly {
+		if not defined (pta^.responderAttributes.adrSearchFilterCallback) { //set the callback to filter for this site
+			pta^.responderAttributes.adrSearchFilterCallback = @manilaSuite.search.singleSiteFilter}};
+	if not defined (pta^.responderAttributes.renderOneSearchResult) { //set to the google-ish callback
+		pta^.responderAttributes.renderOneSearchResult = @mainResponder.search.server.renderResultCallbacks.googleClone};
+	pta^.flIncludeSiteNameInSearchResults = false; //we already know what site we're looking at
+	
+	local (htmltext = mainResponder.search.server.searchPage ());
+	
+	if flThisSiteOnly { //patch in the hidden field to search this site only
+		local (ixformclose = string.patternMatch ("</form>", htmltext));
+		htmltext = string.insert ("<input type=\"hidden\" name=\"searchThisSiteOnly\" value=\"true\" />", htmltext, ixformclose)};
+	
+	return (htmltext)}

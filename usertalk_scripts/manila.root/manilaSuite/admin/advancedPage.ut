@@ -1,0 +1,1267 @@
+on advancedPage (pta=nil) {
+	«Display the Advanced sitePrefs page and handle commands.
+		«This page allows you to edit:
+			«Navigation
+			«Template
+			«Cascading Style Sheets
+			«JavaScript
+			«Colors
+			«Custom Prefs
+		«11/8/99; 3:48:32 PM by PBS
+	«Changes:
+		«6/30/05; 2:59:37 AM by JES
+			«Removed the action attribute from the <form> tag. We're always POSTing to ourselves, so it was unnecessary. Also, with the new iframe-based advanced prefs page, this was causing the page loaded from a POST to use the incorrect template.
+		«3/2/04; 1:47:03 PM by JES
+			«Added template for current navigation item, in the navigation appearance section.
+		«7/10/03; 5:18:21 PM by JES
+			«Added robots.txt editor.
+		«4/28/03; 1:17:12 PM by JES
+			«Added checkbox for displaying an Edit button next to the site's navigation links: Defaults to checked.
+			«Localized prompt for Use Home Page Template.
+		«4/20/03; 4:38:56 PM by JES
+			«Added External Style Sheet section.
+		«2002:
+			«1/25/02; 6:10:51 PM by PBS
+				«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		«2001:
+			«10/2/01; 1:05:13 PM by PBS
+				«Allow the user to edit the print-friendly template.
+			«9/6/01; 3:23:15 PM by PBS
+				«The area for editing Navigation Appearance was too small for complex designs.
+			«03/23/01; 6:07:03 PM by PBS
+				«HTML errors in the Navigation Appearance section were fixed. There was a missing tr tag, and the type attribute was missing from the input fields.
+			«03/20/01; 6:30:23 PM by PBS
+				«When there's XML an error in the navigation, site structure, or custom prefs, and when the page returned with an error, the text inside the textarea for that item was messed up. Quotes appeared as &quot;, for instance. This has been fixed.
+		«2000:
+			«01/17/00; 5:15:28 PM by PBS
+				«Preliminary support for editing in Pike.
+			«02/11/00; 3:20:40 PM by PBS
+				«Custody support: don't allow objects to be edited if they're being edited in Pike.
+			«03/27/00; 5:07:24 PM by PBS
+				«Allow the newsArchiveLink macro in the news day template.
+			«04/09/00; 5:31:56 PM by PBS
+				«Add help text to the news day template section regarding the newsArchiveLink macro.
+			«05/09/00; 12:36:51 PM by JES
+				«second attempt at localization
+			«05/22/00; 7:16:32 PM by JES
+				«various small bug fixes related to confirm boxes
+			«05/29/00; 9:09:19 PM by JES
+				«fixed problem where new member signup page would revert the top section to English on non-english sites
+			«06/05/00; 3:52:46 PM by PBS
+				«New block of prefs: Themes. You can make your site cloneable and choose name for your theme.
+			«06/11/00; 3:28:48 AM by JES
+				«Merged Brent's theme prefs code.
+				«Localized Themes panel.
+			«07/22/00; 4:04:51 PM by PBS
+				«Localization bug fix -- the custom sign up wizard wasn't being created in the site when the custom prefs changed.
+			«10/14/00; 12:56:36 PM by PBS
+				«New Home Page Template allows one to use an alternate template for just the home page.
+			«10/25/00; 7:07:41 PM by PBS
+				«Don't enforce navigator links macro for home page template.
+			«10/31/00; 5:58:15 PM by JES
+				«basicXmlPost passes in the manilaLanguageTableAddress as part of the site attributes when restoring an item to the default.
+			«11/26/00; 7:48:24 PM by PBS
+				«The external editor button connects to the local HTTP server, which then requests the object from the Manila server.
+		«1999:
+			«12/10/99; 10:40:52 AM by PBS
+				«The News Day Template allows you to edit the mini-templates for each day of news when rendering more than one day of news on the home page.
+			«12/12/99; 5:55:26 PM by PBS
+				«Navigation Appearance is a new section. You can edit the appearance of your navigation. Two items are editable: the item format, which is the format of each item, and separator format, which is the HTML that separates each item. With this feature you can create horizontal navigation, or add characters of some kind (like the | character) between items, or do <br> separators, or whatever.
+			«12/13/99; 5:40:31 PM by PBS
+				«Confirm boxes respect the editor's choice of colors.
+			«12/13/99; 10:17:37 PM by PBS
+				«Fixed bug when restoring the template to the default: you might get a siteName not defined message. Now you won't.
+			«12/14/99; 2:54:47 PM by PBS
+				«The calendar formatting can now be customized via the Advanced page.
+			«12/15/99; 3:00:29 PM by PBS
+				«Both states of the Members box are now editable templates.
+			«12/21/99; 8:03:56 PM by PBS
+				«Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
+	
+	if pta == nil {
+		pta = html.getPageTableAddress ()};
+	pta^.title = manilaSuite.getString ("admin.advancedPageTitle", pta: pta);
+	
+	«05/10/00 JES: get the localized version of the page's name in the URL
+	«local (advancedPageName = string.lower (string.innerCaseName (pta^.title)))
+	local (advancedPageName = pta^.pathArgs);
+	
+	local (separatorColor, separatorTextColor);
+	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
+	
+	local (navList = {});
+	local (sectionName);
+	local (htmlText = "");
+	local (indentLevel = 0);
+	local (adrSite = manilaSuite.getSiteAddress ());
+	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
+	local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
+	bundle { //PBS 12/13/99: get the Admin Box color preferences
+		manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor)};
+	local (flContentEditor = false);
+	if not pta^.flManagingEditor {
+		flContentEditor = pta^.flContentEditor;
+		if not flContentEditor {
+			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission", pta: pta))}};
+	
+	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
+	
+	local (argTable);
+	new (tableType, @argTable);
+	if pta^.searchArgs != "" {
+		local (ix);
+		local (searchArgs = pta^.searchArgs);
+		ix = string.patternMatch ("#", searchArgs);
+		if ix > 0 {
+			searchArgs = string.delete (searchArgs, ix, infinity)};
+		webserver.parseArgs (searchArgs, @argTable)};
+	
+	on add (s) {
+		htmlText = htmlText + (string.filledString ("\t", indentLevel) + s + "\r");};
+	
+	on getShortSectionName () {
+		return (string.lower (string.dropNonAlphas (sectionName)))};
+	on getDisplayName () { // 05/10/00 JES: get a localized section name for display
+		try {
+			return (manilaSuite.getString ("admin." + string.innerCaseName (sectionName) + "SectionName", pta: pta))}
+		else {
+			return (sectionName)}};
+	on addSeparator () {
+		add ("<a name=\"" + string.lower (string.dropNonAlphas (sectionName)) + "\"></a>");
+		indentLevel++;
+		add ("<table cellpadding=\"2\" cellspacing=\"0\" width=\"100%\"><tr>");
+		indentLevel++;
+		add ("<td bgcolor=\"" + separatorColor + "\"><font color=\"" + separatorTextColor + "\"><b>" + getDisplayName () + "</b></font></td>");
+		indentLevel--;
+		add ("</tr></table><p>");
+		indentLevel--;
+		navList = navList + sectionName;
+		return (true)};
+	on addDescription (text) {
+		add (text + "<p>");
+		return (true)};
+	on addTable () {
+		indentLevel++;
+		add ("<table border=\"0\" cellpadding=\"7\" cellspacing=\"0\" width=\"100%\">");
+		indentLevel++;
+		return (true)};
+	on addFormStart () {
+		local (formName = getShortSectionName ());
+		indentLevel++;
+		«add ("<form method=\"POST\" action=\"" + pta^.fname + "$" + advancedPageName + "#" + formName + "\">")
+		add ("<form method=\"POST\">");
+		return (true)};
+	on endSection () {
+		add ("</table>");
+		indentLevel--;
+		add ("</form>");
+		indentLevel--;
+		indentLevel--;
+		indentLevel--;
+		return (true)};
+	on addButtons (adrObject, flPikeButton=true, pikeHelpDescription="") {
+		add ("<tr><td valign=\"top\" align=\"left\">");
+		if flPikeButton and flMemberHasPike {
+			local (editInPikeUrl = "editInPike?" + string.urlEncode (sectionName));
+			local (appendTable);
+			new (tableType, @appendTable);
+			local (itemType = sectionName);
+			if string.lower (itemType) == "cascading style sheet" {
+				itemType = "CSS"};
+			appendTable.itemType = string.dropNonAlphas (itemType);
+			editInPikeUrl = manilaSuite.pike.buildPikeButtonUrl (adrObject, "editAdvancedItem", @appendTable);
+			add ("&nbsp;&nbsp;" + manilaSuite.pike.pikeButton (editInPikeUrl, adrObject, pta^.adrMemberInfo, adrSite, false, pikeHelpDescription, pta))}
+		else {
+			add ("&nbsp;")};
+		add ("</td>");
+		add ("<td valign=\"top\" align=\"right\">");
+		indentLevel++;
+		add ("<input type=\"submit\" name=\"restoreToDefault\" value=\"" + manilaSuite.getString ("admin.restoreDefaultButton", pta: pta) + "\">");
+		add ("<input type=\"submit\" value=\"&nbsp;" + manilaSuite.getString ("common.submitButton", pta: pta) + "&nbsp;\">");
+		add ("</td></tr>");
+		indentLevel--;
+		return (true)};
+	on addErrorMessage (message) {
+		add ("<font color=\"red\">" + message + "</font><p>");
+		return (true)};
+	on addSuccessMessage (message) {
+		add ("<font color=\"darkblue\">" + message + " " + mainResponder.localization.dateTimeString (manilaSuite.convertTime (pta: pta), pta: pta) + "</font><p>");
+		return (true)};
+	on exportOutline (s) {
+		s = string.replaceall (s, "\t", "  ");
+		s = string.replaceall (s, "&", "&amp;");
+		s = string.replaceall (s, "<", "&lt;");
+		s = string.replaceall (s, ">", "&gt;");
+		return (s)};
+	on tdLabel (label="") {
+		if label == "" {
+			label = sectionName};
+		add ("<td align=\"left\" valign=\"top\" width=\"300\">" + label + "</td>");
+		return (true)};
+	on tdValue (prefName, default) {
+		local (value);
+		value = manilaSuite.getNewsSitePref (prefName, default:default, flCreate:true, flUntaint:true);
+		add ("<td valign=\"top\" align=\"left\">");
+		add ("<input name=\"" + prefName + "\" value=\"" + value + "\" size=\"10\">");
+		add ("</td>");
+		return (true)};
+	on wasThisFormPosted () {
+		local (expectedFormName = string.lower (string.dropNonAlphas (sectionName)));
+		if defined (pta^.postArgs.no) { //while technically a post, no means don't restore to default, so pretend this was a GET
+			return (false)};
+		if defined (pta^.postArgs.[expectedFormName]) {
+			return (true)};
+		return (false)};
+	on textArea (name=nil, value=nil, cols=nil, rows=nil, colspan="2", leadingSpaces="&nbsp;&nbsp;") {
+		if name == nil {
+			name = string.lower (string.dropNonAlphas (sectionName))};
+		if value == nil {
+			value = ""};
+		if cols == nil {
+			cols = 70};
+		if rows == nil {
+			rows = 10};
+		
+		value = string.replaceAll (value, "\"", "&quot;");
+		add ("<td align=\"left\" valign=\"top\" colspan=\"" + colspan + "\">");
+		indentLevel++;
+		add (leadingSpaces + "<textarea name=\"" + name + "\" cols=\"" + cols + "\" rows=\"" + rows + "\">" + value + "</textarea>");
+		add ("</td>");
+		indentLevel--;
+		
+		return (true)};
+	on addConfirmBox (message) { //add a restore-to-default confirmation box
+		if defined (pta^.postArgs.restoreToDefault) { //confirm restoring this item to its default state
+			local (action = pta^.fname + "$" + advancedPageName + "#" + getShortSectionName ());
+			action = manilaSuite.unTaint (action);
+			local (s);
+			s = "\r<table border=\"0\" cellpadding=\"3\" cellspacing=\"1\" bgcolor=\"" + headerColor + "\" width=\"350\">";
+			s = s + "\r<tr bgcolor=\"" + headerColor + "\"><td align=\"left\"><b><font color=\"" + headerTextColor + "\">Confirm</font></b></td></tr>\r<tr bgcolor=\"" + backgroundColor + "\"><td>";
+			s = s + "<form method=\"POST\" action=\"" + action + "\">";
+			s = s + message + "<br>";
+			s = s + "<font color=\"" + backgroundTextColor + "\"><p align=\"right\">";
+			s = s + "<input type=\"hidden\" name=\"" + getShortSectionName () + "\" value=\"true\">";
+			s = s + "<input type=\"submit\" name=\"no\" value=\"&nbsp;&nbsp;" + manilaSuite.getString ("common.noButton", pta: pta) + "&nbsp;&nbsp;\">&nbsp;&nbsp;";
+			s = s + "<input type=\"submit\" name=\"doRestoreDefault\" value=\"&nbsp;" + manilaSuite.getString ("common.yesButton", pta: pta) + "&nbsp;\">&nbsp;&nbsp;</p></font></form>";
+			s = s + "</td></tr></table><br><br>";
+			s = s + "</form>";
+			add ("<center>" + s + "</center>");
+			return (true)}; //true because a confirm box was added
+		return (false)}; //didn't need to add a confirm box
+	on basicPost (displayName, shortName, adrObject, adrCreateScript, flPost) {
+		«CSS, JavaScript.
+		local (replacementTable); new (tableType, @replacementTable);
+		replacementTable.displayName = displayName;
+		if flPost { //handle the command
+			if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false)) { //false because it's an advanced item
+				addErrorMessage (manilaSuite.getString ("admin.cantEditCheckedOutItemError", @replacementTable, pta: pta))}
+			else {
+				if not (addConfirmBox (manilaSuite.getString ("admin.restoreDefaultConfirmText", @replacementTable, pta: pta))) {
+					if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+						local (siteInfo);
+						new (tableType, @siteInfo);
+						siteInfo.adrSite = adrSite;
+						adrCreateScript^ (@siteInfo);
+						mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
+					else { //update 
+						local (s = string (pta^.postArgs.[shortName]));
+						s = string.replaceAll (s, lf, "");
+						wp.newTextObject (s, adrObject);
+						«Refresh the page.
+						mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}}}};
+		
+		if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+			local (flEndsWithS = (shortName endsWith "s"));
+			case argTable.[shortName] {
+				"1" {
+					if flEndsWithS {
+						addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessPlural", @replacementTable, pta: pta))}
+					else {
+						addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessSingular", @replacementTable, pta: pta))}};
+				"2" {
+					if flEndsWithS {
+						addSuccessMessage (manilaSuite.getString ("admin.updatedSuccessPlural", @replacementTable, pta: pta))}
+					else {
+						addSuccessMessage (manilaSuite.getString ("admin.updatedSuccessSingular", @replacementTable, pta: pta))}}}};
+		
+		return (true)};
+	on basicXmlPost (displayName, shortName, adrObject, adrCreateScript, flPost, adrVal, adrStructure=nil) {
+		«Navigation, custom prefs, hierarchy.
+		if flPost { //handle the command
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.displayName = displayName;
+			if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false)) { //false because it's an advanced item
+				addErrorMessage (manilaSuite.getString ("admin.cantEditCheckedOutItemError", @replacementTable, pta: pta))}
+			else {
+				if not (addConfirmBox (manilaSuite.getString ("admin.restoreDefaultConfirmText", @replacementTable, pta: pta))) {
+					if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+						local (siteInfo);
+						new (tableType, @siteInfo);
+						siteInfo.adrSite = adrSite;
+						siteInfo.manilaLanguageTableAddress = manilaSuite.getLanguageTableAddress (pta); //10/31/00 JES: tell create scripts what language the site is using.
+						adrCreateScript^ (@siteInfo);
+						if shortName endsWith "s" {
+							addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessPlural", @replacementTable, pta: pta))}
+						else {
+							addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessSingular", @replacementTable, pta: pta))};
+						adrVal^ = exportOutline (string (adrObject^))}
+					else { //try to update
+						local (s = string (pta^.postArgs.[shortName]));
+						s = string.replaceAll (s, lf, "");
+						s = manilaSuite.unTaint (s);
+						local (t);
+						try {
+							xml.compile (s, @t);
+							wp.newTextObject (s, adrObject);
+							adrVal^ = exportOutline (string (adrObject^));
+							if shortName endsWith "s" {
+								addSuccessMessage (manilaSuite.getString ("admin.updatedSuccessPlural", @replacementTable, pta: pta))}
+							else {
+								addSuccessMessage (manilaSuite.getString ("admin.updatedSuccessSingular", @replacementTable, pta: pta))};
+							if adrStructure != nil {
+								xml.compile (s, adrStructure)}}
+						else {
+							replacementTable.tryError = tryError;
+							if shortName endsWith "s" {
+								addSuccessMessage (manilaSuite.getString ("admin.couldntUpdateBecausePlural", @replacementTable, pta: pta))}
+							else {
+								addSuccessMessage (manilaSuite.getString ("admin.couldntUpdateBecauseSingular", @replacementTable, pta: pta))};
+							adrVal^ = exportOutline (s)}}}}}; //PBS 03/20/01: the carets need to be escaped
+		
+		return (true)};
+	
+	bundle { //add a meta tag
+		«This page should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.
+		
+		local (s = "<META HTTP-EQUIV=\"Expires\" CONTENT=\"Mon, 01 Jan 1990 01:00:00 GMT\">");
+		
+		if defined (pta^.meta) {
+			pta^.meta = pta^.meta + "\r" + s} //add to existing meta info
+		else {
+			pta^.meta = s}}; //create new meta info in the page table
+	
+	if flContentEditor { //PBS 12/03/01: get localized Navigation page title
+		pta^. title = manilaSuite.getString ("admin.NavigationSectionName", pta: pta);
+		pta^.navigator = @pta^.adrSiteRootTable^.["#navigator"]}; //use site navigator
+	add ("<h2>" + pta^.title + "</h2>");
+	if not flContentEditor {
+		add (manilaSuite.getString ("admin.advancedPageDescription", pta: pta) + "<p>");
+		add ("[navText]<p>")}; //this will get replaced later
+	
+	bundle { //Navigation
+		sectionName = "Navigation";
+		local (shortName = getShortSectionName ());
+		local (adrObject = @adrSite^.["#navigator"].outline);
+		local (value = exportOutline (string (adrObject^)));
+		local (flPost = wasThisFormPosted ());
+		if not flContentEditor {
+			addSeparator ()};
+		
+		basicXmlPost (getDisplayName (), shortName, adrObject, @manilaSuite.newSite.createNavigator, flPost, @value);
+		if flPost {
+			if not defined (pta^.postArgs.flNavigatorEditButton) {
+				pta^.newsSite^.flNavigatorEditButton = false}
+			else {
+				pta^.newsSite^.flNavigatorEditButton = true}};
+		
+		local (description = manilaSuite.getString ("admin.navigationSectionDescription", pta: pta));
+		local (adrTemplate = @adrSite^.["#template"]);
+		if not (string.lower (string (adrTemplate^)) contains "{navigatorlinks}") {
+			description = description + manilaSuite.getString ("admin.navigationRequiresNavLinksMacro", pta: pta)};
+		addDescription (description);
+		
+		addFormStart ();
+		addTable ();
+		
+		add ("<tr>");
+		indentLevel++;
+		textArea (value:value);
+		add ("</tr>");
+		
+		bundle { //checkbox for displaying Edit button next to navigator
+			add ("<tr>");
+			indentLevel++;
+			add ("<td colspan=\"2\">");
+			indentLevel++;
+			
+			local (prompt = manilaSuite.getString ("admin.navEditButtonCheckPrompt"));
+			local (flChecked = manilaSuite.getNewsSitePref ("flNavigatorEditButton", adrSite, default:true, flCreate:true) );
+			if flChecked {
+				add ("<p>&nbsp;&nbsp;<input type=\"checkbox\" name=\"flNavigatorEditButton\" checked> " + prompt)}
+			else {
+				add ("<p>&nbsp;&nbsp;<input type=\"checkbox\" name=\"flNavigatorEditButton\"> " + prompt)};
+			add ("</td>");
+			indentLevel--;
+			add ("</tr>")};
+		addButtons (adrObject, true, manilaSuite.getString ("admin.editNavigationWithPike", pta: pta));
+		
+		endSection ()};
+	if not flContentEditor { //PBS 12/03/01: content editors see navigation only
+		bundle { //Template
+			sectionName = "Template";
+			local (shortName = getShortSectionName ());
+			local (adrObject = @adrSite^.["#template"]);
+			local (value = exportOutline (string (adrObject^)));
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.displayName = getDisplayName ();
+			
+			if flPost { //handle the command
+				if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false)) { //false because it's an advanced item
+					addErrorMessage (manilaSuite.getString ("admin.cantEditCheckedOutItemError", @replacementTable, pta: pta))}
+				else {
+					if not (addConfirmBox (manilaSuite.getString ("admin.confirmTemplateRestoreToDefault", pta: pta))) {
+						if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+							local (siteInfo);
+							new (tableType, @siteInfo);
+							siteInfo.adrSite = adrSite;
+							siteInfo.siteName = nameOf (adrSite^); //PBS 12/13/99: fix for siteName not defined error
+							«manilaSuite.newSite.createTemplate (@siteInfo)
+							manilaSuite.themes.restoreTemplate (@siteInfo);
+							local (successMessage = manilaSuite.getString ("admin.templateHasBeenRestoredToDefault", pta: pta));
+							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
+						else { //try to update the template
+							local (s = string (pta^.postArgs.[shortName]));
+							s = string.replaceAll (s, lf, "");
+							local (errorString);
+							if manilaSuite.admin.isGoodTemplate (s, @errorString) {
+								s = mainResponder.neuterText (s, true, false);
+								wp.newTextObject (s, adrObject);
+								«Refresh the page.
+								local (successMessage = manilaSuite.getString ("admin.templateUpdateSuccess", pta: pta));
+								mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}
+							else {
+								addErrorMessage (errorString)}}}}};
+			
+			if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+				case argTable.[shortName] {
+					"1" {
+						addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessSingular", @replacementTable, pta: pta))};
+					"2" {
+						addSuccessMessage (manilaSuite.getString ("admin.updatedSuccessSingular", @replacementTable, pta: pta))}}};
+			
+			addDescription (manilaSuite.getString ("admin.templateSectionDescription", pta: pta));
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value, rows:30);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editTemplateWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //Home Page Template
+			sectionName = "Home Page Template";
+			local (shortName = getShortSectionName ());
+			local (adrObject = @adrSite^.["#homePageTemplate"]);
+			if not defined (adrObject^) {
+				wp.newTextObject ("", adrObject)};
+			local (value = exportOutline (string (adrObject^)));
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.displayName = getDisplayName ();
+			
+			if flPost { //handle the command
+				if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false)) { //false because it's an advanced item
+					addErrorMessage (manilaSuite.getString ("admin.cantEditCheckedOutItemError", @replacementTable, pta: pta))}
+				else {
+					if not (addConfirmBox (manilaSuite.getString ("admin.confirmHomePageTemplateRestoreToDefault", pta: pta))) {
+						if defined (pta^.postArgs.doRestoreDefault) { //restore to default -- default is empty
+							wp.newTextObject ("", adrObject);
+							pta^.newsSite^.flUseHomePageTemplate = false; //turn off template
+							local (successMessage = manilaSuite.getString ("admin.templateHasBeenRestoredToDefault", pta: pta));
+							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
+						else { //try to update the template
+							local (s = string (pta^.postArgs.[shortName]));
+							s = string.replaceAll (s, lf, "");
+							local (errorString);
+							if manilaSuite.admin.isGoodTemplate (s, @errorString, flCheckNavigatorLinks:false) { //PBS 10/25/00: don't enforce navigator links macro
+								s = mainResponder.neuterText (s, true, false);
+								wp.newTextObject (s, adrObject);
+								«Refresh the page.
+								local (successMessage = manilaSuite.getString ("admin.homePageTemplateUpdateSuccess", pta: pta));
+								mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName);
+								«Update use home page template flag.
+								if not defined (pta^.postArgs.flUseHomePageTemplate) {
+									pta^.newsSite^.flUseHomePageTemplate = false}
+								else {
+									pta^.newsSite^.flUseHomePageTemplate = true}}
+							else {
+								addErrorMessage (errorString)}}}}};
+			
+			if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+				case argTable.[shortName] {
+					"1" {
+						addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessSingular", @replacementTable, pta: pta))};
+					"2" {
+						addSuccessMessage (manilaSuite.getString ("admin.updatedSuccessSingular", @replacementTable, pta: pta))}}};
+			
+			addDescription (manilaSuite.getString ("admin.homePageTemplateSectionDescription", pta: pta));
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value, rows:30);
+			add ("</tr>");
+			indentLevel--;
+			
+			
+			bundle { //checkbox for using this template
+				add ("<tr>");
+				indentLevel++;
+				add ("<td>");
+				indentLevel++;
+				local (flChecked = false);
+				local (prompt = manilaSuite.getString ("admin.useHomePageTemplatePrompt"));
+				if defined (pta^.newsSite^.flUseHomePageTemplate) {
+					if pta^.newsSite^.flUseHomePageTemplate {
+						flChecked = true}};
+				if flChecked {
+					add ("<p>&nbsp;&nbsp;<input type=\"checkbox\" name=\"flUseHomePageTemplate\" checked> " + prompt)}
+				else {
+					add ("<p>&nbsp;&nbsp;<input type=\"checkbox\" name=\"flUseHomePageTemplate\"> " + prompt)};
+				add ("</td>");
+				indentLevel--;
+				add ("</tr>")};
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editTemplateWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //Print-friendly template PBS 10/02/01
+			sectionName = "Print-Friendly Template";
+			local (shortName = getShortSectionName ());
+			if not defined (adrNewsSite^.alternateTemplates) {
+				new (tableType, @adrNewsSite^.alternateTemplates)};
+			local (adrObject = @adrNewsSite^.alternateTemplates.printFriendly);
+			if not defined (adrObject^) {
+				wp.newTextObject (string (manilaData.printFriendlyTemplates.template), adrObject)};
+			local (value = exportOutline (string (adrObject^)));
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			local (replacementTable); new (tableType, @replacementTable);
+			replacementTable.displayName = getDisplayName ();
+			
+			if flPost { //handle the command
+				if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false)) { //false because it's an advanced item
+					addErrorMessage (manilaSuite.getString ("admin.cantEditCheckedOutItemError", @replacementTable, pta: pta))}
+				else {
+					if not (addConfirmBox ("Are you sure you want to restore the Print-Friendly template to the default?")) {
+						if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+							wp.newTextObject (string (manilaData.printFriendlyTemplates.template), adrObject);
+							local (successMessage = manilaSuite.getString ("admin.templateHasBeenRestoredToDefault", pta: pta));
+							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
+						else { //try to update the template
+							local (s = string (pta^.postArgs.[shortName]));
+							s = string.replaceAll (s, lf, "");
+							local (errorString);
+							s = mainResponder.neuterText (s, true, false);
+							wp.newTextObject (s, adrObject);
+							«Refresh the page.
+							local (successMessage = manilaSuite.getString ("admin.homePageTemplateUpdateSuccess", pta: pta));
+							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}}}};
+			
+			if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+				case argTable.[shortName] {
+					"1" {
+						«addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessSingular", @replacementTable, pta: pta))
+						addSuccessMessage ("The " + sectionName + " has been restored to the default.")};
+					"2" {
+						addSuccessMessage (manilaSuite.getString ("admin.updatedSuccessSingular", @replacementTable, pta: pta))}}};
+			
+			«addDescription (manilaSuite.getString ("admin.homePageTemplateSectionDescription", pta: pta))
+			addDescription ("You can edit the template that's used for the print-friendly version of your site. This template should remain simple so that it looks good when printed.");
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value, rows:20);
+			add ("</tr>");
+			«indentLevel--
+			
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editTemplateWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //Cascading Style Sheet
+			sectionName = "Cascading Style Sheet";
+			local (shortName = getShortSectionName ());
+			local (adrObject = @adrSite^.["#newsSite"].cascadingStyleSheet);
+			local (value);
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			if defined (adrObject^) {
+				value = exportOutline (string (adrObject^))}
+			else {
+				value = "&lt;style type=\"text/css\"&gt;\r\r  &lt;/style&gt;"};
+			
+			basicPost (getDisplayName (), shortName, adrObject, @manilaSuite.themes.restoreStyleSheet, flPost); //handle the command //PBS 06/06/00: call themes restore script
+			
+			local (description = manilaSuite.getString ("admin.cssSectionDescription", pta: pta));
+			local (adrTemplate = @adrSite^.["#template"]);
+			if not (string.lower (string (adrTemplate^)) contains "{cascadingstylesheet}") {
+				description = description + manilaSuite.getString ("admin.cssRequiresCssMacro", pta: pta)};
+			addDescription (description);
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editCssWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //External Style Sheet
+			sectionName = "External Style Sheet";
+			local (shortName = getShortSectionName ());
+			local (adrObject = @adrSite^.["#newsSite"].externalStyleSheet);
+			local (value);
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			if defined (adrObject^) {
+				value = exportOutline (string (adrObject^))}
+			else {
+				value = string (manilaData.newSiteTemplate.["#newsSite"].externalStyleSheet)};
+			
+			basicPost (getDisplayName (), shortName, adrObject, @manilaSuite.themes.restoreExternalStyleSheet, flPost); //handle the command
+			
+			local (description = manilaSuite.getString ("admin.externalCssSectionDescription", pta: pta));
+			addDescription (description);
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editExternalCssWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //JavaScript
+			sectionName = "JavaScript";
+			local (shortName = getShortSectionName ());
+			local (adrObject = @adrNewsSite^.javaScript);
+			local (value);
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			if defined (adrObject^) {
+				value = exportOutline (string (adrObject^))}
+			else {
+				value = "&lt;script language=\"JavaScript\"&gt;\r  &lt;!-- Begin hiding from older browsers\r\r  //End hiding--&gt;\r  &lt;/script&gt;"};
+			
+			basicPost (getDisplayName (), shortName, adrObject, @manilaSuite.themes.restoreJavaScript, flPost); //handle the command //PBS 06/06/00: call themes restore script
+			
+			local (description = manilaSuite.getString ("admin.javaScriptSectionDescription", pta: pta));
+			local (adrTemplate = @adrSite^.["#template"]);
+			if not (string.lower (string (adrTemplate^)) contains "{javascript}") {
+				description = description + manilaSuite.getString ("admin.jsRequiresJavaScriptMacro", pta: pta)};
+			addDescription (description);
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editJavaScriptWithPike", pta: pta));
+			
+			endSection ()};
+		«bundle //Colors
+			«sectionName = "Colors"
+			«local (shortName = getShortSectionName ())
+			«if not defined (adrNewsSite^.colors)
+				«local (siteInfo)
+				«new (tableType, @siteInfo)
+				«siteInfo^.adrSite = adrSite
+				«manilaSuite.newSite.createCustomColors (@siteInfo)
+			«local (flPost = wasThisFormPosted ())
+			«addSeparator ()
+			«
+			«if flPost
+				«if not (addConfirmBox ("Are you sure you want to restore these colors to the default?"))
+					«if defined (pta^.postArgs.doRestoreDefault) //restore to default
+						«local (siteInfo)
+						«new (tableType, @siteInfo)
+						«siteInfo.adrSite = adrSite
+						«manilaSuite.newSite.createCustomColors (@siteInfo)
+						«mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)
+					«else //update
+						«local (adrColors = @adrNewsSite^.colors)
+						«adrColors^.membersBoxHeader = pta^.postArgs.["colors.membersBoxHeader"]
+						«adrColors^.membersBoxHeaderText = pta^.postArgs.["colors.membersBoxHeaderText"]
+						«adrColors^.membersBox = pta^.postArgs.["colors.membersBox"]
+						«adrColors^.separator = pta^.postArgs.["colors.separator"]
+						«adrColors^.separatorText = pta^.postArgs.["colors.separatorText"]
+						«adrColors^.discussListings = pta^.postArgs.["colors.discussListings"]
+						«Refresh the page.
+						«mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)
+			«if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
+				«case argTable.[shortName]
+					«"1"
+						«addSuccessMessage ("The custom colors have been restored to the default.")
+					«"2"
+						«addSuccessMessage ("The custom colors have been updated.")
+			«
+			«addDescription ("You can change the colors of elements that can't be edited through the template.")
+			«addFormStart ()
+			«add ("<input type=\"hidden\" name=\"" + shortName + "\" value=\"true\">")
+			«addTable ()
+			«
+			«bundle //members box header color
+				«add ("<tr>")
+				«indentLevel++
+				«tdLabel ("Header color for Members box")
+				«tdValue ("colors.membersBoxHeader", "black")
+				«add ("</tr>")
+				«indentLevel--
+			«bundle //members box header text color
+				«add ("<tr>")
+				«indentLevel++
+				«tdLabel ("Color for text in Members box header")
+				«tdValue ("colors.membersBoxHeaderText", "ivory")
+				«add ("</tr>")
+				«indentLevel--
+			«bundle //members box bgcolor
+				«add ("<tr>")
+				«indentLevel++
+				«tdLabel ("Background color for Members box")
+				«tdValue ("colors.membersBox", "ivory")
+				«add ("</tr>")
+				«indentLevel--
+			«bundle //separator color
+				«add ("<tr>")
+				«indentLevel++
+				«tdLabel ("Separator color")
+				«tdValue ("colors.separator", "black")
+				«add ("</tr>")
+				«indentLevel--
+			«bundle //separator text color
+				«add ("<tr>")
+				«indentLevel++
+				«tdLabel ("Separator text color")
+				«tdValue ("colors.separatorText", "ivory")
+				«add ("</tr>")
+				«indentLevel--
+			«bundle //dg listings color
+				«add ("<tr>")
+				«indentLevel++
+				«tdLabel ("Background color for discussion group listings")
+				«tdValue ("colors.discussListings", "beige")
+				«add ("</tr>")
+				«indentLevel--
+			«
+			«add ("</table>")
+			«addTable ()
+			«addButtons ()
+			«
+			«endSection ()
+		bundle { //Site Structure
+			sectionName = "Site Structure";
+			local (shortName = getShortSectionName ());
+			if not defined (adrSite^.["#hierarchy"]) {
+				local (siteInfo);
+				new (tableType, @siteInfo);
+				siteInfo.adrSite = adrSite;
+				manilaSuite.newSite.createHierarchy (@siteInfo)};
+			local (adrObject = @adrSite^.["#hierarchy"].outline);
+			local (adrStructure = @adrSite^.["#hierarchy"].structure);
+			local (value = exportOutline (string (adrObject^)));
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			basicXmlPost (getDisplayName (), shortName, adrObject, @manilaSuite.newSite.createHierarchy, flPost, @value); //was: , adrStructure)
+			
+			addDescription (manilaSuite.getString ("admin.siteStructureSectionDescription", pta: pta));
+			addFormStart ();
+			addTable ();
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value, rows:15);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editSiteStructureWithPike"));
+			
+			endSection ()};
+		bundle { //Custom Prefs
+			sectionName = "Custom Prefs";
+			local (shortName = getShortSectionName ());
+			if not defined (adrNewsSite^.prefsWizard) {
+				local (siteInfo);
+				new (tableType, @siteInfo);
+				siteInfo.adrSite = adrSite;
+				manilaSuite.newSite.createCustomPrefsWizard (@siteInfo)};
+			local (adrObject = @adrNewsSite^.prefsWizard.outline);
+			local (adrStructure = @adrNewsSite^.prefsWizard.structure);
+			local (value = exportOutline (string (adrObject^)));
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			basicXmlPost (getDisplayName (), shortName, adrObject, @manilaSuite.newSite.createCustomPrefsWizard, flPost, @value, adrStructure);
+			if flPost { //PBS 07/22/00: localization bug fix -- the custom sign up wizard wasn't being created
+				«local (adrSignupWizard = manilaSuite.getWizardAddress ("signup", @adrNewsSite^.signupWizard, pta))
+				local (adrSignUpWizard = @adrNewsSite^.signupWizard);
+				if not defined (adrSignupWizard^) {
+					adrSignupWizard^ = adrNewsSite^.prefsWizard};
+				«if not defined (adrSignupWizard^)
+					«adrSignupWizard^ = prefsSuite.signupWizard
+					«setTimeModified (@adrSignUpWizard^.outline, 0)
+				local (adrRequiredStructure = manilaSuite.getWizardAddress ("signUpPanelStructure", @manilaData.SignUpPanelStructure, pta));
+				manilaSuite.prefs.buildSignUpStructure (@adrNewsSite^.prefsWizard, @adrSignUpWizard^.structure, adrRequiredStructure)};
+			
+			addDescription (manilaSuite.getString ("admin.customPrefsSectionDescription", pta: pta));
+			addFormStart ();
+			addTable ();
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value, rows:30);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editCustomPrefsWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //News day template
+			sectionName = "News Day Template";
+			local (shortName = getShortSectionName ());
+			local (adrObject = @adrSite^.["#newsSite"].newsDayTemplate);
+			local (value);
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			if defined (adrObject^) {
+				value = exportOutline (string (adrObject^))}
+			else {
+				value = "&lt;b>&#123;newsPostTime&#125;&lt;/b>\r&lt;p>\r&#123;newsContent&#125;\r&lt;p>"};
+			
+			basicPost (getDisplayName (), shortName, adrObject, @manilaSuite.themes.restoreNewsDayTemplate, flPost); //handle the command //PBS 06/06/00: call themes restore script
+			if flPost {
+				local (macrosTable = config.mainResponder.prefs.legalMacros);
+				macrosTable.newsPostTime = true;
+				macrosTable.newsContent = true;
+				macrosTable.newsTitle = true;
+				macrosTable.newsArchiveLink = true; //PBS 03/27/00: allow the newsArchiveLink pseudo-macro
+				local (s = string (adrObject^));
+				s = html.neuterMacros (s, @macrosTable);
+				wp.newTextObject (s, adrObject)};
+			
+			
+			local (description = manilaSuite.getString ("admin.newsDayTemplateSectionDesc", pta: pta));
+			description = description + "<p>" + manilaSuite.getString ("admin.newsDayTemplateInstructions", pta: pta);
+			local (adrTemplate = @adrSite^.["#template"]);
+			addDescription (description);
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editNewsDayTemplateWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //Navigation HTML format
+			sectionName = "Navigation Appearance";
+			local (shortName = getShortSectionName ());
+			local (value);
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			local (itemFormat, separatorFormat);
+			«temp.pt = pta^
+			bundle { //get the current item and separator format
+				itemFormat = manilaSuite.getNewsSitePref ("navigation.itemFormat", default:"<b>{item}</b>", flCreate:true);
+				currentItemFormat = manilaSuite.getNewsSitePref ("navigation.currentItemFormat", default:itemFormat, flCreate:true);
+				separatorFormat = manilaSuite.getNewsSitePref ("navigation.separatorFormat", default:"<p>", flCreate:true)};
+			
+			if flPost {
+				if not (addConfirmBox (manilaSuite.getString ("admin.navAppearanceRestoreConfirm", pta: pta))) {
+					if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+						local (siteInfo);
+						new (tableType, @siteInfo);
+						siteInfo.adrSite = adrSite;
+						manilaSuite.themes.restoreNavigationAppearance (@siteInfo); //PBS 06/06/00: restore to default via themes
+						«pta^.newsSite^.navigation.itemFormat = "<b>{item}</b>"
+						«pta^.newsSite^.navigation.separatorFormat = "<p>"
+						local (successMessage = manilaSuite.getString ("admin.navAppearanceRestoreCompleted", pta: pta));
+						mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
+					else {
+						local (macrosTable);
+						new (tableType, @macrosTable);
+						macrosTable.item = true;
+						
+						local (s = string (pta^.postArgs.itemFormat));
+						s = html.neuterMacros (s, @macrosTable);
+						pta^.newsSite^.navigation.itemFormat = s;
+						
+						s = pta^.postArgs.currentItemFormat;
+						s = html.neuterMacros (s, @macrosTable);
+						pta^.newsSite^.navigation.currentItemFormat = s;
+						
+						s = pta^.postArgs.separatorFormat;
+						s = manilaSuite.unTaint (s);
+						pta^.newsSite^.navigation.separatorFormat = s;
+						
+						mainResponder.redirect (pta^.fname + "$" + pta^.pathArgs + "?" + shortName + "=2#" + shortName)}}};
+			
+			if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+				case argTable.[shortName] {
+					"1" {
+						addSuccessMessage (manilaSuite.getString ("admin.navAppearanceRestoreCompleted", pta: pta))};
+					"2" {
+						addSuccessMessage (manilaSuite.getString ("admin.navAppearanceUpdated", pta: pta))}}};
+			
+			local (description = manilaSuite.getString ("admin.navAppearanceDescription", pta: pta));
+			addDescription (description);
+			addFormStart ();
+			addTable ();
+			
+			bundle { //massage text for form presentation
+				itemFormat = string.replaceAll (itemFormat, "&", "&amp;");
+				itemFormat = string.replaceAll (itemFormat, "<", "&lt;");
+				itemFormat = string.replaceAll (itemFormat, ">", "&gt;");
+				itemFormat = string.replaceAll (itemFormat, "\"", "&quot;");
+				
+				currentItemFormat = string.replaceAll (currentItemFormat, "&", "&amp;");
+				currentItemFormat = string.replaceAll (currentItemFormat, "<", "&lt;");
+				currentItemFormat = string.replaceAll (currentItemFormat, ">", "&gt;");
+				currentItemFormat = string.replaceAll (currentItemFormat, "\"", "&quot;");
+				
+				separatorFormat = string.replaceAll (separatorFormat, "&", "&amp;");
+				separatorFormat = string.replaceAll (separatorFormat, "<", "&lt;");
+				separatorFormat = string.replaceAll (separatorFormat, ">", "&gt;");
+				separatorFormat = string.replaceAll (separatorFormat, "\"", "&quot;")};
+			
+			add ("<tr>");
+			add ("<td align=\"left\" valign=\"top\">" + manilaSuite.getString ("admin.itemFormatPrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><textarea name=\"itemFormat\" rows=\"3\" cols=\"40\">" + itemFormat + "</textarea></td>");
+			add ("</tr>");
+			
+			add ("<tr>");
+			add ("<td align=\"left\" valign=\"top\">" + manilaSuite.getString ("admin.currentItemFormatPrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><textarea name=\"currentItemFormat\" rows=\"3\" cols=\"40\">" + currentItemFormat + "</textarea></td>");
+			add ("</tr>");
+			
+			add ("<tr>");
+			add ("<td align=\"left\" valign=\"top\">" + manilaSuite.getString ("admin.separatorFormatPrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><textarea name=\"separatorFormat\" rows=\"3\" cols=\"40\">" + separatorFormat + "</textarea></td>"); //PBS 09/06/01: use a textarea, give the designer more room
+			add ("</tr>");
+			
+			add ("<input type=\"hidden\" name=\"" + shortName + "\" value=\"true\">");
+			
+			addButtons (nil, false);
+			
+			endSection ()};
+		bundle { //Calendar Appearance
+			sectionName = "Calendar Appearance";
+			local (shortName = getShortSectionName ());
+			local (value);
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			local (myt, dnt, dt);
+			bundle { //get the current prefs
+				manilaSuite.html.getCalendarTemplates (@myt, @dnt, @dt)};
+			
+			if flPost {
+				if not (addConfirmBox (manilaSuite.getString ("admin.calAppearanceRestoreConfirm", pta: pta))) {
+					if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+						«pta^.newsSite^.calendarTemplates = manilaData.newSiteTemplate.["#newsSite"].calendarTemplates
+						bundle { //PBS 06/06/00: call themes restore script
+							local (siteInfo);
+							new (tableType, @siteInfo);
+							siteInfo.adrSite = adrSite;
+							manilaSuite.themes.restoreCalendarAppearance (@siteInfo)};
+						
+						local (successMessage = manilaSuite.getString ("admin.calAppearanceRestoredSuccess", pta: pta));
+						mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
+					else {
+						myt = pta^.postArgs.monthYearTemplate;
+						dnt = pta^.postArgs.dayNameTemplate;
+						dt = pta^.postArgs.dayTemplate;
+						
+						myt = string.replace (myt, "{item}", "***", false);
+						dnt = string.replace (dnt, "{item}", "***", false);
+						dt = string.replace (dt, "{item}", "***", false);
+						
+						pta^.newsSite^.calendarTemplates.monthYearTemplate = manilaSuite.unTaint (myt);
+						pta^.newsSite^.calendarTemplates.dayNameTemplate = manilaSuite.unTaint (dnt);
+						pta^.newsSite^.calendarTemplates.dayTemplate = manilaSuite.unTaint (dt);
+						
+						mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}}};
+			
+			if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+				case argTable.[shortName] {
+					"1" {
+						addSuccessMessage (manilaSuite.getString ("admin.calAppearanceRestoredSuccess", pta: pta))};
+					"2" {
+						addSuccessMessage (manilaSuite.getString ("admin.calAppearanceUpdatedSuccess", pta: pta))}}};
+			
+			local (description = manilaSuite.getString ("admin.calAppearanceSectionDescription", pta: pta));
+			addDescription (description);
+			addFormStart ();
+			addTable ();
+			
+			bundle { //encode text for placement in an input field
+				on encodeText (s) {
+					s = string.replaceAll (s, "&", "&amp;");
+					s = string.replaceAll (s, "<", "&lt;");
+					s = string.replaceAll (s, ">", "&gt;");
+					s = string.replaceAll (s, "\"", "&quot;");
+					s = string.replaceAll (s, "***", "{item}");
+					return (s)};
+				myt = encodeText (myt);
+				dnt = encodeText (dnt);
+				dt = encodeText (dt)};
+			
+			add ("<tr>");
+			indentLevel++;
+			add ("<td align=\"left\">" + manilaSuite.getString ("admin.monthYearPrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><input name=\"monthYearTemplate\" size=\"63\" value=\"" + myt + "\"></td>");
+			add ("</tr>");
+			indentLevel--;
+			add ("<tr>");
+			indentLevel++;
+			add ("<td align=\"left\">" + manilaSuite.getString ("admin.dayNamePrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><input name=\"dayNameTemplate\" size=\"63\" value=\"" + dnt + "\"></td>");
+			add ("</tr>");
+			add ("<tr>");
+			indentLevel++;
+			add ("<td align=\"left\">" + manilaSuite.getString ("admin.dayPrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><input name=\"dayTemplate\" size=\"63\" value=\"" + dt + "\"></td>");
+			add ("</tr>");
+			indentLevel--;
+			add ("<input type=\"hidden\" name=\"" + shortName + "\" value=\"true\">");
+			addButtons (nil, false);
+			
+			endSection ()};
+		bundle { //Members Box Join Now
+			sectionName = "Join Now Members Box";
+			local (shortName = getShortSectionName ());
+			if not defined (pta^.newsSite^.membersBoxTemplates) {
+				pta^.newsSite^.membersBoxTemplates = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates};
+			local (adrObject = @pta^.newsSite^.membersBoxTemplates.signInBox);
+			local (value = exportOutline (string (adrObject^)));
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			if flPost { //handle the command
+				if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false)) { //false because it's an advanced item
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.displayName = getDisplayName ();
+					addErrorMessage (manilaSuite.getString ("admin.cantEditCheckedOutItemError", @replacementTable, pta: pta))}
+				else {
+					if not (addConfirmBox (manilaSuite.getString ("admin.joinNowMembersBoxRestoreConfirm", pta: pta))) {
+						if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+							«pta^.newsSite^.membersBoxTemplates.signInBox = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signInBox
+							bundle { //PBS 06/06/00: call themes restore script
+								local (siteInfo);
+								new (tableType, @siteInfo);
+								siteInfo.adrSite = adrSite;
+								manilaSuite.themes.restoreSignInBox (@siteInfo)};
+							
+							local (successMessage = manilaSuite.getString ("admin.joinNowMembersBoxRestoreSuccess", pta: pta));
+							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
+						else { //update
+							local (s = string (pta^.postArgs.[shortName]));
+							s = string.replaceAll (s, lf, "");
+							local (macrosTable = config.mainResponder.prefs.legalMacros);
+							macrosTable.headerColor = true;
+							macrosTable.headerTextColor = true;
+							macrosTable.bgColor = true;
+							macrosTable.joinNowUrl = true;
+							macrosTable.signUpUrl = true;
+							macrosTable.loginUrl = true;
+							macrosTable.signOnUrl = true;
+							s = html.neuterMacros (s, @macrosTable);
+							table.assign (adrObject, s);
+							local (successMessage = manilaSuite.getString ("admin.joinNowMembersBoxUpdatedSuccess", pta: pta));
+							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}}}};
+			
+			if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+				case argTable.[shortName] {
+					"1" {
+						addSuccessMessage (manilaSuite.getString ("admin.joinNowMembersBoxRestoreSuccess", pta: pta))};
+					"2" {
+						addSuccessMessage (manilaSuite.getString ("admin.joinNowMembersBoxUpdatedSuccess", pta: pta))}}};
+			
+			addDescription (manilaSuite.getString ("admin.joinNowMembersBoxDescription", pta: pta));
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value, rows:25);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editJoinNowMembersBoxWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //Members Box Sign Out
+			sectionName = "Sign Out Members Box";
+			local (shortName = getShortSectionName ());
+			if not defined (pta^.newsSite^.membersBoxTemplates) {
+				pta^.newsSite^.membersBoxTemplates = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates};
+			local (adrObject = @pta^.newsSite^.membersBoxTemplates.signOutBox);
+			local (value = exportOutline (string (adrObject^)));
+			local (flPost = wasThisFormPosted ());
+			addSeparator ();
+			
+			if flPost { //handle the command
+				if not (manilaSuite.custody.memberCanCheckOutObject (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false)) { //false because it's an advanced item
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.displayName = getDisplayName ();
+					addErrorMessage (manilaSuite.getString ("admin.cantEditCheckedOutItemError", @replacementTable, pta: pta))}
+				else {
+					if not (addConfirmBox (manilaSuite.getString ("admin.signOutMembersBoxRestoreConfirm", pta: pta))) {
+						if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+							«pta^.newsSite^.membersBoxTemplates.signOutBox = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signOutBox
+							bundle { //PBS 06/06/00: call themes restore script
+								local (siteInfo);
+								new (tableType, @siteInfo);
+								siteInfo.adrSite = adrSite;
+								manilaSuite.themes.restoreSignOutBox (@siteInfo)};
+							local (successMessage = manilaSuite.getString ("admin.signOutMembersBoxRestoreSuccess", pta: pta));
+							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
+						else { //update
+							local (s = string (pta^.postArgs.[shortName]));
+							s = string.replaceAll (s, lf, "");
+							local (macrosTable = config.mainResponder.prefs.legalMacros);
+							macrosTable.headerColor = true;
+							macrosTable.headerTextColor = true;
+							macrosTable.bgColor = true;
+							macrosTable.signOutUrl = true;
+							s = html.neuterMacros (s, @macrosTable);
+							table.assign (adrObject, s);
+							local (successMessage = manilaSuite.getString ("admin.signOutMembersBoxUpdateSuccess", pta: pta));
+							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}}}};
+			
+			if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
+				case argTable.[shortName] {
+					"1" {
+						addSuccessMessage (manilaSuite.getString ("admin.signOutMembersBoxRestoreSuccess", pta: pta))};
+					"2" {
+						addSuccessMessage (manilaSuite.getString ("admin.signOutMembersBoxUpdateSuccess", pta: pta))}}};
+			
+			addDescription (manilaSuite.getString ("admin.signOutMembersBoxDescription", pta: pta));
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			textArea (value:value, rows:25);
+			add ("</tr>");
+			addButtons (adrObject, true, manilaSuite.getString ("admin.editSignOutMembersBoxWithPike", pta: pta));
+			
+			endSection ()};
+		bundle { //Theme PBS 06/05/00
+			sectionName = "Theme";
+			local (shortName = getShortSectionName ());
+			local (flPost = wasThisFormPosted ());
+			local (description = manilaSuite.getString ("admin.themeSectionDescription", pta: pta));
+			addSeparator ();
+			
+			if flPost {
+				if not (addConfirmBox (manilaSuite.getString ("admin.themeRestoreDefaultConfirm", pta: pta))) {
+					if defined (pta^.postArgs.doRestoreDefault) { //restore to default
+						pta^.newsSite^.theme.name = pta^.newsSite^.siteName;
+						pta^.newsSite^.theme.flCloneable = false;
+						pta^.newsSite^.theme.description = "";
+						local (defaultAuthor = "");
+						if defined (pta^.adrMemberInfo^.personalInfo.name) {
+							defaultAuthor = pta^.adrMemberInfo^.personalInfo.name};
+						pta^.newsSite^.theme.authorName = defaultAuthor;
+						local (defaultEmail = nameOf (pta^.adrMemberInfo^));
+						pta^.newsSite^.theme.authorEmail = defaultEmail;
+						local (successMessage = manilaSuite.getString ("admin.themeRestoreDefaultSuccess", pta: pta));
+						addSuccessMessage (successMessage)}
+					else {
+						pta^.newsSite^.theme.flCloneable = boolean (pta^.postArgs.flCloneable);
+						pta^.newsSite^.theme.name = manilaSuite.unTaint (pta^.postArgs.themeName);
+						pta^.newsSite^.theme.authorName = manilaSuite.unTaint (pta^.postArgs.themeAuthor);
+						pta^.newsSite^.theme.authorEmail = manilaSuite.unTaint (pta^.postArgs.themeEmail);
+						pta^.newsSite^.theme.description = manilaSuite.unTaint (pta^.postArgs.themeDescription);
+						addSuccessMessage (manilaSuite.getString("admin.themeUpdateSuccess", pta: pta))}}};
+			
+			addDescription (description);
+			
+			local (flCloneable = manilaSuite.getNewsSitePref ("theme.flCloneable", default:false, flCreate:true));
+			local (themeName = manilaSuite.getNewsSitePref ("theme.name", default:pta^.newsSite^.siteName, flCreate:true));
+			local (themeDescription = manilaSuite.getNewsSitePref ("theme.description", default:"", flCreate:true));
+			local (defaultAuthor = "");
+			if defined (pta^.adrMemberInfo^.personalInfo.name) {
+				defaultAuthor = pta^.adrMemberInfo^.personalInfo.name};
+			local (themeAuthor = manilaSuite.getNewsSitePref ("theme.authorName", default:defaultAuthor, flCreate:true));
+			local (defaultEmail = nameOf (pta^.adrMemberInfo^));
+			local (themeEmail = manilaSuite.getNewsSitePref ("theme.authorEmail", default:defaultEmail, flCreate:true));
+			
+			if flCloneable { //add download link
+				try {
+					local (downloadUrl = manilaSuite.themes.getDownloadUrl (adrSite));
+					local (replacementTable); new (tableType, @replacementTable);
+					replacementTable.downloadUrl = downloadUrl;
+					«local (downloadLink = html.getLink ("here", downloadUrl))
+					add (manilaSuite.getString ("admin.themeDownloadLink", @replacementTable, pta: pta))}};
+			
+			addFormStart ();
+			addTable ();
+			
+			add ("<tr>");
+			indentLevel++;
+			add ("<td align=\"left\">" + manilaSuite.getString ("admin.themeCloneablePrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\">");
+			add (manilaSuite.getString ("common.yes", pta: pta) + " <input type=\"radio\" name=\"flCloneable\" value=\"true\"");
+			if flCloneable {
+				add (" checked")};
+			add (">");
+			add (manilaSuite.getString ("common.no", pta: pta) + " <input type=\"radio\" name=\"flCloneable\" value=\"false\"");
+			if not flCloneable {
+				add (" checked")};
+			add (">");
+			add ("</tr>");
+			add ("<tr>");
+			add ("<td align=\"left\">" + manilaSuite.getString ("admin.themeNamePrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><input name=\"themeName\" size=\"40\" value=\"" + manilaSuite.translateToEntities (themeName) + "\"></td>");
+			add ("</tr>");
+			add ("<tr>");
+			add ("<td align=\"left\">" + manilaSuite.getString ("admin.themeAuthorPrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><input name=\"themeAuthor\" size=\"40\" value=\"" + manilaSuite.translateToEntities (themeAuthor) + "\"></td>");
+			add ("</tr>");
+			add ("<tr>");
+			add ("<td align=\"left\">" + manilaSuite.getString ("admin.themeAuthorEmailPrompt", pta: pta) + "</td>");
+			add ("<td align=\"left\"><input name=\"themeEmail\" size=\"40\" value=\"" + manilaSuite.translateToEntities (themeEmail) + "\"></td>");
+			add ("</tr>");
+			add ("<tr>");
+			add ("<td align=\"left\">" + manilaSuite.getString ("admin.themeDescriptionPrompt", pta: pta) + "</td>");
+			textArea ("themeDescription", value:themeDescription, rows:3, cols:35, colspan:1, leadingSpaces:"");
+			
+			add ("</tr>");
+			add ("<input type=\"hidden\" name=\"" + shortName + "\" value=\"true\">");
+			
+			
+			addButtons (nil, false);
+			
+			endSection ()};
+		bundle { //7/10/03: robots.txt editor
+			sectionName = "Robots.txt";
+			local (shortName = getShortSectionName ());
+			addSeparator ();
+			
+			add (manilaSuite.robots.editor (false, pta^.fname + "$" + advancedPageName + "#" + getShortSectionName ()))}};
+	
+	bundle { //replace the navlist with the list of items on this page
+		local (i, navText = "", sep = " - ", sizeList = sizeOf (navList));
+		for i = 1 to sizeList {
+			local (item = navList [i]);
+			local (url = "#" + string.lower (string.dropNonAlphas (item)));
+			try {
+				item = manilaSuite.getString ("admin." + string.innerCaseName (item) + "SectionName", pta: pta)};
+			local (link = html.getLink (item, url));
+			navText = navText + " " + link;
+			if i != sizeList {
+				navText = navText + sep}};
+		htmlText = string.replaceAll (htmlText, "[navText]", navText)};
+	
+	return (htmlText)}
