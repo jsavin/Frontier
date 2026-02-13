@@ -84,6 +84,9 @@ static boolean filespec_to_cstring(const ptrfilespec fs, char *path, size_t path
 /* Maximum file size for readwholefile() - 500MB limit prevents OOM on huge files */
 #define MAX_READWHOLEFILE_SIZE (500 * 1024 * 1024)
 
+/* Buffer size for file copy/move operations (128KB) */
+#define FILE_COPY_BUFFER_SIZE (128 * 1024)
+
 /* Threshold for treating count as "infinity" in file.read(path, infinity).
  * Any count >= 2GB effectively means "read the rest of the file".
  * This handles both UserTalk's 'infinity' constant and large explicit values. */
@@ -461,13 +464,11 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 	 * at function entry. Since UserTalk expressions like file.exists(file.folderFromPath(x))
 	 * cause recursive entry, two frames exceed the 512KB pthread stack limit.
 	 *
-	 * path       - primary path buffer (source path in two-path operations)
-	 * path2      - secondary path buffer (dest path in copy/move/rename)
-	 * normalized - for path normalization/comparison
+	 * path  - primary path buffer (source path in two-path operations)
+	 * path2 - secondary path buffer (dest path in copy/move/rename)
 	 */
 	char path[4096];
 	char path2[4096];
-	char normalized[4096];
 	struct stat st;
 
 	switch (token) {
@@ -876,7 +877,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			}
 
 			/* Heap-allocate copy buffer (128KB) to avoid stack overflow */
-			copybuf = malloc(131072);
+			copybuf = malloc(FILE_COPY_BUFFER_SIZE);
 			if (!copybuf) {
 				copyctopstring("Out of memory", bserror);
 				return false;
@@ -900,7 +901,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 			}
 
 			/* Copy data in chunks */
-			while ((bytes_read = fread(copybuf, 1, 131072, fpsrc)) > 0) {
+			while ((bytes_read = fread(copybuf, 1, FILE_COPY_BUFFER_SIZE, fpsrc)) > 0) {
 				if (fwrite(copybuf, 1, bytes_read, fpdest) != bytes_read) {
 					copyctopstring("Write error during copy", bserror);
 					goto copy_cleanup;
@@ -973,7 +974,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				size_t bytes_read;
 
 				/* Heap-allocate copy buffer (128KB) to avoid stack overflow */
-				copybuf = malloc(131072);
+				copybuf = malloc(FILE_COPY_BUFFER_SIZE);
 				if (!copybuf) {
 					copyctopstring("Out of memory", bserror);
 					return false;
@@ -997,7 +998,7 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				}
 
 				/* Copy data */
-				while ((bytes_read = fread(copybuf, 1, 131072, fpsrc)) > 0) {
+				while ((bytes_read = fread(copybuf, 1, FILE_COPY_BUFFER_SIZE, fpsrc)) > 0) {
 					if (fwrite(copybuf, 1, bytes_read, fpdest) != bytes_read) {
 						copyctopstring("Write error during move", bserror);
 						fclose(fpsrc);
