@@ -466,6 +466,10 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 	 *
 	 * path  - primary path buffer (source path in two-path operations)
 	 * path2 - secondary path buffer (dest path in copy/move/rename)
+	 *
+	 * WARNING: These buffers are reused across all cases. Each case may
+	 * overwrite their contents. Do not add fallthrough or goto between
+	 * cases without considering buffer reuse.
 	 */
 	char path[4096];
 	char path2[4096];
