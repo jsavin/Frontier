@@ -6,8 +6,8 @@
  * return true so scripts don't fail.
  *
  * Key implementations:
- *   - wp.setText: consumes text parameter, returns true
- *   - wp.getText: returns empty string
+ *   - wp.getText: returns plaintext from targeted WPText object
+ *   - wp.setText: sets plaintext on targeted WPText object
  *   - wp.intextmode: returns false (not in text edit mode)
  *   - wp.getselect/setselect: use thread-local selection state (GIL-safe)
  *   - All formatting verbs: no-op returning true
@@ -20,8 +20,11 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "langexternal.h"
 #include "processinternal.h"  /* wp_sel_start/wp_sel_end macros (thread-local via GIL) */
 #include "tablestructure.h"
+#include "wpverbs.h"
+#include "wptext_portable.h"
 #include "logging.h"
 
 /* Token enum matching GUI wp verbs (from wpverbs.c) */
@@ -55,10 +58,58 @@ enum {
     wpv_selectparagraph = 26
 };
 
+static void seterrorstring(const char *msg, bigstring bserror) {
+    if (bserror == NULL)
+        return;
+    copyctopstring(msg, bserror);
+}
+
+/*
+ * wp_resolve_target - Resolve the current target to a WPText external variable.
+ *
+ * Returns the hdlexternalvariable if the target is a WPText object, or NULL
+ * with a descriptive error in bserror on failure.
+ */
+static hdlexternalvariable wp_resolve_target(bigstring bserror) {
+    hdlhashtable htable;
+    bigstring bsname;
+    tyvaluerecord val;
+    hdlhashnode hnode;
+    hdlexternalvariable hv;
+
+    if (!langgettarget(&htable, bsname)) {
+        seterrorstring("no wp target set", bserror);
+        return NULL;
+    }
+
+    if (!hashtablelookup(htable, bsname, &val, &hnode)) {
+        seterrorstring("wp target variable not found", bserror);
+        return NULL;
+    }
+
+    if (val.valuetype != externalvaluetype) {
+        seterrorstring("target is not a wp text object", bserror);
+        return NULL;
+    }
+
+    hv = (hdlexternalvariable)val.data.externalvalue;
+
+    if (hv == NULL) {
+        seterrorstring("target is not a wp text object", bserror);
+        return NULL;
+    }
+
+    if ((**hv).id != idwordprocessor) {
+        seterrorstring("target is not a wp text object", bserror);
+        return NULL;
+    }
+
+    return hv;
+}
+
 static boolean wp_valueproc(short token, hdltreenode hparam1,
                                    tyvaluerecord *vreturned,
                                    bigstring bserror) {
-    (void)bserror;
 
     switch (token) {
         case wpv_intextmode:
@@ -69,20 +120,53 @@ static boolean wp_valueproc(short token, hdltreenode hparam1,
             /* wp.setTextMode(fl) - no-op in headless mode */
             return setbooleanvalue(true, vreturned);
 
-        case wpv_gettext:
-            /* wp.getText() - return empty string in headless mode */
-            return setstringvalue(BIGSTRING("\p"), vreturned);
+        case wpv_gettext: {
+            /* wp.getText() - return plaintext from targeted WPText object */
+            hdlexternalvariable hv;
+            Handle htext;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            hv = wp_resolve_target(bserror);
+            if (hv == NULL)
+                return false;
+
+            if (!newemptyhandle(&htext))
+                return false;
+
+            if (!wpverbpacktotext(hv, htext)) {
+                disposehandle(htext);
+                seterrorstring("failed to extract text from wp object", bserror);
+                return false;
+            }
+
+            return setheapvalue(htext, stringvaluetype, vreturned);
+        }
 
         case wpv_settext: {
-            /* wp.setText(s) - consume text parameter without validation.
-             * In headless mode we accept any type to avoid script failures
-             * during startup bootstrap. The value is intentionally discarded. */
-            tyvaluerecord val;
+            /* wp.setText(s) - set plaintext on targeted WPText object */
+            hdlexternalvariable hv;
+            Handle hutf8;
 
             flnextparamislast = true;
 
-            if (!getparamvalue(hparam1, 1, &val))
+            if (!getexempttextvalue(hparam1, 1, &hutf8))
                 return false;
+
+            hv = wp_resolve_target(bserror);
+            if (hv == NULL) {
+                disposehandle(hutf8);
+                return false;
+            }
+
+            if (!wp_portable_set_plaintext(hv, hutf8)) {
+                disposehandle(hutf8);
+                seterrorstring("failed to set text on wp object", bserror);
+                return false;
+            }
+
+            disposehandle(hutf8);
 
             return setbooleanvalue(true, vreturned);
         }

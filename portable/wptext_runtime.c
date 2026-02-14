@@ -17,7 +17,7 @@ extern boolean flconvertingolddatabase;
 #define BlockMoveData(src, dst, size) memmove((dst), (src), (size))
 #endif
 
-#if defined(FRONTIER_HEADLESS) && defined(FRONTIER_TESTS)
+#ifdef FRONTIER_HEADLESS
 static boolean wp_portable_utf8_to_rtf(Handle hutf8, Handle *hrtf, long *out_chars);
 #endif
 static boolean wp_portable_rtf_to_utf8(const uint8_t *rtf, long len, Handle *hout_utf8);
@@ -716,6 +716,26 @@ Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8)
         (state->portable_rtf_cache != nil) ? "yes" : "no");
 #endif
 
+    /* Fast path: if RTF cache is available in memory, extract from it directly.
+     * This handles newly created objects and objects modified by wp.setText()
+     * that haven't been saved to disk yet. */
+    if (state->portable_rtf_cache != nil && state->portable_format) {
+        const uint8_t *rtf = (const uint8_t *)*state->portable_rtf_cache;
+        long rtf_len = gethandlesize(state->portable_rtf_cache);
+        Handle hutf8 = nil;
+        if (wp_portable_rtf_to_utf8(rtf, rtf_len, &hutf8)) {
+            *hout_utf8 = hutf8;
+            return true;
+        }
+        /* RTF decode failed — fall through to raw cache copy */
+        log_warn(LOG_COMP_GENERAL, "[wp-plain] unable to decode cached RTF, returning raw bytes");
+        if (!newclearhandle(rtf_len, &hutf8))
+            return false;
+        BlockMoveData(rtf, *hutf8, rtf_len);
+        *hout_utf8 = hutf8;
+        return true;
+    }
+
     Handle hpacked = nil;
     if (!wp_portable_state_dbref(NULL, hv, state, &hpacked))
         return false;
@@ -809,73 +829,6 @@ void wp_portable_note_drop_logged(hdlexternalvariable hv, const char *name_hint)
 
 void wp_portable_note_conversion_logged(hdlexternalvariable hv, const char *name_hint) {
     wp_portable_log_event("converted-to-plain-text", hv, name_hint);
-}
-
-#ifdef FRONTIER_TESTS
-Boolean wp_portable_pack_text_for_test(const char *utf8text, Handle *hpacked) {
-    if (utf8text == NULL || hpacked == NULL)
-        return false;
-
-    long textlen = (long)strlen(utf8text);
-    Handle hutf8 = nil;
-    if (!newclearhandle(textlen, &hutf8))
-        return false;
-    if (textlen > 0)
-        BlockMoveData(utf8text, *hutf8, (size_t)textlen);
-
-    Handle hrtf = nil;
-    long char_count = 0;
-    if (!wp_portable_utf8_to_rtf(hutf8, &hrtf, &char_count)) {
-        disposehandle(hutf8);
-        return false;
-    }
-    disposehandle(hutf8);
-
-    wp_portable_state temp = {0};
-    temp.maxpos = char_count;
-    temp.timecreated = 0;
-    temp.timelastsave = 0;
-    temp.ctsaves = 0;
-    temp.portable_format = true;
-    temp.header_valid = true;
-
-    Handle payload = nil;
-    boolean ok = wp_portable_wrap_rtf_payload(&temp, hrtf, &payload);
-    disposehandle(hrtf);
-    if (!ok)
-        return false;
-
-    *hpacked = payload;
-    return true;
-}
-
-Boolean wp_portable_load_portable_blob_for_test(const unsigned char *blob, long len) {
-    if (blob == NULL || len < (long)sizeof(wp_portable_diskheader))
-        return false;
-
-    wp_portable_diskheader disk;
-    BlockMoveData(blob, &disk, sizeof(disk));
-
-    if (conditionallongswap(disk.magic) != WP_PORTABLE_MAGIC)
-        return false;
-    if (conditionalshortswap(disk.version) != WP_PORTABLE_VERSION)
-        return false;
-
-    uint32_t utf8len = conditionallongswap(disk.utf8bytelen);
-    uint32_t reserved_len = conditionallongswap(disk.reservedlength);
-    if (reserved_len != 0)
-        return false;
-
-    size_t header_size = sizeof(wp_portable_diskheader);
-    if ((long)header_size + (long)utf8len != len)
-        return false;
-
-    const uint8_t *payload = blob + header_size;
-    Handle hutf8 = nil;
-    boolean ok = wp_portable_rtf_to_utf8(payload, (long)utf8len, &hutf8);
-    if (ok && hutf8 != nil)
-        disposehandle(hutf8);
-    return ok;
 }
 
 #define RTF_PREFIX "{\\rtf1\\ansi\\deff0\\pard "
@@ -988,6 +941,103 @@ static boolean wp_portable_utf8_to_rtf(Handle hutf8, Handle *hrtf, long *out_cha
     *hrtf = hrtf_local;
     return true;
 }
+
+boolean wp_portable_set_plaintext(hdlexternalvariable hv, Handle hutf8) {
+    wp_portable_state *state = wp_portable_state_require(hv);
+    if (state == NULL)
+        return false;
+
+    /* Load existing metadata (timecreated, timelastsave, ctsaves) from disk
+     * before replacing content. Without this, a disk-backed object edited via
+     * setText would lose its document timestamps. Failure is non-fatal — a
+     * newly created object has no disk metadata to load. */
+    wp_portable_state_refresh_metadata(hv, state);
+
+    Handle hrtf = nil;
+    long char_count = 0;
+    if (!wp_portable_utf8_to_rtf(hutf8, &hrtf, &char_count))
+        return false;
+
+    if (state->portable_rtf_cache != nil)
+        disposehandle(state->portable_rtf_cache);
+
+    /* hrtf is a fresh handle from newclearhandle() inside wp_portable_utf8_to_rtf,
+     * never added to tmp stack — safe to store in persistent state. */
+    state->portable_rtf_cache = hrtf;
+    state->portable_payload_size = gethandlesize(hrtf);
+    state->maxpos = char_count;
+    state->dirty = true;
+    state->portable_format = true;
+    state->header_valid = true;
+    return true;
+}
+
+#ifdef FRONTIER_TESTS
+Boolean wp_portable_pack_text_for_test(const char *utf8text, Handle *hpacked) {
+    if (utf8text == NULL || hpacked == NULL)
+        return false;
+
+    long textlen = (long)strlen(utf8text);
+    Handle hutf8 = nil;
+    if (!newclearhandle(textlen, &hutf8))
+        return false;
+    if (textlen > 0)
+        BlockMoveData(utf8text, *hutf8, (size_t)textlen);
+
+    Handle hrtf = nil;
+    long char_count = 0;
+    if (!wp_portable_utf8_to_rtf(hutf8, &hrtf, &char_count)) {
+        disposehandle(hutf8);
+        return false;
+    }
+    disposehandle(hutf8);
+
+    wp_portable_state temp = {0};
+    temp.maxpos = char_count;
+    temp.timecreated = 0;
+    temp.timelastsave = 0;
+    temp.ctsaves = 0;
+    temp.portable_format = true;
+    temp.header_valid = true;
+
+    Handle payload = nil;
+    boolean ok = wp_portable_wrap_rtf_payload(&temp, hrtf, &payload);
+    disposehandle(hrtf);
+    if (!ok)
+        return false;
+
+    *hpacked = payload;
+    return true;
+}
+
+Boolean wp_portable_load_portable_blob_for_test(const unsigned char *blob, long len) {
+    if (blob == NULL || len < (long)sizeof(wp_portable_diskheader))
+        return false;
+
+    wp_portable_diskheader disk;
+    BlockMoveData(blob, &disk, sizeof(disk));
+
+    if (conditionallongswap(disk.magic) != WP_PORTABLE_MAGIC)
+        return false;
+    if (conditionalshortswap(disk.version) != WP_PORTABLE_VERSION)
+        return false;
+
+    uint32_t utf8len = conditionallongswap(disk.utf8bytelen);
+    uint32_t reserved_len = conditionallongswap(disk.reservedlength);
+    if (reserved_len != 0)
+        return false;
+
+    size_t header_size = sizeof(wp_portable_diskheader);
+    if ((long)header_size + (long)utf8len != len)
+        return false;
+
+    const uint8_t *payload = blob + header_size;
+    Handle hutf8 = nil;
+    boolean ok = wp_portable_rtf_to_utf8(payload, (long)utf8len, &hutf8);
+    if (ok && hutf8 != nil)
+        disposehandle(hutf8);
+    return ok;
+}
 #endif /* FRONTIER_TESTS */
 
 #endif /* FRONTIER_HEADLESS */
@@ -996,7 +1046,7 @@ static boolean wp_portable_utf8_to_rtf(Handle hutf8, Handle *hrtf, long *out_cha
  * Helper function for RTF-to-UTF8 conversion (wp_portable_rtf_to_utf8).
  * Defined outside FRONTIER_HEADLESS since wp_portable_rtf_to_utf8 is used unconditionally.
  * Note: wp_portable_append_bytes_unconditionals (inside FRONTIER_HEADLESS) serves the same purpose for
- * wp_portable_utf8_to_rtf, but that function is test-only.
+ * wp_portable_utf8_to_rtf.
  */
 static boolean wp_portable_append_bytes_unconditional(Handle h, const void *data, size_t len) {
     if (h == nil || data == NULL || len == 0)
