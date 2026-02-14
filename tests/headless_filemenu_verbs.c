@@ -518,7 +518,9 @@ static boolean filemenu_closeall(tyvaluerecord *vreturned) {
         hnext = (**hodb).hnext;  /* Save next before we dispose current */
 
         if (!filemenu_close_guestdb(hodb)) {
-            log_verb_error(LOG_COMP_DB, "filemenu_closeall: failed to close a database");
+            /* Not gated on try-block state: closeall continues and returns true,
+             * so this warning is the only runtime signal of a close failure. */
+            log_warn(LOG_COMP_DB, "filemenu_closeall: failed to close a database");
             /* Continue closing others */
         }
 
