@@ -61,4 +61,5 @@ HEADLESS_VERBS_SOURCES = \
     headless_searchengine_verbs.c \
     headless_mrcalendar_verbs.c \
     headless_webserver_verbs.c \
-    headless_inetd_verbs.c
+    headless_inetd_verbs.c \
+    headless_wp_verbs.c

@@ -292,14 +292,18 @@ static boolean init_efp_1002(langvaluecallback valuecallback) {
 }
 
 static boolean init_efp_1003(langvaluecallback valuecallback) {
-    hdlhashtable htable;
+    (void) valuecallback;
 
-    /* Processor: wp (0 verbs) */
-    if (!newfunctionprocessor(BIGSTRING("\002wp"), valuecallback, true, &htable))
+    /* Processor: wp - register with headless wp verb callback.
+       In headless mode, wp verbs like setText/getText use portable state
+       instead of Paige word processor engine. */
+    extern boolean wpinitverbs(void);
+    log_debug(LOG_COMP_STARTUP, "init_efp_1003: calling wpinitverbs");
+    if (!wpinitverbs()) {
+        log_error(LOG_COMP_STARTUP, "init_efp_1003: wpinitverbs FAILED");
         return false;
-
-    pushhashtable(htable);
-    pophashtable();
+    }
+    log_debug(LOG_COMP_STARTUP, "init_efp_1003: wpinitverbs succeeded");
 
     return true;
 }
@@ -2008,8 +2012,12 @@ boolean headless_init_kernel_verbs(void) {
     if (!menuinitverbs())
         return false;
 
-    if (!init_efp_1003(&langfunctionvalue))
+    log_debug(LOG_COMP_STARTUP, "headless_init_kernel_verbs: about to call init_efp_1003");
+    if (!init_efp_1003(&langfunctionvalue)) {
+        log_error(LOG_COMP_STARTUP, "headless_init_kernel_verbs: init_efp_1003 FAILED");
         return false;
+    }
+    log_debug(LOG_COMP_STARTUP, "headless_init_kernel_verbs: init_efp_1003 succeeded");
 
     if (!init_efp_1004(&langfunctionvalue))
         return false;

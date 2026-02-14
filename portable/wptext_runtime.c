@@ -430,22 +430,91 @@ boolean wpverbsetdirty(hdlexternalvariable h, boolean fldirty) {
 }
 
 boolean wpverbnew(Handle h, hdlexternalvariable *hv) {
-    (void)h;
-    (void)hv;
-    return false;
+    wp_portable_state *state;
+
+    if (hv == NULL)
+        return false;
+
+    state = wp_portable_state_alloc();
+    if (state == NULL)
+        return false;
+
+    if (!langnewexternalvariable(true, 0, hv)) {
+        wp_portable_state_free(state);
+        return false;
+    }
+
+    wp_portable_state_attach(*hv, state, nildbaddress);
+    state->dirty = true;
+    state->portable_format = true;
+    state->timecreated = timenow();
+    state->timelastsave = state->timecreated;
+
+    if (h != nil) {
+        state->portable_rtf_cache = h;
+    }
+
+    return true;
 }
 
 boolean wpverbmemorypack(hdlexternalvariable h, Handle *hpacked) {
-    (void)h;
-    (void)hpacked;
-    return false;
+
+    if (h == nil || hpacked == NULL || *hpacked == nil)
+        return false;
+
+    boolean fltempload = !(**h).flinmemory;
+
+    wp_portable_state *state = wp_portable_state_require(h);
+    if (state == NULL)
+        return false;
+
+    Handle hpayload = nil;
+    boolean ok = wp_portable_state_pack_portable(h, state, &hpayload);
+
+    if (fltempload) {
+        wp_portable_state_free(state);
+        (**h).variabledata = 0;
+        (**h).flinmemory = false;
+    }
+
+    if (!ok)
+        return false;
+
+    ok = pushhandle(hpayload, *hpacked);
+    disposehandle(hpayload);
+
+    return ok;
 }
 
 boolean wpverbmemoryunpack(Handle hpacked, long *ixload, hdlexternalvariable *h) {
-    (void)hpacked;
-    (void)ixload;
-    (void)h;
-    return false;
+
+    if (h == NULL)
+        return false;
+
+    Handle hdata = nil;
+
+    if (!loadhandleremains(*ixload, hpacked, &hdata))
+        return false;
+
+    wp_portable_state *state = wp_portable_state_alloc();
+    if (state == NULL) {
+        disposehandle(hdata);
+        return false;
+    }
+
+    hdlexternalvariable hv = nil;
+    if (!langnewexternalvariable(true, (long)(intptr_t)state, &hv)) {
+        wp_portable_state_free(state);
+        disposehandle(hdata);
+        return false;
+    }
+
+    wp_portable_state_attach(hv, state, nildbaddress);
+    state->portable_format = true;
+    state->portable_rtf_cache = hdata;
+
+    *h = hv;
+    return true;
 }
 
 boolean wpverbpack(hdlexternalvariable hv, Handle *hpacked, boolean *flnewdbaddress) {

@@ -6,14 +6,15 @@ Parses the Windows resource file containing EFP (External Function Processor)
 definitions and generates C initialization code that calls all verb processor
 init functions.
 
-With --analyze flag, automatically detects implemented verbs and generates
-the HEADLESS_REGISTERED whitelist.
+The registered processor set is derived from headless_verbs.mk (single source
+of truth). Filenames matching headless_{name}_verbs.c are extracted, filtered
+against EXCLUDED_PROCESSORS, and cross-referenced with kernelverbs.rc.
 
 Usage:
-    python3 parse_kernelverbs.py <input.rc> <output.c> [--analyze]
+    python3 parse_kernelverbs.py <input.rc> <output.c> --mk-path <headless_verbs.mk>
 
 Example:
-    python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c --analyze
+    python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c --mk-path tests/headless_verbs.mk
 """
 
 import sys
@@ -21,13 +22,28 @@ import re
 from typing import List, Set, Tuple
 from pathlib import Path
 
-# Try to import analyzer for automatic verb detection (optional)
+# Try to import analyzer for reporting (optional, not used for registration)
 try:
     from analyzer import VerbImplementationAnalyzer
     from metadata_writer import VerbMetadataWriter
     ANALYZER_AVAILABLE = True
 except ImportError:
     ANALYZER_AVAILABLE = False
+
+
+# Processors excluded from registration even if present in headless_verbs.mk.
+# Each entry should have a comment explaining why.
+EXCLUDED_PROCESSORS: Set[str] = {
+    'webserver',  # Script-implemented; EFP stub shadows builtins.webserver
+}
+
+# Processors whose initverbs() is defined in core runtime sources (not headless stubs).
+# These don't have headless_*_verbs.c files because their real implementations in
+# Common/source/ are already linked into both test and CLI builds.
+CORE_IMPLEMENTED_PROCESSORS: Set[str] = {
+    'math',    # langmath.c - mathinitverbs()
+    'crypt',   # langcrypt.c - cryptinitverbs()
+}
 
 
 def validate_input_paths(input_path: str, output_path: str) -> bool:
@@ -79,72 +95,6 @@ def validate_input_paths(input_path: str, output_path: str) -> bool:
 
     return True
 
-
-# Whitelist of processors that have headless implementations
-# Only these processors will be included in the generated init function.
-# To add a new processor:
-# 1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()
-# 2. Add the processor name to this whitelist
-# 3. Run make to regenerate kernel_verbs_init.c
-HEADLESS_REGISTERED: Set[str] = {
-    # Already implemented in main codebase:
-    'file',              # fileverbs.c
-    'string',            # stringverbs.c
-    'table',             # tableverbs.c
-    'xml',               # langxml.c
-    'html',              # langhtml.c
-    'window',            # shellwindowverbs.c (windowinitverbs)
-    'db',                # dbverbs.c
-    're',                # langregexp.c
-    'sys',               # shellsysverbs.c
-    'lang',              # langstartup.c
-    'crypt',             # langcrypt.c
-    'math',              # langmath.c
-    'sqlite',            # langsqlite.c
-    'mysql',             # langmysql.c
-
-    # New headless stubs (not yet implemented):
-    'frontier',          # tests/headless_frontier_verbs.c
-    'op',                # tests/headless_op_verbs.c
-    'opattributes',      # tests/headless_opattributes_verbs.c
-    'script',            # tests/headless_script_verbs.c
-    'osa',               # tests/headless_osa_verbs.c
-    'menu',              # tests/headless_menu_verbs.c
-    'pict',              # tests/headless_pict_verbs.c
-    'clock',             # tests/headless_clock_verbs.c
-    'date',              # tests/headless_date_verbs.c
-    'dialog',            # tests/headless_dialog_verbs.c
-    'kb',                # tests/headless_kb_verbs.c
-    'mouse',             # tests/headless_mouse_verbs.c
-    'point',             # tests/headless_point_verbs.c
-    'rectangle',         # tests/headless_rectangle_verbs.c
-    'rgb',               # tests/headless_rgb_verbs.c
-    'speaker',           # tests/headless_speaker_verbs.c
-    'target',            # tests/headless_target_verbs.c
-    'bit',               # tests/headless_bit_verbs.c
-    'semaphore',         # tests/headless_semaphore_verbs.c
-    'base64',            # tests/headless_base64_verbs.c
-    'tcp',               # tests/headless_tcp_verbs.c
-    'dll',               # tests/headless_dll_verbs.c
-    'python',            # tests/headless_python_verbs.c
-    'htmlcontrol',       # tests/headless_htmlcontrol_verbs.c
-    'statusbar',         # tests/headless_statusbar_verbs.c
-    'rez',               # tests/headless_rez_verbs.c
-    'search',            # tests/headless_search_verbs.c
-    'filemenu',          # tests/headless_filemenu_verbs.c
-    'editmenu',          # tests/headless_editmenu_verbs.c
-    'launch',            # tests/headless_launch_verbs.c
-    'clipboard',         # tests/headless_clipboard_verbs.c
-    'thread',            # tests/headless_thread_verbs.c
-    'mainwindow',        # tests/headless_mainwindow_verbs.c
-    'searchengine',      # tests/headless_searchengine_verbs.c
-    'mrcalendar',        # tests/headless_mrcalendar_verbs.c
-    # EXCLUDED: 'webserver' - All verbs are script-implemented (see script_implemented_verbs.py)
-    #           The real webserver table is in builtins.webserver with full content.
-    #           Registering an incomplete EFP stub shadows the database table and
-    #           causes defined(webserver.init) to incorrectly return false.
-    'inetd',             # tests/headless_inetd_verbs.c
-}
 
 # Regex pattern constants with documentation
 EFP_BLOCK_PATTERN = r'(\d+)\s+/\*[^*]*\*/\s+EFP\s+DISCARDABLE'
@@ -244,6 +194,66 @@ def extract_verb_names(block_content: str, start_pos: int, expected_count: int) 
     return verb_names
 
 
+def strip_preprocessor_conditionals(content: str) -> str:
+    """
+    Strip #ifdef/#else/#endif directives from RC content for regex-based parsing.
+
+    Strategy:
+    - If an #ifdef has an #else: keep only the #else branch
+      (e.g., wp's #ifdef flvariables: keep the 27-verb count, not the 36)
+    - If an #ifdef has no #else: keep the #ifdef branch content
+      (e.g., #ifdef flregexpverbs wraps the entire re processor - we want it)
+
+    This is a simple, non-nested approach sufficient for kernelverbs.rc.
+
+    Args:
+        content: Raw RC file content
+
+    Returns:
+        Content with preprocessor directives removed
+    """
+    lines = content.split('\n')
+    result = []
+    ifdef_lines = []  # accumulate lines in #ifdef branch
+    in_ifdef = False
+    in_else = False
+    has_else = False
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('#ifdef') or stripped.startswith('#ifndef'):
+            in_ifdef = True
+            in_else = False
+            has_else = False
+            ifdef_lines = []
+            continue
+        elif stripped.startswith('#else') and in_ifdef:
+            in_else = True
+            has_else = True
+            continue
+        elif stripped.startswith('#endif') and in_ifdef:
+            if not has_else:
+                # No #else branch: keep the #ifdef content
+                result.extend(ifdef_lines)
+            in_ifdef = False
+            in_else = False
+            has_else = False
+            ifdef_lines = []
+            continue
+
+        if in_ifdef and not in_else:
+            # In #ifdef branch (before any #else)
+            ifdef_lines.append(line)
+        elif in_ifdef and in_else:
+            # In #else branch: always keep
+            result.append(line)
+        else:
+            # Not inside any conditional
+            result.append(line)
+
+    return '\n'.join(result)
+
+
 def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
     """
     Parse kernelverbs.rc and extract all EFP processor definitions.
@@ -261,6 +271,10 @@ def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
     """
     with open(rc_path, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
+
+    # Strip preprocessor conditionals so regex can parse verb counts
+    # (e.g., wp processor has #ifdef flvariables around its verb count)
+    content = strip_preprocessor_conditionals(content)
 
     processors = []
     seen_names: Set[str] = set()
@@ -322,24 +336,52 @@ def parse_kernelverbs_rc(rc_path: str) -> Tuple[List[EFPProcessor], bool]:
     return processors, had_errors
 
 
-def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str, whitelist: Set[str] = None) -> str:
+def parse_headless_verbs_mk(mk_path: str) -> Set[str]:
+    """
+    Extract processor names from headless_verbs.mk.
+
+    Reads the .mk file, joins backslash-continuation lines, then extracts
+    processor names from filenames matching the pattern headless_{name}_verbs.c.
+    Non-matching files (headless_odb_stubs.c, headless_threadglobals.c, etc.)
+    are silently skipped.
+
+    Args:
+        mk_path: Path to headless_verbs.mk
+
+    Returns:
+        Set of processor names (e.g., {'file', 'table', 'op', ...})
+    """
+    mk_file = Path(mk_path)
+    if not mk_file.exists():
+        print(f"ERROR: headless_verbs.mk not found: {mk_path}", file=sys.stderr)
+        sys.exit(1)
+
+    with open(mk_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Join continuation lines (backslash + newline)
+    content = content.replace('\\\n', ' ')
+
+    # Extract processor names from headless_{name}_verbs.c pattern
+    processor_names: Set[str] = set()
+    for match in re.finditer(r'headless_(\w+)_verbs\.c', content):
+        processor_names.add(match.group(1))
+
+    return processor_names
+
+
+def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str, whitelist: Set[str]) -> str:
     """
     Generate the C source code for kernel_verbs_init.c
 
     Args:
         processors: List of EFPProcessor objects
         rc_path: Path to the source kernelverbs.rc (for comments)
-        whitelist: Set of processor names to include (default: HEADLESS_REGISTERED)
+        whitelist: Set of processor names to include
 
     Returns:
         String containing the complete C source file
-
-    Note:
-        If whitelist is not provided, uses the module-level HEADLESS_REGISTERED.
     """
-    if whitelist is None:
-        whitelist = HEADLESS_REGISTERED
-
     # Filter to only implemented processors using the provided whitelist
     implemented_procs = [p for p in processors if p.name in whitelist]
     unimplemented_procs = [p for p in processors if p.name not in whitelist]
@@ -351,8 +393,11 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str, w
         " * This file is automatically generated by tools/kernelverbs_parser/parse_kernelverbs.py",
         " * To regenerate, run: make in frontier-cli directory",
         " *",
-        " * NOTE: Only processors with headless implementations are included.",
-        " * See HEADLESS_REGISTERED whitelist in parse_kernelverbs.py.",
+        " * Registered processors are derived from tests/headless_verbs.mk.",
+        " * To add a new processor:",
+        " *   1. Create tests/headless_<name>_verbs.c with <name>initverbs()",
+        " *   2. Add headless_<name>_verbs.c to tests/headless_verbs.mk",
+        " *   3. Run make to regenerate",
         " */",
         "",
         "#include \"frontier.h\"",
@@ -380,8 +425,10 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str, w
         f" * Implemented processors: {len(implemented_procs)} of {len(processors)} total",
         f" * Implemented verbs: {total_implemented_verbs} of {total_all_verbs} total",
         " *",
-        " * To add more processors, implement them in tests/headless_*_verbs.c",
-        " * and add to HEADLESS_REGISTERED whitelist in parse_kernelverbs.py.",
+        " * To add more processors:",
+        " *   1. Create tests/headless_<name>_verbs.c with <name>initverbs()",
+        " *   2. Add headless_<name>_verbs.c to tests/headless_verbs.mk",
+        " *   3. Run make to regenerate",
         " *",
         " * Returns: true if all processors initialized successfully, false otherwise",
         " */",
@@ -408,7 +455,7 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str, w
 
 def generate_whitelist_from_analyzer(processors: List[EFPProcessor]) -> Set[str]:
     """
-    Automatically generate HEADLESS_REGISTERED whitelist by analyzing implementations.
+    Automatically generate whitelist by analyzing implementations (reporting only).
 
     Uses the VerbImplementationAnalyzer to detect which processors have real
     implementations vs. stubs, and returns the whitelist accordingly.
@@ -451,29 +498,22 @@ def main() -> None:
     Exit code 2 is specifically for CI to detect accidental breakage in kernelverbs.rc.
     """
     # Parse command-line arguments
-    analyze_mode = False
-    if len(sys.argv) < 3:
-        print("Usage: parse_kernelverbs.py <input.rc> <output.c> [--analyze]", file=sys.stderr)
-        print(file=sys.stderr)
-        print("Arguments:", file=sys.stderr)
-        print("  <input.rc>     Path to kernelverbs.rc", file=sys.stderr)
-        print("  <output.c>     Path to kernel_verbs_init.c output", file=sys.stderr)
-        print("  --analyze      Enable automatic verb binding detection (optional)", file=sys.stderr)
-        print(file=sys.stderr)
-        print("Example:", file=sys.stderr)
-        print("  python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c", file=sys.stderr)
-        print("  python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c --analyze", file=sys.stderr)
-        sys.exit(1)
+    import argparse
+    parser = argparse.ArgumentParser(
+        description='Generate kernel_verbs_init.c from kernelverbs.rc',
+        epilog='Example: python3 parse_kernelverbs.py Common/resources/Win32/kernelverbs.rc generated/kernel_verbs_init.c --mk-path tests/headless_verbs.mk'
+    )
+    parser.add_argument('input_rc', help='Path to kernelverbs.rc')
+    parser.add_argument('output_c', help='Path to kernel_verbs_init.c output')
+    parser.add_argument('--mk-path', required=True,
+                        help='Path to headless_verbs.mk (single source of truth for registered processors)')
+    parser.add_argument('--analyze', action='store_true',
+                        help='Run analyzer for reporting (does NOT influence registration)')
 
-    input_path = sys.argv[1]
-    output_path = sys.argv[2]
+    args = parser.parse_args()
 
-    if len(sys.argv) > 3 and sys.argv[3] == '--analyze':
-        analyze_mode = True
-        if not ANALYZER_AVAILABLE:
-            print("Warning: --analyze requested but analyzer not available", file=sys.stderr)
-            print("         Falling back to hardcoded whitelist", file=sys.stderr)
-            analyze_mode = False
+    input_path = args.input_rc
+    output_path = args.output_c
 
     # Validate paths before proceeding
     if not validate_input_paths(input_path, output_path):
@@ -488,14 +528,33 @@ def main() -> None:
         print("Warning: No EFP processors found in input file", file=sys.stderr)
         sys.exit(1)
 
-    # Determine whitelist: auto-detect via analyzer or use hardcoded
-    if analyze_mode:
-        whitelist = generate_whitelist_from_analyzer(processors)
-        if not whitelist:
-            print("Warning: Analyzer returned empty whitelist, using hardcoded", file=sys.stderr)
-            whitelist = HEADLESS_REGISTERED
-    else:
-        whitelist = HEADLESS_REGISTERED
+    # Derive whitelist from headless_verbs.mk + core-implemented processors
+    mk_processors = parse_headless_verbs_mk(args.mk_path)
+    rc_processor_names = {p.name for p in processors}
+
+    # Whitelist = ((mk processors | core implemented) - excluded) intersected with RC
+    all_candidates = mk_processors | CORE_IMPLEMENTED_PROCESSORS
+    whitelist = (all_candidates - EXCLUDED_PROCESSORS) & rc_processor_names
+
+    # Warn about mk processors not found in RC
+    mk_only = mk_processors - EXCLUDED_PROCESSORS - rc_processor_names
+    if mk_only:
+        print(f"Warning: Processors in .mk but not in RC (skipped): {sorted(mk_only)}", file=sys.stderr)
+
+    # Report excluded processors found in mk
+    excluded_found = mk_processors & EXCLUDED_PROCESSORS
+    if excluded_found:
+        print(f"Excluded processors (in .mk but blocklisted): {sorted(excluded_found)}", file=sys.stderr)
+
+    # Run analyzer for reporting if requested (does NOT influence registration)
+    if args.analyze:
+        if ANALYZER_AVAILABLE:
+            analyzer_whitelist = generate_whitelist_from_analyzer(processors)
+            diff = whitelist.symmetric_difference(analyzer_whitelist)
+            if diff:
+                print(f"Note: Analyzer differs from .mk-derived whitelist on: {sorted(diff)}", file=sys.stderr)
+        else:
+            print("Warning: --analyze requested but analyzer not available", file=sys.stderr)
 
     # Use the determined whitelist to categorize processors
     implemented = [p for p in processors if p.name in whitelist]
@@ -504,7 +563,7 @@ def main() -> None:
     print(f"Found {len(processors)} verb processors:", file=sys.stderr)
     print(f"\nImplemented in headless mode ({len(implemented)}):", file=sys.stderr)
     for proc in implemented:
-        print(f"  ✓ {proc.name:20s} (EFP {proc.efp_id:4s}, {proc.verb_count:3d} verbs)", file=sys.stderr)
+        print(f"  + {proc.name:20s} (EFP {proc.efp_id:4s}, {proc.verb_count:3d} verbs)", file=sys.stderr)
 
     print(f"\nNot yet implemented ({len(unimplemented)}):", file=sys.stderr)
     for proc in unimplemented:
@@ -525,13 +584,13 @@ def main() -> None:
     impl_verbs = sum(p.verb_count for p in implemented)
     total_verbs = sum(p.verb_count for p in processors)
 
-    print(f"✓ Generated {output_path}", file=sys.stderr)
+    print(f"+ Generated {output_path}", file=sys.stderr)
     print(f"  Implemented processors: {len(implemented)} of {len(processors)}", file=sys.stderr)
     print(f"  Implemented verbs: {impl_verbs} of {total_verbs}", file=sys.stderr)
     print(file=sys.stderr)
     print("To add more processors:", file=sys.stderr)
-    print("  1. Implement tests/headless_<processor>_verbs.c with <processor>initverbs()", file=sys.stderr)
-    print("  2. Add processor name to HEADLESS_REGISTERED in parse_kernelverbs.py", file=sys.stderr)
+    print("  1. Create tests/headless_<name>_verbs.c with <name>initverbs()", file=sys.stderr)
+    print("  2. Add headless_<name>_verbs.c to tests/headless_verbs.mk", file=sys.stderr)
     print("  3. Run make to regenerate", file=sys.stderr)
 
     # Exit with appropriate code: 2 if parsing errors, 0 on success
