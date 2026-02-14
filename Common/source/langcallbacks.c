@@ -34,6 +34,7 @@
 #include "shell.h"
 #include "memory.h"
 #include "logging.h"
+#include "langexternal.h"
 
 
 /*
@@ -232,9 +233,20 @@ boolean langerrormessage (bigstring bs) {
 	   2026-02-04: Check langerrorlogenabled() to suppress logging in try blocks.
 	   Try blocks disable logging but still need the callback to capture errors. */
 	if (langerrorlogenabled ()) {
-		char cs[256]; /* bigstring max length is 255 */
+		char cs[256]; /* bigstring max is 255; path may truncate (see #423) */
+		char cspath[256];
+		hdlhashtable hthis = nil;
+		bigstring bsname, bspath;
+
 		copyptocstring(bs, cs);
-		log_error(LOG_COMP_LANG, "line %lu: %s", ctscanlines, cs);
+
+		if (langgetthisaddress (&hthis, bsname) && hthis != nil && langexternalgetfullpath (hthis, bsname, bspath, nil)) {
+			copyptocstring(bspath, cspath);
+			log_error(LOG_COMP_LANG, "[%s:%lu] %s", cspath, ctscanlines, cs);
+		}
+		else {
+			log_error(LOG_COMP_LANG, "line %lu: %s", ctscanlines, cs);
+		}
 	}
 
 	fllangerror = true; /*only display once for each script*/
