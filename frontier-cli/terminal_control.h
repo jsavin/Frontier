@@ -66,9 +66,17 @@ void terminal_move_cursor_up(int lines);
 void terminal_move_cursor_down(int lines);
 void terminal_clear_line(void);
 
+/* Screen and cursor visibility */
+bool terminal_get_size(int *rows, int *cols);
+void terminal_clear_screen(void);
+void terminal_hide_cursor(void);
+void terminal_show_cursor(void);
+
 /* Display formatting */
 void terminal_start_inverted(void);
 void terminal_end_inverted(void);
+void terminal_start_dim(void);
+void terminal_end_dim(void);
 void terminal_bold_text(const char *text);
 
 /* Key input */

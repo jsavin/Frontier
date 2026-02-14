@@ -2253,10 +2253,10 @@ boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
 	} file_dialog_result;
 
 	/* Forward declarations to avoid including file_dialog.h */
-	extern file_dialog_result file_dialog_get_file(const char *);
-	extern file_dialog_result file_dialog_put_file(const char *);
-	extern file_dialog_result file_dialog_get_folder(const char *);
-	extern file_dialog_result file_dialog_get_disk(void);
+	extern file_dialog_result file_dialog_get_file(const char *, const char *, const char *);
+	extern file_dialog_result file_dialog_put_file(const char *, const char *);
+	extern file_dialog_result file_dialog_get_folder(const char *, const char *);
+	extern file_dialog_result file_dialog_get_disk(const char *);
 
 	bigstring bsprompt;
 	bigstring bsvarname;
@@ -2280,10 +2280,10 @@ boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
 		return false;
 	}
 
-	/* For getFileDialog: consume the file type parameter (param 3).
-	   We accept and discard it since headless mode doesn't filter by type. */
+	/* For getFileDialog: extract the file type parameter (param 3)
+	   for browser extension filtering. */
+	bigstring bstype = {0};
 	if (token == sfgetfilefunc) {
-		bigstring bstype;
 		flnextparamislast = true;
 		if (!getstringvalue(hparam1, 3, bstype)) {
 			return false;
@@ -2308,21 +2308,34 @@ boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
 	result.success = false;
 	result.path[0] = '\0';
 
+	/* Convert prompt and type to C strings for dialog functions */
+	char csprompt[256];
+	copyptocstring(bsprompt, csprompt);
+
+	char cstype[64] = {0};
+	if (bstype[0] > 0) {
+		copyptocstring(bstype, cstype);
+	}
+
 	switch (token) {
 		case sfgetfilefunc:
-			result = file_dialog_get_file(start_path[0] ? start_path : NULL);
+			result = file_dialog_get_file(csprompt,
+			                              start_path[0] ? start_path : NULL,
+			                              cstype[0] ? cstype : NULL);
 			break;
 
 		case sfputfilefunc:
-			result = file_dialog_put_file(start_path[0] ? start_path : NULL);
+			result = file_dialog_put_file(csprompt,
+			                              start_path[0] ? start_path : NULL);
 			break;
 
 		case sfgetfolderfunc:
-			result = file_dialog_get_folder(start_path[0] ? start_path : NULL);
+			result = file_dialog_get_folder(csprompt,
+			                                start_path[0] ? start_path : NULL);
 			break;
 
 		case sfgetdiskfunc:
-			result = file_dialog_get_disk();
+			result = file_dialog_get_disk(csprompt);
 			break;
 
 		default:
