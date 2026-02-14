@@ -46,6 +46,19 @@
     nullterminate(s); \
 } while (0)
 
+/*
+ * Log verb failures at error level only when NOT inside a UserTalk try block.
+ * Inside a try block the script is expected to handle the error via tryError,
+ * so C-level error logging is noise. langerrorlogenabled() returns false when
+ * the interpreter has entered a try block (via disablelangerrorlog).
+ */
+#define log_verb_error(...) do { \
+    if (langerrorlogenabled()) \
+        log_error(__VA_ARGS__); \
+    else \
+        log_debug(__VA_ARGS__); \
+} while (0)
+
 /* tyodbrecord/hdlodbrecord defined in odbinternal.h (shared with dbverbs.c) */
 extern hdlodbrecord hodblist;
 
@@ -97,7 +110,7 @@ static boolean filemenu_save_systemroot(void) {
 
     /* Check if we have a database open */
     if (databasedata == nil) {
-        log_error(LOG_COMP_DB, "filemenu_save_systemroot: no database open");
+        log_verb_error(LOG_COMP_DB, "filemenu_save_systemroot: no database open");
         return false;
     }
 
@@ -118,7 +131,7 @@ static boolean filemenu_save_systemroot(void) {
             if (repack_scope) {
                 db_format_mode_pop();
             }
-            log_error(LOG_COMP_DB, "filemenu_save_systemroot: tablesavesystemtable failed");
+            log_verb_error(LOG_COMP_DB, "filemenu_save_systemroot: tablesavesystemtable failed");
             return false;
         }
 
@@ -136,7 +149,7 @@ static boolean filemenu_save_systemroot(void) {
 
     /* Flush to disk - required for changes to persist */
     if (!dbclose()) {
-        log_error(LOG_COMP_DB, "filemenu_save_systemroot: dbclose failed");
+        log_verb_error(LOG_COMP_DB, "filemenu_save_systemroot: dbclose failed");
         langerrormessage(BIGSTRING("\x1d" "Can't save: disk flush failed"));
         return false;
     }
@@ -178,7 +191,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     /* Get the file path parameter */
     flnextparamislast = true;
     if (!getfilespecvalue(hparam1, 1, &fs)) {
-        log_error(LOG_COMP_DB, "filemenu_save_guestdb: failed to get file path parameter");
+        log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: failed to get file path parameter");
         return false;
     }
 
@@ -189,7 +202,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
 
     /* Search hodblist for the database (skip sentinel at hodblist itself) */
     if (hodblist == nil) {
-        log_error(LOG_COMP_DB, "filemenu_save_guestdb: hodblist not initialized");
+        log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: hodblist not initialized");
         langerrormessage(BIGSTRING("\pdb: no databases are open"));
         return false;
     }
@@ -203,7 +216,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
         if (equalfilespecs(&(**hodb).fs, &fs)) {
             /* Found it - check if read-only */
             if ((**hodb).flreadonly) {
-                log_error(LOG_COMP_DB, "filemenu_save_guestdb: database is read-only");
+                log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: database is read-only");
                 langerrormessage(BIGSTRING("\pCan't save: database is read-only"));
                 return false;
             }
@@ -220,7 +233,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
                 odb_guard_exit(&guard);
 
                 if (!fl) {
-                    log_error(LOG_COMP_DB, "filemenu_save_guestdb: odbSaveFile failed");
+                    log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: odbSaveFile failed");
                     return false;
                 }
             }
@@ -231,7 +244,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     }
 
     /* Database not found in open list */
-    log_error(LOG_COMP_DB, "filemenu_save_guestdb: database not found in open list");
+    log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: database not found in open list");
     lang2paramerror(dbnotopenederror, BIGSTRING("\x0dfileMenu.save"), bspath);
     return false;
 }
@@ -265,7 +278,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Get the file path (param 1) */
     if (!getfilespecvalue(hparam1, ++ctconsumed, &odbrec.fs)) {
-        log_error(LOG_COMP_DB, "filemenu_open: getfilespecvalue failed");
+        log_verb_error(LOG_COMP_DB, "filemenu_open: getfilespecvalue failed");
         return false;
     }
 
@@ -299,7 +312,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Open the OS file */
     if (!openfile(&odbrec.fs, &odbrec.fref, odbrec.flreadonly)) {
-        log_error(LOG_COMP_DB, "filemenu_open: openfile failed for %s", stringbaseaddress(bspath));
+        log_verb_error(LOG_COMP_DB, "filemenu_open: openfile failed for %s", stringbaseaddress(bspath));
         langerrormessage(BIGSTRING("\x1f" "Can't open: file does not exist"));
         return false;
     }
@@ -312,7 +325,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
         if (!odbOpenFile(odbrec.fref, &odbrec.odb, odbrec.flreadonly)) {
             odb_guard_exit(&guard);
-            log_error(LOG_COMP_DB, "filemenu_open: odbOpenFile failed");
+            log_verb_error(LOG_COMP_DB, "filemenu_open: odbOpenFile failed");
             closefile(odbrec.fref);
             langerrormessage(BIGSTRING("\x22" "Can't open: invalid database file"));
             return false;
@@ -326,7 +339,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Create handle for the odb record and add to hodblist */
     if (!newfilledhandle(&odbrec, sizeof(odbrec), (Handle *) &hodb)) {
         odb_context_guard guard;
-        log_error(LOG_COMP_DB, "filemenu_open: newfilledhandle failed");
+        log_verb_error(LOG_COMP_DB, "filemenu_open: newfilledhandle failed");
         odb_guard_enter(&guard);
         odbCloseFile(odbrec.odb);
         odb_guard_exit(&guard);
@@ -336,7 +349,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Add to hodblist after sentinel */
     if (hodblist == nil) {
-        log_error(LOG_COMP_DB, "filemenu_open: hodblist not initialized");
+        log_verb_error(LOG_COMP_DB, "filemenu_open: hodblist not initialized");
         odb_context_guard guard;
         odb_guard_enter(&guard);
         odbCloseFile(odbrec.odb);
@@ -407,7 +420,7 @@ static boolean filemenu_close_guestdb(hdlodbrecord hodb) {
 
         if (!odbCloseFile((**hodb).odb)) {
             odb_guard_exit(&guard);
-            log_error(LOG_COMP_DB, "filemenu_close_guestdb: odbCloseFile failed");
+            log_verb_error(LOG_COMP_DB, "filemenu_close_guestdb: odbCloseFile failed");
             return false;
         }
 
@@ -505,7 +518,7 @@ static boolean filemenu_closeall(tyvaluerecord *vreturned) {
         hnext = (**hodb).hnext;  /* Save next before we dispose current */
 
         if (!filemenu_close_guestdb(hodb)) {
-            log_error(LOG_COMP_DB, "filemenu_closeall: failed to close a database");
+            log_verb_error(LOG_COMP_DB, "filemenu_closeall: failed to close a database");
             /* Continue closing others */
         }
 
@@ -613,7 +626,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
                 odb_guard_exit(&guard);
 
                 if (!fl) {
-                    log_error(LOG_COMP_DB, "filemenu_saveas: failed to save guest db before copy");
+                    log_verb_error(LOG_COMP_DB, "filemenu_saveas: failed to save guest db before copy");
                     return false;
                 }
             }
@@ -623,7 +636,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
         } else {
             /* System root: save it first, then copy the file */
             if (!filemenu_save_systemroot()) {
-                log_error(LOG_COMP_DB, "filemenu_saveas: failed to save system root before copy");
+                log_verb_error(LOG_COMP_DB, "filemenu_saveas: failed to save system root before copy");
                 return false;
             }
 
@@ -638,7 +651,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
                 bigstring bssrcpath;
 
                 if (srcpath == nil) {
-                    log_error(LOG_COMP_DB, "filemenu_saveas: can't resolve system root file path");
+                    log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't resolve system root file path");
                     langerrormessage(BIGSTRING("\x27" "Can't save: can't find source file path"));
                     return false;
                 }
@@ -668,7 +681,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
         fin = fopen(stringbaseaddress(bssource), "rb");
 
         if (fin == NULL) {
-            log_error(LOG_COMP_DB, "filemenu_saveas: can't open source %s", stringbaseaddress(bssource));
+            log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't open source %s", stringbaseaddress(bssource));
             langerrormessage(BIGSTRING("\x22" "Can't save: can't read source file"));
             return false;
         }
@@ -677,7 +690,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
         if (fout == NULL) {
             fclose(fin);
-            log_error(LOG_COMP_DB, "filemenu_saveas: can't create destination %s", stringbaseaddress(bsdest));
+            log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't create destination %s", stringbaseaddress(bsdest));
             langerrormessage(BIGSTRING("\x21" "Can't save: can't create new file"));
             return false;
         }
@@ -687,7 +700,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
                 fclose(fin);
                 fclose(fout);
                 remove(stringbaseaddress(bsdest));
-                log_error(LOG_COMP_DB, "filemenu_saveas: write error");
+                log_verb_error(LOG_COMP_DB, "filemenu_saveas: write error");
                 langerrormessage(BIGSTRING("\x1c" "Can't save: file write error"));
                 return false;
             }
@@ -697,7 +710,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
             fclose(fin);
             fclose(fout);
             remove(stringbaseaddress(bsdest));
-            log_error(LOG_COMP_DB, "filemenu_saveas: read error");
+            log_verb_error(LOG_COMP_DB, "filemenu_saveas: read error");
             langerrormessage(BIGSTRING("\x1b" "Can't save: file read error"));
             return false;
         }
@@ -741,7 +754,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Get the file path (param 1) */
     if (!getfilespecvalue(hparam1, ++ctconsumed, &fs)) {
-        log_error(LOG_COMP_DB, "filemenu_new: getfilespecvalue failed");
+        log_verb_error(LOG_COMP_DB, "filemenu_new: getfilespecvalue failed");
         return false;
     }
 
@@ -768,7 +781,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
     {
         boolean flfolder = false;
         if (fileexists(&fs, &flfolder)) {
-            log_error(LOG_COMP_DB, "filemenu_new: file already exists at %s", stringbaseaddress(bspath));
+            log_verb_error(LOG_COMP_DB, "filemenu_new: file already exists at %s", stringbaseaddress(bspath));
             langerrormessage(BIGSTRING("\x27" "Can't create: file already exists at path"));
             return false;
         }
@@ -776,7 +789,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Create the new file */
     if (!opennewfile(&fs, 'LAND', 'ROOT', &fnum)) {
-        log_error(LOG_COMP_DB, "filemenu_new: opennewfile failed for %s", stringbaseaddress(bspath));
+        log_verb_error(LOG_COMP_DB, "filemenu_new: opennewfile failed for %s", stringbaseaddress(bspath));
         langerrormessage(BIGSTRING("\x24" "Can't create: failed to create new file"));
         return false;
     }
@@ -791,7 +804,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
         odb_guard_exit(&guard);
 
         if (!fl) {
-            log_error(LOG_COMP_DB, "filemenu_new: odbNewFile failed");
+            log_verb_error(LOG_COMP_DB, "filemenu_new: odbNewFile failed");
             closefile(fnum);
             langerrormessage(BIGSTRING("\x29" "Can't create: failed to initialize database"));
             return false;
