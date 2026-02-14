@@ -947,6 +947,12 @@ boolean wp_portable_set_plaintext(hdlexternalvariable hv, Handle hutf8) {
     if (state == NULL)
         return false;
 
+    /* Load existing metadata (timecreated, timelastsave, ctsaves) from disk
+     * before replacing content. Without this, a disk-backed object edited via
+     * setText would lose its document timestamps. Failure is non-fatal — a
+     * newly created object has no disk metadata to load. */
+    wp_portable_state_refresh_metadata(hv, state);
+
     Handle hrtf = nil;
     long char_count = 0;
     if (!wp_portable_utf8_to_rtf(hutf8, &hrtf, &char_count))
@@ -955,6 +961,8 @@ boolean wp_portable_set_plaintext(hdlexternalvariable hv, Handle hutf8) {
     if (state->portable_rtf_cache != nil)
         disposehandle(state->portable_rtf_cache);
 
+    /* hrtf is a fresh handle from newclearhandle() inside wp_portable_utf8_to_rtf,
+     * never added to tmp stack — safe to store in persistent state. */
     state->portable_rtf_cache = hrtf;
     state->portable_payload_size = gethandlesize(hrtf);
     state->maxpos = char_count;
