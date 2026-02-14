@@ -2270,10 +2270,24 @@ boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
 		return false;
 	}
 
-	/* Extract variable name to store result (parameter 2) */
-	flnextparamislast = true;
+	/* Extract variable name to store result (parameter 2).
+	   For getFileDialog, there's an additional type parameter (param 3),
+	   matching the GUI's filedialogverb() signature. */
+	if (token != sfgetfilefunc)
+		flnextparamislast = true;
+
 	if (!getvarparam(hparam1, 2, &htable, bsvarname)) {
 		return false;
+	}
+
+	/* For getFileDialog: consume the file type parameter (param 3).
+	   We accept and discard it since headless mode doesn't filter by type. */
+	if (token == sfgetfilefunc) {
+		bigstring bstype;
+		flnextparamislast = true;
+		if (!getstringvalue(hparam1, 3, bstype)) {
+			return false;
+		}
 	}
 
 	/* Get starting path from current variable value (if exists) */
