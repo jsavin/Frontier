@@ -235,11 +235,11 @@ $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 strings_generated: $(GENERATED_STRINGS)
 
 # Kernel verbs auto-generation from kernelverbs.rc
-# Uses --analyze flag to automatically detect implemented verbs from C source
-$(KERNEL_VERBS_C): $(KERNELVERBS_PARSER) $(KERNELVERBS_RC)
+# Registered processors derived from headless_verbs.mk (single source of truth)
+$(KERNEL_VERBS_C): $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) $(TESTSDIR)/headless_verbs.mk
 	@mkdir -p $(GENERATED_DIR)
 	@echo "Generating kernel_verbs_init.c from kernelverbs.rc..."
-	@python3 $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C) --analyze
+	@python3 $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C) --mk-path $(TESTSDIR)/headless_verbs.mk
 
 kernel_verbs_generated: $(KERNEL_VERBS_C)
 

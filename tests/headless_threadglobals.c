@@ -39,6 +39,8 @@ hdlthreadglobals hthreadglobals = &headless_threadglobals_ptr;
 #undef bsfunctionname
 #undef fllanghashassignprotect
 #undef fllangexternalvalueprotect
+#undef wp_sel_start
+#undef wp_sel_end
 
 /*
  * headless_init_threadglobals - Initialize critical fields
@@ -57,6 +59,10 @@ void headless_init_threadglobals(void) {
 	setemptystring(headless_threadglobals_data.bsfunctionname);
 	headless_threadglobals_data.fllanghashassignprotect = false;
 	headless_threadglobals_data.fllangexternalvalueprotect = false;
+
+	/* WP selection state */
+	headless_threadglobals_data.wp_sel_start = 0;
+	headless_threadglobals_data.wp_sel_end = 0;
 
 	/* Thread ID: main thread gets idapplicationthread (2), matching legacy Frontier */
 	headless_threadglobals_data.idthread = (hdlthread) 2;
@@ -325,6 +331,8 @@ void headless_restore_threadglobals(hdlthreadglobals hg) {
 #define bsfunctionname ((**hthreadglobals).bsfunctionname)
 #define fllanghashassignprotect ((**hthreadglobals).fllanghashassignprotect)
 #define fllangexternalvalueprotect ((**hthreadglobals).fllangexternalvalueprotect)
+#define wp_sel_start ((**hthreadglobals).wp_sel_start)
+#define wp_sel_end ((**hthreadglobals).wp_sel_end)
 
 /* ADR-006: Outline context macros removed - use accessor functions instead
  * (op_get_outlinedata, op_set_outlinedata, etc.)

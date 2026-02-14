@@ -4,11 +4,9 @@
 #include "wpengine.h"
 #include "wpverbs.h"
 #include "strings.h"
+#include "processinternal.h"  /* wp_sel_start/wp_sel_end macros (thread-local via GIL) */
 
 #ifdef FRONTIER_HEADLESS
-
-static long headless_wp_sel_start = 0;
-static long headless_wp_sel_end = 0;
 
 boolean wpverbgetdisplaystring (hdlexternalvariable h, bigstring bs) {
     (void) h;
@@ -137,15 +135,15 @@ boolean wpstart (void) {
 
 boolean wpgetselection (long *startsel, long *endsel) {
     if (startsel)
-        *startsel = headless_wp_sel_start;
+        *startsel = wp_sel_start;
     if (endsel)
-        *endsel = headless_wp_sel_end;
+        *endsel = wp_sel_end;
     return true;
 }
 
 boolean wpsetselection (long startsel, long endsel) {
-    headless_wp_sel_start = startsel;
-    headless_wp_sel_end = endsel;
+    wp_sel_start = startsel;
+    wp_sel_end = endsel;
     return true;
 }
 

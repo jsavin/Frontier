@@ -13,9 +13,26 @@ from pathlib import Path
 # Add current directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from parse_kernelverbs import parse_kernelverbs_rc
+from parse_kernelverbs import (
+    parse_kernelverbs_rc,
+    parse_headless_verbs_mk,
+    EXCLUDED_PROCESSORS,
+    CORE_IMPLEMENTED_PROCESSORS,
+)
 from analyzer import VerbImplementationAnalyzer
 from metadata_writer import VerbMetadataWriter
+
+
+def _get_mk_whitelist(project_root, processors):
+    """Derive current whitelist from headless_verbs.mk (single source of truth)."""
+    mk_path = project_root / "tests/headless_verbs.mk"
+    if not mk_path.exists():
+        print(f"ERROR: headless_verbs.mk not found at {mk_path}", file=sys.stderr)
+        sys.exit(1)
+    mk_processors = parse_headless_verbs_mk(str(mk_path))
+    rc_processor_names = {p.name for p in processors}
+    all_candidates = mk_processors | CORE_IMPLEMENTED_PROCESSORS
+    return (all_candidates - EXCLUDED_PROCESSORS) & rc_processor_names
 
 
 def cmd_analyze(args):
@@ -165,42 +182,41 @@ def cmd_dry_run(args):
     writer = VerbMetadataWriter(implementations)
     new_whitelist = set(writer.generate_whitelist())
 
-    # Load current whitelist from parse_kernelverbs.py
-    from parse_kernelverbs import HEADLESS_REGISTERED
-    current_whitelist = set(HEADLESS_REGISTERED)
+    # Load current whitelist from headless_verbs.mk (single source of truth)
+    current_whitelist = _get_mk_whitelist(project_root, processors)
 
     # Calculate diff
     to_add = new_whitelist - current_whitelist
     to_remove = current_whitelist - new_whitelist
     unchanged = new_whitelist & current_whitelist
 
-    print("=== Dry-Run Mode: Whitelist Changes ===\n")
+    print("=== Dry-Run Mode: Analyzer vs headless_verbs.mk ===\n")
 
     if not to_add and not to_remove:
-        print("✓ No changes needed - whitelist is up to date")
+        print("No differences - analyzer output matches headless_verbs.mk")
         return 0
 
     if to_add:
-        print(f"Processors to ADD ({len(to_add)}):")
+        print(f"Analyzer suggests ADDING ({len(to_add)}):")
         for proc in sorted(to_add):
             print(f"  + {proc}")
         print()
 
     if to_remove:
-        print(f"Processors to REMOVE ({len(to_remove)}):")
+        print(f"Analyzer suggests REMOVING ({len(to_remove)}):")
         for proc in sorted(to_remove):
             print(f"  - {proc}")
         print()
 
-    print(f"Unchanged: {len(unchanged)} processors")
-    print(f"\nTotal whitelist size: {len(current_whitelist)} → {len(new_whitelist)}")
+    print(f"Matching: {len(unchanged)} processors")
+    print(f"\nheadless_verbs.mk: {len(current_whitelist)} | Analyzer: {len(new_whitelist)}")
 
     return 0
 
 
 def cmd_verify(args):
     """
-    Verify current HEADLESS_REGISTERED matches analyzer output.
+    Verify current headless_verbs.mk whitelist matches analyzer output.
     """
     # Find project root
     script_dir = Path(__file__).parent
@@ -218,20 +234,19 @@ def cmd_verify(args):
     analyzer = VerbImplementationAnalyzer(processors)
     implementations = analyzer.analyze_all_processors()
 
-    # Generate expected whitelist
+    # Generate expected whitelist from analyzer
     writer = VerbMetadataWriter(implementations)
     expected_whitelist = set(writer.generate_whitelist())
 
-    # Load current whitelist
-    from parse_kernelverbs import HEADLESS_REGISTERED
-    current_whitelist = set(HEADLESS_REGISTERED)
+    # Load current whitelist from headless_verbs.mk
+    current_whitelist = _get_mk_whitelist(project_root, processors)
 
     # Check consistency
     if expected_whitelist == current_whitelist:
-        print("✓ PASS: HEADLESS_REGISTERED matches analyzer output")
+        print("PASS: headless_verbs.mk matches analyzer output")
         return 0
     else:
-        print("✗ FAIL: HEADLESS_REGISTERED is inconsistent with analyzer", file=sys.stderr)
+        print("FAIL: headless_verbs.mk differs from analyzer", file=sys.stderr)
         print("\nRun 'cli.py dry-run' to see differences", file=sys.stderr)
 
         # Show brief summary

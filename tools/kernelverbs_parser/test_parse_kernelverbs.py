@@ -18,9 +18,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from parse_kernelverbs import (
     parse_kernelverbs_rc,
+    parse_headless_verbs_mk,
     generate_kernel_verbs_init_c,
     EFPProcessor,
-    HEADLESS_REGISTERED,
+    EXCLUDED_PROCESSORS,
+    CORE_IMPLEMENTED_PROCESSORS,
 )
 
 
@@ -328,13 +330,14 @@ END
         self.temp_file = self.create_temp_rc(rc_content)
         processors, had_errors = parse_kernelverbs_rc(self.temp_file)
 
-        # Generate code with current whitelist
-        c_code = generate_kernel_verbs_init_c(processors, self.temp_file)
+        # Generate code with explicit whitelist (file, frontier, xml are "implemented")
+        whitelist = {'file', 'frontier', 'xml'}
+        c_code = generate_kernel_verbs_init_c(processors, self.temp_file, whitelist)
 
         # Should include only whitelisted processors in forward declarations
         self.assertIn("fileinitverbs", c_code)
         self.assertIn("frontierinitverbs", c_code)
-        self.assertIn("xmlinitverbs", c_code)  # xml is now whitelisted
+        self.assertIn("xmlinitverbs", c_code)
 
         # Should NOT include unwhitelisted processors
         self.assertNotIn("databaseinitverbs", c_code)
@@ -356,7 +359,8 @@ END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
         processors, had_errors = parse_kernelverbs_rc(self.temp_file)
-        c_code = generate_kernel_verbs_init_c(processors, self.temp_file)
+        whitelist = {p.name for p in processors}
+        c_code = generate_kernel_verbs_init_c(processors, self.temp_file, whitelist)
 
         # Check for required elements
         self.assertIn("#include \"frontier.h\"", c_code)
@@ -388,7 +392,8 @@ END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
         processors, had_errors = parse_kernelverbs_rc(self.temp_file)
-        c_code = generate_kernel_verbs_init_c(processors, self.temp_file)
+        whitelist = {'file', 'frontier'}  # database is not whitelisted
+        c_code = generate_kernel_verbs_init_c(processors, self.temp_file, whitelist)
 
         # Should have summary comments
         self.assertIn("Implemented processors: 2 of 3", c_code)
@@ -481,7 +486,8 @@ END
 '''
         self.temp_file = self.create_temp_rc(rc_content)
         processors, had_errors = parse_kernelverbs_rc(self.temp_file)
-        c_code = generate_kernel_verbs_init_c(processors, self.temp_file)
+        whitelist = {p.name for p in processors}
+        c_code = generate_kernel_verbs_init_c(processors, self.temp_file, whitelist)
 
         # Count occurrences of each init call
         file_init_count = c_code.count("fileinitverbs()")
@@ -535,25 +541,35 @@ class TestIntegration(unittest.TestCase):
         if not rc_path.exists():
             self.skipTest(f"kernelverbs.rc not found at {rc_path}")
 
-        # Parse and generate code
+        # Parse and generate code using real headless_verbs.mk for whitelist
         processors, had_errors = parse_kernelverbs_rc(str(rc_path))
-        c_code = generate_kernel_verbs_init_c(processors, str(rc_path))
+
+        mk_path = Path(__file__).parent.parent.parent / "tests/headless_verbs.mk"
+        if not mk_path.exists():
+            self.skipTest(f"headless_verbs.mk not found at {mk_path}")
+
+        mk_processors = parse_headless_verbs_mk(str(mk_path))
+        rc_processor_names = {p.name for p in processors}
+        all_candidates = mk_processors | CORE_IMPLEMENTED_PROCESSORS
+        whitelist = (all_candidates - EXCLUDED_PROCESSORS) & rc_processor_names
+
+        c_code = generate_kernel_verbs_init_c(processors, str(rc_path), whitelist)
 
         # Verify generated code has required C structure
         self.assertIn("#include", c_code, "Should have includes")
         self.assertIn("boolean headless_init_kernel_verbs(void)", c_code, "Should declare main function")
         self.assertIn("return true;", c_code, "Should have success return")
 
-        # Verify only whitelisted processors are in generated code
+        # Verify whitelisted processors are in generated code
         self.assertIn("fileinitverbs", c_code, "Should include file processor")
         self.assertIn("frontierinitverbs", c_code, "Should include frontier processor")
 
-        # Verify that init calls are present for whitelisted processors
-        # Now all 51 processors are whitelisted (14 real + 37 stubs)
+        # Verify that init calls are present for all whitelisted processors
         code_lines = c_code.split('\n')
         implementation_lines = [l for l in code_lines if 'initverbs()' in l and not l.strip().startswith('*')]
-        # Should have init calls for all 51 whitelisted processors (extern decls + actual calls)
-        self.assertGreaterEqual(len(implementation_lines), 51, "Should have extern declarations and calls for all 51 whitelisted processors")
+        # Should have init calls for all whitelisted processors (extern decls + actual calls)
+        self.assertGreaterEqual(len(implementation_lines), len(whitelist),
+                                f"Should have extern declarations and calls for all {len(whitelist)} whitelisted processors")
 
 
 if __name__ == '__main__':

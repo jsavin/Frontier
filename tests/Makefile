@@ -139,7 +139,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/langdate.c \
     ../Common/source/timedate.c \
     ../Common/source/langsystypes.c \
-    ../Common/source/kernel_verbs_headless.c \
+    ../generated/kernel_verbs_init.c \
     ../Common/source/memory.c \
     ../Common/source/portable_handles.c \
     ../Common/source/strings.c \
@@ -246,8 +246,20 @@ RUN_PREBUILT = test_64bit_direct test_migration_verification test_real_databases
 # All test executables (for reference only)
 ALL_TESTS = $(TEST_EXECUTABLES) $(USERTALK_OBJECT_TESTS)
 
+# Kernel verbs auto-generation (shared with frontier-cli)
+KERNELVERBS_PARSER = ../tools/kernelverbs_parser/parse_kernelverbs.py
+KERNELVERBS_RC = ../Common/resources/Win32/kernelverbs.rc
+KERNEL_VERBS_C = $(GENERATED_DIR)/kernel_verbs_init.c
+
+$(KERNEL_VERBS_C): $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) headless_verbs.mk
+	@mkdir -p $(GENERATED_DIR)
+	@echo "Generating kernel_verbs_init.c from kernelverbs.rc..."
+	@python3 $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) $(KERNEL_VERBS_C) --mk-path headless_verbs.mk
+
+kernel_verbs_generated: $(KERNEL_VERBS_C)
+
 # Default target: build the tests we know are supported here
-all: $(PAIGE_LIB) strings_generated $(RUN_BUILDABLE)
+all: $(PAIGE_LIB) strings_generated kernel_verbs_generated $(RUN_BUILDABLE)
 
 $(RUN_BUILDABLE): $(PAIGE_LIB)
 
@@ -599,7 +611,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated verify-errors validate-bigstrings
+.PHONY: all test test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

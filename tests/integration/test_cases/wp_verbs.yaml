@@ -1,0 +1,100 @@
+tests:
+  - name: "wp.setText - defined in headless mode"
+    description: "Verify wp.setText verb is registered and resolvable"
+    script: 'defined(wp.setText)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "wp.getText - defined in headless mode"
+    description: "Verify wp.getText verb is registered and resolvable"
+    script: 'defined(wp.getText)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "wp.intextmode - returns false in headless"
+    description: "No text editing mode in headless, should return false"
+    script: 'wp.intextmode()'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "wp.getselect/setselect - selection state roundtrip"
+    description: |
+      Verify that wp.setselect persists selection state and wp.getselect
+      retrieves it. Selection state is thread-local via GIL.
+    script: |
+      wp.setselect(10, 20);
+      local(s, e);
+      wp.getselect(@s, @e);
+      return((s == 10) and (e == 20))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "wp.getselect - different values"
+    description: "Verify selection state updates correctly with different values"
+    script: |
+      wp.setselect(100, 200);
+      local(s, e);
+      wp.getselect(@s, @e);
+      return(s + e)
+    expected_success: true
+    expected_result: "300"
+
+  - name: "wp.setText - accepts text parameter"
+    description: "wp.setText should accept a string parameter without error"
+    script: 'wp.setText("hello world")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "wp.getDisplay - returns false in headless"
+    description: "No display in headless mode"
+    script: 'wp.getDisplay()'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "wp.getRuler - returns false in headless"
+    description: "No ruler in headless mode"
+    script: 'wp.getRuler()'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "wp.rulerLength - returns 0 in headless"
+    description: "No ruler length in headless mode"
+    script: 'wp.rulerLength()'
+    expected_success: true
+    expected_result: "0"
+
+  - name: "wp.getIndent - returns 0 in headless"
+    description: "No indent in headless mode"
+    script: 'wp.getIndent()'
+    expected_success: true
+    expected_result: "0"
+
+  - name: "wp.setselect - negative values accepted"
+    description: "Negative selection values should be stored without error"
+    script: |
+      wp.setselect(-1, -1);
+      local(s, e);
+      wp.getselect(@s, @e);
+      return((s == -1) and (e == -1))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "wp.setselect - end less than start"
+    description: "Selection where end < start should be stored as-is"
+    script: |
+      wp.setselect(50, 10);
+      local(s, e);
+      wp.getselect(@s, @e);
+      return((s == 50) and (e == 10))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "wp.setselect - zero values"
+    description: "Zero selection values roundtrip correctly"
+    script: |
+      wp.setselect(0, 0);
+      local(s, e);
+      wp.getselect(@s, @e);
+      return((s == 0) and (e == 0))
+    expected_success: true
+    expected_result: "true"

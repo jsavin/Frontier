@@ -9,6 +9,9 @@
 #   1. Add the filename to HEADLESS_VERBS_SOURCES below
 #   2. Both frontier-cli and tests Makefiles will automatically pick it up
 #   3. No need to modify frontier-cli/Makefile or tests/Makefile directly
+#
+# To exclude a processor from registration (e.g., script-implemented processors),
+# add it to EXCLUDED_PROCESSORS in tools/kernelverbs_parser/parse_kernelverbs.py
 
 HEADLESS_VERBS_SOURCES = \
     headless_lang_verbs.c \
@@ -61,4 +64,5 @@ HEADLESS_VERBS_SOURCES = \
     headless_searchengine_verbs.c \
     headless_mrcalendar_verbs.c \
     headless_webserver_verbs.c \
-    headless_inetd_verbs.c
+    headless_inetd_verbs.c \
+    headless_wp_verbs.c
