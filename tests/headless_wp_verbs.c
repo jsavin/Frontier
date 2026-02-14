@@ -9,7 +9,7 @@
  *   - wp.setText: consumes text parameter, returns true
  *   - wp.getText: returns empty string
  *   - wp.intextmode: returns false (not in text edit mode)
- *   - wp.getselection/setselection: use static selection state
+ *   - wp.getselect/setselect: use persisted static selection state
  *   - All formatting verbs: no-op returning true
  */
 
@@ -22,6 +22,10 @@
 #include "langinternal.h"
 #include "tablestructure.h"
 #include "logging.h"
+
+/* Per-thread selection state for headless wp */
+static long wp_sel_start = 0;
+static long wp_sel_end = 0;
 
 /* Token enum matching GUI wp verbs (from wpverbs.c) */
 enum {
@@ -146,20 +150,20 @@ static boolean wp_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(true, vreturned);
 
         case wpv_getselection: {
-            /* wp.getSelection(startAddr, endAddr) - return 0,0 */
-            if (!langsetlongvarparam(hparam1, 1, 0))
+            /* wp.getSelect(startAddr, endAddr) - return persisted selection */
+            if (!langsetlongvarparam(hparam1, 1, wp_sel_start))
                 return false;
 
             flnextparamislast = true;
 
-            if (!langsetlongvarparam(hparam1, 2, 0))
+            if (!langsetlongvarparam(hparam1, 2, wp_sel_end))
                 return false;
 
             return setbooleanvalue(true, vreturned);
         }
 
         case wpv_setselection: {
-            /* wp.setSelection(start, end) - consume params, return true */
+            /* wp.setSelect(start, end) - persist selection state */
             long selstart, selend;
 
             if (!getlongvalue(hparam1, 1, &selstart))
@@ -169,6 +173,9 @@ static boolean wp_valueproc(short token, hdltreenode hparam1,
 
             if (!getlongvalue(hparam1, 2, &selend))
                 return false;
+
+            wp_sel_start = selstart;
+            wp_sel_end = selend;
 
             return setbooleanvalue(true, vreturned);
         }
@@ -249,8 +256,8 @@ boolean wpinitverbs(void) {
     ADD_VERB(BIGSTRING("\psetjustification"), wpv_setjustification);
     ADD_VERB(BIGSTRING("\psettab"), wpv_settab);
     ADD_VERB(BIGSTRING("\pcleartabs"), wpv_cleartabs);
-    ADD_VERB(BIGSTRING("\pgetselection"), wpv_getselection);
-    ADD_VERB(BIGSTRING("\psetselection"), wpv_setselection);
+    ADD_VERB(BIGSTRING("\pgetselect"), wpv_getselection);
+    ADD_VERB(BIGSTRING("\psetselect"), wpv_setselection);
     ADD_VERB(BIGSTRING("\pinsert"), wpv_insert);
     ADD_VERB(BIGSTRING("\prulerlength"), wpv_rulerlength);
     ADD_VERB(BIGSTRING("\pgo"), wpv_go);

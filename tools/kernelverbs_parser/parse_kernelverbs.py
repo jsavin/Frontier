@@ -218,10 +218,17 @@ def strip_preprocessor_conditionals(content: str) -> str:
     in_ifdef = False
     in_else = False
     has_else = False
+    nesting_depth = 0  # track nested #ifdef to error early
 
     for line in lines:
         stripped = line.strip()
         if stripped.startswith('#ifdef') or stripped.startswith('#ifndef'):
+            if in_ifdef:
+                nesting_depth += 1
+                if nesting_depth > 0:
+                    print(f"ERROR: Nested #ifdef detected in RC file (not supported): {stripped}",
+                          file=sys.stderr)
+                    sys.exit(1)
             in_ifdef = True
             in_else = False
             has_else = False

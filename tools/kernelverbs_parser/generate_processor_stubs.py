@@ -24,8 +24,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from parse_kernelverbs import (
     parse_kernelverbs_rc,
+    parse_headless_verbs_mk,
     EFPProcessor,
-    HEADLESS_REGISTERED
+    EXCLUDED_PROCESSORS,
+    CORE_IMPLEMENTED_PROCESSORS,
 )
 from stub_config import get_stub_implementation
 
@@ -302,7 +304,15 @@ def main() -> None:
     output_dir = sys.argv[2]
 
     # Parse optional --implemented and --force-regenerate flags
-    implemented = set(HEADLESS_REGISTERED)
+    # Derive implemented set from headless_verbs.mk
+    script_dir = Path(__file__).parent
+    project_root = script_dir.parent.parent
+    mk_path = project_root / "tests/headless_verbs.mk"
+    if mk_path.exists():
+        mk_processors = parse_headless_verbs_mk(str(mk_path))
+        implemented = (mk_processors | CORE_IMPLEMENTED_PROCESSORS) - EXCLUDED_PROCESSORS
+    else:
+        implemented = set()
     force_regenerate = set()
 
     for i in range(3, len(sys.argv)):
