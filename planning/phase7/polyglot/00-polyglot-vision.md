@@ -56,7 +56,7 @@ This specification does NOT cover:
 
 ### D1: Licensing Model
 
-Frontier is MIT/BSD licensed. All engine candidates must be permissively licensed. This eliminates GPL-only options but leaves a wide field of candidates (QuickJS, JavaScriptCore, Duktape, CPython, MicroPython, etc.).
+Frontier is currently GPLv2 licensed (forked from the GPLv2 release of the original codebase). A relicensing effort is underway with the de facto IP owner to dual-license the original code as GPLv2+MIT, after which this fork will migrate to MIT. All engine candidates should be permissively licensed to remain compatible with the target MIT license. This eliminates GPL-only options but leaves a wide field of candidates (QuickJS, JavaScriptCore, Duktape, CPython, MicroPython, etc.).
 
 ### D2: Architecture Decision Deferred
 

@@ -23,7 +23,7 @@ Phase 7 explores adding JavaScript and Python as first-class scripting languages
 
 ## Key Design Decisions
 
-- **Licensing**: Frontier is MIT/BSD — all engines must be permissively licensed
+- **Licensing**: Frontier is currently GPLv2 (MIT migration underway) — all engines must be permissively licensed
 - **Architecture**: Two approaches spec'd (vtable vs RPC hybrid); decision deferred to implementation
 - **ODB access**: Full read/write from all languages (same trust model as UserTalk)
 - **Script storage**: Both ODB-native and filesystem

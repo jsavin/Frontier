@@ -103,7 +103,7 @@ import { helper } from "user.scripts.utils";
 
 #### Licensing Summary
 
-All four engines have permissive licenses compatible with Frontier's MIT/BSD model:
+All four engines have permissive licenses compatible with Frontier's target MIT license (currently GPLv2, migration underway):
 
 | Engine | License | Static Linking OK? | Distribution OK? |
 |---|---|---|---|
