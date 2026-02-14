@@ -242,6 +242,10 @@ typedef struct tythreadglobals {
 	boolean fl_batch_mode;           /* --batch flag set */
 	boolean fl_interactive_detected;  /* Cached isatty() result */
 
+	/* WP selection state (thread-local for GIL safety) */
+	long wp_sel_start;
+	long wp_sel_end;
+
 	/* Reserved for future parameter state (Phase 6+) */
 	void *param_reserved[4];
 
@@ -282,6 +286,10 @@ typedef struct tythreadglobals {
 #define fl_interactive_detected ((**hthreadglobals).fl_interactive_detected)
 #define fllanghashassignprotect ((**hthreadglobals).fllanghashassignprotect)
 #define fllangexternalvalueprotect ((**hthreadglobals).fllangexternalvalueprotect)
+
+/* WP selection state (thread-local via GIL, matching ADR-005 macro pattern) */
+#define wp_sel_start ((**hthreadglobals).wp_sel_start)
+#define wp_sel_end ((**hthreadglobals).wp_sel_end)
 
 /*globals*/
 

@@ -1,5 +1,7 @@
 # Automatic Verb Binding - Implementation Checklist
 
+> **Note (2026-02):** The `HEADLESS_REGISTERED` whitelist in `parse_kernelverbs.py` has been replaced. Registration is now derived from `tests/headless_verbs.mk` filenames. See PR #419.
+
 ## Status
 - State: Implementation Ready
 - Phase: 3

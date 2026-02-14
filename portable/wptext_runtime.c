@@ -9,6 +9,7 @@
 #include "wptext_portable.h"
 #include "db_format.h"
 #include "logging.h"
+#include "processinternal.h"  /* wp_sel_start/wp_sel_end macros (thread-local via GIL) */
 
 extern boolean flconvertingolddatabase;
 
@@ -110,8 +111,7 @@ typedef struct wp_portable_state {
     Handle portable_rtf_cache;
 } wp_portable_state;
 
-static long headless_wp_sel_start = 0;
-static long headless_wp_sel_end = 0;
+/* wp_sel_start/wp_sel_end are now thread-local macros from processinternal.h */
 
 static wp_portable_state *wp_portable_state_alloc(void) {
     wp_portable_state *state = (wp_portable_state *)calloc(1, sizeof(wp_portable_state));
@@ -477,8 +477,11 @@ boolean wpverbmemorypack(hdlexternalvariable h, Handle *hpacked) {
         (**h).flinmemory = false;
     }
 
-    if (!ok)
+    if (!ok) {
+        if (hpayload != nil)
+            disposehandle(hpayload);
         return false;
+    }
 
     ok = pushhandle(hpayload, *hpacked);
     disposehandle(hpayload);
@@ -681,15 +684,15 @@ boolean wpstart(void) {
 
 boolean wpgetselection(long *startsel, long *endsel) {
     if (startsel)
-        *startsel = headless_wp_sel_start;
+        *startsel = wp_sel_start;
     if (endsel)
-        *endsel = headless_wp_sel_end;
+        *endsel = wp_sel_end;
     return true;
 }
 
 boolean wpsetselection(long startsel, long endsel) {
-    headless_wp_sel_start = startsel;
-    headless_wp_sel_end = endsel;
+    wp_sel_start = startsel;
+    wp_sel_end = endsel;
     return true;
 }
 

@@ -9,7 +9,7 @@
  *   - wp.setText: consumes text parameter, returns true
  *   - wp.getText: returns empty string
  *   - wp.intextmode: returns false (not in text edit mode)
- *   - wp.getselect/setselect: use persisted static selection state
+ *   - wp.getselect/setselect: use thread-local selection state (GIL-safe)
  *   - All formatting verbs: no-op returning true
  */
 
@@ -20,12 +20,9 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "processinternal.h"  /* wp_sel_start/wp_sel_end macros (thread-local via GIL) */
 #include "tablestructure.h"
 #include "logging.h"
-
-/* Per-thread selection state for headless wp */
-static long wp_sel_start = 0;
-static long wp_sel_end = 0;
 
 /* Token enum matching GUI wp verbs (from wpverbs.c) */
 enum {
@@ -77,8 +74,9 @@ static boolean wp_valueproc(short token, hdltreenode hparam1,
             return setstringvalue(BIGSTRING("\p"), vreturned);
 
         case wpv_settext: {
-            /* wp.setText(s) - consume the text parameter.
-             * For startup bootstrap, we just need this to not fail. */
+            /* wp.setText(s) - consume text parameter without validation.
+             * In headless mode we accept any type to avoid script failures
+             * during startup bootstrap. The value is intentionally discarded. */
             tyvaluerecord val;
 
             flnextparamislast = true;
@@ -229,9 +227,7 @@ boolean wpinitverbs(void) {
     pushhashtable(htable);
 
     #define ADD_VERB(name, tok) do { \
-        bigstring bs; \
-        copystring(name, bs); \
-        if (!langaddkeyword(bs, tok)) { \
+        if (!langaddkeyword(name, tok)) { \
             pophashtable(); \
             return false; \
         } \

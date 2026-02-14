@@ -1,5 +1,7 @@
 # Pattern C & D Solution Proposal
 
+> **Note (2026-02):** The `HEADLESS_REGISTERED` whitelist in `parse_kernelverbs.py` has been replaced. Registration is now derived from `tests/headless_verbs.mk` filenames. See PR #419.
+
 **Date:** 2025-12-14
 **Status:** Awaiting Approval
 **Approach:** Hybrid - Exception Tables + Strategic C Refactoring
