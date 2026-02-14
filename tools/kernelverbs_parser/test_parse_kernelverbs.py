@@ -20,6 +20,7 @@ from parse_kernelverbs import (
     parse_kernelverbs_rc,
     parse_headless_verbs_mk,
     generate_kernel_verbs_init_c,
+    strip_preprocessor_conditionals,
     EFPProcessor,
     EXCLUDED_PROCESSORS,
     CORE_IMPLEMENTED_PROCESSORS,
@@ -570,6 +571,113 @@ class TestIntegration(unittest.TestCase):
         # Should have init calls for all whitelisted processors (extern decls + actual calls)
         self.assertGreaterEqual(len(implementation_lines), len(whitelist),
                                 f"Should have extern declarations and calls for all {len(whitelist)} whitelisted processors")
+
+
+class TestStripPreprocessorConditionals(unittest.TestCase):
+    """Test the strip_preprocessor_conditionals() function"""
+
+    def test_no_conditionals(self):
+        """Content without #ifdef passes through unchanged"""
+        content = 'line1\nline2\nline3'
+        result = strip_preprocessor_conditionals(content)
+        self.assertEqual(result, content)
+
+    def test_ifdef_with_else_keeps_else_branch(self):
+        """#ifdef with #else: keep only the #else branch"""
+        content = (
+            'before\n'
+            '#ifdef SOMETHING\n'
+            'ifdef_content\n'
+            '#else\n'
+            'else_content\n'
+            '#endif\n'
+            'after'
+        )
+        result = strip_preprocessor_conditionals(content)
+        self.assertNotIn('ifdef_content', result)
+        self.assertIn('else_content', result)
+        self.assertIn('before', result)
+        self.assertIn('after', result)
+
+    def test_ifdef_without_else_keeps_ifdef_branch(self):
+        """#ifdef without #else: keep the #ifdef branch content"""
+        content = (
+            'before\n'
+            '#ifdef SOMETHING\n'
+            'ifdef_content\n'
+            '#endif\n'
+            'after'
+        )
+        result = strip_preprocessor_conditionals(content)
+        self.assertIn('ifdef_content', result)
+        self.assertIn('before', result)
+        self.assertIn('after', result)
+
+    def test_ifndef_handled_same_as_ifdef(self):
+        """#ifndef is handled like #ifdef"""
+        content = (
+            '#ifndef GUARD\n'
+            'guarded_content\n'
+            '#endif\n'
+        )
+        result = strip_preprocessor_conditionals(content)
+        self.assertIn('guarded_content', result)
+
+    def test_multiple_independent_ifdefs(self):
+        """Multiple non-nested #ifdef blocks are handled independently"""
+        content = (
+            '#ifdef A\n'
+            'a_content\n'
+            '#else\n'
+            'a_else\n'
+            '#endif\n'
+            '#ifdef B\n'
+            'b_content\n'
+            '#endif\n'
+        )
+        result = strip_preprocessor_conditionals(content)
+        self.assertNotIn('a_content', result)
+        self.assertIn('a_else', result)
+        self.assertIn('b_content', result)
+
+    def test_nested_ifdef_exits_with_error(self):
+        """Nested #ifdef causes sys.exit(1)"""
+        content = (
+            '#ifdef OUTER\n'
+            '#ifdef INNER\n'
+            'nested\n'
+            '#endif\n'
+            '#endif\n'
+        )
+        with self.assertRaises(SystemExit) as cm:
+            strip_preprocessor_conditionals(content)
+        self.assertEqual(cm.exception.code, 1)
+
+    def test_directives_stripped_from_output(self):
+        """#ifdef/#else/#endif lines themselves are not in output"""
+        content = (
+            '#ifdef X\n'
+            'content\n'
+            '#endif\n'
+        )
+        result = strip_preprocessor_conditionals(content)
+        self.assertNotIn('#ifdef', result)
+        self.assertNotIn('#endif', result)
+
+    def test_wp_style_verb_count_pattern(self):
+        """Real-world pattern: wp processor with #ifdef selecting verb count"""
+        content = (
+            '"wp\\0",\n'
+            '\ttrue,\n'
+            '#ifdef flvariables\n'
+            '\t\t36\n'
+            '#else\n'
+            '\t\t27\n'
+            '#endif\n'
+        )
+        result = strip_preprocessor_conditionals(content)
+        self.assertIn('27', result)
+        self.assertNotIn('36', result)
 
 
 if __name__ == '__main__':

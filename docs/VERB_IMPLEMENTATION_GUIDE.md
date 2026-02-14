@@ -269,6 +269,23 @@ Look at these working verb implementations that use ODB address parameters:
 
 ---
 
+## Adding a New Verb Processor
+
+When adding a completely new verb processor (e.g., `wp`, `menu`, `outline`):
+
+1. **Create the headless verb file**: `tests/headless_{processor}_verbs.c`
+   - Follow the dispatcher pattern in `docs/DISPATCHER_PATTERN.md`
+   - Implement `{processor}initverbs()` function
+   - Register verb keywords via `langaddkeyword()`
+
+2. **Add to the build**: Add the file to `tests/headless_verbs.mk`
+
+That's it. The build system auto-derives the processor name from the filename and generates `generated/kernel_verbs_init.c` for both test and production builds. If you forget step 2, you'll get a build error (not a silent runtime failure).
+
+See ADR-015 for the architectural rationale behind this two-step workflow.
+
+---
+
 ## Testing
 
 ### Run Headless Test Suite

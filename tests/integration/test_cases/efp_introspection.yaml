@@ -157,3 +157,19 @@ tests:
     script: 'defined(string.nonexistent)'
     expected_success: true
     expected_result: "false"
+
+  # ====================================================================
+  # SECTION 5: Verb Registration Exclusions (ADR-015)
+  # ====================================================================
+  # webserver is intentionally excluded from EFP registration because
+  # its EFP stub would shadow builtins.webserver script implementations.
+  # Verify that webserver.init resolves to the script, not an EFP stub.
+
+  - name: "webserver.init - resolves to script, not EFP stub"
+    description: |
+      webserver is excluded from EFP registration (EXCLUDED_PROCESSORS
+      in parse_kernelverbs.py). Verify webserver.init is defined and
+      resolves to a script type, not a token/EFP stub.
+    script: 'defined(webserver.init) and (typeOf(webserver.init) == scriptType)'
+    expected_success: true
+    expected_result: "true"
