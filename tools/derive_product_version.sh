@@ -8,8 +8,16 @@
 #   v1.1.0-alpha.2       → 11.1a2
 #   v1.2.3               → 11.2.3
 #   1.0.0-dev             → 11.0d
+#   db0949d (bare hash)   → 11.0d (safe fallback)
 
 v="${1#v}"  # strip leading 'v' if present
+
+# Validate input starts with digits (a proper version tag).
+# git describe --always can return bare commit hashes when no tags exist.
+if [ -z "$v" ] || ! echo "$v" | grep -qE '^[0-9]+\.'; then
+    echo "11.0d"
+    exit 0
+fi
 
 major=$(echo "$v" | sed -E 's/^([0-9]+).*/\1/')
 rest=$(echo "$v" | sed -E 's/^[0-9]+\.//')
@@ -31,7 +39,8 @@ if echo "$v" | grep -qE '\-(alpha|beta|rc|dev)'; then
     esac
 fi
 
-if [ "$patch" = "0" ] || [ "$patch" = "$minor" ]; then
+# Only omit patch when it's genuinely zero (e.g., v1.0.0 → 11.0, not v1.2.2 → 11.2)
+if [ "$patch" = "0" ]; then
     echo "${pmajor}.${minor}${stage}${sub}"
 else
     echo "${pmajor}.${minor}.${patch}${stage}${sub}"

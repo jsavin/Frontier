@@ -111,3 +111,13 @@ tests:
       return system.environment.osFullNameForDisplay != "0.0.0"
     expected_success: true
     expected_result: "true"
+
+  - name: "system.environment.osBuildNumber - nonempty on macOS"
+    description: "osBuildNumber should contain a real build number from sw_vers"
+    script: |
+      if sys.os() == "MacOS" {
+        return sizeOf(system.environment.osBuildNumber) > 0}
+      else {
+        return true}
+    expected_success: true
+    expected_result: "true"

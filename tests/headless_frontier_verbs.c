@@ -49,6 +49,9 @@ enum {
     frov_cliversion = 14
 };
 
+/* Forward declaration — defined below, also called directly by langhtml.c */
+boolean frontierversion(tyvaluerecord *v);
+
 static boolean frontier_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
@@ -168,23 +171,13 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             /* Verb #7: frontier.reclaimmemory - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_version: {
+        case frov_version:
             /* Verb #8: frontier.version - Return product version string */
             /* Derived from git tag: CLI major + 10 (e.g., CLI v1.0.0-alpha.6 → "11.0a6") */
             /* Ensures date.versionLessThan() comparisons with legacy 7.x/10.x versions work */
-            bigstring bsversion;
-
             if (!langcheckparamcount(hparam1, 0))
                 return false;
-
-            #ifdef FRONTIER_PRODUCT_VERSION_STRING
-            copyctopstring(FRONTIER_PRODUCT_VERSION_STRING, bsversion);
-            #else
-            copyctopstring("11.0d", bsversion);
-            #endif
-
-            return setstringvalue(bsversion, vreturned);
-        }
+            return frontierversion(vreturned);
         case frov_cliversion: {
             /* Verb #14: frontier.cliVersion - Return CLI distribution version string */
             /* Returns the git-derived version (e.g., "v1.0.0-alpha.6") */

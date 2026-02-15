@@ -497,8 +497,25 @@ static boolean initenvironment ( hdlhashtable ht ) {
 		
 	#endif //!PIKE
 
+	/* New flags for headless/CLI builds. Set in both paths so UserTalk scripts
+	   can check these portably regardless of which runtime they're in. */
+
+	langassignbooleanvalue (ht, str_isHeadless, false);
+
+	#if defined(__APPLE__) || defined(__linux__)
+	langassignbooleanvalue (ht, str_isPosix, true);
+	#else
+	langassignbooleanvalue (ht, str_isPosix, false);
+	#endif
+
+	#ifdef __linux__
+	langassignbooleanvalue (ht, str_isLinux, true);
+	#else
+	langassignbooleanvalue (ht, str_isLinux, false);
+	#endif
+
 	return ( true );
-		
+
 }
 #endif /* FRONTIER_HEADLESS */
 
