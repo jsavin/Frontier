@@ -51,6 +51,7 @@ static char* read_line_with_editing(void) {
 				terminal_free_state(term_state);
 				return buffer;
 
+			case KEY_ESCAPE:
 			case KEY_CTRL_C:
 			case KEY_CTRL_D:
 				/* Cancel input */
@@ -98,103 +99,19 @@ static char* read_line_with_editing(void) {
 
 /* Displays a yes/no prompt with arrow key selection, returns true for Yes. */
 bool dialog_ask(const char *prompt) {
-	terminal_state *term_state = NULL;
-	bool selected_yes = true;  /* Default to Yes */
-
-	if (!isInteractiveMode()) {
-		return false;
-	}
-
-	/* Save terminal state and enable raw mode */
-	term_state = terminal_save_state();
-	if (!term_state || !terminal_set_raw_mode()) {
-		if (term_state) {
-			terminal_restore_state(term_state);
-			terminal_free_state(term_state);
-		}
-		return false;
-	}
-
-	/* Display initial prompt */
-	fprintf(stderr, "%s? ", prompt);
-	terminal_start_inverted();
-	fputs("Yes", stderr);
-	terminal_end_inverted();
-	fputs(" No", stderr);
-	fflush(stderr);
-
-	while (1) {
-		key_input key = terminal_read_key();
-
-		switch (key.type) {
-			case KEY_ENTER:
-				/* Confirm selection */
-				fputs("\n", stderr);
-				terminal_restore_state(term_state);
-				terminal_free_state(term_state);
-				return selected_yes;
-
-			case KEY_ARROW_LEFT:
-			case KEY_ARROW_RIGHT:
-			case KEY_TAB:
-				/* Toggle selection */
-				selected_yes = !selected_yes;
-
-				/* Redraw prompt */
-				terminal_clear_line();
-				fprintf(stderr, "%s? ", prompt);
-				if (selected_yes) {
-					terminal_start_inverted();
-					fputs("Yes", stderr);
-					terminal_end_inverted();
-					fputs(" No", stderr);
-				} else {
-					fputs("Yes ", stderr);
-					terminal_start_inverted();
-					fputs("No", stderr);
-					terminal_end_inverted();
-				}
-				fflush(stderr);
-				break;
-
-			case KEY_CTRL_C:
-			case KEY_CTRL_D:
-				/* Cancel - return false */
-				fputs("\n", stderr);
-				terminal_restore_state(term_state);
-				terminal_free_state(term_state);
-				return false;
-
-			case KEY_CHAR:
-				/* 'y' or 'n' key shortcuts */
-				if (key.ch == 'y' || key.ch == 'Y') {
-					fputs("\n", stderr);
-					terminal_restore_state(term_state);
-					terminal_free_state(term_state);
-					return true;
-				} else if (key.ch == 'n' || key.ch == 'N') {
-					fputs("\n", stderr);
-					terminal_restore_state(term_state);
-					terminal_free_state(term_state);
-					return false;
-				}
-				break;
-
-			default:
-				/* Ignore other keys */
-				break;
-		}
-	}
+	return dialog_twoway(prompt, "Yes", "No");
 }
 
-/* Prompts for an integer value with a default; validates input before returning. */
-long dialog_get_int(const char *prompt, long default_value) {
+/* Prompts for an integer value with a default; validates input before returning.
+   Returns true if user entered a value, false if cancelled (Esc/Ctrl+C).
+   On success, *out_value is set. On cancel, *out_value is unchanged. */
+bool dialog_get_int(const char *prompt, long default_value, long *out_value) {
 	char *input = NULL;
 	long result = 0;
 	char *endptr;
 
 	if (!isInteractiveMode()) {
-		return 0;
+		return false;
 	}
 
 	while (1) {
@@ -204,13 +121,14 @@ long dialog_get_int(const char *prompt, long default_value) {
 
 		input = read_line_with_editing();
 		if (!input) {
-			return default_value;  /* Ctrl+C or error - return default */
+			return false;  /* Esc/Ctrl+C - cancelled */
 		}
 
 		/* Empty input - accept default */
 		if (input[0] == '\0') {
 			free(input);
-			return default_value;
+			*out_value = default_value;
+			return true;
 		}
 
 		/* Try to parse integer */
@@ -220,7 +138,8 @@ long dialog_get_int(const char *prompt, long default_value) {
 		/* Check for valid integer */
 		if (errno == 0 && *endptr == '\0') {
 			free(input);
-			return result;
+			*out_value = result;
+			return true;
 		}
 
 		/* Invalid input - re-prompt */
@@ -307,6 +226,7 @@ char* dialog_get_password(const char *prompt) {
 				terminal_free_state(term_state);
 				return buffer;
 
+			case KEY_ESCAPE:
 			case KEY_CTRL_C:
 			case KEY_CTRL_D:
 				/* Cancel input */
@@ -442,10 +362,33 @@ bool dialog_notify(const char *message) {
 	return true;
 }
 
+/* Helper: draw a numbered button, inverted if selected */
+static void draw_button(int number, const char *label, bool selected) {
+	if (selected) {
+		fprintf(stderr, "\033[7m%d:%s\033[0m", number, label);
+	} else {
+		fprintf(stderr, "%d:%s", number, label);
+	}
+}
+
+/* Helper: find which button index (0-based) matches a typed character.
+ * Matches if the first letter of the button label (case-insensitive)
+ * equals the typed character.  Returns -1 if no match. */
+static int match_button_char(char ch, const char **buttons, int count) {
+	char upper = toupper((unsigned char)ch);
+	for (int i = 0; i < count; i++) {
+		if (buttons[i] && toupper((unsigned char)buttons[i][0]) == upper) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 /* Displays a two-button choice dialog; returns true if first button selected. */
 bool dialog_twoway(const char *prompt, const char *button1, const char *button2) {
 	int selection = 0;  /* 0 = button1, 1 = button2 */
 	terminal_state *term_state = NULL;
+	const char *buttons[2] = { button1, button2 };
 
 	if (!isInteractiveMode()) {
 		return true;  /* Default to button1 in batch mode */
@@ -461,62 +404,57 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 		return true;  /* Fall back to button1 */
 	}
 
-	/* Initial display */
 	while (1) {
-		/* Clear line and move to start */
 		fputs("\r\033[K", stderr);
-		
-		/* Display prompt and buttons */
 		fprintf(stderr, "%s? ", prompt);
-		
-		/* Display button1 (inverted if selected) */
-		if (selection == 0) {
-			fprintf(stderr, "\033[7m%s\033[0m ", button1);
-		} else {
-			fprintf(stderr, "%s ", button1);
-		}
-		
-		/* Display button2 (inverted if selected) */
-		if (selection == 1) {
-			fprintf(stderr, "\033[7m%s\033[0m", button2);
-		} else {
-			fprintf(stderr, "%s", button2);
-		}
-		
+		draw_button(1, button1, selection == 0);
+		fputs(" ", stderr);
+		draw_button(2, button2, selection == 1);
 		fflush(stderr);
 
-		/* Read key */
 		key_input key = terminal_read_key();
 
 		switch (key.type) {
 			case KEY_ENTER:
-				/* Confirm selection */
 				fputs("\n", stderr);
 				terminal_restore_state(term_state);
 				terminal_free_state(term_state);
 				return (selection == 0);
 
-			case KEY_ARROW_LEFT:
-			case KEY_ARROW_RIGHT:
-			case KEY_TAB:
-				/* Toggle selection */
-				selection = 1 - selection;
-				break;
-
-			case KEY_CTRL_C:
-			case KEY_CTRL_D:
-				/* Cancel - default to button1 */
+			case KEY_ESCAPE:
+				/* Esc = last button (No/Cancel) */
 				fputs("\n", stderr);
 				terminal_restore_state(term_state);
 				terminal_free_state(term_state);
-				return true;
+				return false;
+
+			case KEY_ARROW_LEFT:
+			case KEY_ARROW_RIGHT:
+			case KEY_TAB:
+				selection = 1 - selection;
+				break;
 
 			case KEY_CHAR:
-				/* Also allow 1/2 keys */
+				/* Number keys: instant select */
 				if (key.ch == '1') {
-					selection = 0;
+					fputs("\n", stderr);
+					terminal_restore_state(term_state);
+					terminal_free_state(term_state);
+					return true;
 				} else if (key.ch == '2') {
-					selection = 1;
+					fputs("\n", stderr);
+					terminal_restore_state(term_state);
+					terminal_free_state(term_state);
+					return false;
+				} else {
+					/* First-letter match: instant select */
+					int match = match_button_char(key.ch, buttons, 2);
+					if (match >= 0) {
+						fputs("\n", stderr);
+						terminal_restore_state(term_state);
+						terminal_free_state(term_state);
+						return (match == 0);
+					}
 				}
 				break;
 
@@ -530,6 +468,7 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 int dialog_threeway(const char *prompt, const char *button1, const char *button2, const char *button3) {
 	int selection = 0;  /* 0 = button1, 1 = button2, 2 = button3 */
 	terminal_state *term_state = NULL;
+	const char *buttons[3] = { button1, button2, button3 };
 
 	if (!isInteractiveMode()) {
 		return 1;  /* Default to button1 in batch mode */
@@ -545,79 +484,56 @@ int dialog_threeway(const char *prompt, const char *button1, const char *button2
 		return 1;  /* Fall back to button1 */
 	}
 
-	/* Initial display */
 	while (1) {
-		/* Clear line and move to start */
 		fputs("\r\033[K", stderr);
-		
-		/* Display prompt and buttons */
 		fprintf(stderr, "%s? ", prompt);
-		
-		/* Display button1 (inverted if selected) */
-		if (selection == 0) {
-			fprintf(stderr, "\033[7m%s\033[0m ", button1);
-		} else {
-			fprintf(stderr, "%s ", button1);
-		}
-		
-		/* Display button2 (inverted if selected) */
-		if (selection == 1) {
-			fprintf(stderr, "\033[7m%s\033[0m ", button2);
-		} else {
-			fprintf(stderr, "%s ", button2);
-		}
-		
-		/* Display button3 (inverted if selected) */
-		if (selection == 2) {
-			fprintf(stderr, "\033[7m%s\033[0m", button3);
-		} else {
-			fprintf(stderr, "%s", button3);
-		}
-		
+		draw_button(1, button1, selection == 0);
+		fputs(" ", stderr);
+		draw_button(2, button2, selection == 1);
+		fputs(" ", stderr);
+		draw_button(3, button3, selection == 2);
 		fflush(stderr);
 
-		/* Read key */
 		key_input key = terminal_read_key();
 
 		switch (key.type) {
 			case KEY_ENTER:
-				/* Confirm selection (return 1, 2, or 3) */
 				fputs("\n", stderr);
 				terminal_restore_state(term_state);
 				terminal_free_state(term_state);
 				return (selection + 1);
 
+			case KEY_ESCAPE:
+				/* No clear cancel target with 3 buttons — beep */
+				fputc('\a', stderr);
+				fflush(stderr);
+				break;
+
 			case KEY_ARROW_LEFT:
-				/* Move left */
-				if (selection > 0) {
-					selection--;
-				}
+				if (selection > 0) selection--;
 				break;
 
 			case KEY_ARROW_RIGHT:
 			case KEY_TAB:
-				/* Move right */
-				if (selection < 2) {
-					selection++;
-				}
+				if (selection < 2) selection++;
 				break;
 
-			case KEY_CTRL_C:
-			case KEY_CTRL_D:
-				/* Cancel - default to button1 */
-				fputs("\n", stderr);
-				terminal_restore_state(term_state);
-				terminal_free_state(term_state);
-				return 1;
-
 			case KEY_CHAR:
-				/* Also allow 1/2/3 keys */
-				if (key.ch == '1') {
-					selection = 0;
-				} else if (key.ch == '2') {
-					selection = 1;
-				} else if (key.ch == '3') {
-					selection = 2;
+				/* Number keys: instant select */
+				if (key.ch >= '1' && key.ch <= '3') {
+					fputs("\n", stderr);
+					terminal_restore_state(term_state);
+					terminal_free_state(term_state);
+					return (key.ch - '0');
+				} else {
+					/* First-letter match: instant select */
+					int match = match_button_char(key.ch, buttons, 3);
+					if (match >= 0) {
+						fputs("\n", stderr);
+						terminal_restore_state(term_state);
+						terminal_free_state(term_state);
+						return (match + 1);
+					}
 				}
 				break;
 

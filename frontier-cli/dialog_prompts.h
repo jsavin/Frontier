@@ -29,9 +29,10 @@ bool dialog_ask(const char *prompt);
  * Displays: "prompt [default]: "
  * Enter accepts default, typed input overrides
  * Re-prompts if input is not a valid integer
- * Returns: integer value, or 0 on error
+ * Esc/Ctrl+C cancels without modifying *out_value
+ * Returns: true if value entered, false if cancelled
  */
-long dialog_get_int(const char *prompt, long default_value);
+bool dialog_get_int(const char *prompt, long default_value, long *out_value);
 
 /* String input prompt with default value
  *

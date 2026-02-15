@@ -13,6 +13,7 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <poll.h>
 
 /* Internal terminal state storage */
 typedef struct {
@@ -281,12 +282,15 @@ key_input terminal_read_key(void) {
 		return result;
 	}
 
-	/* Handle escape sequences */
+	/* Handle escape sequences.  A bare Esc sends just 0x1b, while
+	 * arrow keys send 0x1b '[' <letter>.  Use poll() with a short
+	 * timeout to tell them apart. */
 	if (ch == '\x1b') {
 		char seq[3];
+		struct pollfd pfd = { .fd = STDIN_FILENO, .events = POLLIN };
 
-		/* Try to read next 2 characters */
-		if (read(STDIN_FILENO, &seq[0], 1) != 1) {
+		/* Wait up to 50 ms for a follow-up byte */
+		if (poll(&pfd, 1, 50) <= 0 || read(STDIN_FILENO, &seq[0], 1) != 1) {
 			result.type = KEY_ESCAPE;
 			return result;
 		}
