@@ -74,6 +74,22 @@ static void format_permissions(mode_t mode, char *buf, size_t buf_size) {
 static void browser_load_directory(browser_state *state);
 static void browser_load_preview(browser_state *state);
 
+/* Compute the file-list height: half the terminal but no less than
+ * min(15, available_rows).  Chrome rows = prompt + breadcrumb +
+ * top separator + bottom separator + status bar (+1 for putFile filename bar). */
+static int compute_list_height(int term_rows, browser_mode mode) {
+	int chrome = (mode == BROWSER_PUT_FILE) ? 6 : 5;
+	int available = term_rows - chrome;
+	if (available < 1) available = 1;
+
+	int half = term_rows / 2;
+	int minimum = (15 < available) ? 15 : available;
+	int height = (half > minimum) ? half : minimum;
+	if (height > available)
+		height = available;
+	return height;
+}
+
 /* Initialize browser state */
 static void browser_init_state(browser_state *state, browser_mode mode,
                                const char *prompt, const char *start_path,
@@ -148,20 +164,7 @@ static void browser_init_state(browser_state *state, browser_mode mode,
 		state->right_width = state->term_cols - state->left_width - 1;
 	}
 
-	/* Browser occupies half the terminal height, but no less than
-	 * min(15, available_rows).  Chrome rows: prompt, breadcrumb,
-	 * top sep, bot sep, status bar (+1 filename bar for putFile). */
-	int init_chrome = (mode == BROWSER_PUT_FILE) ? 6 : 5;
-	int available = state->term_rows - init_chrome;
-	if (available < 1) available = 1;
-
-	int half = state->term_rows / 2;
-	int minimum = (15 < available) ? 15 : available;
-	state->list_height = (half > minimum) ? half : minimum;
-	/* Don't exceed what actually fits */
-	if (state->list_height > available) {
-		state->list_height = available;
-	}
+	state->list_height = compute_list_height(state->term_rows, mode);
 
 	log_info(LOG_COMP_GENERAL, "file_browser: initialized mode=%d dir=%s size=%dx%d",
 	         mode, state->current_dir, state->term_cols, state->term_rows);
@@ -179,16 +182,7 @@ static void browser_recompute_layout(browser_state *state) {
 		state->right_width = state->term_cols - state->left_width - 1;
 	}
 
-	int resize_chrome = (state->mode == BROWSER_PUT_FILE) ? 6 : 5;
-	int available = state->term_rows - resize_chrome;
-	if (available < 1) available = 1;
-
-	int half = state->term_rows / 2;
-	int minimum = (15 < available) ? 15 : available;
-	state->list_height = (half > minimum) ? half : minimum;
-	if (state->list_height > available) {
-		state->list_height = available;
-	}
+	state->list_height = compute_list_height(state->term_rows, state->mode);
 }
 
 /* Check if file entry matches the type filter */

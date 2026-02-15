@@ -15,6 +15,11 @@
 #include <sys/ioctl.h>
 #include <poll.h>
 
+/* Timeout (ms) to distinguish a bare Esc keypress from the start of an
+ * ANSI escape sequence (e.g. arrow keys send ESC [ A).  50 ms is the
+ * industry-standard value used by vim, tmux, etc. */
+#define ESC_SEQUENCE_TIMEOUT_MS 50
+
 /* Internal terminal state storage */
 typedef struct {
 	struct termios original_termios;
@@ -289,8 +294,8 @@ key_input terminal_read_key(void) {
 		char seq[3];
 		struct pollfd pfd = { .fd = STDIN_FILENO, .events = POLLIN };
 
-		/* Wait up to 50 ms for a follow-up byte */
-		if (poll(&pfd, 1, 50) <= 0 || read(STDIN_FILENO, &seq[0], 1) != 1) {
+		/* Wait for a follow-up byte; timeout means bare Esc */
+		if (poll(&pfd, 1, ESC_SEQUENCE_TIMEOUT_MS) <= 0 || read(STDIN_FILENO, &seq[0], 1) != 1) {
 			result.type = KEY_ESCAPE;
 			return result;
 		}
