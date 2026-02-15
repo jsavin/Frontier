@@ -1,20 +1,32 @@
-#!/bin/sh
+#!/bin/bash
 # Derive product version from CLI version tag.
-# CLI major + 10, stage mapped: alpha→a, beta→b, rc→fc, dev→d
+# Maps CLI version to Frontier product version: CLI major + 10.
+# Stage names mapped: alpha→a, beta→b, rc→fc, dev→d.
+#
+# Uses sed -E (extended regex) which requires bash; not POSIX sh.
+#
 # Examples:
 #   v1.0.0-alpha.6       → 11.0a6
 #   v1.0.0-beta.3        → 11.0b3
 #   v1.0.0               → 11.0
 #   v1.1.0-alpha.2       → 11.1a2
 #   v1.2.3               → 11.2.3
+#   v1.2.2               → 11.2.2
 #   1.0.0-dev             → 11.0d
-#   db0949d (bare hash)   → 11.0d (safe fallback)
+#
+# Edge cases (all produce safe fallback "11.0d"):
+#   db0949d              - bare commit hash from git describe --always
+#   ""                   - empty input
+#   abc                  - non-numeric garbage
+#
+# Note: v0.x tags would produce product major 10, which collides with
+# legacy Frontier 10.x. CLI tags should always start at v1.x or higher.
 
 v="${1#v}"  # strip leading 'v' if present
 
-# Validate input starts with digits (a proper version tag).
+# Validate input starts with digits followed by dot (a proper semver tag).
 # git describe --always can return bare commit hashes when no tags exist.
-if [ -z "$v" ] || ! echo "$v" | grep -qE '^[0-9]+\.'; then
+if [[ -z "$v" || ! "$v" =~ ^[0-9]+\. ]]; then
     echo "11.0d"
     exit 0
 fi

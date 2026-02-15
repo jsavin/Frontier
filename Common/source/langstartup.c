@@ -266,7 +266,6 @@ static boolean initenvironment (hdlhashtable ht) {
 	#ifdef __APPLE__
 	{
 		bigstring bsversion, bsos;
-		Handle hcommand, hreturn;
 		long x;
 
 		getsystemversionstring (bsversion, NULL);
@@ -296,31 +295,74 @@ static boolean initenvironment (hdlhashtable ht) {
 
 		langassignstringvalue (ht, str_osVersionString, bsversion);
 
-		/* Get build number via sw_vers */
+		/* Query sw_vers for build number and OS display name.
+		   Uses a shared handle pair with proper cleanup on all paths. */
 
-		newemptyhandle (&hreturn);
+		{
+			Handle hcommand = nil, hreturn = nil;
+			boolean flgothandles;
 
-		newtexthandle ("\psw_vers -buildVersion", &hcommand);
-		unixshellcall (hcommand, hreturn);
-		texthandletostring (hreturn, bs);
-		sethandlesize (hreturn, 0);
-		if (stringlength (bs) > 0)
-			setstringlength (bs, stringlength (bs) - 1); /* strip trailing newline */
-		langassignstringvalue (ht, str_osBuildNumber, bs);
+			flgothandles = newemptyhandle (&hreturn) && newtexthandle ("\psw_vers -buildVersion", &hcommand);
 
-		/* Get OS display name via sw_vers */
+			if (!flgothandles) {
 
-		copystring ("\psw_vers -productName", bs);
-		sethandlecontents (stringbaseaddress (bs), stringlength (bs), hcommand);
-		unixshellcall (hcommand, hreturn);
-		texthandletostring (hreturn, bsos);
-		if (stringlength (bsos) > 0)
-			setstringlength (bsos, stringlength (bsos) - 1); /* strip trailing newline */
+				log_warn (LOG_COMP_STARTUP, "initenvironment: failed to allocate handles for sw_vers");
 
-		disposehandle (hcommand);
-		disposehandle (hreturn);
+				if (hreturn != nil) disposehandle (hreturn);
+				if (hcommand != nil) disposehandle (hcommand);
 
-		langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+				copyctopstring ("unknown", bs);
+				langassignstringvalue (ht, str_osBuildNumber, bs);
+				langassignstringvalue (ht, str_osFullNameForDisplay, bs);
+			}
+			else {
+
+				/* Get build number */
+
+				if (unixshellcall (hcommand, hreturn)) {
+
+					texthandletostring (hreturn, bs);
+
+					if (stringlength (bs) > 0)
+						setstringlength (bs, stringlength (bs) - 1); /* strip trailing newline */
+
+					langassignstringvalue (ht, str_osBuildNumber, bs);
+
+					log_debug (LOG_COMP_STARTUP, "initenvironment: osBuildNumber=%s", PSTR(bs));
+				}
+				else {
+					log_warn (LOG_COMP_STARTUP, "initenvironment: sw_vers -buildVersion failed");
+					copyctopstring ("unknown", bs);
+					langassignstringvalue (ht, str_osBuildNumber, bs);
+				}
+
+				/* Get OS display name (reuse handles) */
+
+				sethandlesize (hreturn, 0);
+				copystring ("\psw_vers -productName", bs);
+				sethandlecontents (stringbaseaddress (bs), stringlength (bs), hcommand);
+
+				if (unixshellcall (hcommand, hreturn)) {
+
+					texthandletostring (hreturn, bsos);
+
+					if (stringlength (bsos) > 0)
+						setstringlength (bsos, stringlength (bsos) - 1); /* strip trailing newline */
+
+					langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+
+					log_debug (LOG_COMP_STARTUP, "initenvironment: osFullName=%s", PSTR(bsos));
+				}
+				else {
+					log_warn (LOG_COMP_STARTUP, "initenvironment: sw_vers -productName failed");
+					copyctopstring ("unknown", bsos);
+					langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+				}
+
+				disposehandle (hcommand);
+				disposehandle (hreturn);
+			}
+		}
 	}
 	#else
 	/* Non-macOS: set placeholder version info */
