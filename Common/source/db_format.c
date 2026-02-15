@@ -2288,6 +2288,8 @@ cleanup:
     db_format_mode_apply(&entry_mode);
     db_saveas_state_apply(&entry_saveas);
 
+    db_format_adapter_reset(); /* Clear mode lock so subsequent v6 guest DB opens work */
+
     /* Postcondition: databasedata should be nil after cleanup */
     assert(databasedata == nil);
 
