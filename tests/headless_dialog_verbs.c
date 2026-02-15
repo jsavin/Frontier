@@ -7,10 +7,10 @@
  * DO NOT regenerate - this file contains production implementations.
  *
  * Implementation status (Phase 2A):
- * - dialog.ask(): COMPLETE - Yes/No prompt with arrow key selection
- * - dialog.getInt(): COMPLETE - Integer input with default
+ * - dialog.ask(prompt, @adr): COMPLETE - Text input, stores string in @adr
+ * - dialog.getInt(prompt, @adr): COMPLETE - Integer input, stores int in @adr
  * - dialog.getString() (via getuserinfo): COMPLETE - String input with default
- * - dialog.getPassword(): COMPLETE - Password input with dots
+ * - dialog.getPassword(prompt, @adr): COMPLETE - Password input, stores string in @adr
  *
  * See planning/phase3/HEADLESS_INTERACTIVE_MODE.md for complete roadmap.
  */
@@ -220,59 +220,133 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
                 copystring(BIGSTRING("\pdialog.setmodalcardtimeout was never implemented"), bserror);
             return false;
         case diav_ask: {
-            /* dialog.ask(prompt) - Yes/No prompt with arrow key selection */
+            /* dialog.ask(prompt, @adr) - Text input dialog with OK/Cancel.
+               Pre-populates from adr^ if defined. Stores string in adr^, returns true.
+               On cancel, returns false without modifying adr^. */
             bigstring bsprompt;
+            hdlhashtable htable;
+            bigstring bsvarname;
 
             if (!isInteractiveMode()) {
                 if (bserror) copystring(BIGSTRING("\pCan't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
-            flnextparamislast = true;
             if (!getstringvalue(hparam1, 1, bsprompt))
                 return false;
 
-            /* Convert Pascal string to C string */
+            flnextparamislast = true;
+            if (!getvarparam(hparam1, 2, &htable, bsvarname))
+                return false;
+
+            /* Get current value as default (if variable exists) */
+            char default_value[256] = {0};
+            tyvaluerecord existingval;
+            hdlhashnode hnode;
+            if (hashtablelookup(htable, bsvarname, &existingval, &hnode)) {
+                tyvaluerecord valcopy;
+                if (copyvaluerecord(existingval, &valcopy)) {
+                    disablelangerror();
+                    if (coercetostring(&valcopy)) {
+                        Handle h = valcopy.data.stringvalue;
+                        long len = gethandlesize(h);
+                        if (len > 255) len = 255;
+                        memcpy(default_value, *h, len);
+                        default_value[len] = '\0';
+                    }
+                    enablelangerror();
+                    disposevaluerecord(valcopy, false);
+                }
+            }
+
+            /* Convert prompt to C string */
             char prompt[256];
             copyptocstring(bsprompt, prompt);
 
-            /* Call interactive prompt */
-            boolean result = dialog_ask(prompt);
+            /* Call interactive string prompt */
+            char *result = dialog_get_string(prompt, default_value);
+            if (!result) {
+                /* User cancelled */
+                setbooleanvalue(false, vreturned);
+                return true;
+            }
 
-            return setbooleanvalue(result, vreturned);
+            /* Store result string in variable */
+            tyvaluerecord val;
+            bigstring bsresult;
+            copyctopstring(result, bsresult);
+            free(result);
+
+            if (!setstringvalue(bsresult, &val))
+                return false;
+
+            pushhashtable(htable);
+            boolean fl = langsetsymbolval(bsvarname, val);
+            pophashtable();
+
+            if (!fl)
+                return false;
+
+            exemptfromtmpstack(&val);
+
+            setbooleanvalue(true, vreturned);
+            return true;
         }
         case diav_getint: {
-            /* dialog.getInt(prompt, [default]) - Integer input with optional default */
+            /* dialog.getInt(prompt, @adr) - Integer input dialog.
+               Pre-populates from adr^ if it contains an integer. Stores int in adr^, returns true.
+               On cancel, returns false without modifying adr^. */
             bigstring bsprompt;
-            long default_value = 0;  /* Default to 0 if not specified */
+            hdlhashtable htable;
+            bigstring bsvarname;
 
             if (!isInteractiveMode()) {
                 if (bserror) copystring(BIGSTRING("\pCan't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
-            /* Check if second parameter (default) is provided */
-            if (langgetparamcount(hparam1) >= 2) {
-                if (!getstringvalue(hparam1, 1, bsprompt))
-                    return false;
-                flnextparamislast = true;
-                if (!getlongvalue(hparam1, 2, &default_value))
-                    return false;
-            } else {
-                /* Only one parameter - mark it as last */
-                flnextparamislast = true;
-                if (!getstringvalue(hparam1, 1, bsprompt))
-                    return false;
+            if (!getstringvalue(hparam1, 1, bsprompt))
+                return false;
+
+            flnextparamislast = true;
+            if (!getvarparam(hparam1, 2, &htable, bsvarname))
+                return false;
+
+            /* Get current value as default (if variable exists and is numeric) */
+            long default_value = 0;
+            tyvaluerecord existingval;
+            hdlhashnode hnode;
+            if (hashtablelookup(htable, bsvarname, &existingval, &hnode)) {
+                tyvaluerecord valcopy;
+                if (copyvaluerecord(existingval, &valcopy)) {
+                    disablelangerror();
+                    if (coercetolong(&valcopy))
+                        default_value = valcopy.data.longvalue;
+                    enablelangerror();
+                }
             }
 
-            /* Convert Pascal string to C string */
+            /* Convert prompt to C string */
             char prompt[256];
             copyptocstring(bsprompt, prompt);
 
-            /* Call interactive prompt */
+            /* Call interactive integer prompt */
             long result = dialog_get_int(prompt, default_value);
 
-            return setlongvalue(result, vreturned);
+            /* Store result in variable */
+            tyvaluerecord val;
+            if (!setlongvalue(result, &val))
+                return false;
+
+            pushhashtable(htable);
+            boolean fl = langsetsymbolval(bsvarname, val);
+            pophashtable();
+
+            if (!fl)
+                return false;
+
+            setbooleanvalue(true, vreturned);
+            return true;
         }
         case diav_getuserinfo: {
             /* dialog.getuserinfo(prompt, [default]) - String input (legacy name for getString) */
@@ -324,35 +398,57 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             return setstringvalue(bsresult, vreturned);
         }
         case diav_getpassword: {
-            /* dialog.getPassword(prompt) - Password input with dots */
+            /* dialog.getPassword(prompt, @adr) - Password input with asterisk masking.
+               Stores password string in adr^, returns true.
+               On cancel, returns false without modifying adr^. */
             bigstring bsprompt;
+            hdlhashtable htable;
+            bigstring bsvarname;
 
             if (!isInteractiveMode()) {
                 if (bserror) copystring(BIGSTRING("\pCan't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
-            flnextparamislast = true;
             if (!getstringvalue(hparam1, 1, bsprompt))
                 return false;
 
-            /* Convert Pascal string to C string */
+            flnextparamislast = true;
+            if (!getvarparam(hparam1, 2, &htable, bsvarname))
+                return false;
+
+            /* Convert prompt to C string */
             char prompt[256];
             copyptocstring(bsprompt, prompt);
 
-            /* Call interactive prompt */
+            /* Call interactive password prompt */
             char *password = dialog_get_password(prompt);
             if (!password) {
-                if (bserror) copystring(BIGSTRING("\pUser cancelled password entry"), bserror);
-                return false;
+                /* User cancelled */
+                setbooleanvalue(false, vreturned);
+                return true;
             }
 
-            /* Convert to Frontier string and return */
+            /* Store result string in variable */
+            tyvaluerecord val;
             bigstring bspassword;
             copyctopstring(password, bspassword);
             free(password);
 
-            return setstringvalue(bspassword, vreturned);
+            if (!setstringvalue(bspassword, &val))
+                return false;
+
+            pushhashtable(htable);
+            boolean fl = langsetsymbolval(bsvarname, val);
+            pophashtable();
+
+            if (!fl)
+                return false;
+
+            exemptfromtmpstack(&val);
+
+            setbooleanvalue(true, vreturned);
+            return true;
         }
         default:
             return false;
