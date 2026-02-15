@@ -84,12 +84,15 @@ static void browser_init_state(browser_state *state, browser_mode mode,
 
 	if (prompt != NULL && prompt[0] != '\0') {
 		strncpy(state->prompt, prompt, sizeof(state->prompt) - 1);
+		state->prompt[sizeof(state->prompt) - 1] = '\0';
 	} else {
 		strncpy(state->prompt, "Select a file:", sizeof(state->prompt) - 1);
+		state->prompt[sizeof(state->prompt) - 1] = '\0';
 	}
 
 	if (type_filter != NULL && type_filter[0] != '\0') {
 		strncpy(state->type_filter, type_filter, sizeof(state->type_filter) - 1);
+		state->type_filter[sizeof(state->type_filter) - 1] = '\0';
 	}
 
 	if (start_path != NULL && start_path[0] != '\0') {
@@ -675,6 +678,11 @@ static void browser_handle_key(browser_state *state, key_input key, file_dialog_
 		if (state->typeahead_len < sizeof(state->typeahead_buf) - 1) {
 			state->typeahead_buf[state->typeahead_len++] = key.ch;
 			state->typeahead_buf[state->typeahead_len] = '\0';
+		} else {
+			/* Buffer full - reset and start new search from this character */
+			state->typeahead_buf[0] = key.ch;
+			state->typeahead_buf[1] = '\0';
+			state->typeahead_len = 1;
 		}
 		state->typeahead_time = now;
 
@@ -708,13 +716,14 @@ static file_dialog_result browser_run_internal(browser_state *state, bool skip_i
 	memset(&result, 0, sizeof(result));
 
 	if (!terminal_init(&state->terminal)) {
-		log_info(LOG_COMP_GENERAL, "file_browser: terminal_init failed, cancelling");
+		/* No cleanup needed - terminal_init does not allocate on failure */
+		log_error(LOG_COMP_GENERAL, "file_browser: terminal_init failed, cancelling");
 		result.success = false;
 		return result;
 	}
 
 	if (!terminal_enable_raw_mode(&state->terminal)) {
-		log_info(LOG_COMP_GENERAL, "file_browser: raw mode failed, cancelling");
+		log_error(LOG_COMP_GENERAL, "file_browser: raw mode failed, cancelling");
 		terminal_cleanup(&state->terminal);
 		result.success = false;
 		return result;
@@ -793,6 +802,7 @@ file_dialog_result file_browser_get_disk(const char *prompt) {
 	/* macOS: enumerate mount points via getfsstat */
 	int count = getfsstat(NULL, 0, MNT_NOWAIT);
 	if (count > 0) {
+		/* Local allocation - freed before browser_run_internal */
 		struct statfs *mounts = malloc(count * sizeof(struct statfs));
 		if (mounts != NULL) {
 			int actual = getfsstat(mounts, count * sizeof(struct statfs), MNT_NOWAIT);
@@ -858,7 +868,7 @@ file_dialog_result file_browser_get_disk(const char *prompt) {
 #endif
 
 	/* Set current_dir to root for display purposes */
-	strcpy(state.current_dir, "/");
+	snprintf(state.current_dir, sizeof(state.current_dir), "/");
 
 	if (state.entry_count > 0) {
 		browser_load_preview(&state);
