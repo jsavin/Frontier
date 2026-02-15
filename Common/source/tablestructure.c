@@ -953,6 +953,8 @@ boolean tableloadsystemtable (dbaddress adr, Handle *hvariable, hdlhashtable *ht
 
 			tableverbdispose (hv, true);
 
+			*hvariable = nil;
+
 			return (false);
 			}
 		}
@@ -967,6 +969,8 @@ boolean tableloadsystemtable (dbaddress adr, Handle *hvariable, hdlhashtable *ht
 		if (!tableverbinmemory (&ctx, hv, HNoNode)) {
 
 			disposehandle ((Handle) hv);
+
+			*hvariable = nil;
 
 			return (false);
 			}
