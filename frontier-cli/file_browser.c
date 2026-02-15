@@ -626,10 +626,12 @@ static void browser_handle_key(browser_state *state, key_input key, file_dialog_
 			}
 			result->success = true;
 			state->running = false;
-		} else {
-			/* Any other key cancels back to filename editing */
+		} else if (key.type == KEY_ESCAPE ||
+		           (key.type == KEY_CHAR && (key.ch == 'n' || key.ch == 'N'))) {
+			/* Declined — back to filename editing */
 			state->confirm_overwrite = false;
 		}
+		/* Ignore all other keys while confirming */
 		return;
 	}
 
@@ -859,6 +861,18 @@ static file_dialog_result browser_run_internal(browser_state *state, bool skip_i
 
 	if (!terminal_enable_raw_mode(&state->terminal)) {
 		log_error(LOG_COMP_GENERAL, "file_browser: raw mode failed, cancelling");
+		terminal_cleanup(&state->terminal);
+		result.success = false;
+		return result;
+	}
+
+	/* Require minimum terminal size for usable display */
+	if (state->term_rows < 10 || state->term_cols < 30) {
+		log_error(LOG_COMP_GENERAL,
+		          "file_browser: terminal too small (%dx%d), need at least 30x10",
+		          state->term_cols, state->term_rows);
+		fprintf(stderr, "Terminal too small for file browser (%dx%d, need 30x10)\n",
+		        state->term_cols, state->term_rows);
 		terminal_cleanup(&state->terminal);
 		result.success = false;
 		return result;

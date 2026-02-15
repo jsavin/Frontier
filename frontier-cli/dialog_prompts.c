@@ -430,6 +430,8 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 
 			case KEY_CTRL_C:
 			case KEY_CTRL_D:
+				/* Cancel = last button (No/Cancel).  Intentional:
+				 * Ctrl+C means "abort/cancel", not "accept default". */
 				fputs("\n", stderr);
 				terminal_restore_state(term_state);
 				terminal_free_state(term_state);
@@ -522,6 +524,8 @@ int dialog_threeway(const char *prompt, const char *button1, const char *button2
 
 			case KEY_CTRL_C:
 			case KEY_CTRL_D:
+				/* Cancel = last button.  Intentional:
+				 * Ctrl+C means "abort/cancel", not "accept default". */
 				fputs("\n", stderr);
 				terminal_restore_state(term_state);
 				terminal_free_state(term_state);
