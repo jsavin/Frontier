@@ -52,6 +52,13 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "system.environment.isInteractive - defined"
+    description: "isInteractive should be a boolean (true on TTY, false in pipe/daemon mode)"
+    script: |
+      return defined(system.environment.isInteractive)
+    expected_success: true
+    expected_result: "true"
+
   - name: "system.environment.isPosix - true on macOS and Linux"
     description: "isPosix should be true on all POSIX platforms"
     script: |
