@@ -51,6 +51,7 @@ static char* read_line_with_editing(void) {
 				terminal_free_state(term_state);
 				return buffer;
 
+			case KEY_ESCAPE:
 			case KEY_CTRL_C:
 			case KEY_CTRL_D:
 				/* Cancel input */
@@ -101,14 +102,16 @@ bool dialog_ask(const char *prompt) {
 	return dialog_twoway(prompt, "Yes", "No");
 }
 
-/* Prompts for an integer value with a default; validates input before returning. */
-long dialog_get_int(const char *prompt, long default_value) {
+/* Prompts for an integer value with a default; validates input before returning.
+   Returns true if user entered a value, false if cancelled (Esc/Ctrl+C).
+   On success, *out_value is set. On cancel, *out_value is unchanged. */
+bool dialog_get_int(const char *prompt, long default_value, long *out_value) {
 	char *input = NULL;
 	long result = 0;
 	char *endptr;
 
 	if (!isInteractiveMode()) {
-		return 0;
+		return false;
 	}
 
 	while (1) {
@@ -118,13 +121,14 @@ long dialog_get_int(const char *prompt, long default_value) {
 
 		input = read_line_with_editing();
 		if (!input) {
-			return default_value;  /* Ctrl+C or error - return default */
+			return false;  /* Esc/Ctrl+C - cancelled */
 		}
 
 		/* Empty input - accept default */
 		if (input[0] == '\0') {
 			free(input);
-			return default_value;
+			*out_value = default_value;
+			return true;
 		}
 
 		/* Try to parse integer */
@@ -134,7 +138,8 @@ long dialog_get_int(const char *prompt, long default_value) {
 		/* Check for valid integer */
 		if (errno == 0 && *endptr == '\0') {
 			free(input);
-			return result;
+			*out_value = result;
+			return true;
 		}
 
 		/* Invalid input - re-prompt */
@@ -221,6 +226,7 @@ char* dialog_get_password(const char *prompt) {
 				terminal_free_state(term_state);
 				return buffer;
 
+			case KEY_ESCAPE:
 			case KEY_CTRL_C:
 			case KEY_CTRL_D:
 				/* Cancel input */

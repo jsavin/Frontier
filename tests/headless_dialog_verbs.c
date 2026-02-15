@@ -331,7 +331,12 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             copyptocstring(bsprompt, prompt);
 
             /* Call interactive integer prompt */
-            long result = dialog_get_int(prompt, default_value);
+            long result;
+            if (!dialog_get_int(prompt, default_value, &result)) {
+                /* User cancelled */
+                setbooleanvalue(false, vreturned);
+                return true;
+            }
 
             /* Store result in variable */
             tyvaluerecord val;
