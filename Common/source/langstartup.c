@@ -231,7 +231,7 @@ static boolean initenvironment (hdlhashtable ht) {
 	langassignbooleanvalue (ht, str_isMac, true);
 	langassignbooleanvalue (ht, str_isWindows, false);
 	langassignbooleanvalue (ht, str_isLinux, false);
-	langassignbooleanvalue (ht, str_isCarbon, true); /* legacy compat: scripts check this for macOS */
+	langassignbooleanvalue (ht, str_isCarbon, false);
 	langassignbooleanvalue (ht, str_isPosix, true);
 	#elif defined(__linux__)
 	langassignbooleanvalue (ht, str_isMac, false);
