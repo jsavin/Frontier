@@ -61,6 +61,7 @@ typedef struct {
 	size_t filename_len;
 	size_t filename_cursor_pos;
 	bool filename_editing;
+	bool confirm_overwrite;         /* Awaiting y/n overwrite confirmation */
 
 	/* Terminal dimensions and layout */
 	int term_rows;

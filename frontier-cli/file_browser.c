@@ -97,14 +97,33 @@ static void browser_init_state(browser_state *state, browser_mode mode,
 
 	if (start_path != NULL && start_path[0] != '\0') {
 		strncpy(state->current_dir, start_path, sizeof(state->current_dir) - 1);
-		/* If start_path points to a file, use its parent directory */
+		state->current_dir[sizeof(state->current_dir) - 1] = '\0';
+
+		/* Check whether start_path is a directory or contains a filename */
 		struct stat st;
-		if (stat(state->current_dir, &st) == 0 && !S_ISDIR(st.st_mode)) {
+		bool is_dir = (stat(state->current_dir, &st) == 0 && S_ISDIR(st.st_mode));
+
+		if (!is_dir) {
+			/* Either a file or a non-existent path — treat the last
+			 * component as a filename and use the parent as current_dir */
 			char *last_slash = strrchr(state->current_dir, '/');
-			if (last_slash != NULL && last_slash != state->current_dir) {
-				*last_slash = '\0';
-			} else if (last_slash == state->current_dir) {
-				state->current_dir[1] = '\0';
+			if (last_slash != NULL) {
+				const char *filename_part = last_slash + 1;
+
+				/* For putFile, pre-populate the filename buffer */
+				if (mode == BROWSER_PUT_FILE && filename_part[0] != '\0') {
+					strncpy(state->filename_buf, filename_part,
+					        sizeof(state->filename_buf) - 1);
+					state->filename_buf[sizeof(state->filename_buf) - 1] = '\0';
+					state->filename_len = strlen(state->filename_buf);
+					state->filename_cursor_pos = state->filename_len;
+				}
+
+				if (last_slash != state->current_dir) {
+					*last_slash = '\0';
+				} else {
+					state->current_dir[1] = '\0';
+				}
 			}
 		}
 	} else {
@@ -129,10 +148,19 @@ static void browser_init_state(browser_state *state, browser_mode mode,
 		state->right_width = state->term_cols - state->left_width - 1;
 	}
 
-	/* 4 rows reserved: prompt, breadcrumb, top separator, status bar */
-	state->list_height = state->term_rows - 4;
-	if (state->list_height < 3) {
-		state->list_height = 3;
+	/* Browser occupies half the terminal height, but no less than
+	 * min(15, available_rows).  Chrome rows: prompt, breadcrumb,
+	 * top sep, bot sep, status bar (+1 filename bar for putFile). */
+	int init_chrome = (mode == BROWSER_PUT_FILE) ? 6 : 5;
+	int available = state->term_rows - init_chrome;
+	if (available < 1) available = 1;
+
+	int half = state->term_rows / 2;
+	int minimum = (15 < available) ? 15 : available;
+	state->list_height = (half > minimum) ? half : minimum;
+	/* Don't exceed what actually fits */
+	if (state->list_height > available) {
+		state->list_height = available;
 	}
 
 	log_info(LOG_COMP_GENERAL, "file_browser: initialized mode=%d dir=%s size=%dx%d",
@@ -151,9 +179,15 @@ static void browser_recompute_layout(browser_state *state) {
 		state->right_width = state->term_cols - state->left_width - 1;
 	}
 
-	state->list_height = state->term_rows - 4;
-	if (state->list_height < 3) {
-		state->list_height = 3;
+	int resize_chrome = (state->mode == BROWSER_PUT_FILE) ? 6 : 5;
+	int available = state->term_rows - resize_chrome;
+	if (available < 1) available = 1;
+
+	int half = state->term_rows / 2;
+	int minimum = (15 < available) ? 15 : available;
+	state->list_height = (half > minimum) ? half : minimum;
+	if (state->list_height > available) {
+		state->list_height = available;
 	}
 }
 
@@ -179,8 +213,8 @@ static void browser_load_directory(browser_state *state) {
 	size_t count = tab_completion_find_matches(
 		state->current_dir, NULL, all_entries, MAX_COMPLETION_CANDIDATES, false);
 
-	/* Apply type filter if needed */
-	if (state->type_filter[0] != '\0' && state->mode == BROWSER_GET_FILE) {
+	/* Apply type filter: show directories + matching files */
+	if (state->type_filter[0] != '\0') {
 		size_t filtered = 0;
 		for (size_t i = 0; i < count; i++) {
 			if (browser_matches_filter(state, &all_entries[i])) {
@@ -222,8 +256,23 @@ static void browser_load_preview(browser_state *state) {
 		} else {
 			snprintf(subdir, sizeof(subdir), "%s/%s", state->current_dir, selected->name);
 		}
-		state->preview_count = tab_completion_find_matches(
-			subdir, NULL, state->preview_entries, MAX_COMPLETION_CANDIDATES, false);
+		file_entry raw_preview[MAX_COMPLETION_CANDIDATES];
+		size_t raw_count = tab_completion_find_matches(
+			subdir, NULL, raw_preview, MAX_COMPLETION_CANDIDATES, false);
+
+		/* Apply type filter to preview too */
+		if (state->type_filter[0] != '\0') {
+			size_t filtered = 0;
+			for (size_t i = 0; i < raw_count && filtered < MAX_COMPLETION_CANDIDATES; i++) {
+				if (browser_matches_filter(state, &raw_preview[i])) {
+					state->preview_entries[filtered++] = raw_preview[i];
+				}
+			}
+			state->preview_count = filtered;
+		} else {
+			memcpy(state->preview_entries, raw_preview, raw_count * sizeof(file_entry));
+			state->preview_count = raw_count;
+		}
 	} else {
 		/* File selected - preview_count = 0 signals file info mode */
 		state->preview_count = 0;
@@ -243,11 +292,18 @@ static void draw_padded(const char *str, int width) {
 	}
 }
 
-/* Draw the browser UI */
+/* Draw the browser UI.  Uses absolute cursor positioning for every
+ * row so that the browser region is repainted in-place without
+ * scrolling the terminal. */
 static void browser_draw(browser_state *state) {
-	terminal_clear_screen();
-	terminal_move_cursor(1, 1);
+	/* Total rows: list_height + chrome.  PUT_FILE has an extra filename bar.
+	 * Chrome: prompt, breadcrumb, top sep, bot sep, status (+ filename for putFile) */
+	int chrome = (state->mode == BROWSER_PUT_FILE) ? 6 : 5;
+	int total_rows = state->list_height + chrome;
+	int start_row = state->term_rows - total_rows + 1;
+	if (start_row < 1) start_row = 1;
 
+	int cur_row = start_row;
 	int cols = state->term_cols;
 
 	/* Row 1: Prompt with mode label */
@@ -264,12 +320,16 @@ static void browser_draw(browser_state *state) {
 	int prompt_space = cols - label_len - 2;
 	if (prompt_space < 10) prompt_space = 10;
 
+	terminal_move_cursor(cur_row, 1);
+	fprintf(stderr, "\x1b[2K");
 	fprintf(stderr, " ");
 	draw_padded(state->prompt, prompt_space);
 	fprintf(stderr, " %s", mode_label);
-	fprintf(stderr, "\r\n");
+	cur_row++;
 
 	/* Row 2: Breadcrumb */
+	terminal_move_cursor(cur_row, 1);
+	fprintf(stderr, "\x1b[2K");
 	fprintf(stderr, " ");
 	int bread_width = cols - 2;
 	int dir_len = (int)strlen(state->current_dir);
@@ -279,9 +339,11 @@ static void browser_draw(browser_state *state) {
 	} else {
 		draw_padded(state->current_dir, bread_width);
 	}
-	fprintf(stderr, "\r\n");
+	cur_row++;
 
 	/* Row 3: Top separator */
+	terminal_move_cursor(cur_row, 1);
+	fprintf(stderr, "\x1b[2K");
 	for (int i = 0; i < state->left_width; i++) {
 		fputc('-', stderr);
 	}
@@ -291,10 +353,13 @@ static void browser_draw(browser_state *state) {
 			fputc('-', stderr);
 		}
 	}
-	fprintf(stderr, "\r\n");
+	cur_row++;
 
 	/* Rows 4..4+list_height-1: Two-pane listing */
 	for (int row = 0; row < state->list_height; row++) {
+		terminal_move_cursor(cur_row, 1);
+		fprintf(stderr, "\x1b[2K");
+
 		size_t left_idx = state->scroll_offset + row;
 
 		/* Left pane */
@@ -388,31 +453,70 @@ static void browser_draw(browser_state *state) {
 			}
 		}
 
-		fprintf(stderr, "\r\n");
+		cur_row++;
 	}
 
 	/* Bottom separator */
+	terminal_move_cursor(cur_row, 1);
+	fprintf(stderr, "\x1b[2K");
 	for (int i = 0; i < cols; i++) {
 		fputc('-', stderr);
 	}
-	fprintf(stderr, "\r\n");
+	cur_row++;
 
-	/* Status bar */
-	if (state->filename_editing) {
-		/* Show filename input for putFile mode */
+	/* For PUT_FILE: always show filename bar, then status bar below it */
+	if (state->mode == BROWSER_PUT_FILE) {
+		/* Filename bar */
+		terminal_move_cursor(cur_row, 1);
+		fprintf(stderr, "\x1b[2K");
+		const char *label = " Save as: ";
+		int label_len = (int)strlen(label);
+		fprintf(stderr, "%s", label);
+		if (state->filename_editing) {
+			terminal_start_inverted();
+		}
+		draw_padded(state->filename_buf, cols - label_len);
+		if (state->filename_editing) {
+			terminal_end_inverted();
+		}
+		cur_row++;
+
+		/* Status/hint bar */
+		terminal_move_cursor(cur_row, 1);
+		fprintf(stderr, "\x1b[2K");
 		char status[512];
-		snprintf(status, sizeof(status), " Filename: %s", state->filename_buf);
+		const char *hints;
+		if (state->confirm_overwrite) {
+			snprintf(status, sizeof(status),
+			         " \x1b[1m\"%s\" already exists. Overwrite? (Y/n)\x1b[22m",
+			         state->filename_buf);
+			hints = NULL;
+		} else if (state->filename_editing) {
+			hints = "Enter:Confirm  Esc:Back to browser";
+		} else {
+			hints = "Up/Dn:Nav  Left:Parent  Right:Open  Enter:Select  Esc:Cancel";
+		}
+		if (hints) {
+			snprintf(status, sizeof(status), " %s", hints);
+		}
 		draw_padded(status, cols);
+
+		/* Position visible cursor inside the filename field when editing */
+		if (state->filename_editing) {
+			terminal_show_cursor();
+			terminal_move_cursor(cur_row - 1, label_len + (int)state->filename_cursor_pos + 1);
+		} else {
+			terminal_hide_cursor();
+		}
 	} else {
-		/* Show path and key hints */
+		/* Status bar for non-putFile modes */
+		terminal_move_cursor(cur_row, 1);
+		fprintf(stderr, "\x1b[2K");
 		char status[512];
 		const char *hints;
 		switch (state->mode) {
 		case BROWSER_GET_FILE:
 			hints = "Up/Dn:Nav  Left:Parent  Right/Enter:Open  Esc:Cancel";
-			break;
-		case BROWSER_PUT_FILE:
-			hints = "Up/Dn:Nav  Left:Parent  Right:Open  Enter:Select  Esc:Cancel";
 			break;
 		case BROWSER_GET_FOLDER:
 			hints = "Up/Dn:Nav  Left:Parent  Right:Open  Enter:Select  Esc:Cancel";
@@ -509,27 +613,56 @@ static void browser_build_selected_path(const browser_state *state, char *path_b
 
 /* Handle key input */
 static void browser_handle_key(browser_state *state, key_input key, file_dialog_result *result) {
+	/* Handle overwrite confirmation prompt (y/n) */
+	if (state->confirm_overwrite) {
+		if (key.type == KEY_ENTER ||
+		    (key.type == KEY_CHAR && (key.ch == 'y' || key.ch == 'Y'))) {
+			/* Confirmed — build path and return */
+			if (strcmp(state->current_dir, "/") == 0) {
+				snprintf(result->path, sizeof(result->path), "/%s", state->filename_buf);
+			} else {
+				snprintf(result->path, sizeof(result->path), "%s/%s",
+				         state->current_dir, state->filename_buf);
+			}
+			result->success = true;
+			state->running = false;
+		} else {
+			/* Any other key cancels back to filename editing */
+			state->confirm_overwrite = false;
+		}
+		return;
+	}
+
 	/* Handle filename editing mode for putFile */
 	if (state->filename_editing) {
 		switch (key.type) {
 		case KEY_ENTER:
 			if (state->filename_len > 0) {
+				/* Build candidate path and check if file exists */
+				char candidate[PATH_MAX];
 				if (strcmp(state->current_dir, "/") == 0) {
-					snprintf(result->path, sizeof(result->path), "/%s", state->filename_buf);
+					snprintf(candidate, sizeof(candidate), "/%s", state->filename_buf);
 				} else {
-					snprintf(result->path, sizeof(result->path), "%s/%s",
+					snprintf(candidate, sizeof(candidate), "%s/%s",
 					         state->current_dir, state->filename_buf);
 				}
-				result->success = true;
-				state->running = false;
+				struct stat st;
+				if (stat(candidate, &st) == 0 && !S_ISDIR(st.st_mode)) {
+					/* File exists — ask for confirmation */
+					state->confirm_overwrite = true;
+				} else {
+					/* New file — accept immediately */
+					strncpy(result->path, candidate, sizeof(result->path) - 1);
+					result->path[sizeof(result->path) - 1] = '\0';
+					result->success = true;
+					state->running = false;
+				}
 			}
 			return;
 
 		case KEY_ESCAPE:
+			/* Return to browsing mode, but keep filename for later */
 			state->filename_editing = false;
-			state->filename_len = 0;
-			state->filename_buf[0] = '\0';
-			state->filename_cursor_pos = 0;
 			return;
 
 		case KEY_BACKSPACE:
@@ -624,9 +757,11 @@ static void browser_handle_key(browser_state *state, key_input key, file_dialog_
 
 		case BROWSER_PUT_FILE:
 			if (state->entries[state->cursor].is_directory) {
+				/* Enter on folder = select this folder, start editing filename */
 				browser_descend(state);
+				state->filename_editing = true;
 			} else {
-				/* Copy filename into editing buffer */
+				/* Enter on file = use that name as default (overwrite) */
 				strncpy(state->filename_buf, state->entries[state->cursor].name,
 				        sizeof(state->filename_buf) - 1);
 				state->filename_buf[sizeof(state->filename_buf) - 1] = '\0';
@@ -732,6 +867,15 @@ static file_dialog_result browser_run_internal(browser_state *state, bool skip_i
 	terminal_hide_cursor();
 	install_sigwinch_handler();
 
+	/* Scroll the terminal down to make room for the browser region,
+	 * then draw in-place using absolute cursor positioning. */
+	int chrome = (state->mode == BROWSER_PUT_FILE) ? 6 : 5;
+	int total_rows = state->list_height + chrome;
+	for (int i = 0; i < total_rows; i++) {
+		fputc('\n', stderr);
+	}
+	fflush(stderr);
+
 	if (!skip_initial_load) {
 		browser_load_directory(state);
 	}
@@ -747,6 +891,16 @@ static file_dialog_result browser_run_internal(browser_state *state, bool skip_i
 		key_input key = terminal_read_key();
 		browser_handle_key(state, key, &result);
 	}
+
+	/* Clear the browser region before exiting */
+	int start_row = state->term_rows - total_rows + 1;
+	if (start_row < 1) start_row = 1;
+	for (int r = start_row; r <= state->term_rows; r++) {
+		terminal_move_cursor(r, 1);
+		fprintf(stderr, "\x1b[2K");
+	}
+	terminal_move_cursor(start_row, 1);
+	fflush(stderr);
 
 	terminal_show_cursor();
 	terminal_cleanup(&state->terminal);
