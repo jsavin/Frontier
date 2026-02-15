@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Verbs (frontier_verbs) - 12 tests: 12 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Frontier Verbs (frontier_verbs) - 15 tests: 15 pass (100%)</title>
+    <dateCreated>Sun, 15 Feb 2026 08:17:42 GMT</dateCreated>
   </head>
   <body>
     <outline text="frontier.getProgramPath - returns string - getProgramPath should return a string value">
@@ -68,12 +68,39 @@
         <outline text="return typeof(v) == 'TEXT'"/>
       </outline>
     </outline>
-    <outline text="frontier.version - returns 10.0 - Headless mode returns version 10.0">
+    <outline text="frontier.version - returns 11.x product version - Headless mode returns product version derived from git tag (CLI major + 10)">
       <outline text="Metadata">
-        <outline text="expected_result: 10.0"/>
+        <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="return frontier.version()"/>
+        <outline text="local (v = frontier.version())"/>
+        <outline text="return v beginsWith &quot;11.&quot;"/>
+      </outline>
+    </outline>
+    <outline text="frontier.version - satisfies legacy version checks - Product version should be greater than legacy 7.x and 10.x versions">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return not date.versionLessThan(frontier.version(), &quot;10.0&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="frontier.cliVersion - returns string - cliVersion should return a string value">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (v = frontier.cliVersion())"/>
+        <outline text="return typeof(v) == 'TEXT'"/>
+      </outline>
+    </outline>
+    <outline text="frontier.cliVersion - returns CLI version - cliVersion should return the git-derived CLI version">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (v = frontier.cliVersion())"/>
+        <outline text="return sizeOf(v) &gt; 0"/>
       </outline>
     </outline>
     <outline text="frontier.enableAgents - returns true - enableAgents is a no-op in headless mode, returns true">

@@ -19,8 +19,13 @@ ARCHES ?= $(shell uname -m)
 ARCH_FLAGS = $(foreach arch,$(ARCHES),-arch $(arch))
 
 # Version embedding from git
+# CLI version: from git tags (e.g., "v1.0.0-alpha.7")
+# Product version: CLI major + 10, stage mapped (alpha→a, beta→b, rc→fc)
+#   Derived by tools/derive_product_version.sh (e.g., "v1.0.0-alpha.7" → "11.0a7")
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "1.0.0-dev")
+PRODUCT_VERSION ?= $(shell ../tools/derive_product_version.sh "$(VERSION)")
 CFLAGS += -DFRONTIER_CLI_VERSION_STRING=\"$(VERSION)\"
+CFLAGS += -DFRONTIER_PRODUCT_VERSION_STRING=\"$(PRODUCT_VERSION)\"
 
 SANITIZE ?= 0
 ifeq ($(SANITIZE),1)

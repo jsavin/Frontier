@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Filemenu Verbs (filemenu_verbs) - 31 tests: 31 pass (100%)</title>
-    <dateCreated>Fri, 13 Feb 2026 08:57:39 GMT</dateCreated>
+    <title>Filemenu Verbs (filemenu_verbs) - 33 tests: 33 pass (100%)</title>
+    <dateCreated>Sun, 15 Feb 2026 08:17:42 GMT</dateCreated>
   </head>
   <body>
     <outline text="fileMenu.new - create new database - fileMenu.new creates a new empty ODB database and opens it">
@@ -43,6 +43,18 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_hidden.root7&quot;)"/>
         <outline text="local(result = fileMenu.new(dbPath, true))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.new - with named hidden parameter - fileMenu.new accepts named hidden:true parameter syntax">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_named_hidden.root7&quot;)"/>
+        <outline text="local(result = fileMenu.new(dbPath, hidden:true))"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="return result"/>
       </outline>
@@ -178,6 +190,19 @@
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_hidden.root7&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="local(result = fileMenu.open(dbPath, true))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.open - with named hidden parameter - Opening with named hidden:true parameter syntax should succeed">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_open_named_hidden.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="local(result = fileMenu.open(dbPath, hidden:true))"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="return result"/>
       </outline>

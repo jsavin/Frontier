@@ -105,6 +105,9 @@ static boolean cb_false_event(EventRecord* e) { (void)e; return false; }
 #define str_osFullNameForDisplay	BIGSTRING ("\x14" "osFullNameForDisplay")
 #define str_winServicePackNumber	BIGSTRING ("\x14" "winServicePackNumber")
 #define str_isCarbon				BIGSTRING ("\x08" "isCarbon")
+#define str_isHeadless				BIGSTRING ("\x0a" "isHeadless")
+#define str_isPosix					BIGSTRING ("\x07" "isPosix")
+#define str_isLinux					BIGSTRING ("\x07" "isLinux")
 #define str_maxTcpConnections		BIGSTRING ("\x11" "maxTcpConnections")
 
 
@@ -210,23 +213,181 @@ boolean loadfunctionprocessor (short id, langvaluecallback valuecallback) {
 static boolean initenvironment (hdlhashtable ht) {
 
 	/*
-	 * Headless/runtime-test build: populate the environment table with
-	 * conservative defaults without touching platform APIs or external
-	 * processes. The full application replaces these values at startup.
+	 * Headless/CLI build: populate the environment table with real
+	 * platform information. Uses compile-time platform detection and
+	 * runtime OS version queries (getsystemversionstring / sw_vers on macOS).
+	 *
+	 * New flags added for headless CLI:
+	 *   isHeadless - true (always, in headless builds)
+	 *   isPosix    - true on macOS and Linux
+	 *   isLinux    - true on Linux only
 	 */
 
 	bigstring bs;
 
+	/* Platform detection */
+
+	#ifdef __APPLE__
+	langassignbooleanvalue (ht, str_isMac, true);
+	langassignbooleanvalue (ht, str_isWindows, false);
+	langassignbooleanvalue (ht, str_isLinux, false);
+	langassignbooleanvalue (ht, str_isCarbon, true); /* legacy compat: scripts check this for macOS */
+	langassignbooleanvalue (ht, str_isPosix, true);
+	#elif defined(__linux__)
 	langassignbooleanvalue (ht, str_isMac, false);
 	langassignbooleanvalue (ht, str_isWindows, false);
+	langassignbooleanvalue (ht, str_isLinux, true);
+	langassignbooleanvalue (ht, str_isCarbon, false);
+	langassignbooleanvalue (ht, str_isPosix, true);
+	#elif defined(_WIN32)
+	langassignbooleanvalue (ht, str_isMac, false);
+	langassignbooleanvalue (ht, str_isWindows, true);
+	langassignbooleanvalue (ht, str_isLinux, false);
+	langassignbooleanvalue (ht, str_isCarbon, false);
+	langassignbooleanvalue (ht, str_isPosix, false);
+	#else
+	langassignbooleanvalue (ht, str_isMac, false);
+	langassignbooleanvalue (ht, str_isWindows, false);
+	langassignbooleanvalue (ht, str_isLinux, false);
+	langassignbooleanvalue (ht, str_isCarbon, false);
+	langassignbooleanvalue (ht, str_isPosix, false);
+	#endif
+
+	langassignbooleanvalue (ht, str_isHeadless, true);
 	langassignbooleanvalue (ht, str_isMacOsClassic, false);
 	langassignbooleanvalue (ht, str_isServer, false);
-	langassignbooleanvalue (ht, str_isCarbon, false);
 	langassignbooleanvalue (ht, str_isPike, false);
 	langassignbooleanvalue (ht, str_isRadio, false);
 	langassignbooleanvalue (ht, str_isOpmlEditor, false);
 	langassignbooleanvalue (ht, str_isFrontier, true);
 
+	/* OS version detection */
+
+	#ifdef __APPLE__
+	{
+		bigstring bsversion, bsos;
+		long x;
+
+		getsystemversionstring (bsversion, NULL);
+
+		/* Parse major.minor.point from version string */
+
+		{ /* major */
+			bigstring bsmajor;
+			nthfield (bsversion, 1, '.', bsmajor);
+			if (stringlength (bsmajor) > 0)
+				stringtonumber (bsmajor, &x);
+			else
+				x = 0;
+			langassignlongvalue (ht, str_osMajorVersion, x);
+		}
+
+		{ /* minor */
+			bigstring bsminor;
+			nthfield (bsversion, 2, '.', bsminor);
+			if (stringlength (bsminor) > 0)
+				stringtonumber (bsminor, &x);
+			else
+				x = 0;
+			langassignlongvalue (ht, str_osMinorVersion, x);
+		}
+
+		{ /* point */
+			bigstring bspoint;
+			nthfield (bsversion, 3, '.', bspoint);
+			if (stringlength (bspoint) > 0)
+				stringtonumber (bspoint, &x);
+			else
+				x = 0;
+			langassignlongvalue (ht, str_osPointVersion, x);
+		}
+
+		langassignstringvalue (ht, str_osVersionString, bsversion);
+
+		/* Query sw_vers for build number and OS display name. */
+
+		{
+			Handle hcommand = nil, hreturn = nil;
+
+			if (!newemptyhandle (&hreturn)) {
+
+				log_debug (LOG_COMP_STARTUP, "initenvironment: hreturn alloc failed, using fallback");
+				goto swvers_fallback;
+			}
+
+			/* Get build number */
+
+			if (!newtexthandle ("\psw_vers -buildVersion", &hcommand)) {
+
+				log_debug (LOG_COMP_STARTUP, "initenvironment: hcommand alloc failed, using fallback");
+				disposehandle (hreturn);
+				hreturn = nil;
+				goto swvers_fallback;
+			}
+
+			if (unixshellcall (hcommand, hreturn)) {
+
+				texthandletostring (hreturn, bs);
+
+				if (stringlength (bs) > 0)
+					setstringlength (bs, stringlength (bs) - 1); /* strip trailing newline */
+
+				langassignstringvalue (ht, str_osBuildNumber, bs);
+				log_debug (LOG_COMP_STARTUP, "initenvironment: osBuildNumber=%s", PSTR(bs));
+			}
+			else {
+				log_debug (LOG_COMP_STARTUP, "initenvironment: sw_vers -buildVersion failed, using fallback");
+				copyctopstring ("unknown", bs);
+				langassignstringvalue (ht, str_osBuildNumber, bs);
+			}
+
+			disposehandle (hcommand);
+			hcommand = nil;
+
+			/* Get OS display name (fresh handle for new command) */
+
+			if (!newtexthandle ("\psw_vers -productName", &hcommand)) {
+
+				log_debug (LOG_COMP_STARTUP, "initenvironment: hcommand alloc failed for productName");
+				disposehandle (hreturn);
+				copyctopstring ("unknown", bsos);
+				langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+				goto swvers_done;
+			}
+
+			sethandlesize (hreturn, 0); /* safe to ignore: shrinking to zero never fails */
+
+			if (unixshellcall (hcommand, hreturn)) {
+
+				texthandletostring (hreturn, bsos);
+
+				if (stringlength (bsos) > 0)
+					setstringlength (bsos, stringlength (bsos) - 1); /* strip trailing newline */
+
+				langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+				log_debug (LOG_COMP_STARTUP, "initenvironment: osFullName=%s", PSTR(bsos));
+			}
+			else {
+				log_debug (LOG_COMP_STARTUP, "initenvironment: sw_vers -productName failed, using fallback");
+				copyctopstring ("unknown", bsos);
+				langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+			}
+
+			disposehandle (hcommand);
+			disposehandle (hreturn);
+			goto swvers_done;
+
+		swvers_fallback:
+
+			copyctopstring ("unknown", bs);
+			langassignstringvalue (ht, str_osBuildNumber, bs);
+			langassignstringvalue (ht, str_osFullNameForDisplay, bs);
+
+		swvers_done: ;
+		}
+	}
+	#else
+	/* Non-macOS: set placeholder version info */
 	langassignlongvalue (ht, str_osMajorVersion, 0);
 	langassignlongvalue (ht, str_osMinorVersion, 0);
 	langassignlongvalue (ht, str_osPointVersion, 0);
@@ -235,6 +396,9 @@ static boolean initenvironment (hdlhashtable ht) {
 	langassignstringvalue (ht, str_osVersionString, bs);
 	langassignstringvalue (ht, str_osFullNameForDisplay, bs);
 	langassignstringvalue (ht, str_osBuildNumber, bs);
+	#endif
+
+	copyctopstring ("", bs);
 	langassignstringvalue (ht, str_osFlavor, bs);
 	langassignstringvalue (ht, str_winServicePackNumber, bs);
 
@@ -397,8 +561,25 @@ static boolean initenvironment ( hdlhashtable ht ) {
 		
 	#endif //!PIKE
 
+	/* New flags for headless/CLI builds. Set in both paths so UserTalk scripts
+	   can check these portably regardless of which runtime they're in. */
+
+	langassignbooleanvalue (ht, str_isHeadless, false);
+
+	#if defined(__APPLE__) || defined(__linux__)
+	langassignbooleanvalue (ht, str_isPosix, true);
+	#else
+	langassignbooleanvalue (ht, str_isPosix, false);
+	#endif
+
+	#ifdef __linux__
+	langassignbooleanvalue (ht, str_isLinux, true);
+	#else
+	langassignbooleanvalue (ht, str_isLinux, false);
+	#endif
+
 	return ( true );
-		
+
 }
 #endif /* FRONTIER_HEADLESS */
 

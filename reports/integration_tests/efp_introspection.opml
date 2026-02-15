@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Efp Introspection (efp_introspection) - 14 tests: 14 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Efp Introspection (efp_introspection) - 15 tests: 15 pass (100%)</title>
+    <dateCreated>Sun, 15 Feb 2026 08:17:42 GMT</dateCreated>
   </head>
   <body>
     <outline text="parentOf(string.mid) - returns database path - CRITICAL TEST: parentOf(string.mid) should return the database path&#10;@system.verbs.builtins.string, not the EFP internal path&#10;@system.compiler.[&quot;kernel&quot;].string.&#10;&#10;Bug behavior: Returns @system.compiler.[&quot;kernel&quot;].string&#10;Fixed behavior: Returns @system.verbs.builtins.string&#10;">
@@ -115,6 +115,14 @@
       </outline>
       <outline text="Script">
         <outline text="defined(string.nonexistent)"/>
+      </outline>
+    </outline>
+    <outline text="webserver.init - resolves to script, not EFP stub - webserver is excluded from EFP registration (EXCLUDED_PROCESSORS&#10;in parse_kernelverbs.py). Verify webserver.init is defined and&#10;resolves to a script type, not a token/EFP stub.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(webserver.init) and (typeOf(webserver.init) == scriptType)"/>
       </outline>
     </outline>
   </body>

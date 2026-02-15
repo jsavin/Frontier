@@ -1,0 +1,140 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>System Environment (system_environment) - 12 tests: 12 pass (100%)</title>
+    <dateCreated>Sun, 15 Feb 2026 08:27:25 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="system.environment.isMac - matches sys.os - isMac should be true when sys.os() returns MacOS">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if sys.os() == &quot;MacOS&quot;">
+          <outline text="return system.environment.isMac}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return not system.environment.isMac}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="system.environment.isWindows - false on non-Windows - isWindows should be false on macOS and Linux">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if sys.os() == &quot;Windows&quot;">
+          <outline text="return system.environment.isWindows}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return not system.environment.isWindows}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="system.environment.isLinux - matches sys.os - isLinux should be true when sys.os() returns Linux">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if sys.os() == &quot;Linux&quot;">
+          <outline text="return system.environment.isLinux}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return not system.environment.isLinux}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="system.environment.isHeadless - true in CLI mode - isHeadless should always be true in headless/CLI mode">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return system.environment.isHeadless"/>
+      </outline>
+    </outline>
+    <outline text="system.environment.isPosix - true on macOS and Linux - isPosix should be true on all POSIX platforms">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if sys.os() == &quot;Windows&quot;">
+          <outline text="return not system.environment.isPosix}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return system.environment.isPosix}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="system.environment.isCarbon - true on macOS - isCarbon should be true on macOS for backward compat with legacy scripts">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if sys.os() == &quot;MacOS&quot;">
+          <outline text="return system.environment.isCarbon}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return not system.environment.isCarbon}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="system.environment.isFrontier - always true - isFrontier should always be true">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return system.environment.isFrontier"/>
+      </outline>
+    </outline>
+    <outline text="system.environment.isMacOsClassic - always false - isMacOsClassic should always be false (no classic Mac OS support)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return not system.environment.isMacOsClassic"/>
+      </outline>
+    </outline>
+    <outline text="system.environment.osMajorVersion - nonzero on macOS - osMajorVersion should be a real version number, not zero">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if sys.os() == &quot;MacOS&quot;">
+          <outline text="return system.environment.osMajorVersion &gt;= 10}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return system.environment.osMajorVersion &gt;= 0}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="system.environment.osVersionString - not zero string - osVersionString should contain a real version, not 0.0.0">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return system.environment.osVersionString != &quot;0.0.0&quot;"/>
+      </outline>
+    </outline>
+    <outline text="system.environment.osFullNameForDisplay - not zero string - osFullNameForDisplay should contain a real OS name">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return system.environment.osFullNameForDisplay != &quot;0.0.0&quot;"/>
+      </outline>
+    </outline>
+    <outline text="system.environment.osBuildNumber - nonempty on macOS - osBuildNumber should contain a real build number from sw_vers">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if sys.os() == &quot;MacOS&quot;">
+          <outline text="return sizeOf(system.environment.osBuildNumber) &gt; 0}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return true}"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

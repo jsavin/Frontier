@@ -68,12 +68,37 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "frontier.version - returns 10.0"
-    description: "Headless mode returns version 10.0"
+  - name: "frontier.version - returns 11.x product version"
+    description: "Headless mode returns product version derived from git tag (CLI major + 10)"
     script: |
-      return frontier.version()
+      local (v = frontier.version());
+      return v beginsWith "11."
     expected_success: true
-    expected_result: "10.0"
+    expected_result: "true"
+
+  - name: "frontier.version - satisfies legacy version checks"
+    description: "Product version should be greater than legacy 7.x and 10.x versions"
+    script: |
+      return not date.versionLessThan(frontier.version(), "10.0")
+    expected_success: true
+    expected_result: "true"
+
+  # frontier.cliVersion tests
+  - name: "frontier.cliVersion - returns string"
+    description: "cliVersion should return a string value"
+    script: |
+      local (v = frontier.cliVersion());
+      return typeof(v) == 'TEXT'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.cliVersion - returns CLI version"
+    description: "cliVersion should return the git-derived CLI version"
+    script: |
+      local (v = frontier.cliVersion());
+      return sizeOf(v) > 0
+    expected_success: true
+    expected_result: "true"
 
   # frontier.enableAgents tests (no-op in headless)
   - name: "frontier.enableAgents - returns true"
