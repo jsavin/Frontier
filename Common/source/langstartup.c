@@ -275,21 +275,30 @@ static boolean initenvironment (hdlhashtable ht) {
 		{ /* major */
 			bigstring bsmajor;
 			nthfield (bsversion, 1, '.', bsmajor);
-			stringtonumber (bsmajor, &x);
+			if (stringlength (bsmajor) > 0)
+				stringtonumber (bsmajor, &x);
+			else
+				x = 0;
 			langassignlongvalue (ht, str_osMajorVersion, x);
 		}
 
 		{ /* minor */
 			bigstring bsminor;
 			nthfield (bsversion, 2, '.', bsminor);
-			stringtonumber (bsminor, &x);
+			if (stringlength (bsminor) > 0)
+				stringtonumber (bsminor, &x);
+			else
+				x = 0;
 			langassignlongvalue (ht, str_osMinorVersion, x);
 		}
 
 		{ /* point */
 			bigstring bspoint;
 			nthfield (bsversion, 3, '.', bspoint);
-			stringtonumber (bspoint, &x);
+			if (stringlength (bspoint) > 0)
+				stringtonumber (bspoint, &x);
+			else
+				x = 0;
 			langassignlongvalue (ht, str_osPointVersion, x);
 		}
 
@@ -312,6 +321,7 @@ static boolean initenvironment (hdlhashtable ht) {
 
 				log_debug (LOG_COMP_STARTUP, "initenvironment: hcommand alloc failed, using fallback");
 				disposehandle (hreturn);
+				hreturn = nil;
 				goto swvers_fallback;
 			}
 
@@ -345,7 +355,7 @@ static boolean initenvironment (hdlhashtable ht) {
 				goto swvers_done;
 			}
 
-			sethandlesize (hreturn, 0);
+			sethandlesize (hreturn, 0); /* safe to ignore: shrinking to zero never fails */
 
 			if (unixshellcall (hcommand, hreturn)) {
 

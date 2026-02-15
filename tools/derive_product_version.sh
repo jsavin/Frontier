@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Derive product version from CLI version tag.
 # Maps CLI version to Frontier product version: CLI major + 10.
 # Stage names mapped: alpha→a, beta→b, rc→fc, dev→d.
