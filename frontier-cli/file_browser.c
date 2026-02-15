@@ -475,7 +475,9 @@ static void browser_draw(browser_state *state) {
 		if (state->filename_editing) {
 			terminal_start_inverted();
 		}
-		draw_padded(state->filename_buf, cols - label_len);
+		int name_width = cols - label_len;
+		if (name_width < 1) name_width = 1;
+		draw_padded(state->filename_buf, name_width);
 		if (state->filename_editing) {
 			terminal_end_inverted();
 		}
