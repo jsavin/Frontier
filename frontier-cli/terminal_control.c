@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/ioctl.h>
 
 /* Internal terminal state storage */
 typedef struct {
@@ -157,6 +158,40 @@ bool terminal_enable_echo(void) {
 	return tcsetattr(STDIN_FILENO, TCSAFLUSH, &term) == 0;
 }
 
+/* Queries terminal dimensions via ioctl; falls back to 80x24 on failure. */
+bool terminal_get_size(int *rows, int *cols) {
+	struct winsize ws;
+
+	if (ioctl(STDERR_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_row > 0 && ws.ws_col > 0) {
+		if (rows) *rows = ws.ws_row;
+		if (cols) *cols = ws.ws_col;
+		return true;
+	}
+
+	/* Fallback */
+	if (rows) *rows = 24;
+	if (cols) *cols = 80;
+	return false;
+}
+
+/* Clears entire screen and moves cursor to top-left. */
+void terminal_clear_screen(void) {
+	fputs("\x1b[2J\x1b[H", stderr);
+	fflush(stderr);
+}
+
+/* Hides the text cursor. */
+void terminal_hide_cursor(void) {
+	fputs("\x1b[?25l", stderr);
+	fflush(stderr);
+}
+
+/* Shows the text cursor. */
+void terminal_show_cursor(void) {
+	fputs("\x1b[?25h", stderr);
+	fflush(stderr);
+}
+
 /* Saves cursor position using ANSI escape sequence. */
 void terminal_save_cursor(void) {
 	fputs("\x1b[s", stderr);
@@ -206,6 +241,18 @@ void terminal_start_inverted(void) {
 /* Ends inverted text mode and restores normal video. */
 void terminal_end_inverted(void) {
 	fputs("\x1b[27m", stderr);
+	fflush(stderr);
+}
+
+/* Starts dim (faint) text mode. */
+void terminal_start_dim(void) {
+	fputs("\x1b[2m", stderr);
+	fflush(stderr);
+}
+
+/* Ends dim text mode and restores normal intensity. */
+void terminal_end_dim(void) {
+	fputs("\x1b[22m", stderr);
 	fflush(stderr);
 }
 

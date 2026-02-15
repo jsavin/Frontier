@@ -11,12 +11,13 @@
  *
  * Architecture:
  * - Layer 4 of 5-layer file dialog stack
- * - Uses tab_completion.c for Tab key handling
+ * - Routes to file_browser.c (TTY) or fallback interactive loop (pipe/batch)
+ * - Uses tab_completion.c for Tab key handling (fallback path)
  * - Uses terminal_control.c for input/output
  * - Called by fileverbs_portable.c for interactive file selection
  *
  * Platform: POSIX (macOS, Linux)
- * Dependencies: tab_completion.h, terminal_control.h
+ * Dependencies: tab_completion.h, terminal_control.h, file_browser.h
  */
 
 #ifndef FILE_DIALOG_H
@@ -32,50 +33,58 @@ typedef struct file_dialog_result {
 
 /* Get existing file dialog
  *
- * Prompts user to select an existing file with tab completion.
- * Validates that selected path exists and is a file.
+ * When stdin is a TTY, opens a two-pane visual browser.
+ * When piped, falls back to line-buffered path input with tab completion.
  *
  * Parameters:
+ *   prompt: Dialog prompt text (displayed to user)
  *   start_path: Starting directory (NULL = current working directory)
+ *   type_filter: File extension filter (e.g., "txt"), NULL for all files
  *
  * Returns: Result structure with selected file path and success status
  */
-file_dialog_result file_dialog_get_file(const char *start_path);
+file_dialog_result file_dialog_get_file(const char *prompt,
+                                         const char *start_path,
+                                         const char *type_filter);
 
 /* Put file dialog
  *
- * Prompts user to choose location to save a file.
- * Allows selecting existing file (overwrites) or entering new filename.
+ * When stdin is a TTY, opens a two-pane visual browser with filename input.
+ * When piped, falls back to line-buffered path input.
  *
  * Parameters:
+ *   prompt: Dialog prompt text (displayed to user)
  *   start_path: Starting directory or default filename (NULL = cwd)
  *
  * Returns: Result structure with selected file path and success status
  */
-file_dialog_result file_dialog_put_file(const char *start_path);
+file_dialog_result file_dialog_put_file(const char *prompt,
+                                         const char *start_path);
 
 /* Get folder dialog
  *
- * Prompts user to select an existing directory with tab completion.
- * Validates that selected path exists and is a directory.
+ * When stdin is a TTY, opens a two-pane visual browser for directory selection.
+ * When piped, falls back to line-buffered path input.
  *
  * Parameters:
+ *   prompt: Dialog prompt text (displayed to user)
  *   start_path: Starting directory (NULL = current working directory)
  *
  * Returns: Result structure with selected folder path and success status
  */
-file_dialog_result file_dialog_get_folder(const char *start_path);
+file_dialog_result file_dialog_get_folder(const char *prompt,
+                                           const char *start_path);
 
 /* Get disk/volume dialog
  *
- * Prompts user to select a mounted volume (macOS: uses getfsstat).
- * Returns path to volume root (e.g., "/", "/Volumes/External").
+ * When stdin is a TTY, opens a two-pane visual browser showing mount points.
+ * When piped, falls back to numbered volume list.
  *
  * Parameters:
- *   None
+ *   prompt: Dialog prompt text (displayed to user)
  *
  * Returns: Result structure with selected volume path and success status
  */
-file_dialog_result file_dialog_get_disk(void);
+file_dialog_result file_dialog_get_disk(const char *prompt);
 
 #endif /* FILE_DIALOG_H */

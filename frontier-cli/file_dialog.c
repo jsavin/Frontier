@@ -3,10 +3,12 @@
  *
  * Phase 2B.3: File Dialog Engine
  *
- * Implements four file dialog types with tab completion and validation.
+ * Routes to file_browser.c (two-pane visual browser) when stdin is a TTY,
+ * or falls back to line-buffered interactive loop when piped.
  */
 
 #include "file_dialog.h"
+#include "file_browser.h"
 #include "tab_completion.h"
 #include "terminal_control.h"
 #include "../Common/headers/logging.h"
@@ -83,7 +85,8 @@ static void split_path(const char *path, char *dir, size_t dir_size, char *file,
 	}
 }
 
-/* Core loop for interactive file/folder selection with tab completion and validation. */
+/* Core loop for interactive file/folder selection with tab completion and validation.
+ * Used as fallback when stdin is piped (not a TTY). */
 static file_dialog_result interactive_file_loop(const char *prompt,
                                                 const char *start_path,
                                                 bool require_exists,
@@ -359,35 +362,60 @@ static file_dialog_result interactive_file_loop(const char *prompt,
 	return result;
 }
 
-/* Opens dialog to select an existing file; returns path or empty result on cancel. */
-file_dialog_result file_dialog_get_file(const char *start_path) {
-	return interactive_file_loop("Select an existing file:",
+/* Routes to two-pane browser (TTY) or fallback loop (piped input). */
+file_dialog_result file_dialog_get_file(const char *prompt,
+                                         const char *start_path,
+                                         const char *type_filter) {
+	const char *effective_prompt = (prompt && prompt[0]) ? prompt : "Select an existing file:";
+
+	if (isatty(STDIN_FILENO))
+		return file_browser_get_file(effective_prompt, start_path, type_filter);
+
+	return interactive_file_loop(effective_prompt,
 	                             start_path,
 	                             true,   /* require_exists */
 	                             true,   /* require_file */
 	                             false); /* require_dir */
 }
 
-/* Opens dialog to choose a save location; allows non-existent paths for new files. */
-file_dialog_result file_dialog_put_file(const char *start_path) {
-	return interactive_file_loop("Choose location to save file:",
+/* Routes to two-pane browser (TTY) or fallback loop (piped input). */
+file_dialog_result file_dialog_put_file(const char *prompt,
+                                         const char *start_path) {
+	const char *effective_prompt = (prompt && prompt[0]) ? prompt : "Choose location to save file:";
+
+	if (isatty(STDIN_FILENO))
+		return file_browser_put_file(effective_prompt, start_path);
+
+	return interactive_file_loop(effective_prompt,
 	                             start_path,
 	                             false,  /* require_exists */
 	                             false,  /* require_file */
 	                             false); /* require_dir */
 }
 
-/* Opens dialog to select an existing directory. */
-file_dialog_result file_dialog_get_folder(const char *start_path) {
-	return interactive_file_loop("Select a directory:",
+/* Routes to two-pane browser (TTY) or fallback loop (piped input). */
+file_dialog_result file_dialog_get_folder(const char *prompt,
+                                           const char *start_path) {
+	const char *effective_prompt = (prompt && prompt[0]) ? prompt : "Select a directory:";
+
+	if (isatty(STDIN_FILENO))
+		return file_browser_get_folder(effective_prompt, start_path);
+
+	return interactive_file_loop(effective_prompt,
 	                             start_path,
 	                             true,   /* require_exists */
 	                             false,  /* require_file */
 	                             true);  /* require_dir */
 }
 
-/* Opens dialog to select a mounted disk/volume; enumerates available volumes. */
-file_dialog_result file_dialog_get_disk(void) {
+/* Routes to two-pane browser (TTY) or fallback numbered list (piped input). */
+file_dialog_result file_dialog_get_disk(const char *prompt) {
+	const char *effective_prompt = (prompt && prompt[0]) ? prompt : "Select a volume:";
+
+	if (isatty(STDIN_FILENO))
+		return file_browser_get_disk(effective_prompt);
+
+	/* Fallback: numbered list for piped input */
 	file_dialog_result result;
 	result.success = false;
 	result.path[0] = '\0';
@@ -421,7 +449,8 @@ file_dialog_result file_dialog_get_disk(void) {
 	}
 
 	/* Display volumes */
-	fprintf(stderr, "\nAvailable volumes:\n");
+	fprintf(stderr, "\n%s\n", effective_prompt);
+	fprintf(stderr, "Available volumes:\n");
 	for (int i = 0; i < count; i++) {
 		fprintf(stderr, "%d. %s (type: %s)\n", i + 1, mounts[i].f_mntonname, mounts[i].f_fstypename);
 	}
@@ -463,7 +492,8 @@ file_dialog_result file_dialog_get_disk(void) {
 	free(mounts);
 #else
 	/* Linux/other: Simple root directory selection */
-	fprintf(stderr, "\nVolume selection:\n");
+	fprintf(stderr, "\n%s\n", effective_prompt);
+	fprintf(stderr, "Volume selection:\n");
 	fprintf(stderr, "1. / (root)\n");
 	fprintf(stderr, "Enter 1 to select root, or 0 to cancel: ");
 	fflush(stderr);

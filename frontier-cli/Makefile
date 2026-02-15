@@ -77,6 +77,7 @@ CLI_SOURCES = \
     dialog_prompts.c \
     tab_completion.c \
     file_dialog.c \
+    file_browser.c \
     completion.c \
     repl.c \
     repl_commands.c \

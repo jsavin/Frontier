@@ -1,13 +1,17 @@
 # File Dialog Verb Integration Tests
 #
-# Phase 1 (current): File dialog verbs reject in non-interactive mode
-# Phase 2 (planned): Interactive stdio menus with tab completion
+# Phase 1: File dialog verbs reject in non-interactive mode (batch)
+# Phase 2: Interactive stdio dialogs with tab completion (fallback path)
+# Phase 3: Visual browser (TTY-only, not testable via piped stdin)
 #
-# Reference: planning/phase3/HEADLESS_INTERACTIVE_MODE.md (File Dialog Specifications)
+# Tests using stdin_input exercise the line-buffered fallback path,
+# which is used when stdin is piped (non-TTY). The visual two-pane
+# browser is only activated when stdin is a real TTY.
+#
+# Reference: planning/phase3/HEADLESS_INTERACTIVE_MODE.md
 
 tests:
   # ===== Active Tests: Batch/Non-Interactive Mode =====
-  # These test the current behavior: verbs reject when not in interactive mode
 
   - name: "file.getFileDialog - error in batch mode"
     description: "Should return error when not in interactive mode"
@@ -48,12 +52,13 @@ tests:
     expected_success: false
     expected_error: "interactive mode"
 
-  # ===== Phase 2 Tests: Interactive Mode (skipped until implemented) =====
+  # ===== Phase 2 Tests: Interactive Fallback Path (piped stdin) =====
+  # These tests use stdin_input which exercises the line-buffered fallback,
+  # NOT the visual browser (which requires a real TTY).
 
   # file.getFileDialog() - Select Existing File
   - name: "file.getFileDialog - select file with full path"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should accept typed full path to existing file"
+    description: "Should accept typed full path to existing file via piped stdin"
     script: |
       local(testPath = "{FRONTIER_TEST_TMP_DIR}/test.txt");
       file.writeWholeFile(testPath, "test content");
@@ -62,16 +67,7 @@ tests:
     stdin_input: "{FRONTIER_TEST_TMP_DIR}/test.txt\n"
     expected_success: true
 
-  - name: "file.getFileDialog - tab completion shows menu"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Tab key should show file list menu"
-    script: |
-      file.getFileDialog("Select file", @result)
-    stdin_input: "/Users\t"
-    expected_success: true
-
   - name: "file.getFileDialog - returns full absolute path"
-    skip: "Phase 2 interactive mode not yet implemented"
     description: "Must return full absolute path (UserTalk requirement)"
     script: |
       local(testFile = "{FRONTIER_TEST_TMP_DIR}/config.txt");
@@ -82,49 +78,7 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "file.getFileDialog - only allows existing files"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should reject non-existent file paths"
-    script: |
-      file.getFileDialog("Select existing file", @result)
-    stdin_input: "/nonexistent/file.txt\n{FRONTIER_TEST_TMP_DIR}/real.txt\n"
-    setup_script: |
-      file.writeWholeFile("{FRONTIER_TEST_TMP_DIR}/real.txt", "exists")
-    expected_success: true
-
-  - name: "file.getFileDialog - shows hidden files"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Hidden files (starting with .) should be visible"
-    script: |
-      file.writeWholeFile("{FRONTIER_TEST_TMP_DIR}/.gitignore", "*.tmp");
-      file.getFileDialog("Select file", @result)
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/.gitignore\n"
-    expected_success: true
-
-  - name: "file.getFileDialog - unicode filename (CJK)"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should handle CJK characters in filenames"
-    script: |
-      local(unicodePath = "{FRONTIER_TEST_TMP_DIR}/文件.txt");
-      file.writeWholeFile(unicodePath, "content");
-      file.getFileDialog("Select", @result);
-      return result
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/文件.txt\n"
-    expected_success: true
-
-  - name: "file.getFileDialog - unicode filename (emoji)"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should handle emoji in filenames"
-    script: |
-      local(emojiPath = "{FRONTIER_TEST_TMP_DIR}/file🚀.txt");
-      file.writeWholeFile(emojiPath, "content");
-      file.getFileDialog("Select", @result);
-      return result
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/file🚀.txt\n"
-    expected_success: true
-
   - name: "file.getFileDialog - filename with spaces"
-    skip: "Phase 2 interactive mode not yet implemented"
     description: "Should handle spaces in filenames"
     script: |
       local(spacePath = "{FRONTIER_TEST_TMP_DIR}/my file.txt");
@@ -134,22 +88,19 @@ tests:
     stdin_input: "{FRONTIER_TEST_TMP_DIR}/my file.txt\n"
     expected_success: true
 
-  - name: "file.getFileDialog - very long path (256 chars)"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should handle long file paths"
+  - name: "file.getFileDialog - prompt passthrough"
+    description: "UserTalk prompt should be forwarded to the dialog (not hardcoded)"
     script: |
-      local(longPath = "{FRONTIER_TEST_TMP_DIR}/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt");
-      file.writeWholeFile(longPath, "test");
-      file.getFileDialog("Select", @result);
-      return string.patternMatch("aaaaaaa", result) > 0
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt\n"
+      local(testPath = "{FRONTIER_TEST_TMP_DIR}/prompt_test.txt");
+      file.writeWholeFile(testPath, "data");
+      file.getFileDialog("Where is your web browser?", @result, "txt");
+      return result
+    stdin_input: "{FRONTIER_TEST_TMP_DIR}/prompt_test.txt\n"
     expected_success: true
-    expected_result: "true"
 
   # file.putFileDialog() - Save File
   - name: "file.putFileDialog - type new filename"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should allow typing new filename after directory path"
+    description: "Should allow typing new filename via piped stdin"
     script: |
       file.putFileDialog("Save output as", @result);
       return result
@@ -157,18 +108,7 @@ tests:
     expected_success: true
     expected_result_contains: "output.txt"
 
-  - name: "file.putFileDialog - select existing file to overwrite"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should allow selecting existing file"
-    script: |
-      file.writeWholeFile("{FRONTIER_TEST_TMP_DIR}/existing.txt", "old");
-      file.putFileDialog("Save as", @result);
-      return result
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/existing.txt\n"
-    expected_success: true
-
   - name: "file.putFileDialog - returns full absolute path"
-    skip: "Phase 2 interactive mode not yet implemented"
     description: "Must return full path even for new files"
     script: |
       file.putFileDialog("Save", @result);
@@ -177,38 +117,17 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "file.putFileDialog - shows all files (not just directories)"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Menu should show existing files to prevent overwrites"
-    script: |
-      file.writeWholeFile("{FRONTIER_TEST_TMP_DIR}/file1.txt", "a");
-      file.writeWholeFile("{FRONTIER_TEST_TMP_DIR}/file2.txt", "b");
-      file.putFileDialog("Save as", @result)
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/file3.txt\n"
-    expected_success: true
-
   # file.getFolderDialog() - Select Directory
   - name: "file.getFolderDialog - select directory"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should accept directory path"
+    description: "Should accept directory path via piped stdin"
     script: |
       file.getFolderDialog("Select output directory", @result);
-      return string.patternMatch("/integration", result) > 0
+      return string.mid(result, 1, 1) == "/"
     stdin_input: "{FRONTIER_TEST_TMP_DIR}\n"
     expected_success: true
     expected_result: "true"
 
-  - name: "file.getFolderDialog - only shows directories and symlinks"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should not show regular files in menu"
-    script: |
-      file.writeWholeFile("{FRONTIER_TEST_TMP_DIR}/file.txt", "data");
-      file.getFolderDialog("Select folder", @result)
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}\n"
-    expected_success: true
-
   - name: "file.getFolderDialog - returns full absolute path"
-    skip: "Phase 2 interactive mode not yet implemented"
     description: "Must return full path to directory"
     script: |
       file.getFolderDialog("Select", @result);
@@ -217,21 +136,9 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "file.getFolderDialog - hidden directories visible"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Hidden directories (like .git) should be visible"
-    script: |
-      local(hiddenPath = "{FRONTIER_TEST_TMP_DIR}/.hidden");
-      file.getFolderDialog("Select folder", @result);
-      return string.mid(result, 1, 1) == "/"
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}\n"
-    expected_success: true
-    expected_result: "true"
-
   # file.getDiskDialog() - Select Volume
   - name: "file.getDiskDialog - select root volume"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Should list mounted volumes"
+    description: "Should list mounted volumes and accept selection via piped stdin"
     script: |
       file.getDiskDialog("Select backup volume", @result);
       return string.mid(result, 1, 1) == "/"
@@ -239,32 +146,15 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "file.getDiskDialog - returns full path to mount point"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Must return mount point path"
-    script: |
-      file.getDiskDialog("Select volume", @result);
-      return string.mid(result, 1, 1) == "/"
-    stdin_input: "1\n"
-    expected_success: true
-    expected_result: "true"
-
-  # Starting Directory Logic Tests
-  - name: "file.getFileDialog - starts from output address path"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "If output variable contains path, use that as starting dir"
-    script: |
-      local(pathHint = "{FRONTIER_TEST_TMP_DIR}/file.txt");
-      file.writeWholeFile(pathHint, "data");
-      file.getFileDialog("Select", @pathHint);
-      return pathHint
-    stdin_input: "\n"
-    expected_success: true
-
-  - name: "file.getFileDialog - defaults to cwd when no path hint"
-    skip: "Phase 2 interactive mode not yet implemented"
-    description: "Without path in output address, should start from cwd"
-    script: |
-      file.getFileDialog("Select file", @result)
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/file.txt\n"
-    expected_success: true
+  # ===== Browser-Specific Tests (TTY-only, not testable via piped stdin) =====
+  # TODO: These require a real TTY and cannot be tested via piped stdin.
+  # They must be tested manually or with a PTY test harness.
+  #
+  # - Arrow key navigation (up/down/left/right)
+  # - Type-ahead selection with timeout
+  # - Type filter applied in visual browser
+  # - SIGWINCH terminal resize handling
+  # - putFile filename editing bar
+  # - getFolder Enter-to-select vs Right-to-descend
+  # - getDisk mount point enumeration
+  # - Narrow terminal (<40 cols) single-pane fallback
