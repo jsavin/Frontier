@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Lang Verbs (lang_verbs) - 156 tests: 141 pass (90%) 15 skip (9%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Sun, 15 Feb 2026 08:17:42 GMT</dateCreated>
   </head>
   <body>
     <outline text="lang.double - integer to double - Convert integer to double-precision float">
@@ -357,30 +357,30 @@
         <outline text="lang.abs(1, 2)"/>
       </outline>
     </outline>
-    <outline text="lang.random - in range - Random number should be in valid range [0, max-1]">
+    <outline text="lang.random - in range - Random number should be in valid range [1, 100] inclusive">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="local (x = lang.random(100))"/>
-        <outline text="return (x &gt;= 0) and (x &lt; 100)"/>
+        <outline text="local (x = lang.random(1, 100))"/>
+        <outline text="return (x &gt;= 1) and (x &lt;= 100)"/>
       </outline>
     </outline>
-    <outline text="lang.random - max=1 - Random(1) should always return 0">
+    <outline text="lang.random - equal bounds - random(5, 5) should always return 5">
       <outline text="Metadata">
-        <outline text="expected_result: 0"/>
+        <outline text="expected_result: 5"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.random(1)"/>
+        <outline text="lang.random(5, 5)"/>
       </outline>
     </outline>
-    <outline text="lang.random - max=10 - Random(10) should be in [0,9]">
+    <outline text="lang.random - small range - Random(1, 10) should be in [1, 10]">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="local (x = lang.random(10))"/>
-        <outline text="return (x &gt;= 0) and (x &lt;= 9)"/>
+        <outline text="local (x = lang.random(1, 10))"/>
+        <outline text="return (x &gt;= 1) and (x &lt;= 10)"/>
       </outline>
     </outline>
     <outline text="lang.random - multiple calls differ - Multiple random calls should (usually) produce different values">
@@ -388,34 +388,34 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="local (x = lang.random(1000))"/>
-        <outline text="local (y = lang.random(1000))"/>
-        <outline text="local (z = lang.random(1000))"/>
+        <outline text="local (x = lang.random(1, 1000))"/>
+        <outline text="local (y = lang.random(1, 1000))"/>
+        <outline text="local (z = lang.random(1, 1000))"/>
         <outline text="return (x != y) or (y != z)"/>
       </outline>
     </outline>
-    <outline text="lang.random - max=0 error - Random(0) should fail (invalid range)">
+    <outline text="lang.random - lower greater than upper error - random(10, 1) should fail (lower &gt; upper)">
       <outline text="Metadata">
         <outline text="expected_success: False"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.random(0)"/>
+        <outline text="lang.random(10, 1)"/>
       </outline>
     </outline>
-    <outline text="lang.random - negative max error - Random with negative max should fail">
-      <outline text="Metadata">
-        <outline text="expected_success: False"/>
-      </outline>
-      <outline text="Script">
-        <outline text="lang.random(-10)"/>
-      </outline>
-    </outline>
-    <outline text="lang.random - no parameters - Parameter validation: missing parameter should fail">
+    <outline text="lang.random - no parameters - Parameter validation: missing parameters should fail">
       <outline text="Metadata">
         <outline text="expected_success: False"/>
       </outline>
       <outline text="Script">
         <outline text="lang.random()"/>
+      </outline>
+    </outline>
+    <outline text="lang.random - one parameter error - Parameter validation: single parameter should fail (needs 2)">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.random(100)"/>
       </outline>
     </outline>
     <outline text="lang.memavail - returns positive - Available memory should be a positive number">

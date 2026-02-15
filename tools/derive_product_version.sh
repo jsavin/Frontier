@@ -51,8 +51,8 @@ if echo "$v" | grep -qE '\-(alpha|beta|rc|dev)'; then
     esac
 fi
 
-# Only omit patch when it's genuinely zero (e.g., v1.0.0 → 11.0, not v1.2.2 → 11.2)
-if [ "$patch" = "0" ]; then
+# Only omit patch when it's genuinely zero or absent (e.g., v1.0.0 → 11.0, not v1.2.2 → 11.2)
+if [ -z "$patch" ] || [ "$patch" = "0" ]; then
     echo "${pmajor}.${minor}${stage}${sub}"
 else
     echo "${pmajor}.${minor}.${patch}${stage}${sub}"

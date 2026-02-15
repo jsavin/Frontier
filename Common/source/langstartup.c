@@ -295,73 +295,85 @@ static boolean initenvironment (hdlhashtable ht) {
 
 		langassignstringvalue (ht, str_osVersionString, bsversion);
 
-		/* Query sw_vers for build number and OS display name.
-		   Uses a shared handle pair with proper cleanup on all paths. */
+		/* Query sw_vers for build number and OS display name. */
 
 		{
 			Handle hcommand = nil, hreturn = nil;
-			boolean flgothandles;
 
-			flgothandles = newemptyhandle (&hreturn) && newtexthandle ("\psw_vers -buildVersion", &hcommand);
+			if (!newemptyhandle (&hreturn)) {
 
-			if (!flgothandles) {
+				log_debug (LOG_COMP_STARTUP, "initenvironment: hreturn alloc failed, using fallback");
+				goto swvers_fallback;
+			}
 
-				log_warn (LOG_COMP_STARTUP, "initenvironment: failed to allocate handles for sw_vers");
+			/* Get build number */
 
-				if (hreturn != nil) disposehandle (hreturn);
-				if (hcommand != nil) disposehandle (hcommand);
+			if (!newtexthandle ("\psw_vers -buildVersion", &hcommand)) {
 
-				copyctopstring ("unknown", bs);
+				log_debug (LOG_COMP_STARTUP, "initenvironment: hcommand alloc failed, using fallback");
+				disposehandle (hreturn);
+				goto swvers_fallback;
+			}
+
+			if (unixshellcall (hcommand, hreturn)) {
+
+				texthandletostring (hreturn, bs);
+
+				if (stringlength (bs) > 0)
+					setstringlength (bs, stringlength (bs) - 1); /* strip trailing newline */
+
 				langassignstringvalue (ht, str_osBuildNumber, bs);
-				langassignstringvalue (ht, str_osFullNameForDisplay, bs);
+				log_debug (LOG_COMP_STARTUP, "initenvironment: osBuildNumber=%s", PSTR(bs));
 			}
 			else {
-
-				/* Get build number */
-
-				if (unixshellcall (hcommand, hreturn)) {
-
-					texthandletostring (hreturn, bs);
-
-					if (stringlength (bs) > 0)
-						setstringlength (bs, stringlength (bs) - 1); /* strip trailing newline */
-
-					langassignstringvalue (ht, str_osBuildNumber, bs);
-
-					log_debug (LOG_COMP_STARTUP, "initenvironment: osBuildNumber=%s", PSTR(bs));
-				}
-				else {
-					log_warn (LOG_COMP_STARTUP, "initenvironment: sw_vers -buildVersion failed");
-					copyctopstring ("unknown", bs);
-					langassignstringvalue (ht, str_osBuildNumber, bs);
-				}
-
-				/* Get OS display name (reuse handles) */
-
-				sethandlesize (hreturn, 0);
-				copystring ("\psw_vers -productName", bs);
-				sethandlecontents (stringbaseaddress (bs), stringlength (bs), hcommand);
-
-				if (unixshellcall (hcommand, hreturn)) {
-
-					texthandletostring (hreturn, bsos);
-
-					if (stringlength (bsos) > 0)
-						setstringlength (bsos, stringlength (bsos) - 1); /* strip trailing newline */
-
-					langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
-
-					log_debug (LOG_COMP_STARTUP, "initenvironment: osFullName=%s", PSTR(bsos));
-				}
-				else {
-					log_warn (LOG_COMP_STARTUP, "initenvironment: sw_vers -productName failed");
-					copyctopstring ("unknown", bsos);
-					langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
-				}
-
-				disposehandle (hcommand);
-				disposehandle (hreturn);
+				log_debug (LOG_COMP_STARTUP, "initenvironment: sw_vers -buildVersion failed, using fallback");
+				copyctopstring ("unknown", bs);
+				langassignstringvalue (ht, str_osBuildNumber, bs);
 			}
+
+			disposehandle (hcommand);
+			hcommand = nil;
+
+			/* Get OS display name (fresh handle for new command) */
+
+			if (!newtexthandle ("\psw_vers -productName", &hcommand)) {
+
+				log_debug (LOG_COMP_STARTUP, "initenvironment: hcommand alloc failed for productName");
+				disposehandle (hreturn);
+				copyctopstring ("unknown", bsos);
+				langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+				goto swvers_done;
+			}
+
+			sethandlesize (hreturn, 0);
+
+			if (unixshellcall (hcommand, hreturn)) {
+
+				texthandletostring (hreturn, bsos);
+
+				if (stringlength (bsos) > 0)
+					setstringlength (bsos, stringlength (bsos) - 1); /* strip trailing newline */
+
+				langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+				log_debug (LOG_COMP_STARTUP, "initenvironment: osFullName=%s", PSTR(bsos));
+			}
+			else {
+				log_debug (LOG_COMP_STARTUP, "initenvironment: sw_vers -productName failed, using fallback");
+				copyctopstring ("unknown", bsos);
+				langassignstringvalue (ht, str_osFullNameForDisplay, bsos);
+			}
+
+			disposehandle (hcommand);
+			disposehandle (hreturn);
+			goto swvers_done;
+
+		swvers_fallback:
+
+			copyctopstring ("unknown", bs);
+			langassignstringvalue (ht, str_osBuildNumber, bs);
+			langassignstringvalue (ht, str_osFullNameForDisplay, bs);
+
+		swvers_done: ;
 		}
 	}
 	#else
