@@ -52,13 +52,6 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "system.environment.isInteractive - defined"
-    description: "isInteractive should be a boolean (true on TTY, false in pipe/daemon mode)"
-    script: |
-      return defined(system.environment.isInteractive)
-    expected_success: true
-    expected_result: "true"
-
   - name: "system.environment.isPosix - true on macOS and Linux"
     description: "isPosix should be true on all POSIX platforms"
     script: |
@@ -70,10 +63,13 @@ tests:
     expected_result: "true"
 
   # Legacy compatibility flags
-  - name: "system.environment.isCarbon - always false in headless"
-    description: "isCarbon should be false in headless CLI (Carbon API is not used)"
+  - name: "system.environment.isCarbon - true on macOS"
+    description: "isCarbon should be true on macOS for backward compat with legacy scripts"
     script: |
-      return not system.environment.isCarbon
+      if sys.os() == "MacOS" {
+        return system.environment.isCarbon}
+      else {
+        return not system.environment.isCarbon}
     expected_success: true
     expected_result: "true"
 

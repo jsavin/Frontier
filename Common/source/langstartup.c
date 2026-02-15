@@ -49,7 +49,6 @@
 #include <stdlib.h>
 #ifdef FRONTIER_HEADLESS
 #include <stdio.h>
-#include <unistd.h> /* isatty */
 #endif
 
 // 2025-12-02 Codex: Log headless EFP registration to chase missing kernel valueroutines.
@@ -109,7 +108,6 @@ static boolean cb_false_event(EventRecord* e) { (void)e; return false; }
 #define str_isHeadless				BIGSTRING ("\x0a" "isHeadless")
 #define str_isPosix					BIGSTRING ("\x07" "isPosix")
 #define str_isLinux					BIGSTRING ("\x07" "isLinux")
-#define str_isInteractive			BIGSTRING ("\x0d" "isInteractive")
 #define str_maxTcpConnections		BIGSTRING ("\x11" "maxTcpConnections")
 
 
@@ -233,7 +231,7 @@ static boolean initenvironment (hdlhashtable ht) {
 	langassignbooleanvalue (ht, str_isMac, true);
 	langassignbooleanvalue (ht, str_isWindows, false);
 	langassignbooleanvalue (ht, str_isLinux, false);
-	langassignbooleanvalue (ht, str_isCarbon, false);
+	langassignbooleanvalue (ht, str_isCarbon, true); /* legacy compat: scripts check this for macOS */
 	langassignbooleanvalue (ht, str_isPosix, true);
 	#elif defined(__linux__)
 	langassignbooleanvalue (ht, str_isMac, false);
@@ -256,7 +254,6 @@ static boolean initenvironment (hdlhashtable ht) {
 	#endif
 
 	langassignbooleanvalue (ht, str_isHeadless, true);
-	langassignbooleanvalue (ht, str_isInteractive, isatty (STDIN_FILENO) != 0);
 	langassignbooleanvalue (ht, str_isMacOsClassic, false);
 	langassignbooleanvalue (ht, str_isServer, false);
 	langassignbooleanvalue (ht, str_isPike, false);
@@ -568,7 +565,6 @@ static boolean initenvironment ( hdlhashtable ht ) {
 	   can check these portably regardless of which runtime they're in. */
 
 	langassignbooleanvalue (ht, str_isHeadless, false);
-	langassignbooleanvalue (ht, str_isInteractive, true); /* GUI app is always interactive */
 
 	#if defined(__APPLE__) || defined(__linux__)
 	langassignbooleanvalue (ht, str_isPosix, true);
