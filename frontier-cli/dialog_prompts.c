@@ -428,15 +428,6 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 				selection = 1 - selection;
 				break;
 
-			case KEY_CTRL_C:
-			case KEY_CTRL_D:
-				/* Cancel = last button (No/Cancel).  Intentional:
-				 * Ctrl+C means "abort/cancel", not "accept default". */
-				fputs("\n", stderr);
-				terminal_restore_state(term_state);
-				terminal_free_state(term_state);
-				return false;
-
 			case KEY_CHAR:
 				/* Number keys: instant select */
 				if (key.ch == '1') {
@@ -507,11 +498,10 @@ int dialog_threeway(const char *prompt, const char *button1, const char *button2
 				return (selection + 1);
 
 			case KEY_ESCAPE:
-				/* Esc = last button (Cancel) */
-				fputs("\n", stderr);
-				terminal_restore_state(term_state);
-				terminal_free_state(term_state);
-				return 3;
+				/* No clear cancel target with 3 buttons — beep */
+				fputc('\a', stderr);
+				fflush(stderr);
+				break;
 
 			case KEY_ARROW_LEFT:
 				if (selection > 0) selection--;
@@ -521,15 +511,6 @@ int dialog_threeway(const char *prompt, const char *button1, const char *button2
 			case KEY_TAB:
 				if (selection < 2) selection++;
 				break;
-
-			case KEY_CTRL_C:
-			case KEY_CTRL_D:
-				/* Cancel = last button.  Intentional:
-				 * Ctrl+C means "abort/cancel", not "accept default". */
-				fputs("\n", stderr);
-				terminal_restore_state(term_state);
-				terminal_free_state(term_state);
-				return 3;
 
 			case KEY_CHAR:
 				/* Number keys: instant select */
