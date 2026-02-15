@@ -1,0 +1,113 @@
+# Integration tests for system.environment table
+# Tests platform detection flags populated by initenvironment()
+#
+# Values tested:
+#   - system.environment.isMac - true on macOS
+#   - system.environment.isWindows - false on macOS
+#   - system.environment.isLinux - false on macOS (true on Linux)
+#   - system.environment.isHeadless - true in CLI mode
+#   - system.environment.isPosix - true on macOS and Linux
+#   - system.environment.isCarbon - true on macOS (legacy compat)
+#   - system.environment.isFrontier - true always
+#   - system.environment.osMajorVersion - nonzero on macOS
+#   - system.environment.osVersionString - real version on macOS
+
+tests:
+  # Platform detection flags
+  - name: "system.environment.isMac - matches sys.os"
+    description: "isMac should be true when sys.os() returns MacOS"
+    script: |
+      if sys.os() == "MacOS" {
+        return system.environment.isMac}
+      else {
+        return not system.environment.isMac}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "system.environment.isWindows - false on non-Windows"
+    description: "isWindows should be false on macOS and Linux"
+    script: |
+      if sys.os() == "Windows" {
+        return system.environment.isWindows}
+      else {
+        return not system.environment.isWindows}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "system.environment.isLinux - matches sys.os"
+    description: "isLinux should be true when sys.os() returns Linux"
+    script: |
+      if sys.os() == "Linux" {
+        return system.environment.isLinux}
+      else {
+        return not system.environment.isLinux}
+    expected_success: true
+    expected_result: "true"
+
+  # Headless and POSIX flags
+  - name: "system.environment.isHeadless - true in CLI mode"
+    description: "isHeadless should always be true in headless/CLI mode"
+    script: |
+      return system.environment.isHeadless
+    expected_success: true
+    expected_result: "true"
+
+  - name: "system.environment.isPosix - true on macOS and Linux"
+    description: "isPosix should be true on all POSIX platforms"
+    script: |
+      if sys.os() == "Windows" {
+        return not system.environment.isPosix}
+      else {
+        return system.environment.isPosix}
+    expected_success: true
+    expected_result: "true"
+
+  # Legacy compatibility flags
+  - name: "system.environment.isCarbon - true on macOS"
+    description: "isCarbon should be true on macOS for backward compat with legacy scripts"
+    script: |
+      if sys.os() == "MacOS" {
+        return system.environment.isCarbon}
+      else {
+        return not system.environment.isCarbon}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "system.environment.isFrontier - always true"
+    description: "isFrontier should always be true"
+    script: |
+      return system.environment.isFrontier
+    expected_success: true
+    expected_result: "true"
+
+  - name: "system.environment.isMacOsClassic - always false"
+    description: "isMacOsClassic should always be false (no classic Mac OS support)"
+    script: |
+      return not system.environment.isMacOsClassic
+    expected_success: true
+    expected_result: "true"
+
+  # OS version fields
+  - name: "system.environment.osMajorVersion - nonzero on macOS"
+    description: "osMajorVersion should be a real version number, not zero"
+    script: |
+      if sys.os() == "MacOS" {
+        return system.environment.osMajorVersion >= 10}
+      else {
+        return system.environment.osMajorVersion >= 0}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "system.environment.osVersionString - not zero string"
+    description: "osVersionString should contain a real version, not 0.0.0"
+    script: |
+      return system.environment.osVersionString != "0.0.0"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "system.environment.osFullNameForDisplay - not zero string"
+    description: "osFullNameForDisplay should contain a real OS name"
+    script: |
+      return system.environment.osFullNameForDisplay != "0.0.0"
+    expected_success: true
+    expected_result: "true"

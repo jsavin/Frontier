@@ -45,7 +45,8 @@ enum {
     frov_gethashloopcount = 10,
     frov_hideapplication = 11,
     frov_isvalidserialnumber = 12,
-    frov_showapplication = 13
+    frov_showapplication = 13,
+    frov_cliversion = 14
 };
 
 static boolean frontier_valueproc(short token, hdltreenode hparam1,
@@ -167,13 +168,39 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             /* Verb #7: frontier.reclaimmemory - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
             return false;
-        case frov_version:
-            /* Verb #8: frontier.version - Return version string */
-            /* In headless mode, return a version that satisfies version checks */
-            /* Using 10.0 to be greater than any historical Frontier version */
+        case frov_version: {
+            /* Verb #8: frontier.version - Return product version string */
+            /* Derived from git tag: CLI major + 10 (e.g., CLI v1.0.0-alpha.6 → "11.0a6") */
+            /* Ensures date.versionLessThan() comparisons with legacy 7.x/10.x versions work */
+            bigstring bsversion;
+
             if (!langcheckparamcount(hparam1, 0))
                 return false;
-            return setstringvalue(BIGSTRING("\x04" "10.0"), vreturned);
+
+            #ifdef FRONTIER_PRODUCT_VERSION_STRING
+            copyctopstring(FRONTIER_PRODUCT_VERSION_STRING, bsversion);
+            #else
+            copyctopstring("11.0d", bsversion);
+            #endif
+
+            return setstringvalue(bsversion, vreturned);
+        }
+        case frov_cliversion: {
+            /* Verb #14: frontier.cliVersion - Return CLI distribution version string */
+            /* Returns the git-derived version (e.g., "v1.0.0-alpha.6") */
+            bigstring bsversion;
+
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+
+            #ifdef FRONTIER_CLI_VERSION_STRING
+            copyctopstring(FRONTIER_CLI_VERSION_STRING, bsversion);
+            #else
+            copyctopstring("1.0.0-dev", bsversion);
+            #endif
+
+            return setstringvalue(bsversion, vreturned);
+        }
         case frov_hashstats:
             /* Verb #9: frontier.hashstats - not yet implemented */
             if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
@@ -212,11 +239,19 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
 
 /*
  * frontierversion - Direct C function called by langhtml.c for webserver headers
- * Returns the Frontier version as a string value.
+ * Returns the Frontier product version as a string value.
  * This is NOT a verb - it's called directly from webservergetserverstring().
  */
 boolean frontierversion(tyvaluerecord *v) {
-    return setstringvalue(BIGSTRING("\x04" "10.0"), v);
+    bigstring bsversion;
+
+    #ifdef FRONTIER_PRODUCT_VERSION_STRING
+    copyctopstring(FRONTIER_PRODUCT_VERSION_STRING, bsversion);
+    #else
+    copyctopstring("11.0d", bsversion);
+    #endif
+
+    return setstringvalue(bsversion, v);
 }
 
 /*
@@ -266,6 +301,7 @@ boolean frontierinitverbs(void) {
     ADD_VERB(BIGSTRING("\phideapplication"), frov_hideapplication);
     ADD_VERB(BIGSTRING("\pisvalidserialnumber"), frov_isvalidserialnumber);
     ADD_VERB(BIGSTRING("\pshowapplication"), frov_showapplication);
+    ADD_VERB(BIGSTRING("\pcliversion"), frov_cliversion);
 
     #undef ADD_VERB
 
