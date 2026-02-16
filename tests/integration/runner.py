@@ -620,8 +620,10 @@ class TestCase:
 
         REPL tests check stdout/stderr text, not JSON output.
         """
-        # Combine stdout and stderr for checking
-        output = result.stdout + result.stderr
+        # Combine stdout and stderr for checking (ensure both are strings)
+        stdout = result.stdout if isinstance(result.stdout, str) else (result.stdout.decode('utf-8', errors='replace') if result.stdout else '')
+        stderr = result.stderr if isinstance(result.stderr, str) else (result.stderr.decode('utf-8', errors='replace') if result.stderr else '')
+        output = stdout + stderr
 
         # Check expected_output_contains (all must be present)
         for substring in self.expected_output_contains:
