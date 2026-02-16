@@ -64,6 +64,7 @@
 #include "cli_executor.h"
 #include "cli_utils.h"
 #include "repl.h"
+#include "protocol_handler.h"
 
 extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
@@ -378,7 +379,10 @@ int main(int argc, char* argv[]) {
     boolean success = false;
     int exit_code = 0;
 
-    if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {
+    if (g_cli_options.protocol_mode) {
+        // NDJSON protocol mode - structured JSON over stdin/stdout
+        exit_code = protocol_main(&g_cli_options);
+    } else if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {
         // Batch mode - execute script and exit
         success = execute_script_mode();
         exit_code = success ? 0 : 1;

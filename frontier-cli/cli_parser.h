@@ -35,6 +35,7 @@ typedef struct {
     boolean hydrate_system_root;// Hydrate system root tables flag
     boolean force_overwrite;    // Force overwrite existing output file (-f/--force)
     boolean skip_startup;       // Skip startup scripts (--skip-startup)
+    boolean protocol_mode;      // NDJSON protocol mode (--protocol)
     boolean show_help;          // Show help flag
     boolean show_version;       // Show version flag
 } cli_options_t;
