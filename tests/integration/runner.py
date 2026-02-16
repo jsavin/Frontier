@@ -6,11 +6,16 @@ Executes YAML test cases against frontier-cli and validates results.
 """
 
 import argparse
+import concurrent.futures
 import json
+import multiprocessing
 import os
+import select
 import subprocess
 import sys
 import tempfile
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -220,6 +225,279 @@ class FrontierCLI:
             )
 
 
+class ProtocolExecutor:
+    """
+    Manages a persistent frontier-cli --protocol subprocess for batch test execution.
+
+    Instead of spawning a new process per test (~210ms startup), keeps one process
+    alive and communicates via NDJSON over stdin/stdout. Call reset() between tests
+    to clear state.
+    """
+
+    def __init__(self, cli_path: str, system_root: Optional[str] = None):
+        self.cli_path = cli_path
+        self.system_root = system_root
+        self._proc: Optional[subprocess.Popen] = None
+        self._next_id = 1
+
+    def start(self):
+        """Spawn the frontier-cli --protocol subprocess."""
+        cmd = [self.cli_path, '--protocol', '--skip-startup']
+        if self.system_root:
+            cmd.extend(['--system-root', self.system_root])
+
+        self._proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,  # Line buffered
+        )
+        self._next_id = 1
+
+    def _send_recv(self, msg: dict, timeout: float = 10.0) -> dict:
+        """Send a JSON message and read the JSON response line."""
+        if self._proc is None or self._proc.poll() is not None:
+            raise RuntimeError("Protocol process not running")
+
+        msg_id = self._next_id
+        self._next_id += 1
+        msg['id'] = msg_id
+
+        line = json.dumps(msg, separators=(',', ':'), ensure_ascii=False) + '\n'
+        try:
+            self._proc.stdin.write(line)
+            self._proc.stdin.flush()
+        except BrokenPipeError:
+            raise RuntimeError("Protocol process died unexpectedly")
+
+        # Wait for response with timeout using select
+        rlist, _, _ = select.select([self._proc.stdout], [], [], timeout)
+        if not rlist:
+            raise TimeoutError(f"Protocol response timed out after {timeout}s")
+
+        resp_line = self._proc.stdout.readline()
+        if not resp_line or resp_line.strip() == '':
+            raise RuntimeError("Protocol process closed stdout (EOF)")
+
+        try:
+            resp = json.loads(resp_line)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Invalid JSON from protocol process: {resp_line!r}: {e}")
+
+        # Verify response ID matches
+        if resp.get('id') != msg_id:
+            raise RuntimeError(f"Protocol ID mismatch: sent {msg_id}, got {resp.get('id')}")
+
+        return resp
+
+    def _restart(self):
+        """Restart the protocol process after it dies."""
+        try:
+            if self._proc is not None:
+                self._proc.kill()
+                self._proc.wait(timeout=2)
+        except Exception:
+            pass
+        self._proc = None
+        self.start()
+
+    def execute(self, script: str, timeout: float = 10.0) -> Dict:
+        """
+        Evaluate a UserTalk script via the protocol and return a result dict
+        compatible with FrontierCLI.execute() output format.
+        """
+        try:
+            resp = self._send_recv({
+                'op': 'script/eval',
+                'params': {'expression': script}
+            }, timeout=timeout)
+        except TimeoutError:
+            return {
+                'success': False,
+                'result': None,
+                'result_type': None,
+                'error': f'Script execution timed out ({timeout}s)',
+                'error_type': 'timeout',
+                'exit_code': -1,
+            }
+        except RuntimeError as e:
+            # Process died — try to restart for subsequent tests
+            try:
+                self._restart()
+            except Exception:
+                pass
+            return {
+                'success': False,
+                'result': None,
+                'result_type': None,
+                'error': str(e),
+                'error_type': 'execution_error',
+                'exit_code': -1,
+            }
+
+        if resp.get('success'):
+            result_obj = resp.get('result', {})
+            value = result_obj.get('value') if isinstance(result_obj, dict) else result_obj
+            # Match --output-json behavior: result_type is always "string" since
+            # the C side coerces values to string for the JSON response.
+            # The actual runtime type is available in result_obj['type'] if needed.
+            return {
+                'success': True,
+                'result': value,
+                'result_type': 'string' if value is not None else None,
+                'error': None,
+                'error_type': None,
+                'exit_code': 0,
+            }
+        else:
+            error_obj = resp.get('error', {})
+            return {
+                'success': False,
+                'result': None,
+                'result_type': None,
+                'error': error_obj.get('message') if isinstance(error_obj, dict) else str(error_obj),
+                'error_type': 'script_error',
+                'exit_code': 1,
+            }
+
+    def reset(self):
+        """Clear REPL variables and reset focus between tests."""
+        if self._proc is None or self._proc.poll() is not None:
+            return
+        try:
+            self._send_recv({'op': 'script/clearContext'}, timeout=5.0)
+        except Exception:
+            pass  # Best effort — process may have died
+
+    def stop(self):
+        """Gracefully shut down the protocol process."""
+        if self._proc is None:
+            return
+        if self._proc.poll() is not None:
+            self._proc = None
+            return
+        try:
+            self._send_recv({'op': 'shutdown'}, timeout=5.0)
+        except Exception:
+            pass
+        try:
+            self._proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            self._proc.kill()
+            self._proc.wait()
+        self._proc = None
+
+    @property
+    def is_alive(self) -> bool:
+        return self._proc is not None and self._proc.poll() is None
+
+
+# Test files that must run sequentially (port conflicts or shared resources)
+SEQUENTIAL_TEST_FILES = {
+    'tcp_verbs_network.yaml',
+    'webserver_verbs.yaml',
+}
+
+# Test files that should NOT use protocol mode (they hang or need special process behavior)
+NON_PROTOCOL_TEST_FILES = {
+    'tcp_verbs_network.yaml',
+    'window_verbs.yaml',      # window verbs may block waiting for UI interaction
+}
+
+
+def _is_protocol_compatible(test: 'TestCase') -> bool:
+    """Check if a test can run via the NDJSON protocol executor."""
+    # REPL-mode tests need custom stdin sequences — must use per-process executor
+    if test.repl_mode:
+        return False
+    # Tests with custom stdin_input need per-process executor
+    if test.stdin_input is not None:
+        return False
+    # Tests that set batch_mode need the --batch flag on the process
+    if test.batch_mode:
+        return False
+    # Tests with custom environment variables need per-process executor
+    if test.environment:
+        return False
+    return True
+
+
+@dataclass
+class WorkerResult:
+    """Serializable result from a parallel worker."""
+    file_name: str
+    results: List[dict] = field(default_factory=list)  # List of serialized TestResult dicts
+
+
+def _serialize_test_result(r: TestResult) -> dict:
+    return {
+        'name': r.name,
+        'passed': r.passed,
+        'error': r.error,
+        'details': r.details,
+        'skipped': r.skipped,
+    }
+
+
+def _deserialize_test_result(d: dict) -> TestResult:
+    return TestResult(
+        name=d['name'],
+        passed=d['passed'],
+        error=d.get('error'),
+        details=d.get('details'),
+        skipped=d.get('skipped', False),
+    )
+
+
+def _run_file_worker(args: tuple) -> dict:
+    """
+    Worker function for parallel execution. Runs all tests in one YAML file.
+    Uses ProtocolExecutor for compatible tests, falls back to FrontierCLI for others.
+    Returns a serializable dict (for multiprocessing).
+    """
+    yaml_path, cli_path, system_root, test_root_dir, protocol_batch, verbose, worker_id = args
+
+    cli = FrontierCLI(cli_path, system_root)
+
+    # Set up per-worker temp dir
+    worker_tmp = os.path.join(test_root_dir, 'tmp', 'integration', f'worker_{worker_id}')
+    os.makedirs(worker_tmp, exist_ok=True)
+
+    file_name = Path(yaml_path).name
+    executor = None
+    if protocol_batch and file_name not in NON_PROTOCOL_TEST_FILES:
+        executor = ProtocolExecutor(cli_path, system_root)
+        try:
+            executor.start()
+        except Exception as e:
+            print(f"  Warning: Failed to start protocol executor for worker {worker_id}: {e}",
+                  file=sys.stderr)
+            executor = None
+
+    runner = TestRunner(cli, verbose=verbose, test_root_dir=test_root_dir,
+                        protocol_executor=executor)
+
+    with open(yaml_path, 'r') as f:
+        data = yaml.safe_load(f)
+
+    test_cases = [TestCase(td) for td in data.get('tests', [])]
+    results = []
+
+    for test in test_cases:
+        result = runner.run_test(test)
+        results.append(_serialize_test_result(result))
+
+    if executor:
+        executor.stop()
+
+    return {
+        'file_name': Path(yaml_path).name,
+        'results': results,
+    }
+
+
 class TestCase:
     """Represents a single test case from YAML."""
 
@@ -357,11 +635,13 @@ class TestCase:
 class TestRunner:
     """Main test runner that executes test cases."""
 
-    def __init__(self, cli: FrontierCLI, verbose: bool = False, test_root_dir: Optional[str] = None):
+    def __init__(self, cli: FrontierCLI, verbose: bool = False, test_root_dir: Optional[str] = None,
+                 protocol_executor: Optional[ProtocolExecutor] = None):
         self.cli = cli
         self.verbose = verbose
         self.test_root_dir = test_root_dir or str(Path.cwd())
         self.results: List[TestResult] = []
+        self.protocol_executor = protocol_executor
 
     def load_test_file(self, yaml_path: str) -> List[TestCase]:
         """Load test cases from YAML file."""
@@ -407,29 +687,39 @@ class TestRunner:
             return self.run_batch_test(test)
 
     def run_batch_test(self, test: TestCase) -> TestResult:
-        """Run a test in batch mode (traditional --output-json)."""
+        """Run a test in batch mode. Uses protocol executor if available and compatible."""
         # Get script with path substitutions applied
         script = test.get_script_with_substitutions(self.test_root_dir)
 
-        # Get stdin input with path substitutions applied
-        stdin_input = test.get_stdin_with_substitutions(self.test_root_dir)
+        # Try protocol executor for compatible tests
+        if (self.protocol_executor is not None
+                and self.protocol_executor.is_alive
+                and _is_protocol_compatible(test)):
+            output = self.protocol_executor.execute(script, timeout=test.timeout)
 
-        # Prepare environment variables
-        test_env = test.environment.copy()
+            # Reset state after each test
+            self.protocol_executor.reset()
+        else:
+            # Fallback to per-process execution
+            # Get stdin input with path substitutions applied
+            stdin_input = test.get_stdin_with_substitutions(self.test_root_dir)
 
-        # If test provides stdin_input and isn't in batch mode, force interactive mode
-        # This overrides TTY detection which fails when stdin is piped
-        if stdin_input is not None and not test.batch_mode:
-            test_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
+            # Prepare environment variables
+            test_env = test.environment.copy()
 
-        # Execute script with test-specific timeout, stdin input, batch mode, and environment
-        output = self.cli.execute(
-            script,
-            timeout=test.timeout,
-            stdin_input=stdin_input,
-            batch_mode=test.batch_mode,
-            env=test_env
-        )
+            # If test provides stdin_input and isn't in batch mode, force interactive mode
+            # This overrides TTY detection which fails when stdin is piped
+            if stdin_input is not None and not test.batch_mode:
+                test_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
+
+            # Execute script with test-specific timeout, stdin input, batch mode, and environment
+            output = self.cli.execute(
+                script,
+                timeout=test.timeout,
+                stdin_input=stdin_input,
+                batch_mode=test.batch_mode,
+                env=test_env
+            )
 
         # Validate result
         passed, error = test.validate(output)
@@ -480,6 +770,12 @@ class TestRunner:
         test_cases = self.load_test_file(yaml_path)
         print(f"  Found {len(test_cases)} test(s)")
 
+        # Temporarily disable protocol executor for non-protocol files
+        saved_executor = None
+        if test_file in NON_PROTOCOL_TEST_FILES and self.protocol_executor is not None:
+            saved_executor = self.protocol_executor
+            self.protocol_executor = None
+
         file_results = []
         for test in test_cases:
             result = self.run_test(test)
@@ -499,6 +795,10 @@ class TestRunner:
                     print(f"      Error: {result.error}")
                     if result.details:
                         print(f"      {result.details}")
+
+        # Restore protocol executor if it was temporarily disabled
+        if saved_executor is not None:
+            self.protocol_executor = saved_executor
 
         return file_results
 
@@ -540,6 +840,18 @@ class TestRunner:
         return failed == 0
 
 
+def _find_test_root(test_files: List[str]) -> str:
+    """Find project root by walking up from the first test file."""
+    if test_files:
+        test_file_path = Path(test_files[0]).resolve()
+        current = test_file_path.parent
+        while current != current.parent:
+            if (current / '.git').exists() or (current / 'Makefile').exists():
+                return str(current)
+            current = current.parent
+    return str(Path.cwd())
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run Frontier integration tests")
     parser.add_argument('test_files', nargs='+', help='YAML test files to run')
@@ -548,56 +860,171 @@ def main():
     parser.add_argument('--system-root', help='Path to system root database')
     parser.add_argument('--verbose', '-v', action='store_true',
                        help='Verbose output')
+    parser.add_argument('--batch', dest='batch', action='store_true', default=True,
+                       help='Use NDJSON protocol for batch execution (default: on)')
+    parser.add_argument('--no-batch', dest='batch', action='store_false',
+                       help='Disable NDJSON protocol, use per-process execution')
+    parser.add_argument('-j', '--workers', type=int, default=0,
+                       help='Number of parallel workers (0 = auto, 1 = sequential)')
 
     args = parser.parse_args()
 
-    # Initialize CLI wrapper
+    # Resolve worker count
+    if args.workers == 0:
+        args.workers = min(multiprocessing.cpu_count(), 8)
+
+    # Initialize CLI wrapper (for validation)
     try:
         cli = FrontierCLI(args.cli, args.system_root)
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
-    # Determine test root directory (project root)
-    # This is used for path substitutions like {FRONTIER_TEST_TMP_DIR}
-    test_root_dir = None
-    if args.test_files:
-        first_test_file = args.test_files[0]
-        test_file_path = Path(first_test_file).resolve()
+    test_root_dir = _find_test_root(args.test_files)
 
-        # Find project root by walking up the directory tree
-        # looking for marker files (.git, Makefile, etc.)
-        current = test_file_path.parent
-        while current != current.parent:
-            if (current / '.git').exists() or (current / 'Makefile').exists():
-                test_root_dir = str(current)
-                break
-            current = current.parent
+    # Filter valid test files
+    valid_files = []
+    for tf in args.test_files:
+        if os.path.exists(tf):
+            valid_files.append(tf)
+        else:
+            print(f"Warning: Test file not found: {tf}", file=sys.stderr)
 
-        # Fallback to current working directory if no markers found
-        if test_root_dir is None:
-            test_root_dir = str(Path.cwd())
+    if not valid_files:
+        print("No valid test files found", file=sys.stderr)
+        return 1
 
-    # Initialize test runner
-    runner = TestRunner(cli, verbose=args.verbose, test_root_dir=test_root_dir)
+    # === Sequential mode (j=1) or single file ===
+    if args.workers == 1 or len(valid_files) == 1:
+        executor = None
+        if args.batch:
+            executor = ProtocolExecutor(args.cli, args.system_root)
+            try:
+                executor.start()
+            except Exception as e:
+                print(f"Warning: Failed to start protocol executor: {e}", file=sys.stderr)
+                executor = None
 
-    # Clean up any leftover test artifacts from previous runs
-    runner.cleanup_test_artifacts()
+        runner = TestRunner(cli, verbose=args.verbose, test_root_dir=test_root_dir,
+                            protocol_executor=executor)
+        runner.cleanup_test_artifacts()
 
-    # Run all test files
-    for test_file in args.test_files:
-        if not os.path.exists(test_file):
-            print(f"Warning: Test file not found: {test_file}", file=sys.stderr)
-            continue
+        for test_file in valid_files:
+            runner.run_test_file(test_file)
 
-        runner.run_test_file(test_file)
+        if executor:
+            executor.stop()
 
-    # Clean up test artifacts
-    runner.cleanup_test_artifacts()
+        runner.cleanup_test_artifacts()
+        all_passed = runner.print_summary()
+        return 0 if all_passed else 1
 
-    # Print summary and exit with appropriate code
-    all_passed = runner.print_summary()
-    return 0 if all_passed else 1
+    # === Parallel mode ===
+    # Separate files into sequential and parallel buckets
+    sequential_files = []
+    parallel_files = []
+    for f in valid_files:
+        basename = Path(f).name
+        if basename in SEQUENTIAL_TEST_FILES:
+            sequential_files.append(f)
+        else:
+            parallel_files.append(f)
+
+    all_results: List[TestResult] = []
+    start_time = time.time()
+
+    # Run parallel-safe files across workers
+    if parallel_files:
+        worker_args = []
+        for i, f in enumerate(parallel_files):
+            worker_args.append((
+                f, args.cli, args.system_root, test_root_dir,
+                args.batch, args.verbose, i
+            ))
+
+        print(f"\nRunning {len(parallel_files)} test file(s) across {min(args.workers, len(parallel_files))} worker(s)...")
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=args.workers) as pool:
+            futures = {pool.submit(_run_file_worker, wa): wa[0] for wa in worker_args}
+            for future in concurrent.futures.as_completed(futures):
+                yaml_path = futures[future]
+                try:
+                    worker_result = future.result()
+                    file_name = worker_result['file_name']
+                    file_results = [_deserialize_test_result(d) for d in worker_result['results']]
+
+                    # Print results for this file
+                    passed_count = sum(1 for r in file_results if r.passed and not r.skipped)
+                    failed_count = sum(1 for r in file_results if not r.passed and not r.skipped)
+                    skipped_count = sum(1 for r in file_results if r.skipped)
+                    total = len(file_results)
+
+                    status_parts = []
+                    if passed_count:
+                        status_parts.append(f"{passed_count} passed")
+                    if failed_count:
+                        status_parts.append(f"{failed_count} FAILED")
+                    if skipped_count:
+                        status_parts.append(f"{skipped_count} skipped")
+                    print(f"  {file_name}: {total} tests ({', '.join(status_parts)})")
+
+                    # Show failures
+                    for r in file_results:
+                        if not r.passed and not r.skipped:
+                            print(f"    ✗ FAIL: {r.name}: {r.error}")
+
+                    all_results.extend(file_results)
+
+                except Exception as e:
+                    print(f"  ERROR: Worker failed for {Path(yaml_path).name}: {e}", file=sys.stderr)
+
+    # Run sequential files in main process
+    if sequential_files:
+        print(f"\nRunning {len(sequential_files)} sequential test file(s)...")
+        executor = None
+        if args.batch:
+            executor = ProtocolExecutor(args.cli, args.system_root)
+            try:
+                executor.start()
+            except Exception:
+                executor = None
+
+        runner = TestRunner(cli, verbose=args.verbose, test_root_dir=test_root_dir,
+                            protocol_executor=executor)
+        for f in sequential_files:
+            runner.run_test_file(f)
+
+        if executor:
+            executor.stop()
+
+        all_results.extend(runner.results)
+
+    elapsed = time.time() - start_time
+
+    # Print unified summary
+    total = len(all_results)
+    skipped = sum(1 for r in all_results if r.skipped)
+    passed = sum(1 for r in all_results if r.passed and not r.skipped)
+    failed = total - passed - skipped
+
+    print(f"\n{'=' * 70}")
+    print("TEST SUMMARY")
+    print(f"{'=' * 70}")
+    print(f"Total:   {total}")
+    print(f"Passed:  {passed}")
+    print(f"Skipped: {skipped}")
+    print(f"Failed:  {failed}")
+    print(f"Time:    {elapsed:.1f}s ({args.workers} workers, batch={'on' if args.batch else 'off'})")
+
+    if failed > 0:
+        print("\nFailed tests:")
+        for result in all_results:
+            if not result.passed and not result.skipped:
+                print(f"  - {result.name}: {result.error}")
+
+    print(f"{'=' * 70}")
+
+    return 0 if failed == 0 else 1
 
 
 if __name__ == '__main__':

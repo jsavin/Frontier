@@ -7,6 +7,7 @@
  */
 
 #include "cli_executor.h"
+#include "cli_json_output.h"
 #include "repl_output.h"  /* For kMacRomanHighToUnicode, putc_utf8 */
 
 /* 2025-12-08 Codex: Route long inline CLI scripts through langrunhandle so compiled evals return results without bogus empty verb names. */
@@ -16,7 +17,6 @@
 #include <string.h>
 
 // Forward declarations for static helper functions
-static void cli_print_json_escaped_string(const char* str);
 static void cli_print_execution_result_json(const usertalk_execution_t* execution, boolean success);
 
 /* Duplicates a C string using CLI memory allocation. */
@@ -279,47 +279,10 @@ void cli_print_execution_result(const usertalk_execution_t* execution) {
     putc('\n', stdout);
 }
 
-// Helper function to escape JSON strings
-//
-// NOTE: This function expects UTF-8 encoded strings and passes multi-byte
-// UTF-8 sequences through directly (valid per JSON RFC 8259). Control characters
-// (< 32) are escaped as \uXXXX. Invalid UTF-8 sequences may produce malformed JSON.
-//
-// Current Frontier string encoding: Pascal strings (bigstring/pstring) are
-// length-prefixed byte arrays, typically ASCII or MacRoman. Future roadmap
-// includes UTF-8 migration for runtime strings.
-//
-// For now, this handles ASCII and valid UTF-8 correctly. Edge cases with invalid
-// multi-byte sequences will be addressed when runtime string encoding is unified.
+// Helper function to escape JSON strings - delegates to shared utility.
+// See cli_json_output.c for encoding notes (ASCII, UTF-8, MacRoman).
 static void cli_print_json_escaped_string(const char* str) {
-    if (str == NULL) {
-        printf( "null");
-        return;
-    }
-
-    printf( "\"");
-    for (const char* p = str; *p != '\0'; p++) {
-        switch (*p) {
-            case '"':  printf( "\\\""); break;
-            case '\\': printf( "\\\\"); break;
-            case '\b': printf( "\\b"); break;
-            case '\f': printf( "\\f"); break;
-            case '\n': printf( "\\n"); break;
-            case '\r': printf( "\\r"); break;
-            case '\t': printf( "\\t"); break;
-            default:
-                if ((unsigned char)*p < 32) {
-                    // Escape control characters
-                    printf( "\\u%04x", (unsigned char)*p);
-                } else {
-                    // Pass through printable ASCII and UTF-8 multi-byte sequences
-                    // JSON spec (RFC 8259) allows unescaped UTF-8
-                    putchar(*p);
-                }
-                break;
-        }
-    }
-    printf( "\"");
+    cli_json_write_escaped_string(stdout, str);
 }
 
 // Print execution result as JSON to stdout for clean separation from prompts/logs

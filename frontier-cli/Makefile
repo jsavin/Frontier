@@ -77,6 +77,8 @@ CLI_SOURCES = \
     cli_parser.c \
     cli_utils.c \
     cli_executor.c \
+    cli_json_output.c \
+    protocol_handler.c \
     headless_scripts_loader.c \
     terminal_control.c \
     dialog_prompts.c \

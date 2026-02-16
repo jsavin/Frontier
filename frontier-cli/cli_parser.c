@@ -99,6 +99,14 @@ boolean cli_validate_options(const cli_options_t* options) {
         }
     }
 
+    /* --protocol mode: incompatible with script/inline execution */
+    if (options->protocol_mode) {
+        if (options->script_file != NULL || options->inline_script != NULL) {
+            log_error(LOG_COMP_GENERAL, "Error: --protocol cannot be combined with script execution");
+            return false;
+        }
+    }
+
     // Note: Conflict validation for positional .root argument is handled in cli_parse_arguments()
     // when we detect a .root file and system_root is already set.
 
@@ -142,13 +150,14 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {"debug", no_argument, 0, 'D'},
         {"log", required_argument, 0, 'L'},
         {"skip-startup", no_argument, 0, 'S'},
+        {"protocol", no_argument, 0, 'P'},
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'V'},
         {0, 0, 0, 0}
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDShV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDPShV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -258,6 +267,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             case 'S':
                 // Skip startup scripts
                 options->skip_startup = true;
+                break;
+
+            case 'P':
+                // NDJSON protocol mode (structured JSON over stdin/stdout)
+                options->protocol_mode = true;
                 break;
 
             case 'h':
@@ -383,6 +397,7 @@ void cli_print_options(const cli_options_t* options) {
     printf("  Output Path: %s\n", options->output_path ? options->output_path : "(none)");
     printf("  Force Overwrite: %s\n", options->force_overwrite ? "yes" : "no");
     printf("  Skip Startup: %s\n", options->skip_startup ? "yes" : "no");
+    printf("  Protocol Mode: %s\n", options->protocol_mode ? "yes" : "no");
     printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
     printf("  Debug: %s\n", options->debug ? "yes" : "no");
     printf("  Output JSON: %s\n", options->output_json ? "yes" : "no");

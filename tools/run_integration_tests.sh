@@ -49,6 +49,8 @@ fi
 # Determine which tests to run
 TEST_FILES=()
 VERBOSE=""
+BATCH_FLAG="--batch"
+WORKERS_FLAG="-j 0"
 
 if [ $# -eq 0 ]; then
     # No arguments - run all tests (except network tests unless opt-in)
@@ -73,11 +75,27 @@ else
                 VERBOSE="--verbose"
                 shift
                 ;;
+            --no-batch)
+                BATCH_FLAG="--no-batch"
+                shift
+                ;;
+            --batch)
+                BATCH_FLAG="--batch"
+                shift
+                ;;
+            -j)
+                shift
+                WORKERS_FLAG="-j $1"
+                shift
+                ;;
             -h|--help)
                 echo "Usage: $0 [OPTIONS] [TEST_FILES...]"
                 echo
                 echo "Options:"
                 echo "  -v, --verbose      Verbose output"
+                echo "  --batch            Use NDJSON protocol for batch execution (default)"
+                echo "  --no-batch         Disable NDJSON protocol, use per-process execution"
+                echo "  -j N               Number of parallel workers (0=auto, 1=sequential)"
                 echo "  -h, --help         Show this help"
                 echo
                 echo "If no test files are specified, all tests in tests/integration/test_cases/ will be run."
@@ -87,7 +105,8 @@ else
                 echo "  FRONTIER_RUN_NETWORK_TESTS=1    Enable network-dependent tests (default: 0)"
                 echo
                 echo "Examples:"
-                echo "  $0                                    # Run all local tests (skip network)"
+                echo "  $0                                    # Run all local tests (batch + parallel)"
+                echo "  $0 --no-batch -j 1                   # Old behavior (per-process, sequential)"
                 echo "  FRONTIER_RUN_NETWORK_TESTS=1 $0      # Run all tests including network"
                 echo "  $0 tests/integration/test_cases/string_verbs.yaml"
                 echo "  $0 --verbose tests/integration/test_cases/*.yaml"
@@ -128,9 +147,20 @@ if [ ! -f "$SYSTEM_ROOT7" ]; then
     exit 1
 fi
 
+# Record pre-test database checksum for integrity verification
+CHECKSUM_BEFORE=$(md5 -q "$SYSTEM_ROOT7" 2>/dev/null || md5sum "$SYSTEM_ROOT7" | cut -d' ' -f1)
+
 # Run the tests (using the freshly migrated .root7)
-"$RUNNER" $VERBOSE --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT7" "${TEST_FILES[@]}"
+"$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT7" "${TEST_FILES[@]}"
 EXIT_CODE=$?
+
+# Verify database integrity after tests
+CHECKSUM_AFTER=$(md5 -q "$SYSTEM_ROOT7" 2>/dev/null || md5sum "$SYSTEM_ROOT7" | cut -d' ' -f1)
+if [ "$CHECKSUM_BEFORE" != "$CHECKSUM_AFTER" ]; then
+    echo -e "${YELLOW}WARNING: System root was modified during tests${NC}"
+    echo "  Before: $CHECKSUM_BEFORE"
+    echo "  After:  $CHECKSUM_AFTER"
+fi
 
 echo
 if [ $EXIT_CODE -eq 0 ]; then
