@@ -134,3 +134,7 @@ test_tmp/
 # Integration test OPML files use stable hierarchical structure (1 manifest + 25 categories)
 # and should be tracked in git for test documentation and subscriptions
 third_party/cmake-install/
+
+# Guest database build artifacts (copied/generated during dist build)
+databases/Guest Databases/apps/config.root
+databases/Guest Databases/ops/
