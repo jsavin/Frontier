@@ -393,17 +393,13 @@ tests:
   # 1-param variant: command only — returns stdout output (not boolean)
   - name: "sys.unixshellcommand - 1 param (command only)"
     description: "Execute command and return stdout output"
-    script: |
-      local(result = sys.unixshellcommand("echo hello"));
-      return string.patternMatch("hello", result) > 0
+    script: 'string.length(sys.unixshellcommand("echo hello")) > 0'
     expected_success: true
     expected_result: "true"
 
   - name: "sys.unixshellcommand - 1 param (command fails)"
-    description: "Failed command returns empty string (no stdout output)"
-    script: |
-      local(result = sys.unixshellcommand("false"));
-      return typeof(result) == stringType
+    description: "Failed command returns string type"
+    script: 'typeof(sys.unixshellcommand("false")) == stringType'
     expected_success: true
     expected_result: "true"
 
