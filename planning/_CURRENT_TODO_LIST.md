@@ -122,15 +122,24 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: ~1,830+ total (up from 1,804)
-- ~1,617+ passed (non-skip), ~172 skipped, ~39 failed (pre-existing)
-- New tests: cooperative threading (10), fileMenu saveAs/saveCopy (7), window.isOpen (10+), string verb reachability, callback infrastructure (14 unit tests fixed)
+### Integration Tests: 1,913 total
+- 984 passed, 174 skipped, 755 failed (single-worker baseline)
+- 67 failures in 8-worker batch mode (subset of above)
+- **Fix plan**: See `planning/FIX_TESTS_2026_02_16.md` for triage and remediation roadmap
 
 ---
 
 ## Next Milestones
 
-### 1. Startup Script Hardening / Dist Stability
+### 1. Integration Test Fix Plan
+**Status**: Planned — see `planning/FIX_TESTS_2026_02_16.md`
+**Goal**: Reduce 755 single-worker failures to near-zero
+**Breakdown**:
+- **38 quick-win test fixes** (dialog REPL mode, YAML quoting, expectation corrections)
+- **Uncatchable error bug** (~20 tests) — fatal errors bypass try/else in fileMenu, xml.compile, table.sortby
+- **State leak investigation** (~688 tests) — `clearContext` doesn't reset all contaminating state between evaluations
+
+### 2. Startup Script Hardening / Dist Stability
 **Status**: Startup completes, dist mode stable across multiple runs
 **Goal**: Validate all critical-path kernel verbs for daemon mode
 **Recent progress**: Startup hang fixed (PR #403), dist crashes fixed (PR #401), fileloop working (PR #396)
@@ -139,7 +148,7 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - Identify and fix any remaining unreachable kernel verbs (BIGSTRING audit)
 - Validate daemon-mode workflows end-to-end
 
-### 2. GUI Application Prototype
+### 3. GUI Application Prototype
 **Status**: Planning complete - ready for implementation
 **Goal**: Native macOS application communicating with frontier-cli
 **What's Ready**:
@@ -154,7 +163,7 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 3. Add script editor with debugging
 4. Iterate on remaining editors
 
-### 3. Threading Phase 2
+### 4. Threading Phase 2
 **Status**: Cooperative foundation in place (PR #404)
 **Goal**: Real POSIX concurrency with proper thread safety
 **Depends on**: Phase 4 P0a (global state elimination), Issue #86 (runtime context)
@@ -163,7 +172,7 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - Move from cooperative to real concurrent execution
 - Thread-safe FD table initialization (Issue #323)
 
-### 4. REPL Function Persistence
+### 5. REPL Function Persistence
 **Status**: Known limitation, future work
 **Goal**: Allow function definitions to persist across evaluations
 **Challenge**: Code values (codevaluetype) require special handling for tree copying
@@ -320,6 +329,7 @@ See planning/_STATUS_ARCHIVE.md for:
 - **GUI Architecture**: planning/gui/ARCHITECTURE.md
 - **GUI Protocol**: planning/gui/PROTOCOL.md
 - **CRDT Foundation**: planning/phase6/CRDT_FOUNDATION_ROADMAP.md
+- **Integration Test Fix Plan**: planning/FIX_TESTS_2026_02_16.md
 
 ### Implementation Guides
 - **Getting Started**: docs/GETTING_STARTED.md
@@ -377,7 +387,7 @@ See planning/_STATUS_ARCHIVE.md for:
 - **Current focus**: Startup hardening, dist stability, GUI prototype, threading Phase 2
 - **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: ~1,830+ integration tests (~39 pre-existing failures)
+- **Test health**: 1,913 integration tests (984 passed, 755 failed single-worker — fix plan in progress)
 - **Latest release**: v1.0.0-alpha.4 (January 31, 2026)
 - **Compiler warnings**: Zero (fully eliminated)
 
