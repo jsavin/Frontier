@@ -14,12 +14,41 @@
 #include <ctype.h>
 #include <errno.h>
 
+/* Returns true when the terminal is "dumb" (e.g., pexpect PTY for
+ * integration testing).  On dumb terminals we skip raw mode and use
+ * simple line-buffered fgets instead — raw mode's character-by-character
+ * reads don't work well with automated expect/send test drivers. */
+static bool is_dumb_terminal(void) {
+	char *term = getenv("TERM");
+	return (term && strcasecmp(term, "dumb") == 0);
+}
+
+/* Simple fgets-based line reader for dumb terminals and testing.
+ * Used when raw mode is unavailable or unnecessary (e.g., TERM=dumb
+ * for pexpect-based integration tests). */
+static char* read_line_simple(void) {
+	char buf[4096];
+	if (fgets(buf, sizeof(buf), stdin) == NULL) {
+		return NULL;
+	}
+	/* Strip trailing newline */
+	size_t len = strlen(buf);
+	while (len > 0 && (buf[len-1] == '\n' || buf[len-1] == '\r')) {
+		buf[--len] = '\0';
+	}
+	return strdup(buf);
+}
+
 /* Internal helper: read a line with line editing support */
 static char* read_line_with_editing(void) {
 	char *buffer = NULL;
 	size_t bufsize = 0;
 	size_t len = 0;
 	terminal_state *term_state = NULL;
+
+	if (is_dumb_terminal()) {
+		return read_line_simple();
+	}
 
 	/* Save terminal state and enable raw mode */
 	term_state = terminal_save_state();
@@ -28,7 +57,7 @@ static char* read_line_with_editing(void) {
 			terminal_restore_state(term_state);
 			terminal_free_state(term_state);
 		}
-		return NULL;
+		return read_line_simple();
 	}
 
 	bufsize = 128;
@@ -196,6 +225,10 @@ char* dialog_get_password(const char *prompt) {
 	fprintf(stderr, "%s: ", prompt);
 	fflush(stderr);
 
+	if (is_dumb_terminal()) {
+		return read_line_simple();
+	}
+
 	/* Save terminal state and enable raw mode */
 	term_state = terminal_save_state();
 	if (!term_state || !terminal_set_raw_mode()) {
@@ -289,6 +322,12 @@ bool dialog_alert(const char *message) {
 	fprintf(stderr, "[Press Enter to continue]");
 	fflush(stderr);
 
+	if (is_dumb_terminal()) {
+		getchar();
+		fputs("\n", stderr);
+		return true;
+	}
+
 	/* Wait for Enter */
 	terminal_state *term_state = terminal_save_state();
 	if (!term_state || !terminal_set_raw_mode()) {
@@ -330,6 +369,12 @@ bool dialog_notify(const char *message) {
 	fprintf(stderr, "%s\n", message);
 	fprintf(stderr, "[Press Enter to continue]");
 	fflush(stderr);
+
+	if (is_dumb_terminal()) {
+		getchar();
+		fputs("\n", stderr);
+		return true;
+	}
 
 	/* Wait for Enter */
 	terminal_state *term_state = terminal_save_state();
@@ -392,6 +437,19 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 
 	if (!isInteractiveMode()) {
 		return true;  /* Default to button1 in batch mode */
+	}
+
+	if (is_dumb_terminal()) {
+		fprintf(stderr, "%s? 1:%s 2:%s [1]: ", prompt, button1, button2);
+		fflush(stderr);
+		char *input = read_line_simple();
+		if (!input || input[0] == '\0' || input[0] == '1') {
+			free(input);
+			return true;
+		}
+		bool result = (input[0] != '2');
+		free(input);
+		return result;
 	}
 
 	/* Save terminal state and enable raw mode */
@@ -472,6 +530,18 @@ int dialog_threeway(const char *prompt, const char *button1, const char *button2
 
 	if (!isInteractiveMode()) {
 		return 1;  /* Default to button1 in batch mode */
+	}
+
+	if (is_dumb_terminal()) {
+		fprintf(stderr, "%s? 1:%s 2:%s 3:%s [1]: ", prompt, button1, button2, button3);
+		fflush(stderr);
+		char *input = read_line_simple();
+		int result = 1;
+		if (input && input[0] >= '1' && input[0] <= '3') {
+			result = input[0] - '0';
+		}
+		free(input);
+		return result;
 	}
 
 	/* Save terminal state and enable raw mode */

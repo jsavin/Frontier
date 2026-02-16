@@ -224,6 +224,40 @@ After substitution (on user's machine):
 
 **See also:** `tests/integration/runner.py` - `get_script_with_substitutions()` method for implementation details
 
+### Interactive Tests (PTY-based)
+
+For tests that require interactive user input (dialog verbs, prompts), use the `interactive_steps` field instead of `script`. This spawns the CLI in a pseudo-terminal via pexpect and drives interaction through expect/send pairs.
+
+```yaml
+tests:
+  - name: "dialog.ask - accept default with Enter"
+    description: "Pressing Enter should keep default value in @adr"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r = \"default\"); dialog.ask(\"Enter name\", @r); return r"
+      - expect: "Enter name"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "default"
+    expected_success: true
+```
+
+**How it works:**
+1. The runner spawns `frontier-cli` in a PTY with `TERM=dumb` (disables raw mode) and `FRONTIER_PLAIN_REPL` (forces blocking REPL)
+2. For each step, it waits for the `expect` pattern (regex) to appear in output, then sends the `send` text followed by a newline
+3. After all steps, it waits for the process to exit and validates output using `expected_output_contains`
+
+**Key patterns:**
+- **REPL prompt**: Use `\\[root\\]>` (escaped brackets for regex)
+- **Dialog prompt**: Use the prompt text as the expect pattern (e.g., `"Enter name"`)
+- **Accept default**: Send empty string `""` (sends just Enter)
+- **Button selection**: Send `"1"`, `"2"`, or `"3"` for numbered buttons
+- **Always end with `/exit`**: Send `/exit` after the last `\\[root\\]>` expect
+
+**Dependency:** Requires pexpect (`pip3 install pexpect`). Tests with `interactive_steps` auto-skip with a helpful message when pexpect is not installed. A vendored copy is available at `tests/vendor/` as fallback.
+
 ---
 
 ## Temporary Files in Tests

@@ -493,12 +493,18 @@ test-compat: test_compatibility
 	@echo "Running compatibility tests..."
 	./test_compatibility
 
+# Python dependency check for integration tests
+.PHONY: check-python-deps
+check-python-deps:
+	@python3 -c "import yaml" 2>/dev/null || (echo "Installing PyYAML..." && pip3 install pyyaml)
+	@python3 -c "import pexpect" 2>/dev/null || (echo "Installing pexpect..." && pip3 install pexpect) || true
+
 # Integration test targets (Python-based YAML tests)
-test-integration:
+test-integration: check-python-deps
 	@echo "Running integration tests..."
 	@../tools/run_integration_tests.sh
 
-test-integration-verbose:
+test-integration-verbose: check-python-deps
 	@echo "Running integration tests (verbose)..."
 	@../tools/run_integration_tests.sh --verbose
 
@@ -611,7 +617,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings
+.PHONY: all test test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

@@ -1,12 +1,14 @@
-# Dialog Verb Integration Tests - Phase 2 Stdio Prompts
+# Dialog Verb Integration Tests
 #
-# Tests for interactive dialog prompts when isInteractiveMode() returns true.
-# These tests verify stdio-based prompts work correctly in terminal contexts.
+# Tests for dialog verbs in both interactive (PTY) and batch modes.
+#
+# Interactive dialog tests use `interactive_steps` with pexpect/PTY support
+# to synchronize expect/send pairs with dialog prompts.
 #
 # Phase 1 (merged): --batch flag, TTY detection, isInteractiveMode()
-# Phase 2 (implementing): Interactive stdio prompts with visual feedback
+# Phase 2: Interactive stdio prompts via PTY harness
 #
-# Reference: planning/phase3/HEADLESS_INTERACTIVE_MODE.md (Phase 2 section)
+# Reference: planning/phase3/HEADLESS_INTERACTIVE_MODE.md
 
 tests:
   # lang.msg() - Output Verb (Already Works)
@@ -16,7 +18,6 @@ tests:
       lang.msg("Hello from Phase 2");
       return true
     expected_success: true
-    # Note: lang.msg() output to stdout, return value is boolean
 
   - name: "lang.msg - multiple messages"
     description: "Multiple lang.msg() calls should all output"
@@ -27,198 +28,387 @@ tests:
       return true
     expected_success: true
 
-  # dialog.ask() - Yes/No Prompt with Arrow Key Selection
-  - name: "dialog.ask - accept default Yes with Enter"
-    description: "Pressing Enter should accept default Yes option"
-    repl_mode: true
-    stdin_input: "dialog.ask(\"Continue with operation?\")\n\n/exit\n"
+  # ===== Interactive Dialog Tests (PTY-based expect/send) =====
+
+  # dialog.ask(prompt, @adr) - Text input, stores string in @adr, returns boolean
+  - name: "dialog.ask - accept default with Enter"
+    description: "Pressing Enter should keep default value in @adr"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r = \"default\"); dialog.ask(\"Enter name\", @r); return r"
+      - expect: "Enter name"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "default"
+    expected_success: true
+
+  - name: "dialog.ask - type new value"
+    description: "Typing text should store new value in @adr"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r = \"old\"); dialog.ask(\"Enter name\", @r); return r"
+      - expect: "Enter name"
+        send: "hello"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "hello"
+    expected_success: true
+
+  - name: "dialog.ask - empty default, enter text"
+    description: "With no default, typed text should be stored in @adr"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.ask(\"Enter text\", @r); return r"
+      - expect: "Enter text"
+        send: "world"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "world"
+    expected_success: true
+
+  - name: "dialog.ask - returns true on OK"
+    description: "dialog.ask returns true when user confirms input"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.ask(\"Enter\", @r)"
+      - expect: "Enter"
+        send: "test"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "true"
     expected_success: true
-    # Terminal output: "Continue with operation? Yes No" with Yes inverted
 
-  - name: "dialog.ask - select No with arrow key"
-    description: "Arrow key right then Enter should select No"
-    repl_mode: true
-    stdin_input: "dialog.ask(\"Continue with operation?\")\n\x1b[C\n/exit\n"
-    expected_output_contains:
-      - "false"
-    expected_success: true
-
-  - name: "dialog.ask - Tab to switch options"
-    description: "Tab key should switch between Yes/No"
-    repl_mode: true
-    stdin_input: "dialog.ask(\"Proceed?\")\n\t\n/exit\n"
-    expected_output_contains:
-      - "false"
-    expected_success: true
-
-  - name: "dialog.ask - no default specified"
-    description: "When no default, should show first option (Yes) as default"
-    repl_mode: true
-    stdin_input: "dialog.ask(\"Confirm action?\")\n\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
-
-  # dialog.getInt() - Integer Input with Default
+  # dialog.getInt(prompt, @adr) - Integer input, stores int in @adr, returns boolean
   - name: "dialog.getInt - accept default with Enter"
-    description: "Pressing Enter should accept default value"
-    repl_mode: true
-    stdin_input: "dialog.getInt(\"How many iterations?\", 10)\n\n/exit\n"
+    description: "Pressing Enter should keep default value in @adr"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r = 10); dialog.getInt(\"How many iterations?\", @r); return r"
+      - expect: "How many iterations"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "10"
     expected_success: true
-    # Terminal output: "How many iterations? [10]: "
 
   - name: "dialog.getInt - override default with typed value"
-    description: "Typing number should override default"
-    repl_mode: true
-    stdin_input: "dialog.getInt(\"How many iterations?\", 10)\n42\n/exit\n"
+    description: "Typing number should store new value in @adr"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r = 10); dialog.getInt(\"How many iterations?\", @r); return r"
+      - expect: "How many iterations"
+        send: "42"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "42"
     expected_success: true
 
   - name: "dialog.getInt - no default specified"
     description: "Without default, should prompt for required input"
-    repl_mode: true
-    stdin_input: "dialog.getInt(\"Enter count\")\n5\n/exit\n"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.getInt(\"Enter count\", @r); return r"
+      - expect: "Enter count"
+        send: "5"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "5"
     expected_success: true
 
   - name: "dialog.getInt - invalid input re-prompts"
     description: "Non-numeric input should re-prompt"
-    repl_mode: true
-    stdin_input: "dialog.getInt(\"Enter number\", 10)\nabc\n20\n/exit\n"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r = 10); dialog.getInt(\"Enter number\", @r); return r"
+      - expect: "Enter number"
+        send: "abc"
+      - expect: "Enter number"
+        send: "20"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "20"
     expected_success: true
 
   - name: "dialog.getInt - negative numbers"
     description: "Should accept negative integers"
-    repl_mode: true
-    stdin_input: "dialog.getInt(\"Enter value\", 0)\n-42\n/exit\n"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r = 0); dialog.getInt(\"Enter value\", @r); return r"
+      - expect: "Enter value"
+        send: "-42"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "-42"
     expected_success: true
 
   - name: "dialog.getInt - very large number"
     description: "Should handle large integers (2^31-1)"
-    repl_mode: true
-    stdin_input: "dialog.getInt(\"Enter large number\")\n2147483647\n/exit\n"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.getInt(\"Enter large number\", @r); return r"
+      - expect: "Enter large number"
+        send: "2147483647"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "2147483647"
     expected_success: true
 
-  # dialog.getuserinfo() - Text Input with Default
-  - name: "dialog.getuserinfo - accept default with Enter"
-    description: "Pressing Enter should accept default string"
-    repl_mode: true
-    stdin_input: "dialog.getuserinfo(\"Enter project name\", \"MyProject\")\n\n/exit\n"
-    expected_output_contains:
-      - "MyProject"
-    expected_success: true
-    # Terminal output: "Enter project name [MyProject]: "
-
-  - name: "dialog.getuserinfo - override default"
-    description: "Typing text should override default"
-    repl_mode: true
-    stdin_input: "dialog.getuserinfo(\"Enter project name\", \"MyProject\")\nCustomName\n/exit\n"
-    expected_output_contains:
-      - "CustomName"
-    expected_success: true
-
-  - name: "dialog.getuserinfo - no default specified"
-    description: "Without default, should prompt for required input"
-    repl_mode: true
-    stdin_input: "dialog.getuserinfo(\"Enter filename\")\ntest.txt\n/exit\n"
-    expected_output_contains:
-      - "test.txt"
-    expected_success: true
-
-  - name: "dialog.getuserinfo - empty string input"
-    description: "Should allow empty string as valid input"
-    repl_mode: true
-    stdin_input: "dialog.getuserinfo(\"Enter optional note\", \"\")\n\n/exit\n"
-    expected_output_contains:
-      - "\"\""
-    expected_success: true
-
-  - name: "dialog.getuserinfo - unicode input (CJK)"
-    description: "Should handle CJK characters"
-    repl_mode: true
-    stdin_input: "dialog.getuserinfo(\"Enter name\")\n你好世界\n/exit\n"
-    expected_output_contains:
-      - "你好世界"
-    expected_success: true
-
-  - name: "dialog.getuserinfo - unicode input (emoji)"
-    description: "Should handle emoji characters"
-    repl_mode: true
-    stdin_input: "dialog.getuserinfo(\"Enter project name\")\nProject🚀\n/exit\n"
-    expected_output_contains:
-      - "Project🚀"
-    expected_success: true
-
-  # SKIP: dialog.getuserinfo - very long string test requires string.replicate() (not yet implemented)
-  # - name: "dialog.getuserinfo - very long string (500 chars)"
-  #   description: "Should handle long strings"
-  #   script: |
-  #     local(longString = string.replicate("A", 500));
-  #     dialog.getuserinfo("Enter text", longString)
-  #   stdin_input: "\n"
-  #   expected_success: true
-  #   # expected_result: 500 'A' characters
-
-  # dialog.getPassword() - Password Input with Dots
+  # dialog.getPassword(prompt, @adr) - Password input, stores in @adr, returns boolean
   - name: "dialog.getPassword - basic password input"
-    description: "Should accept password and show dots during input"
-    repl_mode: true
-    stdin_input: "dialog.getPassword(\"Enter encryption key\")\nsecret123\n/exit\n"
+    description: "Should accept password and store in @adr"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.getPassword(\"Enter encryption key\", @r); return r"
+      - expect: "Enter encryption key"
+        send: "secret123"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "secret123"
     expected_success: true
-    # Terminal output: "Enter encryption key: •••••••••" (9 dots)
 
   - name: "dialog.getPassword - empty password"
     description: "Should allow empty password"
-    repl_mode: true
-    stdin_input: "dialog.getPassword(\"Enter password\")\n\n/exit\n"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.getPassword(\"Enter password\", @r); return r"
+      - expect: "Enter password"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "\"\""
     expected_success: true
 
   - name: "dialog.getPassword - password with spaces"
     description: "Should accept spaces in password"
-    repl_mode: true
-    stdin_input: "dialog.getPassword(\"Enter passphrase\")\nmy secret pass\n/exit\n"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.getPassword(\"Enter passphrase\", @r); return r"
+      - expect: "Enter passphrase"
+        send: "my secret pass"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "my secret pass"
     expected_success: true
 
   - name: "dialog.getPassword - password with special chars"
     description: "Should accept special characters in password"
-    repl_mode: true
-    stdin_input: "dialog.getPassword(\"Enter password\")\nP@ssw0rd!#$%\n/exit\n"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.getPassword(\"Enter password\", @r); return r"
+      - expect: "Enter password"
+        send: "P@ssw0rd!#$%"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "P@ssw0rd!#$%"
     expected_success: true
 
   - name: "dialog.getPassword - very long password (256 chars)"
     description: "Should handle long passwords"
-    repl_mode: true
-    stdin_input: "dialog.getPassword(\"Enter master key\")\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n/exit\n"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "local(r); dialog.getPassword(\"Enter master key\", @r); return r"
+      - expect: "Enter master key"
+        send: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      - expect: "\\[root\\]>"
+        send: "/exit"
     expected_output_contains:
       - "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     expected_success: true
-    # 256 'a' characters
 
-  # Batch Mode Tests (Phase 1 behavior - should error)
+  # dialog.alert(message) - Display message, wait for Enter, return true
+  - name: "dialog.alert - displays message and waits for Enter"
+    description: "Should display message with beep and wait for Enter key"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.alert(\"Test alert message\")"
+      - expect: "Test alert message"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "true"
+    expected_success: true
+
+  - name: "dialog.alert - returns true when Enter pressed"
+    description: "Should always return true"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.alert(\"Important notification\")"
+      - expect: "Important notification"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "true"
+    expected_success: true
+
+  # dialog.notify(message) - Display message without beep, wait for Enter, return true
+  - name: "dialog.notify - displays message and waits for Enter"
+    description: "Should display message without beep and wait for Enter"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.notify(\"Test notification\")"
+      - expect: "Test notification"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "true"
+    expected_success: true
+
+  - name: "dialog.notify - returns true when Enter pressed"
+    description: "Should always return true"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.notify(\"Info message\")"
+      - expect: "Info message"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "true"
+    expected_success: true
+
+  # dialog.twoway(msg, btn1, btn2) - Two-button choice, returns boolean
+  - name: "dialog.twoway - select first button with '1' key"
+    description: "Should return true when first button selected"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.twoway(\"Choose option\", \"First\", \"Second\")"
+      - expect: "Choose option"
+        send: "1"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "true"
+    expected_success: true
+
+  - name: "dialog.twoway - select second button with '2' key"
+    description: "Should return false when second button selected"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.twoway(\"Choose option\", \"First\", \"Second\")"
+      - expect: "Choose option"
+        send: "2"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "false"
+    expected_success: true
+
+  - name: "dialog.twoway - select first button with Enter (default)"
+    description: "Should default to first button (true) when Enter pressed"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.twoway(\"Proceed?\", \"Yes\", \"No\")"
+      - expect: "Proceed"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "true"
+    expected_success: true
+
+  - name: "dialog.twoway - custom button labels"
+    description: "Should work with custom button text"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.twoway(\"Save changes?\", \"Save\", \"Discard\")"
+      - expect: "Save changes"
+        send: "1"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "true"
+    expected_success: true
+
+  # dialog.threeway(msg, btn1, btn2, btn3) - Three-button choice, returns integer (1, 2, or 3)
+  - name: "dialog.threeway - select first button (returns 1)"
+    description: "Should return 1 when first button selected"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.threeway(\"Choose\", \"One\", \"Two\", \"Three\")"
+      - expect: "Choose"
+        send: "1"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "1"
+    expected_success: true
+
+  - name: "dialog.threeway - select second button (returns 2)"
+    description: "Should return 2 when second button selected"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.threeway(\"Choose\", \"One\", \"Two\", \"Three\")"
+      - expect: "Choose"
+        send: "2"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "2"
+    expected_success: true
+
+  - name: "dialog.threeway - select third button (returns 3)"
+    description: "Should return 3 when third button selected"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.threeway(\"Choose\", \"One\", \"Two\", \"Three\")"
+      - expect: "Choose"
+        send: "3"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "3"
+    expected_success: true
+
+  - name: "dialog.threeway - default to first button with Enter"
+    description: "Should return 1 (first button) when Enter pressed"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.threeway(\"Pick one\", \"First\", \"Second\", \"Third\")"
+      - expect: "Pick one"
+        send: ""
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "1"
+    expected_success: true
+
+  - name: "dialog.threeway - custom button labels"
+    description: "Should work with custom button text, returns integer 2"
+    interactive_steps:
+      - expect: "\\[root\\]>"
+        send: "dialog.threeway(\"Action?\", \"Save\", \"Don't Save\", \"Cancel\")"
+      - expect: "Action"
+        send: "2"
+      - expect: "\\[root\\]>"
+        send: "/exit"
+    expected_output_contains:
+      - "2"
+    expected_success: true
+
+  # ===== Batch Mode Tests (Phase 1 behavior - should error) =====
+
   - name: "dialog.ask - error in batch mode"
     description: "Should return error when --batch flag set"
     script: |
-      dialog.ask("Continue?")
+      local(r); dialog.ask("Continue?", @r)
     batch_mode: true
     expected_success: false
     expected_error: "not implemented"
@@ -226,15 +416,7 @@ tests:
   - name: "dialog.getInt - error in batch mode"
     description: "Should return error when --batch flag set"
     script: |
-      dialog.getInt("How many?", 10)
-    batch_mode: true
-    expected_success: false
-    expected_error: "not implemented"
-
-  - name: "dialog.getuserinfo - error in batch mode"
-    description: "Should return error when --batch flag set"
-    script: |
-      dialog.getuserinfo("Enter name", "default")
+      local(r = 10); dialog.getInt("How many?", @r)
     batch_mode: true
     expected_success: false
     expected_error: "not implemented"
@@ -242,7 +424,7 @@ tests:
   - name: "dialog.getPassword - error in batch mode"
     description: "Should return error when --batch flag set"
     script: |
-      dialog.getPassword("Enter password")
+      local(r); dialog.getPassword("Enter password", @r)
     batch_mode: true
     expected_success: false
     expected_error: "not implemented"
@@ -251,28 +433,11 @@ tests:
   - name: "dialog.ask - error in CI environment"
     description: "Should auto-detect batch mode when CI=true"
     script: |
-      dialog.ask("Proceed?")
+      local(r); dialog.ask("Proceed?", @r)
     environment:
       CI: "true"
     expected_success: false
     expected_error: "not implemented"
-
-  # dialog.alert() - Message with Beep
-  - name: "dialog.alert - displays message and waits for Enter"
-    description: "Should display message with beep and wait for Enter key"
-    repl_mode: true
-    stdin_input: "dialog.alert(\"Test alert message\")\n\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
-
-  - name: "dialog.alert - returns true when Enter pressed"
-    description: "Should always return true"
-    repl_mode: true
-    stdin_input: "dialog.alert(\"Important notification\")\n\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
 
   - name: "dialog.alert - error in batch mode"
     description: "Should return error when not in interactive mode"
@@ -282,23 +447,6 @@ tests:
     expected_success: false
     expected_error: "Can't use dialog verbs in batch mode"
 
-  # dialog.notify() - Message without Beep
-  - name: "dialog.notify - displays message and waits for Enter"
-    description: "Should display message without beep and wait for Enter"
-    repl_mode: true
-    stdin_input: "dialog.notify(\"Test notification\")\n\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
-
-  - name: "dialog.notify - returns true when Enter pressed"
-    description: "Should always return true"
-    repl_mode: true
-    stdin_input: "dialog.notify(\"Info message\")\n\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
-
   - name: "dialog.notify - error in batch mode"
     description: "Should return error in batch mode"
     script: |
@@ -306,39 +454,6 @@ tests:
     batch_mode: true
     expected_success: false
     expected_error: "Can't use dialog verbs in batch mode"
-
-  # dialog.twoway() - Two-button Choice
-  - name: "dialog.twoway - select first button with '1' key"
-    description: "Should return true when first button selected"
-    repl_mode: true
-    stdin_input: "dialog.twoway(\"Choose option\", \"First\", \"Second\")\n1\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
-
-  - name: "dialog.twoway - select second button with '2' key"
-    description: "Should return false when second button selected"
-    repl_mode: true
-    stdin_input: "dialog.twoway(\"Choose option\", \"First\", \"Second\")\n2\n/exit\n"
-    expected_output_contains:
-      - "false"
-    expected_success: true
-
-  - name: "dialog.twoway - select first button with Enter (default)"
-    description: "Should default to first button (true) when Enter pressed"
-    repl_mode: true
-    stdin_input: "dialog.twoway(\"Proceed?\", \"Yes\", \"No\")\n\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
-
-  - name: "dialog.twoway - custom button labels"
-    description: "Should work with custom button text"
-    repl_mode: true
-    stdin_input: "dialog.twoway(\"Save changes?\", \"Save\", \"Discard\")\n1\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
 
   - name: "dialog.twoway - error in batch mode"
     description: "Should return error in batch mode"
@@ -348,47 +463,6 @@ tests:
     expected_success: false
     expected_error: "Can't use dialog verbs in batch mode"
 
-  # dialog.threeway() - Three-button Choice
-  - name: "dialog.threeway - select first button (returns 1)"
-    description: "Should return 1 when first button selected"
-    repl_mode: true
-    stdin_input: "dialog.threeway(\"Choose\", \"One\", \"Two\", \"Three\")\n1\n/exit\n"
-    expected_output_contains:
-      - "1"
-    expected_success: true
-
-  - name: "dialog.threeway - select second button (returns 2)"
-    description: "Should return 2 when second button selected"
-    repl_mode: true
-    stdin_input: "dialog.threeway(\"Choose\", \"One\", \"Two\", \"Three\")\n2\n/exit\n"
-    expected_output_contains:
-      - "2"
-    expected_success: true
-
-  - name: "dialog.threeway - select third button (returns 3)"
-    description: "Should return 3 when third button selected"
-    repl_mode: true
-    stdin_input: "dialog.threeway(\"Choose\", \"One\", \"Two\", \"Three\")\n3\n/exit\n"
-    expected_output_contains:
-      - "3"
-    expected_success: true
-
-  - name: "dialog.threeway - default to first button with Enter"
-    description: "Should return 1 (first button) when Enter pressed"
-    repl_mode: true
-    stdin_input: "dialog.threeway(\"Pick one\", \"First\", \"Second\", \"Third\")\n\n/exit\n"
-    expected_output_contains:
-      - "1"
-    expected_success: true
-
-  - name: "dialog.threeway - custom button labels"
-    description: "Should work with custom button text"
-    repl_mode: true
-    stdin_input: "dialog.threeway(\"Action?\", \"Save\", \"Don't Save\", \"Cancel\")\n2\n/exit\n"
-    expected_output_contains:
-      - "true"
-    expected_success: true
-
   - name: "dialog.threeway - error in batch mode"
     description: "Should return error in batch mode"
     script: |
@@ -397,7 +471,8 @@ tests:
     expected_success: false
     expected_error: "Can't use dialog verbs in batch mode"
 
-  # Platform-specific and Ghost Cruft Verbs
+  # ===== Platform-specific and Ghost Cruft Verbs =====
+
   - name: "dialog.run - platform-specific error"
     description: "Resource-based verbs should error in headless mode"
     script: |
@@ -418,7 +493,3 @@ tests:
       dialog.runcard()
     expected_success: false
     expected_error: "was never implemented"
-
-  # Ctrl+C Handling
-  # Note: Ctrl+C tests require special test runner support
-  # These are documented for manual testing

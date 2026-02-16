@@ -2005,8 +2005,11 @@ int repl_main(cli_options_t *options) {
     flreplmode = true;  /* Set runtime flag for msg() prefix behavior */
 
     // 5. Check if we can use the event loop (requires TTY)
-    // The non-blocking linenoise API requires a real terminal for raw mode
-    use_event_loop = isatty(STDIN_FILENO);
+    // The non-blocking linenoise API requires a real terminal for raw mode.
+    // FRONTIER_PLAIN_REPL forces the blocking path even on a TTY — used by
+    // pexpect-based integration tests that combine this with TERM=dumb to
+    // get clean line-buffered I/O without ANSI escape sequences.
+    use_event_loop = isatty(STDIN_FILENO) && !getenv("FRONTIER_PLAIN_REPL");
 
     if (!use_event_loop) {
         // Fall back to blocking mode for non-TTY input
