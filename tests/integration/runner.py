@@ -263,10 +263,10 @@ class FrontierCLI:
                 stderr='pexpect is not installed'
             )
 
-        # Build command
-        cmd = self.cli_path + ' --skip-startup'
+        # Build command as argument list (avoids shell interpretation)
+        cmd_args = [self.cli_path, '--skip-startup']
         if self.system_root:
-            cmd += f' --system-root {self.system_root}'
+            cmd_args.extend(['--system-root', self.system_root])
 
         # Merge environment for clean PTY interaction:
         # - FRONTIER_PLAIN_REPL: Forces blocking REPL path (skips event loop)
@@ -282,7 +282,8 @@ class FrontierCLI:
 
         collected_output = []
         try:
-            child = pexpect.spawn(cmd, timeout=timeout, env=process_env, encoding='utf-8')
+            child = pexpect.spawn(cmd_args[0], args=cmd_args[1:], timeout=timeout,
+                                  env=process_env, encoding='utf-8')
 
             for step in interactive_steps:
                 expect_pattern = step.get('expect', '')
