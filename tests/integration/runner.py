@@ -972,6 +972,11 @@ def main():
     all_results: List[TestResult] = []
     start_time = time.time()
 
+    # Clean up stale temp dirs before parallel run
+    test_tmp_dir = os.path.join(test_root_dir, 'tmp', 'integration')
+    if os.path.exists(test_tmp_dir):
+        shutil.rmtree(test_tmp_dir, ignore_errors=True)
+
     # Run parallel-safe files across workers
     if parallel_files:
         worker_args = []
@@ -1039,6 +1044,10 @@ def main():
         all_results.extend(runner.results)
 
     elapsed = time.time() - start_time
+
+    # Clean up temp dirs after parallel run
+    if os.path.exists(test_tmp_dir):
+        shutil.rmtree(test_tmp_dir, ignore_errors=True)
 
     # Print unified summary
     total = len(all_results)
