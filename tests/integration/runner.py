@@ -11,6 +11,7 @@ import json
 import multiprocessing
 import os
 import select
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -465,37 +466,40 @@ def _run_file_worker(args: tuple) -> dict:
     worker_tmp = os.path.join(test_root_dir, 'tmp', 'integration', f'worker_{worker_id}')
     os.makedirs(worker_tmp, exist_ok=True)
 
-    file_name = Path(yaml_path).name
-    executor = None
-    if protocol_batch and file_name not in NON_PROTOCOL_TEST_FILES:
-        executor = ProtocolExecutor(cli_path, system_root)
-        try:
-            executor.start()
-        except Exception as e:
-            print(f"  Warning: Failed to start protocol executor for worker {worker_id}: {e}",
-                  file=sys.stderr)
-            executor = None
+    try:
+        file_name = Path(yaml_path).name
+        executor = None
+        if protocol_batch and file_name not in NON_PROTOCOL_TEST_FILES:
+            executor = ProtocolExecutor(cli_path, system_root)
+            try:
+                executor.start()
+            except Exception as e:
+                print(f"  Warning: Failed to start protocol executor for worker {worker_id}: {e}",
+                      file=sys.stderr)
+                executor = None
 
-    runner = TestRunner(cli, verbose=verbose, test_root_dir=test_root_dir,
-                        protocol_executor=executor)
+        runner = TestRunner(cli, verbose=verbose, test_root_dir=test_root_dir,
+                            protocol_executor=executor)
 
-    with open(yaml_path, 'r') as f:
-        data = yaml.safe_load(f)
+        with open(yaml_path, 'r') as f:
+            data = yaml.safe_load(f)
 
-    test_cases = [TestCase(td) for td in data.get('tests', [])]
-    results = []
+        test_cases = [TestCase(td) for td in data.get('tests', [])]
+        results = []
 
-    for test in test_cases:
-        result = runner.run_test(test)
-        results.append(_serialize_test_result(result))
+        for test in test_cases:
+            result = runner.run_test(test)
+            results.append(_serialize_test_result(result))
 
-    if executor:
-        executor.stop()
+        if executor:
+            executor.stop()
 
-    return {
-        'file_name': Path(yaml_path).name,
-        'results': results,
-    }
+        return {
+            'file_name': Path(yaml_path).name,
+            'results': results,
+        }
+    finally:
+        shutil.rmtree(worker_tmp, ignore_errors=True)
 
 
 class TestCase:
@@ -804,7 +808,6 @@ class TestRunner:
 
     def cleanup_test_artifacts(self):
         """Clean up temporary test files and directories created during test execution."""
-        import shutil
         test_tmp_dir = os.path.join(self.test_root_dir, 'tmp', 'integration')
         if os.path.exists(test_tmp_dir):
             try:

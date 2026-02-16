@@ -570,8 +570,10 @@ static void tcp_set_socket_timeouts(int sockfd, int timeout_secs) {
     struct timeval tv;
     tv.tv_sec = timeout_secs;
     tv.tv_usec = 0;
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+        log_debug(LOG_COMP_LANG, "tcp_set_socket_timeouts: SO_RCVTIMEO failed (errno=%d)", errno);
+    if (setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0)
+        log_debug(LOG_COMP_LANG, "tcp_set_socket_timeouts: SO_SNDTIMEO failed (errno=%d)", errno);
 }
 
 /* ========================================================================
@@ -872,8 +874,8 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
         total_written += bytes_written;
 
-        /* Yield to other threads periodically */
-        if (!langbackgroundtask(false)) {
+        /* Yield to other threads every 64KB */
+        if ((total_written % 65536) < bytes_written && !langbackgroundtask(false)) {
             /* User cancelled */
             unlockhandle(hdata);
             tcp_stream_release(stream);

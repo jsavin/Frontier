@@ -37,10 +37,12 @@
 #include <unistd.h>
 
 #define PROTOCOL_LINE_MAX 65536
+#define PROTOCOL_MAX_STRING  8192  /* Max extracted JSON string value */
 
 /* Protocol output stream. In protocol mode, we redirect the C library's stdout
- * to /dev/null (to suppress stray printf output from verb implementations) and
- * write protocol messages to this saved copy of the original stdout fd. */
+ * to stderr (so stray printf output from verb implementations appears in
+ * diagnostic output) and write protocol messages to this saved copy of the
+ * original stdout fd. */
 static FILE *g_protocol_out = NULL;
 
 /* ========================================================================
@@ -138,17 +140,29 @@ static char *json_extract_string(const char *json, const char *key) {
                             c = (char)codepoint;
                             /* fall through to append below */
                         } else if (codepoint < 0x800) {
+                            if (len + 2 >= PROTOCOL_MAX_STRING) {
+                                free(result);
+                                return NULL;
+                            }
                             result[len++] = (char)(0xC0 | (codepoint >> 6));
                             result[len++] = (char)(0x80 | (codepoint & 0x3F));
                             pos++;
                             continue;
                         } else if (codepoint < 0x10000) {
+                            if (len + 3 >= PROTOCOL_MAX_STRING) {
+                                free(result);
+                                return NULL;
+                            }
                             result[len++] = (char)(0xE0 | (codepoint >> 12));
                             result[len++] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
                             result[len++] = (char)(0x80 | (codepoint & 0x3F));
                             pos++;
                             continue;
                         } else {
+                            if (len + 4 >= PROTOCOL_MAX_STRING) {
+                                free(result);
+                                return NULL;
+                            }
                             result[len++] = (char)(0xF0 | (codepoint >> 18));
                             result[len++] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
                             result[len++] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
@@ -170,6 +184,10 @@ static char *json_extract_string(const char *json, const char *key) {
         }
 
         /* Append character */
+        if (len + 1 >= PROTOCOL_MAX_STRING) {
+            free(result);
+            return NULL;
+        }
         if (len + 1 >= capacity) {
             capacity *= 2;
             char *tmp = realloc(result, capacity);
@@ -363,7 +381,9 @@ static void handle_clear_context(long id) {
     repl_jump_path("");
 
     /* Reset error state — prevents stale langerrordisable from
-       affecting subsequent evaluations in protocol mode */
+       affecting subsequent evaluations in protocol mode.
+       Thread-safe: protocol_main() holds the GIL for the entire
+       request lifecycle, so no mutex needed for these globals. */
     langerrordisable = 0;
     langerrorlogdisable = 0;
     fllangerror = false;
@@ -385,9 +405,10 @@ int protocol_main(cli_options_t *options) {
     }
 
     /* Save the real stdout as our protocol output channel, then redirect
-     * the C library's stdout to /dev/null. This prevents stray printf output
+     * the C library's stdout to stderr. This prevents stray printf output
      * from verb implementations (msg(), dialog prompts, etc.) from
-     * contaminating the NDJSON protocol stream. */
+     * contaminating the NDJSON protocol stream while preserving it in
+     * diagnostic output. */
     int saved_stdout_fd = dup(STDOUT_FILENO);
     if (saved_stdout_fd < 0) {
         fprintf(stderr, "protocol: failed to dup stdout\n");
@@ -404,12 +425,9 @@ int protocol_main(cli_options_t *options) {
     /* Line-buffer the protocol output */
     setvbuf(g_protocol_out, NULL, _IOLBF, 0);
 
-    /* Redirect stdout to /dev/null */
-    FILE *devnull = fopen("/dev/null", "w");
-    if (devnull != NULL) {
-        dup2(fileno(devnull), STDOUT_FILENO);
-        fclose(devnull);
-    }
+    /* Redirect C stdout to stderr so stray printf from verb implementations
+     * appears in diagnostic output instead of being lost */
+    dup2(STDERR_FILENO, STDOUT_FILENO);
 
     log_info(LOG_COMP_GENERAL, "Protocol mode: ready for NDJSON on stdin");
 
