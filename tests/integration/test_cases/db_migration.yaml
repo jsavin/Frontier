@@ -28,7 +28,7 @@ tests:
       // For now, just verify source file exists and is readable
       return file.exists(src)
     expected_success: true
-    expected_result: true
+    expected_result: "true"
     skip: true
     reason: "Requires external CLI invocation to test migration - use system test instead"
 
@@ -44,7 +44,7 @@ tests:
 
       return !file.exists(dst)
     expected_success: true
-    expected_result: true
+    expected_result: "true"
     skip: true
     reason: "Requires external CLI invocation to test migration - use system test instead"
 
@@ -58,7 +58,7 @@ tests:
       // Load system root (auto-migrates if needed)
       return typeof(system) == 'tabl'
     expected_success: true
-    expected_result: true
+    expected_result: "true"
     # This test implicitly verifies the fix works - if hydration opens
     # wrong file in wrong mode, system table loading would fail or corrupt
 
@@ -69,7 +69,7 @@ tests:
              sizeOf(system.compiler) > 0 &&
              sizeOf(system.verbs) > 0
     expected_success: true
-    expected_result: true
+    expected_result: "true"
 
   - name: "Database - workspace accessible after hydration"
     description: "Workspace table should exist and be writable after hydration"
@@ -77,7 +77,7 @@ tests:
       workspace.test_flag = true;
       return workspace.test_flag == true
     expected_success: true
-    expected_result: true
+    expected_result: "true"
 
   - name: "Database migration - system.paths address values preserved"
     description: "Address values in system.paths should have correct structure after migration"
@@ -90,7 +90,7 @@ tests:
       local(ct = sizeOf(system.paths));
       return ct > 0
     expected_success: true
-    expected_result: true
+    expected_result: "true"
     skip: true
     reason: "Blocked by EFP table loading issue - address values work but loading external tables fails (dbread seek errors)"
 
@@ -106,7 +106,7 @@ tests:
       # Should be around 14 original entries, not 44 (14 + 30 duplicates)
       return ct < 30
     expected_success: true
-    expected_result: true
+    expected_result: "true"
     skip: true
     reason: "Blocked by EFP table loading issue - fix works but testing requires working external table access"
 

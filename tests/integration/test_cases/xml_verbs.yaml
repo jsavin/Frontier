@@ -443,7 +443,7 @@ tests:
       new(tableType, @result);
       return xml.compile(xmlText, @result)
     expected_success: false
-    expected_error_contains: "Script execution failed"
+    expected_error_contains: "Script evaluation failed"
 
   # ========================================
   # xml.decompile - Convert database structure to XML string
@@ -492,7 +492,7 @@ tests:
       new(tableType, @t);
       return xml.decompile(@t)
     expected_success: false
-    expected_error_contains: "Script execution failed"
+    expected_error_contains: "Script evaluation failed"
 
   - name: "xml.decompile - special characters"
     script: |

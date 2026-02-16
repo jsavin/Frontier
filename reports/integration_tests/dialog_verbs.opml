@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Dialog Verbs (dialog_verbs) - 48 tests: 48 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Mon, 16 Feb 2026 18:41:35 GMT</dateCreated>
   </head>
   <body>
     <outline text="lang.msg - basic output to stdout - lang.msg() should output text to stdout">
@@ -21,190 +21,149 @@
     </outline>
     <outline text="dialog.ask - accept default Yes with Enter - Pressing Enter should accept default Yes option">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.ask(&quot;Continue with operation?&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.ask(&quot;Continue with operation?&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.ask - select No with arrow key - Arrow key right then Enter should select No">
       <outline text="Metadata">
-        <outline text="stdin_input: [0x1b][C&#10;"/>
-        <outline text="expected_result: False"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.ask(&quot;Continue with operation?&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.ask(&quot;Continue with operation?&quot;)&#10;[0x1b][C&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['false']"/>
       </outline>
     </outline>
     <outline text="dialog.ask - Tab to switch options - Tab key should switch between Yes/No">
       <outline text="Metadata">
-        <outline text="stdin_input: &#9;&#10;"/>
-        <outline text="expected_result: False"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.ask(&quot;Proceed?&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.ask(&quot;Proceed?&quot;)&#10;&#9;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['false']"/>
       </outline>
     </outline>
     <outline text="dialog.ask - no default specified - When no default, should show first option (Yes) as default">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.ask(&quot;Confirm action?&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.ask(&quot;Confirm action?&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.getInt - accept default with Enter - Pressing Enter should accept default value">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: 10"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getInt(&quot;How many iterations?&quot;, 10)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getInt(&quot;How many iterations?&quot;, 10)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['10']"/>
       </outline>
     </outline>
     <outline text="dialog.getInt - override default with typed value - Typing number should override default">
       <outline text="Metadata">
-        <outline text="stdin_input: 42&#10;"/>
-        <outline text="expected_result: 42"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getInt(&quot;How many iterations?&quot;, 10)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getInt(&quot;How many iterations?&quot;, 10)&#10;42&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['42']"/>
       </outline>
     </outline>
     <outline text="dialog.getInt - no default specified - Without default, should prompt for required input">
       <outline text="Metadata">
-        <outline text="stdin_input: 5&#10;"/>
-        <outline text="expected_result: 5"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getInt(&quot;Enter count&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getInt(&quot;Enter count&quot;)&#10;5&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['5']"/>
       </outline>
     </outline>
     <outline text="dialog.getInt - invalid input re-prompts - Non-numeric input should re-prompt">
       <outline text="Metadata">
-        <outline text="stdin_input: abc&#10;20&#10;"/>
-        <outline text="expected_result: 20"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getInt(&quot;Enter number&quot;, 10)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getInt(&quot;Enter number&quot;, 10)&#10;abc&#10;20&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['20']"/>
       </outline>
     </outline>
     <outline text="dialog.getInt - negative numbers - Should accept negative integers">
       <outline text="Metadata">
-        <outline text="stdin_input: -42&#10;"/>
-        <outline text="expected_result: -42"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getInt(&quot;Enter value&quot;, 0)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getInt(&quot;Enter value&quot;, 0)&#10;-42&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['-42']"/>
       </outline>
     </outline>
     <outline text="dialog.getInt - very large number - Should handle large integers (2^31-1)">
       <outline text="Metadata">
-        <outline text="stdin_input: 2147483647&#10;"/>
-        <outline text="expected_result: 2147483647"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getInt(&quot;Enter large number&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getInt(&quot;Enter large number&quot;)&#10;2147483647&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['2147483647']"/>
       </outline>
     </outline>
     <outline text="dialog.getuserinfo - accept default with Enter - Pressing Enter should accept default string">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: MyProject"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getuserinfo(&quot;Enter project name&quot;, &quot;MyProject&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getuserinfo(&quot;Enter project name&quot;, &quot;MyProject&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['MyProject']"/>
       </outline>
     </outline>
     <outline text="dialog.getuserinfo - override default - Typing text should override default">
       <outline text="Metadata">
-        <outline text="stdin_input: CustomName&#10;"/>
-        <outline text="expected_result: CustomName"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getuserinfo(&quot;Enter project name&quot;, &quot;MyProject&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getuserinfo(&quot;Enter project name&quot;, &quot;MyProject&quot;)&#10;CustomName&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['CustomName']"/>
       </outline>
     </outline>
     <outline text="dialog.getuserinfo - no default specified - Without default, should prompt for required input">
       <outline text="Metadata">
-        <outline text="stdin_input: test.txt&#10;"/>
-        <outline text="expected_result: test.txt"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getuserinfo(&quot;Enter filename&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getuserinfo(&quot;Enter filename&quot;)&#10;test.txt&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['test.txt']"/>
       </outline>
     </outline>
     <outline text="dialog.getuserinfo - empty string input - Should allow empty string as valid input">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: "/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getuserinfo(&quot;Enter optional note&quot;, &quot;&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getuserinfo(&quot;Enter optional note&quot;, &quot;&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['&quot;&quot;']"/>
       </outline>
     </outline>
     <outline text="dialog.getuserinfo - unicode input (CJK) - Should handle CJK characters">
       <outline text="Metadata">
-        <outline text="stdin_input: 你好世界&#10;"/>
-        <outline text="expected_result: 你好世界"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getuserinfo(&quot;Enter name&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getuserinfo(&quot;Enter name&quot;)&#10;你好世界&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['你好世界']"/>
       </outline>
     </outline>
     <outline text="dialog.getuserinfo - unicode input (emoji) - Should handle emoji characters">
       <outline text="Metadata">
-        <outline text="stdin_input: Project🚀&#10;"/>
-        <outline text="expected_result: Project🚀"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getuserinfo(&quot;Enter project name&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getuserinfo(&quot;Enter project name&quot;)&#10;Project🚀&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['Project🚀']"/>
       </outline>
     </outline>
     <outline text="dialog.getPassword - basic password input - Should accept password and show dots during input">
       <outline text="Metadata">
-        <outline text="stdin_input: secret123&#10;"/>
-        <outline text="expected_result: secret123"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getPassword(&quot;Enter encryption key&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getPassword(&quot;Enter encryption key&quot;)&#10;secret123&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['secret123']"/>
       </outline>
     </outline>
     <outline text="dialog.getPassword - empty password - Should allow empty password">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: "/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getPassword(&quot;Enter password&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getPassword(&quot;Enter password&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['&quot;&quot;']"/>
       </outline>
     </outline>
     <outline text="dialog.getPassword - password with spaces - Should accept spaces in password">
       <outline text="Metadata">
-        <outline text="stdin_input: my secret pass&#10;"/>
-        <outline text="expected_result: my secret pass"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getPassword(&quot;Enter passphrase&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getPassword(&quot;Enter passphrase&quot;)&#10;my secret pass&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['my secret pass']"/>
       </outline>
     </outline>
     <outline text="dialog.getPassword - password with special chars - Should accept special characters in password">
       <outline text="Metadata">
-        <outline text="stdin_input: P@ssw0rd!#$%&#10;"/>
-        <outline text="expected_result: P@ssw0rd!#$%"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getPassword(&quot;Enter password&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getPassword(&quot;Enter password&quot;)&#10;P@ssw0rd!#$%&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['P@ssw0rd!#$%']"/>
       </outline>
     </outline>
     <outline text="dialog.getPassword - very long password (256 chars) - Should handle long passwords">
       <outline text="Metadata">
-        <outline text="stdin_input: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&#10;"/>
-      </outline>
-      <outline text="Script">
-        <outline text="dialog.getPassword(&quot;Enter master key&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.getPassword(&quot;Enter master key&quot;)&#10;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']"/>
       </outline>
     </outline>
     <outline text="dialog.ask - error in batch mode - Should return error when --batch flag set">
@@ -259,21 +218,16 @@
     </outline>
     <outline text="dialog.alert - displays message and waits for Enter - Should display message with beep and wait for Enter key">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="local(result = dialog.alert(&quot;Test alert message&quot;))"/>
-        <outline text="return result"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.alert(&quot;Test alert message&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.alert - returns true when Enter pressed - Should always return true">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.alert(&quot;Important notification&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.alert(&quot;Important notification&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.alert - error in batch mode - Should return error when not in interactive mode">
@@ -288,21 +242,16 @@
     </outline>
     <outline text="dialog.notify - displays message and waits for Enter - Should display message without beep and wait for Enter">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="local(result = dialog.notify(&quot;Test notification&quot;))"/>
-        <outline text="return result"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.notify(&quot;Test notification&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.notify - returns true when Enter pressed - Should always return true">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.notify(&quot;Info message&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.notify(&quot;Info message&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.notify - error in batch mode - Should return error in batch mode">
@@ -317,38 +266,30 @@
     </outline>
     <outline text="dialog.twoway - select first button with '1' key - Should return true when first button selected">
       <outline text="Metadata">
-        <outline text="stdin_input: 1&#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.twoway(&quot;Choose option&quot;, &quot;First&quot;, &quot;Second&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.twoway(&quot;Choose option&quot;, &quot;First&quot;, &quot;Second&quot;)&#10;1&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.twoway - select second button with '2' key - Should return false when second button selected">
       <outline text="Metadata">
-        <outline text="stdin_input: 2&#10;"/>
-        <outline text="expected_result: false"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.twoway(&quot;Choose option&quot;, &quot;First&quot;, &quot;Second&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.twoway(&quot;Choose option&quot;, &quot;First&quot;, &quot;Second&quot;)&#10;2&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['false']"/>
       </outline>
     </outline>
     <outline text="dialog.twoway - select first button with Enter (default) - Should default to first button (true) when Enter pressed">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.twoway(&quot;Proceed?&quot;, &quot;Yes&quot;, &quot;No&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.twoway(&quot;Proceed?&quot;, &quot;Yes&quot;, &quot;No&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.twoway - custom button labels - Should work with custom button text">
       <outline text="Metadata">
-        <outline text="stdin_input: 1&#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.twoway(&quot;Save changes?&quot;, &quot;Save&quot;, &quot;Discard&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.twoway(&quot;Save changes?&quot;, &quot;Save&quot;, &quot;Discard&quot;)&#10;1&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.twoway - error in batch mode - Should return error in batch mode">
@@ -363,48 +304,37 @@
     </outline>
     <outline text="dialog.threeway - select first button (returns 1) - Should return 1 when first button selected">
       <outline text="Metadata">
-        <outline text="stdin_input: 1&#10;"/>
-        <outline text="expected_result: 1"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.threeway(&quot;Choose&quot;, &quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.threeway(&quot;Choose&quot;, &quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;)&#10;1&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['1']"/>
       </outline>
     </outline>
     <outline text="dialog.threeway - select second button (returns 2) - Should return 2 when second button selected">
       <outline text="Metadata">
-        <outline text="stdin_input: 2&#10;"/>
-        <outline text="expected_result: 2"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.threeway(&quot;Choose&quot;, &quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.threeway(&quot;Choose&quot;, &quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;)&#10;2&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['2']"/>
       </outline>
     </outline>
     <outline text="dialog.threeway - select third button (returns 3) - Should return 3 when third button selected">
       <outline text="Metadata">
-        <outline text="stdin_input: 3&#10;"/>
-        <outline text="expected_result: 3"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.threeway(&quot;Choose&quot;, &quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.threeway(&quot;Choose&quot;, &quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;)&#10;3&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['3']"/>
       </outline>
     </outline>
     <outline text="dialog.threeway - default to first button with Enter - Should return 1 (first button) when Enter pressed">
       <outline text="Metadata">
-        <outline text="stdin_input: &#10;"/>
-        <outline text="expected_result: 1"/>
-      </outline>
-      <outline text="Script">
-        <outline text="return dialog.threeway(&quot;Pick one&quot;, &quot;First&quot;, &quot;Second&quot;, &quot;Third&quot;)"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.threeway(&quot;Pick one&quot;, &quot;First&quot;, &quot;Second&quot;, &quot;Third&quot;)&#10;&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['1']"/>
       </outline>
     </outline>
     <outline text="dialog.threeway - custom button labels - Should work with custom button text">
       <outline text="Metadata">
-        <outline text="stdin_input: 2&#10;"/>
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="local(choice = dialog.threeway(&quot;Action?&quot;, &quot;Save&quot;, &quot;Don't Save&quot;, &quot;Cancel&quot;))"/>
-        <outline text="return choice &gt;= 1 and choice &lt;= 3"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: dialog.threeway(&quot;Action?&quot;, &quot;Save&quot;, &quot;Don't Save&quot;, &quot;Cancel&quot;)&#10;2&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="dialog.threeway - error in batch mode - Should return error in batch mode">

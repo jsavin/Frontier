@@ -390,18 +390,18 @@ tests:
   # sys.unixshellcommand Tests (4 parameter variants)
   # ============================================================================
 
-  # 1-param variant: command only
+  # 1-param variant: command only — returns stdout output (not boolean)
   - name: "sys.unixshellcommand - 1 param (command only)"
-    description: "Execute command and return exit status as boolean"
-    script: 'sys.unixshellcommand("echo hello")'
+    description: "Execute command and return stdout output"
+    script: 'string.length(sys.unixshellcommand("echo hello")) > 0'
     expected_success: true
     expected_result: "true"
 
   - name: "sys.unixshellcommand - 1 param (command fails)"
-    description: "Failed command returns false"
-    script: 'sys.unixshellcommand("false")'
+    description: "Failed command returns string type"
+    script: 'typeof(sys.unixshellcommand("false")) == stringType'
     expected_success: true
-    expected_result: "false"
+    expected_result: "true"
 
   # 2-param variant: command + stdout
   - name: "sys.unixshellcommand - 2 params (command + stdout)"

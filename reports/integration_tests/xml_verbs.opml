@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Xml Verbs (xml_verbs) - 93 tests: 93 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Mon, 16 Feb 2026 18:43:53 GMT</dateCreated>
   </head>
   <body>
     <outline text="xml.frontiervaluetotaggedtext - simple string">
@@ -383,7 +383,7 @@
     <outline text="xml.compile - malformed XML">
       <outline text="Metadata">
         <outline text="expected_success: False"/>
-        <outline text="expected_error_contains: Script execution failed"/>
+        <outline text="expected_error_contains: Script evaluation failed"/>
       </outline>
       <outline text="Script">
         <outline text="local(xmlText = &quot;&lt;root&gt;&lt;unclosed&gt;&quot;)"/>
@@ -433,7 +433,7 @@
     <outline text="xml.decompile - empty table">
       <outline text="Metadata">
         <outline text="expected_success: False"/>
-        <outline text="expected_error_contains: Script execution failed"/>
+        <outline text="expected_error_contains: Script evaluation failed"/>
       </outline>
       <outline text="Script">
         <outline text="local(t)"/>

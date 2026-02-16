@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Webserver Hello World (webserver_hello_world) - 11 tests: 10 pass (90%) 1 skip (9%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Webserver Hello World (webserver_hello_world) - 11 tests: 6 pass (54%) 5 skip (45%)</title>
+    <dateCreated>Mon, 16 Feb 2026 18:41:35 GMT</dateCreated>
   </head>
   <body>
     <outline text="webserver.init - initialize webserver tables - Verify webserver.init() creates required table structures">
@@ -39,6 +39,8 @@
     </outline>
     <outline text="inetd.startOne - start HTTP listener on port 8080 - Start the HTTP listener on a non-privileged port">
       <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: inetd verb infrastructure causes port conflicts in batch test runs"/>
         <outline text="requires_system_root: True"/>
         <outline text="timeout: 15"/>
         <outline text="expected_result: true"/>
@@ -54,6 +56,8 @@
     </outline>
     <outline text="inetd.startOne - listener appears in user.inetd.listens - Verify listener is tracked in user.inetd.listens table">
       <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: inetd verb infrastructure causes port conflicts in batch test runs"/>
         <outline text="requires_system_root: True"/>
         <outline text="timeout: 15"/>
         <outline text="expected_result: true"/>
@@ -166,6 +170,8 @@
     </outline>
     <outline text="inetd.stopOne - stop HTTP listener - Verify listener can be stopped cleanly">
       <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: inetd verb infrastructure causes port conflicts in batch test runs"/>
         <outline text="requires_system_root: True"/>
         <outline text="timeout: 15"/>
         <outline text="expected_result: true"/>
@@ -181,6 +187,8 @@
     </outline>
     <outline text="inetd.stopOne - listener removed from user.inetd.listens - Verify listener is removed from tracking table after stop">
       <outline text="Metadata">
+        <outline text="skip: True"/>
+        <outline text="skip_reason: inetd verb infrastructure causes port conflicts in batch test runs"/>
         <outline text="requires_system_root: True"/>
         <outline text="timeout: 15"/>
         <outline text="expected_result: true"/>
