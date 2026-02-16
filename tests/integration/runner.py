@@ -27,6 +27,19 @@ except ImportError:
     print("Error: PyYAML is required. Install with: pip3 install pyyaml", file=sys.stderr)
     sys.exit(1)
 
+try:
+    import pexpect
+    HAS_PEXPECT = True
+except ImportError:
+    try:
+        # Fall back to vendored copy
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
+        import pexpect
+        HAS_PEXPECT = True
+        sys.path.pop(0)
+    except ImportError:
+        HAS_PEXPECT = False
+
 
 # Type name aliases: Maps Frontier's internal type names to canonical test names
 # Frontier uses shortened or internal names in JSON output that differ from
@@ -226,6 +239,111 @@ class FrontierCLI:
                 stderr=f'REPL execution error: {str(e)}'
             )
 
+    def execute_interactive(self, interactive_steps: list, timeout: int = 30,
+                            env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
+        """
+        Execute frontier-cli interactively using pexpect PTY.
+
+        Spawns the CLI in a pseudo-terminal so isatty() returns true,
+        then uses expect/send pairs to drive interactive dialog prompts.
+
+        Args:
+            interactive_steps: List of dicts with 'expect' and 'send' keys
+            timeout: Overall execution timeout in seconds
+            env: Optional environment variables
+
+        Returns:
+            CompletedProcess-like object with stdout, stderr, returncode
+        """
+        if not HAS_PEXPECT:
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=-1,
+                stdout='',
+                stderr='pexpect is not installed'
+            )
+
+        # Build command
+        cmd = self.cli_path + ' --skip-startup'
+        if self.system_root:
+            cmd += f' --system-root {self.system_root}'
+
+        # Merge environment for clean PTY interaction:
+        # - FRONTIER_PLAIN_REPL: Forces blocking REPL path (skips event loop)
+        # - TERM=dumb: Makes linenoise use simple fgets() instead of raw mode
+        #   editing, eliminating character-by-character echo and ANSI escapes
+        # - FRONTIER_FORCE_INTERACTIVE: Ensures dialog verbs use stdio prompts
+        process_env = os.environ.copy()
+        process_env['FRONTIER_PLAIN_REPL'] = '1'
+        process_env['TERM'] = 'dumb'
+        process_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
+        if env:
+            process_env.update(env)
+
+        collected_output = []
+        try:
+            child = pexpect.spawn(cmd, timeout=timeout, env=process_env, encoding='utf-8')
+
+            for step in interactive_steps:
+                expect_pattern = step.get('expect', '')
+                send_text = step.get('send', '')
+
+                # Wait for expected pattern
+                child.expect(expect_pattern, timeout=timeout)
+                collected_output.append(child.before or '')
+                collected_output.append(child.after or '')
+
+                # Send response
+                child.sendline(send_text)
+
+            # Wait for process to finish
+            child.expect(pexpect.EOF, timeout=timeout)
+            collected_output.append(child.before or '')
+            child.close()
+
+            stdout = ''.join(collected_output)
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=child.exitstatus or 0,
+                stdout=stdout,
+                stderr=''
+            )
+
+        except pexpect.TIMEOUT:
+            try:
+                child.close(force=True)
+            except Exception:
+                pass
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=-1,
+                stdout=''.join(collected_output),
+                stderr=f'Interactive execution timed out ({timeout}s)'
+            )
+        except pexpect.EOF:
+            stdout = ''.join(collected_output)
+            try:
+                child.close()
+            except Exception:
+                pass
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=getattr(child, 'exitstatus', -1) or -1,
+                stdout=stdout,
+                stderr='Process exited unexpectedly'
+            )
+        except Exception as e:
+            try:
+                child.close(force=True)
+            except Exception:
+                pass
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=-1,
+                stdout=''.join(collected_output),
+                stderr=f'Interactive execution error: {str(e)}'
+            )
+
 
 class ProtocolExecutor:
     """
@@ -416,6 +534,9 @@ NON_PROTOCOL_TEST_FILES = {
 
 def _is_protocol_compatible(test: 'TestCase') -> bool:
     """Check if a test can run via the NDJSON protocol executor."""
+    # Interactive tests use pexpect PTY — not compatible with protocol mode
+    if test.interactive_steps:
+        return False
     # REPL-mode tests need custom stdin sequences — must use per-process executor
     if test.repl_mode:
         return False
@@ -533,6 +654,9 @@ class TestCase:
         # Skip support
         self.skip = data.get('skip')  # Can be True/False or string reason
         self.skip_reason = data.get('skip_reason', 'No reason provided')
+
+        # Interactive steps support (pexpect PTY-based dialog testing)
+        self.interactive_steps = data.get('interactive_steps', [])
 
         # REPL mode support (auto-skip if repl_mode is true)
         self.repl_mode = data.get('repl_mode', False)  # Run test in REPL interactive mode
@@ -695,8 +819,18 @@ class TestRunner:
             if test.description:
                 print(f"    {test.description}")
 
-        # Route to REPL executor if repl_mode is true (not reached due to skip above)
-        if test.repl_mode:
+        # Route to appropriate executor
+        if test.interactive_steps:
+            if not HAS_PEXPECT:
+                return TestResult(
+                    name=test.name,
+                    passed=True,
+                    error=None,
+                    details="pexpect is required for interactive tests. Install with: pip3 install pexpect",
+                    skipped=True
+                )
+            return self.run_interactive_test(test)
+        elif test.repl_mode:
             return self.run_repl_test(test)
         else:
             return self.run_batch_test(test)
@@ -765,6 +899,31 @@ class TestRunner:
         )
 
         # Validate REPL output
+        passed, error = test.validate_repl_output(result)
+
+        details = None
+        if not passed and self.verbose:
+            details = (
+                f"Exit code: {result.returncode}\n"
+                f"Stdout:\n{result.stdout}\n"
+                f"Stderr:\n{result.stderr}"
+            )
+
+        return TestResult(test.name, passed, error, details)
+
+    def run_interactive_test(self, test: TestCase) -> TestResult:
+        """Run a test using pexpect interactive steps."""
+        # Prepare environment variables
+        test_env = test.environment.copy()
+
+        # Execute with pexpect
+        result = self.cli.execute_interactive(
+            interactive_steps=test.interactive_steps,
+            timeout=test.timeout,
+            env=test_env
+        )
+
+        # Validate using REPL output validation (checks expected_output_contains etc.)
         passed, error = test.validate_repl_output(result)
 
         details = None

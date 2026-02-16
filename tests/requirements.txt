@@ -1,0 +1,9 @@
+# Frontier Integration Test Dependencies
+#
+# Install with: pip3 install -r tests/requirements.txt
+#
+# Required:
+pyyaml>=6.0          # YAML test case parsing
+#
+# Optional (tests auto-skip if not installed):
+pexpect>=4.8         # Interactive PTY-based dialog testing
