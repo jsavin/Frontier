@@ -16,7 +16,7 @@ The NDJSON stdio protocol is a lightweight JSON-over-stdin/stdout protocol for d
 1. **One JSON object per line** — [NDJSON](https://github.com/ndjson/ndjson-spec) format for simple framing
 2. **Request/response correlation** — Every request has an `id`; the response echoes it
 3. **`op` field for routing** — Same dispatch pattern as the WebSocket GUI protocol
-4. **Stdout isolation** — Protocol output goes to a saved copy of stdout; the C library's `stdout` is redirected to `/dev/null` to prevent stray `printf` from contaminating the stream
+4. **Stdout isolation** — Protocol output goes to a saved copy of stdout; the C library's `stdout` is redirected to stderr via `dup2(STDERR_FILENO, STDOUT_FILENO)` to prevent stray `printf` from contaminating the protocol stream
 5. **Stateful process** — The process keeps its database open and REPL state across evaluations; `clearContext` resets between logical sessions
 
 ### 1.2 Relationship to GUI Protocol
@@ -61,10 +61,10 @@ The `--protocol` flag puts the CLI into NDJSON protocol mode instead of interact
 
 On startup, the protocol handler:
 1. Saves the real stdout file descriptor via `dup(STDOUT_FILENO)`
-2. Redirects the C library's `stdout` to `/dev/null`
+2. Redirects the C library's `stdout` to stderr via `dup2(STDERR_FILENO, STDOUT_FILENO)`
 3. Writes all protocol responses to the saved fd
 
-This prevents verb implementations that call `printf()`, `msg()`, or dialog prompts from injecting garbage into the protocol stream. The saved fd is stored in `g_protocol_out`.
+This prevents verb implementations that call `printf()`, `msg()`, or dialog prompts from injecting garbage into the protocol stream. Stray output goes to stderr where it can be logged alongside other diagnostic output. The saved fd is stored in `g_protocol_out`.
 
 ### 2.4 Line Framing
 

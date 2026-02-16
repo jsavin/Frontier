@@ -302,7 +302,10 @@ class ProtocolExecutor:
         except Exception:
             pass
         self._proc = None
-        self.start()
+        try:
+            self.start()
+        except Exception as e:
+            raise RuntimeError(f"Protocol executor restart failed: {e}") from e
 
     def execute(self, script: str, timeout: float = 10.0) -> Dict:
         """
@@ -499,6 +502,12 @@ def _run_file_worker(args: tuple) -> dict:
             'results': results,
         }
     finally:
+        # Stop executor before cleaning up temp files
+        if executor is not None:
+            try:
+                executor.stop()
+            except Exception:
+                pass
         shutil.rmtree(worker_tmp, ignore_errors=True)
 
 

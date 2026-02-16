@@ -199,6 +199,10 @@ static char *json_extract_string(const char *json, const char *key) {
     }
 
     result[len] = '\0';
+
+    /* Note: closing quote is not consumed — callers extract values
+       independently and don't chain parsing from this position. */
+
     return result;
 }
 
@@ -362,10 +366,9 @@ static void handle_script_eval(long id, const char *json_line) {
         write_eval_error(id, c_error);
     }
 
-    /* Clean up the result value if it was coerced/allocated */
-    if (result.valuetype == stringvaluetype && result.data.stringvalue != nil) {
-        disposehandle(result.data.stringvalue);
-    }
+    /* Clean up the result value — disposevaluerecord handles all
+       handle-based types (string, binary, list, record, external, etc.) */
+    disposevaluerecord(result, false);
 
     free(expression);
 }
