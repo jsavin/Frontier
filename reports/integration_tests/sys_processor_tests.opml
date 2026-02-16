@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Sys Processor Tests (sys_processor_tests) - 51 tests: 51 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Mon, 16 Feb 2026 18:43:53 GMT</dateCreated>
   </head>
   <body>
     <outline text="sys.osversion - returns OS version string - Get OS version - returns distribution on Linux, sw_vers on macOS">
@@ -400,20 +400,20 @@
         </outline>
       </outline>
     </outline>
-    <outline text="sys.unixshellcommand - 1 param (command only) - Execute command and return exit status as boolean">
+    <outline text="sys.unixshellcommand - 1 param (command only) - Execute command and return stdout output">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="sys.unixshellcommand(&quot;echo hello&quot;)"/>
+        <outline text="string.length(sys.unixshellcommand(&quot;echo hello&quot;)) &gt; 0"/>
       </outline>
     </outline>
-    <outline text="sys.unixshellcommand - 1 param (command fails) - Failed command returns false">
+    <outline text="sys.unixshellcommand - 1 param (command fails) - Failed command returns string type">
       <outline text="Metadata">
-        <outline text="expected_result: false"/>
+        <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="sys.unixshellcommand(&quot;false&quot;)"/>
+        <outline text="typeof(sys.unixshellcommand(&quot;false&quot;)) == stringType"/>
       </outline>
     </outline>
     <outline text="sys.unixshellcommand - 2 params (command + stdout) - Capture stdout to address">
