@@ -494,9 +494,6 @@ def _run_file_worker(args: tuple) -> dict:
             result = runner.run_test(test)
             results.append(_serialize_test_result(result))
 
-        if executor:
-            executor.stop()
-
         return {
             'file_name': Path(yaml_path).name,
             'results': results,
