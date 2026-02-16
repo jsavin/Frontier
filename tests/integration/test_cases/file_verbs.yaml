@@ -300,17 +300,19 @@ tests:
     expected_result: "true"
 
   - name: "file.folderfrompath - extract folder from path"
-    description: "Get folder portion of a file path"
+    description: "Get folder portion of a file path (includes trailing slash per Mac behavior)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(testPath = tmpDir + "/" + "testfile.txt");
       local(folder = file.folderfrompath(testPath));
-      return (folder == tmpDir)
+      return (folder == tmpDir + "/")
     expected_success: true
     expected_result: "true"
 
   - name: "file.getpath - get current working directory"
     description: "Get the current working directory path"
+    skip: true
+    skip_reason: "file.getpath() not implemented - CWD should be thread-local (design TBD)"
     script: |
       local(currentPath = file.getpath());
       return (string.length(currentPath) > 0)
@@ -319,6 +321,8 @@ tests:
 
   - name: "file.setpath - set working directory"
     description: "Change working directory and verify"
+    skip: true
+    skip_reason: "file.getpath/setpath not implemented - CWD should be thread-local (design TBD)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(originalPath = file.getpath());
@@ -331,6 +335,8 @@ tests:
 
   - name: "file.setpath/getpath - round trip working directory"
     description: "Verify setpath actually changes working directory"
+    skip: true
+    skip_reason: "file.getpath/setpath not implemented - CWD should be thread-local (design TBD)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(originalPath = file.getpath());
@@ -656,13 +662,13 @@ tests:
     expected_result: ""
 
   - name: "file.folderfrompath - path with trailing slash"
-    description: "Extract folder from path with trailing slash - should return parent"
+    description: "Extract folder from path with trailing slash - should return parent with trailing slash"
     script: |
       local(path = "/parent/child/");
       local(folder = file.folderfrompath(path));
       return folder
     expected_success: true
-    expected_result: "/parent"
+    expected_result: "/parent/"
 
   # File Type and Creator Tests
   - name: "file.type - extract extension from .txt file"

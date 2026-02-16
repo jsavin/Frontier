@@ -59,92 +59,78 @@ tests:
   # file.getFileDialog() - Select Existing File
   - name: "file.getFileDialog - select file with full path"
     description: "Should accept typed full path to existing file via piped stdin"
-    script: |
-      local(testPath = "{FRONTIER_TEST_TMP_DIR}/test.txt");
-      file.writeWholeFile(testPath, "test content");
-      file.getFileDialog("Select config file", @result);
-      return result
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/test.txt\n"
+    repl_mode: true
+    stdin_input: "local(testPath = \"{FRONTIER_TEST_TMP_DIR}/test.txt\"); file.writeWholeFile(testPath, \"test content\"); file.getFileDialog(\"Select config file\", @result); return result\n{FRONTIER_TEST_TMP_DIR}/test.txt\n/exit\n"
+    expected_output_contains:
+      - "test.txt"
     expected_success: true
 
   - name: "file.getFileDialog - returns full absolute path"
     description: "Must return full absolute path (UserTalk requirement)"
-    script: |
-      local(testFile = "{FRONTIER_TEST_TMP_DIR}/config.txt");
-      file.writeWholeFile(testFile, "data");
-      file.getFileDialog("Select", @result);
-      return string.mid(result, 1, 1) == "/"
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/config.txt\n"
+    repl_mode: true
+    stdin_input: "local(testFile = \"{FRONTIER_TEST_TMP_DIR}/config.txt\"); file.writeWholeFile(testFile, \"data\"); file.getFileDialog(\"Select\", @result); return string.mid(result, 1, 1) == \"/\"\n{FRONTIER_TEST_TMP_DIR}/config.txt\n/exit\n"
+    expected_output_contains:
+      - "true"
     expected_success: true
-    expected_result: "true"
 
   - name: "file.getFileDialog - filename with spaces"
     description: "Should handle spaces in filenames"
-    script: |
-      local(spacePath = "{FRONTIER_TEST_TMP_DIR}/my file.txt");
-      file.writeWholeFile(spacePath, "data");
-      file.getFileDialog("Select", @result);
-      return result
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/my file.txt\n"
+    repl_mode: true
+    stdin_input: "local(spacePath = \"{FRONTIER_TEST_TMP_DIR}/my file.txt\"); file.writeWholeFile(spacePath, \"data\"); file.getFileDialog(\"Select\", @result); return result\n{FRONTIER_TEST_TMP_DIR}/my file.txt\n/exit\n"
+    expected_output_contains:
+      - "my file.txt"
     expected_success: true
 
   - name: "file.getFileDialog - prompt passthrough"
     description: "UserTalk prompt should be forwarded to the dialog (not hardcoded)"
-    script: |
-      local(testPath = "{FRONTIER_TEST_TMP_DIR}/prompt_test.txt");
-      file.writeWholeFile(testPath, "data");
-      file.getFileDialog("Where is your web browser?", @result, "txt");
-      return result
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/prompt_test.txt\n"
+    repl_mode: true
+    stdin_input: "local(testPath = \"{FRONTIER_TEST_TMP_DIR}/prompt_test.txt\"); file.writeWholeFile(testPath, \"data\"); file.getFileDialog(\"Where is your web browser?\", @result, \"txt\"); return result\n{FRONTIER_TEST_TMP_DIR}/prompt_test.txt\n/exit\n"
+    expected_output_contains:
+      - "prompt_test.txt"
     expected_success: true
 
   # file.putFileDialog() - Save File
   - name: "file.putFileDialog - type new filename"
     description: "Should allow typing new filename via piped stdin"
-    script: |
-      file.putFileDialog("Save output as", @result);
-      return result
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/output.txt\n"
+    repl_mode: true
+    stdin_input: "file.putFileDialog(\"Save output as\", @result); return result\n{FRONTIER_TEST_TMP_DIR}/output.txt\n/exit\n"
+    expected_output_contains:
+      - "output.txt"
     expected_success: true
-    expected_result_contains: "output.txt"
 
   - name: "file.putFileDialog - returns full absolute path"
     description: "Must return full path even for new files"
-    script: |
-      file.putFileDialog("Save", @result);
-      return string.mid(result, 1, 1) == "/"
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}/newfile.txt\n"
+    repl_mode: true
+    stdin_input: "file.putFileDialog(\"Save\", @result); return string.mid(result, 1, 1) == \"/\"\n{FRONTIER_TEST_TMP_DIR}/newfile.txt\n/exit\n"
+    expected_output_contains:
+      - "true"
     expected_success: true
-    expected_result: "true"
 
   # file.getFolderDialog() - Select Directory
   - name: "file.getFolderDialog - select directory"
     description: "Should accept directory path via piped stdin"
-    script: |
-      file.getFolderDialog("Select output directory", @result);
-      return string.mid(result, 1, 1) == "/"
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}\n"
+    repl_mode: true
+    stdin_input: "file.getFolderDialog(\"Select output directory\", @result); return string.mid(result, 1, 1) == \"/\"\n{FRONTIER_TEST_TMP_DIR}\n/exit\n"
+    expected_output_contains:
+      - "true"
     expected_success: true
-    expected_result: "true"
 
   - name: "file.getFolderDialog - returns full absolute path"
     description: "Must return full path to directory"
-    script: |
-      file.getFolderDialog("Select", @result);
-      return string.mid(result, 1, 1) == "/"
-    stdin_input: "{FRONTIER_TEST_TMP_DIR}\n"
+    repl_mode: true
+    stdin_input: "file.getFolderDialog(\"Select\", @result); return string.mid(result, 1, 1) == \"/\"\n{FRONTIER_TEST_TMP_DIR}\n/exit\n"
+    expected_output_contains:
+      - "true"
     expected_success: true
-    expected_result: "true"
 
   # file.getDiskDialog() - Select Volume
   - name: "file.getDiskDialog - select root volume"
     description: "Should list mounted volumes and accept selection via piped stdin"
-    script: |
-      file.getDiskDialog("Select backup volume", @result);
-      return string.mid(result, 1, 1) == "/"
-    stdin_input: "1\n"
+    repl_mode: true
+    stdin_input: "file.getDiskDialog(\"Select backup volume\", @result); return string.mid(result, 1, 1) == \"/\"\n1\n/exit\n"
+    expected_output_contains:
+      - "true"
     expected_success: true
-    expected_result: "true"
 
   # ===== Browser-Specific Tests (TTY-only, not testable via piped stdin) =====
   # TODO: These require a real TTY and cannot be tested via piped stdin.
