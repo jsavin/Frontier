@@ -403,6 +403,8 @@ class ProtocolExecutor:
 SEQUENTIAL_TEST_FILES = {
     'tcp_verbs_network.yaml',
     'webserver_verbs.yaml',
+    'dialog_verbs.yaml',        # REPL stdin piping is fragile under parallel workers
+    'file_dialog_verbs.yaml',   # REPL stdin piping is fragile under parallel workers
 }
 
 # Test files that should NOT use protocol mode (they hang or need special process behavior)
