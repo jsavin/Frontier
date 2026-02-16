@@ -2,9 +2,15 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests - 1913 tests: 1739 pass (90%) 174 skip (9%)</title>
-    <dateCreated>Sun, 15 Feb 2026 08:27:25 GMT</dateCreated>
+    <dateCreated>Mon, 16 Feb 2026 07:31:22 GMT</dateCreated>
   </head>
   <body>
+    <outline text="Last Test Run">
+      <outline text="Run: 2026-02-16 at 07:31 UTC"/>
+      <outline text="Results: 1655 passed (87%), 174 skipped (9%), 64 failed (3%)"/>
+      <outline text="Duration: 29.7s (8 workers, batch mode)"/>
+      <outline text="YAML-defined: 1913 tests (1739 active, 174 marked skip) across 50 categories"/>
+    </outline>
     <outline text="Builtins Priority (builtins_priority) - 25 tests: 25 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
     <outline text="Callback Database (callback_database) - 29 tests: 29 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/callback_database.opml"/>
     <outline text="Callback Tcp (callback_tcp) - 20 tests: 20 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/callback_tcp.opml"/>

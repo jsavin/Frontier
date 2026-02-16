@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -848,6 +849,32 @@ class TestRunner:
 
         return failed == 0
 
+    def save_run_summary(self, duration_seconds: float, workers: int, batch_mode: bool):
+        """Write a JSON summary of the test run to tmp/integration/last_run.json."""
+        total = len(self.results)
+        skipped = sum(1 for r in self.results if r.skipped)
+        passed = sum(1 for r in self.results if r.passed and not r.skipped)
+        failed = total - passed - skipped
+
+        summary = {
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'total': total,
+            'passed': passed,
+            'skipped': skipped,
+            'failed': failed,
+            'duration_seconds': round(duration_seconds, 1),
+            'workers': workers,
+            'batch_mode': batch_mode,
+        }
+
+        output_dir = os.path.join(self.test_root_dir, 'tmp', 'integration')
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, 'last_run.json')
+
+        with open(output_path, 'w') as f:
+            json.dump(summary, f, indent=2)
+            f.write('\n')
+
 
 def _find_test_root(test_files: List[str]) -> str:
     """Find project root by walking up from the first test file."""
@@ -918,14 +945,17 @@ def main():
                             protocol_executor=executor)
         runner.cleanup_test_artifacts()
 
+        seq_start = time.time()
         for test_file in valid_files:
             runner.run_test_file(test_file)
+        seq_elapsed = time.time() - seq_start
 
         if executor:
             executor.stop()
 
         runner.cleanup_test_artifacts()
         all_passed = runner.print_summary()
+        runner.save_run_summary(seq_elapsed, args.workers, args.batch)
         return 0 if all_passed else 1
 
     # === Parallel mode ===
@@ -1032,6 +1062,11 @@ def main():
                 print(f"  - {result.name}: {result.error}")
 
     print(f"{'=' * 70}")
+
+    # Save JSON summary
+    summary_runner = TestRunner(cli, test_root_dir=test_root_dir)
+    summary_runner.results = all_results
+    summary_runner.save_run_summary(elapsed, args.workers, args.batch)
 
     return 0 if failed == 0 else 1
 

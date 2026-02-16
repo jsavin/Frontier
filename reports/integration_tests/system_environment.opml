@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>System Environment (system_environment) - 12 tests: 12 pass (100%)</title>
-    <dateCreated>Sun, 15 Feb 2026 08:27:25 GMT</dateCreated>
+    <dateCreated>Sun, 15 Feb 2026 09:46:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="system.environment.isMac - matches sys.os - isMac should be true when sys.os() returns MacOS">

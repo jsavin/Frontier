@@ -11,6 +11,7 @@ UserTalk scripts are converted to outline format by:
 - Using indentation to create nested outline elements
 """
 
+import json
 import yaml
 import sys
 import os
@@ -385,22 +386,46 @@ def generate_category_opml(category_key, category_data, output_file):
     write_opml_if_changed(opml, output_file)
 
 
-def generate_manifest_opml(categories, output_file):
+def load_last_run_results(project_root):
+    """
+    Load the last integration test run results from JSON.
+
+    Args:
+        project_root: Path to the project root directory
+
+    Returns:
+        Parsed dict from last_run.json, or None if the file doesn't exist
+    """
+    json_path = Path(project_root) / 'tests' / 'tmp' / 'integration' / 'last_run.json'
+    if not json_path.exists():
+        return None
+    try:
+        with open(json_path, 'r') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"Warning: Could not read {json_path}: {e}", file=sys.stderr)
+        return None
+
+
+def generate_manifest_opml(categories, output_file, last_run=None, total_stats=None):
     """
     Generate top-level manifest OPML with transclusion links.
 
     Args:
         categories: Dict mapping category_key -> category_data
         output_file: Path to output manifest OPML file
+        last_run: Optional dict from last_run.json with test run results
+        total_stats: Optional dict with YAML-defined test counts
     """
-    # Calculate total stats across all categories
-    total_stats = {'total': 0, 'pass': 0, 'skip': 0, 'fail': 0}
-    for category_data in categories.values():
-        stats = category_data['stats']
-        total_stats['total'] += stats['total']
-        total_stats['pass'] += stats['pass']
-        total_stats['skip'] += stats['skip']
-        total_stats['fail'] += stats['fail']
+    # Calculate total stats across all categories (use passed-in value if available)
+    if total_stats is None:
+        total_stats = {'total': 0, 'pass': 0, 'skip': 0, 'fail': 0}
+        for category_data in categories.values():
+            stats = category_data['stats']
+            total_stats['total'] += stats['total']
+            total_stats['pass'] += stats['pass']
+            total_stats['skip'] += stats['skip']
+            total_stats['fail'] += stats['fail']
 
     total_summary = format_stats_summary(total_stats)
 
@@ -417,6 +442,74 @@ def generate_manifest_opml(categories, output_file):
 
     # Body section
     body = SubElement(opml, 'body')
+
+    # Add "Last Test Run" header section
+    header = SubElement(body, 'outline')
+    header.set('text', 'Last Test Run')
+
+    if last_run is not None:
+        # Parse timestamp
+        try:
+            ts = datetime.fromisoformat(last_run['timestamp'].replace('Z', '+00:00'))
+            run_time = ts.strftime('%Y-%m-%d at %H:%M UTC')
+        except (KeyError, ValueError):
+            run_time = 'unknown'
+
+        run_line = SubElement(header, 'outline')
+        run_line.set('text', f'Run: {run_time}')
+
+        # Results line with counts and percentages
+        lr_total = last_run.get('total', 0)
+        lr_passed = last_run.get('passed', 0)
+        lr_skipped = last_run.get('skipped', 0)
+        lr_failed = last_run.get('failed', 0)
+        if lr_total > 0:
+            pass_pct = round(lr_passed * 100 / lr_total)
+            skip_pct = round(lr_skipped * 100 / lr_total)
+            fail_pct = round(lr_failed * 100 / lr_total)
+            results_text = (
+                f'Results: {lr_passed} passed ({pass_pct}%), '
+                f'{lr_skipped} skipped ({skip_pct}%), '
+                f'{lr_failed} failed ({fail_pct}%)'
+            )
+        else:
+            results_text = 'Results: no tests ran'
+        results_line = SubElement(header, 'outline')
+        results_line.set('text', results_text)
+
+        # Duration line
+        duration = last_run.get('duration_seconds', 0)
+        workers = last_run.get('workers', 1)
+        batch_mode = last_run.get('batch_mode', False)
+        mode_str = 'batch mode' if batch_mode else 'sequential mode'
+        duration_line = SubElement(header, 'outline')
+        duration_line.set('text', f'Duration: {duration}s ({workers} workers, {mode_str})')
+
+        # YAML-defined stats line
+        if total_stats is not None:
+            yaml_total = total_stats['total']
+            yaml_active = total_stats['pass']
+            yaml_skip = total_stats['skip']
+            num_categories = len(categories)
+            yaml_line = SubElement(header, 'outline')
+            yaml_line.set('text',
+                          f'YAML-defined: {yaml_total} tests ({yaml_active} active, '
+                          f'{yaml_skip} marked skip) across {num_categories} categories')
+    else:
+        # No run data available
+        no_data_line = SubElement(header, 'outline')
+        no_data_line.set('text', 'No run data available. Run: cd tests && make test-integration')
+
+        # Still show YAML-defined stats if available
+        if total_stats is not None:
+            yaml_total = total_stats['total']
+            yaml_active = total_stats['pass']
+            yaml_skip = total_stats['skip']
+            num_categories = len(categories)
+            yaml_line = SubElement(header, 'outline')
+            yaml_line.set('text',
+                          f'YAML-defined: {yaml_total} tests ({yaml_active} active, '
+                          f'{yaml_skip} marked skip) across {num_categories} categories')
 
     # Add category links at top level (sorted by key for deterministic ordering)
     for category_key in sorted(categories.keys()):
@@ -472,9 +565,21 @@ def export_hierarchical_opml(test_dir, output_dir):
         stats = category_data['stats']
         print(f"Generated: integration_tests/{category_file.name} ({stats['total']} tests: {stats['pass']} pass, {stats['skip']} skip)")
 
+    # Load last run results and compute total YAML-defined stats
+    project_root = output_dir.parent
+    last_run = load_last_run_results(project_root)
+
+    total_stats = {'total': 0, 'pass': 0, 'skip': 0, 'fail': 0}
+    for category_data in categories.values():
+        stats = category_data['stats']
+        total_stats['total'] += stats['total']
+        total_stats['pass'] += stats['pass']
+        total_stats['skip'] += stats['skip']
+        total_stats['fail'] += stats['fail']
+
     # Generate manifest file in output_dir (not subdirectory)
     manifest_file = output_dir / 'integration_tests.opml'
-    generate_manifest_opml(categories, manifest_file)
+    generate_manifest_opml(categories, manifest_file, last_run=last_run, total_stats=total_stats)
     generated_files.append(manifest_file)
     print(f"Generated: {manifest_file.name} (manifest with {len(categories)} categories)")
 
