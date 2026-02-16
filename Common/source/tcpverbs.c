@@ -95,6 +95,9 @@ static pthread_mutex_t g_listeners_mutex = PTHREAD_MUTEX_INITIALIZER;
  * tcp_process_callbacks() periodically (e.g., in REPL loop or idle handler).
  * ======================================================================== */
 
+#define TCP_CONNECT_TIMEOUT_SECS 10   /* Non-blocking connect timeout */
+#define TCP_SOCKET_TIMEOUT_SECS  30   /* Send/receive timeout */
+
 #define TCP_CALLBACK_QUEUE_SIZE 64
 
 typedef struct tcp_callback_item {
@@ -509,6 +512,68 @@ boolean tcp_address_decode(long addr, bigstring ip_string_out) {
     return true;
 }
 
+/* Connect with timeout using non-blocking socket + select().
+ * Returns 0 on success, -1 on failure/timeout. */
+static int tcp_connect_with_timeout(int sockfd, const struct sockaddr *addr,
+                                     socklen_t addrlen, int timeout_secs) {
+    int flags, ret, err;
+    socklen_t len;
+    fd_set wfds;
+    struct timeval tv;
+
+    /* Set non-blocking for connect */
+    flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags < 0)
+        return -1;
+    if (fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) < 0)
+        return -1;
+
+    ret = connect(sockfd, addr, addrlen);
+    if (ret == 0) {
+        /* Connected immediately (e.g. localhost) — restore blocking */
+        fcntl(sockfd, F_SETFL, flags);
+        return 0;
+    }
+    if (errno != EINPROGRESS) {
+        fcntl(sockfd, F_SETFL, flags);
+        return -1;
+    }
+
+    /* Wait for connect to complete or timeout */
+    FD_ZERO(&wfds);
+    FD_SET(sockfd, &wfds);
+    tv.tv_sec = timeout_secs;
+    tv.tv_usec = 0;
+
+    ret = select(sockfd + 1, NULL, &wfds, NULL, &tv);
+    if (ret <= 0) {
+        /* Timeout (ret==0) or error (ret<0) */
+        fcntl(sockfd, F_SETFL, flags);
+        return -1;
+    }
+
+    /* Check actual connection result */
+    err = 0;
+    len = sizeof(err);
+    if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &len) < 0 || err != 0) {
+        fcntl(sockfd, F_SETFL, flags);
+        return -1;
+    }
+
+    /* Restore blocking mode */
+    fcntl(sockfd, F_SETFL, flags);
+    return 0;
+}
+
+/* Set send/receive timeouts on a connected socket */
+static void tcp_set_socket_timeouts(int sockfd, int timeout_secs) {
+    struct timeval tv;
+    tv.tv_sec = timeout_secs;
+    tv.tv_usec = 0;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+}
+
 /* ========================================================================
  * Phase 1A: Core Socket Operations
  * ======================================================================== */
@@ -564,13 +629,16 @@ boolean tcp_open_stream_addr(long addr, long port, long *stream_id_out) {
     server_addr.sin_port = htons((uint16_t)port);
     server_addr.sin_addr.s_addr = htonl((uint32_t)addr);  /* Convert to network byte order */
 
-    /* Connect (blocking) */
-    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-        int saved_errno = errno;
+    /* Connect with timeout */
+    if (tcp_connect_with_timeout(sockfd, (struct sockaddr*)&server_addr,
+                                  sizeof(server_addr), TCP_CONNECT_TIMEOUT_SECS) < 0) {
         close(sockfd);
-        tcp_set_error(tcp_map_errno(saved_errno), "Connection refused");
+        tcp_set_error(TCP_ERR_CONNECTION_FAILED, "Connection failed or timed out");
         return false;
     }
+
+    /* Set send/receive timeouts */
+    tcp_set_socket_timeouts(sockfd, TCP_SOCKET_TIMEOUT_SECS);
 
     log_debug(LOG_COMP_LANG, "tcp_open_stream_addr: connected, allocating stream ID");
 
@@ -803,6 +871,15 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
         }
 
         total_written += bytes_written;
+
+        /* Yield to other threads periodically */
+        if (!langbackgroundtask(false)) {
+            /* User cancelled */
+            unlockhandle(hdata);
+            tcp_stream_release(stream);
+            tcp_set_error(TCP_ERR_SOCKET_ERROR, "Write cancelled");
+            return false;
+        }
     }
 
     unlockhandle(hdata);
@@ -1121,9 +1198,11 @@ boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out)
         int optval = 1;
         setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
-        /* Attempt connection (blocking) */
-        if (connect(sockfd, rp->ai_addr, rp->ai_addrlen) == 0) {
-            /* Success! */
+        /* Attempt connection with timeout */
+        if (tcp_connect_with_timeout(sockfd, rp->ai_addr, rp->ai_addrlen,
+                                      TCP_CONNECT_TIMEOUT_SECS) == 0) {
+            /* Success! Set send/receive timeouts */
+            tcp_set_socket_timeouts(sockfd, TCP_SOCKET_TIMEOUT_SECS);
             break;
         }
 

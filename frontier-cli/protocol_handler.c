@@ -28,6 +28,7 @@
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/memory.h"
 #include "../Common/headers/logging.h"
+#include "../Common/headers/langinternal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -360,6 +361,12 @@ static void handle_clear_context(long id) {
 
     /* Reset focus to root */
     repl_jump_path("");
+
+    /* Reset error state — prevents stale langerrordisable from
+       affecting subsequent evaluations in protocol mode */
+    langerrordisable = 0;
+    langerrorlogdisable = 0;
+    fllangerror = false;
 
     write_ack(id);
 }
