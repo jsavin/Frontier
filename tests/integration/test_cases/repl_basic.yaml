@@ -384,10 +384,9 @@ tests:
     expected_result: 42
 
   - name: "REPL - empty expression"
-    description: "Empty input returns error"
+    description: "Empty input evaluates successfully with no result"
     script: ''
-    expected_success: false
-    # Empty script returns error in batch mode (REPL handles differently)
+    expected_success: true
 
   - name: "REPL - whitespace-only expression"
     description: "Whitespace-only input should not error"

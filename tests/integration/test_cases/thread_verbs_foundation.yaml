@@ -251,16 +251,9 @@ tests:
       (not sleeping). The spawned thread runs a long loop with sleepTicks
       yield points. The main thread kills it after a short delay. The kill
       takes effect at the next langbackgroundtask() or sleepTicks yield.
-    script: |
-      new(tableType, @system.temp.threadFlags);
-      system.temp.threadFlags.loopCount = 0;
-      local(tid = thread.evaluate("local(i = 0); while(i < 100) {system.temp.threadFlags.loopCount = i; i = i + 1; thread.sleepTicks(3)}; system.temp.threadFlags.completed = true"));
-      thread.sleepTicks(12);
-      thread.kill(tid);
-      thread.sleepTicks(12);
-      local(ok = not(defined(system.temp.threadFlags.completed)) and system.temp.threadFlags.loopCount > 0);
-      delete(@system.temp.threadFlags);
-      return ok
+      Uses repl_mode because thread.evaluate does not work in protocol mode.
+    repl_mode: true
+    script: 'new(tableType, @system.temp.threadFlags); system.temp.threadFlags.loopCount = 0; local(tid = thread.evaluate("local(i = 0); while(i < 100) {system.temp.threadFlags.loopCount = i; i = i + 1; thread.sleepTicks(3)}; system.temp.threadFlags.completed = true")); thread.sleepTicks(12); thread.kill(tid); thread.sleepTicks(12); local(ok = not(defined(system.temp.threadFlags.completed)) and system.temp.threadFlags.loopCount > 0); delete(@system.temp.threadFlags); return ok'
     expected_result: "true"
     expected_success: true
     timeout: 5
@@ -271,14 +264,9 @@ tests:
       Verify that the main thread can make progress while a spawned thread
       is running a loop. Both threads should make progress due to GIL
       yielding at langbackgroundtask() calls. This is a basic fairness test.
-    script: |
-      new(tableType, @system.temp.threadFlags);
-      system.temp.threadFlags.spawnedProgress = 0;
-      thread.evaluate("local(i = 0); while(i < 100) {system.temp.threadFlags.spawnedProgress = i; i = i + 1}");
-      thread.sleepTicks(18);
-      local(ok = system.temp.threadFlags.spawnedProgress > 0);
-      delete(@system.temp.threadFlags);
-      return ok
+      Uses repl_mode because thread.evaluate does not work in protocol mode.
+    repl_mode: true
+    script: 'new(tableType, @system.temp.threadFlags); system.temp.threadFlags.spawnedProgress = 0; thread.evaluate("local(i = 0); while(i < 100) {system.temp.threadFlags.spawnedProgress = i; i = i + 1}"); thread.sleepTicks(18); local(ok = system.temp.threadFlags.spawnedProgress > 0); delete(@system.temp.threadFlags); return ok'
     expected_result: "true"
     expected_success: true
     timeout: 5

@@ -528,7 +528,6 @@ SEQUENTIAL_TEST_FILES = {
 
 # Test files that should NOT use protocol mode (they hang or need special process behavior)
 NON_PROTOCOL_TEST_FILES = {
-    'tcp_verbs_network.yaml',
     'window_verbs.yaml',      # window verbs may block waiting for UI interaction
 }
 
