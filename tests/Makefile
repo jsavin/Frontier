@@ -112,6 +112,12 @@ MIGRATION_SOURCES = \
     components/test_migration_portable.c
 
 # Note: ophoist.c is required because opverbnew() calls oppopallhoists() defined there.
+#
+# IMPORTANT: LANG_RUNTIME_SOURCES includes kernel_verbs_init.c (auto-generated),
+# which initializes all verb processors. Any source file that implements functions
+# called during verb initialization (e.g., sysshellcall.c for unixshellcall(),
+# tcpverbs.c for tcp_init_context()) MUST be included here — otherwise test
+# binaries will segfault on undefined symbols resolved to NULL via dynamic lookup.
 LANG_RUNTIME_SOURCES = \
     ../Common/source/logging.c \
     ../Common/source/lang.c \
