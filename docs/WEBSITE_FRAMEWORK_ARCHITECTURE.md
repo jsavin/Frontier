@@ -232,6 +232,32 @@ The `html.glossaryPatcher()` verb processes rendered HTML to convert glossary re
 
 ## Page Table Architecture
 
+### How Page Tables Work
+
+Page tables are runtime context structures that provide HTML verbs with the information they need to render pages correctly — things like URL structure, macro definitions, templates, glossary entries, and site preferences. They are populated by the webserver, mainResponder dispatchers, and other lower-level framework code during normal request processing.
+
+**Many HTML verbs require an active page table** to function. If you see an error like "couldn't get pagetable address" or "Can't find a sub-table named pageTableAddresses", it means the page table wasn't set up before calling the verb.
+
+### Activating a Page Table
+
+The active page table is managed through two verbs:
+
+- **`html.setPageTableAddress(@pt)`** — Sets the address of the table to use as the current page table context. Must be called before any HTML verb that needs page table context.
+- **`html.getPageTableAddress()`** — Returns the address of the currently active page table.
+
+In production, the webserver and mainResponder call `html.setPageTableAddress` automatically during request dispatch. For testing or standalone script usage, you must set it up manually:
+
+```usertalk
+local (pt);
+new (tableType, @pt);
+html.setPageTableAddress (@pt);
+
+// Now HTML verbs that need page table context will work
+html.processMacros ("{1+1}")  // Returns "2"
+```
+
+For more complex HTML operations that need populated page table fields (like template rendering or glossary patching), use `html.buildPageTable()` — but this is a complex path that requires a full site context. For most testing purposes, creating an empty page table and setting it active is sufficient.
+
 ### Required Page Table Fields
 
 Page tables are the runtime context structures for web request processing. The C code expects these fields:
