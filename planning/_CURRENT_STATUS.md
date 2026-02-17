@@ -1,16 +1,54 @@
 # Current Status
 
-Last Updated: 2026-02-10
+Last Updated: 2026-02-16
 
-## Current Focus: Cooperative Threading, Dist Stability & Startup Hardening
+## Current Focus: Test Reliability, Threading & NDJSON Protocol
 
-**Status**: Cooperative threading infrastructure operational with thread registry and globals save/restore. Distribution mode fully stable (multi-run). Startup script completes without hang. fileMenu verbs complete (including saveAs/saveCopy). GUI application planning complete.
+**Status**: Integration tests at **0 failures** (1,881 tests, 8-worker parallel execution in ~40s). GIL-based threading with real POSIX threads. NDJSON protocol mode for persistent subprocess communication. Per-component logging. Ranger-style file browser. Numerous stability fixes.
 
-**Latest Release**: **v1.0.0-alpha.4** (January 31, 2026)
+**Latest Release**: **v1.0.0-alpha.7** (February 16, 2026)
 
-**Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete. fileMenu verbs: 6/10 implemented (open, close, closeall, save, saveAs, saveCopy).
+**Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete. fileMenu verbs: 7/10 implemented (open, close, closeall, save, saveAs, saveCopy, new).
 
-## Recent Achievements (February 7-10, 2026)
+## Recent Achievements (February 10-16, 2026)
+
+### Integration Test Reliability — 0 Failures - ✅ MERGED
+- **PRs #428-#433**: NDJSON protocol mode, parallel test execution, test fixes
+- Fixed `langerrordisable` leak in `langgethandlercode()` headless fast-path — made ALL headless EFP verb errors uncatchable by try/else
+- Per-worker database isolation for parallel test workers (each gets own .root7 copy)
+- 40 quick-win test fixes, pexpect PTY harness, unit test segfault fix
+- **Result: 1,881 tests, 0 failures, 189 skipped (8 workers, ~40s)**
+
+### GIL-Based Threading - ✅ MERGED
+- **PR #410**: Real POSIX threads with Global Interpreter Lock
+- Yield points at `langbackgroundtask()` and `thread.sleepTicks()`
+- Extends cooperative foundation (PR #404)
+
+### REPL & UX Improvements - ✅ MERGED
+- **PR #424**: Ranger-style two-pane file browser with arrow key navigation
+- **PR #425**: File browser and dialog UX improvements
+- **PR #411**: Guest database REPL navigation and prompt display
+- **PR #409**: `[n]` index syntax and relative paths in `/list` and `/jump`
+
+### Runtime Improvements - ✅ MERGED
+- **PR #413**: Per-component log levels (`FRONTIER_LOG=comp:level` and `--log` flag)
+- **PR #419, #420**: Consolidate verb registration + real `wp.getText()`/`wp.setText()`
+- **PR #416, #417**: `filemenu.new`, window verb no-ops, named parameters
+- **PR #426**: Real platform detection + unified version system
+- **PR #427**: Migration segfault fix for v6 guest databases
+- **PR #414**: Stack overflow fix in portable file verbs dispatcher
+- **PR #418**: Startup bootstrap fixes (random() params, log corruption)
+- **PR #412**: Materialize all external types during guest DB loading
+
+### Stability & Bug Fixes - ✅ MERGED
+- **PR #408**: Resolve startup segfault from context guard and tmp stack bugs
+- **PR #421**: Suppress verb error logging inside UserTalk try blocks
+- **PR #422**: Add script path to error logs, fix getFileDialog parameter count
+
+### Documentation - ✅ MERGED
+- **PR #407**: Centralize shared AI workflow guidance (`docs/AI_SHARED_GUIDELINES.md`)
+
+## Earlier Achievements (February 7-10, 2026)
 
 ### Cooperative Threading Infrastructure - ✅ MERGED
 - **PR #404**: Add cooperative threading with thread registry for headless mode
@@ -106,18 +144,19 @@ Last Updated: 2026-02-10
 - Date verbs: 100% (30/30) ✅
 - DB verbs: 100% (13/13) ✅
 - **TCP verbs: 100% (23/23)** ✅ - COMPLETE
-- **fileMenu verbs**: 6/10 implemented (open, close, closeall, save, saveAs, saveCopy) + 4 stubs
+- **fileMenu verbs**: 7/10 implemented (open, close, closeall, save, saveAs, saveCopy, new) + 3 stubs
 - Thread verbs: Cooperative threading operational — `evaluate`, `callscript`, `getCurrentID`, `getCount`, `exists`, `kill`, `sleep`, `wake`, `getNthID` all working
 - Many other processors complete (dialog, html, xml, sys, webserver, inetd, etc.)
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: ~1,830+ tests total (up from 1,804)
-- **Passed**: ~1,617+ non-skip
-- **Skipped**: ~172
-- **Failed**: ~39 (all pre-existing)
-- New tests: cooperative threading (10), fileMenu saveAs/saveCopy (7), window.isOpen (10+), string verb reachability, callback infrastructure (14 unit tests fixed)
+- **Current**: 1,881 tests total
+- **Passed**: 1,692
+- **Skipped**: 189
+- **Failed**: **0**
+- Execution: 8 workers, parallel batch mode, ~40 seconds
+- NDJSON protocol mode eliminates ~210ms startup cost per test
 
 All tests running via:
 - `./tools/run_headless_tests.sh` - C unit tests
@@ -218,8 +257,8 @@ Before resuming major infrastructure work, need decisions on:
 - **ADR-013**: REPL Event Loop Architecture
 
 ### Progress Reports
-- **Latest**: reports/progress/2026-02-05-startup-scripts-menus-and-gui-planning.md (covers Feb 1-5)
-- **Previous**: reports/progress/2026-01-25-networking-foundation-and-thread-safety.md
+- **Latest**: reports/progress/2026-02-16-threading-protocol-and-test-reliability.md (covers Feb 5-16)
+- **Previous**: reports/progress/2026-02-05-startup-scripts-menus-and-gui-planning.md (covers Feb 1-5)
 
 ### Historical Context
 - **Status Archive**: planning/_STATUS_ARCHIVE.md (entries before 2026-01-27)

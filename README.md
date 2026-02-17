@@ -4,19 +4,20 @@
 
 Frontier is being brought back to life. This project is modernizing the classic UserTalk scripting environment and object database into a contemporary cross-platform tool. The headless CLI is now fully functional—you can explore databases, write scripts, and serve web applications, all from the command line. A native GUI application with a documented API is being planned, and any developer will be able to connect their own apps and user interfaces to Frontier. The goal: preserve everything that made Frontier powerful while making it accessible to a new generation of developers, tinkerers, bloggers, writers, podcasters, and product builders.
 
-## Latest Release: v1.0.0-alpha.4 (Jan 31, 2026)
+## Latest Release: v1.0.0-alpha.7 (Feb 16, 2026)
 
-**Download:** [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.4)
+**Download:** [GitHub Releases](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.7)
 
-**The webserver works!** Full web application layer now functional in headless mode, plus major REPL enhancements:
+**Zero test failures, real threading, and parallel test execution.** This release brings major infrastructure improvements:
 
-- **Working Webserver & inetd** – Build and serve dynamic web applications directly from the CLI
-- **Persistent REPL Variables** – Variables now survive across evaluations in `system.temp.FrontierREPL.variables`
-- **Navigation Commands** – `/jump` and `/list` for exploring the object database (like `cd` and `ls`)
-- **Event Loop Architecture** – Non-blocking REPL with concurrent TCP callback processing
-- **100% TCP Verb Coverage** – Complete TCP/IP networking support (all verbs implemented)
+- **0 Integration Test Failures** – 1,881 tests, all passing (was 755 failures two weeks ago)
+- **GIL-Based Threading** – Real POSIX threads with a global interpreter lock and cooperative yield points
+- **NDJSON Protocol Mode** – Persistent subprocess communication via `--protocol` flag; foundation for future GUI
+- **8-Worker Parallel Tests** – Full test suite runs in ~40 seconds (was 5+ minutes sequential)
+- **Per-Component Logging** – Fine-grained control via `FRONTIER_LOG=comp:level` and `--log` flag
+- **Ranger-Style File Browser** – Two-pane file browser with arrow key navigation for `file.getFileDialog`
 
-**Quick webserver demo:**
+**Quick start:**
 ```usertalk
 [root]> user.inetd.config.http.port = 8080
 [root]> user.webserver.responders.helloWorld.enabled = true
@@ -24,9 +25,9 @@ Frontier is being brought back to life. This project is modernizing the classic 
 # Visit http://localhost:8080/helloworld in your browser
 ```
 
-**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,450+ integration tests passing.
+**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,692 integration tests passing.
 
-For comprehensive status details, see [STATUS.md](STATUS.md). For release details, see the [v1.0.0-alpha.4 release notes](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.4).
+For comprehensive status details, see [STATUS.md](STATUS.md). For release details, see the [v1.0.0-alpha.7 release notes](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.7).
 
 ---
 
@@ -155,7 +156,7 @@ From recent progress (Jan 16-25):
 
 **Security and Testing:**
 - Security hardening built in from start (SSRF protection, DNS rebinding protection for TCP networking)
-- Comprehensive test coverage (99% pass rate, 1,100+ tests)
+- Comprehensive test coverage (0 failures, 1,881 tests, 8-worker parallel execution)
 - Integration tests required for all verb implementations
 
 **Thread Safety:**

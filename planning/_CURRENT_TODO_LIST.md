@@ -1,8 +1,38 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-02-10)
+Status: In Progress (Updated 2026-02-16)
 
 ## Recently Completed Milestones
+
+### Integration Test Reliability — 0 Failures - ✅ MERGED (Feb 16)
+**Resolution**: PRs #428-#433 merged
+- NDJSON protocol mode (`--protocol`) for persistent subprocess test execution
+- 8-worker parallel test execution (40s vs 5+ minutes sequential)
+- Fixed `langerrordisable` leak in headless EFP fast-path — ALL verb errors were uncatchable by try/else
+- Per-worker database isolation — each parallel worker gets its own .root7 copy
+- 40 quick-win test fixes, pexpect PTY harness for dialog tests, unit test segfault fix
+- **Result: 1,881 tests, 0 failures, 189 skipped**
+
+### GIL-Based Threading with Real POSIX Threads - ✅ MERGED (Feb 13)
+**Resolution**: PR #410 merged
+- Real POSIX threads serialized by a single mutex (Global Interpreter Lock)
+- Yield points at `langbackgroundtask()` and `thread.sleepTicks()`
+- Extends cooperative threading foundation from PR #404
+
+### REPL & UX Improvements - ✅ MERGED (Feb 10-14)
+**Resolution**: PRs #409, #411, #424, #425 merged
+- Ranger-style two-pane file browser for `file.getFileDialog`
+- Guest database navigation in REPL with prompt display
+- `[n]` index syntax and relative paths in `/list` and `/jump`
+
+### Runtime & Verb Improvements - ✅ MERGED (Feb 10-15)
+**Resolution**: PRs #412-#420, #426, #427 merged
+- Per-component log levels via `FRONTIER_LOG` and `--log` flag
+- Real `wp.getText()` and `wp.setText()` for headless mode
+- `filemenu.new`, window verb no-ops, named parameter support
+- Real platform detection + unified version system
+- Migration segfault fix for v6 guest databases
+- Stack overflow fix in portable file verbs dispatcher
 
 ### Cooperative Threading Infrastructure - ✅ MERGED (Feb 10)
 **Resolution**: PR #404 merged
@@ -122,22 +152,17 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,913 total
-- 984 passed, 174 skipped, 755 failed (single-worker baseline)
-- 67 failures in 8-worker batch mode (subset of above)
-- **Fix plan**: See `planning/FIX_TESTS_2026_02_16.md` for triage and remediation roadmap
+### Integration Tests: 1,881 total — 0 failures
+- 1,692 passed, 189 skipped, **0 failed** (8-worker parallel batch mode, ~40s)
+- Fixed from 755 failures (single-worker) via PRs #428-#433
+- Root causes: `langerrordisable` leak, per-worker DB isolation, test script bugs
 
 ---
 
 ## Next Milestones
 
-### 1. Integration Test Fix Plan
-**Status**: Planned — see `planning/FIX_TESTS_2026_02_16.md`
-**Goal**: Reduce 755 single-worker failures to near-zero
-**Breakdown**:
-- **38 quick-win test fixes** (dialog REPL mode, YAML quoting, expectation corrections)
-- **Uncatchable error bug** (~20 tests) — fatal errors bypass try/else in fileMenu, xml.compile, table.sortby
-- **State leak investigation** (~688 tests) — `clearContext` doesn't reset all contaminating state between evaluations
+### 1. ~~Integration Test Fix Plan~~ — ✅ COMPLETE
+**Result**: 0 failures achieved (was 755). See PRs #428-#433.
 
 ### 2. Startup Script Hardening / Dist Stability
 **Status**: Startup completes, dist mode stable across multiple runs
@@ -387,8 +412,8 @@ See planning/_STATUS_ARCHIVE.md for:
 - **Current focus**: Startup hardening, dist stability, GUI prototype, threading Phase 2
 - **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: 1,913 integration tests (984 passed, 755 failed single-worker — fix plan in progress)
-- **Latest release**: v1.0.0-alpha.4 (January 31, 2026)
+- **Test health**: 1,881 integration tests — **0 failures** (8-worker parallel, ~40s)
+- **Latest release**: v1.0.0-alpha.7 (February 16, 2026)
 - **Compiler warnings**: Zero (fully eliminated)
 
 ### Workstream Status
