@@ -247,6 +247,7 @@ tests:
     script: |
       local(pagetable);
       lang.new(tableType, @pagetable);
+      html.setPageTableAddress(@pagetable);
       return html.processmacros("{1+1}", false, @pagetable)
     expected_success: true
     expected_result: "2"
@@ -256,6 +257,7 @@ tests:
     script: |
       local(pagetable);
       lang.new(tableType, @pagetable);
+      html.setPageTableAddress(@pagetable);
       return html.processmacros("{\"hello\"}", false, @pagetable)
     expected_success: true
     expected_result: "hello"
@@ -265,6 +267,7 @@ tests:
     script: |
       local(pagetable);
       lang.new(tableType, @pagetable);
+      html.setPageTableAddress(@pagetable);
       return html.processmacros("plain text", false, @pagetable)
     expected_success: true
     expected_result: "plain text"
@@ -274,6 +277,7 @@ tests:
     script: |
       local(pagetable);
       lang.new(tableType, @pagetable);
+      html.setPageTableAddress(@pagetable);
       return html.processmacros("", false, @pagetable)
     expected_success: true
     expected_result: ""
@@ -283,6 +287,7 @@ tests:
     script: |
       local(pagetable);
       lang.new(tableType, @pagetable);
+      html.setPageTableAddress(@pagetable);
       return html.processmacros("{1+1} and {2+2}", false, @pagetable)
     expected_success: true
     expected_result: "2 and 4"
@@ -292,6 +297,7 @@ tests:
     script: |
       local(pagetable);
       lang.new(tableType, @pagetable);
+      html.setPageTableAddress(@pagetable);
       local(result = html.processmacros("{1+{2+3}}", false, @pagetable));
       # Single-pass evaluation: inner {2+3}=5, outer becomes {1, 5} which remains as string
       return result == "{1, 5}"
@@ -303,6 +309,7 @@ tests:
     script: |
       local(pagetable);
       lang.new(tableType, @pagetable);
+      html.setPageTableAddress(@pagetable);
       return html.processmacros("The answer is {40+2}.", false, @pagetable)
     expected_success: true
     expected_result: "The answer is 42."
@@ -581,6 +588,7 @@ tests:
     script: |
       local(pagetable);
       lang.new(tableType, @pagetable);
+      html.setPageTableAddress(@pagetable);
       local(withMacros = "Result: {1+1}, visit http://example.com/");
       local(processed = html.processmacros(withMacros, false, @pagetable));
       local(withLinks = html.expandurls(processed));

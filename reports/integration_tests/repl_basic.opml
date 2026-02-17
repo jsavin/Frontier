@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Repl Basic (repl_basic) - 58 tests: 58 pass (100%)</title>
-    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
+    <title>Repl Basic (repl_basic) - 56 tests: 56 pass (100%)</title>
+    <dateCreated>Tue, 17 Feb 2026 07:23:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="REPL - basic arithmetic - Simple arithmetic expression should evaluate and return result">
@@ -380,14 +380,6 @@
         <outline text="nested.value"/>
       </outline>
     </outline>
-    <outline text="REPL - empty expression - Empty input returns error">
-      <outline text="Metadata">
-        <outline text="expected_success: False"/>
-      </outline>
-    </outline>
-    <outline text="REPL - whitespace-only expression - Whitespace-only input should not error">
-      <outline text="Script"/>
-    </outline>
     <outline text="REPL - multiple statements - Multiple statements should execute in order">
       <outline text="Metadata">
         <outline text="expected_result: 6"/>
@@ -459,15 +451,11 @@
         <outline text="local (t); new (tableType, @t); try {t = &quot;should fail!&quot;}; typeOf (t)"/>
       </outline>
     </outline>
-    <outline text="REPL - workspace is writable - Workspace should be writable (not read-only)">
+    <outline text="REPL - implicit locals stored in variables table - Bare REPL assignments should create variables in system.temp.FrontierREPL.variables">
       <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="test1 = 1"/>
-        <outline text="test2 = 2"/>
-        <outline text="test3 = 3"/>
-        <outline text="sizeOf(workspace) &gt;= 3"/>
+        <outline text="repl_mode: True"/>
+        <outline text="stdin_input: test1 = 1&#10;test2 = 2&#10;test3 = 3&#10;defined(system.temp.FrontierREPL.variables.test1) and defined(system.temp.FrontierREPL.variables.test2) and defined(system.temp.FrontierREPL.variables.test3)&#10;/exit&#10;"/>
+        <outline text="expected_output_contains: ['true']"/>
       </outline>
     </outline>
     <outline text="REPL - runtime error doesn't corrupt workspace - Runtime errors should not corrupt workspace state">

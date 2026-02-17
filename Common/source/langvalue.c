@@ -8660,7 +8660,7 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
                     }
                     /* Ensure bsfunctionname is set for kernelfunctionvalue */
                     copystring(bsright, bsfunctionname);
-                    /* debug disabled */
+                    enablelangerror (); /*re-enable before early return*/
                     return (true);
                 }
                 pophashtable();
@@ -8670,7 +8670,7 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
                 /* Ensure bsfunctionname is set for fallback */
                 copystring(bsright, bsfunctionname);
                 *hnode = nil;
-                /* debug disabled */
+                enablelangerror (); /*re-enable before early return*/
                 return (true);
             } else {
                 pophashtable();
