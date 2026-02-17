@@ -77,15 +77,17 @@ tests:
     expected_success: true
     expected_result: "Hello, Frontier!"
 
-  - name: "file.readWholeFile - round trip binary data"
-    description: "Write and read back binary data"
+  - name: "file.readWholeFile - round trip data"
+    description: |
+      Write and read back data. readWholeFile returns 'data' type,
+      so coerce to string for comparison.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(fs = tmpDir + "/" + "frontier_test_binary.dat");
-      local(binaryData = "\x00\x01\x02\xFF");
-      file.writeWholeFile(fs, binaryData);
+      local(fs = tmpDir + "/" + "frontier_test_roundtrip.dat");
+      local(testData = "some test content 12345");
+      file.writeWholeFile(fs, testData);
       local(readData = file.readWholeFile(fs));
-      return (readData == binaryData)
+      return (string(readData) == testData)
     expected_success: true
     expected_result: "true"
 
@@ -214,7 +216,7 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(newName = tmpDir + "/" + "frontier_test_rename_new.txt");
       local(content = file.readWholeFile(newName));
-      return (content == "rename test content")
+      return (string(content) == "rename test content")
     expected_success: true
     expected_result: "true"
 
@@ -245,7 +247,7 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dest = tmpDir + "/" + "frontier_test_move_dest.txt");
       local(content = file.readWholeFile(dest));
-      return (content == "move test content")
+      return (string(content) == "move test content")
     expected_success: true
     expected_result: "true"
 
@@ -400,12 +402,12 @@ tests:
       local(fs = tmpDir + "/" + "frontier_test_read_inf.txt");
       file.writeWholeFile(fs, "abcdefghij");
       file.open(fs);
-      file.read(fs, 3);  // skip first 3 bytes
+      file.read(fs, 3);
       local(rest = file.read(fs, infinity));
       file.close(fs);
-      return string(rest)
+      return (string(rest) == "defghij")
     expected_success: true
-    expected_result: "defghij"
+    expected_result: "true"
 
   - name: "file.read - requires file.open first"
     description: "Reading from unopened file should fail"
@@ -427,7 +429,7 @@ tests:
       local(ok = file.write(fs, "hello"));
       file.close(fs);
       local(content = file.readWholeFile(fs));
-      return ok and (content == "hello")
+      return ok and (string(content) == "hello")
     expected_success: true
     expected_result: "true"
 

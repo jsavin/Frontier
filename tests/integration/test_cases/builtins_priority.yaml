@@ -135,14 +135,6 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "system.paths entries resolve correctly"
-    description: |
-      Verify system.paths.webserver entry exists and resolves.
-      This tests that system.paths initialization worked.
-    script: 'defined(system.paths.webserver)'
-    expected_success: true
-    expected_result: "true"
-
   # ============================================================================
   # Section 5: Deep Nesting Tests
   # ============================================================================

@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Thread Verbs Foundation (thread_verbs_foundation) - 17 tests: 17 pass (100%)</title>
-    <dateCreated>Wed, 11 Feb 2026 09:13:12 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="thread.evaluate - execute simple script in new thread - Verify that thread.evaluate() spawns a thread that executes the script.&#10;The main thread yields via thread.sleepTicks so the spawned thread runs.&#10;">
@@ -192,20 +192,12 @@
     </outline>
     <outline text="thread.evaluate - rapid creation of multiple threads - Verify that creating many threads in rapid succession doesn't crash&#10;or corrupt state. Creates 5 threads that each set a distinct flag.&#10;Main thread yields enough to let all spawned threads execute.&#10;">
       <outline text="Metadata">
+        <outline text="repl_mode: True"/>
         <outline text="expected_result: true"/>
         <outline text="timeout: 5"/>
       </outline>
       <outline text="Script">
-        <outline text="new(tableType, @system.temp.threadFlags)"/>
-        <outline text="thread.evaluate(&quot;system.temp.threadFlags.t1 = true&quot;)"/>
-        <outline text="thread.evaluate(&quot;system.temp.threadFlags.t2 = true&quot;)"/>
-        <outline text="thread.evaluate(&quot;system.temp.threadFlags.t3 = true&quot;)"/>
-        <outline text="thread.evaluate(&quot;system.temp.threadFlags.t4 = true&quot;)"/>
-        <outline text="thread.evaluate(&quot;system.temp.threadFlags.t5 = true&quot;)"/>
-        <outline text="thread.sleepTicks(30)"/>
-        <outline text="local(ok = system.temp.threadFlags.t1 and system.temp.threadFlags.t2 and system.temp.threadFlags.t3 and system.temp.threadFlags.t4 and system.temp.threadFlags.t5)"/>
-        <outline text="delete(@system.temp.threadFlags)"/>
-        <outline text="return ok"/>
+        <outline text="new(tableType, @system.temp.threadFlags); thread.evaluate(&quot;system.temp.threadFlags.t1 = true&quot;); thread.evaluate(&quot;system.temp.threadFlags.t2 = true&quot;); thread.evaluate(&quot;system.temp.threadFlags.t3 = true&quot;); thread.evaluate(&quot;system.temp.threadFlags.t4 = true&quot;); thread.evaluate(&quot;system.temp.threadFlags.t5 = true&quot;); thread.sleepTicks(30); local(ok = system.temp.threadFlags.t1 and system.temp.threadFlags.t2 and system.temp.threadFlags.t3 and system.temp.threadFlags.t4 and system.temp.threadFlags.t5); delete(@system.temp.threadFlags); return ok"/>
       </outline>
     </outline>
     <outline text="thread.kill - kill running thread via backgroundtask check - Verify that thread.kill() can stop a thread that is actively running&#10;(not sleeping). The spawned thread runs a long loop with sleepTicks&#10;yield points. The main thread kills it after a short delay. The kill&#10;takes effect at the next langbackgroundtask() or sleepTicks yield.&#10;">

@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Db Verbs (db_verbs) - 32 tests: 32 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="db.new - create new database file - Create a new ODB database file">
@@ -16,24 +16,26 @@
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="db.open - open newly created database - Open the database we just created">
+    <outline text="db.open - open newly created database - Create and open a new database (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_open_new.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="local(ok = db.open(dbPath, false))"/>
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="db.setvalue - write string to root - Set a string value at root level">
+    <outline text="db.setvalue - write string to root - Create DB, open it, set a string value (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_setvalue_string.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(ok = db.setvalue(dbPath, &quot;testString&quot;, &quot;Hello, DB!&quot;))"/>
         <outline text="return ok"/>
@@ -67,25 +69,27 @@
         <outline text="return exists"/>
       </outline>
     </outline>
-    <outline text="db.defined - check nonexistent value - Verify that nonexistent item returns false">
+    <outline text="db.defined - check nonexistent value - Verify that nonexistent item returns false (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_defined_nonexist.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(exists = db.defined(dbPath, &quot;doesNotExist&quot;))"/>
         <outline text="return exists"/>
       </outline>
     </outline>
-    <outline text="db.setvalue - write number to root - Set a numeric value">
+    <outline text="db.setvalue - write number to root - Create DB and set a numeric value (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_setvalue_number.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(ok = db.setvalue(dbPath, &quot;testNumber&quot;, 42))"/>
         <outline text="return ok"/>
@@ -105,13 +109,14 @@
         <outline text="return val"/>
       </outline>
     </outline>
-    <outline text="db.newtable - create table at root - Create a new table in the database">
+    <outline text="db.newtable - create table at root - Create DB and add a new table (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_newtable.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(ok = db.newtable(dbPath, &quot;testTable&quot;))"/>
         <outline text="return ok"/>
@@ -257,49 +262,60 @@
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="db.defined - verify deletion - Verify testString no longer exists">
+    <outline text="db.defined - verify deletion - Create value, delete it, verify it's gone (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_verify_deletion.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
+        <outline text="db.setvalue(dbPath, &quot;testString&quot;, &quot;test&quot;)"/>
+        <outline text="db.delete(dbPath, &quot;testString&quot;)"/>
         <outline text="local(exists = db.defined(dbPath, &quot;testString&quot;))"/>
         <outline text="return exists"/>
       </outline>
     </outline>
-    <outline text="db.save - save database changes - Save all changes to disk">
+    <outline text="db.save - save database changes - Create DB, write data, save to disk (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_save.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
+        <outline text="db.setvalue(dbPath, &quot;saveTest&quot;, &quot;data&quot;)"/>
         <outline text="local(ok = db.save(dbPath))"/>
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="db.close - close database - Close the database file">
+    <outline text="db.close - close database - Create DB, open it, close it (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_close.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(ok = db.close(dbPath))"/>
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="db.open - reopen saved database - Reopen the database to verify persistence">
+    <outline text="db.open - reopen saved database - Create, save, close, then reopen (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_new.root&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_reopen.root&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="db.open(dbPath, false)"/>
+        <outline text="db.setvalue(dbPath, &quot;item&quot;, &quot;data&quot;)"/>
+        <outline text="db.save(dbPath)"/>
+        <outline text="db.close(dbPath)"/>
         <outline text="local(ok = db.open(dbPath, false))"/>
         <outline text="return ok"/>
       </outline>
@@ -383,24 +399,26 @@
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="db.open - open v7 database - Open v7 database">
+    <outline text="db.open - open v7 database - Create and open v7 database (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_open_v7.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="local(ok = db.open(dbPath, false))"/>
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="db.setvalue - write to v7 database - Set value in v7 database">
+    <outline text="db.setvalue - write to v7 database - Create v7 DB and set value (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_setvalue_v7.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(ok = db.setvalue(dbPath, &quot;v7test&quot;, &quot;V7 works!&quot;))"/>
         <outline text="return ok"/>
@@ -420,13 +438,14 @@
         <outline text="return val"/>
       </outline>
     </outline>
-    <outline text="db.close - close v7 database - Close v7 database">
+    <outline text="db.close - close v7 database - Create v7 DB, open it, close it (self-contained)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_close_v7.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(ok = db.close(dbPath))"/>
         <outline text="return ok"/>

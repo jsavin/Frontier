@@ -111,7 +111,6 @@ static boolean shellescapestring(bigstring input, Handle *hescaped) {
 static boolean sys_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
-    (void)bserror;
     switch(token) {
         case sysv_osversion: {
             /* @IMPLEMENTED sys.osversion - Return OS version string */
@@ -300,69 +299,22 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             return setstringvalue(BIGSTRING("\p"), vreturned);
             }
         case sysv_getapppath: {
-            /* @DEFERRED sys.getapppath(name) - returns full path to executable
-             * Current implementation uses 'which' command which only finds binaries in PATH.
-             * Does not work for processes launched via absolute paths or external tools.
-             * Needs platform-specific implementation (e.g., proc_pidpath on macOS, /proc on Linux).
-             * Issue #320: P2 - Implement robust sys.getapppath() with platform-specific process path detection
-             * SECURITY: Shell-escapes process name to prevent command injection
+            /* @STUB sys.getapppath(name) - not implemented on this platform
+             * The Carbon Process Manager APIs used by the GUI build don't work for
+             * headless CLI processes. A future implementation could use proc_pidpath()
+             * on macOS or /proc/self/exe on Linux.
+             * Issue #320: P2 - Implement robust sys.getapppath()
              */
             bigstring appname;
-            Handle hcommand, houtput, hescaped;
-            bigstring resultpath;
 
             flnextparamislast = true;
 
             if (!getstringvalue(hparam1, 1, appname))
                 return false;
 
-            /* Empty process name returns empty string */
-            if (stringlength(appname) == 0)
-                return setstringvalue(BIGSTRING("\p"), vreturned);
+            copystring(BIGSTRING("\psys.getAppPath is not implemented on this platform"), bserror);
 
-            /* Escape the process name to prevent command injection */
-            if (!shellescapestring(appname, &hescaped))
-                return false;
-
-            /* Build which command: which 'escaped_name' 2>/dev/null
-             * Single quotes prevent all shell interpretation
-             */
-            if (!newtexthandle(BIGSTRING("\pwhich "), &hcommand)) {
-                disposehandle(hescaped);
-                return false;
-            }
-
-            if (!pushhandle(hescaped, hcommand)) {
-                disposehandle(hescaped);
-                disposehandle(hcommand);
-                return false;
-            }
-            disposehandle(hescaped);
-
-            if (!pushtexthandle(BIGSTRING("\p 2>/dev/null"), hcommand)) {
-                disposehandle(hcommand);
-                return false;
-            }
-            newemptyhandle(&houtput);
-
-            if (!unixshellcall(hcommand, houtput)) {
-                disposehandle(hcommand);
-                disposehandle(houtput);
-                /* Return empty string on failure */
-                return setstringvalue(BIGSTRING("\p"), vreturned);
-            }
-
-            disposehandle(hcommand);
-
-            /* Trim trailing newline if present */
-            trimtrailingwhitespace(houtput);
-
-            /* Convert output to string */
-            texthandletostring(houtput, resultpath);
-            disposehandle(houtput);
-
-            /* Return the path (empty if not found) */
-            return setstringvalue(resultpath, vreturned);
+            return false;
             }
         case sysv_memavail:
             /* @IMPLEMENTED sys.memavail - Return available GUI memory pool */
@@ -653,11 +605,19 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 return (false);
             }
             }
-        case sysv_winshellcommand:
-            /* sys.winshellcommand - implemented in shellsysverbs.c */
-            /* @PLATFORM_SPECIFIC - Windows-only verb, gracefully fails on macOS/Linux */
-            /* This stub should never be reached */
+        case sysv_winshellcommand: {
+            /* sys.winshellcommand - Windows-only verb, not available on macOS/Linux */
+            Handle hcommand;
+
+            if (!getexempttextvalue(hparam1, 1, &hcommand))
+                return false;
+
+            /* Don't dispose hcommand — exempted handles are managed by heap/hashtable */
+
+            copystring(BIGSTRING("\psys.winShellCommand is not implemented on this platform"), bserror);
+
             return false;
+            }
         default:
             return false;
     }

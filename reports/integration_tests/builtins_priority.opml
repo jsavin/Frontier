@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Builtins Priority (builtins_priority) - 25 tests: 25 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Builtins Priority (builtins_priority) - 24 tests: 24 pass (100%)</title>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="REGRESSION - defined(webserver.init) - CRITICAL: webserver.init is an external scriptType object in builtins.webserver.&#10;Before fix: defined(webserver.init) returned FALSE (found EFP stub with 7 items).&#10;After fix: defined(webserver.init) returns TRUE (finds builtins.webserver with 31+ items).&#10;">
@@ -115,14 +115,6 @@
       </outline>
       <outline text="Script">
         <outline text="defined(system.compiler)"/>
-      </outline>
-    </outline>
-    <outline text="system.paths entries resolve correctly - Verify system.paths.webserver entry exists and resolves.&#10;This tests that system.paths initialization worked.&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: true"/>
-      </outline>
-      <outline text="Script">
-        <outline text="defined(system.paths.webserver)"/>
       </outline>
     </outline>
     <outline text="2-level nested lookup - webserver.init - Verify 2-level dot-path resolution works.&#10;This is the core regression case.&#10;">

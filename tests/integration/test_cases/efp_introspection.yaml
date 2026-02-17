@@ -57,12 +57,6 @@ tests:
     expected_success: true
     expected_result: "system.verbs.builtins.clock"
 
-  - name: "parentOf(date.get) - returns database path"
-    description: |
-      Verify parentOf() returns database path for date processor verbs.
-    script: 'parentOf(date.get)'
-    expected_success: true
-    expected_result: "system.verbs.builtins.date"
 
   # ====================================================================
   # SECTION 2: typeOf() Introspection

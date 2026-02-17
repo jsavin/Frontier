@@ -770,6 +770,43 @@ tests:
 
 **Reference**: Issue #291 (PR review feedback identifying this pattern)
 
+### Protocol Mode `with` Block Limitations
+
+**Problem**: The NDJSON protocol executor wraps each test script in a `with system.temp.FrontierREPL.variables { ... }` block. This causes several classes of test failures.
+
+**Affected patterns**:
+
+1. **`@address` parameters don't work**: Verbs that take `@variable` output parameters (e.g., `sys.unixshellcommand("cmd", @stdout)`) fail inside the `with` block because the address resolution doesn't work correctly in the wrapped scope.
+
+2. **`local` variables go out of scope before `return`**: If `local(ok = ...)` and `return ok` are on separate lines, the `with` block may cause `ok` to be out of scope by the time `return` executes. Putting them on the same line (semicolon-separated) keeps them in the same scope.
+
+3. **Empty string returns become null**: When a script returns `""`, the protocol layer may serialize it as `null` instead of an empty string.
+
+4. **`thread.evaluate` fails**: Spawned threads run outside the `with` block's scope and cannot interact with it properly.
+
+5. **Target context interference**: The `with` block establishes a context that may interfere with `target.clear()` / `target.set()` operations.
+
+**Workaround**: Set `repl_mode: true` on the test case. This runs the test via a per-process script file execution instead of the protocol, avoiding the `with` block wrapper. When using `repl_mode`, put all UserTalk code on a single line (semicolon-separated) to avoid scope issues.
+
+**Example**:
+```yaml
+# Protocol mode — will fail due to @address parameter
+- name: "sys.unixshellcommand - 2 params"
+  script: |
+    local(stdout);
+    sys.unixshellcommand("echo hello", @stdout);
+    return stdout
+  expected_result: "hello"
+
+# Fixed — repl_mode with single-line script
+- name: "sys.unixshellcommand - 2 params"
+  repl_mode: true
+  script: 'local(stdout); sys.unixshellcommand("echo hello", @stdout); return stdout'
+  expected_result: "hello"
+```
+
+**Note**: `repl_mode` tests are slower (each spawns a new process) so prefer protocol mode when possible. Only use `repl_mode` when protocol mode's `with` block causes failures.
+
 ---
 
 ## Related Documentation

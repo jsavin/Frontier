@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Table Sorting Verbs (table_sorting_verbs) - 16 tests: 16 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="table.sortby - sort by name (default) - Sort table by name column">
@@ -122,19 +122,13 @@
         </outline>
       </outline>
     </outline>
-    <outline text="table.sortby - no target set - Sorting without a target should fail">
+    <outline text="table.sortby - no target set - Sorting without a target should produce a catchable error">
       <outline text="Metadata">
+        <outline text="repl_mode: True"/>
         <outline text="expected_result: ERROR_CAUGHT"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.cleartarget()"/>
-        <outline text="try">
-          <outline text="table.sortby(&quot;name&quot;)"/>
-          <outline text="return &quot;SHOULD_HAVE_FAILED&quot;"/>
-        </outline>
-        <outline text="else">
-          <outline text="return &quot;ERROR_CAUGHT&quot;"/>
-        </outline>
+        <outline text="target.clear(); try {table.sortby(&quot;name&quot;); return &quot;SHOULD_HAVE_FAILED&quot;} else {return &quot;ERROR_CAUGHT&quot;}"/>
       </outline>
     </outline>
     <outline text="lang.settarget - set table as target - Set a table as the current target">

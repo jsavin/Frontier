@@ -138,3 +138,6 @@ third_party/cmake-install/
 # Guest database build artifacts (copied/generated during dist build)
 databases/Guest Databases/apps/config.root
 databases/Guest Databases/ops/
+
+# Runtime-generated appearance data
+frontier-cli/Appearance/
