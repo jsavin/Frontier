@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Html Core Tests (html_core_tests) - 60 tests: 60 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 07:23:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="html.urlencode - basic ASCII space - Encode simple string with space">
@@ -243,6 +243,7 @@
       <outline text="Script">
         <outline text="local(pagetable)"/>
         <outline text="lang.new(tableType, @pagetable)"/>
+        <outline text="html.setPageTableAddress(@pagetable)"/>
         <outline text="return html.processmacros(&quot;{1+1}&quot;, false, @pagetable)"/>
       </outline>
     </outline>
@@ -253,6 +254,7 @@
       <outline text="Script">
         <outline text="local(pagetable)"/>
         <outline text="lang.new(tableType, @pagetable)"/>
+        <outline text="html.setPageTableAddress(@pagetable)"/>
         <outline text="return html.processmacros(&quot;{\&quot;hello\&quot;}&quot;, false, @pagetable)"/>
       </outline>
     </outline>
@@ -263,6 +265,7 @@
       <outline text="Script">
         <outline text="local(pagetable)"/>
         <outline text="lang.new(tableType, @pagetable)"/>
+        <outline text="html.setPageTableAddress(@pagetable)"/>
         <outline text="return html.processmacros(&quot;plain text&quot;, false, @pagetable)"/>
       </outline>
     </outline>
@@ -273,6 +276,7 @@
       <outline text="Script">
         <outline text="local(pagetable)"/>
         <outline text="lang.new(tableType, @pagetable)"/>
+        <outline text="html.setPageTableAddress(@pagetable)"/>
         <outline text="return html.processmacros(&quot;&quot;, false, @pagetable)"/>
       </outline>
     </outline>
@@ -283,6 +287,7 @@
       <outline text="Script">
         <outline text="local(pagetable)"/>
         <outline text="lang.new(tableType, @pagetable)"/>
+        <outline text="html.setPageTableAddress(@pagetable)"/>
         <outline text="return html.processmacros(&quot;{1+1} and {2+2}&quot;, false, @pagetable)"/>
       </outline>
     </outline>
@@ -293,6 +298,7 @@
       <outline text="Script">
         <outline text="local(pagetable)"/>
         <outline text="lang.new(tableType, @pagetable)"/>
+        <outline text="html.setPageTableAddress(@pagetable)"/>
         <outline text="local(result = html.processmacros(&quot;{1+{2+3}}&quot;, false, @pagetable))"/>
         <outline text="# Single-pass evaluation: inner {2+3}=5, outer becomes {1, 5} which remains as string"/>
         <outline text="return result == &quot;{1, 5}&quot;"/>
@@ -305,6 +311,7 @@
       <outline text="Script">
         <outline text="local(pagetable)"/>
         <outline text="lang.new(tableType, @pagetable)"/>
+        <outline text="html.setPageTableAddress(@pagetable)"/>
         <outline text="return html.processmacros(&quot;The answer is {40+2}.&quot;, false, @pagetable)"/>
       </outline>
     </outline>
@@ -590,6 +597,7 @@
       <outline text="Script">
         <outline text="local(pagetable)"/>
         <outline text="lang.new(tableType, @pagetable)"/>
+        <outline text="html.setPageTableAddress(@pagetable)"/>
         <outline text="local(withMacros = &quot;Result: {1+1}, visit http://example.com/&quot;)"/>
         <outline text="local(processed = html.processmacros(withMacros, false, @pagetable))"/>
         <outline text="local(withLinks = html.expandurls(processed))"/>

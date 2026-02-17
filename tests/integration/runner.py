@@ -587,17 +587,26 @@ def _run_file_worker(args: tuple) -> dict:
     """
     yaml_path, cli_path, system_root, test_root_dir, protocol_batch, verbose, worker_id = args
 
-    cli = FrontierCLI(cli_path, system_root)
-
     # Set up per-worker temp dir
     worker_tmp = os.path.join(test_root_dir, 'tmp', 'integration', f'worker_{worker_id}')
     os.makedirs(worker_tmp, exist_ok=True)
+
+    # Each worker gets its own copy of the system root database so that
+    # multiple frontier-cli processes don't open the same file with write
+    # permissions simultaneously (which causes locking/corruption).
+    worker_system_root = system_root
+    if system_root and os.path.isfile(system_root):
+        worker_db_path = os.path.join(worker_tmp, os.path.basename(system_root))
+        shutil.copy2(system_root, worker_db_path)
+        worker_system_root = worker_db_path
+
+    cli = FrontierCLI(cli_path, worker_system_root)
 
     try:
         file_name = Path(yaml_path).name
         executor = None
         if protocol_batch and file_name not in NON_PROTOCOL_TEST_FILES:
-            executor = ProtocolExecutor(cli_path, system_root)
+            executor = ProtocolExecutor(cli_path, worker_system_root)
             try:
                 executor.start()
             except Exception as e:

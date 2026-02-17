@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Window Verbs (window_verbs) - 10 tests: 10 pass (100%)</title>
-    <dateCreated>Tue, 10 Feb 2026 05:47:11 GMT</dateCreated>
+    <title>Window Verbs (window_verbs) - 10 tests: 8 pass (80%) 2 skip (20%)</title>
+    <dateCreated>Tue, 17 Feb 2026 07:23:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="window.isOpen - @root returns true - The system root address is always 'open' in headless mode">
@@ -57,6 +57,7 @@
     </outline>
     <outline text="window.isOpen - opened guest database returns true - After opening a guest DB, its path should return true">
       <outline text="Metadata">
+        <outline text="skip: Requires guest database files adjacent to system root; not available in per-worker test environment"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -76,6 +77,7 @@
     </outline>
     <outline text="window.isOpen - closed guest database returns false - After closing a guest DB, its path should return false">
       <outline text="Metadata">
+        <outline text="skip: Requires guest database files adjacent to system root; not available in per-worker test environment"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">

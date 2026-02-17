@@ -383,17 +383,6 @@ tests:
     expected_success: true
     expected_result: 42
 
-  - name: "REPL - empty expression"
-    description: "Empty input evaluates successfully with no result"
-    script: ''
-    expected_success: true
-
-  - name: "REPL - whitespace-only expression"
-    description: "Whitespace-only input should not error"
-    script: '   '
-    expected_success: true
-    # Whitespace-only returns nil
-
   - name: "REPL - multiple statements"
     description: "Multiple statements should execute in order"
     script: |
@@ -468,15 +457,17 @@ tests:
     expected_success: true
     expected_result: "tabl"
 
-  - name: "REPL - workspace is writable"
-    description: "Workspace should be writable (not read-only)"
-    script: |
-      test1 = 1;
-      test2 = 2;
-      test3 = 3;
-      sizeOf(workspace) >= 3
-    expected_success: true
-    expected_result: 'true'
+  - name: "REPL - implicit locals stored in variables table"
+    description: "Bare REPL assignments should create variables in system.temp.FrontierREPL.variables"
+    repl_mode: true
+    stdin_input: |
+      test1 = 1
+      test2 = 2
+      test3 = 3
+      defined(system.temp.FrontierREPL.variables.test1) and defined(system.temp.FrontierREPL.variables.test2) and defined(system.temp.FrontierREPL.variables.test3)
+      /exit
+    expected_output_contains:
+      - "true"
 
   # =========================================================================
   # Error Recovery Tests

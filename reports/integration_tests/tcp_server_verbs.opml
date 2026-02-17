@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Tcp Server Verbs (tcp_server_verbs) - 34 tests: 33 pass (97%) 1 skip (2%)</title>
-    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 07:23:22 GMT</dateCreated>
   </head>
   <body>
     <outline text="tcp.listenStream - basic listener startup - Start listener on localhost port 9000 and verify listenID returned">
@@ -260,7 +260,7 @@
         <outline text="notes: Phase 3 - Behavioral spec: depth parameter controls accept queue backlog"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9011, 1, &quot;&quot;)"/>
+        <outline text="local(listenID = tcp.listenStream(9011, 1, &quot;&quot;))"/>
         <outline text="local(validListen = listenID &gt; 0)"/>
         <outline text="tcp.closeListen(listenID)"/>
         <outline text="return validListen"/>
@@ -679,7 +679,7 @@
         <outline text="notes: Phase 3 - Behavioral spec: privileged ports (&lt;1024) require root/admin privileges"/>
       </outline>
       <outline text="Script">
-        <outline text="local(listenID = tcp.listenStream(9027, 128, &quot;&quot;)"/>
+        <outline text="local(listenID = tcp.listenStream(9027, 128, &quot;&quot;))"/>
         <outline text="local(validDepth = listenID &gt; 0)"/>
         <outline text="tcp.closeListen(listenID)"/>
         <outline text="return validDepth"/>

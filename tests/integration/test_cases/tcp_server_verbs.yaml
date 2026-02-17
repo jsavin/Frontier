@@ -315,7 +315,7 @@ tests:
   - name: "tcp.listenStream - queue depth limiting"
     description: "Verify queue depth (backlog) parameter is respected"
     script: |
-      local(listenID = tcp.listenStream(9011, 1, "");
+      local(listenID = tcp.listenStream(9011, 1, ""));
 
       local(validListen = listenID > 0);
 
@@ -801,7 +801,7 @@ tests:
   - name: "tcp.listenStream - maximum queue depth"
     description: "Verify listener accepts large queue depth value"
     script: |
-      local(listenID = tcp.listenStream(9027, 128, "");
+      local(listenID = tcp.listenStream(9027, 128, ""));
       local(validDepth = listenID > 0);
 
       tcp.closeListen(listenID);

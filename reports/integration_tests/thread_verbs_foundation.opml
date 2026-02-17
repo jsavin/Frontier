@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Thread Verbs Foundation (thread_verbs_foundation) - 17 tests: 17 pass (100%)</title>
-    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 06:28:07 GMT</dateCreated>
   </head>
   <body>
     <outline text="thread.evaluate - execute simple script in new thread - Verify that thread.evaluate() spawns a thread that executes the script.&#10;The main thread yields via thread.sleepTicks so the spawned thread runs.&#10;">
@@ -200,36 +200,24 @@
         <outline text="new(tableType, @system.temp.threadFlags); thread.evaluate(&quot;system.temp.threadFlags.t1 = true&quot;); thread.evaluate(&quot;system.temp.threadFlags.t2 = true&quot;); thread.evaluate(&quot;system.temp.threadFlags.t3 = true&quot;); thread.evaluate(&quot;system.temp.threadFlags.t4 = true&quot;); thread.evaluate(&quot;system.temp.threadFlags.t5 = true&quot;); thread.sleepTicks(30); local(ok = system.temp.threadFlags.t1 and system.temp.threadFlags.t2 and system.temp.threadFlags.t3 and system.temp.threadFlags.t4 and system.temp.threadFlags.t5); delete(@system.temp.threadFlags); return ok"/>
       </outline>
     </outline>
-    <outline text="thread.kill - kill running thread via backgroundtask check - Verify that thread.kill() can stop a thread that is actively running&#10;(not sleeping). The spawned thread runs a long loop with sleepTicks&#10;yield points. The main thread kills it after a short delay. The kill&#10;takes effect at the next langbackgroundtask() or sleepTicks yield.&#10;">
+    <outline text="thread.kill - kill running thread via backgroundtask check - Verify that thread.kill() can stop a thread that is actively running&#10;(not sleeping). The spawned thread runs a long loop with sleepTicks&#10;yield points. The main thread kills it after a short delay. The kill&#10;takes effect at the next langbackgroundtask() or sleepTicks yield.&#10;Uses repl_mode because thread.evaluate does not work in protocol mode.&#10;">
       <outline text="Metadata">
+        <outline text="repl_mode: True"/>
         <outline text="expected_result: true"/>
         <outline text="timeout: 5"/>
       </outline>
       <outline text="Script">
-        <outline text="new(tableType, @system.temp.threadFlags)"/>
-        <outline text="system.temp.threadFlags.loopCount = 0"/>
-        <outline text="local(tid = thread.evaluate(&quot;local(i = 0); while(i &lt; 100) {system.temp.threadFlags.loopCount = i; i = i + 1; thread.sleepTicks(3)}; system.temp.threadFlags.completed = true&quot;))"/>
-        <outline text="thread.sleepTicks(12)"/>
-        <outline text="thread.kill(tid)"/>
-        <outline text="thread.sleepTicks(12)"/>
-        <outline text="local(ok = not(defined(system.temp.threadFlags.completed)) and system.temp.threadFlags.loopCount &gt; 0)"/>
-        <outline text="delete(@system.temp.threadFlags)"/>
-        <outline text="return ok"/>
+        <outline text="new(tableType, @system.temp.threadFlags); system.temp.threadFlags.loopCount = 0; local(tid = thread.evaluate(&quot;local(i = 0); while(i &lt; 100) {system.temp.threadFlags.loopCount = i; i = i + 1; thread.sleepTicks(3)}; system.temp.threadFlags.completed = true&quot;)); thread.sleepTicks(12); thread.kill(tid); thread.sleepTicks(12); local(ok = not(defined(system.temp.threadFlags.completed)) and system.temp.threadFlags.loopCount &gt; 0); delete(@system.temp.threadFlags); return ok"/>
       </outline>
     </outline>
-    <outline text="thread.evaluate - main thread progresses alongside spawned thread - Verify that the main thread can make progress while a spawned thread&#10;is running a loop. Both threads should make progress due to GIL&#10;yielding at langbackgroundtask() calls. This is a basic fairness test.&#10;">
+    <outline text="thread.evaluate - main thread progresses alongside spawned thread - Verify that the main thread can make progress while a spawned thread&#10;is running a loop. Both threads should make progress due to GIL&#10;yielding at langbackgroundtask() calls. This is a basic fairness test.&#10;Uses repl_mode because thread.evaluate does not work in protocol mode.&#10;">
       <outline text="Metadata">
+        <outline text="repl_mode: True"/>
         <outline text="expected_result: true"/>
         <outline text="timeout: 5"/>
       </outline>
       <outline text="Script">
-        <outline text="new(tableType, @system.temp.threadFlags)"/>
-        <outline text="system.temp.threadFlags.spawnedProgress = 0"/>
-        <outline text="thread.evaluate(&quot;local(i = 0); while(i &lt; 100) {system.temp.threadFlags.spawnedProgress = i; i = i + 1}&quot;)"/>
-        <outline text="thread.sleepTicks(18)"/>
-        <outline text="local(ok = system.temp.threadFlags.spawnedProgress &gt; 0)"/>
-        <outline text="delete(@system.temp.threadFlags)"/>
-        <outline text="return ok"/>
+        <outline text="new(tableType, @system.temp.threadFlags); system.temp.threadFlags.spawnedProgress = 0; thread.evaluate(&quot;local(i = 0); while(i &lt; 100) {system.temp.threadFlags.spawnedProgress = i; i = i + 1}&quot;); thread.sleepTicks(18); local(ok = system.temp.threadFlags.spawnedProgress &gt; 0); delete(@system.temp.threadFlags); return ok"/>
       </outline>
     </outline>
   </body>
