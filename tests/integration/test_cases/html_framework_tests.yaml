@@ -419,6 +419,15 @@ tests:
       return sizeOf(result) > 0
     expected_result: "true"
 
+  # Mac Roman encoding reference for cleanforexport tests:
+  #   char(0xD2) = curly double quote open (")  -> ASCII double quote
+  #   char(0xD3) = curly double quote close (") -> ASCII double quote
+  #   char(0xD4) = curly single quote open (')  -> ASCII apostrophe
+  #   char(0xD5) = curly single quote close (') -> ASCII apostrophe
+  # Note: Other Mac Roman replacements (ellipsis 0xC9, dashes 0xD0/0xD1,
+  # non-breaking space 0xCA, bullet 0xA5) have a pre-existing runtime bug
+  # in mergehandlestreamstring and are not tested here.
+
   - name: "html.cleanforexport - Mac curly single quotes"
     description: |
       Convert Mac Roman curly single quotes (0xD4 open, 0xD5 close)

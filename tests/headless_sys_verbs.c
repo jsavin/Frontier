@@ -612,7 +612,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (!getexempttextvalue(hparam1, 1, &hcommand))
                 return false;
 
-            disposehandle(hcommand);
+            /* Don't dispose hcommand — exempted handles are managed by heap/hashtable */
 
             copystring(BIGSTRING("\psys.winShellCommand is not implemented on this platform"), bserror);
 
