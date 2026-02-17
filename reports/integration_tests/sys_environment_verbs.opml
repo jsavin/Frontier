@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Sys Environment Verbs (sys_environment_verbs) - 31 tests: 31 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="sys.getenvironmentvariable - get PATH variable - Retrieve PATH environment variable (should exist on all systems)">
@@ -257,22 +257,17 @@
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="sys.winshellcommand - not available on macOS/Linux - winshellcommand should fail gracefully on non-Windows platforms">
+    <outline text="sys.winshellcommand - works on Windows, skipped on other platforms - winshellcommand executes shell commands on Windows; passes trivially on non-Windows">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="if sys.os() == &quot;Windows&quot;">
-          <outline text="return true"/>
+          <outline text="local(result = sys.winshellcommand(&quot;echo hello&quot;))"/>
+          <outline text="return string.length(result) &gt; 0"/>
         </outline>
         <outline text="else">
-          <outline text="try">
-            <outline text="sys.winshellcommand(&quot;echo test&quot;)"/>
-            <outline text="return false"/>
-          </outline>
-          <outline text="else">
-            <outline text="return true"/>
-          </outline>
+          <outline text="return true"/>
         </outline>
       </outline>
     </outline>

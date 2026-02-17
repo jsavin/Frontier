@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Xml Verbs (xml_verbs) - 93 tests: 93 pass (100%)</title>
-    <dateCreated>Mon, 16 Feb 2026 18:43:53 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="xml.frontiervaluetotaggedtext - simple string">
@@ -32,13 +32,14 @@
         <outline text="return xml.frontiervaluetotaggedtext(@s, 0)"/>
       </outline>
     </outline>
-    <outline text="xml.frontiervaluetotaggedtext - empty string">
+    <outline text="xml.frontiervaluetotaggedtext - list to array - Verify list serializes as XML-RPC &lt;array&gt; with &lt;value&gt; elements">
       <outline text="Metadata">
-        <outline text="expected_output: "/>
+        <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="local(s = &quot;&quot;)"/>
-        <outline text="return xml.frontiervaluetotaggedtext(@s, 0)"/>
+        <outline text="local(myArray = {&quot;val1&quot;, &quot;val2&quot;})"/>
+        <outline text="local(result = xml.frontiervaluetotaggedtext(@myArray, 0))"/>
+        <outline text="return string.patternMatch(&quot;&lt;array&gt;&quot;, result) &gt; 0"/>
       </outline>
     </outline>
     <outline text="xml.frontiervaluetotaggedtext - positive integer">

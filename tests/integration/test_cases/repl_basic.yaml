@@ -463,13 +463,11 @@ tests:
   # Workspace Isolation Tests
   # =========================================================================
 
-  - name: "REPL - workspace doesn't affect system table"
-    description: "Workspace assignments should not modify system tables"
-    script: |
-      compiler = "custom";
-      typeof(system.compiler)
+  - name: "REPL - table assignment protection"
+    description: "Assigning a scalar over a table should fail, preserving the table"
+    script: 'local (t); new (tableType, @t); try {t = "should fail!"}; typeOf (t)'
     expected_success: true
-    expected_result: "tabl"  # system.compiler should still be table
+    expected_result: "tabl"
 
   - name: "REPL - workspace is writable"
     description: "Workspace should be writable (not read-only)"

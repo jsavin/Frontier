@@ -369,7 +369,7 @@ tests:
     description: "Negative port number should raise error"
     script: |
       try {
-        tcp.listenStream(-1, 5, ""));
+        tcp.listenStream(-1, 5, "");
         return "false"
       }
       else {
@@ -383,7 +383,7 @@ tests:
     description: "Port 0 should raise error for explicit listen (OS may allow for ephemeral assignment)"
     script: |
       try {
-        tcp.listenStream(0, 5, ""));
+        tcp.listenStream(0, 5, "");
         return "false"
       }
       else {
@@ -397,7 +397,7 @@ tests:
     description: "Port > 65535 should raise error"
     script: |
       try {
-        tcp.listenStream(70000, 5, ""));
+        tcp.listenStream(70000, 5, "");
         return "false"
       }
       else {
@@ -413,7 +413,7 @@ tests:
       local(listenID = tcp.listenStream(9013, 5, ""));
 
       try {
-        tcp.listenStream(9013, 5, ""));
+        tcp.listenStream(9013, 5, "");
         tcp.closeListen(listenID);
         return "false"
       }
@@ -429,7 +429,7 @@ tests:
     description: "Negative queue depth should raise error"
     script: |
       try {
-        tcp.listenStream(9014, -1, ""));
+        tcp.listenStream(9014, -1, "");
         return "false"
       }
       else {
@@ -443,7 +443,7 @@ tests:
     description: "Zero queue depth should raise error (must be at least 1)"
     script: |
       try {
-        tcp.listenStream(9015, 0, ""));
+        tcp.listenStream(9015, 0, "");
         return "false"
       }
       else {

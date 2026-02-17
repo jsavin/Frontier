@@ -238,17 +238,8 @@ tests:
       Verify that creating many threads in rapid succession doesn't crash
       or corrupt state. Creates 5 threads that each set a distinct flag.
       Main thread yields enough to let all spawned threads execute.
-    script: |
-      new(tableType, @system.temp.threadFlags);
-      thread.evaluate("system.temp.threadFlags.t1 = true");
-      thread.evaluate("system.temp.threadFlags.t2 = true");
-      thread.evaluate("system.temp.threadFlags.t3 = true");
-      thread.evaluate("system.temp.threadFlags.t4 = true");
-      thread.evaluate("system.temp.threadFlags.t5 = true");
-      thread.sleepTicks(30);
-      local(ok = system.temp.threadFlags.t1 and system.temp.threadFlags.t2 and system.temp.threadFlags.t3 and system.temp.threadFlags.t4 and system.temp.threadFlags.t5);
-      delete(@system.temp.threadFlags);
-      return ok
+    repl_mode: true
+    script: 'new(tableType, @system.temp.threadFlags); thread.evaluate("system.temp.threadFlags.t1 = true"); thread.evaluate("system.temp.threadFlags.t2 = true"); thread.evaluate("system.temp.threadFlags.t3 = true"); thread.evaluate("system.temp.threadFlags.t4 = true"); thread.evaluate("system.temp.threadFlags.t5 = true"); thread.sleepTicks(30); local(ok = system.temp.threadFlags.t1 and system.temp.threadFlags.t2 and system.temp.threadFlags.t3 and system.temp.threadFlags.t4 and system.temp.threadFlags.t5); delete(@system.temp.threadFlags); return ok'
     expected_result: "true"
     expected_success: true
     timeout: 5

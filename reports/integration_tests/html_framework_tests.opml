@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Html Framework Tests (html_framework_tests) - 47 tests: 45 pass (95%) 2 skip (4%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <title>Html Framework Tests (html_framework_tests) - 48 tests: 48 pass (100%)</title>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="html.getpref - default file extension - Get default file extension preference">
@@ -408,15 +408,24 @@
         <outline text="return sizeOf(result) &gt; 0"/>
       </outline>
     </outline>
-    <outline text="html.cleanforexport - Mac curly quotes - Convert Mac smart quotes to ASCII equivalents">
+    <outline text="html.cleanforexport - Mac curly single quotes - Convert Mac Roman curly single quotes (0xD4 open, 0xD5 close)&#10;to ASCII apostrophe. Uses char() to construct raw Mac Roman bytes.&#10;">
       <outline text="Metadata">
-        <outline text="skip: UserTalk doesn't support curly quote literals in source - would need char codes"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="local(text = &quot;Hello World&quot;)"/>
+        <outline text="local(text = &quot;He&quot; + char(0xD4) + &quot;llo&quot; + char(0xD5))"/>
         <outline text="local(result = html.cleanforexport(text))"/>
-        <outline text="return sizeOf(result) &gt; 0"/>
+        <outline text="return (result == &quot;He'llo'&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="html.cleanforexport - Mac curly double quotes - Convert Mac Roman curly double quotes (0xD2 open, 0xD3 close)&#10;to ASCII double quote. Uses char() to construct raw Mac Roman bytes.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(text = &quot;say&quot; + char(0xD2) + &quot;hello&quot; + char(0xD3))"/>
+        <outline text="local(result = html.cleanforexport(text))"/>
+        <outline text="return (result == &quot;say&quot; + char(34) + &quot;hello&quot; + char(34))"/>
       </outline>
     </outline>
     <outline text="html.cleanforexport - Mac special characters - Handle Mac-specific special characters">
@@ -557,18 +566,16 @@
         <outline text="return html.traversalskip(@websites[&quot;#data&quot;]) == true"/>
       </outline>
     </outline>
-    <outline text="html.getpagetableaddress - retrieve stored address - Get page table address from global context">
+    <outline text="html.getpagetableaddress - retrieve stored address - Set a page table address with setPageTableAddress, then verify getPageTableAddress returns it">
       <outline text="Metadata">
         <outline text="requires_system_root: True"/>
-        <outline text="skip: Requires page table to be set in html.data.adrpagetable"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="local(pageTable)"/>
-        <outline text="lang.new(tableType, @pageTable)"/>
-        <outline text="html.data.adrpagetable = @pageTable"/>
-        <outline text="local(addr = html.getpagetableaddress())"/>
-        <outline text="return addr == @pageTable"/>
+        <outline text="local (pt)"/>
+        <outline text="new (tableType, @pt)"/>
+        <outline text="html.setPageTableAddress (@pt)"/>
+        <outline text="return (html.getPageTableAddress() == @pt)"/>
       </outline>
     </outline>
     <outline text="html - complete page generation workflow - Build page table, process directives, patch glossary">

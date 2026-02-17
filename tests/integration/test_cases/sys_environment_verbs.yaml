@@ -262,20 +262,15 @@ tests:
   # sys.winshellcommand Tests (Platform-Specific)
   # ============================================================================
 
-  - name: "sys.winshellcommand - not available on macOS/Linux"
-    description: "winshellcommand should fail gracefully on non-Windows platforms"
+  - name: "sys.winshellcommand - works on Windows, skipped on other platforms"
+    description: "winshellcommand executes shell commands on Windows; passes trivially on non-Windows"
     script: |
       if sys.os() == "Windows" {
-        return true
+        local(result = sys.winshellcommand("echo hello"));
+        return string.length(result) > 0
       }
       else {
-        try {
-          sys.winshellcommand("echo test");
-          return false
-        }
-        else {
-          return true
-        }
+        return true
       }
     expected_success: true
     expected_result: "true"

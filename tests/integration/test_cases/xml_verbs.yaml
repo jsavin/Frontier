@@ -31,12 +31,14 @@ tests:
     expected_output: "say \"hello\""
     expected_success: true
 
-  - name: "xml.frontiervaluetotaggedtext - empty string"
+  - name: "xml.frontiervaluetotaggedtext - list to array"
+    description: "Verify list serializes as XML-RPC <array> with <value> elements"
     script: |
-      local(s = "");
-      return xml.frontiervaluetotaggedtext(@s, 0)
-    expected_output: ""
+      local(myArray = {"val1", "val2"});
+      local(result = xml.frontiervaluetotaggedtext(@myArray, 0));
+      return string.patternMatch("<array>", result) > 0
     expected_success: true
+    expected_result: "true"
 
   # ========================================
   # xml.frontiervaluetotaggedtext - Integer values

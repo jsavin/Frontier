@@ -129,16 +129,9 @@ tests:
     expected_result: "ERROR_CAUGHT"
 
   - name: "table.sortby - no target set"
-    description: "Sorting without a target should fail"
-    script: |
-      lang.cleartarget();
-      try {
-        table.sortby("name");
-        return "SHOULD_HAVE_FAILED"
-      }
-      else {
-        return "ERROR_CAUGHT"
-      }
+    description: "Sorting without a target should produce a catchable error"
+    repl_mode: true
+    script: 'target.clear(); try {table.sortby("name"); return "SHOULD_HAVE_FAILED"} else {return "ERROR_CAUGHT"}'
     expected_success: true
     expected_result: "ERROR_CAUGHT"
 

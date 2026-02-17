@@ -419,13 +419,24 @@ tests:
       return sizeOf(result) > 0
     expected_result: "true"
 
-  - name: "html.cleanforexport - Mac curly quotes"
-    description: "Convert Mac smart quotes to ASCII equivalents"
-    skip: "UserTalk doesn't support curly quote literals in source - would need char codes"
+  - name: "html.cleanforexport - Mac curly single quotes"
+    description: |
+      Convert Mac Roman curly single quotes (0xD4 open, 0xD5 close)
+      to ASCII apostrophe. Uses char() to construct raw Mac Roman bytes.
     script: |
-      local(text = "Hello World")
+      local(text = "He" + char(0xD4) + "llo" + char(0xD5))
       local(result = html.cleanforexport(text))
-      return sizeOf(result) > 0
+      return (result == "He'llo'")
+    expected_result: "true"
+
+  - name: "html.cleanforexport - Mac curly double quotes"
+    description: |
+      Convert Mac Roman curly double quotes (0xD2 open, 0xD3 close)
+      to ASCII double quote. Uses char() to construct raw Mac Roman bytes.
+    script: |
+      local(text = "say" + char(0xD2) + "hello" + char(0xD3))
+      local(result = html.cleanforexport(text))
+      return (result == "say" + char(34) + "hello" + char(34))
     expected_result: "true"
 
   - name: "html.cleanforexport - Mac special characters"
@@ -567,17 +578,13 @@ tests:
   # =============================================================================
 
   - name: "html.getpagetableaddress - retrieve stored address"
-    description: "Get page table address from global context"
+    description: "Set a page table address with setPageTableAddress, then verify getPageTableAddress returns it"
     requires_system_root: true
-    skip: "Requires page table to be set in html.data.adrpagetable"
     script: |
-      local(pageTable)
-      lang.new(tableType, @pageTable)
-
-      html.data.adrpagetable = @pageTable
-
-      local(addr = html.getpagetableaddress())
-      return addr == @pageTable
+      local (pt)
+      new (tableType, @pt)
+      html.setPageTableAddress (@pt)
+      return (html.getPageTableAddress() == @pt)
     expected_result: "true"
 
   # =============================================================================

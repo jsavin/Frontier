@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Repl Basic (repl_basic) - 58 tests: 58 pass (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="REPL - basic arithmetic - Simple arithmetic expression should evaluate and return result">
@@ -451,13 +451,12 @@
         <outline text="&quot;Value: &quot; + string(42)"/>
       </outline>
     </outline>
-    <outline text="REPL - workspace doesn't affect system table - Workspace assignments should not modify system tables">
+    <outline text="REPL - table assignment protection - Assigning a scalar over a table should fail, preserving the table">
       <outline text="Metadata">
         <outline text="expected_result: tabl"/>
       </outline>
       <outline text="Script">
-        <outline text="compiler = &quot;custom&quot;"/>
-        <outline text="typeof(system.compiler)"/>
+        <outline text="local (t); new (tableType, @t); try {t = &quot;should fail!&quot;}; typeOf (t)"/>
       </outline>
     </outline>
     <outline text="REPL - workspace is writable - Workspace should be writable (not read-only)">

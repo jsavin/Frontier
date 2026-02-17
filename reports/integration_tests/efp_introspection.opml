@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Efp Introspection (efp_introspection) - 15 tests: 15 pass (100%)</title>
-    <dateCreated>Sun, 15 Feb 2026 08:17:42 GMT</dateCreated>
+    <title>Efp Introspection (efp_introspection) - 14 tests: 14 pass (100%)</title>
+    <dateCreated>Mon, 16 Feb 2026 21:28:07 GMT</dateCreated>
   </head>
   <body>
     <outline text="parentOf(string.mid) - returns database path - CRITICAL TEST: parentOf(string.mid) should return the database path&#10;@system.verbs.builtins.string, not the EFP internal path&#10;@system.compiler.[&quot;kernel&quot;].string.&#10;&#10;Bug behavior: Returns @system.compiler.[&quot;kernel&quot;].string&#10;Fixed behavior: Returns @system.verbs.builtins.string&#10;">
@@ -27,14 +27,6 @@
       </outline>
       <outline text="Script">
         <outline text="parentOf(clock.now)"/>
-      </outline>
-    </outline>
-    <outline text="parentOf(date.get) - returns database path - Verify parentOf() returns database path for date processor verbs.&#10;">
-      <outline text="Metadata">
-        <outline text="expected_result: system.verbs.builtins.date"/>
-      </outline>
-      <outline text="Script">
-        <outline text="parentOf(date.get)"/>
       </outline>
     </outline>
     <outline text="typeOf(op.outlineToXml) - returns script type - typeOf() for a script-implemented verb should return 'scpt' (script type),&#10;not 'tokn' (token type from EFP stub).&#10;&#10;Bug behavior: Returns 'tokn' (sees EFP token entry)&#10;Fixed behavior: Returns 'scpt' (sees database script)&#10;">

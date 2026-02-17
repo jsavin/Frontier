@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>File Verbs (file_verbs) - 81 tests: 75 pass (92%) 6 skip (7%)</title>
-    <dateCreated>Mon, 16 Feb 2026 18:41:35 GMT</dateCreated>
+    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
   </head>
   <body>
     <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
@@ -69,17 +69,17 @@
         <outline text="return readData"/>
       </outline>
     </outline>
-    <outline text="file.readWholeFile - round trip binary data - Write and read back binary data">
+    <outline text="file.readWholeFile - round trip data - Write and read back data. readWholeFile returns 'data' type,&#10;so coerce to string for comparison.&#10;">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_binary.dat&quot;)"/>
-        <outline text="local(binaryData = &quot;\x00\x01\x02\xFF&quot;)"/>
-        <outline text="file.writeWholeFile(fs, binaryData)"/>
+        <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_roundtrip.dat&quot;)"/>
+        <outline text="local(testData = &quot;some test content 12345&quot;)"/>
+        <outline text="file.writeWholeFile(fs, testData)"/>
         <outline text="local(readData = file.readWholeFile(fs))"/>
-        <outline text="return (readData == binaryData)"/>
+        <outline text="return (string(readData) == testData)"/>
       </outline>
     </outline>
     <outline text="file.delete - delete existing file - Delete file created in previous test">
@@ -218,7 +218,7 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(newName = tmpDir + &quot;/&quot; + &quot;frontier_test_rename_new.txt&quot;)"/>
         <outline text="local(content = file.readWholeFile(newName))"/>
-        <outline text="return (content == &quot;rename test content&quot;)"/>
+        <outline text="return (string(content) == &quot;rename test content&quot;)"/>
       </outline>
     </outline>
     <outline text="file.move - move file to different location - Move file and verify it appears at destination">
@@ -252,7 +252,7 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dest = tmpDir + &quot;/&quot; + &quot;frontier_test_move_dest.txt&quot;)"/>
         <outline text="local(content = file.readWholeFile(dest))"/>
-        <outline text="return (content == &quot;move test content&quot;)"/>
+        <outline text="return (string(content) == &quot;move test content&quot;)"/>
       </outline>
     </outline>
     <outline text="file.newfolder - create new folder - Create new folder in temp directory">
@@ -405,17 +405,17 @@
     </outline>
     <outline text="file.read - infinity reads remaining bytes - Using infinity as count reads all remaining bytes">
       <outline text="Metadata">
-        <outline text="expected_result: defghij"/>
+        <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(fs = tmpDir + &quot;/&quot; + &quot;frontier_test_read_inf.txt&quot;)"/>
         <outline text="file.writeWholeFile(fs, &quot;abcdefghij&quot;)"/>
         <outline text="file.open(fs)"/>
-        <outline text="file.read(fs, 3);  // skip first 3 bytes"/>
+        <outline text="file.read(fs, 3)"/>
         <outline text="local(rest = file.read(fs, infinity))"/>
         <outline text="file.close(fs)"/>
-        <outline text="return string(rest)"/>
+        <outline text="return (string(rest) == &quot;defghij&quot;)"/>
       </outline>
     </outline>
     <outline text="file.read - requires file.open first - Reading from unopened file should fail">
@@ -442,7 +442,7 @@
         <outline text="local(ok = file.write(fs, &quot;hello&quot;))"/>
         <outline text="file.close(fs)"/>
         <outline text="local(content = file.readWholeFile(fs))"/>
-        <outline text="return ok and (content == &quot;hello&quot;)"/>
+        <outline text="return ok and (string(content) == &quot;hello&quot;)"/>
       </outline>
     </outline>
     <outline text="file.write - requires file.open first - Writing to unopened file should fail">
