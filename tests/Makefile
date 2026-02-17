@@ -150,6 +150,8 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/strings_extras.c \
     ../portable/text_encoding_portable.c \
     ../Common/source/ops.c \
+    ../Common/source/sysshellcall.c \
+    ../Common/source/tcpverbs.c \
     ../Common/source/op.c \
     ../Common/source/opinit.c \
     ../Common/source/opexpand.c \
@@ -279,7 +281,7 @@ time_portability_test: time_portability_test.c $(LANG_RUNTIME_SOURCES) headless_
 test_sys_shell_command_verbs: test_sys_shell_command_verbs.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		test_sys_shell_command_verbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c \
-		../Common/source/sysshellcall.c -o $@ $(LINK_LIBS)
+		-o $@ $(LINK_LIBS)
 
 headless_selection_tests: headless_selection_tests.c ../Common/source/headless_selection.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
@@ -334,9 +336,9 @@ test_callback_infrastructure: test_callback_infrastructure.c $(LANG_RUNTIME_SOUR
 		test_callback_infrastructure.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 # TCP Phase 1A unit tests - internal logic validation (no network required)
-tcp_phase1a_unit_tests: tcp_phase1a_unit_tests.c ../Common/source/tcpverbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+tcp_phase1a_unit_tests: tcp_phase1a_unit_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		tcp_phase1a_unit_tests.c ../Common/source/tcpverbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		tcp_phase1a_unit_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
 
 # Menu v7 refcon table format tests - validates mecreaterefcontable_v7/meunpackrefcontable_v7
 menu_v7_refcon_tests: menu_v7_refcon_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menupack.c headless_shell.c
