@@ -3325,11 +3325,9 @@ boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
 		db_context ctx;
 		/* Use version-aware helpers that inherit saveas state from globals.
 		   Guest databases are never the target of Save-As, but inheriting the
-		   state keeps behavior consistent if db_context gains new fields.
-		   Despite the "write" name, v7_write just sets use_64bit_format=true
-		   with adapter_repack=false — safe for read operations. */
+		   state keeps behavior consistent if db_context gains new fields. */
 		if ((**(**hv).hdatabase).versionnumber >= 7)
-			db_context_init_v7_write (&ctx, (**hv).hdatabase);
+			db_context_init_v7_read (&ctx, (**hv).hdatabase);
 		else
 			db_context_init_legacy_read (&ctx, (**hv).hdatabase);
 		return langexternalrefdata_context (&ctx, hv, hdata);

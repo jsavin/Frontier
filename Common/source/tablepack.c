@@ -252,9 +252,11 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 
 	/* Use the variable's own database handle so guest database
 	 * sub-tables are loaded and packed from the correct file.
-	 * Version-aware helpers inherit saveas state from globals;
-	 * guest databases are never Save-As targets but this keeps
-	 * behavior consistent if db_context gains new fields. */
+	 * This context is used for both loading (tableverbinmemory) and
+	 * re-packing (tablepacktable_internal), so v7_write is the
+	 * correct intent. Version-aware helpers inherit saveas state
+	 * from globals; guest databases are never Save-As targets but
+	 * this keeps behavior consistent if db_context gains new fields. */
 	if ((**hv).hdatabase != nil) {
 		if ((**(**hv).hdatabase).versionnumber >= 7)
 			db_context_init_v7_write (&ctx, (**hv).hdatabase);

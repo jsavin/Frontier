@@ -3682,7 +3682,13 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 	Handle h1, h2;
 	db_context working_context;
 
-	/* Phase 1: Initialize working context (never NULL for child operations) */
+	/* Phase 1: Initialize working context (never NULL for child operations).
+	 *
+	 * The NULL path is reached only from the legacy hashpacktable() wrapper
+	 * (langhash.c), which is called by runtime_tests.c and any code not yet
+	 * migrated to hashpacktable_context(). Recursive calls from
+	 * hashpackvisit_v7 → hashpackexternal → langexternalmemorypack →
+	 * tableverbmemorypack always pass explicit context via tablepacktable_internal. */
 	if (ctx != NULL) {
 		working_context = *ctx;
 		use_64bit = ctx->mode.use_64bit_format;

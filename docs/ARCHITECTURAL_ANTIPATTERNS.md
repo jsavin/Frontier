@@ -276,6 +276,8 @@ Frontier has multiple global mutable state variables that must be eliminated bef
 3. Maintain backward-compatible wrappers using default context
 4. Gradually eliminate global variable access
 
+**Gotcha: Zero-initialized context with conditional branches.** When declaring `db_context ctx = {0}` and initializing in conditional branches (e.g., `if (hdb != nil) ... else db_context_init(&ctx)`), ensure every branch populates the context. An all-zeros `db_context` has `database = NULL` and `mode = {false, false, false}`, which silently differs from `db_context_init()` defaults (which snapshot the current global state). If a future refactor removes the `else` branch, the context silently becomes all-zeros instead of failing loudly.
+
 **When to Use Which**:
 - **Thread-Local**: Per-thread execution state (flnextparamislast, flscriptrunning, current outline)
 - **Explicit Context**: Per-operation state (database operations, outline operations)

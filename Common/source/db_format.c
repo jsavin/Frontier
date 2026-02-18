@@ -2511,10 +2511,18 @@ void db_context_init_legacy_read(db_context *context, hdldatabaserecord db) {
     context->database = db;
 }
 
-void db_context_init_v7_write(db_context *context, hdldatabaserecord db) {
+void db_context_init_v7_read(db_context *context, hdldatabaserecord db) {
     db_format_mode v7_mode = {true, false, false};
     db_context_init_with_mode(context, &v7_mode);
     context->database = db;
+}
+
+void db_context_init_v7_write(db_context *context, hdldatabaserecord db) {
+    /* Currently identical to v7_read: use_64bit_format=true, adapter_repack=false.
+     * Kept as a separate function so callers express intent (read vs write) and
+     * the two paths can diverge if v7_write ever needs write-specific state
+     * (e.g., dirty flags, journal references). */
+    db_context_init_v7_read(context, db);
 }
 
 void db_context_clone_with_mode(const db_context *src, db_context *dst, const db_format_mode *mode) {

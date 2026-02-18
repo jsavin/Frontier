@@ -129,6 +129,7 @@ void db_saveas_state_apply(const db_saveas_state *state);
 void db_context_init(db_context *context);
 void db_context_init_with_mode(db_context *context, const db_format_mode *mode);
 void db_context_init_legacy_read(db_context *context, hdldatabaserecord db);
+void db_context_init_v7_read(db_context *context, hdldatabaserecord db);
 void db_context_init_v7_write(db_context *context, hdldatabaserecord db);
 void db_context_clone_with_mode(const db_context *src, db_context *dst, const db_format_mode *mode);
 void db_context_apply(const db_context *context);
