@@ -3693,7 +3693,11 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 		/* For guest database tables, use the table's own database handle
 		 * instead of the global databasedata (which points to the system root).
 		 * Without this, disk reads for external values (WP text, outlines,
-		 * sub-tables) use the wrong file at the wrong address. */
+		 * sub-tables) use the wrong file at the wrong address.
+		 *
+		 * adapter_repack stays false (from db_context_init above): migration
+		 * operates on the system root, never on guest databases, so guest DB
+		 * tables should never be packed with adapter_repack semantics. */
 		if (flmemory) {
 			hdldatabaserecord hdb = tablegetdatabase (htable);
 			if (hdb != nil) {
@@ -3802,7 +3806,11 @@ log_debug(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%
 #endif
 	
 	flexternalmemorypack = flmemory;
-	
+
+	/* hexternalpackdatabase is the same derivation as working_context.database
+	 * above but stored as a file-scoped global for hashpackvisit callbacks
+	 * that don't receive the working_context. Both paths will be unified
+	 * when hexternalpackdatabase is eliminated in favor of explicit context. */
 	if (flexternalmemorypack)
 		hexternalpackdatabase = tablegetdatabase (htable);
 	

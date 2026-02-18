@@ -246,7 +246,7 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 	register boolean fl;
 	boolean fltempload;
 	boolean fldummy;
-	db_context ctx;
+	db_context ctx = {0};
 
 	fltempload = !(**hv).flinmemory;
 
