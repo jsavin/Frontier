@@ -246,22 +246,28 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 	register boolean fl;
 	boolean fltempload;
 	boolean fldummy;
+	db_context ctx;
 
 	fltempload = !(**hv).flinmemory;
 
-	{
-		db_context ctx;
+	/* Use the variable's own database handle so guest database
+	 * sub-tables are loaded and packed from the correct file. */
+	if ((**hv).hdatabase != nil) {
+		memset(&ctx, 0, sizeof(ctx));
+		ctx.database = (**hv).hdatabase;
+		ctx.mode.use_64bit_format = ((**(**hv).hdatabase).versionnumber >= 7);
+	} else {
 		db_context_init(&ctx);
-
-		if (!tableverbinmemory (&ctx, hv, hnode))
-			return (false);
 	}
 
-	ht = (hdlhashtable) (**hv).variabledata; 
-	
-	tablecheckwindowrect (ht); 
-	
-	fl = tablepacktable (ht, true, &hpush, &fldummy);
+	if (!tableverbinmemory (&ctx, hv, hnode))
+		return (false);
+
+	ht = (hdlhashtable) (**hv).variabledata;
+
+	tablecheckwindowrect (ht);
+
+	fl = tablepacktable_internal (&ctx, ht, true, &hpush, &fldummy);
 	
 	if (fltempload)
 		tableverbunload (hv);
