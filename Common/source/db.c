@@ -78,6 +78,10 @@ static void db_sync_use64_to_current_db(void);
 #define majorversion(v)		(v & 0x00f0)
 #define minorversion(v)		(v & 0x000f)
 
+/* Sentinel value for dbreadheader_core's fnum parameter meaning
+   "use the global databasedata file handle via dbread()". */
+#define DB_FNUM_USE_GLOBAL ((hdlfilenum) -1)
+
 #if defined(FRONTIER_HEADLESS)
 static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree) {
 	long eof = 0;
@@ -829,8 +833,7 @@ static boolean dbflushheader (void) {
 	} /*dbflushheader*/
 
 
-/* Forward declarations for dbreadheader_core which needs to call dbread_fnum */
-static boolean dbseek_fnum (dbaddress adr, hdlfilenum fnum);
+/* Forward declaration for dbreadheader_core which needs to call dbread_fnum */
 static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
 
 static boolean dbreadheader_core (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance, long header_size, hdlfilenum fnum) {
@@ -839,9 +842,10 @@ static boolean dbreadheader_core (dbaddress adr, boolean *flfree, long *ctbytes,
 	Shared core for reading a database block header.
 
 	header_size: Determines v6 (sizeheader_v6 = 8) vs v7 (sizeheader_v7 = 12) parsing.
-	fnum:        File number to read from. If < 0, uses global dbread; otherwise uses dbread_fnum.
+	fnum:        File number to read from. DB_FNUM_USE_GLOBAL means use global dbread;
+	             otherwise uses dbread_fnum.
 
-	Both dbreadheader() and dbreadheader_fnum() delegate here so header parsing
+	Both dbreadheader() and dbrefhandle_fnum() delegate here so header parsing
 	logic is defined in exactly one place.
 	*/
 
@@ -851,7 +855,7 @@ static boolean dbreadheader_core (dbaddress adr, boolean *flfree, long *ctbytes,
 
 	if (use64) {
 		tyheader64 header;
-		boolean ok = (fnum >= 0) ? dbread_fnum (adr, sizeheader_v7, &header, fnum) : dbread (adr, sizeheader_v7, &header);
+		boolean ok = (fnum != DB_FNUM_USE_GLOBAL) ? dbread_fnum (adr, sizeheader_v7, &header, fnum) : dbread (adr, sizeheader_v7, &header);
 
 		if (!ok)
 			return (false);
@@ -867,7 +871,7 @@ static boolean dbreadheader_core (dbaddress adr, boolean *flfree, long *ctbytes,
 	}
 	else {
 		tyheader32 header;
-		boolean ok = (fnum >= 0) ? dbread_fnum (adr, sizeheader_v6, &header, fnum) : dbread (adr, sizeheader_v6, &header);
+		boolean ok = (fnum != DB_FNUM_USE_GLOBAL) ? dbread_fnum (adr, sizeheader_v6, &header, fnum) : dbread (adr, sizeheader_v6, &header);
 
 		if (!ok)
 			return (false);
@@ -918,19 +922,13 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 
 	header_size = use64 ? sizeheader_v7 : sizeheader_v6;
 
-	return dbreadheader_core (adr, flfree, ctbytes, variance, header_size, (hdlfilenum) -1);
+	return dbreadheader_core (adr, flfree, ctbytes, variance, header_size, DB_FNUM_USE_GLOBAL);
 	} /*dbreadheader*/
-
-
-static boolean dbseek_fnum (dbaddress adr, hdlfilenum fnum) {
-
-	return (filesetposition (fnum, adr));
-	} /*dbseek_fnum*/
 
 
 static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum) {
 
-	if (!dbseek_fnum (adr, fnum))
+	if (!filesetposition (fnum, adr))
 		return (false);
 
 	if (!fileread (fnum, ctbytes, pdata))
@@ -938,20 +936,6 @@ static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilen
 
 	return (true);
 	} /*dbread_fnum*/
-
-
-static boolean dbreadheader_fnum (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance, long header_size, hdlfilenum fnum) {
-
-	/*
-	Like dbreadheader but reads from an explicit file number and uses
-	header_size to determine v6 (8 bytes) vs v7 (12 bytes) format —
-	no reliance on global databasedata or format mode.
-
-	Delegates to dbreadheader_core which owns all header parsing logic.
-	*/
-
-	return dbreadheader_core (adr, flfree, ctbytes, variance, header_size, fnum);
-	} /*dbreadheader_fnum*/
 
 
 boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum fnum) {
@@ -986,7 +970,7 @@ boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum
 	if (adr == nildbaddress)
 		return (false);
 
-	if (!dbreadheader_fnum (adr, &flfree, &ctbytes, &variance, header_size, fnum))
+	if (!dbreadheader_core (adr, &flfree, &ctbytes, &variance, header_size, fnum))
 		return (false);
 
 	ct = ctbytes - (long) variance;
@@ -1802,7 +1786,7 @@ boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size)
 	(void) dbnormalizeaddress(&a);
 #endif
 
-	if (!dbreadheader_core(a, &flfree, &ctbytes, &variance, header_size, (hdlfilenum) -1))
+	if (!dbreadheader_core(a, &flfree, &ctbytes, &variance, header_size, DB_FNUM_USE_GLOBAL))
 		return (false);
 
 	ct = ctbytes - (long) variance;

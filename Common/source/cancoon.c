@@ -577,6 +577,13 @@ void setcancoonglobals (hdlcancoonrecord hcancoon) {
 		setcurrentmenubarlist ((**hc).hmenubarlist);
 		}
 
+	/* Note: when hc is nil, we don't restore format mode because there's
+	   no cancoon record to derive it from. This is safe because
+	   setcancoonglobals(nil) is only called during shutdown/cleanup paths,
+	   never after guest database operations that may have changed the
+	   format mode. Guest database open/close always restores via a
+	   non-nil cancoon record for the system root. */
+
 	cancoonglobals = hc; /*this global is independent of shellpush/popglobals*/
 	} /*setcancoonglobals*/
 

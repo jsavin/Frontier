@@ -600,20 +600,20 @@ def _run_file_worker(args: tuple) -> dict:
         shutil.copy2(system_root, worker_db_path)
         worker_system_root = worker_db_path
 
-        # Copy guest databases adjacent to the system root so tests that open
-        # guest databases via fileMenu.open() can find them relative to the
-        # system root path (Frontier.getFilePath()).
-        src_dir = os.path.dirname(system_root)
-        for guest_file in ['StartupTasks.root']:
-            guest_src = os.path.join(src_dir, guest_file)
-            if os.path.isfile(guest_src):
-                shutil.copy2(guest_src, os.path.join(worker_tmp, guest_file))
-        guest_db_dir = os.path.join(src_dir, 'Guest Databases')
-        if os.path.isdir(guest_db_dir):
-            worker_guest_dir = os.path.join(worker_tmp, 'Guest Databases')
-            if os.path.isdir(worker_guest_dir):
-                shutil.rmtree(worker_guest_dir)
-            shutil.copytree(guest_db_dir, worker_guest_dir)
+        # Copy guest databases only for tests that need them (avoids
+        # unnecessary I/O overhead for the majority of test workers).
+        if os.path.basename(yaml_path) == 'guest_db_externals.yaml':
+            src_dir = os.path.dirname(system_root)
+            for guest_file in ['StartupTasks.root']:
+                guest_src = os.path.join(src_dir, guest_file)
+                if os.path.isfile(guest_src):
+                    shutil.copy2(guest_src, os.path.join(worker_tmp, guest_file))
+            guest_db_dir = os.path.join(src_dir, 'Guest Databases')
+            if os.path.isdir(guest_db_dir):
+                worker_guest_dir = os.path.join(worker_tmp, 'Guest Databases')
+                if os.path.isdir(worker_guest_dir):
+                    shutil.rmtree(worker_guest_dir)
+                shutil.copytree(guest_db_dir, worker_guest_dir)
 
     cli = FrontierCLI(cli_path, worker_system_root)
 

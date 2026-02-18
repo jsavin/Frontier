@@ -639,6 +639,15 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 			}
 		}
 		else {
+			/*
+			Guest database externals do not use interior addresses. External
+			addresses in the ODB always point to block headers (the start of
+			an allocated block), not to offsets within a block's data area.
+			Interior addresses only arise from dbnormalizeaddress remapping,
+			which we intentionally skip here. If a future format stores
+			interior addresses directly, a dbnormalizeaddress_fnum that scans
+			the correct file would be needed.
+			*/
 			log_trace(LOG_COMP_DB, "opverbinmemory: skipping dbnormalizeaddress for guest database (ctx->database != databasedata)");
 		}
 	}
