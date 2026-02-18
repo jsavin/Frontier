@@ -827,21 +827,33 @@ static boolean dbflushheader (void) {
 		
 	return (true);
 	} /*dbflushheader*/
-	
 
-boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance) {
+
+/* Forward declarations for dbreadheader_core which needs to call dbread_fnum */
+static boolean dbseek_fnum (dbaddress adr, hdlfilenum fnum);
+static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
+
+static boolean dbreadheader_core (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance, long header_size, hdlfilenum fnum) {
+
+	/*
+	Shared core for reading a database block header.
+
+	header_size: Determines v6 (sizeheader_v6 = 8) vs v7 (sizeheader_v7 = 12) parsing.
+	fnum:        File number to read from. If < 0, uses global dbread; otherwise uses dbread_fnum.
+
+	Both dbreadheader() and dbreadheader_fnum() delegate here so header parsing
+	logic is defined in exactly one place.
+	*/
 
 	uint64_t raw_size = 0;
 	tyvariance disk_variance = 0;
-	boolean use64 = db_use64();
-
-	if (databasedata != nil && db_format_is_legacy_db(databasedata))
-		use64 = false;
+	boolean use64 = (header_size == sizeheader_v7);
 
 	if (use64) {
 		tyheader64 header;
+		boolean ok = (fnum >= 0) ? dbread_fnum (adr, sizeheader_v7, &header, fnum) : dbread (adr, sizeheader_v7, &header);
 
-		if (!dbread (adr, sizeheader_v7, &header))
+		if (!ok)
 			return (false);
 
 		raw_size = db_format_read_be64((unsigned char *) &header.sizefreeword.size);
@@ -855,8 +867,9 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	}
 	else {
 		tyheader32 header;
+		boolean ok = (fnum >= 0) ? dbread_fnum (adr, sizeheader_v6, &header, fnum) : dbread (adr, sizeheader_v6, &header);
 
-		if (!dbread (adr, sizeheader_v6, &header))
+		if (!ok)
 			return (false);
 
 		raw_size = (uint64_t) db_format_read_be32((unsigned char *) &header.sizefreeword.size);
@@ -872,9 +885,11 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	}
 	if (log_headers) {
 		unsigned long long raw_dbg = (unsigned long long) raw_size;
-		log_trace(LOG_COMP_DB, "dbreadheader parsed raw=0x%016llx variance=0x%08x",
+		log_trace(LOG_COMP_DB, "dbreadheader_core parsed raw=0x%016llx variance=0x%08x use64=%d fnum=%d",
 		          raw_dbg,
-		          (unsigned int) disk_variance);
+		          (unsigned int) disk_variance,
+		          (int) use64,
+		          (int) fnum);
 	}
 	}
 #endif
@@ -890,6 +905,20 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	*variance = disk_variance;
 
 	return (true);
+	} /*dbreadheader_core*/
+
+
+boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance) {
+
+	long header_size;
+	boolean use64 = db_use64();
+
+	if (databasedata != nil && db_format_is_legacy_db(databasedata))
+		use64 = false;
+
+	header_size = use64 ? sizeheader_v7 : sizeheader_v6;
+
+	return dbreadheader_core (adr, flfree, ctbytes, variance, header_size, (hdlfilenum) -1);
 	} /*dbreadheader*/
 
 
@@ -918,49 +947,10 @@ static boolean dbreadheader_fnum (dbaddress adr, boolean *flfree, long *ctbytes,
 	header_size to determine v6 (8 bytes) vs v7 (12 bytes) format —
 	no reliance on global databasedata or format mode.
 
-	NOTE: The byte-swapping and normalization heuristics below are a
-	verbatim copy of the logic in dbreadheader(). If dbreadheader changes,
-	this function must be updated to match.
+	Delegates to dbreadheader_core which owns all header parsing logic.
 	*/
-	uint64_t raw_size = 0;
-	tyvariance disk_variance = 0;
-	boolean use64 = (header_size == sizeheader_v7);
 
-	if (use64) {
-		tyheader64 header;
-
-		if (!dbread_fnum (adr, sizeheader_v7, &header, fnum))
-			return (false);
-
-		raw_size = db_format_read_be64((unsigned char *) &header.sizefreeword.size);
-		disk_variance = (tyvariance) db_format_read_be32((unsigned char *) &header.variance);
-
-		if ((raw_size & 0xFFFFFFFFULL) == 0 && (raw_size >> 32) != 0)
-			raw_size >>= 32;
-		if ((disk_variance & 0xFFFF) == 0 && ((disk_variance >> 16) != 0))
-			disk_variance = (tyvariance) (disk_variance >> 16);
-	}
-	else {
-		tyheader32 header;
-
-		if (!dbread_fnum (adr, sizeheader_v6, &header, fnum))
-			return (false);
-
-		raw_size = (uint64_t) db_format_read_be32((unsigned char *) &header.sizefreeword.size);
-		disk_variance = (tyvariance) db_format_read_be32((unsigned char *) &header.variance);
-	}
-
-	{
-		uint64_t freeflag = use64 ? 0x8000000000000000ULL : 0x80000000ULL;
-		uint64_t sizemask = use64 ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
-
-		*flfree = (raw_size & freeflag) != 0;
-		*ctbytes = (long) (raw_size & sizemask);
-	}
-
-	*variance = disk_variance;
-
-	return (true);
+	return dbreadheader_core (adr, flfree, ctbytes, variance, header_size, fnum);
 	} /*dbreadheader_fnum*/
 
 
@@ -1812,7 +1802,7 @@ boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size)
 	(void) dbnormalizeaddress(&a);
 #endif
 
-	if (!dbreadheader(a, &flfree, &ctbytes, &variance))
+	if (!dbreadheader_core(a, &flfree, &ctbytes, &variance, header_size, (hdlfilenum) -1))
 		return (false);
 
 	ct = ctbytes - (long) variance;

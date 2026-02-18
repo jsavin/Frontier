@@ -638,6 +638,9 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 				}
 			}
 		}
+		else {
+			log_trace(LOG_COMP_DB, "opverbinmemory: skipping dbnormalizeaddress for guest database (ctx->database != databasedata)");
+		}
 	}
 
 	/* Read with explicit context - NO global state changes */
