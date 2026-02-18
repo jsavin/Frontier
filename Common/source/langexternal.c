@@ -3323,9 +3323,13 @@ boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
 
 	if ((**hv).hdatabase != nil) {
 		db_context ctx;
-		memset(&ctx, 0, sizeof(ctx));
-		ctx.database = (**hv).hdatabase;
-		ctx.mode.use_64bit_format = ((**(**hv).hdatabase).versionnumber >= 7);
+		/* Use version-aware helpers that inherit saveas state from globals.
+		   Guest databases are never the target of Save-As, but inheriting the
+		   state keeps behavior consistent if db_context gains new fields. */
+		if ((**(**hv).hdatabase).versionnumber >= 7)
+			db_context_init_v7_write (&ctx, (**hv).hdatabase);
+		else
+			db_context_init_legacy_read (&ctx, (**hv).hdatabase);
 		return langexternalrefdata_context (&ctx, hv, hdata);
 	}
 

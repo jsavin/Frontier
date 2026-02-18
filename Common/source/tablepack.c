@@ -251,11 +251,15 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 	fltempload = !(**hv).flinmemory;
 
 	/* Use the variable's own database handle so guest database
-	 * sub-tables are loaded and packed from the correct file. */
+	 * sub-tables are loaded and packed from the correct file.
+	 * Version-aware helpers inherit saveas state from globals;
+	 * guest databases are never Save-As targets but this keeps
+	 * behavior consistent if db_context gains new fields. */
 	if ((**hv).hdatabase != nil) {
-		memset(&ctx, 0, sizeof(ctx));
-		ctx.database = (**hv).hdatabase;
-		ctx.mode.use_64bit_format = ((**(**hv).hdatabase).versionnumber >= 7);
+		if ((**(**hv).hdatabase).versionnumber >= 7)
+			db_context_init_v7_write (&ctx, (**hv).hdatabase);
+		else
+			db_context_init_legacy_read (&ctx, (**hv).hdatabase);
 	} else {
 		db_context_init(&ctx);
 	}
