@@ -365,6 +365,8 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 				        path ? path : "<nil>");
 			}
 			tyvaluerecord replacement;
+			/* NULL context: materialize is only called during table
+			   hydration of the system root, not guest databases. */
 			if (!langhash_convert_wordprocessor_external(NULL, hv, "<materialize>", &replacement)) {
 				langhash_materialize_current_path = prior_path;
 				return false;
@@ -781,6 +783,15 @@ static boolean flexternalmemorypack = false;
 
 static hdldatabaserecord hexternalpackdatabase;
 
+#if defined(FRONTIER_HEADLESS)
+/* Initialize a db_context from a database handle for guest DB reads.
+   Zeroes the struct and derives use_64bit_format from the version number. */
+static void db_context_init_from_handle(db_context *ctx, hdldatabaserecord hdb) {
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->database = hdb;
+	ctx->mode.use_64bit_format = ((**hdb).versionnumber >= 7);
+}
+#endif
 
 
 static hdlhashtable hfirstfreetable = nil; /*private free list for hash tables*/
@@ -2651,9 +2662,7 @@ static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix, 
 			db_context context_local;
 			const db_context *ctx_to_use = NULL;
 			if (hdb != NULL) {
-				memset(&context_local, 0, sizeof(context_local));
-				context_local.database = hdb;
-				context_local.mode.use_64bit_format = ((**hdb).versionnumber >= 7);
+				db_context_init_from_handle(&context_local, hdb);
 				ctx_to_use = &context_local;
 			}
 			dbaddress diskadr = (**hnode).val.data.diskvalue;
@@ -2911,9 +2920,7 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 		db_context wp_ctx_local;
 		const db_context *wp_ctx = NULL;
 		if (hexternalpackdatabase != NULL) {
-			memset(&wp_ctx_local, 0, sizeof(wp_ctx_local));
-			wp_ctx_local.database = hexternalpackdatabase;
-			wp_ctx_local.mode.use_64bit_format = ((**hexternalpackdatabase).versionnumber >= 7);
+			db_context_init_from_handle(&wp_ctx_local, hexternalpackdatabase);
 			wp_ctx = &wp_ctx_local;
 		}
 		if (!langhash_prepare_wordprocessor_value(wp_ctx, bsname, hnode, &(**hnode).val))
@@ -3319,9 +3326,7 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 		db_context wp_ctx_local;
 		const db_context *wp_ctx = NULL;
 		if (hexternalpackdatabase != NULL) {
-			memset(&wp_ctx_local, 0, sizeof(wp_ctx_local));
-			wp_ctx_local.database = hexternalpackdatabase;
-			wp_ctx_local.mode.use_64bit_format = ((**hexternalpackdatabase).versionnumber >= 7);
+			db_context_init_from_handle(&wp_ctx_local, hexternalpackdatabase);
 			wp_ctx = &wp_ctx_local;
 		}
 		if (!langhash_prepare_wordprocessor_value(wp_ctx, bsname, hnode, &(**hnode).val))
