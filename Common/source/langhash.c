@@ -118,7 +118,7 @@ extern long filespecsize(tyfilespec fs);
 // 2025-11-16 Codex: Added helpers to materialize disk-backed table values before packing.
 
 #if defined(FRONTIER_HEADLESS)
-static boolean langhash_convert_wordprocessor_external(hdlexternalvariable hv, const char *path_hint, tyvaluerecord *replacement) {
+static boolean langhash_convert_wordprocessor_external(const db_context *ctx, hdlexternalvariable hv, const char *path_hint, tyvaluerecord *replacement) {
 	if (hv == nil || replacement == NULL)
 		return false;
 
@@ -133,7 +133,7 @@ static boolean langhash_convert_wordprocessor_external(hdlexternalvariable hv, c
 	 * code calls langerrormessage() which would set fllangerror and kill the
 	 * calling script (e.g. startup.startupScript during migration). */
 	disablelangerror();
-	boolean extracted = wp_portable_extract_plaintext(hv, &hplain_utf8);
+	boolean extracted = wp_portable_extract_plaintext(ctx, hv, &hplain_utf8);
 	enablelangerror();
 
 	if (!extracted) {
@@ -157,7 +157,7 @@ static boolean langhash_convert_wordprocessor_external(hdlexternalvariable hv, c
 	return true;
 }
 
-static boolean langhash_prepare_wordprocessor_value(bigstring bsname, hdlhashnode hnode, tyvaluerecord *val) {
+static boolean langhash_prepare_wordprocessor_value(const db_context *ctx, bigstring bsname, hdlhashnode hnode, tyvaluerecord *val) {
 	hdlexternalvariable hv;
 	bigstring bspath;
 	char pathbuf[512];
@@ -181,7 +181,7 @@ static boolean langhash_prepare_wordprocessor_value(bigstring bsname, hdlhashnod
 	copyptocstring(bspath, pathbuf);
 
 	tyvaluerecord replacement;
-	if (!langhash_convert_wordprocessor_external(hv, pathbuf, &replacement))
+	if (!langhash_convert_wordprocessor_external(ctx, hv, pathbuf, &replacement))
 		return false;
 
 	disposevaluerecord(*val, false);
@@ -365,7 +365,7 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 				        path ? path : "<nil>");
 			}
 			tyvaluerecord replacement;
-			if (!langhash_convert_wordprocessor_external(hv, "<materialize>", &replacement)) {
+			if (!langhash_convert_wordprocessor_external(NULL, hv, "<materialize>", &replacement)) {
 				langhash_materialize_current_path = prior_path;
 				return false;
 			}
@@ -2651,7 +2651,9 @@ static boolean hashpackscalar (handlestream *s, hdlhashnode hnode, int32_t *ix, 
 			db_context context_local;
 			const db_context *ctx_to_use = NULL;
 			if (hdb != NULL) {
+				memset(&context_local, 0, sizeof(context_local));
 				context_local.database = hdb;
+				context_local.mode.use_64bit_format = ((**hdb).versionnumber >= 7);
 				ctx_to_use = &context_local;
 			}
 			dbaddress diskadr = (**hnode).val.data.diskvalue;
@@ -2906,7 +2908,15 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 
 #if defined(FRONTIER_HEADLESS)
 	if (hnode != nil) { /* tests may call with nil hnode */
-		if (!langhash_prepare_wordprocessor_value(bsname, hnode, &(**hnode).val))
+		db_context wp_ctx_local;
+		const db_context *wp_ctx = NULL;
+		if (hexternalpackdatabase != NULL) {
+			memset(&wp_ctx_local, 0, sizeof(wp_ctx_local));
+			wp_ctx_local.database = hexternalpackdatabase;
+			wp_ctx_local.mode.use_64bit_format = ((**hexternalpackdatabase).versionnumber >= 7);
+			wp_ctx = &wp_ctx_local;
+		}
+		if (!langhash_prepare_wordprocessor_value(wp_ctx, bsname, hnode, &(**hnode).val))
 			return true;
 		val = (**hnode).val;
 	}
@@ -3306,7 +3316,15 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 
 #if defined(FRONTIER_HEADLESS)
 	if (hnode != nil) { /* tests may call with nil hnode */
-		if (!langhash_prepare_wordprocessor_value(bsname, hnode, &(**hnode).val))
+		db_context wp_ctx_local;
+		const db_context *wp_ctx = NULL;
+		if (hexternalpackdatabase != NULL) {
+			memset(&wp_ctx_local, 0, sizeof(wp_ctx_local));
+			wp_ctx_local.database = hexternalpackdatabase;
+			wp_ctx_local.mode.use_64bit_format = ((**hexternalpackdatabase).versionnumber >= 7);
+			wp_ctx = &wp_ctx_local;
+		}
+		if (!langhash_prepare_wordprocessor_value(wp_ctx, bsname, hnode, &(**hnode).val))
 			return true;
 		val = (**hnode).val;
 	}

@@ -605,7 +605,7 @@ boolean wpverbpacktotext(hdlexternalvariable h, Handle htext) {
         return false;
 
     Handle hplain = nil;
-    if (!wp_portable_extract_plaintext(h, &hplain))
+    if (!wp_portable_extract_plaintext(NULL, h, &hplain))
         return false;
 
     boolean ok = pushhandle(hplain, htext);
@@ -696,7 +696,7 @@ boolean wpsetselection(long startsel, long endsel) {
     return true;
 }
 
-Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8) {
+Boolean wp_portable_extract_plaintext(const db_context *ctx, hdlexternalvariable hv, Handle *hout_utf8) {
     if (hv == NULL || hout_utf8 == NULL)
         return false;
 
@@ -737,7 +737,7 @@ Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8)
     }
 
     Handle hpacked = nil;
-    if (!wp_portable_state_dbref(NULL, hv, state, &hpacked))
+    if (!wp_portable_state_dbref(ctx, hv, state, &hpacked))
         return false;
 
     const uint8_t *bytes = (const uint8_t *)*hpacked;

@@ -17,7 +17,7 @@ Boolean wp_portable_external_should_drop(hdlexternalvariable hv);
 void wp_portable_note_drop_logged(hdlexternalvariable hv, const char *name_hint);
 Boolean wp_portable_external_was_legacy_ws(hdlexternalvariable hv);
 void wp_portable_note_conversion_logged(hdlexternalvariable hv, const char *name_hint);
-Boolean wp_portable_extract_plaintext(hdlexternalvariable hv, Handle *hout_utf8);
+Boolean wp_portable_extract_plaintext(const db_context *ctx, hdlexternalvariable hv, Handle *hout_utf8);
 Boolean wp_portable_set_plaintext(hdlexternalvariable hv, Handle hutf8);
 #endif
 
