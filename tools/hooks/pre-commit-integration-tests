@@ -27,16 +27,23 @@ COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 
 # Main worktree: .git dir IS the common dir (worktrees have .git/worktrees/<name>)
+# Only block if code/build files are staged — allow docs, OPML, YAML, markdown commits
 if [ "$BRANCH" = "develop" ] && [ "$COMMON_DIR" = "$GIT_DIR" ]; then
-    echo -e "${RED}ERROR: Direct commits to 'develop' in the main worktree are blocked.${NC}" >&2
-    echo "" >&2
-    echo "Use a feature branch in a worktree instead:" >&2
-    echo "  git worktree add Frontier-<feature> -b feature/<name>" >&2
-    echo "" >&2
-    echo "Or use the /doit workflow which handles this automatically." >&2
-    echo "" >&2
-    echo "To bypass this check (rare): git commit --no-verify" >&2
-    exit 1
+    CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -vE '\.(md|opml|yaml|yml|json|txt)$' | grep -vE '^(reports/|docs/|planning/)' || true)
+    if [ -n "$CODE_FILES" ]; then
+        echo -e "${RED}ERROR: Code changes on 'develop' in the main worktree are blocked.${NC}" >&2
+        echo "" >&2
+        echo "Blocked files:" >&2
+        echo "$CODE_FILES" | sed 's/^/  /' >&2
+        echo "" >&2
+        echo "Use a feature branch in a worktree instead:" >&2
+        echo "  git worktree add Frontier-<feature> -b feature/<name>" >&2
+        echo "" >&2
+        echo "Or use the /doit workflow which handles this automatically." >&2
+        echo "" >&2
+        echo "To bypass this check (rare): git commit --no-verify" >&2
+        exit 1
+    fi
 fi
 
 # ──────────────────────────────────────────────────────────────
