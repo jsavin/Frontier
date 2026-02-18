@@ -1,8 +1,10 @@
 #!/bin/bash
-# Pre-commit hook: Auto-regenerate OPML export when integration tests change
+# Pre-commit hook for Frontier development
 #
-# This hook runs before git commit and regenerates reports/integration_tests.opml
-# whenever any test YAML files in tests/integration/test_cases/ are modified.
+# Checks:
+#   1. Block commits to develop in the main worktree (use feature branches)
+#   2. Auto-regenerate OPML export when integration tests change
+#   3. Validate documentation references when docs change
 #
 # Install: Run tools/install_git_hooks.sh
 
@@ -17,31 +19,71 @@ NC='\033[0m' # No Color
 # Get the root of the git repo
 GIT_ROOT=$(git rev-parse --show-toplevel)
 
-# Check if any integration test YAML files are being committed
-TEST_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^tests/integration/test_cases/.*\.yaml$' || true)
+# ──────────────────────────────────────────────────────────────
+# Guard: Block commits to develop in the main worktree
+# ──────────────────────────────────────────────────────────────
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null)
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 
-if [ -z "$TEST_FILES_CHANGED" ]; then
-    # No test files changed, skip OPML regeneration
-    exit 0
-fi
-
-echo -e "${YELLOW}Integration test files changed, regenerating OPML export...${NC}"
-
-# Regenerate OPML
-cd "$GIT_ROOT"
-if ! python3 tools/export_tests_to_opml.py; then
-    echo -e "${RED}Error: Failed to regenerate OPML export${NC}" >&2
+# Main worktree: .git dir IS the common dir (worktrees have .git/worktrees/<name>)
+if [ "$BRANCH" = "develop" ] && [ "$COMMON_DIR" = "$GIT_DIR" ]; then
+    echo -e "${RED}ERROR: Direct commits to 'develop' in the main worktree are blocked.${NC}" >&2
+    echo "" >&2
+    echo "Use a feature branch in a worktree instead:" >&2
+    echo "  git worktree add Frontier-<feature> -b feature/<name>" >&2
+    echo "" >&2
+    echo "Or use the /doit workflow which handles this automatically." >&2
+    echo "" >&2
+    echo "To bypass this check (rare): git commit --no-verify" >&2
     exit 1
 fi
 
-# Check if OPML file changed
-OPML_FILE="reports/integration_tests.opml"
-if git diff --exit-code "$OPML_FILE" > /dev/null 2>&1; then
-    echo -e "${GREEN}OPML export is up to date${NC}"
-else
-    echo -e "${GREEN}OPML export updated, adding to commit${NC}"
-    git add "$OPML_FILE"
+# ──────────────────────────────────────────────────────────────
+# OPML export: Regenerate when integration tests change
+# ──────────────────────────────────────────────────────────────
+
+# Check if any integration test YAML files are being committed
+TEST_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^tests/integration/test_cases/.*\.yaml$' || true)
+
+if [ -n "$TEST_FILES_CHANGED" ]; then
+    echo -e "${YELLOW}Integration test files changed, regenerating OPML export...${NC}"
+
+    # Regenerate OPML
+    cd "$GIT_ROOT"
+    if ! python3 tools/export_tests_to_opml.py; then
+        echo -e "${RED}Error: Failed to regenerate OPML export${NC}" >&2
+        exit 1
+    fi
+
+    # Check if OPML files changed (dated file and symlink)
+    TODAY=$(date +%Y-%m-%d)
+    DATED_OPML="reports/integration_tests_${TODAY}.opml"
+    SYMLINK_OPML="reports/integration_tests.opml"
+
+    OPML_CHANGED=false
+
+    # Check if dated file is new or modified
+    if [ -f "$DATED_OPML" ] && ! git diff --exit-code "$DATED_OPML" > /dev/null 2>&1; then
+        OPML_CHANGED=true
+    fi
+
+    # Check if symlink changed
+    if [ -L "$SYMLINK_OPML" ] && ! git diff --exit-code "$SYMLINK_OPML" > /dev/null 2>&1; then
+        OPML_CHANGED=true
+    fi
+
+    if [ "$OPML_CHANGED" = true ]; then
+        echo -e "${GREEN}OPML export updated, adding to commit${NC}"
+        git add "$DATED_OPML" "$SYMLINK_OPML" 2>/dev/null || true
+    else
+        echo -e "${GREEN}OPML export is up to date${NC}"
+    fi
 fi
+
+# ──────────────────────────────────────────────────────────────
+# Doc validation: Check references when documentation changes
+# ──────────────────────────────────────────────────────────────
 
 # Check if CLAUDE.md or docs/ files are being committed
 DOC_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(CLAUDE\.md|docs/.*\.md)$' || true)
