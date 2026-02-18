@@ -78,6 +78,10 @@ static void db_sync_use64_to_current_db(void);
 #define majorversion(v)		(v & 0x00f0)
 #define minorversion(v)		(v & 0x000f)
 
+/* Sentinel value for dbreadheader_core's fnum parameter meaning
+   "use the global databasedata file handle via dbread()". */
+#define DB_FNUM_USE_GLOBAL ((hdlfilenum) -1)
+
 #if defined(FRONTIER_HEADLESS)
 static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree) {
 	long eof = 0;
@@ -827,21 +831,33 @@ static boolean dbflushheader (void) {
 		
 	return (true);
 	} /*dbflushheader*/
-	
 
-boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance) {
+
+/* Forward declaration for dbreadheader_core which needs to call dbread_fnum */
+static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
+
+static boolean dbreadheader_core (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance, long header_size, hdlfilenum fnum) {
+
+	/*
+	Shared core for reading a database block header.
+
+	header_size: Determines v6 (sizeheader_v6 = 8) vs v7 (sizeheader_v7 = 12) parsing.
+	fnum:        File number to read from. DB_FNUM_USE_GLOBAL means use global dbread;
+	             otherwise uses dbread_fnum.
+
+	Both dbreadheader() and dbrefhandle_fnum() delegate here so header parsing
+	logic is defined in exactly one place.
+	*/
 
 	uint64_t raw_size = 0;
 	tyvariance disk_variance = 0;
-	boolean use64 = db_use64();
-
-	if (databasedata != nil && db_format_is_legacy_db(databasedata))
-		use64 = false;
+	boolean use64 = (header_size == sizeheader_v7);
 
 	if (use64) {
 		tyheader64 header;
+		boolean ok = (fnum != DB_FNUM_USE_GLOBAL) ? dbread_fnum (adr, sizeheader_v7, &header, fnum) : dbread (adr, sizeheader_v7, &header);
 
-		if (!dbread (adr, sizeheader_v7, &header))
+		if (!ok)
 			return (false);
 
 		raw_size = db_format_read_be64((unsigned char *) &header.sizefreeword.size);
@@ -855,8 +871,9 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	}
 	else {
 		tyheader32 header;
+		boolean ok = (fnum != DB_FNUM_USE_GLOBAL) ? dbread_fnum (adr, sizeheader_v6, &header, fnum) : dbread (adr, sizeheader_v6, &header);
 
-		if (!dbread (adr, sizeheader_v6, &header))
+		if (!ok)
 			return (false);
 
 		raw_size = (uint64_t) db_format_read_be32((unsigned char *) &header.sizefreeword.size);
@@ -872,9 +889,11 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	}
 	if (log_headers) {
 		unsigned long long raw_dbg = (unsigned long long) raw_size;
-		log_trace(LOG_COMP_DB, "dbreadheader parsed raw=0x%016llx variance=0x%08x",
+		log_trace(LOG_COMP_DB, "dbreadheader_core parsed raw=0x%016llx variance=0x%08x use64=%d fnum=%d",
 		          raw_dbg,
-		          (unsigned int) disk_variance);
+		          (unsigned int) disk_variance,
+		          (int) use64,
+		          (int) fnum);
 	}
 	}
 #endif
@@ -890,8 +909,96 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	*variance = disk_variance;
 
 	return (true);
+	} /*dbreadheader_core*/
+
+
+boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance) {
+
+	long header_size;
+	boolean use64 = db_use64();
+
+	if (databasedata != nil && db_format_is_legacy_db(databasedata))
+		use64 = false;
+
+	header_size = use64 ? sizeheader_v7 : sizeheader_v6;
+
+	return dbreadheader_core (adr, flfree, ctbytes, variance, header_size, DB_FNUM_USE_GLOBAL);
 	} /*dbreadheader*/
-	
+
+
+static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum) {
+
+	if (!filesetposition (fnum, adr))
+		return (false);
+
+	if (!fileread (fnum, ctbytes, pdata))
+		return (false);
+
+	return (true);
+	} /*dbread_fnum*/
+
+
+boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum fnum) {
+
+	/*
+	Like dbrefhandle_with_header_size but reads from an explicit file number
+	instead of the global databasedata. This allows guest database reads to
+	work without mutating global state.
+
+	Called from dbrefhandle_context when a non-nil database is in the context.
+
+	IMPORTANT: Callers must provide a block-start address, not an interior
+	address. No normalization is performed here because dbnormalizeaddress
+	uses the global databasedata which may point to a different file than fnum.
+	If guest database externals can store interior addresses, a future
+	dbnormalizeaddress_fnum that scans the correct file would be needed.
+	*/
+	register boolean fl;
+	register Handle hregister;
+	register long ct;
+	long ctbytes;
+	boolean flfree;
+	tyvariance variance;
+
+	*h = nil;
+
+	if (header_size != 8 && header_size != 12) {
+		log_error(LOG_COMP_DB, "dbrefhandle_fnum: invalid header_size %ld (must be 8 or 12)", header_size);
+		return (false);
+	}
+
+	if (adr == nildbaddress)
+		return (false);
+
+	if (!dbreadheader_core (adr, &flfree, &ctbytes, &variance, header_size, fnum))
+		return (false);
+
+	ct = ctbytes - (long) variance;
+
+	if (flfree || (ct < 0)) {
+		dberror (dbfreeblockerror);
+		return (false);
+	}
+
+	if (!newclearhandle (ct, h))
+		return (false);
+
+	hregister = *h;
+	lockhandle (hregister);
+
+	fl = dbread_fnum (adr + header_size, ct, *hregister, fnum);
+
+	unlockhandle (hregister);
+
+	if (!fl) {
+		disposehandle (hregister);
+		*h = nil;
+		return (false);
+	}
+
+	return (true);
+	} /*dbrefhandle_fnum*/
+
 
 boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
@@ -1679,7 +1786,7 @@ boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size)
 	(void) dbnormalizeaddress(&a);
 #endif
 
-	if (!dbreadheader(a, &flfree, &ctbytes, &variance))
+	if (!dbreadheader_core(a, &flfree, &ctbytes, &variance, header_size, DB_FNUM_USE_GLOBAL))
 		return (false);
 
 	ct = ctbytes - (long) variance;

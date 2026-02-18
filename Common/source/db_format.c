@@ -2568,14 +2568,24 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 
     2026-02-03: During migration, global mode may be locked to v7.
     Use explicit header size from context instead of global mode.
+
+    2026-02-17: Thread file number explicitly through the read chain instead
+    of mutating global databasedata. Fixes guest database external access
+    (scripts, outlines, WP text, menus, pictures) where the global assignment
+    didn't persist through nested calls and reads hit the wrong file.
     */
     if (context != NULL) {
-        if (context->database != nil)
-            databasedata = context->database;
-
-        /* During migration with mode lock, can't downgrade global mode to v6.
-           Pass explicit header size based on context mode. */
         long header_size = context->mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
+
+        if (context->database != nil) {
+            /* fnumdatabase is stored as long for cross-platform struct size
+               consistency, but the actual file descriptor fits in hdlfilenum
+               (typedef short). The cast is safe because POSIX file descriptors
+               are small non-negative integers. */
+            hdlfilenum fnum = (hdlfilenum) (**context->database).fnumdatabase;
+            return dbrefhandle_fnum(adr, h, header_size, fnum);
+        }
+
         return dbrefhandle_with_header_size(adr, h, header_size);
     }
     return dbrefhandle(adr, h);

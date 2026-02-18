@@ -164,14 +164,18 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 ### 1. ~~Integration Test Fix Plan~~ — ✅ COMPLETE
 **Result**: 0 failures achieved (was 755). See PRs #428-#433.
 
-### 2. Startup Script Hardening / Dist Stability
-**Status**: Startup completes, dist mode stable across multiple runs
-**Goal**: Validate all critical-path kernel verbs for daemon mode
-**Recent progress**: Startup hang fixed (PR #403), dist crashes fixed (PR #401), fileloop working (PR #396)
-**What remains**:
-- Long-running HTTP process testing
-- Identify and fix any remaining unreachable kernel verbs (BIGSTRING audit)
-- Validate daemon-mode workflows end-to-end
+### 2. Startup Flow Stabilization — First Run to Web Setup
+**Status**: Startup script completes but first-run flow (mainResponder/manila bootstrap) not yet verified end-to-end
+**Goal**: Full first-run experience works from clean dist build — startup completes all 14 phases, HTTP server starts, browser opens setupFrontier page
+**Plan**: [`planning/phase4/STARTUP_STABILIZATION_PLAN.md`](planning/phase4/STARTUP_STABILIZATION_PLAN.md)
+**Approach**: Diagnostic-first — run from dist, identify failures, fix iteratively
+**Key areas**:
+- StartupTasks.root loading and `StartupTasksSuite.main()` execution (patches webBrowser glue)
+- First-run flow: `firstRootRun()` → `finishInstall()` → mainResponder/manila install
+- Subsystem init: `html.init()`, `webserver.init()`, `betty.init()`, etc.
+- HTTP server start via `inetd.start()` / `tcp.listenStream`
+- `webBrowser.openUrl()` opening setupFrontier in default browser
+- `wp.newTextObject` stub may be needed for finishInstall
 
 ### 3. GUI Application Prototype
 **Status**: Planning complete - ready for implementation
@@ -355,6 +359,7 @@ See planning/_STATUS_ARCHIVE.md for:
 - **GUI Protocol**: planning/gui/PROTOCOL.md
 - **CRDT Foundation**: planning/phase6/CRDT_FOUNDATION_ROADMAP.md
 - **Integration Test Fix Plan**: planning/FIX_TESTS_2026_02_16.md
+- **Startup Stabilization Plan**: planning/phase4/STARTUP_STABILIZATION_PLAN.md
 
 ### Implementation Guides
 - **Getting Started**: docs/GETTING_STARTED.md

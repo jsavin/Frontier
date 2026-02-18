@@ -539,16 +539,36 @@ static boolean ccloadsystemtable (hdlcancoonrecord hcancoon, dbaddress adr, bool
 
 
 void setcancoonglobals (hdlcancoonrecord hcancoon) {
-	
+
 	/*
 	5.0a18 dmb: added nil check, set globals to nill in that case
+
+	2026-02-17: After restoring databasedata, sync the global format mode to
+	match the restored database's version. After opening a v6 guest database
+	(which may change the format mode to v6), restoring the system root via
+	setcancoonglobals must also restore the format mode to v7 to prevent
+	header size mismatches in subsequent operations.
+
+	NOTE: db_format_mode_apply safely blocks v7→v6 downgrades when the mode
+	is locked during migration, so this call is harmless during migration.
+	Under the GIL threading model, no concurrent database operations can
+	race with this mode change.
 	*/
 
 	register hdlcancoonrecord hc = hcancoon;
-	
+
 	if (hc != nil) {
 
 		databasedata = (**hc).hdatabase;
+
+		if (databasedata != nil) {
+
+			db_format_mode mode = db_format_mode_current();
+
+			mode.use_64bit_format = ((**databasedata).versionnumber >= 7);
+
+			db_format_mode_apply (&mode);
+		}
 
 		settablestructureglobals ((**hc).hrootvariable, false);
 
@@ -556,7 +576,14 @@ void setcancoonglobals (hdlcancoonrecord hcancoon) {
 
 		setcurrentmenubarlist ((**hc).hmenubarlist);
 		}
-	
+
+	/* Note: when hc is nil, we don't restore format mode because there's
+	   no cancoon record to derive it from. This is safe because
+	   setcancoonglobals(nil) is only called during shutdown/cleanup paths,
+	   never after guest database operations that may have changed the
+	   format mode. Guest database open/close always restores via a
+	   non-nil cancoon record for the system root. */
+
 	cancoonglobals = hc; /*this global is independent of shellpush/popglobals*/
 	} /*setcancoonglobals*/
 

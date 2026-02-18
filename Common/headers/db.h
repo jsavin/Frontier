@@ -196,6 +196,8 @@ extern boolean dbreference_with_header_size(dbaddress adr, long maxbytes, ptrvoi
 
 extern boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size);
 
+extern boolean dbrefhandle_fnum(dbaddress adr, Handle *h, long header_size, hdlfilenum fnum);
+
 extern boolean dbassign (dbaddress *, long, ptrvoid);
 
 extern boolean dbcopy (dbaddress, dbaddress *);
