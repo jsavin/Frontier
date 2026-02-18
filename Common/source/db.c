@@ -79,7 +79,9 @@ static void db_sync_use64_to_current_db(void);
 #define minorversion(v)		(v & 0x000f)
 
 /* Sentinel value for dbreadheader_core's fnum parameter meaning
-   "use the global databasedata file handle via dbread()". */
+   "use the global databasedata file handle via dbread()".
+   POSIX guarantees file descriptors are non-negative (fd >= 0),
+   so -1 cannot collide with a real file descriptor. */
 #define DB_FNUM_USE_GLOBAL ((hdlfilenum) -1)
 
 #if defined(FRONTIER_HEADLESS)

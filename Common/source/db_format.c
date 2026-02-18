@@ -2579,9 +2579,10 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 
         if (context->database != nil) {
             /* fnumdatabase is stored as long for cross-platform struct size
-               consistency, but the actual file descriptor fits in hdlfilenum
-               (typedef short). The cast is safe because POSIX file descriptors
-               are small non-negative integers. */
+               consistency (see tydatabaserecord in db.h for rationale), but
+               the actual file descriptor fits in hdlfilenum (typedef short).
+               The cast is safe because POSIX file descriptors are small
+               non-negative integers. */
             hdlfilenum fnum = (hdlfilenum) (**context->database).fnumdatabase;
             return dbrefhandle_fnum(adr, h, header_size, fnum);
         }
