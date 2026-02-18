@@ -568,7 +568,7 @@ void setcancoonglobals (hdlcancoonrecord hcancoon) {
 			   state) are intentionally preserved. */
 			db_format_mode mode = db_format_mode_current();
 
-			mode.use_64bit_format = ((**databasedata).versionnumber >= 7);
+			mode.use_64bit_format = db_is_v7(databasedata);
 
 			db_format_mode_apply (&mode);
 		}

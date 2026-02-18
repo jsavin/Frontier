@@ -37,6 +37,11 @@ struct db_context {
     db_saveas_state saveas;
 };
 
+/* True if the database handle points to a v7 (64-bit) format database.
+   Safe when hdb is nil (returns false). Used to choose between v7 and
+   legacy read/write contexts throughout the packing code. */
+#define db_is_v7(hdb) ((hdb) != nil && (**(hdb)).versionnumber >= 7)
+
 #define LEGACY_DB_HEADER_BYTES 88
 
 static inline uint16_t db_format_read_be16(const unsigned char *p) {

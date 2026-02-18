@@ -1006,19 +1006,29 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 	        (int)(**hv).id, (int)adapter_repack, (int)(**hv).flinmemory);
 
 	if (adapter_repack) {
-		/* If not already in memory, load from v6 source */
+		/* If not already in memory, load from source database */
 		if (!(**hv).flinmemory) {
-			/* Create v6 read context for loading from source database */
-			legacy_context = working_context;
-			legacy_context.mode.use_64bit_format = false;
-			legacy_context.mode.adapter_repack = false;  /* Pure read mode */
-			/* CRITICAL: Use the external's own database handle for reading, not the current global */
-			legacy_context.database = (**hv).hdatabase;
+			/* Create read context matching the source database format.
+			 * The source may be v6 (original migration) or v7 (cross-database
+			 * assignment from an already-migrated database like StartupTasks.root).
+			 * Use the dedicated initializers so all mode bits are set cleanly. */
+			if ((**hv).hdatabase == nil) {
+				/* nil hdatabase is unexpected during adapter-repack — the migration
+				 * controller should always supply a source database. Fall back to
+				 * legacy read, but warn so this doesn't pass silently. */
+				log_warn(LOG_COMP_EXTERNAL, "langexternalpack: nil hdatabase in adapter_repack path id=%d, defaulting to legacy read",
+				        (int)(**hv).id);
+				db_context_init_legacy_read (&legacy_context, (**hv).hdatabase);
+			} else if (db_is_v7 ((**hv).hdatabase)) {
+				db_context_init_v7_read (&legacy_context, (**hv).hdatabase);
+			} else {
+				db_context_init_legacy_read (&legacy_context, (**hv).hdatabase);
+			}
 
-			log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external from v6 id=%d (explicit context) db=%p",
-			        (int)(**hv).id, (void*)legacy_context.database);
+			log_trace(LOG_COMP_EXTERNAL, "langexternalpack: loading external id=%d (explicit context) db=%p v7=%d",
+			        (int)(**hv).id, (void*)legacy_context.database, (int)legacy_context.mode.use_64bit_format);
 
-			/* Load external into memory using explicit v6 context */
+			/* Load external into memory using source database context */
 			if (!ensure_external_in_memory (&legacy_context, hv)) {
 				log_error(LOG_COMP_EXTERNAL, "langexternalpack_internal: ensure_external_in_memory FAILED id=%d",
 				        (int)(**hv).id);
@@ -1039,7 +1049,21 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 	} else {
 		/* Normal save: load from current database if not already in memory */
 		if (!(**hv).flinmemory) {
-			if (!ensure_external_in_memory (&working_context, hv)) {
+			/* For cross-database assignments (e.g., copying a script from
+			 * StartupTasks.root into Frontier.root), the external's data is
+			 * still on disk in the source database. Override the read context
+			 * to use the variable's own database handle, not the destination
+			 * database being packed. Same pattern as the adapter_repack path above. */
+			db_context read_context = working_context;
+			if ((**hv).hdatabase != nil && (**hv).hdatabase != working_context.database) {
+				if (db_is_v7 ((**hv).hdatabase))
+					db_context_init_v7_read (&read_context, (**hv).hdatabase);
+				else
+					db_context_init_legacy_read (&read_context, (**hv).hdatabase);
+				log_debug(LOG_COMP_EXTERNAL, "langexternalpack: cross-db external id=%d, reading from db=%p v7=%d",
+				        (int)(**hv).id, (void*)(**hv).hdatabase, (int)read_context.mode.use_64bit_format);
+			}
+			if (!ensure_external_in_memory (&read_context, hv)) {
 				log_error(LOG_COMP_EXTERNAL, "langexternalpack_internal: ensure_external_in_memory FAILED (normal save) id=%d",
 				        (int)(**hv).id);
 				return (false);
@@ -3326,7 +3350,7 @@ boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
 		/* Use version-aware helpers that inherit saveas state from globals.
 		   Guest databases are never the target of Save-As, but inheriting the
 		   state keeps behavior consistent if db_context gains new fields. */
-		if ((**(**hv).hdatabase).versionnumber >= 7)
+		if (db_is_v7 ((**hv).hdatabase))
 			db_context_init_v7_read (&ctx, (**hv).hdatabase);
 		else
 			db_context_init_legacy_read (&ctx, (**hv).hdatabase);

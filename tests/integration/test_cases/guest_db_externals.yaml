@@ -160,6 +160,34 @@ tests:
     expected_result: "true"
 
   # ========================================================================
+  # Cross-Database External Packing (PR #438 regression test)
+  # ========================================================================
+
+  - name: "cross-db external pack - copy script from guest db, save system root"
+    description: |
+      Opens StartupTasks.root as a guest database, copies a script external
+      into a system root table via address assignment, then saves the system
+      root. This exercises langexternalpack_internal with a cross-database
+      external whose data is on disk in the source (guest) database.
+      Previously failed with dbrefhandle FAILED when the pack context used
+      the destination database instead of the source.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      new(tableType, @system.temp.crossDbPack);
+      system.temp.crossDbPack.copiedScript = StartupTasksSuite.main;
+      fileMenu.save();
+      local(t = typeOf(system.temp.crossDbPack.copiedScript));
+      delete(@system.temp.crossDbPack);
+      fileMenu.save();
+      return t
+    expected_success: true
+    expected_result: "scpt"
+
+  # ========================================================================
   # Format Mode Restoration After Guest Database Access
   # ========================================================================
 
