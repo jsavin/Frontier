@@ -547,6 +547,11 @@ void setcancoonglobals (hdlcancoonrecord hcancoon) {
 	match the restored database's version. Without this, opening a v6 guest
 	database leaves the format mode set to v6 even after restoring the v7
 	system root, causing header size mismatches in subsequent operations.
+
+	NOTE: db_format_mode_apply safely blocks v7→v6 downgrades when the mode
+	is locked during migration, so this call is harmless during migration.
+	Under the GIL threading model, no concurrent database operations can
+	race with this mode change.
 	*/
 
 	register hdlcancoonrecord hc = hcancoon;

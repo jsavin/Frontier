@@ -917,6 +917,10 @@ static boolean dbreadheader_fnum (dbaddress adr, boolean *flfree, long *ctbytes,
 	Like dbreadheader but reads from an explicit file number and uses
 	header_size to determine v6 (8 bytes) vs v7 (12 bytes) format —
 	no reliance on global databasedata or format mode.
+
+	NOTE: The byte-swapping and normalization heuristics below are a
+	verbatim copy of the logic in dbreadheader(). If dbreadheader changes,
+	this function must be updated to match.
 	*/
 	uint64_t raw_size = 0;
 	tyvariance disk_variance = 0;
@@ -968,8 +972,13 @@ boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum
 	work without mutating global state.
 
 	Called from dbrefhandle_context when a non-nil database is in the context.
+
+	IMPORTANT: Callers must provide a block-start address, not an interior
+	address. No normalization is performed here because dbnormalizeaddress
+	uses the global databasedata which may point to a different file than fnum.
+	If guest database externals can store interior addresses, a future
+	dbnormalizeaddress_fnum that scans the correct file would be needed.
 	*/
-	dbaddress a = adr;
 	register boolean fl;
 	register Handle hregister;
 	register long ct;
@@ -984,14 +993,10 @@ boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum
 		return (false);
 	}
 
-	if (a == nildbaddress)
+	if (adr == nildbaddress)
 		return (false);
 
-	/* NOTE: No dbnormalizeaddress here. Normalization uses the global databasedata
-	   which may point to a different file than fnum. Callers must provide the
-	   correct block-start address for the target file. */
-
-	if (!dbreadheader_fnum (a, &flfree, &ctbytes, &variance, header_size, fnum))
+	if (!dbreadheader_fnum (adr, &flfree, &ctbytes, &variance, header_size, fnum))
 		return (false);
 
 	ct = ctbytes - (long) variance;
@@ -1007,7 +1012,7 @@ boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum
 	hregister = *h;
 	lockhandle (hregister);
 
-	fl = dbread_fnum (a + header_size, ct, *hregister, fnum);
+	fl = dbread_fnum (adr + header_size, ct, *hregister, fnum);
 
 	unlockhandle (hregister);
 
