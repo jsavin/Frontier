@@ -987,9 +987,9 @@ boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum
 	if (a == nildbaddress)
 		return (false);
 
-#if defined(FRONTIER_HEADLESS)
-	(void) dbnormalizeaddress(&a);
-#endif
+	/* NOTE: No dbnormalizeaddress here. Normalization uses the global databasedata
+	   which may point to a different file than fnum. Callers must provide the
+	   correct block-start address for the target file. */
 
 	if (!dbreadheader_fnum (a, &flfree, &ctbytes, &variance, header_size, fnum))
 		return (false);

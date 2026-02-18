@@ -539,16 +539,30 @@ static boolean ccloadsystemtable (hdlcancoonrecord hcancoon, dbaddress adr, bool
 
 
 void setcancoonglobals (hdlcancoonrecord hcancoon) {
-	
+
 	/*
 	5.0a18 dmb: added nil check, set globals to nill in that case
+
+	2026-02-17: After restoring databasedata, sync the global format mode to
+	match the restored database's version. Without this, opening a v6 guest
+	database leaves the format mode set to v6 even after restoring the v7
+	system root, causing header size mismatches in subsequent operations.
 	*/
 
 	register hdlcancoonrecord hc = hcancoon;
-	
+
 	if (hc != nil) {
 
 		databasedata = (**hc).hdatabase;
+
+		if (databasedata != nil) {
+
+			db_format_mode mode = db_format_mode_current();
+
+			mode.use_64bit_format = ((**databasedata).versionnumber >= 7);
+
+			db_format_mode_apply (&mode);
+		}
 
 		settablestructureglobals ((**hc).hrootvariable, false);
 
@@ -556,7 +570,7 @@ void setcancoonglobals (hdlcancoonrecord hcancoon) {
 
 		setcurrentmenubarlist ((**hc).hmenubarlist);
 		}
-	
+
 	cancoonglobals = hc; /*this global is independent of shellpush/popglobals*/
 	} /*setcancoonglobals*/
 
