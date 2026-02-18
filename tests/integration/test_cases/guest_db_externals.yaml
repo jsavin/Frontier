@@ -1,0 +1,179 @@
+# Integration tests for guest database external loading
+#
+# These tests verify that non-table external types (scripts, outlines, WP text)
+# can be read from guest databases after they are opened via fileMenu.open().
+#
+# Root cause: dbnormalizeaddress was scanning the system root's block structure
+# instead of the guest database's, remapping addresses to wrong offsets and
+# producing zero reads. Fixed by threading explicit file numbers through the
+# read chain and guarding normalization when context targets a different database.
+#
+# Tests use StartupTasks.root and mainResponder.root from the dist/ directory.
+# They skip gracefully when guest database files are not available (e.g., in
+# per-worker test environments without adjacent guest databases).
+
+tests:
+  # ========================================================================
+  # Script External Loading from Guest Databases
+  # ========================================================================
+
+  - name: "guest db externals - script typeof from StartupTasks"
+    description: |
+      Open StartupTasks.root as guest database and verify script type resolution.
+      typeOf() on a script entry should return 'scpt'.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return typeOf(StartupTasksSuite.main)
+    expected_success: true
+    expected_result: "scpt"
+
+  - name: "guest db externals - script text readable from StartupTasks"
+    description: |
+      Open StartupTasks.root and read script text via string().
+      Verifies that opverbinmemory can unpack the outline from the guest DB file.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      local (s = string(StartupTasksSuite.main));
+      return string.length(s) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "guest db externals - script defined() from StartupTasks"
+    description: |
+      Open StartupTasks.root and verify defined() resolves scripts.
+      defined() triggers name resolution + compilation, exercising the full
+      external loading chain.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return defined(StartupTasksSuite.main)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Script External Loading from mainResponder Guest Database
+  # ========================================================================
+
+  - name: "guest db externals - script typeof from mainResponder"
+    description: |
+      Open mainResponder.root as guest database and verify script type.
+      Uses a different guest database to confirm the fix is not DB-specific.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/mainResponder.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return typeOf(mainResponder.init)
+    expected_success: true
+    expected_result: "scpt"
+
+  - name: "guest db externals - script text readable from mainResponder"
+    description: |
+      Open mainResponder.root and read script text via string().
+      The init script should begin with 'on init'.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/mainResponder.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      local (s = string(mainResponder.init));
+      return string.mid(s, 1, 7) == "on init"
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Outline Text (optx) External Loading from Guest Database
+  # ========================================================================
+
+  - name: "guest db externals - outline text typeof from mainResponder"
+    description: |
+      Open mainResponder.root and check that outline text externals resolve.
+      mainResponder.data.ieHtmlEditor is an optx type.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/mainResponder.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return typeOf(mainResponder.data.ieHtmlEditor)
+    expected_success: true
+    expected_result: "optx"
+
+  - name: "guest db externals - outline text readable from mainResponder"
+    description: |
+      Open mainResponder.root and read outline text via string().
+      The ieHtmlEditor outline should contain HTML table markup.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/mainResponder.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      local (s = string(mainResponder.data.ieHtmlEditor));
+      return string.length(s) > 100
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Table Navigation in Guest Database
+  # ========================================================================
+
+  - name: "guest db externals - table navigation and sizeOf"
+    description: |
+      Open StartupTasks.root and verify table navigation works.
+      sizeOf() requires the table to be materialized from the guest DB.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return sizeOf(StartupTasksSuite) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "guest db externals - deep table access in mainResponder"
+    description: |
+      Open mainResponder.root and access a nested table value.
+      TEXT values stored in guest database subtables should be readable.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/mainResponder.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return string.length(mainResponder.data.featureListRssUrl) > 0
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Format Mode Restoration After Guest Database Access
+  # ========================================================================
+
+  - name: "guest db externals - system root accessible after guest db open"
+    description: |
+      After opening a guest database, system root tables should still be
+      accessible. Verifies that setcancoonglobals correctly restores
+      databasedata and format mode.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return typeOf(system)
+    expected_success: true
+    expected_result: "tabl"
