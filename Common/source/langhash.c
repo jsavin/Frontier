@@ -789,7 +789,7 @@ static hdldatabaserecord hexternalpackdatabase;
 static void db_context_init_from_handle(db_context *ctx, hdldatabaserecord hdb) {
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->database = hdb;
-	ctx->mode.use_64bit_format = ((**hdb).versionnumber >= 7);
+	ctx->mode.use_64bit_format = db_is_v7(hdb);
 }
 #endif
 
@@ -3708,7 +3708,7 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 			hdldatabaserecord hdb = tablegetdatabase (htable);
 			if (hdb != nil) {
 				working_context.database = hdb;
-				working_context.mode.use_64bit_format = ((**hdb).versionnumber >= 7);
+				working_context.mode.use_64bit_format = db_is_v7(hdb);
 				use_64bit = working_context.mode.use_64bit_format;
 			}
 		}

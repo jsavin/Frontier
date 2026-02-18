@@ -258,7 +258,7 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 	 * from globals; guest databases are never Save-As targets but
 	 * this keeps behavior consistent if db_context gains new fields. */
 	if ((**hv).hdatabase != nil) {
-		if ((**(**hv).hdatabase).versionnumber >= 7)
+		if (db_is_v7 ((**hv).hdatabase))
 			db_context_init_v7_write (&ctx, (**hv).hdatabase);
 		else
 			db_context_init_legacy_read (&ctx, (**hv).hdatabase);

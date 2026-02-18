@@ -70,13 +70,13 @@ if [ -n "$TEST_FILES_CHANGED" ]; then
 
     OPML_CHANGED=false
 
-    # Check if dated file is new or modified
-    if [ -f "$DATED_OPML" ] && ! git diff --exit-code "$DATED_OPML" > /dev/null 2>&1; then
+    # Check if dated file is new, modified, or untracked
+    if [ -f "$DATED_OPML" ] && [ -n "$(git status --porcelain "$DATED_OPML" 2>/dev/null)" ]; then
         OPML_CHANGED=true
     fi
 
-    # Check if symlink changed
-    if [ -L "$SYMLINK_OPML" ] && ! git diff --exit-code "$SYMLINK_OPML" > /dev/null 2>&1; then
+    # Check if symlink is new, modified, or untracked
+    if [ -L "$SYMLINK_OPML" ] && [ -n "$(git status --porcelain "$SYMLINK_OPML" 2>/dev/null)" ]; then
         OPML_CHANGED=true
     fi
 
