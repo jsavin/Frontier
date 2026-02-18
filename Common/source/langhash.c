@@ -3682,13 +3682,36 @@ boolean hashpacktable_internal (const db_context *ctx, hdlhashtable htable, bool
 	Handle h1, h2;
 	db_context working_context;
 
-	/* Phase 1: Initialize working context (never NULL for child operations) */
+	/* Phase 1: Initialize working context (never NULL for child operations).
+	 *
+	 * The NULL path is reached only from the legacy hashpacktable() wrapper
+	 * (langhash.c), which is called by runtime_tests.c and any code not yet
+	 * migrated to hashpacktable_context(). Recursive calls from
+	 * hashpackvisit_v7 → hashpackexternal → langexternalmemorypack →
+	 * tableverbmemorypack always pass explicit context via tablepacktable_internal. */
 	if (ctx != NULL) {
 		working_context = *ctx;
 		use_64bit = ctx->mode.use_64bit_format;
 	} else {
 		db_context_init(&working_context);
 		use_64bit = db_format_mode_current().use_64bit_format;
+
+		/* For guest database tables, use the table's own database handle
+		 * instead of the global databasedata (which points to the system root).
+		 * Without this, disk reads for external values (WP text, outlines,
+		 * sub-tables) use the wrong file at the wrong address.
+		 *
+		 * adapter_repack stays false (from db_context_init above): migration
+		 * operates on the system root, never on guest databases, so guest DB
+		 * tables should never be packed with adapter_repack semantics. */
+		if (flmemory) {
+			hdldatabaserecord hdb = tablegetdatabase (htable);
+			if (hdb != nil) {
+				working_context.database = hdb;
+				working_context.mode.use_64bit_format = ((**hdb).versionnumber >= 7);
+				use_64bit = working_context.mode.use_64bit_format;
+			}
+		}
 
 		/* CRITICAL MIGRATION FIX: During migration (adapter active), force v7 format
 		 * even if mode stack is corrupted. This prevents legacy format tables from
@@ -3789,7 +3812,11 @@ log_debug(LOG_COMP_HASH, "hashpacktable_internal use_64bit=%d (ctx=%p ctx_mode=%
 #endif
 	
 	flexternalmemorypack = flmemory;
-	
+
+	/* hexternalpackdatabase is the same derivation as working_context.database
+	 * above but stored as a file-scoped global for hashpackvisit callbacks
+	 * that don't receive the working_context. Both paths will be unified
+	 * when hexternalpackdatabase is eliminated in favor of explicit context. */
 	if (flexternalmemorypack)
 		hexternalpackdatabase = tablegetdatabase (htable);
 	

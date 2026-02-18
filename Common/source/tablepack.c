@@ -246,22 +246,34 @@ boolean tableverbmemorypack (hdlexternalvariable h, Handle *hpacked, hdlhashnode
 	register boolean fl;
 	boolean fltempload;
 	boolean fldummy;
+	db_context ctx = {0};
 
 	fltempload = !(**hv).flinmemory;
 
-	{
-		db_context ctx;
+	/* Use the variable's own database handle so guest database
+	 * sub-tables are loaded and packed from the correct file.
+	 * This context is used for both loading (tableverbinmemory) and
+	 * re-packing (tablepacktable_internal), so v7_write is the
+	 * correct intent. Version-aware helpers inherit saveas state
+	 * from globals; guest databases are never Save-As targets but
+	 * this keeps behavior consistent if db_context gains new fields. */
+	if ((**hv).hdatabase != nil) {
+		if ((**(**hv).hdatabase).versionnumber >= 7)
+			db_context_init_v7_write (&ctx, (**hv).hdatabase);
+		else
+			db_context_init_legacy_read (&ctx, (**hv).hdatabase);
+	} else {
 		db_context_init(&ctx);
-
-		if (!tableverbinmemory (&ctx, hv, hnode))
-			return (false);
 	}
 
-	ht = (hdlhashtable) (**hv).variabledata; 
-	
-	tablecheckwindowrect (ht); 
-	
-	fl = tablepacktable (ht, true, &hpush, &fldummy);
+	if (!tableverbinmemory (&ctx, hv, hnode))
+		return (false);
+
+	ht = (hdlhashtable) (**hv).variabledata;
+
+	tablecheckwindowrect (ht);
+
+	fl = tablepacktable_internal (&ctx, ht, true, &hpush, &fldummy);
 	
 	if (fltempload)
 		tableverbunload (hv);

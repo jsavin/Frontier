@@ -3315,8 +3315,23 @@ tyvaluetype langexternalgetvaluetype (OSType typeid) {
 boolean langexternalrefdata (hdlexternalvariable hv, Handle *hdata) {
 	/*
 	2025-12-23: Refactored to use explicit context instead of push/pop pattern
-	Wrapper for backward compatibility - calls context-aware variant with NULL
+	2026-02-17: Build context from variable's own database handle instead of passing
+	NULL. Fixes guest database externals (outlines, WP text, menus, pictures) where
+	the global databasedata points to the system root but the variable belongs to a
+	guest database opened via fileMenu.open().
 	*/
+
+	if ((**hv).hdatabase != nil) {
+		db_context ctx;
+		/* Use version-aware helpers that inherit saveas state from globals.
+		   Guest databases are never the target of Save-As, but inheriting the
+		   state keeps behavior consistent if db_context gains new fields. */
+		if ((**(**hv).hdatabase).versionnumber >= 7)
+			db_context_init_v7_read (&ctx, (**hv).hdatabase);
+		else
+			db_context_init_legacy_read (&ctx, (**hv).hdatabase);
+		return langexternalrefdata_context (&ctx, hv, hdata);
+	}
 
 	return langexternalrefdata_context (NULL, hv, hdata);
 	} /*langexternalrefdata*/
