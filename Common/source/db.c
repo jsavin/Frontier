@@ -891,7 +891,135 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 
 	return (true);
 	} /*dbreadheader*/
-	
+
+
+static boolean dbseek_fnum (dbaddress adr, hdlfilenum fnum) {
+
+	return (filesetposition (fnum, adr));
+	} /*dbseek_fnum*/
+
+
+static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum) {
+
+	if (!dbseek_fnum (adr, fnum))
+		return (false);
+
+	if (!fileread (fnum, ctbytes, pdata))
+		return (false);
+
+	return (true);
+	} /*dbread_fnum*/
+
+
+static boolean dbreadheader_fnum (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance, long header_size, hdlfilenum fnum) {
+
+	/*
+	Like dbreadheader but reads from an explicit file number and uses
+	header_size to determine v6 (8 bytes) vs v7 (12 bytes) format —
+	no reliance on global databasedata or format mode.
+	*/
+	uint64_t raw_size = 0;
+	tyvariance disk_variance = 0;
+	boolean use64 = (header_size == sizeheader_v7);
+
+	if (use64) {
+		tyheader64 header;
+
+		if (!dbread_fnum (adr, sizeheader_v7, &header, fnum))
+			return (false);
+
+		raw_size = db_format_read_be64((unsigned char *) &header.sizefreeword.size);
+		disk_variance = (tyvariance) db_format_read_be32((unsigned char *) &header.variance);
+
+		if ((raw_size & 0xFFFFFFFFULL) == 0 && (raw_size >> 32) != 0)
+			raw_size >>= 32;
+		if ((disk_variance & 0xFFFF) == 0 && ((disk_variance >> 16) != 0))
+			disk_variance = (tyvariance) (disk_variance >> 16);
+	}
+	else {
+		tyheader32 header;
+
+		if (!dbread_fnum (adr, sizeheader_v6, &header, fnum))
+			return (false);
+
+		raw_size = (uint64_t) db_format_read_be32((unsigned char *) &header.sizefreeword.size);
+		disk_variance = (tyvariance) db_format_read_be32((unsigned char *) &header.variance);
+	}
+
+	{
+		uint64_t freeflag = use64 ? 0x8000000000000000ULL : 0x80000000ULL;
+		uint64_t sizemask = use64 ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
+
+		*flfree = (raw_size & freeflag) != 0;
+		*ctbytes = (long) (raw_size & sizemask);
+	}
+
+	*variance = disk_variance;
+
+	return (true);
+	} /*dbreadheader_fnum*/
+
+
+boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum fnum) {
+
+	/*
+	Like dbrefhandle_with_header_size but reads from an explicit file number
+	instead of the global databasedata. This allows guest database reads to
+	work without mutating global state.
+
+	Called from dbrefhandle_context when a non-nil database is in the context.
+	*/
+	dbaddress a = adr;
+	register boolean fl;
+	register Handle hregister;
+	register long ct;
+	long ctbytes;
+	boolean flfree;
+	tyvariance variance;
+
+	*h = nil;
+
+	if (header_size != 8 && header_size != 12) {
+		log_error(LOG_COMP_DB, "dbrefhandle_fnum: invalid header_size %ld (must be 8 or 12)", header_size);
+		return (false);
+	}
+
+	if (a == nildbaddress)
+		return (false);
+
+#if defined(FRONTIER_HEADLESS)
+	(void) dbnormalizeaddress(&a);
+#endif
+
+	if (!dbreadheader_fnum (a, &flfree, &ctbytes, &variance, header_size, fnum))
+		return (false);
+
+	ct = ctbytes - (long) variance;
+
+	if (flfree || (ct < 0)) {
+		dberror (dbfreeblockerror);
+		return (false);
+	}
+
+	if (!newclearhandle (ct, h))
+		return (false);
+
+	hregister = *h;
+	lockhandle (hregister);
+
+	fl = dbread_fnum (a + header_size, ct, *hregister, fnum);
+
+	unlockhandle (hregister);
+
+	if (!fl) {
+		disposehandle (hregister);
+		*h = nil;
+		return (false);
+	}
+
+	return (true);
+	} /*dbrefhandle_fnum*/
+
 
 boolean dbreadtrailer (dbaddress adr, boolean *flfree, long *ctbytes) {
 
