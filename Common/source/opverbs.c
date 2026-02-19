@@ -1394,6 +1394,12 @@ boolean opverbcopyvalue (hdlexternalvariable hsource, hdlexternalvariable *hcopy
 	
 	/*
 	5.0.2b12 dmb: new routine, so we don't have to pack/unpack
+
+	2026-02-18 JES: Use explicit database context from variable's hdatabase
+	field to fix cross-database script/outline copy (e.g. guest DB -> system
+	root). Previously used NULL context which fell through to dbrefhandle()
+	reading from the global databasedata, not the guest database that owns
+	the data.
 	*/
 	
 	register hdloutlinevariable hv = (hdloutlinevariable) hsource;
@@ -1406,11 +1412,25 @@ boolean opverbcopyvalue (hdlexternalvariable hsource, hdlexternalvariable *hcopy
 		fl = opverbnew ((**hv).id, (Handle) (**hv).variabledata, hcopy);
 		}
 	else { //not in memory, unpack into new variable
-		/* 2025-12-23: Refactored to use explicit context instead of push/pop pattern */
+		/*
+		2025-12-23: Refactored to use explicit context instead of push/pop pattern.
+		2026-02-18: Build context from the variable's own hdatabase so that
+		cross-database copies read from the correct file descriptor.
+		*/
 
 		adr = (dbaddress) (**hv).variabledata;
 
-		fl = dbrefhandle_context (NULL, adr, &hpackedoutline);
+		db_context ctx;
+		hdldatabaserecord hdb = (**hv).hdatabase;
+
+		if (hdb != nil && db_is_v7 (hdb))
+			db_context_init_v7_read (&ctx, hdb);
+		else if (hdb != nil)
+			db_context_init_legacy_read (&ctx, hdb);
+		else
+			db_context_init (&ctx);
+
+		fl = dbrefhandle_context (&ctx, adr, &hpackedoutline);
 
 		if (!fl)
 			return (false);
