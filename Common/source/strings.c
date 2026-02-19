@@ -57,9 +57,9 @@
 /*
 	constants related to text-conversion functions
 */
-#define cs_utf8			BIGSTRING( "\xA5" "utf-8" )
+#define cs_utf8			BIGSTRING( "\x05" "utf-8" )
 #define cs_utf16		BIGSTRING( "\x06" "utf-16" )
-#define cs_iso88591		BIGSTRING( "\xA0" "iso-8859-1" )
+#define cs_iso88591		BIGSTRING( "\x0A" "iso-8859-1" )
 #define cs_macintosh	BIGSTRING( "\x09" "macintosh" )
 
 

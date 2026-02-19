@@ -1996,7 +1996,24 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 		}
 
 		case setfiletypefunc:
-		case setfilecreatorfunc:
+		case setfilecreatorfunc: {
+			/* Legacy HFS type/creator codes — no-op on modern systems.
+			   Called by file.writeWholeFile when type/creator params are provided.
+			   On macOS, UTIs and file extensions have replaced type/creator codes. */
+			tyfilespec fs;
+			bigstring bsval;
+
+			if (!getfilespecvalue(hparam1, 1, &fs))
+				return false;
+
+			flnextparamislast = true;
+
+			if (!getstringvalue(hparam1, 2, bsval))
+				return false;
+
+			return setbooleanvalue(true, vreturned);
+		}
+
 		case filecopydataforkfunc:
 		case fileisvisiblefunc:
 		case filesetvisiblefunc:

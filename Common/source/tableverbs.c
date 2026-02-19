@@ -494,15 +494,11 @@ static boolean tableassignverb (hdltreenode hparam1, tyvaluerecord *v) {
 	if (!copyvaluerecord (val, &val))
 		return (false);
 
-	/*
 	fllanghashassignprotect = false;
-	*/
 
 	fl = hashtableassign (htable, bsname, val);
 
-	/*
 	fllanghashassignprotect = true;
-	*/
 
 	if (!fl)
 		return (false);

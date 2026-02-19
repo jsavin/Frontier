@@ -109,43 +109,77 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            /* Path A: try address resolution */
+            /* Extract the parameter value once, read-only.
+             * We must NOT use getaddressparam() here because it calls
+             * coercetoaddress() in-place on the tree node's value record.
+             * If coercion fails (e.g. string that isn't a valid address),
+             * setexemptaddressvalue() corrupts the value type via initvalue()
+             * before checking allocation success — permanently damaging the
+             * code tree node for subsequent calls. */
+            tyvaluerecord paramval;
+
+            if (!getreadonlyparamvalue(hparam1, 1, &paramval))
+                return false;
+
+            /* Path A: try address resolution (on a copy to avoid corruption) */
             {
                 tyvaluerecord addrval;
 
-                disablelangerror();
-                boolean fladdrparam = getaddressparam(hparam1, 1, &addrval);
-                enablelangerror();
+                if (copyvaluerecord(paramval, &addrval)) {
 
-                if (fladdrparam) {
-                    hdlhashtable htable;
-                    bigstring bsname;
+                    disablelangerror();
+                    boolean fladdrparam = coercetoaddress(&addrval);
+                    enablelangerror();
 
-                    if (getaddressvalue(addrval, &htable, bsname)) {
-                        /* htable is the parent table of the addressed node.
-                         * Only the root table of an opened database is considered
-                         * "open" in headless mode — sub-tables like @system are not.
-                         *
-                         * htable == nil: address IS the root table (@root)
-                         * htable == filewindowtable: address is a guest DB root */
-                        if (htable == nil)
-                            return setbooleanvalue(true, vreturned);
+                    if (fladdrparam) {
+                        hdlhashtable htable;
+                        bigstring bsname;
 
-                        if (filewindowtable != nil && htable == filewindowtable)
-                            return setbooleanvalue(true, vreturned);
+                        if (getaddressvalue(addrval, &htable, bsname)) {
+                            /* htable is the parent table of the addressed node.
+                             * Only the root table of an opened database is considered
+                             * "open" in headless mode — sub-tables like @system are not.
+                             *
+                             * htable == nil: address IS the root table (@root)
+                             * htable == filewindowtable: address is a guest DB root */
+                            if (htable == nil)
+                                return setbooleanvalue(true, vreturned);
+
+                            if (filewindowtable != nil && htable == filewindowtable)
+                                return setbooleanvalue(true, vreturned);
+                        }
+
+                        /* Address resolved but not a database root — no editor window */
+                        return setbooleanvalue(false, vreturned);
                     }
 
-                    /* Address resolved but not a database root — no editor window */
-                    return setbooleanvalue(false, vreturned);
+                    /* addrval was copyvaluerecord'd from a stringvalue param.
+                     * coercetoaddress failed, so addrval still holds the copied
+                     * string handle (valuetype unchanged on failure). Release it. */
+                    releaseheaptmp((Handle) addrval.data.stringvalue);
                 }
             }
 
-            /* Path B: fall back to string (file path) */
+            /* Path B: fall back to string (file path).
+             * Coerce the param to string using a defensive copy to avoid
+             * modifying the tree node's value record. */
             {
                 bigstring bspath;
 
-                if (!getstringvalue(hparam1, 1, bspath))
-                    return false;
+                if (paramval.valuetype == stringvaluetype) {
+                    pullstringvalue(&paramval, bspath);
+                }
+                else {
+                    tyvaluerecord strval;
+                    if (!copyvaluerecord(paramval, &strval))
+                        return false;
+                    if (!coercetostring(&strval)) {
+                        releaseheaptmp((Handle) strval.data.stringvalue);
+                        return false;
+                    }
+                    pullstringvalue(&strval, bspath);
+                    releaseheaptmp((Handle) strval.data.stringvalue);
+                }
 
                 char inputpath[PATH_MAX];
                 pstrtocstr(bspath, inputpath, sizeof(inputpath));

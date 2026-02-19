@@ -2859,9 +2859,6 @@ boolean langexternalvaltocode (tyvaluerecord val, hdltreenode *hcode) {
 	
 	opverbgetlinkedcode (hv, hcode);
 
-	if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_EXTERNAL))
-		log_trace(LOG_COMP_EXTERNAL, "langexternalvaltocode: hv=%p linked=%p", (void *)hv, (void *)*hcode);
-	
 	return (true); /*return true even if *hcode is nil*/
 	} /*langexternalvaltocode*/
 
