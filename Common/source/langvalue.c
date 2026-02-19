@@ -8742,7 +8742,13 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
 		return (false);
 		}
 
-	log_trace(LOG_COMP_LANG, "langgethandlercode: langgetnodecode SUCCESS for %s, hcode=%p nodetype=%d param1=%p", PSTR(bs), (void*)*hcode, (int)(*hcode ? (**(*hcode)).nodetype : -1), (void*)(*hcode ? (**(*hcode)).param1 : nil));
+	{
+		hdltreenode hc = *hcode;
+		log_trace(LOG_COMP_LANG, "langgethandlercode: langgetnodecode SUCCESS for %s, hcode=%p nodetype=%d param1=%p",
+			PSTR(bs), (void*)hc,
+			(int)(hc ? (**hc).nodetype : -1),
+			(void*)(hc ? (**hc).param1 : nil));
+	}
 
 	return (true);
 	} /*langgethandlercode*/

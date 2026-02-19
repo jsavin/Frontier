@@ -153,7 +153,10 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                         return setbooleanvalue(false, vreturned);
                     }
 
-                    releaseheaptmp((Handle) addrval.data.stringvalue); /* clean up failed coercion copy */
+                    /* addrval was copyvaluerecord'd from a stringvalue param.
+                     * coercetoaddress failed, so addrval still holds the copied
+                     * string handle (valuetype unchanged on failure). Release it. */
+                    releaseheaptmp((Handle) addrval.data.stringvalue);
                 }
             }
 

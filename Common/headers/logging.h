@@ -233,14 +233,20 @@ void log_hex_dump(log_component_t component, log_level_t level,
  * the base address. Without this, %s will read past the string data into
  * whatever follows in the buffer (e.g. "isopen" would print as "isopentaFile").
  */
+/*
+ * WARNING: Uses a rotating 4-slot thread-local buffer. Safe for up to 4
+ * PSTR() calls in a single expression (e.g. log_debug("a=%s b=%s", PSTR(x), PSTR(y))).
+ * Beyond 4 in one expression, earlier values will be overwritten.
+ */
 static inline const char *pstr_safe(const unsigned char *bs) {
-    static __thread unsigned char buf[256];
+    static __thread unsigned char bufs[4][256];
+    static __thread int slot = 0;
+    unsigned char *buf = bufs[slot++ & 3];
     unsigned char len = bs[0];
     if (len > 254) len = 254;
-    memcpy(buf + 1, bs + 1, len);
-    buf[0] = len;
-    buf[len + 1] = '\0';
-    return (const char *)(buf + 1);
+    memcpy(buf, bs + 1, len);
+    buf[len] = '\0';
+    return (const char *)buf;
 }
 #define PSTR(bs) pstr_safe((const unsigned char *)(bs))
 
