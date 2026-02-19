@@ -1,0 +1,18 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Menu V7 Refcon Tests (menu_v7_refcon_tests) - 9 tests: 9 pass (100%)</title>
+    <dateCreated>Wed, 18 Feb 2026 21:49:56 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="✓ test_menu_refcon_empty"/>
+    <outline text="✓ test_menu_refcon_keybinding_only"/>
+    <outline text="✓ test_menu_refcon_script_only"/>
+    <outline text="✓ test_menu_refcon_full"/>
+    <outline text="✓ test_menu_refcon_shift_modifier"/>
+    <outline text="✓ test_menu_refcon_control_modifier"/>
+    <outline text="✓ test_menu_refcon_option_modifier"/>
+    <outline text="✓ test_menu_refcon_command_modifier"/>
+    <outline text="✓ test_menu_refcon_combined_modifiers"/>
+  </body>
+</opml>

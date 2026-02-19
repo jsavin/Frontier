@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Headless Thread Registry Tests (headless_thread_registry_tests) - 19 tests: 19 pass (100%)</title>
+    <dateCreated>Wed, 18 Feb 2026 21:49:56 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="✓ test_init_and_cleanup"/>
+    <outline text="✓ test_id_allocation_unique"/>
+    <outline text="✓ test_record_allocation"/>
+    <outline text="✓ test_record_free"/>
+    <outline text="✓ test_lookup_success"/>
+    <outline text="✓ test_lookup_failure"/>
+    <outline text="✓ test_multiple_records"/>
+    <outline text="✓ test_field_initialization"/>
+    <outline text="✓ test_reinit_after_cleanup"/>
+    <outline text="✓ test_slot_reuse"/>
+    <outline text="✓ test_null_free_safety"/>
+    <outline text="✓ test_double_free_safety"/>
+    <outline text="✓ test_pre_init_safety"/>
+    <outline text="✓ test_lookup_after_free"/>
+    <outline text="✓ test_max_threads_boundary"/>
+    <outline text="✓ test_register_main_thread_basic"/>
+    <outline text="✓ test_register_main_thread_custom_id"/>
+    <outline text="✓ test_get_nth_thread_id_basic"/>
+    <outline text="✓ test_get_nth_thread_id_after_free"/>
+  </body>
+</opml>

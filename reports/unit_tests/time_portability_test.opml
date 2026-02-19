@@ -1,0 +1,16 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Time Portability Test (time_portability_test) - 7 tests: 7 pass (100%)</title>
+    <dateCreated>Wed, 18 Feb 2026 21:49:56 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="✓ test_frontier_time_t_size"/>
+    <outline text="✓ test_epoch_conversion"/>
+    <outline text="✓ test_2038_boundary"/>
+    <outline text="✓ test_byte_order_independence"/>
+    <outline text="✓ test_time_range"/>
+    <outline text="✓ test_time_arithmetic"/>
+    <outline text="✓ test_timenow64"/>
+  </body>
+</opml>

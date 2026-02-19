@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Db Format Tests (db_format_tests) - 18 tests: 18 pass (100%)</title>
+    <dateCreated>Wed, 18 Feb 2026 21:49:56 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="✓ test_legacy_adapter_widen_to_v7_bytes"/>
+    <outline text="✓ test_db_context_two_modes_isolated_mode_only"/>
+    <outline text="✓ test_db_context_two_modes_isolated_db_state"/>
+    <outline text="✓ test_detect_legacy_database"/>
+    <outline text="✓ test_detect_modern_database"/>
+    <outline text="✓ test_convert_header"/>
+    <outline text="✓ test_write_modern_header_big_endian"/>
+    <outline text="✓ test_large_free_block_be64"/>
+    <outline text="✓ test_pict_length_be32"/>
+    <outline text="✓ test_tableverbpack_writes_be64_when_modern"/>
+    <outline text="✓ test_modern_header_view0_serialization"/>
+    <outline text="✓ test_modern_header_canonical_size_and_version"/>
+    <outline text="✓ test_procedural_v7_golden_header_and_avail"/>
+    <outline text="✓ test_db_context_database_swap"/>
+    <outline text="✓ test_dbswapglobals_context_scoped"/>
+    <outline text="✓ test_header_version_and_loader_switch"/>
+    <outline text="✓ test_legacy_table_repack_forces_be64_address"/>
+    <outline text="✓ test_legacy_record_reference_repacked_to_be64"/>
+  </body>
+</opml>

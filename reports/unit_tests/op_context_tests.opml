@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Op Context Tests (op_context_tests) - 18 tests: 18 pass (100%)</title>
+    <dateCreated>Wed, 18 Feb 2026 21:49:56 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="✓ test_acquire_release"/>
+    <outline text="✓ test_multiple_acquire"/>
+    <outline text="✓ test_null_release"/>
+    <outline text="✓ test_retain_release_cycle"/>
+    <outline text="✓ test_multiple_retains"/>
+    <outline text="✓ test_null_retain"/>
+    <outline text="✓ test_initial_version"/>
+    <outline text="✓ test_version_bump_sequence"/>
+    <outline text="✓ test_version_bump_returns_new"/>
+    <outline text="✓ test_independent_version_spaces"/>
+    <outline text="✓ test_reserved_fields_zero"/>
+    <outline text="✓ test_validate_after_acquire"/>
+    <outline text="✓ test_validate_after_version_bump"/>
+    <outline text="✓ test_context_flags_storage"/>
+    <outline text="✓ test_many_bumps"/>
+    <outline text="✓ test_many_retains"/>
+    <outline text="✓ test_mutation_workflow"/>
+    <outline text="✓ test_wrapper_pattern"/>
+  </body>
+</opml>

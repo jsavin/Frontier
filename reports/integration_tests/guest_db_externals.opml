@@ -1,0 +1,172 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Guest Db Externals (guest_db_externals) - 11 tests: 11 pass (100%)</title>
+    <dateCreated>Wed, 18 Feb 2026 20:10:33 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="guest db externals - script typeof from StartupTasks - Open StartupTasks.root as guest database and verify script type resolution.&#10;typeOf() on a script entry should return 'scpt'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return typeOf(StartupTasksSuite.main)"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - script text readable from StartupTasks - Open StartupTasks.root and read script text via string().&#10;Verifies that opverbinmemory can unpack the outline from the guest DB file.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="local (s = string(StartupTasksSuite.main))"/>
+        <outline text="return string.length(s) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - script defined() from StartupTasks - Open StartupTasks.root and verify defined() resolves scripts.&#10;defined() triggers name resolution + compilation, exercising the full&#10;external loading chain.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return defined(StartupTasksSuite.main)"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - script typeof from mainResponder - Open mainResponder.root as guest database and verify script type.&#10;Uses a different guest database to confirm the fix is not DB-specific.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;Guest Databases/apps/mainResponder.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return typeOf(mainResponder.init)"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - script text readable from mainResponder - Open mainResponder.root and read script text via string().&#10;The init script should begin with 'on init'.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;Guest Databases/apps/mainResponder.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="local (s = string(mainResponder.init))"/>
+        <outline text="return string.mid(s, 1, 7) == &quot;on init&quot;"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - outline text typeof from mainResponder - Open mainResponder.root and check that outline text externals resolve.&#10;mainResponder.data.ieHtmlEditor is an optx type.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: optx"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;Guest Databases/apps/mainResponder.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return typeOf(mainResponder.data.ieHtmlEditor)"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - outline text readable from mainResponder - Open mainResponder.root and read outline text via string().&#10;The ieHtmlEditor outline should contain HTML table markup.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;Guest Databases/apps/mainResponder.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="local (s = string(mainResponder.data.ieHtmlEditor))"/>
+        <outline text="return string.length(s) &gt; 100"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - table navigation and sizeOf - Open StartupTasks.root and verify table navigation works.&#10;sizeOf() requires the table to be materialized from the guest DB.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return sizeOf(StartupTasksSuite) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - deep table access in mainResponder - Open mainResponder.root and access a nested table value.&#10;TEXT values stored in guest database subtables should be readable.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;Guest Databases/apps/mainResponder.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return string.length(mainResponder.data.featureListRssUrl) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="cross-db external pack - copy script from guest db, save system root - Opens StartupTasks.root as a guest database, copies a script external&#10;into a system root table via address assignment, then saves the system&#10;root. This exercises langexternalpack_internal with a cross-database&#10;external whose data is on disk in the source (guest) database.&#10;Previously failed with dbrefhandle FAILED when the pack context used&#10;the destination database instead of the source.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: scpt"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="new(tableType, @system.temp.crossDbPack)"/>
+        <outline text="system.temp.crossDbPack.copiedScript = StartupTasksSuite.main"/>
+        <outline text="fileMenu.save()"/>
+        <outline text="local(t = typeOf(system.temp.crossDbPack.copiedScript))"/>
+        <outline text="delete(@system.temp.crossDbPack)"/>
+        <outline text="fileMenu.save()"/>
+        <outline text="return t"/>
+      </outline>
+    </outline>
+    <outline text="guest db externals - system root accessible after guest db open - After opening a guest database, system root tables should still be&#10;accessible. Verifies that setcancoonglobals correctly restores&#10;databasedata and format mode.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: tabl"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return typeOf(system)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

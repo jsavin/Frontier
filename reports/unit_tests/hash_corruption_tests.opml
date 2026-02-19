@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Hash Corruption Tests (hash_corruption_tests) - 14 tests: 14 pass (100%)</title>
+    <dateCreated>Wed, 18 Feb 2026 21:49:56 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="✓ test_truncated_pascal_string"/>
+    <outline text="✓ test_string_oob_index"/>
+    <outline text="✓ test_record_exactly_at_boundary"/>
+    <outline text="✓ test_partial_record_rejection"/>
+    <outline text="✓ test_invalid_valuetype"/>
+    <outline text="✓ test_version_mismatch_record_vs_header"/>
+    <outline text="✓ test_oob_data_index_for_extended_types"/>
+    <outline text="✓ test_negative_data_index"/>
+    <outline text="✓ test_double_infinity_pattern"/>
+    <outline text="✓ test_double_nan_pattern"/>
+    <outline text="✓ test_double_zero_patterns"/>
+    <outline text="✓ test_union_field_type_mismatch"/>
+    <outline text="✓ test_record_padding_nonzero"/>
+    <outline text="✓ test_record_size_compile_time_assertion"/>
+  </body>
+</opml>

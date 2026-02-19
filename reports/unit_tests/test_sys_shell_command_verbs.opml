@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Test Sys Shell Command Verbs (test_sys_shell_command_verbs) - 16 tests: 16 pass (100%)</title>
+    <dateCreated>Wed, 18 Feb 2026 21:49:56 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="✓ test_unix_shell_command_1param_simple"/>
+    <outline text="✓ test_unix_shell_command_1param_multiple_lines"/>
+    <outline text="✓ test_unix_shell_command_1param_empty_output"/>
+    <outline text="✓ test_unix_shell_command_2param_stdout_capture"/>
+    <outline text="✓ test_unix_shell_command_2param_returns_boolean"/>
+    <outline text="✓ test_unix_shell_command_3param_stdout_and_stderr"/>
+    <outline text="✓ test_unix_shell_command_3param_stderr_only"/>
+    <outline text="✓ test_unix_shell_command_3param_returns_boolean"/>
+    <outline text="✓ test_unix_shell_command_4param_with_exit_status"/>
+    <outline text="✓ test_unix_shell_command_4param_nonzero_exit_status"/>
+    <outline text="✓ test_unix_shell_command_4param_returns_boolean"/>
+    <outline text="✓ test_unix_shell_command_nonexistent_command"/>
+    <outline text="✓ test_unix_shell_command_command_with_error_code"/>
+    <outline text="✓ test_win_shell_command_1param_simple"/>
+    <outline text="✓ test_win_shell_command_2param_stdout_capture"/>
+    <outline text="✓ test_win_shell_command_3param_stdout_and_stderr"/>
+  </body>
+</opml>
