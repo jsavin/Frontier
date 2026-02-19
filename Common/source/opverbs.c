@@ -316,7 +316,7 @@ static boolean opverbdisposecode (hdloutlinevariable hvariable) {
 	
 	register hdloutlinevariable hv = hvariable;
 	register hdltreenode hcode = (hdltreenode) (**hv).linkedcode;
-	
+
 	if (hcode != nil) {
 		
 		if (!processdisposecode (hcode)) { /*process manager didn't handle it*/
@@ -416,7 +416,7 @@ boolean opverblinkcode (hdlexternalvariable hvariable, Handle hcode) {
 	*/
 	
 	register hdloutlinevariable hv = (hdloutlinevariable) hvariable;
-	
+
 	(**hv).linkedcode = hcode;
 	
 	if ((**hv).flinmemory) {

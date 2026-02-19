@@ -4021,7 +4021,6 @@ boolean langgetdotparams (hdltreenode htree, hdlhashtable *htable, bigstring bsn
 			in headless mode where system.prefs might not be fully initialized).
 			Return false (not found) without raising an error.
 			*/
-			log_debug(LOG_COMP_LANG, "langgetdotparams: noop encountered, returning false");
 			return (false);
 
 		case identifierop:
@@ -7995,17 +7994,17 @@ boolean kernelfunctionvalue (hdlhashtable htable, bigstring bsverb, hdltreenode 
 
 
 static boolean kernelcall (hdltreenode hcode, hdltreenode hparam1, tyvaluerecord *vreturned) {
-	
+
 	register hdltreenode h = hcode;
 	hdlhashtable htable;
 	bigstring bsverb;
-	
+
 	h = (**h).param1;
-	
+
 	assert ((**h).nodetype == kernelop);
-	
+
 	getaddressvalue ((**h).nodeval, &htable, bsverb);
-	
+
 	return (kernelfunctionvalue (htable, bsverb, hparam1, vreturned));
 	} /*kernelcall*/
 
@@ -8296,8 +8295,7 @@ boolean langfunctioncall (hdltreenode hcallernode, hdlhashtable htable, hdlhashn
 	register boolean fl;
 	hdlhashtable hlocaltable;
 	tyvaluerecord osacode;
-	
-		
+
         if (hcode == nil) { /*can only be a kernel call -- or an error*/
 #if defined(FRONTIER_HEADLESS)
             /* debug disabled */
@@ -8311,7 +8309,7 @@ boolean langfunctioncall (hdltreenode hcallernode, hdlhashtable htable, hdlhashn
             }
 		
 		if ((**hcode).param1 == nil) { /*corrupt or uninitialized code tree*/
-			log_error(LOG_COMP_LANG, "langfunctioncall: hcode has nil param1 for %s", PSTR(bsname));
+			log_error(LOG_COMP_LANG, "langfunctioncall: hcode has nil param1 for %s hcode=%p nodetype=%d", PSTR(bsname), (void*)hcode, (int)(**hcode).nodetype);
 			langerror(notfunctionerror);
 			return (false);
 			}
@@ -8521,11 +8519,6 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
                 (int)val.valuetype,
                 (void *)((ht != nil) ? (**ht).valueroutine : nil));
 
-    if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_LANG))
-        log_debug(LOG_COMP_LANG, "langgetnodecode enter hnode=0x%p ext=0x%p",
-                (void *)hnode,
-                (void *)val.data.externalvalue);
-	
 	switch (val.valuetype) {
 
 		case externalvaluetype: /*might be a script*/
@@ -8536,7 +8529,6 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 				log_error(LOG_COMP_LANG, "langgetnodecode: langexternalvaltocode FAILED for %s", PSTR(bs));
 				return (false);
 			}
-			
 			if (*hcode == nil) { /*it needs to be compiled*/
 
 				log_trace(LOG_COMP_LANG, "langgetnodecode: script needs compilation for %s", PSTR(bs));
@@ -8554,11 +8546,6 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 
 			log_trace(LOG_COMP_LANG, "langgetnodecode: about to break from externalvaluetype, hcode=%p", (void*)*hcode);
             
-		if (log_enabled(LOG_LEVEL_DEBUG, LOG_COMP_LANG))
-			log_debug(LOG_COMP_LANG, "langgetnodecode post-compile hnode=0x%p hcode=0x%p",
-					(void *)hnode,
-					(void *)((hcode != nil) ? *hcode : nil));
-			
 			break; /*get entry point*/
 			
 		case codevaluetype: /*probably a local handler*/
@@ -8755,7 +8742,7 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
 		return (false);
 		}
 
-	log_trace(LOG_COMP_LANG, "langgethandlercode: langgetnodecode SUCCESS for %s, hcode=%p", PSTR(bs), (void*)*hcode);
+	log_trace(LOG_COMP_LANG, "langgethandlercode: langgetnodecode SUCCESS for %s, hcode=%p nodetype=%d param1=%p", PSTR(bs), (void*)*hcode, (int)(*hcode ? (**(*hcode)).nodetype : -1), (void*)(*hcode ? (**(*hcode)).param1 : nil));
 
 	return (true);
 	} /*langgethandlercode*/
@@ -8830,14 +8817,14 @@ boolean langhandlercall (hdltreenode htree, hdltreenode hparam1, tyvaluerecord *
 	handlercode.htree = htree;
 
 	if (langsearchpathvisit (&langgethandlervisit, nil, &htable)) {
-		
+
 		hcode = handlercode.hcode;
-		
+
 		hnode = handlercode.hnode;
-		
+
 		goto runhandler;
 		}
-	
+
 	if (langgethandlercode (efptable, htree, &hcode, &htable, &hnode)) {
 		
 		assert (hcode == nil); /*see special case in gethandlercode*/

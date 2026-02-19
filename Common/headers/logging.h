@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>  /* for size_t */
+#include <string.h>  /* for memcpy (used by pstr_safe) */
 
 /*
  * Logging Infrastructure
@@ -225,8 +226,22 @@ void log_hex_dump(log_component_t component, log_level_t level,
  * Example (after):
  *   log_debug(LOG_COMP_HASH, "Table name: %s", PSTR(bs));
  *
- * Note: Files using PSTR() must #include "strings.h" (which provides stringbaseaddress()).
+ * Note: Files using PSTR() must #include "strings.h" (which provides
+ * stringbaseaddress() and nullterminate()).
+ *
+ * IMPORTANT: This macro null-terminates the Pascal string before returning
+ * the base address. Without this, %s will read past the string data into
+ * whatever follows in the buffer (e.g. "isopen" would print as "isopentaFile").
  */
-#define PSTR(bs) stringbaseaddress(bs)
+static inline const char *pstr_safe(const unsigned char *bs) {
+    static __thread unsigned char buf[256];
+    unsigned char len = bs[0];
+    if (len > 254) len = 254;
+    memcpy(buf + 1, bs + 1, len);
+    buf[0] = len;
+    buf[len + 1] = '\0';
+    return (const char *)(buf + 1);
+}
+#define PSTR(bs) pstr_safe((const unsigned char *)(bs))
 
 #endif /* logging_h */
