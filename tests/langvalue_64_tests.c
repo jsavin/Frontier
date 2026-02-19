@@ -12,6 +12,7 @@
 #include "ops.h"
 #include "langinternal.h"
 #include "memory.h"
+#include "test_report.h"
 
 /* Expose bitwise helpers from langverbs under FRONTIER_TESTS. */
 int64_t langverbs_test_bitand (uint64_t a, uint64_t b);
@@ -230,18 +231,20 @@ static void test_arithmetic_edges(void) {
 }
 
 int main(void) {
+    TR_INIT("langvalue_64_tests");
     printf("\n=== Running langvalue 64-bit widening tests ===\n");
-    test_addvalue_int64();
-    test_modvalue_int64();
-    test_stringtonumber_64();
-    test_hexstringtonumber_64();
-    test_numbertostring_roundtrip();
-    test_intvalue_no_clamp();
-    test_datevalue_64();
-    test_bitwise_64();
-    test_arithmetic_edges();
-    test_numbertohex_roundtrip();
-    test_numbertohex_long_path();
+    TR_RUN(test_addvalue_int64);
+    TR_RUN(test_modvalue_int64);
+    TR_RUN(test_stringtonumber_64);
+    TR_RUN(test_hexstringtonumber_64);
+    TR_RUN(test_numbertostring_roundtrip);
+    TR_RUN(test_intvalue_no_clamp);
+    TR_RUN(test_datevalue_64);
+    TR_RUN(test_bitwise_64);
+    TR_RUN(test_arithmetic_edges);
+    TR_RUN(test_numbertohex_roundtrip);
+    TR_RUN(test_numbertohex_long_path);
     printf("=== langvalue 64-bit widening tests complete ===\n\n");
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

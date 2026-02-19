@@ -16,6 +16,7 @@
 #include <assert.h>
 #include <time.h>
 #include <stdint.h>
+#include "../test_report.h"
 
 /* Define minimal types needed for table_context.h */
 #ifndef boolean
@@ -583,6 +584,8 @@ static void test_reserved_fields_unused(void) {
    ============================================================================ */
 
 int main(void) {
+	TR_INIT("table_context_tests");
+
 	printf("\n");
 	printf("=========================================================\n");
 	printf("Phase 4A: Table Context Test Suite\n");
@@ -590,44 +593,44 @@ int main(void) {
 	printf("\n");
 
 	printf("LIFECYCLE TESTS\n");
-	test_context_init();
-	test_context_init_null();
-	test_context_dispose_null();
-	test_context_dispose();
+	TR_RUN(test_context_init);
+	TR_RUN(test_context_init_null);
+	TR_RUN(test_context_dispose_null);
+	TR_RUN(test_context_dispose);
 
 	printf("\nVERSION TRACKING TESTS\n");
-	test_version_starts_at_one();
-	test_version_increments_on_mutation();
-	test_version_monotonic();
+	TR_RUN(test_version_starts_at_one);
+	TR_RUN(test_version_increments_on_mutation);
+	TR_RUN(test_version_monotonic);
 
 	printf("\nMUTATION TRACKING TESTS\n");
-	test_mutation_type_recorded();
-	test_all_mutation_types();
+	TR_RUN(test_mutation_type_recorded);
+	TR_RUN(test_all_mutation_types);
 
 	printf("\nCHANGE TRACKING TESTS\n");
-	test_pending_changes_flag();
-	test_clear_changes();
+	TR_RUN(test_pending_changes_flag);
+	TR_RUN(test_clear_changes);
 
 	printf("\nCALLBACK GUARD TESTS\n");
-	test_callback_guard_flag();
-	test_callback_guard_prevents_mutation_recording();
+	TR_RUN(test_callback_guard_flag);
+	TR_RUN(test_callback_guard_prevents_mutation_recording);
 
 	printf("\nMUTATION TIME TRACKING TESTS\n");
-	test_mutation_time_recorded();
+	TR_RUN(test_mutation_time_recorded);
 
 	printf("\nMUTATION SEQUENCE TESTS\n");
-	test_mutation_sequence();
+	TR_RUN(test_mutation_sequence);
 
 	printf("\nINTEGRATION TESTS\n");
-	test_multiple_table_contexts();
-	test_context_lifecycle_full();
+	TR_RUN(test_multiple_table_contexts);
+	TR_RUN(test_context_lifecycle_full);
 
 	printf("\nEDGE CASE TESTS\n");
-	test_max_version_increment();
-	test_rapid_mutations();
+	TR_RUN(test_max_version_increment);
+	TR_RUN(test_rapid_mutations);
 
 	printf("\nRESERVED FIELD TESTS\n");
-	test_reserved_fields_unused();
+	TR_RUN(test_reserved_fields_unused);
 
 	printf("\n");
 	printf("=========================================================\n");
@@ -639,5 +642,6 @@ int main(void) {
 	printf("=========================================================\n");
 	printf("\n");
 
-	return (tests_failed == 0) ? 0 : 1;
+	TR_SUMMARY();
+	return TR_EXIT_CODE();
 }

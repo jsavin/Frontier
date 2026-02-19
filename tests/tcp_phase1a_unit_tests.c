@@ -28,6 +28,7 @@
 #include <sys/socket.h>
 
 #include "frontier.h"
+#include "test_report.h"
 #include "standard.h"
 #include "tcpverbs.h"
 #include "strings.h"
@@ -754,6 +755,8 @@ TEST(security_private_ip_multicast_reserved) {
  * ======================================================================== */
 
 int main(void) {
+    TR_INIT("tcp_phase1a_unit_tests");
+
     printf("TCP Phase 1A Unit Tests\n");
     printf("=======================\n\n");
 
@@ -785,51 +788,51 @@ int main(void) {
     }
 
     printf("Test Category 1: Stream Lifecycle\n");
-    RUN_TEST(stream_allocation_valid_id);
-    RUN_TEST(stream_deallocation_decrements_count);
-    RUN_TEST(connection_count_accuracy);
-    RUN_TEST(max_streams_boundary);
+    TR_RUN(test_stream_allocation_valid_id);
+    TR_RUN(test_stream_deallocation_decrements_count);
+    TR_RUN(test_connection_count_accuracy);
+    TR_RUN(test_max_streams_boundary);
 
     printf("\nTest Category 2: Thread-Safety\n");
-    RUN_TEST(concurrent_count_access);
+    TR_RUN(test_concurrent_count_access);
 
     printf("\nTest Category 3: Address Conversion\n");
-    RUN_TEST(address_encode_dotted_decimal);
-    RUN_TEST(address_encode_localhost);
-    RUN_TEST(address_encode_wildcard);
-    RUN_TEST(address_encode_broadcast);
-    RUN_TEST(address_decode_to_string);
-    RUN_TEST(address_roundtrip_conversion);
-    RUN_TEST(address_encode_invalid_format);
+    TR_RUN(test_address_encode_dotted_decimal);
+    TR_RUN(test_address_encode_localhost);
+    TR_RUN(test_address_encode_wildcard);
+    TR_RUN(test_address_encode_broadcast);
+    TR_RUN(test_address_decode_to_string);
+    TR_RUN(test_address_roundtrip_conversion);
+    TR_RUN(test_address_encode_invalid_format);
 
     printf("\nTest Category 4: Error Handling\n");
-    RUN_TEST(error_invalid_stream_id_zero);
-    RUN_TEST(error_invalid_stream_id_negative);
-    RUN_TEST(error_invalid_stream_id_overflow);
-    RUN_TEST(error_null_pointer_safety);
-    RUN_TEST(error_null_pointer_connection_ops);
-    RUN_TEST(error_null_pointer_listener_ops);
-    RUN_TEST(error_null_pointer_dns_ops);
+    TR_RUN(test_error_invalid_stream_id_zero);
+    TR_RUN(test_error_invalid_stream_id_negative);
+    TR_RUN(test_error_invalid_stream_id_overflow);
+    TR_RUN(test_error_null_pointer_safety);
+    TR_RUN(test_error_null_pointer_connection_ops);
+    TR_RUN(test_error_null_pointer_listener_ops);
+    TR_RUN(test_error_null_pointer_dns_ops);
 
     printf("\nTest Category 5: State Transitions\n");
-    RUN_TEST(state_invalid_value);
-    RUN_TEST(state_connected_value);
-    RUN_TEST(state_values_distinct);
+    TR_RUN(test_state_invalid_value);
+    TR_RUN(test_state_connected_value);
+    TR_RUN(test_state_values_distinct);
 
     printf("\nTest Category 6: Rate Limiting\n");
-    RUN_TEST(rate_limit_constants_defined);
-    RUN_TEST(rate_limit_window_size);
+    TR_RUN(test_rate_limit_constants_defined);
+    TR_RUN(test_rate_limit_window_size);
 
     printf("\nTest Category 7: Configuration and Limits\n");
-    RUN_TEST(config_max_read_bytes_limit);
-    RUN_TEST(config_max_hostname_len);
-    RUN_TEST(config_max_ipv4_string_len);
+    TR_RUN(test_config_max_read_bytes_limit);
+    TR_RUN(test_config_max_hostname_len);
+    TR_RUN(test_config_max_ipv4_string_len);
 
     printf("\nTest Category 8: Private IP Detection (Security)\n");
-    RUN_TEST(security_private_ip_loopback);
-    RUN_TEST(security_private_ip_rfc1918);
-    RUN_TEST(security_public_ip_allowed);
-    RUN_TEST(security_private_ip_multicast_reserved);
+    TR_RUN(test_security_private_ip_loopback);
+    TR_RUN(test_security_private_ip_rfc1918);
+    TR_RUN(test_security_public_ip_allowed);
+    TR_RUN(test_security_private_ip_multicast_reserved);
 
     /* Cleanup */
     tcp_shutdown_context();
@@ -837,5 +840,6 @@ int main(void) {
     printf("\n=======================\n");
     printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);
 
-    return tests_failed > 0 ? 1 : 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

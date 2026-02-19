@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <libgen.h>
+#include "../test_report.h"
 
 /* Get repository root by walking up from test binary location */
 static int get_repo_root(char *buf, size_t bufsize) {
@@ -424,6 +425,8 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
+    TR_INIT("refcon_phase2_tests");
+
     printf("\n========================================\n");
     printf("Phase 2: Refcon Serialization Tests\n");
     printf("========================================\n");
@@ -433,16 +436,11 @@ int main(int argc, char **argv) {
     fflush(stdout);
 
     /* Run tests */
-    test_single_headline_roundtrip();
-    test_multiple_headlines_mixed_refcons();
-    test_nested_outline_refcons();
-    test_mixed_content_preservation();
+    TR_RUN(test_single_headline_roundtrip);
+    TR_RUN(test_multiple_headlines_mixed_refcons);
+    TR_RUN(test_nested_outline_refcons);
+    TR_RUN(test_mixed_content_preservation);
 
-    printf("\n========================================\n");
-    printf("[refcon_phase2] Phase 2 tests completed\n");
-    printf("[refcon_phase2] Note: SKIP indicates missing/unimplemented verbs\n");
-    printf("========================================\n");
-    fflush(stdout);
-
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

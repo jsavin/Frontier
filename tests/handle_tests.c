@@ -6,6 +6,7 @@
 
 #include "portable_handles.h"
 #include "classic_handle.h"
+#include "test_report.h"
 
 static void test_basic_allocation(void) {
     Handle h = frontierAlloc(16);
@@ -100,13 +101,13 @@ static void test_max_block_hint(void) {
 }
 
 int main(void) {
-    test_basic_allocation();
-    test_realloc_zero();
-    test_temp_handle();
-    test_nested_locks();
-    test_mem_error_tracking();
-    test_max_block_hint();
-
-    printf("portable handle tests passed\n");
-    return 0;
+    TR_INIT("handle_tests");
+    TR_RUN(test_basic_allocation);
+    TR_RUN(test_realloc_zero);
+    TR_RUN(test_temp_handle);
+    TR_RUN(test_nested_locks);
+    TR_RUN(test_mem_error_tracking);
+    TR_RUN(test_max_block_hint);
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

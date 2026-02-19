@@ -89,6 +89,31 @@ if [ -n "$TEST_FILES_CHANGED" ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────
+# Unit test OPML: Regenerate when C test sources change
+# ──────────────────────────────────────────────────────────────
+
+UNIT_TEST_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^tests/.*\.c$' || true)
+
+if [ -n "$UNIT_TEST_FILES_CHANGED" ]; then
+    echo -e "${YELLOW}Unit test C files changed, regenerating unit test OPML...${NC}"
+
+    cd "$GIT_ROOT"
+    if [ -d "tests/tmp/unit" ] && ls tests/tmp/unit/*.json >/dev/null 2>&1; then
+        if python3 tools/export_unit_tests_to_opml.py; then
+            # Add any changed OPML files
+            if [ -d "reports/unit_tests" ]; then
+                git add reports/unit_tests.opml reports/unit_tests/*.opml 2>/dev/null || true
+                echo -e "${GREEN}Unit test OPML updated${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Warning: Unit test OPML export failed (non-fatal)${NC}"
+        fi
+    else
+        echo -e "${YELLOW}No unit test JSON results found, skipping OPML regeneration${NC}"
+    fi
+fi
+
+# ──────────────────────────────────────────────────────────────
 # Doc validation: Check references when documentation changes
 # ──────────────────────────────────────────────────────────────
 

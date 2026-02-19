@@ -9,6 +9,7 @@
 #include "tablestructure.h"
 #include "logging.h"
 #include "../portable/wptext_portable.h"
+#include "test_report.h"
 
 static void setup_bigstring_from_c(const char *cstr, bigstring out) {
     copyctopstring(cstr, out);
@@ -63,6 +64,8 @@ static void test_if_then_else_expr(void) {
 }
 
 int main(void) {
+    TR_INIT("parser_tests");
+
     log_init();
 
     assert(initmemory());
@@ -73,11 +76,11 @@ int main(void) {
     assert(langinitverbs());
     assert(wp_portable_init());
 
-    test_boolean_unary_not();
-    test_comparisons();
-    test_assign_and_local();
-    test_if_then_else_expr();
+    TR_RUN(test_boolean_unary_not);
+    TR_RUN(test_comparisons);
+    TR_RUN(test_assign_and_local);
+    TR_RUN(test_if_then_else_expr);
 
-    printf("parser_tests: expressions, locals, if/else passed\n");
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

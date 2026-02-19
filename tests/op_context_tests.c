@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "op_context.h"
+#include "test_report.h"
 
 /* Test counters */
 static int tests_run = 0;
@@ -359,6 +360,7 @@ static void test_wrapper_pattern(void) {
 /* ========== Main Test Runner ========== */
 
 int main(void) {
+    TR_INIT("op_context_tests");
     printf("\n");
     printf("╔════════════════════════════════════════════════════════════╗\n");
     printf("║  Operation Context (op_context_t) Unit Tests              ║\n");
@@ -367,36 +369,36 @@ int main(void) {
     printf("╚════════════════════════════════════════════════════════════╝\n");
 
     /* Lifecycle Tests */
-    test_acquire_release();
-    test_multiple_acquire();
-    test_null_release();
+    TR_RUN(test_acquire_release);
+    TR_RUN(test_multiple_acquire);
+    TR_RUN(test_null_release);
 
     /* Refcounting Tests */
-    test_retain_release_cycle();
-    test_multiple_retains();
-    test_null_retain();
+    TR_RUN(test_retain_release_cycle);
+    TR_RUN(test_multiple_retains);
+    TR_RUN(test_null_retain);
 
     /* Version Tracking Tests */
-    test_initial_version();
-    test_version_bump_sequence();
-    test_version_bump_returns_new();
-    test_independent_version_spaces();
+    TR_RUN(test_initial_version);
+    TR_RUN(test_version_bump_sequence);
+    TR_RUN(test_version_bump_returns_new);
+    TR_RUN(test_independent_version_spaces);
 
     /* Validation Tests */
-    test_reserved_fields_zero();
-    test_validate_after_acquire();
-    test_validate_after_version_bump();
+    TR_RUN(test_reserved_fields_zero);
+    TR_RUN(test_validate_after_acquire);
+    TR_RUN(test_validate_after_version_bump);
 
     /* Flags Tests */
-    test_context_flags_storage();
+    TR_RUN(test_context_flags_storage);
 
     /* Stress Tests */
-    test_many_bumps();
-    test_many_retains();
+    TR_RUN(test_many_bumps);
+    TR_RUN(test_many_retains);
 
     /* Integration Tests */
-    test_mutation_workflow();
-    test_wrapper_pattern();
+    TR_RUN(test_mutation_workflow);
+    TR_RUN(test_wrapper_pattern);
 
     /* Print summary */
     printf("\n");
@@ -416,5 +418,6 @@ int main(void) {
     }
     printf("╚════════════════════════════════════════════════════════════╝\n\n");
 
-    return tests_failed > 0 ? 1 : 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

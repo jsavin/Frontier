@@ -10,6 +10,7 @@
 #include "langhash_test.h"
 #include "memory.h"
 #include "db_format.h"
+#include "test_report.h"
 
 /* 2025-12-06 Codex: Modern hashpack BE64 scalar round-trips. */
 
@@ -127,10 +128,12 @@ static void test_be64_double_bits(void) {
 }
 
 int main(void) {
+    TR_INIT("hashpack_modern_tests");
     printf("\n=== Running hashpack modern BE64 tests ===\n");
-    test_be64_int_roundtrip();
-    test_be64_date_roundtrip();
-    test_be64_double_bits();
+    TR_RUN(test_be64_int_roundtrip);
+    TR_RUN(test_be64_date_roundtrip);
+    TR_RUN(test_be64_double_bits);
     printf("=== hashpack modern BE64 tests complete ===\n\n");
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

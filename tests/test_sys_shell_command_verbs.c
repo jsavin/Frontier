@@ -16,6 +16,7 @@
 #include "lang.h"
 #include "tablestructure.h"
 #include "langexternal.h"
+#include "test_report.h"
 
 extern boolean sysinitverbs(void);
 
@@ -503,6 +504,8 @@ static void test_win_shell_command_3param_stdout_and_stderr() {
    ============================================================================ */
 
 int main(void) {
+    TR_INIT("test_sys_shell_command_verbs");
+
     printf("========================================\n");
     printf("sys.unixshellcommand/winshellcommand Tests\n");
     printf("========================================\n\n");
@@ -545,42 +548,42 @@ int main(void) {
 
     /* 1-Parameter Tests (Backward Compatibility) */
     printf("--- 1-Parameter Tests (Backward Compatibility) ---\n");
-    test_unix_shell_command_1param_simple();
-    test_unix_shell_command_1param_multiple_lines();
-    test_unix_shell_command_1param_empty_output();
+    TR_RUN(test_unix_shell_command_1param_simple);
+    TR_RUN(test_unix_shell_command_1param_multiple_lines);
+    TR_RUN(test_unix_shell_command_1param_empty_output);
     printf("\n");
 
     /* 2-Parameter Tests (Stdout Capture) */
     printf("--- 2-Parameter Tests (Stdout Capture) ---\n");
-    test_unix_shell_command_2param_stdout_capture();
-    test_unix_shell_command_2param_returns_boolean();
+    TR_RUN(test_unix_shell_command_2param_stdout_capture);
+    TR_RUN(test_unix_shell_command_2param_returns_boolean);
     printf("\n");
 
     /* 3-Parameter Tests (Stdout and Stderr Capture) */
     printf("--- 3-Parameter Tests (Stdout and Stderr Capture) ---\n");
-    test_unix_shell_command_3param_stdout_and_stderr();
-    test_unix_shell_command_3param_stderr_only();
-    test_unix_shell_command_3param_returns_boolean();
+    TR_RUN(test_unix_shell_command_3param_stdout_and_stderr);
+    TR_RUN(test_unix_shell_command_3param_stderr_only);
+    TR_RUN(test_unix_shell_command_3param_returns_boolean);
     printf("\n");
 
     /* 4-Parameter Tests (Stdout, Stderr, and Exit Status Capture) */
     printf("--- 4-Parameter Tests (Stdout, Stderr, and Exit Status Capture) ---\n");
-    test_unix_shell_command_4param_with_exit_status();
-    test_unix_shell_command_4param_nonzero_exit_status();
-    test_unix_shell_command_4param_returns_boolean();
+    TR_RUN(test_unix_shell_command_4param_with_exit_status);
+    TR_RUN(test_unix_shell_command_4param_nonzero_exit_status);
+    TR_RUN(test_unix_shell_command_4param_returns_boolean);
     printf("\n");
 
     /* Error Handling Tests */
     printf("--- Error Handling Tests ---\n");
-    test_unix_shell_command_nonexistent_command();
-    test_unix_shell_command_command_with_error_code();
+    TR_RUN(test_unix_shell_command_nonexistent_command);
+    TR_RUN(test_unix_shell_command_command_with_error_code);
     printf("\n");
 
     /* Windows-Specific Tests */
     printf("--- Windows-Specific Tests ---\n");
-    test_win_shell_command_1param_simple();
-    test_win_shell_command_2param_stdout_capture();
-    test_win_shell_command_3param_stdout_and_stderr();
+    TR_RUN(test_win_shell_command_1param_simple);
+    TR_RUN(test_win_shell_command_2param_stdout_capture);
+    TR_RUN(test_win_shell_command_3param_stdout_and_stderr);
     printf("\n");
 
     /* Summary */
@@ -591,5 +594,6 @@ int main(void) {
     printf("  Failed: %d\n", tests_failed);
     printf("========================================\n");
 
-    return tests_failed > 0 ? 1 : 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

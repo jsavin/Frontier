@@ -9,6 +9,7 @@
 #include "tablestructure.h"
 #include "langexternal.h"
 #include "kernelverbs.h"
+#include "test_report.h"
 
 extern boolean fileinitverbs(void);
 
@@ -50,9 +51,11 @@ static void write_file_bytes(const char *path, const char *data) {
 }
 
 int main(void) {
+    TR_INIT("file_verb_tests");
     /* 2025-12-08 Codex: file.open isn't implemented in headless yet; skip for now. */
     printf("file_verb_tests: skipped (file.open not implemented in headless)\n");
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 
     assert(initmemory());
     initstrings();

@@ -3,6 +3,7 @@
 #include "../../portable/paige_text_extractor.h"
 #include "../../Common/headers/memory.h"
 #include "../../Common/headers/logging.h"
+#include "../test_report.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -188,10 +189,18 @@ static test_case_t test_cases[] = {
 };
 
 int main(void) {
+    TR_INIT("paige_text_tests");
     printf("=== Paige Text Extractor Tests ===\n");
     log_init();
     test_init();
     bool all_passed = run_test_suite(test_cases, sizeof(test_cases) / sizeof(test_cases[0]));
     test_summary();
-    return all_passed ? 0 : 1;
+    if (tr_count < TR_MAX_TESTS) {
+        tr_results[tr_count].name = "run_test_suite";
+        tr_results[tr_count].passed = (all_passed ? 1 : 0);
+        tr_count++;
+        if (all_passed) tr_pass_count++; else tr_fail_count++;
+    }
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

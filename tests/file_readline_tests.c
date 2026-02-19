@@ -5,6 +5,7 @@
 
 #include "frontier.h"
 #include "file.h"
+#include "test_report.h"
 
 static void bs_from_c(const char *c, bigstring bs) {
     size_t n = strlen(c);
@@ -23,6 +24,7 @@ static void write_bytes(const char *path, const char *data, size_t n) {
 }
 
 int main(void) {
+    TR_INIT("file_readline_tests");
     const char *path = "readline_test.tmp";
     /* Mixed endings: LF, CRLF, CR; includes empty lines and final unterminated line */
     const char payload[] = "one\n\r\n"  /* empty line via CRLF */
@@ -58,6 +60,13 @@ int main(void) {
     assert(closefile(fnum));
     remove(path);
     printf("file_readline_tests: CR/LF/CRLF handling passed\n");
-    return 0;
+    if (tr_count < TR_MAX_TESTS) {
+        tr_results[tr_count].name = "all_tests";
+        tr_results[tr_count].passed = 1;
+        tr_count++;
+        tr_pass_count++;
+    }
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }
 

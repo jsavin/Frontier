@@ -16,6 +16,7 @@
 #include <assert.h>
 #include <time.h>
 #include <string.h>
+#include "test_report.h"
 
 #include "frontier.h"
 #include "standard.h"
@@ -212,18 +213,20 @@ static void test_timenow64(void) {
  * Main test runner
  */
 int main(int argc, char *argv[]) {
+    TR_INIT("time_portability_test");
+
     printf("=== Frontier Time Portability Tests ===\n");
     printf("sizeof(frontier_time_t) = %zu bytes\n", sizeof(frontier_time_t));
     printf("sizeof(time_t) = %zu bytes\n", sizeof(time_t));
 
     /* Run tests */
-    test_frontier_time_t_size();
-    test_epoch_conversion();
-    test_2038_boundary();
-    test_byte_order_independence();
-    test_time_range();
-    test_time_arithmetic();
-    test_timenow64();
+    TR_RUN(test_frontier_time_t_size);
+    TR_RUN(test_epoch_conversion);
+    TR_RUN(test_2038_boundary);
+    TR_RUN(test_byte_order_independence);
+    TR_RUN(test_time_range);
+    TR_RUN(test_time_arithmetic);
+    TR_RUN(test_timenow64);
 
     /* Print summary */
     printf("\n=== Test Summary ===\n");
@@ -232,9 +235,10 @@ int main(int argc, char *argv[]) {
 
     if (tests_failed > 0) {
         printf("\n*** SOME TESTS FAILED ***\n");
-        return 1;
     } else {
         printf("\n*** ALL TESTS PASSED ***\n");
-        return 0;
     }
+
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

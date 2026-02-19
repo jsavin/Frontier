@@ -16,6 +16,7 @@
 #include "db_format.h"
 #include "tableexternal_common.h"
 #include "../portable/wptext_portable.h"
+#include "test_report.h"
 
 #ifndef TABLE_DISK_VERSION
 #define TABLE_DISK_VERSION 0x04
@@ -650,6 +651,8 @@ int main(void) {
         return 0;
     }
 
+    TR_INIT("runtime_tests");
+
     printf("[rt] initmemory...\n");
     fflush(stdout);
     assert(initmemory());
@@ -673,34 +676,16 @@ int main(void) {
     fflush(stdout);
     assert(wp_portable_init());
 
-    printf("[rt] before run_basic_script\n");
-    fflush(stdout);
-    run_basic_script();
-    printf("[rt] after run_basic_script\n");
-    fflush(stdout);
-    printf("[rt] before constants_smoke\n");
-    fflush(stdout);
-    run_constants_smoke();
-    printf("[rt] after constants_smoke\n");
-    fflush(stdout);
-    run_opml_roundtrip();
-    printf("[rt] after run_opml_roundtrip\n");
-    fflush(stdout);
-    printf("[rt] before table_header_regression\n");
-    fflush(stdout);
-    run_table_header_regression();
-    printf("[rt] after table_header_regression\n");
-    fflush(stdout);
-    printf("[rt] before serializer_roundtrip\n");
-    fflush(stdout);
-    run_serializer_roundtrip();
-    printf("[rt] after serializer_roundtrip\n");
-    fflush(stdout);
-    run_wptext_rtf_smoke();
-    run_wptext_portable_roundtrip();
-    run_wptext_portable_reservedlen_failure();
+    TR_RUN(run_basic_script);
+    TR_RUN(run_constants_smoke);
+    TR_RUN(run_opml_roundtrip);
+    TR_RUN(run_table_header_regression);
+    TR_RUN(run_serializer_roundtrip);
+    TR_RUN(run_wptext_rtf_smoke);
+    TR_RUN(run_wptext_portable_roundtrip);
+    TR_RUN(run_wptext_portable_reservedlen_failure);
 
-    printf("runtime_tests: language, OPML, and serializer round-trips passed\n");
     wp_portable_shutdown();
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

@@ -30,6 +30,7 @@
 #include "tablestructure.h"
 #include "logging.h"
 #include "../portable/wptext_portable.h"
+#include "test_report.h"
 
 /*
  * Test 1.1: Simple Binary Blob Refcon
@@ -236,6 +237,8 @@ static void test_refcon_size_mismatch(void) {
  * Main test runner
  */
 int main(void) {
+    TR_INIT("refcon_tests");
+
     printf("\n=== Phase 1: Refcon Fundamentals Tests ===\n");
     printf("[refcon] Initializing runtime...\n");
     fflush(stdout);
@@ -252,16 +255,12 @@ int main(void) {
     printf("[refcon] Testing basic refcon operations (set/get/has/empty)\n");
     fflush(stdout);
 
-    test_refcon_simple_binary_blob();
-    test_refcon_structured_data();
-    test_refcon_empty_and_null();
-    test_refcon_size_mismatch();
-
-    printf("\n========================================\n");
-    printf("[refcon] Phase 1: ALL TESTS PASSED\n");
-    printf("========================================\n");
-    fflush(stdout);
+    TR_RUN(test_refcon_simple_binary_blob);
+    TR_RUN(test_refcon_structured_data);
+    TR_RUN(test_refcon_empty_and_null);
+    TR_RUN(test_refcon_size_mismatch);
 
     wp_portable_shutdown();
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

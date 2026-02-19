@@ -25,6 +25,7 @@
 
 /* Frontier headers */
 #include "frontier.h"
+#include "test_report.h"
 #include "standard.h"
 #include "lang.h"
 #include "langinternal.h"
@@ -633,6 +634,8 @@ void test_callback_four_params(void) {
  * Main test runner
  */
 int main(void) {
+    TR_INIT("test_callback_infrastructure");
+
     printf("\n");
     printf("========================================================================\n");
     printf("Frontier Parameterized Callback Infrastructure Unit Tests\n");
@@ -652,26 +655,26 @@ int main(void) {
     printf("------------------------------------------------------------------------\n");
 
     /* Basic parameter passing */
-    test_callback_zero_params();
-    test_callback_one_param_long();
-    test_callback_one_param_string();
-    test_callback_one_param_boolean();
-    test_callback_multiple_params();
+    TR_RUN(test_callback_zero_params);
+    TR_RUN(test_callback_one_param_long);
+    TR_RUN(test_callback_one_param_string);
+    TR_RUN(test_callback_one_param_boolean);
+    TR_RUN(test_callback_multiple_params);
 
     /* Return value types */
-    test_callback_return_boolean();
-    test_callback_return_string();
+    TR_RUN(test_callback_return_boolean);
+    TR_RUN(test_callback_return_string);
 
     /* Edge cases */
-    test_callback_nil_result();
-    test_callback_not_found();
-    test_callback_empty();
+    TR_RUN(test_callback_nil_result);
+    TR_RUN(test_callback_not_found);
+    TR_RUN(test_callback_empty);
 
     /* Real use cases */
-    test_callback_tcp_simulation();
-    test_callback_window_simulation();
-    test_callback_address_param();
-    test_callback_four_params();
+    TR_RUN(test_callback_tcp_simulation);
+    TR_RUN(test_callback_window_simulation);
+    TR_RUN(test_callback_address_param);
+    TR_RUN(test_callback_four_params);
 
     printf("------------------------------------------------------------------------\n");
 
@@ -690,9 +693,10 @@ int main(void) {
 
     if (tests_failed > 0) {
         printf("RESULT: FAILED - %d test(s) failed\n\n", tests_failed);
-        return 1;
     } else {
         printf("RESULT: SUCCESS - All tests passed!\n\n");
-        return 0;
     }
+
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

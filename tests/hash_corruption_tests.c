@@ -10,6 +10,7 @@
 #include "langhash_test.h"
 #include "memory.h"
 #include "db_format.h"
+#include "test_report.h"
 
 /* 2025-12-13 Codex: Hash corruption resistance tests for unpack resilience.
  * Tests cover OOB name indices, truncated records, header edge cases, and
@@ -452,38 +453,40 @@ static void test_record_size_compile_time_assertion(void) {
  */
 
 int main(void) {
+    TR_INIT("hash_corruption_tests");
     printf("\n=== Running hash corruption resistance tests ===\n");
 
     /* String handle corruption */
-    test_truncated_pascal_string();
-    test_string_oob_index();
+    TR_RUN(test_truncated_pascal_string);
+    TR_RUN(test_string_oob_index);
 
     /* Symbol record boundary cases */
-    test_record_exactly_at_boundary();
-    test_partial_record_rejection();
+    TR_RUN(test_record_exactly_at_boundary);
+    TR_RUN(test_partial_record_rejection);
 
     /* Type and version validation */
-    test_invalid_valuetype();
-    test_version_mismatch_record_vs_header();
+    TR_RUN(test_invalid_valuetype);
+    TR_RUN(test_version_mismatch_record_vs_header);
 
     /* Data index validation */
-    test_oob_data_index_for_extended_types();
-    test_negative_data_index();
+    TR_RUN(test_oob_data_index_for_extended_types);
+    TR_RUN(test_negative_data_index);
 
     /* Double bit pattern edge cases */
-    test_double_infinity_pattern();
-    test_double_nan_pattern();
-    test_double_zero_patterns();
+    TR_RUN(test_double_infinity_pattern);
+    TR_RUN(test_double_nan_pattern);
+    TR_RUN(test_double_zero_patterns);
 
     /* Union field overlapping access */
-    test_union_field_type_mismatch();
+    TR_RUN(test_union_field_type_mismatch);
 
     /* Padding and alignment */
-    test_record_padding_nonzero();
+    TR_RUN(test_record_padding_nonzero);
 
     /* Struct size assertions */
-    test_record_size_compile_time_assertion();
+    TR_RUN(test_record_size_compile_time_assertion);
 
     printf("=== hash corruption resistance tests complete ===\n\n");
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

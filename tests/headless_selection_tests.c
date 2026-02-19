@@ -15,6 +15,7 @@
 
 #include "headless_selection.h"
 #include "strings.h"
+#include "test_report.h"
 #include "lang.h"
 #include "memory.h"
 #include "ops.h"
@@ -288,6 +289,8 @@ static void test_selection_add_remove(void) {
  */
 
 int main(void) {
+	TR_INIT("headless_selection_tests");
+
 	/* Initialize Frontier runtime (required for outline operations) */
 	assert(initmemory());
 	initstrings();
@@ -301,18 +304,20 @@ int main(void) {
 	printf("Full hash table integration will be tested with table verb implementation.\n\n");
 
 	printf("Lifecycle tests:\n");
-	test_context_acquire_release();
-	test_context_refcounting();
-	test_context_reset();
+	TR_RUN(test_context_acquire_release);
+	TR_RUN(test_context_refcounting);
+	TR_RUN(test_context_reset);
 
 	printf("\nExpansion state tests:\n");
-	test_expansion_add_remove();
-	test_expansion_array_growth();
+	TR_RUN(test_expansion_add_remove);
+	TR_RUN(test_expansion_array_growth);
 
 	printf("\nMulti-selection tests:\n");
-	test_selection_add_remove();
+	TR_RUN(test_selection_add_remove);
 
 	printf("\n✓ All headless selection infrastructure tests passed!\n");
 	printf("✓ Phase 1: Core Selection Infrastructure - COMPLETE\n");
-	return 0;
+
+	TR_SUMMARY();
+	return TR_EXIT_CODE();
 }

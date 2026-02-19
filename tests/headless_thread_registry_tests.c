@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "threadregistry.h"
+#include "test_report.h"
 
 /* Test counter */
 static int tests_passed = 0;
@@ -584,34 +585,37 @@ TEST(get_nth_thread_id_after_free) {
  * Main test runner
  */
 int main(void) {
+    TR_INIT("headless_thread_registry_tests");
+
     printf("Thread Registry Unit Tests (Layer 1)\n");
     printf("=====================================\n\n");
 
     /* Ensure registry is in clean state before first test */
     cleanup_thread_registry();
 
-    RUN_TEST(init_and_cleanup);
-    RUN_TEST(id_allocation_unique);
-    RUN_TEST(record_allocation);
-    RUN_TEST(record_free);
-    RUN_TEST(lookup_success);
-    RUN_TEST(lookup_failure);
-    RUN_TEST(multiple_records);
-    RUN_TEST(field_initialization);
-    RUN_TEST(reinit_after_cleanup);
-    RUN_TEST(slot_reuse);
-    RUN_TEST(null_free_safety);
-    RUN_TEST(double_free_safety);
-    RUN_TEST(pre_init_safety);
-    RUN_TEST(lookup_after_free);
-    RUN_TEST(max_threads_boundary);
-    RUN_TEST(register_main_thread_basic);
-    RUN_TEST(register_main_thread_custom_id);
-    RUN_TEST(get_nth_thread_id_basic);
-    RUN_TEST(get_nth_thread_id_after_free);
+    TR_RUN(test_init_and_cleanup);
+    TR_RUN(test_id_allocation_unique);
+    TR_RUN(test_record_allocation);
+    TR_RUN(test_record_free);
+    TR_RUN(test_lookup_success);
+    TR_RUN(test_lookup_failure);
+    TR_RUN(test_multiple_records);
+    TR_RUN(test_field_initialization);
+    TR_RUN(test_reinit_after_cleanup);
+    TR_RUN(test_slot_reuse);
+    TR_RUN(test_null_free_safety);
+    TR_RUN(test_double_free_safety);
+    TR_RUN(test_pre_init_safety);
+    TR_RUN(test_lookup_after_free);
+    TR_RUN(test_max_threads_boundary);
+    TR_RUN(test_register_main_thread_basic);
+    TR_RUN(test_register_main_thread_custom_id);
+    TR_RUN(test_get_nth_thread_id_basic);
+    TR_RUN(test_get_nth_thread_id_after_free);
 
     printf("\n=====================================\n");
     printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);
 
-    return tests_failed > 0 ? 1 : 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

@@ -26,6 +26,7 @@
 #include <time.h>
 
 #include "../Common/headers/logging.h"
+#include "../test_report.h"
 
 /* Get repository root by walking up from current working directory */
 static int get_repo_root(char *buf, size_t bufsize) {
@@ -798,6 +799,8 @@ int main(int argc, char **argv) {
 	(void)argc;
 	(void)argv;
 
+	TR_INIT("table_operations_integration");
+
 	printf("[table_operations_integration] Starting comprehensive table operation tests...\n");
 	printf("[table_operations_integration] Tests run via frontier-cli with Frontier.root7\n");
 	printf("[table_operations_integration] Total: 45 tests across 6 categories\n");
@@ -807,75 +810,75 @@ int main(int argc, char **argv) {
 	/* TEST SUITE: table.assign() */
 	printf("[table_operations_integration] ========== TEST SUITE: table.assign() ==========\n");
 	fflush(stdout);
-	test_table_assign_basic();
-	test_table_assign_multiple_types();
-	test_table_assign_overwrite();
-	test_table_assign_size();
-	test_table_assign_empty_string();
-	test_table_assign_zero();
-	test_table_assign_negative();
-	test_table_assign_large();
+	TR_RUN(test_table_assign_basic);
+	TR_RUN(test_table_assign_multiple_types);
+	TR_RUN(test_table_assign_overwrite);
+	TR_RUN(test_table_assign_size);
+	TR_RUN(test_table_assign_empty_string);
+	TR_RUN(test_table_assign_zero);
+	TR_RUN(test_table_assign_negative);
+	TR_RUN(test_table_assign_large);
 
 	/* TEST SUITE: table.copy() */
 	printf("\n[table_operations_integration] ========== TEST SUITE: table.copy() ==========\n");
 	fflush(stdout);
-	test_table_copy_basic();
-	test_table_copy_source_unchanged();
-	test_table_copy_numeric();
-	test_table_copy_boolean();
-	test_table_copy_with_existing();
-	test_table_copy_multiple();
-	test_table_copy_key_name();
+	TR_RUN(test_table_copy_basic);
+	TR_RUN(test_table_copy_source_unchanged);
+	TR_RUN(test_table_copy_numeric);
+	TR_RUN(test_table_copy_boolean);
+	TR_RUN(test_table_copy_with_existing);
+	TR_RUN(test_table_copy_multiple);
+	TR_RUN(test_table_copy_key_name);
 
 	/* TEST SUITE: table.move() */
 	printf("\n[table_operations_integration] ========== TEST SUITE: table.move() ==========\n");
 	fflush(stdout);
-	test_table_move_basic();
-	test_table_move_source_removed();
-	test_table_move_multiple_sequential();
-	test_table_move_prepopulated_dest();
-	test_table_move_string();
-	test_table_move_boolean();
+	TR_RUN(test_table_move_basic);
+	TR_RUN(test_table_move_source_removed);
+	TR_RUN(test_table_move_multiple_sequential);
+	TR_RUN(test_table_move_prepopulated_dest);
+	TR_RUN(test_table_move_string);
+	TR_RUN(test_table_move_boolean);
 
 	/* TEST SUITE: table.rename() */
 	printf("\n[table_operations_integration] ========== TEST SUITE: table.rename() ==========\n");
 	fflush(stdout);
-	test_table_rename_basic();
-	test_table_rename_new_key_value();
-	test_table_rename_size_unchanged();
-	test_table_rename_with_multiple();
-	test_table_rename_numeric();
-	test_table_rename_special_chars();
+	TR_RUN(test_table_rename_basic);
+	TR_RUN(test_table_rename_new_key_value);
+	TR_RUN(test_table_rename_size_unchanged);
+	TR_RUN(test_table_rename_with_multiple);
+	TR_RUN(test_table_rename_numeric);
+	TR_RUN(test_table_rename_special_chars);
 
 	/* TEST SUITE: table.emptytable() */
 	printf("\n[table_operations_integration] ========== TEST SUITE: table.emptytable() ==========\n");
 	fflush(stdout);
-	test_table_emptytable_single();
-	test_table_emptytable_count();
-	test_table_emptytable_all_removed();
-	test_table_emptytable_repopulate();
-	test_table_emptytable_empty_table();
+	TR_RUN(test_table_emptytable_single);
+	TR_RUN(test_table_emptytable_count);
+	TR_RUN(test_table_emptytable_all_removed);
+	TR_RUN(test_table_emptytable_repopulate);
+	TR_RUN(test_table_emptytable_empty_table);
 
 	/* TEST SUITE: table.moveandrename() */
 	printf("\n[table_operations_integration] ========== TEST SUITE: table.moveandrename() ==========\n");
 	fflush(stdout);
-	test_table_moveandrename_basic();
-	test_table_moveandrename_new_name();
-	test_table_moveandrename_value_preserved();
-	test_table_moveandrename_source_reduced();
-	test_table_moveandrename_dest_increased();
-	test_table_moveandrename_multiple_sequential();
+	TR_RUN(test_table_moveandrename_basic);
+	TR_RUN(test_table_moveandrename_new_name);
+	TR_RUN(test_table_moveandrename_value_preserved);
+	TR_RUN(test_table_moveandrename_source_reduced);
+	TR_RUN(test_table_moveandrename_dest_increased);
+	TR_RUN(test_table_moveandrename_multiple_sequential);
 
 	/* TEST SUITE: Complex scenarios */
 	printf("\n[table_operations_integration] ========== TEST SUITE: Complex Scenarios ==========\n");
 	fflush(stdout);
-	test_complex_combined_operations();
-	test_type_preservation();
-	test_large_string_values();
-	test_stress_many_entries();
-	test_rename_chain();
-	test_empty_string_handling();
-	test_false_zero_distinction();
+	TR_RUN(test_complex_combined_operations);
+	TR_RUN(test_type_preservation);
+	TR_RUN(test_large_string_values);
+	TR_RUN(test_stress_many_entries);
+	TR_RUN(test_rename_chain);
+	TR_RUN(test_empty_string_handling);
+	TR_RUN(test_false_zero_distinction);
 
 	printf("\n========================================\n");
 	printf("table_operations_integration: ALL TESTS PASSED\n");
@@ -884,5 +887,6 @@ int main(int argc, char **argv) {
 	printf("Coverage: 8 assign, 7 copy, 6 move, 6 rename, 5 emptytable, 6 moveandrename, 7 complex\n");
 	fflush(stdout);
 
-	return 0;
+	TR_SUMMARY();
+	return TR_EXIT_CODE();
 }

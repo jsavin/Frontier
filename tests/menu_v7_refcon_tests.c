@@ -23,6 +23,7 @@
 #include "frontier.h"
 #include "standard.h"
 #include "shelltypes.h"
+#include "test_report.h"
 #include "op.h"
 #include "opinternal.h"
 #include "memory.h"
@@ -441,6 +442,8 @@ static void test_menu_refcon_combined_modifiers(void) {
  * Main test runner
  */
 int main(void) {
+    TR_INIT("menu_v7_refcon_tests");
+
     printf("\n=== Menu V7 Refcon Table Format Tests ===\n");
     printf("[menu_v7] Initializing runtime...\n");
     fflush(stdout);
@@ -460,15 +463,15 @@ int main(void) {
     printf("[menu_v7] Testing v7 menu refcon table pack/unpack\n");
     fflush(stdout);
 
-    test_menu_refcon_empty();
-    test_menu_refcon_keybinding_only();
-    test_menu_refcon_script_only();
-    test_menu_refcon_full();
-    test_menu_refcon_shift_modifier();
-    test_menu_refcon_control_modifier();
-    test_menu_refcon_option_modifier();
-    test_menu_refcon_command_modifier();
-    test_menu_refcon_combined_modifiers();
+    TR_RUN(test_menu_refcon_empty);
+    TR_RUN(test_menu_refcon_keybinding_only);
+    TR_RUN(test_menu_refcon_script_only);
+    TR_RUN(test_menu_refcon_full);
+    TR_RUN(test_menu_refcon_shift_modifier);
+    TR_RUN(test_menu_refcon_control_modifier);
+    TR_RUN(test_menu_refcon_option_modifier);
+    TR_RUN(test_menu_refcon_command_modifier);
+    TR_RUN(test_menu_refcon_combined_modifiers);
 
     printf("\n========================================\n");
     printf("[menu_v7] ALL TESTS PASSED\n");
@@ -476,5 +479,7 @@ int main(void) {
     fflush(stdout);
 
     wp_portable_shutdown();
-    return 0;
+
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

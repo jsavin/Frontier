@@ -455,6 +455,7 @@ test_table_sorting: components/usertalk_objects/test_table_sorting.c $(TEST_FRAM
 # Test targets
 test: strings_generated $(RUN_BUILDABLE)
 	@echo "Running all tests..."
+	@mkdir -p tmp/unit
 	@set -e; \
 	for test in $(RUN_BUILDABLE) $(RUN_PREBUILT); do \
 	  if [ -x "./$$test" ]; then \
@@ -464,6 +465,12 @@ test: strings_generated $(RUN_BUILDABLE)
 	    echo "Skipping $$test (not present)"; \
 	  fi; \
 	done
+	@echo "Aggregating test results..."
+	@python3 ../tools/aggregate_unit_results.py
+
+test-report:
+	@echo "Generating unit test OPML report..."
+	@python3 ../tools/export_unit_tests_to_opml.py
 
 test-usertalk: test_usertalk_runner
 	@echo "Running UserTalk object tests..."
@@ -625,7 +632,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
+.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

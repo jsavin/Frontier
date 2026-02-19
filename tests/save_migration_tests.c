@@ -20,6 +20,7 @@
 #include "odbinternal.h"
 #include "db_format.h"
 #include "logging.h"
+#include "test_report.h"
 
 /* Database format constants for migration validation */
 #define DB_HEADER_VIEWS_OFFSET 16      /* Offset to views[0] (root table address) in v7 database header */
@@ -126,6 +127,7 @@ static bool get_test_migration_dir(char *out, size_t out_size) {
 
 
 int main(void) {
+    TR_INIT("save_migration_tests");
     log_init();  /* Initialize logging system before any log calls */
 
     // Get migration output directory
@@ -305,11 +307,18 @@ int main(void) {
         log_info(LOG_COMP_DB, "✓ ALL VALIDATIONS PASSED");
         printf("save_migration_tests: migration applied (v%d -> v%d) output=%s [ALL VALIDATIONS PASSED]\n",
                ver_before, ver_after, migrated_path);
-        return 0;
     } else {
         log_error(LOG_COMP_DB, "✗ SOME VALIDATIONS FAILED");
         printf("save_migration_tests: migration applied (v%d -> v%d) output=%s [%d/%d VALIDATIONS PASSED]\n",
                ver_before, ver_after, migrated_path, test_passed, test_count);
-        return 1;
     }
+
+    if (tr_count < TR_MAX_TESTS) {
+        tr_results[tr_count].name = "all_tests";
+        tr_results[tr_count].passed = (test_passed == test_count ? 1 : 0);
+        tr_count++;
+        if (test_passed == test_count) tr_pass_count++; else tr_fail_count++;
+    }
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

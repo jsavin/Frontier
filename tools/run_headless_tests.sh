@@ -74,4 +74,7 @@ fi
 echo "[headless-tests] running test suite..."
 make -C tests test
 
+echo "[headless-tests] generating unit test OPML report..."
+python3 tools/export_unit_tests_to_opml.py || echo "[headless-tests] WARNING: OPML export failed (non-fatal)"
+
 echo "[headless-tests] done."

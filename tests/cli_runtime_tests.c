@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "test_report.h"
 
 static bool get_repo_root(char *out, size_t out_size) {
     if (out == NULL || out_size == 0) {
@@ -543,22 +544,24 @@ int main(int argc, char **argv) {
     (void)argc;
     (void)argv;
 
-    test_inline_arithmetic();
-    test_inline_string_concat();
-    test_script_file_execution();
-    test_invalid_script_returns_error();
-    test_system_root_hydration_allows_scripts();
-    test_cli_clock_now_on_migrated_root();
+    TR_INIT("cli_runtime_tests");
+
+    TR_RUN(test_inline_arithmetic);
+    TR_RUN(test_inline_string_concat);
+    TR_RUN(test_script_file_execution);
+    TR_RUN(test_invalid_script_returns_error);
+    TR_RUN(test_system_root_hydration_allows_scripts);
+    TR_RUN(test_cli_clock_now_on_migrated_root);
 
     // Kernel verb tests
     printf("[cli-runtime] Running kernel verb tests...\n");
-    test_kernel_verb_clock_ticks();
-    test_kernel_verb_typeof();
-    test_kernel_verb_lang_operations();
-    test_kernel_verb_string_length();
-    test_kernel_verb_string_upper();
-    test_kernel_verb_math_random();
+    TR_RUN(test_kernel_verb_clock_ticks);
+    TR_RUN(test_kernel_verb_typeof);
+    TR_RUN(test_kernel_verb_lang_operations);
+    TR_RUN(test_kernel_verb_string_length);
+    TR_RUN(test_kernel_verb_string_upper);
+    TR_RUN(test_kernel_verb_math_random);
 
-    printf("cli_runtime_tests: all tests passed\n");
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

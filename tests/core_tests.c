@@ -4,6 +4,7 @@
 
 #include "frontier.h"
 #include "shell_api.h"
+#include "test_report.h"
 
 static void test_shell_api_capability_names(void) {
     shell_api_use_default();
@@ -24,9 +25,10 @@ static void test_shell_api_headless_mode(void) {
 }
 
 int main(void) {
-    test_shell_api_capability_names();
-    test_shell_api_default_mode();
-    test_shell_api_headless_mode();
-    printf("core_tests: shell_api smoke tests executed\n");
-    return 0;
+    TR_INIT("core_tests");
+    TR_RUN(test_shell_api_capability_names);
+    TR_RUN(test_shell_api_default_mode);
+    TR_RUN(test_shell_api_headless_mode);
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

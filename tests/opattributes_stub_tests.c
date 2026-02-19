@@ -23,24 +23,26 @@
 #include "headless_opattributes_verbs.h"
 #include <stdio.h>
 #include <string.h>
+#include "test_report.h"
 
 /* Forward declarations */
 static boolean test_opattributes_not_supported(void);
 static void pstring_to_cstring(const unsigned char *pstr, char *out, size_t out_size);
 
 int main(int argc, char *argv[]) {
+    TR_INIT("opattributes_stub_tests");
+
     printf("opattributes_stub_tests: Testing headless opattributes stubs\n");
     printf("========================================================================\n");
 
-    if (!test_opattributes_not_supported()) {
-        printf("FAIL: opattributes verbs not properly stubbed\n");
-        return 1;
-    }
+    TR_RUN(test_opattributes_not_supported);
 
     printf("\n");
     printf("========================================================================\n");
     printf("All tests passed\n");
-    return 0;
+
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }
 
 /*

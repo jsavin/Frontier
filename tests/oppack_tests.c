@@ -12,6 +12,7 @@
 #include "byteorder.h"
 #include "memory.h"
 #include "db_format.h"
+#include "test_report.h"
 
 /* Test 1: Verify v4 header struct size */
 static void test_v4_header_struct_size(void) {
@@ -131,14 +132,16 @@ static void test_v4_no_font_fields(void) {
 }
 
 int main(void) {
+    TR_INIT("oppack_tests");
     printf("\n=== Running simplified oppack tests ===\n");
 
-    test_v4_header_struct_size();
-    test_version_dispatch_logic();
-    test_64bit_timestamp_byteorder();
-    test_reserved_area_size();
-    test_v4_no_font_fields();
+    TR_RUN(test_v4_header_struct_size);
+    TR_RUN(test_version_dispatch_logic);
+    TR_RUN(test_64bit_timestamp_byteorder);
+    TR_RUN(test_reserved_area_size);
+    TR_RUN(test_v4_no_font_fields);
 
     printf("=== All oppack tests passed ===\n\n");
-    return 0;
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }

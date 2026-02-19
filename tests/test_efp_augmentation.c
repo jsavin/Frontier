@@ -25,6 +25,7 @@
 #include "odbinternal.h"
 #include "db_format.h"
 #include "logging.h"
+#include "test_report.h"
 
 static int test_count = 0;
 static int test_passed = 0;
@@ -33,6 +34,7 @@ static int test_passed = 0;
 #define TEST_FAIL(desc) do { test_count++; log_error(LOG_COMP_DB, "FAIL: %s", desc); } while(0)
 
 int main(void) {
+    TR_INIT("test_efp_augmentation");
     log_init();
 
     log_info(LOG_COMP_DB, "=== EFP Augmentation Path Test (Issue #199) ===");
@@ -171,10 +173,17 @@ cleanup:
     if (test_passed == test_count) {
         log_info(LOG_COMP_DB, "✓ ALL TESTS PASSED");
         printf("test_efp_augmentation: PASSED - EFP augmentation path works without crash\n");
-        return 0;
     } else {
         log_error(LOG_COMP_DB, "✗ SOME TESTS FAILED");
         printf("test_efp_augmentation: FAILED - %d/%d tests passed\n", test_passed, test_count);
-        return 1;
     }
+
+    if (tr_count < TR_MAX_TESTS) {
+        tr_results[tr_count].name = "all_tests";
+        tr_results[tr_count].passed = (test_passed == test_count ? 1 : 0);
+        tr_count++;
+        if (test_passed == test_count) tr_pass_count++; else tr_fail_count++;
+    }
+    TR_SUMMARY();
+    return TR_EXIT_CODE();
 }
