@@ -166,7 +166,8 @@ static boolean tcp_enqueue_callback(hdlhashtable htable, bigstring callback_name
  * would hold the GIL for the entire callback duration, blocking all other
  * threads and preventing concurrent request handling.
  *
- * Returns number of callbacks enqueued */
+ * Returns number of callbacks processed (dequeued, whether or not
+ * they were successfully enqueued as processes) */
 int tcp_process_callbacks(void) {
     int processed = 0;
 
@@ -210,8 +211,9 @@ int tcp_process_callbacks(void) {
         }
 
         if (!pushfunctionreference(addrval, &hfunctionref)) {
+            /* Don't dispose addrval here — pushfunctionreference may have
+             * already consumed it via newconstnode + pushunaryoperation. */
             log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushfunctionreference failed for stream_id=%ld", item.stream_id);
-            disposevaluerecord(addrval, false);
             releasethreadglobals();
             processed++;
             continue;
@@ -279,6 +281,7 @@ int tcp_process_callbacks(void) {
 
         if (!addprocess(hprocess)) {
             log_warn(LOG_COMP_LANG, "tcp_process_callbacks: addprocess failed for stream_id=%ld", item.stream_id);
+            disposeprocess(hprocess);
         }
 
         processed++;
