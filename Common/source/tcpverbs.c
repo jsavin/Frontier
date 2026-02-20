@@ -268,7 +268,27 @@ int tcp_process_callbacks(void) {
             continue;
         }
 
-        /* Create a one-shot process and add to the process queue.
+        #if defined(FRONTIER_HEADLESS)
+        /* Headless mode: execute callback directly via langruncode.
+         * The process scheduler (newprocess/addprocess) is not available
+         * in the headless build. Direct execution is acceptable here
+         * because the headless REPL is single-threaded. */
+        {
+            tyvaluerecord result;
+
+            initvalue (&result, novaluetype);
+
+            if (!langruncode(hcode, nil, &result)) {
+                log_warn(LOG_COMP_LANG, "tcp_process_callbacks: langruncode failed for stream_id=%ld", item.stream_id);
+            }
+
+            langdisposetree(hcode);
+            disposevaluerecord(result, false);
+        }
+
+        releasethreadglobals();
+        #else
+        /* Full Frontier: queue as one-shot process for the scheduler.
          * This allows the callback to yield at langbackgroundtask() and
          * thread.sleepTicks() points, matching legacy fwsruncallback behavior. */
         hdlprocessrecord hprocess;
@@ -287,6 +307,7 @@ int tcp_process_callbacks(void) {
             log_warn(LOG_COMP_LANG, "tcp_process_callbacks: addprocess failed for stream_id=%ld", item.stream_id);
             disposeprocess(hprocess);
         }
+        #endif
 
         processed++;
     }
