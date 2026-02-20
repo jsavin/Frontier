@@ -492,10 +492,10 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 boolean menuverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
 
 	long rawadr = 0;
-	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
+
+	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr))
 		return (false);
-		
+
 	return (newmenuvariable (false, (dbaddress) rawadr, (hdlmenuvariable *) h));
 	} /*menuverbunpack*/
 

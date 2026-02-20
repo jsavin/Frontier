@@ -35,6 +35,7 @@
 #include "opverbs.h"
 #include "wpverbs.h"
 #include "pictverbs.h"
+#include "menuverbs.h"
 #include "cancoon.h"
 #include "cancooninternal.h"
 #include "file.h"
@@ -1701,27 +1702,13 @@ static boolean db_format_force_materialize_external_tables_recursive(
 #endif
             } else if (var_id == idmenuprocessor) {
 #if defined(FRONTIER_HEADLESS)
-                log_debug(LOG_COMP_DB, "    leaf external (menu) - will clear oldaddress without loading (memory optimization)");
+                log_debug(LOG_COMP_DB, "    calling menuverbinmemory_context for '%.*s' hv=%p",
+                          (int) bsname[0], (char *) &bsname[1], (void*)hv);
 #endif
-                /* Menu externals: Use deferred loading strategy (memory optimization).
-                 *
-                 * Strategy: Clear oldaddress without loading, then load on-demand during packing.
-                 *
-                 * Rationale: Menus can be numerous in large databases (similar to WPText).
-                 * Loading all menus upfront during materialization would:
-                 * - Increase memory pressure unnecessarily
-                 * - Load menus that may never be accessed
-                 * - Slow down migration for large databases
-                 *
-                 * The deferred approach:
-                 * - Clears oldaddress to force fresh v7 allocation during packing
-                 * - Packing code calls ensure_external_in_memory() which triggers
-                 *   menuverbinmemory_context() for context-aware on-demand loading
-                 * - Only loads menus that are actually being packed
-                 *
-                 * Alternative: Could call menuverbinmemory_context() here (like pictures do)
-                 * but current approach has proven reliable in testing and reduces memory usage. */
-                loaded = true;  /* Treated as success - we'll handle via oldaddress clearing */
+                loaded = menuverbinmemory_context(context, hv);
+#if defined(FRONTIER_HEADLESS)
+                log_debug(LOG_COMP_DB, "    menuverbinmemory_context returned: %d", loaded);
+#endif
             } else {
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    skip: unsupported external type id=%d", var_id);
@@ -1738,8 +1725,8 @@ static boolean db_format_force_materialize_external_tables_recursive(
                 return false;
             }
 
-            /* Verify it's now in memory (except for menus and wptext which we intentionally don't load) */
-            if (var_id != idmenuprocessor && var_id != idwordprocessor) {
+            /* Verify it's now in memory (except for wptext which we intentionally don't load) */
+            if (var_id != idwordprocessor) {
 #if defined(FRONTIER_HEADLESS)
                 log_debug(LOG_COMP_DB, "    verbinmemory succeeded, checking flinmemory");
 #endif
