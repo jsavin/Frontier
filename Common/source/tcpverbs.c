@@ -250,6 +250,7 @@ int tcp_process_callbacks(void) {
         hdltreenode hfunctioncall;
 
         if (!pushbinaryoperation(functionop, hfunctionref, hparam1, &hfunctioncall)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushbinaryoperation(functionop) failed for stream_id=%ld", item.stream_id);
             releasethreadglobals();
             processed++;
             continue;
@@ -259,6 +260,7 @@ int tcp_process_callbacks(void) {
         hdltreenode hcode;
 
         if (!pushbinaryoperation(moduleop, hfunctioncall, nil, &hcode)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushbinaryoperation(moduleop) failed for stream_id=%ld", item.stream_id);
             releasethreadglobals();
             processed++;
             continue;
