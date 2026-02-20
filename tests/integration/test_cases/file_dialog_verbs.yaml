@@ -13,44 +13,44 @@
 tests:
   # ===== Active Tests: Batch/Non-Interactive Mode =====
 
-  - name: "file.getFileDialog - error in batch mode"
-    description: "Should return error when not in interactive mode"
+  - name: "file.getFileDialog - returns false in batch mode"
+    description: "Should return false (cancelled) when not in interactive mode"
     script: |
-      file.getFileDialog("Select", @result, "TEXT")
+      return file.getFileDialog("Select", @result, "TEXT")
     batch_mode: true
-    expected_success: false
-    expected_error: "interactive mode"
+    expected_success: true
+    expected_result: "false"
 
   - name: "file.getFileDialog - 3 params accepted (no too-many-params error)"
     description: "The 3-parameter form (prompt, addr, type) should not fail with too-many-parameters"
     script: |
-      try {file.getFileDialog("Pick", @f, "TEXT")} else {return (tryError)}
+      return file.getFileDialog("Pick", @f, "TEXT")
     expected_success: true
-    expected_result_contains: "interactive mode"
+    expected_result: "false"
 
-  - name: "file.putFileDialog - error in batch mode"
-    description: "Should return error when not in interactive mode"
+  - name: "file.putFileDialog - returns false in batch mode"
+    description: "Should return false (cancelled) when not in interactive mode"
     script: |
-      file.putFileDialog("Save as", @result)
+      return file.putFileDialog("Save as", @result)
     batch_mode: true
-    expected_success: false
-    expected_error: "interactive mode"
+    expected_success: true
+    expected_result: "false"
 
-  - name: "file.getFolderDialog - error in batch mode"
-    description: "Should return error when not in interactive mode"
+  - name: "file.getFolderDialog - returns false in batch mode"
+    description: "Should return false (cancelled) when not in interactive mode"
     script: |
-      file.getFolderDialog("Select folder", @result)
+      return file.getFolderDialog("Select folder", @result)
     batch_mode: true
-    expected_success: false
-    expected_error: "interactive mode"
+    expected_success: true
+    expected_result: "false"
 
-  - name: "file.getDiskDialog - error in batch mode"
-    description: "Should return error when not in interactive mode"
+  - name: "file.getDiskDialog - returns false in batch mode"
+    description: "Should return false (cancelled) when not in interactive mode"
     script: |
-      file.getDiskDialog("Select volume", @result)
+      return file.getDiskDialog("Select volume", @result)
     batch_mode: true
-    expected_success: false
-    expected_error: "interactive mode"
+    expected_success: true
+    expected_result: "false"
 
   # ===== Phase 2 Tests: Interactive Fallback Path (piped stdin) =====
   # These tests use stdin_input which exercises the line-buffered fallback,

@@ -2,55 +2,51 @@
 <opml version="2.0">
   <head>
     <title>File Dialog Verbs (file_dialog_verbs) - 14 tests: 13 pass (92%) 1 skip (7%)</title>
-    <dateCreated>Mon, 16 Feb 2026 18:43:53 GMT</dateCreated>
+    <dateCreated>Fri, 20 Feb 2026 00:12:03 GMT</dateCreated>
   </head>
   <body>
-    <outline text="file.getFileDialog - error in batch mode - Should return error when not in interactive mode">
+    <outline text="file.getFileDialog - returns false in batch mode - Should return false (cancelled) when not in interactive mode">
       <outline text="Metadata">
         <outline text="batch_mode: True"/>
-        <outline text="expected_success: False"/>
-        <outline text="expected_error: interactive mode"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="file.getFileDialog(&quot;Select&quot;, @result, &quot;TEXT&quot;)"/>
+        <outline text="return file.getFileDialog(&quot;Select&quot;, @result, &quot;TEXT&quot;)"/>
       </outline>
     </outline>
     <outline text="file.getFileDialog - 3 params accepted (no too-many-params error) - The 3-parameter form (prompt, addr, type) should not fail with too-many-parameters">
       <outline text="Metadata">
-        <outline text="expected_result_contains: interactive mode"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="try {file.getFileDialog(&quot;Pick&quot;, @f, &quot;TEXT&quot;)} else {return (tryError)}"/>
+        <outline text="return file.getFileDialog(&quot;Pick&quot;, @f, &quot;TEXT&quot;)"/>
       </outline>
     </outline>
-    <outline text="file.putFileDialog - error in batch mode - Should return error when not in interactive mode">
+    <outline text="file.putFileDialog - returns false in batch mode - Should return false (cancelled) when not in interactive mode">
       <outline text="Metadata">
         <outline text="batch_mode: True"/>
-        <outline text="expected_success: False"/>
-        <outline text="expected_error: interactive mode"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="file.putFileDialog(&quot;Save as&quot;, @result)"/>
+        <outline text="return file.putFileDialog(&quot;Save as&quot;, @result)"/>
       </outline>
     </outline>
-    <outline text="file.getFolderDialog - error in batch mode - Should return error when not in interactive mode">
+    <outline text="file.getFolderDialog - returns false in batch mode - Should return false (cancelled) when not in interactive mode">
       <outline text="Metadata">
         <outline text="batch_mode: True"/>
-        <outline text="expected_success: False"/>
-        <outline text="expected_error: interactive mode"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="file.getFolderDialog(&quot;Select folder&quot;, @result)"/>
+        <outline text="return file.getFolderDialog(&quot;Select folder&quot;, @result)"/>
       </outline>
     </outline>
-    <outline text="file.getDiskDialog - error in batch mode - Should return error when not in interactive mode">
+    <outline text="file.getDiskDialog - returns false in batch mode - Should return false (cancelled) when not in interactive mode">
       <outline text="Metadata">
         <outline text="batch_mode: True"/>
-        <outline text="expected_success: False"/>
-        <outline text="expected_error: interactive mode"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="file.getDiskDialog(&quot;Select volume&quot;, @result)"/>
+        <outline text="return file.getDiskDialog(&quot;Select volume&quot;, @result)"/>
       </outline>
     </outline>
     <outline text="file.getFileDialog - select file with full path - Should accept typed full path to existing file via piped stdin">

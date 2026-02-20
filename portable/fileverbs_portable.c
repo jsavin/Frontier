@@ -2037,14 +2037,18 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				                                         tyvaluerecord *vreturned, bigstring bserror);
 
 				if (!isInteractiveMode()) {
-					copyctopstring("File dialogs require interactive mode (TTY) - use explicit paths in batch mode", bserror);
-					return false;
+					/* In non-interactive mode, return false as the dialog result
+					 * (same as user clicking Cancel), not a verb error. This lets
+					 * scripts handle it gracefully via if/try. */
+					setbooleanvalue (false, vreturned);
+					return true;
 				}
 
 				return portable_file_dialog_verb(token, hparam1, vreturned, bserror);
 			#else
-				copyctopstring("File dialogs not supported in headless mode - use explicit paths", bserror);
-				return false;
+				/* Return false as the dialog result (user cancelled), not a verb error */
+				setbooleanvalue (false, vreturned);
+				return true;
 			#endif
 		}
 

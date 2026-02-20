@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>File Verbs (file_verbs) - 81 tests: 75 pass (92%) 6 skip (7%)</title>
-    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
+    <dateCreated>Fri, 20 Feb 2026 00:12:03 GMT</dateCreated>
   </head>
   <body>
     <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
@@ -864,10 +864,9 @@
         <outline text="return !file.isvolume(tmpDir)"/>
       </outline>
     </outline>
-    <outline text="file.getFileDialog - not implemented in headless mode - File picker dialog should error in batch/headless mode">
+    <outline text="file.getFileDialog - returns false in headless batch mode - File picker dialog should return false (cancelled) in batch/headless mode">
       <outline text="Metadata">
-        <outline text="expected_success: False"/>
-        <outline text="expected_error: not implemented"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
         <outline text="local(selectedFile)"/>
@@ -875,10 +874,9 @@
         <outline text="return result"/>
       </outline>
     </outline>
-    <outline text="file.putFileDialog - not implemented in headless mode - Save file dialog should error in batch/headless mode">
+    <outline text="file.putFileDialog - returns false in headless batch mode - Save file dialog should return false (cancelled) in batch/headless mode">
       <outline text="Metadata">
-        <outline text="expected_success: False"/>
-        <outline text="expected_error: not implemented"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
@@ -888,10 +886,9 @@
         <outline text="return result"/>
       </outline>
     </outline>
-    <outline text="file.getFolderDialog - not implemented in headless mode - Folder picker dialog should error in batch/headless mode">
+    <outline text="file.getFolderDialog - returns false in headless batch mode - Folder picker dialog should return false (cancelled) in batch/headless mode">
       <outline text="Metadata">
-        <outline text="expected_success: False"/>
-        <outline text="expected_error: not implemented"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
         <outline text="local(selectedFolder)"/>
@@ -899,10 +896,9 @@
         <outline text="return result"/>
       </outline>
     </outline>
-    <outline text="file.getDiskDialog - not implemented in headless mode - Volume/disk picker dialog should error in batch/headless mode">
+    <outline text="file.getDiskDialog - returns false in headless batch mode - Volume/disk picker dialog should return false (cancelled) in batch/headless mode">
       <outline text="Metadata">
-        <outline text="expected_success: False"/>
-        <outline text="expected_error: not implemented"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
         <outline text="local(selectedDisk)"/>
