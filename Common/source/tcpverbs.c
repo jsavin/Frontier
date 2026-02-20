@@ -43,7 +43,7 @@
 #include "tcpverbs.h"
 #include "langexternal.h"
 #include "langinternal.h"
-#include "lang.h"  /* langruncallbackwithparams() */
+#include "lang.h"  /* functionop, moduleop, setaddressvalue */
 #include "memory.h"
 #include "strings.h"
 #include "logging.h"
@@ -148,6 +148,16 @@ static boolean tcp_enqueue_callback(hdlhashtable htable, bigstring callback_name
 }
 
 /* Process pending callbacks (called from main thread)
+ *
+ * Builds a proper function call AST for each callback, following the legacy
+ * fwsruncallback pattern (WinSockNetEvents.c:1585-1637). This creates:
+ *   module(function(callback_address, [stream_param, refcon_param]), nil)
+ *
+ * The AST-based approach is required because callbacks like inetd.supervisor
+ * are `on handler(stream, refcon)` functions — the formal parameter binding
+ * only works when params are in the function call tree (hparam1), not as
+ * local variables.
+ *
  * Returns number of callbacks processed */
 int tcp_process_callbacks(void) {
     int processed = 0;
@@ -174,26 +184,90 @@ int tcp_process_callbacks(void) {
                  stringlength(item.callback_name), item.callback_name + 1,
                  item.stream_id, item.refcon);
 
-        tyvaluerecord params[2];
-        setlongvalue(item.stream_id, &params[0]);
-        setlongvalue(item.refcon, &params[1]);
+        /* Build function call AST: callback(stream_id, refcon)
+         * Following fwsruncallback pattern from WinSockNetEvents.c */
 
+        grabthreadglobals();
+
+        /* Build callback address → function reference */
+        tyvaluerecord addrval;
+        hdltreenode hfunctionref;
+
+        if (!setaddressvalue(item.callback_table, item.callback_name, &addrval)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: setaddressvalue failed for stream_id=%ld", item.stream_id);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        if (!pushfunctionreference(addrval, &hfunctionref)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushfunctionreference failed for stream_id=%ld", item.stream_id);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        /* Build parameter nodes: [stream_id, refcon] */
+        tyvaluerecord val;
+        hdltreenode hparam1;
+        hdltreenode hparam2;
+
+        setlongvalue(item.stream_id, &val);
+
+        if (!newconstnode(val, &hparam1)) {
+            langdisposetree(hfunctionref);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        setlongvalue(item.refcon, &val);
+
+        if (!newconstnode(val, &hparam2)) {
+            langdisposetree(hfunctionref);
+            langdisposetree(hparam1);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        /* Link params: hparam1 → hparam2 */
+        pushlastlink(hparam2, hparam1);
+
+        /* Build function call: function(callback_ref, param_list) */
+        hdltreenode hfunctioncall;
+
+        if (!pushbinaryoperation(functionop, hfunctionref, hparam1, &hfunctioncall)) {
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        /* Wrap in module: module(functioncall, nil) */
+        hdltreenode hcode;
+
+        if (!pushbinaryoperation(moduleop, hfunctioncall, nil, &hcode)) {
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        /* Evaluate the function call on the main thread */
         tyvaluerecord result;
-        initvalue(&result, novaluetype);
+        boolean callback_success;
 
-        boolean callback_success = langruncallbackwithparams(
-            item.callback_table,
-            item.callback_name,
-            2,
-            params,
-            &result
-        );
+        callback_success = evaluatelist(hcode, &result);
 
         if (!callback_success) {
             log_warn(LOG_COMP_LANG, "tcp_process_callbacks: callback failed for stream_id=%ld", item.stream_id);
+        } else {
+            disposevaluerecord(result, false);
         }
 
-        disposevaluerecord(result, false);
+        langdisposetree(hcode);
+
+        releasethreadglobals();
+
         processed++;
     }
 
