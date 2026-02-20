@@ -44,6 +44,7 @@
 #include "langexternal.h"
 #include "langinternal.h"
 #include "lang.h"  /* functionop, moduleop, setaddressvalue */
+#include "process.h"  /* newprocess, addprocess */
 #include "memory.h"
 #include "strings.h"
 #include "logging.h"
@@ -158,7 +159,14 @@ static boolean tcp_enqueue_callback(hdlhashtable htable, bigstring callback_name
  * only works when params are in the function call tree (hparam1), not as
  * local variables.
  *
- * Returns number of callbacks processed */
+ * Each callback is queued as a one-shot process via newprocess + addprocess,
+ * matching the legacy fwsruncallback behavior. This is critical: callbacks
+ * (e.g. inetd.supervisor → HTTP response rendering) can yield at
+ * langbackgroundtask() and thread.sleepTicks() points. Synchronous evaluation
+ * would hold the GIL for the entire callback duration, blocking all other
+ * threads and preventing concurrent request handling.
+ *
+ * Returns number of callbacks enqueued */
 int tcp_process_callbacks(void) {
     int processed = 0;
 
@@ -179,13 +187,14 @@ int tcp_process_callbacks(void) {
         if (!have_item)
             break;
 
-        /* Invoke callback on main thread (safe for ODB access) */
-        log_debug(LOG_COMP_LANG, "tcp_process_callbacks: invoking callback '%.*s' stream_id=%ld refcon=%ld",
+        log_debug(LOG_COMP_LANG, "tcp_process_callbacks: enqueueing callback '%.*s' stream_id=%ld refcon=%ld",
                  stringlength(item.callback_name), item.callback_name + 1,
                  item.stream_id, item.refcon);
 
         /* Build function call AST: callback(stream_id, refcon)
-         * Following fwsruncallback pattern from WinSockNetEvents.c */
+         * Following fwsruncallback pattern from WinSockNetEvents.c.
+         * Thread globals needed for setaddressvalue/pushfunctionreference
+         * which access ODB structures. */
 
         grabthreadglobals();
 
@@ -202,6 +211,7 @@ int tcp_process_callbacks(void) {
 
         if (!pushfunctionreference(addrval, &hfunctionref)) {
             log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushfunctionreference failed for stream_id=%ld", item.stream_id);
+            disposevaluerecord(addrval, false);
             releasethreadglobals();
             processed++;
             continue;
@@ -252,21 +262,24 @@ int tcp_process_callbacks(void) {
             continue;
         }
 
-        /* Evaluate the function call on the main thread */
-        tyvaluerecord result;
-        boolean callback_success;
+        /* Create a one-shot process and add to the process queue.
+         * This allows the callback to yield at langbackgroundtask() and
+         * thread.sleepTicks() points, matching legacy fwsruncallback behavior. */
+        hdlprocessrecord hprocess;
 
-        callback_success = evaluatelist(hcode, &result);
-
-        if (!callback_success) {
-            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: callback failed for stream_id=%ld", item.stream_id);
-        } else {
-            disposevaluerecord(result, false);
+        if (!newprocess(hcode, true, nil, 0, &hprocess)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: newprocess failed for stream_id=%ld", item.stream_id);
+            langdisposetree(hcode);
+            releasethreadglobals();
+            processed++;
+            continue;
         }
 
-        langdisposetree(hcode);
-
         releasethreadglobals();
+
+        if (!addprocess(hprocess)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: addprocess failed for stream_id=%ld", item.stream_id);
+        }
 
         processed++;
     }
