@@ -211,8 +211,10 @@ int tcp_process_callbacks(void) {
         }
 
         if (!pushfunctionreference(addrval, &hfunctionref)) {
-            /* Don't dispose addrval here — pushfunctionreference may have
-             * already consumed it via newconstnode + pushunaryoperation. */
+            /* Don't dispose addrval here — pushfunctionreference always calls
+             * exemptfromtmpstack first, removing addrval from auto-cleanup.
+             * If newconstnode succeeded, addrval is owned by the tree node
+             * and disposed by pushunaryoperation on its failure path. */
             log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushfunctionreference failed for stream_id=%ld", item.stream_id);
             releasethreadglobals();
             processed++;

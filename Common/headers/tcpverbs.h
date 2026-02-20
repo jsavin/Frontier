@@ -166,7 +166,8 @@ boolean tcp_shutdown_context(void);
 
 /* Callback Queue Processing
  * Must be called periodically from main thread to process TCP callbacks.
- * Returns number of callbacks processed. */
+ * Each callback is enqueued as a one-shot process via newprocess/addprocess.
+ * Returns number of callbacks dequeued (includes failed enqueue attempts). */
 int tcp_process_callbacks(void);
 
 /* Internal Helpers (not exposed to UserTalk) */
