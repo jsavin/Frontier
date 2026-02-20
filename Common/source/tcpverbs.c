@@ -43,7 +43,8 @@
 #include "tcpverbs.h"
 #include "langexternal.h"
 #include "langinternal.h"
-#include "lang.h"  /* langruncallbackwithparams() */
+#include "lang.h"  /* functionop, moduleop, setaddressvalue */
+#include "process.h"  /* newprocess, addprocess */
 #include "memory.h"
 #include "strings.h"
 #include "logging.h"
@@ -148,7 +149,25 @@ static boolean tcp_enqueue_callback(hdlhashtable htable, bigstring callback_name
 }
 
 /* Process pending callbacks (called from main thread)
- * Returns number of callbacks processed */
+ *
+ * Builds a proper function call AST for each callback, following the legacy
+ * fwsruncallback pattern (WinSockNetEvents.c:1585-1637). This creates:
+ *   module(function(callback_address, [stream_param, refcon_param]), nil)
+ *
+ * The AST-based approach is required because callbacks like inetd.supervisor
+ * are `on handler(stream, refcon)` functions — the formal parameter binding
+ * only works when params are in the function call tree (hparam1), not as
+ * local variables.
+ *
+ * Each callback is queued as a one-shot process via newprocess + addprocess,
+ * matching the legacy fwsruncallback behavior. This is critical: callbacks
+ * (e.g. inetd.supervisor → HTTP response rendering) can yield at
+ * langbackgroundtask() and thread.sleepTicks() points. Synchronous evaluation
+ * would hold the GIL for the entire callback duration, blocking all other
+ * threads and preventing concurrent request handling.
+ *
+ * Returns number of callbacks processed (dequeued, whether or not
+ * they were successfully enqueued as processes) */
 int tcp_process_callbacks(void) {
     int processed = 0;
 
@@ -169,31 +188,104 @@ int tcp_process_callbacks(void) {
         if (!have_item)
             break;
 
-        /* Invoke callback on main thread (safe for ODB access) */
-        log_debug(LOG_COMP_LANG, "tcp_process_callbacks: invoking callback '%.*s' stream_id=%ld refcon=%ld",
+        log_debug(LOG_COMP_LANG, "tcp_process_callbacks: enqueueing callback '%.*s' stream_id=%ld refcon=%ld",
                  stringlength(item.callback_name), item.callback_name + 1,
                  item.stream_id, item.refcon);
 
-        tyvaluerecord params[2];
-        setlongvalue(item.stream_id, &params[0]);
-        setlongvalue(item.refcon, &params[1]);
+        /* Build function call AST: callback(stream_id, refcon)
+         * Following fwsruncallback pattern from WinSockNetEvents.c.
+         * Thread globals needed for setaddressvalue/pushfunctionreference
+         * which access ODB structures. */
 
-        tyvaluerecord result;
-        initvalue(&result, novaluetype);
+        grabthreadglobals();
 
-        boolean callback_success = langruncallbackwithparams(
-            item.callback_table,
-            item.callback_name,
-            2,
-            params,
-            &result
-        );
+        /* Build callback address → function reference */
+        tyvaluerecord addrval;
+        hdltreenode hfunctionref;
 
-        if (!callback_success) {
-            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: callback failed for stream_id=%ld", item.stream_id);
+        if (!setaddressvalue(item.callback_table, item.callback_name, &addrval)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: setaddressvalue failed for stream_id=%ld", item.stream_id);
+            releasethreadglobals();
+            processed++;
+            continue;
         }
 
-        disposevaluerecord(result, false);
+        if (!pushfunctionreference(addrval, &hfunctionref)) {
+            /* Don't dispose addrval here — pushfunctionreference may have
+             * already consumed it via newconstnode + pushunaryoperation. */
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushfunctionreference failed for stream_id=%ld", item.stream_id);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        /* Build parameter nodes: [stream_id, refcon] */
+        tyvaluerecord val;
+        hdltreenode hparam1;
+        hdltreenode hparam2;
+
+        setlongvalue(item.stream_id, &val);
+
+        if (!newconstnode(val, &hparam1)) {
+            langdisposetree(hfunctionref);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        setlongvalue(item.refcon, &val);
+
+        if (!newconstnode(val, &hparam2)) {
+            langdisposetree(hfunctionref);
+            langdisposetree(hparam1);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        /* Link params: hparam1 → hparam2 */
+        pushlastlink(hparam2, hparam1);
+
+        /* Build function call: function(callback_ref, param_list) */
+        hdltreenode hfunctioncall;
+
+        if (!pushbinaryoperation(functionop, hfunctionref, hparam1, &hfunctioncall)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushbinaryoperation(functionop) failed for stream_id=%ld", item.stream_id);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        /* Wrap in module: module(functioncall, nil) */
+        hdltreenode hcode;
+
+        if (!pushbinaryoperation(moduleop, hfunctioncall, nil, &hcode)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: pushbinaryoperation(moduleop) failed for stream_id=%ld", item.stream_id);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        /* Create a one-shot process and add to the process queue.
+         * This allows the callback to yield at langbackgroundtask() and
+         * thread.sleepTicks() points, matching legacy fwsruncallback behavior. */
+        hdlprocessrecord hprocess;
+
+        if (!newprocess(hcode, true, nil, 0, &hprocess)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: newprocess failed for stream_id=%ld", item.stream_id);
+            langdisposetree(hcode);
+            releasethreadglobals();
+            processed++;
+            continue;
+        }
+
+        releasethreadglobals();
+
+        if (!addprocess(hprocess)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: addprocess failed for stream_id=%ld", item.stream_id);
+            disposeprocess(hprocess);
+        }
+
         processed++;
     }
 
