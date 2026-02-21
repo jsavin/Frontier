@@ -89,7 +89,7 @@ boolean rgbinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\prgb"), bsname);
+    copystring(BIGSTRING("\003rgb"), bsname);
 
     if (!newfunctionprocessor(bsname, &rgb_valueproc, false, &htable))
         return false;
@@ -105,8 +105,8 @@ boolean rgbinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pget"), rgbv_get);
-    ADD_VERB(BIGSTRING("\pset"), rgbv_set);
+    ADD_VERB(BIGSTRING("\003get"), rgbv_get);
+    ADD_VERB(BIGSTRING("\003set"), rgbv_set);
 
     #undef ADD_VERB
 

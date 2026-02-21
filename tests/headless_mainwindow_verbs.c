@@ -38,31 +38,31 @@ static boolean mainwindow_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case maiv_showflag:
             /* Verb #0: mainwindow.showflag - GUI not available */
-            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hideflag:
             /* Verb #1: mainwindow.hideflag - GUI not available */
-            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showpopup:
             /* Verb #2: mainwindow.showpopup - GUI not available */
-            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hidepopup:
             /* Verb #3: mainwindow.hidepopup - GUI not available */
-            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showbuttons:
             /* Verb #4: mainwindow.showbuttons - GUI not available */
-            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hidebuttons:
             /* Verb #5: mainwindow.hidebuttons - GUI not available */
-            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showserverstats:
             /* Verb #6: mainwindow.showserverstats - GUI not available */
-            if (bserror) copystring(BIGSTRING("\pCan't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         default:
             return false;
@@ -73,7 +73,7 @@ boolean mainwindowinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pmainwindow"), bsname);
+    copystring(BIGSTRING("\012mainwindow"), bsname);
 
     if (!newfunctionprocessor(bsname, &mainwindow_valueproc, false, &htable))
         return false;
@@ -89,13 +89,13 @@ boolean mainwindowinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pshowflag"), maiv_showflag);
-    ADD_VERB(BIGSTRING("\phideflag"), maiv_hideflag);
-    ADD_VERB(BIGSTRING("\pshowpopup"), maiv_showpopup);
-    ADD_VERB(BIGSTRING("\phidepopup"), maiv_hidepopup);
-    ADD_VERB(BIGSTRING("\pshowbuttons"), maiv_showbuttons);
-    ADD_VERB(BIGSTRING("\phidebuttons"), maiv_hidebuttons);
-    ADD_VERB(BIGSTRING("\pshowserverstats"), maiv_showserverstats);
+    ADD_VERB(BIGSTRING("\010showflag"), maiv_showflag);
+    ADD_VERB(BIGSTRING("\010hideflag"), maiv_hideflag);
+    ADD_VERB(BIGSTRING("\011showpopup"), maiv_showpopup);
+    ADD_VERB(BIGSTRING("\011hidepopup"), maiv_hidepopup);
+    ADD_VERB(BIGSTRING("\013showbuttons"), maiv_showbuttons);
+    ADD_VERB(BIGSTRING("\013hidebuttons"), maiv_hidebuttons);
+    ADD_VERB(BIGSTRING("\017showserverstats"), maiv_showserverstats);
 
     #undef ADD_VERB
 

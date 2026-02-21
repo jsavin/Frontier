@@ -82,7 +82,7 @@ boolean pointinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\ppoint"), bsname);
+    copystring(BIGSTRING("\005point"), bsname);
 
     if (!newfunctionprocessor(bsname, &point_valueproc, false, &htable))
         return false;
@@ -98,8 +98,8 @@ boolean pointinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pget"), poiv_get);
-    ADD_VERB(BIGSTRING("\pset"), poiv_set);
+    ADD_VERB(BIGSTRING("\003get"), poiv_get);
+    ADD_VERB(BIGSTRING("\003set"), poiv_set);
 
     #undef ADD_VERB
 

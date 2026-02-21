@@ -37,27 +37,27 @@ static boolean search_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case seav_reset:
             /* Verb #0: search.reset - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case seav_findnext:
             /* Verb #1: search.findnext - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case seav_replace:
             /* Verb #2: search.replace - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case seav_replaceall:
             /* Verb #3: search.replaceall - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case seav_findtextdialog:
             /* Verb #4: search.findtextdialog - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case seav_replacetextdialog:
             /* Verb #5: search.replacetextdialog - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -68,7 +68,7 @@ boolean searchinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\psearch"), bsname);
+    copystring(BIGSTRING("\006search"), bsname);
 
     if (!newfunctionprocessor(bsname, &search_valueproc, false, &htable))
         return false;
@@ -84,12 +84,12 @@ boolean searchinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\preset"), seav_reset);
-    ADD_VERB(BIGSTRING("\pfindnext"), seav_findnext);
-    ADD_VERB(BIGSTRING("\preplace"), seav_replace);
-    ADD_VERB(BIGSTRING("\preplaceall"), seav_replaceall);
-    ADD_VERB(BIGSTRING("\pfindtextdialog"), seav_findtextdialog);
-    ADD_VERB(BIGSTRING("\preplacetextdialog"), seav_replacetextdialog);
+    ADD_VERB(BIGSTRING("\005reset"), seav_reset);
+    ADD_VERB(BIGSTRING("\010findnext"), seav_findnext);
+    ADD_VERB(BIGSTRING("\007replace"), seav_replace);
+    ADD_VERB(BIGSTRING("\012replaceall"), seav_replaceall);
+    ADD_VERB(BIGSTRING("\016findtextdialog"), seav_findtextdialog);
+    ADD_VERB(BIGSTRING("\021replacetextdialog"), seav_replacetextdialog);
 
     #undef ADD_VERB
 

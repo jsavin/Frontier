@@ -8529,6 +8529,34 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 				log_error(LOG_COMP_LANG, "langgetnodecode: langexternalvaltocode FAILED for %s", PSTR(bs));
 				return (false);
 			}
+
+			#if defined(FRONTIER_HEADLESS)
+			/* Stale code detection: v6 databases contain pre-compiled code trees
+			 * from the original Mac runtime that are not valid in the headless build.
+			 * These trees have nil param1 because they were compiled against a
+			 * different verb table layout.
+			 *
+			 * The recompile is a one-time cost per stale node: the script compiler
+			 * (scriptcompilecallback) writes back the freshly compiled tree via
+			 * opverblinkcode(), so subsequent calls find valid compiled code.
+			 *
+			 * Known false positive: a legitimately empty script also compiles to a
+			 * tree with nil param1, causing repeated recompilation on every access.
+			 * This is acceptable — empty scripts are rare in practice and
+			 * recompilation is cheap (produces the same empty tree).
+			 *
+			 * The master pointer dereference (*(*hcode)) is safe here because
+			 * langexternalvaltocode just populated the handle from a live node.
+			 *
+			 * No handle leak: *hcode is a borrowed reference into the node's
+			 * stored data (via opverbgetlinkedcode), not an owned allocation.
+			 * Setting it to nil just tells the caller to recompile. */
+			if (*hcode != nil && (**(*hcode)).param1 == nil) {
+				log_debug(LOG_COMP_LANG, "langgetnodecode: stale linked code for %s (nil param1), forcing recompile", PSTR(bs));
+				*hcode = nil;
+			}
+			#endif
+
 			if (*hcode == nil) { /*it needs to be compiled*/
 
 				log_trace(LOG_COMP_LANG, "langgetnodecode: script needs compilation for %s", PSTR(bs));

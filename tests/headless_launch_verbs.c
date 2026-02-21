@@ -36,23 +36,23 @@ static boolean launch_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case lauv_applemenu:
             /* Verb #0: launch.applemenu - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case lauv_application:
             /* Verb #1: launch.application - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case lauv_appwithdocument:
             /* Verb #2: launch.appwithdocument - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case lauv_resource:
             /* Verb #3: launch.resource - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case lauv_anything:
             /* Verb #4: launch.anything - @SCRIPT_IMPLEMENTED (pure UserTalk) */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -63,7 +63,7 @@ boolean launchinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\plaunch"), bsname);
+    copystring(BIGSTRING("\006launch"), bsname);
 
     if (!newfunctionprocessor(bsname, &launch_valueproc, false, &htable))
         return false;
@@ -79,11 +79,11 @@ boolean launchinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\papplemenu"), lauv_applemenu);
-    ADD_VERB(BIGSTRING("\papplication"), lauv_application);
-    ADD_VERB(BIGSTRING("\pappwithdocument"), lauv_appwithdocument);
-    ADD_VERB(BIGSTRING("\presource"), lauv_resource);
-    ADD_VERB(BIGSTRING("\panything"), lauv_anything);
+    ADD_VERB(BIGSTRING("\011applemenu"), lauv_applemenu);
+    ADD_VERB(BIGSTRING("\013application"), lauv_application);
+    ADD_VERB(BIGSTRING("\017appwithdocument"), lauv_appwithdocument);
+    ADD_VERB(BIGSTRING("\010resource"), lauv_resource);
+    ADD_VERB(BIGSTRING("\010anything"), lauv_anything);
 
     #undef ADD_VERB
 

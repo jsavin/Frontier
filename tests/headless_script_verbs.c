@@ -83,7 +83,7 @@ static boolean script_getscriptparam(hdltreenode hparam1, short pnum, hdlexterna
         return false;
 
     if (id != idscriptprocessor) {
-        langerrormessage(BIGSTRING("\pnot a script object"));
+        langerrormessage(BIGSTRING("\023not a script object"));
         return false;
     }
 
@@ -248,7 +248,7 @@ static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Validate hv before dereferencing */
     if (hv == nil) {
         disposehandle(hsourcetext);
-        langerrormessage(BIGSTRING("\pscript variable is nil"));
+        langerrormessage(BIGSTRING("\026script variable is nil"));
         return false;
     }
 
@@ -257,7 +257,7 @@ static boolean script_setsource(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Check if outline is valid */
     if (ho == nil || (**ho).hsummit == nil) {
         disposehandle(hsourcetext);
-        langerrormessage(BIGSTRING("\pscript outline not properly initialized"));
+        langerrormessage(BIGSTRING("\047script outline not properly initialized"));
         return false;
     }
 
@@ -367,13 +367,13 @@ static boolean script_setcode(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Look up code value */
     hdlhashnode hnode;
     if (!hashtablelookup(htable, varname, &codeval, &hnode)) {
-        langerrormessage(BIGSTRING("\pcode variable not found"));
+        langerrormessage(BIGSTRING("\027code variable not found"));
         return false;
     }
 
     /* Verify it's binary data */
     if (codeval.valuetype != binaryvaluetype) {
-        langerrormessage(BIGSTRING("\pcode must be binary type"));
+        langerrormessage(BIGSTRING("\030code must be binary type"));
         return false;
     }
 
@@ -387,7 +387,7 @@ static boolean script_setcode(hdltreenode hparam1, tyvaluerecord *vreturned) {
     disposehandle(hpackedcode);
 
     if (!fl) {
-        langerrormessage(BIGSTRING("\pinvalid compiled code"));
+        langerrormessage(BIGSTRING("\025invalid compiled code"));
         return false;
     }
 
@@ -460,7 +460,7 @@ static boolean script_removesource(hdltreenode hparam1, tyvaluerecord *vreturned
 
     flnextparamislast = true;
 
-    langerrormessage(BIGSTRING("\pscript.removeSource is not supported on this platform"));
+    langerrormessage(BIGSTRING("\065script.removeSource is not supported on this platform"));
     return false;
 }
 
@@ -496,47 +496,47 @@ static boolean script_valueproc(short token, hdltreenode hparam1,
         /* See usertalk_scripts/Frontier.root/system/verbs/builtins/script/ */
         case scrv_uncompile:
             /* @SCRIPT_IMPLEMENTED - unCompile.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_getlanguage:
             /* @SCRIPT_IMPLEMENTED - getLanguage.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_setlanguage:
             /* @SCRIPT_IMPLEMENTED - setLanguage.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_makecomment:
             /* @SCRIPT_IMPLEMENTED - makeComment.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_uncomment:
             /* @SCRIPT_IMPLEMENTED - unComment.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_iscomment:
             /* @SCRIPT_IMPLEMENTED - isComment.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_getbreakpoint:
             /* @SCRIPT_IMPLEMENTED - getBreakpoint.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_setbreakpoint:
             /* @SCRIPT_IMPLEMENTED - setBreakpoint.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_clearbreakpoint:
             /* @SCRIPT_IMPLEMENTED - clearBreakpoint.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_startprofile:
             /* @SCRIPT_IMPLEMENTED - startProfile.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case scrv_stopprofile:
             /* @SCRIPT_IMPLEMENTED - stopProfile.ut */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -547,7 +547,7 @@ boolean scriptinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pscript"), bsname);
+    copystring(BIGSTRING("\006script"), bsname);
 
     if (!newfunctionprocessor(bsname, &script_valueproc, false, &htable))
         return false;
@@ -563,25 +563,25 @@ boolean scriptinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pcompile"), scrv_compile);
-    ADD_VERB(BIGSTRING("\prun"), scrv_run);
-    ADD_VERB(BIGSTRING("\pgetcode"), scrv_getcode);
-    ADD_VERB(BIGSTRING("\psetcode"), scrv_setcode);
-    ADD_VERB(BIGSTRING("\pgetsource"), scrv_getsource);
-    ADD_VERB(BIGSTRING("\psetsource"), scrv_setsource);
-    ADD_VERB(BIGSTRING("\perror"), scrv_error);
-    ADD_VERB(BIGSTRING("\premoveSource"), scrv_removesource);
-    ADD_VERB(BIGSTRING("\puncompile"), scrv_uncompile);
-    ADD_VERB(BIGSTRING("\pgetlanguage"), scrv_getlanguage);
-    ADD_VERB(BIGSTRING("\psetlanguage"), scrv_setlanguage);
-    ADD_VERB(BIGSTRING("\pmakecomment"), scrv_makecomment);
-    ADD_VERB(BIGSTRING("\puncomment"), scrv_uncomment);
-    ADD_VERB(BIGSTRING("\piscomment"), scrv_iscomment);
-    ADD_VERB(BIGSTRING("\pgetbreakpoint"), scrv_getbreakpoint);
-    ADD_VERB(BIGSTRING("\psetbreakpoint"), scrv_setbreakpoint);
-    ADD_VERB(BIGSTRING("\pclearbreakpoint"), scrv_clearbreakpoint);
-    ADD_VERB(BIGSTRING("\pstartprofile"), scrv_startprofile);
-    ADD_VERB(BIGSTRING("\pstopprofile"), scrv_stopprofile);
+    ADD_VERB(BIGSTRING("\007compile"), scrv_compile);
+    ADD_VERB(BIGSTRING("\003run"), scrv_run);
+    ADD_VERB(BIGSTRING("\007getcode"), scrv_getcode);
+    ADD_VERB(BIGSTRING("\007setcode"), scrv_setcode);
+    ADD_VERB(BIGSTRING("\011getsource"), scrv_getsource);
+    ADD_VERB(BIGSTRING("\011setsource"), scrv_setsource);
+    ADD_VERB(BIGSTRING("\005error"), scrv_error);
+    ADD_VERB(BIGSTRING("\014removeSource"), scrv_removesource);
+    ADD_VERB(BIGSTRING("\011uncompile"), scrv_uncompile);
+    ADD_VERB(BIGSTRING("\013getlanguage"), scrv_getlanguage);
+    ADD_VERB(BIGSTRING("\013setlanguage"), scrv_setlanguage);
+    ADD_VERB(BIGSTRING("\013makecomment"), scrv_makecomment);
+    ADD_VERB(BIGSTRING("\011uncomment"), scrv_uncomment);
+    ADD_VERB(BIGSTRING("\011iscomment"), scrv_iscomment);
+    ADD_VERB(BIGSTRING("\015getbreakpoint"), scrv_getbreakpoint);
+    ADD_VERB(BIGSTRING("\015setbreakpoint"), scrv_setbreakpoint);
+    ADD_VERB(BIGSTRING("\017clearbreakpoint"), scrv_clearbreakpoint);
+    ADD_VERB(BIGSTRING("\014startprofile"), scrv_startprofile);
+    ADD_VERB(BIGSTRING("\013stopprofile"), scrv_stopprofile);
 
     #undef ADD_VERB
 

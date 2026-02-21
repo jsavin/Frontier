@@ -48,7 +48,7 @@ static boolean base64_valueproc(short token, hdltreenode hparam1,
             /* @IMPLEMENTED base64.encode - delegates to base64encodeverb in base64.c */
             result = base64encodeverb(hparam1, vreturned);
             if (!result && bserror) {
-                copystring(BIGSTRING("\pbase64.encode failed"), bserror);
+                copystring(BIGSTRING("\024base64.encode failed"), bserror);
             }
             return result;
 
@@ -56,12 +56,12 @@ static boolean base64_valueproc(short token, hdltreenode hparam1,
             /* @IMPLEMENTED base64.decode - delegates to base64decodeverb in base64.c */
             result = base64decodeverb(hparam1, vreturned);
             if (!result && bserror) {
-                copystring(BIGSTRING("\pbase64.decode failed"), bserror);
+                copystring(BIGSTRING("\024base64.decode failed"), bserror);
             }
             return result;
 
         default:
-            if (bserror) copystring(BIGSTRING("\punknown base64 verb"), bserror);
+            if (bserror) copystring(BIGSTRING("\023unknown base64 verb"), bserror);
             return false;
     }
 }
@@ -70,7 +70,7 @@ boolean base64initverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pbase64"), bsname);
+    copystring(BIGSTRING("\006base64"), bsname);
 
     if (!newfunctionprocessor(bsname, &base64_valueproc, false, &htable))
         return false;
@@ -86,8 +86,8 @@ boolean base64initverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pencode"), basv_encode);
-    ADD_VERB(BIGSTRING("\pdecode"), basv_decode);
+    ADD_VERB(BIGSTRING("\006encode"), basv_encode);
+    ADD_VERB(BIGSTRING("\006decode"), basv_decode);
 
     #undef ADD_VERB
 

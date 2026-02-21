@@ -259,26 +259,26 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
         }
         case winv_open:
             /* Verb: window.open - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_isfront:
             /* Verb: window.isfront - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_bringtofront:
             /* Verb: window.bringtofront - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_sendtoback:
             /* Verb: window.sendtoback - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_frontmost:
             /* window.frontmost - no-op in headless mode, returns empty string */
             return setstringvalue(BIGSTRING("\x00"), vreturned);
         case winv_next:
             /* Verb: window.next - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_isvisible: {
             /* window.isVisible(title) - always false in headless mode */
@@ -303,7 +303,7 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
         }
         case winv_close:
             /* Verb: window.close - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_update:
             /* window.update - no-op in headless mode (no GUI to update) */
@@ -311,7 +311,7 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             return true;
         case winv_ismenuscript:
             /* Verb: window.ismenuscript - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_getposition: {
             /* window.getPosition(title, horizAddr, vertAddr)
@@ -395,15 +395,15 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
         }
         case winv_zoom:
             /* Verb: window.zoom - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_runselection:
             /* Verb: window.runselection - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_scroll:
             /* Verb: window.scroll - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_msg:
             /* window.msg - no-op in headless mode (no status bar) */
@@ -412,19 +412,19 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
         case winv_dbstats:
             /* window.dbstats - error stub */
             if (bserror)
-                copystring(BIGSTRING("\pCan't use window verbs because GUI is not available in headless mode"), bserror);
+                copystring(BIGSTRING("\104Can't use window verbs because GUI is not available in headless mode"), bserror);
             return false;
         case winv_quickscript:
             /* Verb: window.quickscript - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_ismodified:
             /* Verb: window.ismodified - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_setmodified:
             /* Verb: window.setmodified - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_gettitle: {
             /* window.getTitle(adr)
@@ -474,15 +474,15 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             return true;
         case winv_getfile:
             /* Verb: window.getfile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_isreadonly:
             /* Verb: window.isreadonly - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case winv_setquickscript:
             /* Verb: window.setquickscript - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -493,7 +493,7 @@ boolean windowinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pwindow"), bsname);
+    copystring(BIGSTRING("\006window"), bsname);
 
     if (!newfunctionprocessor(bsname, &window_valueproc, false, &htable))
         return false;
@@ -509,37 +509,37 @@ boolean windowinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pisopen"), winv_isopen);
-    ADD_VERB(BIGSTRING("\popen"), winv_open);
-    ADD_VERB(BIGSTRING("\pisfront"), winv_isfront);
-    ADD_VERB(BIGSTRING("\pbringtofront"), winv_bringtofront);
-    ADD_VERB(BIGSTRING("\psendtoback"), winv_sendtoback);
-    ADD_VERB(BIGSTRING("\pfrontmost"), winv_frontmost);
-    ADD_VERB(BIGSTRING("\pnext"), winv_next);
-    ADD_VERB(BIGSTRING("\pisvisible"), winv_isvisible);
-    ADD_VERB(BIGSTRING("\pshow"), winv_show);
-    ADD_VERB(BIGSTRING("\phide"), winv_hide);
-    ADD_VERB(BIGSTRING("\pclose"), winv_close);
-    ADD_VERB(BIGSTRING("\pupdate"), winv_update);
-    ADD_VERB(BIGSTRING("\pismenuscript"), winv_ismenuscript);
-    ADD_VERB(BIGSTRING("\pgetposition"), winv_getposition);
-    ADD_VERB(BIGSTRING("\psetposition"), winv_setposition);
-    ADD_VERB(BIGSTRING("\pgetsize"), winv_getsize);
-    ADD_VERB(BIGSTRING("\psetsize"), winv_setsize);
-    ADD_VERB(BIGSTRING("\pzoom"), winv_zoom);
-    ADD_VERB(BIGSTRING("\prunselection"), winv_runselection);
-    ADD_VERB(BIGSTRING("\pscroll"), winv_scroll);
-    ADD_VERB(BIGSTRING("\pmsg"), winv_msg);
-    ADD_VERB(BIGSTRING("\pdbstats"), winv_dbstats);
-    ADD_VERB(BIGSTRING("\pquickscript"), winv_quickscript);
-    ADD_VERB(BIGSTRING("\pismodified"), winv_ismodified);
-    ADD_VERB(BIGSTRING("\psetmodified"), winv_setmodified);
-    ADD_VERB(BIGSTRING("\pgettitle"), winv_gettitle);
-    ADD_VERB(BIGSTRING("\psettitle"), winv_settitle);
-    ADD_VERB(BIGSTRING("\pabout"), winv_about);
-    ADD_VERB(BIGSTRING("\pgetfile"), winv_getfile);
-    ADD_VERB(BIGSTRING("\pisreadonly"), winv_isreadonly);
-    ADD_VERB(BIGSTRING("\psetquickscript"), winv_setquickscript);
+    ADD_VERB(BIGSTRING("\006isopen"), winv_isopen);
+    ADD_VERB(BIGSTRING("\004open"), winv_open);
+    ADD_VERB(BIGSTRING("\007isfront"), winv_isfront);
+    ADD_VERB(BIGSTRING("\014bringtofront"), winv_bringtofront);
+    ADD_VERB(BIGSTRING("\012sendtoback"), winv_sendtoback);
+    ADD_VERB(BIGSTRING("\011frontmost"), winv_frontmost);
+    ADD_VERB(BIGSTRING("\004next"), winv_next);
+    ADD_VERB(BIGSTRING("\011isvisible"), winv_isvisible);
+    ADD_VERB(BIGSTRING("\004show"), winv_show);
+    ADD_VERB(BIGSTRING("\004hide"), winv_hide);
+    ADD_VERB(BIGSTRING("\005close"), winv_close);
+    ADD_VERB(BIGSTRING("\006update"), winv_update);
+    ADD_VERB(BIGSTRING("\014ismenuscript"), winv_ismenuscript);
+    ADD_VERB(BIGSTRING("\013getposition"), winv_getposition);
+    ADD_VERB(BIGSTRING("\013setposition"), winv_setposition);
+    ADD_VERB(BIGSTRING("\007getsize"), winv_getsize);
+    ADD_VERB(BIGSTRING("\007setsize"), winv_setsize);
+    ADD_VERB(BIGSTRING("\004zoom"), winv_zoom);
+    ADD_VERB(BIGSTRING("\014runselection"), winv_runselection);
+    ADD_VERB(BIGSTRING("\006scroll"), winv_scroll);
+    ADD_VERB(BIGSTRING("\003msg"), winv_msg);
+    ADD_VERB(BIGSTRING("\007dbstats"), winv_dbstats);
+    ADD_VERB(BIGSTRING("\013quickscript"), winv_quickscript);
+    ADD_VERB(BIGSTRING("\012ismodified"), winv_ismodified);
+    ADD_VERB(BIGSTRING("\013setmodified"), winv_setmodified);
+    ADD_VERB(BIGSTRING("\010gettitle"), winv_gettitle);
+    ADD_VERB(BIGSTRING("\010settitle"), winv_settitle);
+    ADD_VERB(BIGSTRING("\005about"), winv_about);
+    ADD_VERB(BIGSTRING("\007getfile"), winv_getfile);
+    ADD_VERB(BIGSTRING("\012isreadonly"), winv_isreadonly);
+    ADD_VERB(BIGSTRING("\016setquickscript"), winv_setquickscript);
 
     #undef ADD_VERB
 

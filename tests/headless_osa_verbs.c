@@ -32,11 +32,11 @@ static boolean osa_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case osav_compile:
             /* Verb #0: osa.compile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case osav_getsource:
             /* Verb #1: osa.getsource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -47,7 +47,7 @@ boolean osainitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\posa"), bsname);
+    copystring(BIGSTRING("\003osa"), bsname);
 
     if (!newfunctionprocessor(bsname, &osa_valueproc, false, &htable))
         return false;
@@ -63,8 +63,8 @@ boolean osainitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pcompile"), osav_compile);
-    ADD_VERB(BIGSTRING("\pgetsource"), osav_getsource);
+    ADD_VERB(BIGSTRING("\007compile"), osav_compile);
+    ADD_VERB(BIGSTRING("\011getsource"), osav_getsource);
 
     #undef ADD_VERB
 

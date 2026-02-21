@@ -32,11 +32,11 @@ static boolean clipboard_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case cliv_get:
             /* Verb #0: clipboard.get - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case cliv_put:
             /* Verb #1: clipboard.put - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -47,7 +47,7 @@ boolean clipboardinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pclipboard"), bsname);
+    copystring(BIGSTRING("\011clipboard"), bsname);
 
     if (!newfunctionprocessor(bsname, &clipboard_valueproc, false, &htable))
         return false;
@@ -63,8 +63,8 @@ boolean clipboardinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pget"), cliv_get);
-    ADD_VERB(BIGSTRING("\pput"), cliv_put);
+    ADD_VERB(BIGSTRING("\003get"), cliv_get);
+    ADD_VERB(BIGSTRING("\003put"), cliv_put);
 
     #undef ADD_VERB
 

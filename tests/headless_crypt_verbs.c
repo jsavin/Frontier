@@ -37,7 +37,7 @@ boolean cryptinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pcrypt"), bsname);
+    copystring(BIGSTRING("\005crypt"), bsname);
 
     if (!newfunctionprocessor(bsname, &crypt_valueproc, false, &htable))
         return false;
@@ -53,11 +53,11 @@ boolean cryptinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pwhirlpool"), cryv_whirlpool);
-    ADD_VERB(BIGSTRING("\phmacMD5"), cryv_hmacMD5);
-    ADD_VERB(BIGSTRING("\pMD5"), cryv_MD5);
-    ADD_VERB(BIGSTRING("\pSHA1"), cryv_SHA1);
-    ADD_VERB(BIGSTRING("\phmacSHA1"), cryv_hmacSHA1);
+    ADD_VERB(BIGSTRING("\011whirlpool"), cryv_whirlpool);
+    ADD_VERB(BIGSTRING("\007hmacMD5"), cryv_hmacMD5);
+    ADD_VERB(BIGSTRING("\003MD5"), cryv_MD5);
+    ADD_VERB(BIGSTRING("\004SHA1"), cryv_SHA1);
+    ADD_VERB(BIGSTRING("\010hmacSHA1"), cryv_hmacSHA1);
 
     #undef ADD_VERB
 

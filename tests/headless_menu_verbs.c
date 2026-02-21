@@ -51,7 +51,7 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case menv_zoomscript:
             /* menu.zoomScript - requires menu editor window, keep as stub */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
 
         case menv_buildmenubar:
@@ -124,7 +124,7 @@ boolean menuinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pmenu"), bsname);
+    copystring(BIGSTRING("\004menu"), bsname);
 
     if (!newfunctionprocessor(bsname, &menu_valueproc, false, &htable))
         return false;
@@ -140,20 +140,20 @@ boolean menuinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pzoomscript"), menv_zoomscript);
-    ADD_VERB(BIGSTRING("\pbuildmenubar"), menv_buildmenubar);
-    ADD_VERB(BIGSTRING("\pclearmenubar"), menv_clearmenubar);
-    ADD_VERB(BIGSTRING("\pisinstalled"), menv_isinstalled);
-    ADD_VERB(BIGSTRING("\pinstall"), menv_install);
-    ADD_VERB(BIGSTRING("\premove"), menv_remove);
-    ADD_VERB(BIGSTRING("\pgetscript"), menv_getscript);
-    ADD_VERB(BIGSTRING("\psetscript"), menv_setscript);
-    ADD_VERB(BIGSTRING("\paddmenucommand"), menv_addmenucommand);
-    ADD_VERB(BIGSTRING("\pdeletemenucommand"), menv_deletemenucommand);
-    ADD_VERB(BIGSTRING("\paddsubmenu"), menv_addsubmenu);
-    ADD_VERB(BIGSTRING("\pdeletesubmenu"), menv_deletesubmenu);
-    ADD_VERB(BIGSTRING("\pgetcommandkey"), menv_getcommandkey);
-    ADD_VERB(BIGSTRING("\psetcommandkey"), menv_setcommandkey);
+    ADD_VERB(BIGSTRING("\012zoomscript"), menv_zoomscript);
+    ADD_VERB(BIGSTRING("\014buildmenubar"), menv_buildmenubar);
+    ADD_VERB(BIGSTRING("\014clearmenubar"), menv_clearmenubar);
+    ADD_VERB(BIGSTRING("\013isinstalled"), menv_isinstalled);
+    ADD_VERB(BIGSTRING("\007install"), menv_install);
+    ADD_VERB(BIGSTRING("\006remove"), menv_remove);
+    ADD_VERB(BIGSTRING("\011getscript"), menv_getscript);
+    ADD_VERB(BIGSTRING("\011setscript"), menv_setscript);
+    ADD_VERB(BIGSTRING("\016addmenucommand"), menv_addmenucommand);
+    ADD_VERB(BIGSTRING("\021deletemenucommand"), menv_deletemenucommand);
+    ADD_VERB(BIGSTRING("\012addsubmenu"), menv_addsubmenu);
+    ADD_VERB(BIGSTRING("\015deletesubmenu"), menv_deletesubmenu);
+    ADD_VERB(BIGSTRING("\015getcommandkey"), menv_getcommandkey);
+    ADD_VERB(BIGSTRING("\015setcommandkey"), menv_setcommandkey);
 
     #undef ADD_VERB
 

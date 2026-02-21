@@ -34,19 +34,19 @@ static boolean dll_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case dllv_call:
             /* Verb #0: dll.call - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case dllv_load:
             /* Verb #1: dll.load - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case dllv_unload:
             /* Verb #2: dll.unload - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case dllv_isloaded:
             /* Verb #3: dll.isloaded - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -57,7 +57,7 @@ boolean dllinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pdll"), bsname);
+    copystring(BIGSTRING("\003dll"), bsname);
 
     if (!newfunctionprocessor(bsname, &dll_valueproc, false, &htable))
         return false;
@@ -73,10 +73,10 @@ boolean dllinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pcall"), dllv_call);
-    ADD_VERB(BIGSTRING("\pload"), dllv_load);
-    ADD_VERB(BIGSTRING("\punload"), dllv_unload);
-    ADD_VERB(BIGSTRING("\pisloaded"), dllv_isloaded);
+    ADD_VERB(BIGSTRING("\004call"), dllv_call);
+    ADD_VERB(BIGSTRING("\004load"), dllv_load);
+    ADD_VERB(BIGSTRING("\006unload"), dllv_unload);
+    ADD_VERB(BIGSTRING("\010isloaded"), dllv_isloaded);
 
     #undef ADD_VERB
 

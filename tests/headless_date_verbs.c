@@ -537,7 +537,7 @@ boolean dateinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pdate"), bsname);
+    copystring(BIGSTRING("\004date"), bsname);
 
     if (!newfunctionprocessor(bsname, &date_valueproc, false, &htable))
         return false;
@@ -553,36 +553,36 @@ boolean dateinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pget"), datv_get);
-    ADD_VERB(BIGSTRING("\pset"), datv_set);
-    ADD_VERB(BIGSTRING("\pabbrevstring"), datv_abbrevstring);
-    ADD_VERB(BIGSTRING("\pdayofweek"), datv_dayofweek);
-    ADD_VERB(BIGSTRING("\pdaysinmonth"), datv_daysinmonth);
-    ADD_VERB(BIGSTRING("\pdaystring"), datv_daystring);
-    ADD_VERB(BIGSTRING("\pfirstofmonth"), datv_firstofmonth);
-    ADD_VERB(BIGSTRING("\plastofmonth"), datv_lastofmonth);
-    ADD_VERB(BIGSTRING("\plongstring"), datv_longstring);
-    ADD_VERB(BIGSTRING("\pnextmonth"), datv_nextmonth);
-    ADD_VERB(BIGSTRING("\pnextweek"), datv_nextweek);
-    ADD_VERB(BIGSTRING("\pnextyear"), datv_nextyear);
-    ADD_VERB(BIGSTRING("\pprevmonth"), datv_prevmonth);
-    ADD_VERB(BIGSTRING("\pprevweek"), datv_prevweek);
-    ADD_VERB(BIGSTRING("\pprevyear"), datv_prevyear);
-    ADD_VERB(BIGSTRING("\pshortstring"), datv_shortstring);
-    ADD_VERB(BIGSTRING("\ptomorrow"), datv_tomorrow);
-    ADD_VERB(BIGSTRING("\pweeksinmonth"), datv_weeksinmonth);
-    ADD_VERB(BIGSTRING("\pyesterday"), datv_yesterday);
-    ADD_VERB(BIGSTRING("\pgetcurrenttimezone"), datv_getcurrenttimezone);
-    ADD_VERB(BIGSTRING("\pnetstandardstring"), datv_netstandardstring);
-    ADD_VERB(BIGSTRING("\pmonthtostring"), datv_monthtostring);
-    ADD_VERB(BIGSTRING("\pdayofweektostring"), datv_dayofweektostring);
-    ADD_VERB(BIGSTRING("\pversionlessthan"), datv_versionlessthan);
-    ADD_VERB(BIGSTRING("\pday"), datv_day);
-    ADD_VERB(BIGSTRING("\pmonth"), datv_month);
-    ADD_VERB(BIGSTRING("\pyear"), datv_year);
-    ADD_VERB(BIGSTRING("\phour"), datv_hour);
-    ADD_VERB(BIGSTRING("\pminute"), datv_minute);
-    ADD_VERB(BIGSTRING("\pseconds"), datv_seconds);
+    ADD_VERB(BIGSTRING("\003get"), datv_get);
+    ADD_VERB(BIGSTRING("\003set"), datv_set);
+    ADD_VERB(BIGSTRING("\014abbrevstring"), datv_abbrevstring);
+    ADD_VERB(BIGSTRING("\011dayofweek"), datv_dayofweek);
+    ADD_VERB(BIGSTRING("\013daysinmonth"), datv_daysinmonth);
+    ADD_VERB(BIGSTRING("\011daystring"), datv_daystring);
+    ADD_VERB(BIGSTRING("\014firstofmonth"), datv_firstofmonth);
+    ADD_VERB(BIGSTRING("\013lastofmonth"), datv_lastofmonth);
+    ADD_VERB(BIGSTRING("\012longstring"), datv_longstring);
+    ADD_VERB(BIGSTRING("\011nextmonth"), datv_nextmonth);
+    ADD_VERB(BIGSTRING("\010nextweek"), datv_nextweek);
+    ADD_VERB(BIGSTRING("\010nextyear"), datv_nextyear);
+    ADD_VERB(BIGSTRING("\011prevmonth"), datv_prevmonth);
+    ADD_VERB(BIGSTRING("\010prevweek"), datv_prevweek);
+    ADD_VERB(BIGSTRING("\010prevyear"), datv_prevyear);
+    ADD_VERB(BIGSTRING("\013shortstring"), datv_shortstring);
+    ADD_VERB(BIGSTRING("\010tomorrow"), datv_tomorrow);
+    ADD_VERB(BIGSTRING("\014weeksinmonth"), datv_weeksinmonth);
+    ADD_VERB(BIGSTRING("\011yesterday"), datv_yesterday);
+    ADD_VERB(BIGSTRING("\022getcurrenttimezone"), datv_getcurrenttimezone);
+    ADD_VERB(BIGSTRING("\021netstandardstring"), datv_netstandardstring);
+    ADD_VERB(BIGSTRING("\015monthtostring"), datv_monthtostring);
+    ADD_VERB(BIGSTRING("\021dayofweektostring"), datv_dayofweektostring);
+    ADD_VERB(BIGSTRING("\017versionlessthan"), datv_versionlessthan);
+    ADD_VERB(BIGSTRING("\003day"), datv_day);
+    ADD_VERB(BIGSTRING("\005month"), datv_month);
+    ADD_VERB(BIGSTRING("\004year"), datv_year);
+    ADD_VERB(BIGSTRING("\004hour"), datv_hour);
+    ADD_VERB(BIGSTRING("\006minute"), datv_minute);
+    ADD_VERB(BIGSTRING("\007seconds"), datv_seconds);
 
     #undef ADD_VERB
 

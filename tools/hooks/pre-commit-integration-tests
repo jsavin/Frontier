@@ -133,4 +133,33 @@ if [ -n "$DOC_FILES_CHANGED" ]; then
     echo -e "${GREEN}✓ Documentation validation passed${NC}"
 fi
 
+# ──────────────────────────────────────────────────────────────
+# Verb registration: Check for broken \p prefixes and wrong lengths
+# ──────────────────────────────────────────────────────────────
+
+VERB_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^tests/headless_.*_verbs\.c$' || true)
+
+if [ -n "$VERB_FILES_CHANGED" ]; then
+    echo -e "${YELLOW}Headless verb files changed, checking Pascal string lengths...${NC}"
+
+    # Check for broken \p prefixes (classic Mac, not valid in modern C)
+    if echo "$VERB_FILES_CHANGED" | xargs grep -n '\\p[a-zA-Z]' 2>/dev/null | grep -q 'BIGSTRING'; then
+        echo -e "${RED}ERROR: Found broken \\p Pascal string prefix in verb registration:${NC}" >&2
+        echo "$VERB_FILES_CHANGED" | xargs grep -n '\\p[a-zA-Z]' 2>/dev/null | grep 'BIGSTRING' | sed 's/^/  /' >&2
+        echo "" >&2
+        echo "Use octal length bytes instead (e.g., \\006 for 6-char string)." >&2
+        exit 1
+    fi
+
+    # Run the full length verification if available
+    if [ -f "$GIT_ROOT/tools/verify_pascal_string_lengths.py" ]; then
+        cd "$GIT_ROOT"
+        if ! python3 tools/verify_pascal_string_lengths.py; then
+            echo -e "${RED}ERROR: Pascal string length verification failed${NC}" >&2
+            exit 1
+        fi
+        echo -e "${GREEN}Pascal string lengths verified${NC}"
+    fi
+fi
+
 exit 0

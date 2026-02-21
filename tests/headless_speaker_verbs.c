@@ -33,15 +33,15 @@ static boolean speaker_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case spev_beep:
             /* Verb #0: speaker.beep - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case spev_sound:
             /* Verb #1: speaker.sound - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case spev_playnamedsound:
             /* Verb #2: speaker.playnamedsound - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -52,7 +52,7 @@ boolean speakerinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pspeaker"), bsname);
+    copystring(BIGSTRING("\007speaker"), bsname);
 
     if (!newfunctionprocessor(bsname, &speaker_valueproc, false, &htable))
         return false;
@@ -68,9 +68,9 @@ boolean speakerinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pbeep"), spev_beep);
-    ADD_VERB(BIGSTRING("\psound"), spev_sound);
-    ADD_VERB(BIGSTRING("\pplaynamedsound"), spev_playnamedsound);
+    ADD_VERB(BIGSTRING("\004beep"), spev_beep);
+    ADD_VERB(BIGSTRING("\005sound"), spev_sound);
+    ADD_VERB(BIGSTRING("\016playnamedsound"), spev_playnamedsound);
 
     #undef ADD_VERB
 
