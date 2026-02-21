@@ -8542,7 +8542,11 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 			 * and recompilation is cheap (produces the same empty tree).
 			 *
 			 * The master pointer dereference (*(*hcode)) is safe here because
-			 * langexternalvaltocode just populated the handle from a live node. */
+			 * langexternalvaltocode just populated the handle from a live node.
+			 *
+			 * No handle leak: *hcode is a borrowed reference into the node's
+			 * stored data (via opverbgetlinkedcode), not an owned allocation.
+			 * Setting it to nil just tells the caller to recompile. */
 			if (*hcode != nil && (**(*hcode)).param1 == nil) {
 				log_debug(LOG_COMP_LANG, "langgetnodecode: stale linked code for %s (nil param1), forcing recompile", PSTR(bs));
 				*hcode = nil;
