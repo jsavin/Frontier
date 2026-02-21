@@ -32,6 +32,7 @@
 #include "process.h"
 #include "shellthreads.h"
 #include "logging.h"
+#include "file.h"  /* fifcloseallfiles */
 #include "threadregistry.h"
 #include "processinternal.h"
 #include "script_portable.h"
@@ -270,6 +271,168 @@ static void *thread_entry_point(void *arg) {
     pthread_cond_broadcast(&gil_available);
 
     return NULL;
+}
+
+/*
+ * callback_thread_entry_point - POSIX thread entry for TCP callback threads
+ *
+ * Similar to thread_entry_point but tailored for fire-and-forget callbacks:
+ * - Performs error cleanup (fifcloseallfiles, langreleasesemaphores) on failure,
+ *   matching the one-shot process cleanup in process.c:2565-2576
+ * - Does not register in system.compiler.threads (callbacks are transient)
+ * - Always disposes hcode (callback AST is owned by this thread)
+ */
+static void *callback_thread_entry_point(void *arg) {
+    thread_launch_params *params = (thread_launch_params *)arg;
+    tyvaluerecord result;
+    boolean fl;
+
+    if (params == NULL) {
+        log_error(LOG_COMP_THREAD, "callback_thread_entry_point: NULL params — aborting thread");
+        return NULL;
+    }
+
+    /* Block until we can acquire the GIL */
+    pthread_mutex_lock(&frontier_gil);
+
+    /* Restore this thread's globals (makes C globals point to our state) */
+    headless_restore_threadglobals(params->hglobals);
+
+    /* Execute the callback */
+    initvalue(&result, novaluetype);
+
+    fl = langruncode(params->hcode, nil, &result);
+
+    if (!fl) {
+        /* Error cleanup matching process.c one-shot behavior (lines 2565-2576).
+         *
+         * fifcloseallfiles(0L): In process.c, the refcon is (long)hp (the process
+         * handle). In headless mode, process.c is not compiled — there are no
+         * process handles. File verbs in headless mode open files with refcon 0,
+         * so 0L is the correct value here.
+         *
+         * langreleasesemaphores(nil): The hp parameter is #pragma unused in the
+         * implementation — it uses getcurrentthreadglobals() internally. nil is
+         * functionally equivalent to passing a process handle. */
+        fifcloseallfiles(0L);
+        langreleasesemaphores(nil);
+        log_warn(LOG_COMP_LANG, "callback_thread_entry_point: langruncode failed for stream_id=%ld",
+                 params->rec->user_thread_id);
+    }
+
+    /* Save our globals before cleanup (while we still hold the GIL) */
+    headless_save_threadglobals(params->hglobals);
+
+    /* Clear global error buffer (fire-and-forget) */
+    headless_clear_last_lang_error();
+
+    /* Cleanup */
+    langdisposetree(params->hcode);
+    disposevaluerecord(result, false);
+    headless_dispose_threadglobals(params->hglobals);
+    free_thread_record(params->rec);
+    free(params);
+
+    /* Release the GIL and signal other threads */
+    pthread_mutex_unlock(&frontier_gil);
+    pthread_cond_broadcast(&gil_available);
+
+    return NULL;
+}
+
+/*
+ * headless_spawn_callback_thread - Spawn a GIL-aware thread for a TCP callback
+ *
+ * Takes ownership of hcode. The caller must hold the GIL.
+ * The spawned thread blocks on GIL acquisition until the main thread yields
+ * at the next langbackgroundtask() call.
+ *
+ * stream_id is used only for logging — the callback AST already encodes
+ * the stream and refcon as parameters in the function call tree.
+ */
+boolean headless_spawn_callback_thread(hdltreenode hcode, long stream_id) {
+    frontier_pthread_record *rec = nil;
+    hdlthreadglobals new_hglobals = nil;
+    thread_launch_params *params = nil;
+    pthread_t tid;
+    pthread_attr_t attr;
+
+    /* Allocate thread record from registry */
+    rec = allocate_thread_record();
+
+    if (rec == NULL) {
+        langdisposetree(hcode);
+        return false;
+    }
+
+    /* Allocate new thread globals */
+    new_hglobals = headless_new_threadglobals();
+
+    if (new_hglobals == nil) {
+        langdisposetree(hcode);
+        free_thread_record(rec);
+        return false;
+    }
+
+    /* Set thread ID in the new globals */
+    (**new_hglobals).idthread = (hdlthread) rec->user_thread_id;
+
+    /* Link globals to registry record */
+    rec->hglobals = new_hglobals;
+
+    /* Deep-copy the calling thread's hashtablestack so the callback gets its
+     * own stack pointer/index state. Shared underlying hash table pointers are
+     * safe under GIL serialization. */
+    {
+        Handle hcopy;
+
+        if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
+            langdisposetree(hcode);
+            headless_dispose_threadglobals(new_hglobals);
+            free_thread_record(rec);
+            return false;
+        }
+
+        (**new_hglobals).htablestack = (hdltablestack)hcopy;
+    }
+    (**new_hglobals).hcurrenthashtable = currenthashtable;
+
+    /* Package launch parameters */
+    params = (thread_launch_params *)malloc(sizeof(thread_launch_params));
+
+    if (params == NULL) {
+        langdisposetree(hcode);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        return false;
+    }
+
+    params->hcode = hcode;
+    params->hglobals = new_hglobals;
+    params->rec = rec;
+    params->is_callscript = false;
+
+    /* Spawn detached POSIX thread — it will block on GIL until main thread yields */
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    if (pthread_create(&tid, &attr, callback_thread_entry_point, params) != 0) {
+        log_error(LOG_COMP_THREAD, "pthread_create failed for TCP callback (stream_id=%ld)", stream_id);
+        pthread_attr_destroy(&attr);
+        langdisposetree(hcode);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        free(params);
+        return false;
+    }
+
+    pthread_attr_destroy(&attr);
+    rec->pthread_id = tid;
+
+    log_debug(LOG_COMP_THREAD, "headless_spawn_callback_thread: spawned thread %ld for stream_id=%ld",
+              rec->user_thread_id, stream_id);
+
+    return true;
 }
 
 /*

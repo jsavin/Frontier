@@ -64,6 +64,9 @@
 /* For thread registry, we just need to store a pointer */
 typedef struct tythreadglobals **hdlthreadglobals;
 
+/* Forward declaration - actual definition in lang.h */
+typedef struct tytreenode **hdltreenode;
+
 /* Use portable boolean if available, otherwise define it */
 #ifndef boolean
 typedef unsigned char boolean;
@@ -314,5 +317,18 @@ void headless_threading_shutdown(void);
  * Thread Safety: Must be called while holding the GIL
  */
 boolean headless_backgroundtask(boolean flresting);
+
+/*
+ * headless_spawn_callback_thread - Spawn a GIL-aware thread for a TCP callback
+ *
+ * Takes ownership of hcode (the callback AST). The spawned thread acquires the
+ * GIL, executes the callback, performs error cleanup (fifcloseallfiles,
+ * langreleasesemaphores), and disposes all resources.
+ *
+ * Must be called while holding the GIL (i.e., from the main REPL loop).
+ *
+ * Thread Safety: Thread-safe (GIL serialization)
+ */
+boolean headless_spawn_callback_thread(hdltreenode hcode, long stream_id);
 
 #endif /* THREADREGISTRY_H */

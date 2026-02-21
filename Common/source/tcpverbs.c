@@ -45,6 +45,7 @@
 #include "langinternal.h"
 #include "lang.h"  /* functionop, moduleop, setaddressvalue */
 #include "process.h"  /* newprocess, addprocess */
+#include "threadregistry.h"  /* headless_spawn_callback_thread */
 #include "memory.h"
 #include "strings.h"
 #include "logging.h"
@@ -159,15 +160,23 @@ static boolean tcp_enqueue_callback(hdlhashtable htable, bigstring callback_name
  * only works when params are in the function call tree (hparam1), not as
  * local variables.
  *
- * Each callback is queued as a one-shot process via newprocess + addprocess,
- * matching the legacy fwsruncallback behavior. This is critical: callbacks
- * (e.g. inetd.supervisor → HTTP response rendering) can yield at
- * langbackgroundtask() and thread.sleepTicks() points. Synchronous evaluation
- * would hold the GIL for the entire callback duration, blocking all other
- * threads and preventing concurrent request handling.
+ * Execution model differs by build target:
+ *
+ * Full Frontier: Each callback is queued as a one-shot process via
+ * newprocess + addprocess, matching the legacy fwsruncallback behavior.
+ *
+ * Headless mode: The process scheduler (newprocess/addprocess) is not
+ * available. Instead, each callback is spawned as a GIL-aware POSIX thread
+ * via headless_spawn_callback_thread(). The thread blocks on GIL acquisition
+ * until the main thread yields at langbackgroundtask(), then executes the
+ * callback with full error cleanup (fifcloseallfiles/langreleasesemaphores).
+ * See ADR-014 for the GIL cooperative threading model.
+ *
+ * In both cases, callbacks can yield at langbackgroundtask() and
+ * thread.sleepTicks() points, allowing concurrent request handling.
  *
  * Returns number of callbacks processed (dequeued, whether or not
- * they were successfully enqueued as processes) */
+ * they were successfully dispatched) */
 int tcp_process_callbacks(void) {
     int processed = 0;
 
@@ -268,7 +277,21 @@ int tcp_process_callbacks(void) {
             continue;
         }
 
-        /* Create a one-shot process and add to the process queue.
+        #if defined(FRONTIER_HEADLESS)
+        /* Headless mode: spawn a GIL-aware thread per callback.
+         * The process scheduler (newprocess/addprocess) is not available
+         * in the headless build. Each callback runs in its own POSIX thread
+         * that acquires the GIL cooperatively (see ADR-014), allowing
+         * concurrent request handling without blocking the REPL or other
+         * threads. headless_spawn_callback_thread() takes ownership of hcode. */
+
+        if (!headless_spawn_callback_thread(hcode, item.stream_id)) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: headless_spawn_callback_thread failed for stream_id=%ld", item.stream_id);
+        }
+
+        releasethreadglobals();
+        #else
+        /* Full Frontier: queue as one-shot process for the scheduler.
          * This allows the callback to yield at langbackgroundtask() and
          * thread.sleepTicks() points, matching legacy fwsruncallback behavior. */
         hdlprocessrecord hprocess;
@@ -287,6 +310,7 @@ int tcp_process_callbacks(void) {
             log_warn(LOG_COMP_LANG, "tcp_process_callbacks: addprocess failed for stream_id=%ld", item.stream_id);
             disposeprocess(hprocess);
         }
+        #endif
 
         processed++;
     }
