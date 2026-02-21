@@ -82,7 +82,7 @@ static boolean shellescapestring(bigstring input, Handle *hescaped) {
     for (i = 1; i <= stringlength(input); i++) {
         if (input[i] == '\'') {
             /* Close quote, add escaped quote, reopen quote: '\'' */
-            if (!pushtexthandle(BIGSTRING("\005'\\''"), h)) {
+            if (!pushtexthandle(BIGSTRING("\004'\\''"), h)) {
                 disposehandle(h);
                 return false;
             }
