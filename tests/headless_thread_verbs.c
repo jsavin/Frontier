@@ -304,8 +304,16 @@ static void *callback_thread_entry_point(void *arg) {
     fl = langruncode(params->hcode, nil, &result);
 
     if (!fl) {
-        /* Error cleanup matching process.c one-shot behavior:
-         * close any files opened during callback, release any semaphores held */
+        /* Error cleanup matching process.c one-shot behavior (lines 2565-2576).
+         *
+         * fifcloseallfiles(0L): In process.c, the refcon is (long)hp (the process
+         * handle). In headless mode, process.c is not compiled — there are no
+         * process handles. File verbs in headless mode open files with refcon 0,
+         * so 0L is the correct value here.
+         *
+         * langreleasesemaphores(nil): The hp parameter is #pragma unused in the
+         * implementation — it uses getcurrentthreadglobals() internally. nil is
+         * functionally equivalent to passing a process handle. */
         fifcloseallfiles(0L);
         langreleasesemaphores(nil);
         log_warn(LOG_COMP_LANG, "callback_thread_entry_point: langruncode failed for stream_id=%ld",
