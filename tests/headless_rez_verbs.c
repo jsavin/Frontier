@@ -45,63 +45,63 @@ static boolean rez_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case rezv_getresource:
             /* Verb #0: rez.getresource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_putresource:
             /* Verb #1: rez.putresource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_getnamedresource:
             /* Verb #2: rez.getnamedresource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_putnamedresource:
             /* Verb #3: rez.putnamedresource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_countrestypes:
             /* Verb #4: rez.countrestypes - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_getnthrestype:
             /* Verb #5: rez.getnthrestype - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_countresources:
             /* Verb #6: rez.countresources - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_getnthresource:
             /* Verb #7: rez.getnthresource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_getnthresinfo:
             /* Verb #8: rez.getnthresinfo - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_resourceexists:
             /* Verb #9: rez.resourceexists - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_namedresourceexists:
             /* Verb #10: rez.namedresourceexists - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_deleteresource:
             /* Verb #11: rez.deleteresource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_deletenamedresource:
             /* Verb #12: rez.deletenamedresource - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_getresourceattributes:
             /* Verb #13: rez.getresourceattributes - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rezv_setresourceattributes:
             /* Verb #14: rez.setresourceattributes - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -112,7 +112,7 @@ boolean rezinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\003rez"), bsname);
+    copystring(PSTRING("\003", "rez"), bsname);
 
     if (!newfunctionprocessor(bsname, &rez_valueproc, false, &htable))
         return false;
@@ -128,21 +128,21 @@ boolean rezinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\013getresource"), rezv_getresource);
-    ADD_VERB(BIGSTRING("\013putresource"), rezv_putresource);
-    ADD_VERB(BIGSTRING("\020getnamedresource"), rezv_getnamedresource);
-    ADD_VERB(BIGSTRING("\020putnamedresource"), rezv_putnamedresource);
-    ADD_VERB(BIGSTRING("\015countrestypes"), rezv_countrestypes);
-    ADD_VERB(BIGSTRING("\015getnthrestype"), rezv_getnthrestype);
-    ADD_VERB(BIGSTRING("\016countresources"), rezv_countresources);
-    ADD_VERB(BIGSTRING("\016getnthresource"), rezv_getnthresource);
-    ADD_VERB(BIGSTRING("\015getnthresinfo"), rezv_getnthresinfo);
-    ADD_VERB(BIGSTRING("\016resourceexists"), rezv_resourceexists);
-    ADD_VERB(BIGSTRING("\023namedresourceexists"), rezv_namedresourceexists);
-    ADD_VERB(BIGSTRING("\016deleteresource"), rezv_deleteresource);
-    ADD_VERB(BIGSTRING("\023deletenamedresource"), rezv_deletenamedresource);
-    ADD_VERB(BIGSTRING("\025getresourceattributes"), rezv_getresourceattributes);
-    ADD_VERB(BIGSTRING("\025setresourceattributes"), rezv_setresourceattributes);
+    ADD_VERB(PSTRING("\013", "getresource"), rezv_getresource);
+    ADD_VERB(PSTRING("\013", "putresource"), rezv_putresource);
+    ADD_VERB(PSTRING("\020", "getnamedresource"), rezv_getnamedresource);
+    ADD_VERB(PSTRING("\020", "putnamedresource"), rezv_putnamedresource);
+    ADD_VERB(PSTRING("\015", "countrestypes"), rezv_countrestypes);
+    ADD_VERB(PSTRING("\015", "getnthrestype"), rezv_getnthrestype);
+    ADD_VERB(PSTRING("\016", "countresources"), rezv_countresources);
+    ADD_VERB(PSTRING("\016", "getnthresource"), rezv_getnthresource);
+    ADD_VERB(PSTRING("\015", "getnthresinfo"), rezv_getnthresinfo);
+    ADD_VERB(PSTRING("\016", "resourceexists"), rezv_resourceexists);
+    ADD_VERB(PSTRING("\023", "namedresourceexists"), rezv_namedresourceexists);
+    ADD_VERB(PSTRING("\016", "deleteresource"), rezv_deleteresource);
+    ADD_VERB(PSTRING("\023", "deletenamedresource"), rezv_deletenamedresource);
+    ADD_VERB(PSTRING("\025", "getresourceattributes"), rezv_getresourceattributes);
+    ADD_VERB(PSTRING("\025", "setresourceattributes"), rezv_setresourceattributes);
 
     #undef ADD_VERB
 

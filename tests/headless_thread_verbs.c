@@ -600,7 +600,7 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
     (**new_hglobals).hcurrenthashtable = currenthashtable;
 
     /* Register in system.compiler.threads (calling thread context) */
-    copystring(BIGSTRING("\011anonymous"), bsanon);
+    copystring(PSTRING("\011", "anonymous"), bsanon);
     headless_register_thread(bsanon, threadid);
 
     /* Package launch parameters */
@@ -1020,7 +1020,7 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
         case thrv_sleep:
             /* Verb #6: thread.sleep - not yet implemented */
             log_warn(LOG_COMP_LANG, "thread.sleep not yet implemented");
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case thrv_sleepfor: {
             /* Verb #7: thread.sleepfor - Sleep for N seconds via registry */
@@ -1136,27 +1136,27 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
         case thrv_gettimeslice:
             /* Verb #12: thread.gettimeslice - not yet implemented */
             log_warn(LOG_COMP_LANG, "thread.gettimeslice not yet implemented");
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case thrv_settimeslice:
             /* Verb #13: thread.settimeslice - not yet implemented */
             log_warn(LOG_COMP_LANG, "thread.settimeslice not yet implemented");
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case thrv_getdefaulttimeslice:
             /* Verb #14: thread.getdefaulttimeslice - not yet implemented */
             log_warn(LOG_COMP_LANG, "thread.getdefaulttimeslice not yet implemented");
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case thrv_setdefaulttimeslice:
             /* Verb #15: thread.setdefaulttimeslice - not yet implemented */
             log_warn(LOG_COMP_LANG, "thread.setdefaulttimeslice not yet implemented");
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case thrv_getstats:
             /* Verb #16: thread.getstats - not yet implemented */
             log_warn(LOG_COMP_LANG, "thread.getstats not yet implemented");
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -1167,7 +1167,7 @@ boolean threadinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\006thread"), bsname);
+    copystring(PSTRING("\006", "thread"), bsname);
 
     if (!newfunctionprocessor(bsname, &thread_valueproc, false, &htable))
         return false;
@@ -1183,23 +1183,23 @@ boolean threadinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\006exists"), thrv_exists);
-    ADD_VERB(BIGSTRING("\010evaluate"), thrv_evaluate);
-    ADD_VERB(BIGSTRING("\012callscript"), thrv_callscript);
-    ADD_VERB(BIGSTRING("\014getcurrentid"), thrv_getcurrentid);
-    ADD_VERB(BIGSTRING("\010getcount"), thrv_getcount);
-    ADD_VERB(BIGSTRING("\010getnthid"), thrv_getnthid);
-    ADD_VERB(BIGSTRING("\005sleep"), thrv_sleep);
-    ADD_VERB(BIGSTRING("\010sleepfor"), thrv_sleepfor);
-    ADD_VERB(BIGSTRING("\012sleepticks"), thrv_sleepticks);
-    ADD_VERB(BIGSTRING("\012issleeping"), thrv_issleeping);
-    ADD_VERB(BIGSTRING("\004wake"), thrv_wake);
-    ADD_VERB(BIGSTRING("\004kill"), thrv_kill);
-    ADD_VERB(BIGSTRING("\014gettimeslice"), thrv_gettimeslice);
-    ADD_VERB(BIGSTRING("\014settimeslice"), thrv_settimeslice);
-    ADD_VERB(BIGSTRING("\023getdefaulttimeslice"), thrv_getdefaulttimeslice);
-    ADD_VERB(BIGSTRING("\023setdefaulttimeslice"), thrv_setdefaulttimeslice);
-    ADD_VERB(BIGSTRING("\010getstats"), thrv_getstats);
+    ADD_VERB(PSTRING("\006", "exists"), thrv_exists);
+    ADD_VERB(PSTRING("\010", "evaluate"), thrv_evaluate);
+    ADD_VERB(PSTRING("\012", "callscript"), thrv_callscript);
+    ADD_VERB(PSTRING("\014", "getcurrentid"), thrv_getcurrentid);
+    ADD_VERB(PSTRING("\010", "getcount"), thrv_getcount);
+    ADD_VERB(PSTRING("\010", "getnthid"), thrv_getnthid);
+    ADD_VERB(PSTRING("\005", "sleep"), thrv_sleep);
+    ADD_VERB(PSTRING("\010", "sleepfor"), thrv_sleepfor);
+    ADD_VERB(PSTRING("\012", "sleepticks"), thrv_sleepticks);
+    ADD_VERB(PSTRING("\012", "issleeping"), thrv_issleeping);
+    ADD_VERB(PSTRING("\004", "wake"), thrv_wake);
+    ADD_VERB(PSTRING("\004", "kill"), thrv_kill);
+    ADD_VERB(PSTRING("\014", "gettimeslice"), thrv_gettimeslice);
+    ADD_VERB(PSTRING("\014", "settimeslice"), thrv_settimeslice);
+    ADD_VERB(PSTRING("\023", "getdefaulttimeslice"), thrv_getdefaulttimeslice);
+    ADD_VERB(PSTRING("\023", "setdefaulttimeslice"), thrv_setdefaulttimeslice);
+    ADD_VERB(PSTRING("\010", "getstats"), thrv_getstats);
 
     #undef ADD_VERB
 

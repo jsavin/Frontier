@@ -36,27 +36,27 @@ static boolean statusbar_valueproc(short token, hdltreenode hparam1,
         case stav_msg:
             /* statusbar.msg - error stub */
             if (bserror)
-                copystring(BIGSTRING("\110Can't use status bar verbs because GUI is not available in headless mode"), bserror);
+                copystring(PSTRING("\110", "Can't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         case stav_setsections:
             /* statusbar.setsections - error stub */
             if (bserror)
-                copystring(BIGSTRING("\110Can't use status bar verbs because GUI is not available in headless mode"), bserror);
+                copystring(PSTRING("\110", "Can't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         case stav_getsections:
             /* statusbar.getsections - error stub */
             if (bserror)
-                copystring(BIGSTRING("\110Can't use status bar verbs because GUI is not available in headless mode"), bserror);
+                copystring(PSTRING("\110", "Can't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         case stav_getsectionone:
             /* statusbar.getsectionone - error stub */
             if (bserror)
-                copystring(BIGSTRING("\110Can't use status bar verbs because GUI is not available in headless mode"), bserror);
+                copystring(PSTRING("\110", "Can't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         case stav_getmessage:
             /* statusbar.getmessage - error stub */
             if (bserror)
-                copystring(BIGSTRING("\110Can't use status bar verbs because GUI is not available in headless mode"), bserror);
+                copystring(PSTRING("\110", "Can't use status bar verbs because GUI is not available in headless mode"), bserror);
             return false;
         default:
             return false;
@@ -67,7 +67,7 @@ boolean statusbarinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\011statusbar"), bsname);
+    copystring(PSTRING("\011", "statusbar"), bsname);
 
     if (!newfunctionprocessor(bsname, &statusbar_valueproc, false, &htable))
         return false;
@@ -83,11 +83,11 @@ boolean statusbarinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\003msg"), stav_msg);
-    ADD_VERB(BIGSTRING("\013setsections"), stav_setsections);
-    ADD_VERB(BIGSTRING("\013getsections"), stav_getsections);
-    ADD_VERB(BIGSTRING("\015getsectionone"), stav_getsectionone);
-    ADD_VERB(BIGSTRING("\012getmessage"), stav_getmessage);
+    ADD_VERB(PSTRING("\003", "msg"), stav_msg);
+    ADD_VERB(PSTRING("\013", "setsections"), stav_setsections);
+    ADD_VERB(PSTRING("\013", "getsections"), stav_getsections);
+    ADD_VERB(PSTRING("\015", "getsectionone"), stav_getsectionone);
+    ADD_VERB(PSTRING("\012", "getmessage"), stav_getmessage);
 
     #undef ADD_VERB
 

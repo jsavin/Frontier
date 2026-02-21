@@ -40,43 +40,43 @@ static boolean re_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case rev_compile:
             /* Verb #0: re.compile - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_match:
             /* Verb #1: re.match - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_replace:
             /* Verb #2: re.replace - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_extract:
             /* Verb #3: re.extract - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_split:
             /* Verb #4: re.split - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_join:
             /* Verb #5: re.join - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_visit:
             /* Verb #6: re.visit - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_grep:
             /* Verb #7: re.grep - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_getpatterninfo:
             /* Verb #8: re.getpatterninfo - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case rev_expand:
             /* Verb #9: re.expand - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -87,7 +87,7 @@ boolean reinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\002re"), bsname);
+    copystring(PSTRING("\002", "re"), bsname);
 
     if (!newfunctionprocessor(bsname, &re_valueproc, false, &htable))
         return false;
@@ -103,16 +103,16 @@ boolean reinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\007compile"), rev_compile);
-    ADD_VERB(BIGSTRING("\005match"), rev_match);
-    ADD_VERB(BIGSTRING("\007replace"), rev_replace);
-    ADD_VERB(BIGSTRING("\007extract"), rev_extract);
-    ADD_VERB(BIGSTRING("\005split"), rev_split);
-    ADD_VERB(BIGSTRING("\004join"), rev_join);
-    ADD_VERB(BIGSTRING("\005visit"), rev_visit);
-    ADD_VERB(BIGSTRING("\004grep"), rev_grep);
-    ADD_VERB(BIGSTRING("\016getpatterninfo"), rev_getpatterninfo);
-    ADD_VERB(BIGSTRING("\006expand"), rev_expand);
+    ADD_VERB(PSTRING("\007", "compile"), rev_compile);
+    ADD_VERB(PSTRING("\005", "match"), rev_match);
+    ADD_VERB(PSTRING("\007", "replace"), rev_replace);
+    ADD_VERB(PSTRING("\007", "extract"), rev_extract);
+    ADD_VERB(PSTRING("\005", "split"), rev_split);
+    ADD_VERB(PSTRING("\004", "join"), rev_join);
+    ADD_VERB(PSTRING("\005", "visit"), rev_visit);
+    ADD_VERB(PSTRING("\004", "grep"), rev_grep);
+    ADD_VERB(PSTRING("\016", "getpatterninfo"), rev_getpatterninfo);
+    ADD_VERB(PSTRING("\006", "expand"), rev_expand);
 
     #undef ADD_VERB
 

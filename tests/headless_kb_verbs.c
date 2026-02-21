@@ -53,7 +53,7 @@ boolean kbinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\002kb"), bsname);
+    copystring(PSTRING("\002", "kb"), bsname);
 
     if (!newfunctionprocessor(bsname, &kb_valueproc, false, &htable))
         return false;
@@ -69,10 +69,10 @@ boolean kbinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\011optionkey"), kbv_optionkey);
-    ADD_VERB(BIGSTRING("\006cmdkey"), kbv_cmdkey);
-    ADD_VERB(BIGSTRING("\010shiftkey"), kbv_shiftkey);
-    ADD_VERB(BIGSTRING("\012controlkey"), kbv_controlkey);
+    ADD_VERB(PSTRING("\011", "optionkey"), kbv_optionkey);
+    ADD_VERB(PSTRING("\006", "cmdkey"), kbv_cmdkey);
+    ADD_VERB(PSTRING("\010", "shiftkey"), kbv_shiftkey);
+    ADD_VERB(PSTRING("\012", "controlkey"), kbv_controlkey);
 
     #undef ADD_VERB
 

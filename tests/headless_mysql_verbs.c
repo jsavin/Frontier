@@ -57,111 +57,111 @@ static boolean mysql_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case mysv_init:
             /* Verb #0: mysql.init - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_end:
             /* Verb #1: mysql.end - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_connect:
             /* Verb #2: mysql.connect - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_compileQuery:
             /* Verb #3: mysql.compileQuery - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_clearQuery:
             /* Verb #4: mysql.clearQuery - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getRow:
             /* Verb #5: mysql.getRow - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getErrorNumber:
             /* Verb #6: mysql.getErrorNumber - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getErrorMessage:
             /* Verb #7: mysql.getErrorMessage - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getClientInfo:
             /* Verb #8: mysql.getClientInfo - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getClientVersion:
             /* Verb #9: mysql.getClientVersion - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getHostInfo:
             /* Verb #10: mysql.getHostInfo - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getServerVersion:
             /* Verb #11: mysql.getServerVersion - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getProtocolInfo:
             /* Verb #12: mysql.getProtocolInfo - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getServerInfo:
             /* Verb #13: mysql.getServerInfo - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getQueryInfo:
             /* Verb #14: mysql.getQueryInfo - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getAffectedRowCount:
             /* Verb #15: mysql.getAffectedRowCount - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getSelectedRowCount:
             /* Verb #16: mysql.getSelectedRowCount - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getColumnCount:
             /* Verb #17: mysql.getColumnCount - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getServerStatus:
             /* Verb #18: mysql.getServerStatus - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getQueryWarningCount:
             /* Verb #19: mysql.getQueryWarningCount - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_pingServer:
             /* Verb #20: mysql.pingServer - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_seekRow:
             /* Verb #21: mysql.seekRow - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_selectDatabase:
             /* Verb #22: mysql.selectDatabase - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_getSQLSTATE:
             /* Verb #23: mysql.getSQLSTATE - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_escapeString:
             /* Verb #24: mysql.escapeString - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_isThreadSafe:
             /* Verb #25: mysql.isThreadSafe - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mysv_close:
             /* Verb #26: mysql.close - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -172,7 +172,7 @@ boolean mysqlinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\005mysql"), bsname);
+    copystring(PSTRING("\005", "mysql"), bsname);
 
     if (!newfunctionprocessor(bsname, &mysql_valueproc, false, &htable))
         return false;
@@ -188,33 +188,33 @@ boolean mysqlinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\004init"), mysv_init);
-    ADD_VERB(BIGSTRING("\003end"), mysv_end);
-    ADD_VERB(BIGSTRING("\007connect"), mysv_connect);
-    ADD_VERB(BIGSTRING("\014compileQuery"), mysv_compileQuery);
-    ADD_VERB(BIGSTRING("\012clearQuery"), mysv_clearQuery);
-    ADD_VERB(BIGSTRING("\006getRow"), mysv_getRow);
-    ADD_VERB(BIGSTRING("\016getErrorNumber"), mysv_getErrorNumber);
-    ADD_VERB(BIGSTRING("\017getErrorMessage"), mysv_getErrorMessage);
-    ADD_VERB(BIGSTRING("\015getClientInfo"), mysv_getClientInfo);
-    ADD_VERB(BIGSTRING("\020getClientVersion"), mysv_getClientVersion);
-    ADD_VERB(BIGSTRING("\013getHostInfo"), mysv_getHostInfo);
-    ADD_VERB(BIGSTRING("\020getServerVersion"), mysv_getServerVersion);
-    ADD_VERB(BIGSTRING("\017getProtocolInfo"), mysv_getProtocolInfo);
-    ADD_VERB(BIGSTRING("\015getServerInfo"), mysv_getServerInfo);
-    ADD_VERB(BIGSTRING("\014getQueryInfo"), mysv_getQueryInfo);
-    ADD_VERB(BIGSTRING("\023getAffectedRowCount"), mysv_getAffectedRowCount);
-    ADD_VERB(BIGSTRING("\023getSelectedRowCount"), mysv_getSelectedRowCount);
-    ADD_VERB(BIGSTRING("\016getColumnCount"), mysv_getColumnCount);
-    ADD_VERB(BIGSTRING("\017getServerStatus"), mysv_getServerStatus);
-    ADD_VERB(BIGSTRING("\024getQueryWarningCount"), mysv_getQueryWarningCount);
-    ADD_VERB(BIGSTRING("\012pingServer"), mysv_pingServer);
-    ADD_VERB(BIGSTRING("\007seekRow"), mysv_seekRow);
-    ADD_VERB(BIGSTRING("\016selectDatabase"), mysv_selectDatabase);
-    ADD_VERB(BIGSTRING("\013getSQLSTATE"), mysv_getSQLSTATE);
-    ADD_VERB(BIGSTRING("\014escapeString"), mysv_escapeString);
-    ADD_VERB(BIGSTRING("\014isThreadSafe"), mysv_isThreadSafe);
-    ADD_VERB(BIGSTRING("\005close"), mysv_close);
+    ADD_VERB(PSTRING("\004", "init"), mysv_init);
+    ADD_VERB(PSTRING("\003", "end"), mysv_end);
+    ADD_VERB(PSTRING("\007", "connect"), mysv_connect);
+    ADD_VERB(PSTRING("\014", "compileQuery"), mysv_compileQuery);
+    ADD_VERB(PSTRING("\012", "clearQuery"), mysv_clearQuery);
+    ADD_VERB(PSTRING("\006", "getRow"), mysv_getRow);
+    ADD_VERB(PSTRING("\016", "getErrorNumber"), mysv_getErrorNumber);
+    ADD_VERB(PSTRING("\017", "getErrorMessage"), mysv_getErrorMessage);
+    ADD_VERB(PSTRING("\015", "getClientInfo"), mysv_getClientInfo);
+    ADD_VERB(PSTRING("\020", "getClientVersion"), mysv_getClientVersion);
+    ADD_VERB(PSTRING("\013", "getHostInfo"), mysv_getHostInfo);
+    ADD_VERB(PSTRING("\020", "getServerVersion"), mysv_getServerVersion);
+    ADD_VERB(PSTRING("\017", "getProtocolInfo"), mysv_getProtocolInfo);
+    ADD_VERB(PSTRING("\015", "getServerInfo"), mysv_getServerInfo);
+    ADD_VERB(PSTRING("\014", "getQueryInfo"), mysv_getQueryInfo);
+    ADD_VERB(PSTRING("\023", "getAffectedRowCount"), mysv_getAffectedRowCount);
+    ADD_VERB(PSTRING("\023", "getSelectedRowCount"), mysv_getSelectedRowCount);
+    ADD_VERB(PSTRING("\016", "getColumnCount"), mysv_getColumnCount);
+    ADD_VERB(PSTRING("\017", "getServerStatus"), mysv_getServerStatus);
+    ADD_VERB(PSTRING("\024", "getQueryWarningCount"), mysv_getQueryWarningCount);
+    ADD_VERB(PSTRING("\012", "pingServer"), mysv_pingServer);
+    ADD_VERB(PSTRING("\007", "seekRow"), mysv_seekRow);
+    ADD_VERB(PSTRING("\016", "selectDatabase"), mysv_selectDatabase);
+    ADD_VERB(PSTRING("\013", "getSQLSTATE"), mysv_getSQLSTATE);
+    ADD_VERB(PSTRING("\014", "escapeString"), mysv_escapeString);
+    ADD_VERB(PSTRING("\014", "isThreadSafe"), mysv_isThreadSafe);
+    ADD_VERB(PSTRING("\005", "close"), mysv_close);
 
     #undef ADD_VERB
 

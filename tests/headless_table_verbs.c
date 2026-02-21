@@ -120,7 +120,7 @@ boolean tableinitverbs(void) {
 
     log_debug(LOG_COMP_TABLE, "tableinitverbs: registering headless table processor");
 
-    copystring(BIGSTRING("\005table"), bsname);
+    copystring(PSTRING("\005", "table"), bsname);
 
     if (!newfunctionprocessor(bsname, &headless_table_verbs_callback, true, &htable))
         return false;
@@ -137,25 +137,25 @@ boolean tableinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\004move"), tabv_move);
-    ADD_VERB(BIGSTRING("\004copy"), tabv_copy);
-    ADD_VERB(BIGSTRING("\006rename"), tabv_rename);
-    ADD_VERB(BIGSTRING("\015moveandrename"), tabv_moveandrename);
-    ADD_VERB(BIGSTRING("\006assign"), tabv_assign);
-    ADD_VERB(BIGSTRING("\010validate"), tabv_validate);
-    ADD_VERB(BIGSTRING("\006sortby"), tabv_sortby);
-    ADD_VERB(BIGSTRING("\011getcursor"), tabv_getcursor);
-    ADD_VERB(BIGSTRING("\014getselection"), tabv_getselection);
-    ADD_VERB(BIGSTRING("\002go"), tabv_go);
-    ADD_VERB(BIGSTRING("\004goto"), tabv_goto);
-    ADD_VERB(BIGSTRING("\010gotoname"), tabv_gotoname);
-    ADD_VERB(BIGSTRING("\010jettison"), tabv_jettison);
-    ADD_VERB(BIGSTRING("\011packtable"), tabv_packtable);
-    ADD_VERB(BIGSTRING("\012emptytable"), tabv_emptytable);
-    ADD_VERB(BIGSTRING("\022getdisplaysettings"), tabv_getdisplaysettings);
-    ADD_VERB(BIGSTRING("\022setdisplaysettings"), tabv_setdisplaysettings);
-    ADD_VERB(BIGSTRING("\014getsortorder"), tabv_sortorder);
-    ADD_VERB(BIGSTRING("\020countvisiblerows"), tabv_countvisiblerows);
+    ADD_VERB(PSTRING("\004", "move"), tabv_move);
+    ADD_VERB(PSTRING("\004", "copy"), tabv_copy);
+    ADD_VERB(PSTRING("\006", "rename"), tabv_rename);
+    ADD_VERB(PSTRING("\015", "moveandrename"), tabv_moveandrename);
+    ADD_VERB(PSTRING("\006", "assign"), tabv_assign);
+    ADD_VERB(PSTRING("\010", "validate"), tabv_validate);
+    ADD_VERB(PSTRING("\006", "sortby"), tabv_sortby);
+    ADD_VERB(PSTRING("\011", "getcursor"), tabv_getcursor);
+    ADD_VERB(PSTRING("\014", "getselection"), tabv_getselection);
+    ADD_VERB(PSTRING("\002", "go"), tabv_go);
+    ADD_VERB(PSTRING("\004", "goto"), tabv_goto);
+    ADD_VERB(PSTRING("\010", "gotoname"), tabv_gotoname);
+    ADD_VERB(PSTRING("\010", "jettison"), tabv_jettison);
+    ADD_VERB(PSTRING("\011", "packtable"), tabv_packtable);
+    ADD_VERB(PSTRING("\012", "emptytable"), tabv_emptytable);
+    ADD_VERB(PSTRING("\022", "getdisplaysettings"), tabv_getdisplaysettings);
+    ADD_VERB(PSTRING("\022", "setdisplaysettings"), tabv_setdisplaysettings);
+    ADD_VERB(PSTRING("\014", "getsortorder"), tabv_sortorder);
+    ADD_VERB(PSTRING("\020", "countvisiblerows"), tabv_countvisiblerows);
 
     pophashtable();
 

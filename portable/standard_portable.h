@@ -27,6 +27,14 @@
 
 #define infinity 32767
 #define BIGSTRING(s) ((unsigned char *)(s))
+
+/* PSTRING: Pascal string with compile-time length validation.
+ * Usage: PSTRING("\006", "delete") — fails to compile if \006 != strlen("delete")
+ * Replaces: BIGSTRING("\006delete") which has no validation */
+#define PSTRING(len_str, s) \
+    ({ _Static_assert((unsigned char)(len_str "\0")[0] == sizeof(s) - 1, \
+                      "Pascal string length byte mismatch"); \
+       BIGSTRING(len_str s); })
 #ifndef lenbigstring
 #define lenbigstring 255
 #endif

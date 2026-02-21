@@ -266,7 +266,7 @@ static boolean tcp_valueproc(short token, hdltreenode hparam1,
 
             /* Extract hash table and script name from address */
             if (!getaddressvalue(vcallback, &callback_htable, callback_name)) {
-                if (bserror) copystring(BIGSTRING("\036Can't resolve callback address"), bserror);
+                if (bserror) copystring(PSTRING("\036", "Can't resolve callback address"), bserror);
                 return false;
             }
 
@@ -573,7 +573,7 @@ boolean tcpinitverbs(void) {
     if (!tcp_init_context())
         return false;
 
-    copystring(BIGSTRING("\003tcp"), bsname);
+    copystring(PSTRING("\003", "tcp"), bsname);
 
     if (!newfunctionprocessor(bsname, &tcp_valueproc, false, &htable))
         return false;
@@ -589,29 +589,29 @@ boolean tcpinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\015addressdecode"), tcpv_addressdecode);
-    ADD_VERB(BIGSTRING("\015addressencode"), tcpv_addressencode);
-    ADD_VERB(BIGSTRING("\015addresstoname"), tcpv_addresstoname);
-    ADD_VERB(BIGSTRING("\015nametoaddress"), tcpv_nametoaddress);
-    ADD_VERB(BIGSTRING("\011myaddress"), tcpv_myaddress);
-    ADD_VERB(BIGSTRING("\013abortstream"), tcpv_abortstream);
-    ADD_VERB(BIGSTRING("\013closestream"), tcpv_closestream);
-    ADD_VERB(BIGSTRING("\013closelisten"), tcpv_closelisten);
-    ADD_VERB(BIGSTRING("\016openaddrstream"), tcpv_openaddrstream);
-    ADD_VERB(BIGSTRING("\016opennamestream"), tcpv_opennamestream);
-    ADD_VERB(BIGSTRING("\012readstream"), tcpv_readstream);
-    ADD_VERB(BIGSTRING("\013writestream"), tcpv_writestream);
-    ADD_VERB(BIGSTRING("\014listenstream"), tcpv_listenstream);
-    ADD_VERB(BIGSTRING("\014statusstream"), tcpv_statusstream);
-    ADD_VERB(BIGSTRING("\016getpeeraddress"), tcpv_getpeeraddress);
-    ADD_VERB(BIGSTRING("\013getpeerport"), tcpv_getpeerport);
-    ADD_VERB(BIGSTRING("\023writestringtostream"), tcpv_writestringtostream);
-    ADD_VERB(BIGSTRING("\021writefiletostream"), tcpv_writefiletostream);
-    ADD_VERB(BIGSTRING("\017readstreamuntil"), tcpv_readstreamuntil);
-    ADD_VERB(BIGSTRING("\017readstreambytes"), tcpv_readstreambytes);
-    ADD_VERB(BIGSTRING("\025readstreamuntilclosed"), tcpv_readstreamuntilclosed);
-    ADD_VERB(BIGSTRING("\010getstats"), tcpv_getstats);
-    ADD_VERB(BIGSTRING("\020countconnections"), tcpv_countconnections);
+    ADD_VERB(PSTRING("\015", "addressdecode"), tcpv_addressdecode);
+    ADD_VERB(PSTRING("\015", "addressencode"), tcpv_addressencode);
+    ADD_VERB(PSTRING("\015", "addresstoname"), tcpv_addresstoname);
+    ADD_VERB(PSTRING("\015", "nametoaddress"), tcpv_nametoaddress);
+    ADD_VERB(PSTRING("\011", "myaddress"), tcpv_myaddress);
+    ADD_VERB(PSTRING("\013", "abortstream"), tcpv_abortstream);
+    ADD_VERB(PSTRING("\013", "closestream"), tcpv_closestream);
+    ADD_VERB(PSTRING("\013", "closelisten"), tcpv_closelisten);
+    ADD_VERB(PSTRING("\016", "openaddrstream"), tcpv_openaddrstream);
+    ADD_VERB(PSTRING("\016", "opennamestream"), tcpv_opennamestream);
+    ADD_VERB(PSTRING("\012", "readstream"), tcpv_readstream);
+    ADD_VERB(PSTRING("\013", "writestream"), tcpv_writestream);
+    ADD_VERB(PSTRING("\014", "listenstream"), tcpv_listenstream);
+    ADD_VERB(PSTRING("\014", "statusstream"), tcpv_statusstream);
+    ADD_VERB(PSTRING("\016", "getpeeraddress"), tcpv_getpeeraddress);
+    ADD_VERB(PSTRING("\013", "getpeerport"), tcpv_getpeerport);
+    ADD_VERB(PSTRING("\023", "writestringtostream"), tcpv_writestringtostream);
+    ADD_VERB(PSTRING("\021", "writefiletostream"), tcpv_writefiletostream);
+    ADD_VERB(PSTRING("\017", "readstreamuntil"), tcpv_readstreamuntil);
+    ADD_VERB(PSTRING("\017", "readstreambytes"), tcpv_readstreambytes);
+    ADD_VERB(PSTRING("\025", "readstreamuntilclosed"), tcpv_readstreamuntilclosed);
+    ADD_VERB(PSTRING("\010", "getstats"), tcpv_getstats);
+    ADD_VERB(PSTRING("\020", "countconnections"), tcpv_countconnections);
 
     #undef ADD_VERB
 

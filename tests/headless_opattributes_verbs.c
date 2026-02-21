@@ -76,7 +76,7 @@ boolean opattributesinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\014opattributes"), bsname);
+    copystring(PSTRING("\014", "opattributes"), bsname);
 
     if (!newfunctionprocessor(bsname, &opattributes_valueproc, false, &htable))
         return false;
@@ -92,11 +92,11 @@ boolean opattributesinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\010addgroup"), opav_addgroup);
-    ADD_VERB(BIGSTRING("\006getall"), opav_getall);
-    ADD_VERB(BIGSTRING("\006getone"), opav_getone);
-    ADD_VERB(BIGSTRING("\011makeempty"), opav_makeempty);
-    ADD_VERB(BIGSTRING("\006setone"), opav_setone);
+    ADD_VERB(PSTRING("\010", "addgroup"), opav_addgroup);
+    ADD_VERB(PSTRING("\006", "getall"), opav_getall);
+    ADD_VERB(PSTRING("\006", "getone"), opav_getone);
+    ADD_VERB(PSTRING("\011", "makeempty"), opav_makeempty);
+    ADD_VERB(PSTRING("\006", "setone"), opav_setone);
 
     #undef ADD_VERB
 

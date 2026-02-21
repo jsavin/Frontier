@@ -34,19 +34,19 @@ static boolean pict_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case picv_scheduleupdate:
             /* Verb #0: pict.scheduleupdate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case picv_expressions:
             /* Verb #1: pict.expressions - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case picv_getpicture:
             /* Verb #2: pict.getpicture - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case picv_setpicture:
             /* Verb #3: pict.setpicture - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -57,7 +57,7 @@ boolean pictinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\004pict"), bsname);
+    copystring(PSTRING("\004", "pict"), bsname);
 
     if (!newfunctionprocessor(bsname, &pict_valueproc, false, &htable))
         return false;
@@ -73,10 +73,10 @@ boolean pictinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\016scheduleupdate"), picv_scheduleupdate);
-    ADD_VERB(BIGSTRING("\013expressions"), picv_expressions);
-    ADD_VERB(BIGSTRING("\012getpicture"), picv_getpicture);
-    ADD_VERB(BIGSTRING("\012setpicture"), picv_setpicture);
+    ADD_VERB(PSTRING("\016", "scheduleupdate"), picv_scheduleupdate);
+    ADD_VERB(PSTRING("\013", "expressions"), picv_expressions);
+    ADD_VERB(PSTRING("\012", "getpicture"), picv_getpicture);
+    ADD_VERB(PSTRING("\012", "setpicture"), picv_setpicture);
 
     #undef ADD_VERB
 

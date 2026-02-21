@@ -85,14 +85,14 @@ static boolean html_valueproc(short token, hdltreenode hparam1,
         case htmv_refglossary:
             /* Verb #8: html.refglossary - @SCRIPT_IMPLEMENTED in system.verbs.builtins.html */
             /* C helper htmlrefglossary() calls this via langrunscript() during macro processing */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case htmv_getpref:
             /* Phase 2: Forward to C implementation in langhtml.c */
             return getprefverb(hparam1, vreturned);
         case htmv_getonedirective:
             /* Verb #10: html.getonedirective - @SCRIPT_IMPLEMENTED in system.verbs.builtins.html */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case htmv_rundirective:
             /* Phase 2: Forward to C implementation in langhtml.c */
@@ -108,7 +108,7 @@ static boolean html_valueproc(short token, hdltreenode hparam1,
             return cleanforexportverb(hparam1, vreturned);
         case htmv_normalizename:
             /* Verb #15: html.normalizename - @SCRIPT_IMPLEMENTED in system.verbs.builtins.html */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case htmv_glossarypatcher:
             /* Phase 2: Forward to C implementation in langhtml.c */
@@ -133,7 +133,7 @@ static boolean html_valueproc(short token, hdltreenode hparam1,
             /* Listed in kernelverbs.rc but no C implementation ever existed */
             /* defined(html.drawcalendar) returns false in legacy Windows Frontier */
             /* IOA calendar widget in cal.c was never wired up as a callable verb */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -144,7 +144,7 @@ boolean htmlinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\004html"), bsname);
+    copystring(PSTRING("\004", "html"), bsname);
 
     if (!newfunctionprocessor(bsname, &html_valueproc, false, &htable))
         return false;
@@ -160,29 +160,29 @@ boolean htmlinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\015processmacros"), htmv_processmacros);
-    ADD_VERB(BIGSTRING("\011urldecode"), htmv_urldecode);
-    ADD_VERB(BIGSTRING("\011urlencode"), htmv_urlencode);
-    ADD_VERB(BIGSTRING("\015parsehttpargs"), htmv_parsehttpargs);
-    ADD_VERB(BIGSTRING("\015iso8859encode"), htmv_iso8859encode);
-    ADD_VERB(BIGSTRING("\021getgifheightwidth"), htmv_getgifheightwidth);
-    ADD_VERB(BIGSTRING("\022getjpegheightwidth"), htmv_getjpegheightwidth);
-    ADD_VERB(BIGSTRING("\016buildpagetable"), htmv_buildpagetable);
-    ADD_VERB(BIGSTRING("\013refglossary"), htmv_refglossary);
-    ADD_VERB(BIGSTRING("\007getpref"), htmv_getpref);
-    ADD_VERB(BIGSTRING("\017getonedirective"), htmv_getonedirective);
-    ADD_VERB(BIGSTRING("\014rundirective"), htmv_rundirective);
-    ADD_VERB(BIGSTRING("\015rundirectives"), htmv_rundirectives);
-    ADD_VERB(BIGSTRING("\024runoutlinedirectives"), htmv_runoutlinedirectives);
-    ADD_VERB(BIGSTRING("\016cleanforexport"), htmv_cleanforexport);
-    ADD_VERB(BIGSTRING("\015normalizename"), htmv_normalizename);
-    ADD_VERB(BIGSTRING("\017glossarypatcher"), htmv_glossarypatcher);
-    ADD_VERB(BIGSTRING("\012expandurls"), htmv_expandurls);
-    ADD_VERB(BIGSTRING("\015traversalskip"), htmv_traversalskip);
-    ADD_VERB(BIGSTRING("\023getpagetableaddress"), htmv_getpagetableaddress);
-    ADD_VERB(BIGSTRING("\014neutermacros"), htmv_neutermacros);
-    ADD_VERB(BIGSTRING("\012neutertags"), htmv_neutertags);
-    ADD_VERB(BIGSTRING("\014drawcalendar"), htmv_drawcalendar);
+    ADD_VERB(PSTRING("\015", "processmacros"), htmv_processmacros);
+    ADD_VERB(PSTRING("\011", "urldecode"), htmv_urldecode);
+    ADD_VERB(PSTRING("\011", "urlencode"), htmv_urlencode);
+    ADD_VERB(PSTRING("\015", "parsehttpargs"), htmv_parsehttpargs);
+    ADD_VERB(PSTRING("\015", "iso8859encode"), htmv_iso8859encode);
+    ADD_VERB(PSTRING("\021", "getgifheightwidth"), htmv_getgifheightwidth);
+    ADD_VERB(PSTRING("\022", "getjpegheightwidth"), htmv_getjpegheightwidth);
+    ADD_VERB(PSTRING("\016", "buildpagetable"), htmv_buildpagetable);
+    ADD_VERB(PSTRING("\013", "refglossary"), htmv_refglossary);
+    ADD_VERB(PSTRING("\007", "getpref"), htmv_getpref);
+    ADD_VERB(PSTRING("\017", "getonedirective"), htmv_getonedirective);
+    ADD_VERB(PSTRING("\014", "rundirective"), htmv_rundirective);
+    ADD_VERB(PSTRING("\015", "rundirectives"), htmv_rundirectives);
+    ADD_VERB(PSTRING("\024", "runoutlinedirectives"), htmv_runoutlinedirectives);
+    ADD_VERB(PSTRING("\016", "cleanforexport"), htmv_cleanforexport);
+    ADD_VERB(PSTRING("\015", "normalizename"), htmv_normalizename);
+    ADD_VERB(PSTRING("\017", "glossarypatcher"), htmv_glossarypatcher);
+    ADD_VERB(PSTRING("\012", "expandurls"), htmv_expandurls);
+    ADD_VERB(PSTRING("\015", "traversalskip"), htmv_traversalskip);
+    ADD_VERB(PSTRING("\023", "getpagetableaddress"), htmv_getpagetableaddress);
+    ADD_VERB(PSTRING("\014", "neutermacros"), htmv_neutermacros);
+    ADD_VERB(PSTRING("\012", "neutertags"), htmv_neutertags);
+    ADD_VERB(PSTRING("\014", "drawcalendar"), htmv_drawcalendar);
 
     #undef ADD_VERB
 
