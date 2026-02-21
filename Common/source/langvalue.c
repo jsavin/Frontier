@@ -8531,10 +8531,18 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 			}
 
 			#if defined(FRONTIER_HEADLESS)
-			/* Stale code detection: v6 databases may contain pre-compiled code trees
-			 * that are not valid in the headless runtime. If the linked code has a nil
-			 * param1 (no statements), force recompilation from source text. This is
-			 * safe because headless_scriptcompiler always recompiles from the outline. */
+			/* Stale code detection: v6 databases contain pre-compiled code trees
+			 * from the original Mac runtime that are not valid in the headless build.
+			 * These trees have nil param1 because they were compiled against a
+			 * different verb table layout.
+			 *
+			 * Known false positive: a legitimately empty script also compiles to a
+			 * tree with nil param1. In headless mode this causes an extra recompile
+			 * per access, which is acceptable — empty scripts are rare in practice
+			 * and recompilation is cheap (produces the same empty tree).
+			 *
+			 * The master pointer dereference (*(*hcode)) is safe here because
+			 * langexternalvaltocode just populated the handle from a live node. */
 			if (*hcode != nil && (**(*hcode)).param1 == nil) {
 				log_debug(LOG_COMP_LANG, "langgetnodecode: stale linked code for %s (nil param1), forcing recompile", PSTR(bs));
 				*hcode = nil;

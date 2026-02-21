@@ -143,9 +143,9 @@ if [ -n "$VERB_FILES_CHANGED" ]; then
     echo -e "${YELLOW}Headless verb files changed, checking Pascal string lengths...${NC}"
 
     # Check for broken \p prefixes (classic Mac, not valid in modern C)
-    if grep -n '\\p[a-z]' $VERB_FILES_CHANGED | grep -q 'BIGSTRING'; then
+    if echo "$VERB_FILES_CHANGED" | xargs grep -n '\\p[a-zA-Z]' 2>/dev/null | grep -q 'BIGSTRING'; then
         echo -e "${RED}ERROR: Found broken \\p Pascal string prefix in verb registration:${NC}" >&2
-        grep -n '\\p[a-z]' $VERB_FILES_CHANGED | grep 'BIGSTRING' | sed 's/^/  /' >&2
+        echo "$VERB_FILES_CHANGED" | xargs grep -n '\\p[a-zA-Z]' 2>/dev/null | grep 'BIGSTRING' | sed 's/^/  /' >&2
         echo "" >&2
         echo "Use octal length bytes instead (e.g., \\006 for 6-char string)." >&2
         exit 1
