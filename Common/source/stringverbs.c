@@ -1240,14 +1240,20 @@ exit:
 
 
 void latintomac (Handle h) {
-	
+
 	/*
 	7.0b28 PBS: convert text from Latin to Mac character sets.
 	*/
-	
+
+	if (h == nil)
+		return;
+
 	long ix = 0;
 	long lentext = gethandlesize (h);
-	
+
+	if (lentext <= 0)
+		return;
+
 	while (true) {
 	
 		unsigned char ch = (*h) [ix];
@@ -1269,14 +1275,20 @@ void latintomac (Handle h) {
 
 
 void mactolatin (Handle h) {
-	
+
 	/*
 	7.0b35 PBS: convert text from Mac to Latin character sets.
 	*/
-	
+
+	if (h == nil)
+		return;
+
 	long ix = 0;
 	long lentext = gethandlesize (h);
-	
+
+	if (lentext <= 0)
+		return;
+
 	while (true) {
 	
 		unsigned char ch = (*h) [ix];

@@ -153,9 +153,34 @@ boolean myMoof (short a, long b) { (void)a; (void)b; return false; }
 // 2025-12-15 Codex: Time functions moved to Common/source/timedate.c with headless guards
 // These functions are no longer needed here as stubs
 
-// Threading helpers referenced by langxml
+// Threading helpers referenced by langxml and langhtml
 boolean inmainthread (void) { return true; }
-hdlprocessthread getcurrentthread (void) { return nil; }
+
+/* In full Frontier, getcurrentthread() returns the current process's thread
+ * handle from the process scheduler. In headless mode there is no process
+ * scheduler, but hthreadglobals always points to the GIL holder's globals.
+ * Callers like langhtml.c use getthreadid(getcurrentthread()) to key
+ * per-thread data — returning hthreadglobals ensures the thread ID matches
+ * what the thread registry assigned.
+ *
+ * We use a weak reference because some unit test binaries link this stubs
+ * file but not the threading infrastructure (headless_threadglobals.c). */
+extern hdlthreadglobals hthreadglobals __attribute__((weak));
+hdlprocessthread getcurrentthread (void) {
+    if (&hthreadglobals != NULL)
+        return (hdlprocessthread) hthreadglobals;
+    return nil;
+}
+
+/* getthreadid - return thread ID from a thread globals handle.
+ * In full Frontier this lives in process.c. The headless build needs it
+ * because langhtml.c (getpagetableaddressverb, inetdsupervisor logging)
+ * calls getthreadid(getcurrentthread()). */
+long getthreadid (hdlprocessthread hthread) {
+    if (hthread == nil)
+        return ((long) idnullthread);
+    return ((long) (**(hdlthreadglobals) hthread).idthread);
+}
 
 /* Forward declaration for TCP callback processing */
 extern int tcp_process_callbacks(void);
