@@ -42,6 +42,7 @@
 #include "../Common/headers/tcpverbs.h"     /* tcp_process_callbacks */
 #include "../Common/headers/process.h"      /* agentsenabled, agentscheduler_tick */
 #include "../Common/headers/langinternal.h" /* flreplmode */
+#include "../Common/headers/threadregistry.h" /* headless_backgroundtask */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -2087,6 +2088,11 @@ int repl_main(cli_options_t *options) {
 
         // 6.3 Process TCP callbacks (webserver)
         tcp_process_callbacks();
+
+        // 6.3.1 Yield GIL so callback threads spawned above can execute.
+        // Without this, the main thread holds the GIL for the entire idle
+        // loop and spawned callback threads deadlock on GIL acquisition.
+        headless_backgroundtask(true);
 
         // 6.4 Run agent scheduler tick (if agents enabled)
         if (agentsenabled()) {
