@@ -27,7 +27,7 @@ def check_file(filepath):
 
             # Check octal length bytes in ADD_VERB lines only
             # (skip non-verb BIGSTRING usage like shell escape sequences)
-            for m in re.finditer(r'ADD_VERB\(BIGSTRING\("\\(\d{3})([^"]+)"\)', line):
+            for m in re.finditer(r'ADD_VERB\(BIGSTRING\("\\([0-7]{3})([^"]+)"\)', line):
                 octal_str = m.group(1)
                 verb_name = m.group(2)
                 declared_len = int(octal_str, 8)
