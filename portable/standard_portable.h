@@ -30,11 +30,16 @@
 
 /* PSTRING: Pascal string with compile-time length validation.
  * Usage: PSTRING("\006", "delete") — fails to compile if \006 != strlen("delete")
- * Replaces: BIGSTRING("\006delete") which has no validation */
+ * Replaces: BIGSTRING("\006delete") which has no validation.
+ *
+ * Note: Uses GNU statement expressions ({ ... }) (GCC/Clang extension) and
+ * _Static_assert (C11). The project builds with -std=c17 so both are available.
+ * Only valid in expression context (not file-scope initializers). */
 #define PSTRING(len_str, s) \
     ({ _Static_assert((unsigned char)(len_str "\0")[0] == sizeof(s) - 1, \
                       "Pascal string length byte mismatch"); \
        BIGSTRING(len_str s); })
+
 #ifndef lenbigstring
 #define lenbigstring 255
 #endif

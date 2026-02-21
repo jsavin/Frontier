@@ -4,6 +4,11 @@ r"""Migrate BIGSTRING("\NNNfoo") → PSTRING("\NNN", "foo") in headless verb fil
 Only converts BIGSTRING calls that have an octal length prefix (i.e., Pascal
 strings used in verb registration). Other BIGSTRING usage is left unchanged.
 
+Scope: Intentionally targets only tests/headless_*_verbs.c files. BIGSTRING
+calls in Common/ source files use the legacy format and are not migrated —
+those files are shared with the classic Mac build which does not include the
+PSTRING macro.
+
 Usage:
     python3 tools/migrate_bigstring_to_pstr.py [--dry-run]
 """
