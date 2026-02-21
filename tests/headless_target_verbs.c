@@ -48,7 +48,7 @@ boolean targetinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\ptarget"), bsname);
+    copystring(BIGSTRING("\006target"), bsname);
 
     if (!newfunctionprocessor(bsname, &target_valueproc, false, &htable))
         return false;
@@ -64,9 +64,9 @@ boolean targetinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pget"), tarv_get);
-    ADD_VERB(BIGSTRING("\pset"), tarv_set);
-    ADD_VERB(BIGSTRING("\pclear"), tarv_clear);
+    ADD_VERB(BIGSTRING("\003get"), tarv_get);
+    ADD_VERB(BIGSTRING("\003set"), tarv_set);
+    ADD_VERB(BIGSTRING("\005clear"), tarv_clear);
 
     #undef ADD_VERB
 

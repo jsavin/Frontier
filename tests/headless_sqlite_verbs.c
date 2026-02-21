@@ -47,71 +47,71 @@ static boolean sqlite_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case sqlv_open:
             /* Verb #0: sqlite.open - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_compileQuery:
             /* Verb #1: sqlite.compileQuery - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_clearQuery:
             /* Verb #2: sqlite.clearQuery - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_resetQuery:
             /* Verb #3: sqlite.resetQuery - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_stepQuery:
             /* Verb #4: sqlite.stepQuery - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getColumnCount:
             /* Verb #5: sqlite.getColumnCount - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getColumnType:
             /* Verb #6: sqlite.getColumnType - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getColumnInt:
             /* Verb #7: sqlite.getColumnInt - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getColumnDouble:
             /* Verb #8: sqlite.getColumnDouble - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getColumnText:
             /* Verb #9: sqlite.getColumnText - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getColumnName:
             /* Verb #10: sqlite.getColumnName - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getColumn:
             /* Verb #11: sqlite.getColumn - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getRow:
             /* Verb #12: sqlite.getRow - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getErrorMessage:
             /* Verb #13: sqlite.getErrorMessage - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_close:
             /* Verb #14: sqlite.close - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_setColumnBlob:
             /* Verb #15: sqlite.setColumnBlob - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case sqlv_getLastInsertRowId:
             /* Verb #16: sqlite.getLastInsertRowId - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -122,7 +122,7 @@ boolean sqliteinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\psqlite"), bsname);
+    copystring(BIGSTRING("\006sqlite"), bsname);
 
     if (!newfunctionprocessor(bsname, &sqlite_valueproc, false, &htable))
         return false;
@@ -138,23 +138,23 @@ boolean sqliteinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\popen"), sqlv_open);
-    ADD_VERB(BIGSTRING("\pcompileQuery"), sqlv_compileQuery);
-    ADD_VERB(BIGSTRING("\pclearQuery"), sqlv_clearQuery);
-    ADD_VERB(BIGSTRING("\presetQuery"), sqlv_resetQuery);
-    ADD_VERB(BIGSTRING("\pstepQuery"), sqlv_stepQuery);
-    ADD_VERB(BIGSTRING("\pgetColumnCount"), sqlv_getColumnCount);
-    ADD_VERB(BIGSTRING("\pgetColumnType"), sqlv_getColumnType);
-    ADD_VERB(BIGSTRING("\pgetColumnInt"), sqlv_getColumnInt);
-    ADD_VERB(BIGSTRING("\pgetColumnDouble"), sqlv_getColumnDouble);
-    ADD_VERB(BIGSTRING("\pgetColumnText"), sqlv_getColumnText);
-    ADD_VERB(BIGSTRING("\pgetColumnName"), sqlv_getColumnName);
-    ADD_VERB(BIGSTRING("\pgetColumn"), sqlv_getColumn);
-    ADD_VERB(BIGSTRING("\pgetRow"), sqlv_getRow);
-    ADD_VERB(BIGSTRING("\pgetErrorMessage"), sqlv_getErrorMessage);
-    ADD_VERB(BIGSTRING("\pclose"), sqlv_close);
-    ADD_VERB(BIGSTRING("\psetColumnBlob"), sqlv_setColumnBlob);
-    ADD_VERB(BIGSTRING("\pgetLastInsertRowId"), sqlv_getLastInsertRowId);
+    ADD_VERB(BIGSTRING("\004open"), sqlv_open);
+    ADD_VERB(BIGSTRING("\014compileQuery"), sqlv_compileQuery);
+    ADD_VERB(BIGSTRING("\012clearQuery"), sqlv_clearQuery);
+    ADD_VERB(BIGSTRING("\012resetQuery"), sqlv_resetQuery);
+    ADD_VERB(BIGSTRING("\011stepQuery"), sqlv_stepQuery);
+    ADD_VERB(BIGSTRING("\016getColumnCount"), sqlv_getColumnCount);
+    ADD_VERB(BIGSTRING("\015getColumnType"), sqlv_getColumnType);
+    ADD_VERB(BIGSTRING("\014getColumnInt"), sqlv_getColumnInt);
+    ADD_VERB(BIGSTRING("\017getColumnDouble"), sqlv_getColumnDouble);
+    ADD_VERB(BIGSTRING("\015getColumnText"), sqlv_getColumnText);
+    ADD_VERB(BIGSTRING("\015getColumnName"), sqlv_getColumnName);
+    ADD_VERB(BIGSTRING("\011getColumn"), sqlv_getColumn);
+    ADD_VERB(BIGSTRING("\006getRow"), sqlv_getRow);
+    ADD_VERB(BIGSTRING("\017getErrorMessage"), sqlv_getErrorMessage);
+    ADD_VERB(BIGSTRING("\005close"), sqlv_close);
+    ADD_VERB(BIGSTRING("\015setColumnBlob"), sqlv_setColumnBlob);
+    ADD_VERB(BIGSTRING("\022getLastInsertRowId"), sqlv_getLastInsertRowId);
 
     #undef ADD_VERB
 

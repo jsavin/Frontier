@@ -194,7 +194,7 @@ boolean stringinitverbs(void) {
 	ADD_VERB(BIGSTRING("\007nthword"), nthwordfunc);
 	ADD_VERB(BIGSTRING("\012countwords"), countwordsfunc);
 	ADD_VERB(BIGSTRING("\015commentdelete"), commentdeletefunc);
-	ADD_VERB(BIGSTRING("\016firstsentence"), firstsentencefunc);
+	ADD_VERB(BIGSTRING("\015firstsentence"), firstsentencefunc);
 	ADD_VERB(BIGSTRING("\014patternmatch"), patternmatchfunc);
 	ADD_VERB(BIGSTRING("\003hex"), hexfunc);
 	ADD_VERB(BIGSTRING("\012timestring"), timestringfunc);
@@ -208,11 +208,11 @@ boolean stringinitverbs(void) {
 	ADD_VERB(BIGSTRING("\006length"), lengthfunc);
 	ADD_VERB(BIGSTRING("\007isalpha"), isalphafunc);
 	ADD_VERB(BIGSTRING("\011isnumeric"), isnumericfunc);
-	ADD_VERB(BIGSTRING("\016ispunctuation"), ispunctuationfunc);
-	ADD_VERB(BIGSTRING("\020processhtmlmacros"), processmacrosfunc);
+	ADD_VERB(BIGSTRING("\015ispunctuation"), ispunctuationfunc);
+	ADD_VERB(BIGSTRING("\021processhtmlmacros"), processmacrosfunc);
 	ADD_VERB(BIGSTRING("\011urldecode"), urldecodefunc);
 	ADD_VERB(BIGSTRING("\011urlencode"), urlencodefunc);
-	ADD_VERB(BIGSTRING("\016parsehttpargs"), parseargsfunc);
+	ADD_VERB(BIGSTRING("\015parsehttpargs"), parseargsfunc);
 	ADD_VERB(BIGSTRING("\015iso8859encode"), iso8859encodefunc);
 	ADD_VERB(BIGSTRING("\020getgifheightwidth"), getgifheightwidthfunc);
 	ADD_VERB(BIGSTRING("\021getjpegheightwidth"), getjpegheightwidthfunc);
@@ -231,7 +231,7 @@ boolean stringinitverbs(void) {
 	ADD_VERB(BIGSTRING("\012utf8toansi"), utf8toansifunc);
 	ADD_VERB(BIGSTRING("\012ansitoutf8"), ansitoutf8func);
 	ADD_VERB(BIGSTRING("\013ansitoutf16"), ansitoutf16func);
-	ADD_VERB(BIGSTRING("\021multiplereplaceall"), multiplereplaceallfunc);
+	ADD_VERB(BIGSTRING("\022multiplereplaceall"), multiplereplaceallfunc);
 	ADD_VERB(BIGSTRING("\016macromantoutf8"), macromantoutf8func);
 	ADD_VERB(BIGSTRING("\016utf8tomacroman"), utf8tomacromanfunc);
 	ADD_VERB(BIGSTRING("\016convertcharset"), convertcharsetfunc);

@@ -38,35 +38,35 @@ static boolean htmlcontrol_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case htmv_back:
             /* Verb #0: htmlcontrol.back - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case htmv_forward:
             /* Verb #1: htmlcontrol.forward - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case htmv_refresh:
             /* Verb #2: htmlcontrol.refresh - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case htmv_home:
             /* Verb #3: htmlcontrol.home - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case htmv_stop:
             /* Verb #4: htmlcontrol.stop - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case htmv_navigate:
             /* Verb #5: htmlcontrol.navigate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case htmv_isoffline:
             /* Verb #6: htmlcontrol.isoffline - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case htmv_setoffline:
             /* Verb #7: htmlcontrol.setoffline - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -77,7 +77,7 @@ boolean htmlcontrolinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\phtmlcontrol"), bsname);
+    copystring(BIGSTRING("\013htmlcontrol"), bsname);
 
     if (!newfunctionprocessor(bsname, &htmlcontrol_valueproc, false, &htable))
         return false;
@@ -93,14 +93,14 @@ boolean htmlcontrolinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pback"), htmv_back);
-    ADD_VERB(BIGSTRING("\pforward"), htmv_forward);
-    ADD_VERB(BIGSTRING("\prefresh"), htmv_refresh);
-    ADD_VERB(BIGSTRING("\phome"), htmv_home);
-    ADD_VERB(BIGSTRING("\pstop"), htmv_stop);
-    ADD_VERB(BIGSTRING("\pnavigate"), htmv_navigate);
-    ADD_VERB(BIGSTRING("\pisoffline"), htmv_isoffline);
-    ADD_VERB(BIGSTRING("\psetoffline"), htmv_setoffline);
+    ADD_VERB(BIGSTRING("\004back"), htmv_back);
+    ADD_VERB(BIGSTRING("\007forward"), htmv_forward);
+    ADD_VERB(BIGSTRING("\007refresh"), htmv_refresh);
+    ADD_VERB(BIGSTRING("\004home"), htmv_home);
+    ADD_VERB(BIGSTRING("\004stop"), htmv_stop);
+    ADD_VERB(BIGSTRING("\010navigate"), htmv_navigate);
+    ADD_VERB(BIGSTRING("\011isoffline"), htmv_isoffline);
+    ADD_VERB(BIGSTRING("\012setoffline"), htmv_setoffline);
 
     #undef ADD_VERB
 

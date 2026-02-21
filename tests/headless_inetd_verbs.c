@@ -54,7 +54,7 @@ boolean inetdinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pinetd"), bsname);
+    copystring(BIGSTRING("\005inetd"), bsname);
 
     if (!newfunctionprocessor(bsname, &inetd_valueproc, false, &htable))
         return false;
@@ -70,7 +70,7 @@ boolean inetdinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\psupervisor"), inev_supervisor);
+    ADD_VERB(BIGSTRING("\012supervisor"), inev_supervisor);
 
     #undef ADD_VERB
 

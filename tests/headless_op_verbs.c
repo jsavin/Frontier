@@ -2080,7 +2080,7 @@ boolean opinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pop"), bsname);
+    copystring(BIGSTRING("\002op"), bsname);
 
     if (!newfunctionprocessor(bsname, &op_valueproc, false, &htable))
         return false;
@@ -2096,51 +2096,51 @@ boolean opinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pgetlinetext"), opv_getlinetext);
-    ADD_VERB(BIGSTRING("\plevel"), opv_level);
-    ADD_VERB(BIGSTRING("\pcountsubs"), opv_countsubs);
-    ADD_VERB(BIGSTRING("\pcountsummits"), opv_countsummits);
-    ADD_VERB(BIGSTRING("\pgo"), opv_go);
-    ADD_VERB(BIGSTRING("\pfirstsummit"), opv_firstsummit);
-    ADD_VERB(BIGSTRING("\pexpand"), opv_expand);
-    ADD_VERB(BIGSTRING("\pcollapse"), opv_collapse);
-    ADD_VERB(BIGSTRING("\psubsexpanded"), opv_subsexpanded);
-    ADD_VERB(BIGSTRING("\pinsert"), opv_insert);
-    ADD_VERB(BIGSTRING("\pfind"), opv_find);
-    ADD_VERB(BIGSTRING("\psort"), opv_sort);
-    ADD_VERB(BIGSTRING("\psetlinetext"), opv_setlinetext);
-    ADD_VERB(BIGSTRING("\preorg"), opv_reorg);
-    ADD_VERB(BIGSTRING("\ppromote"), opv_promote);
-    ADD_VERB(BIGSTRING("\pdemote"), opv_demote);
-    ADD_VERB(BIGSTRING("\phoist"), opv_hoist);
-    ADD_VERB(BIGSTRING("\pdehoist"), opv_dehoist);
-    ADD_VERB(BIGSTRING("\pdeletesubs"), opv_deletesubs);
-    ADD_VERB(BIGSTRING("\pdeleteline"), opv_deleteline);
-    ADD_VERB(BIGSTRING("\ptabkeyreorg"), opv_tabkeyreorg);
-    ADD_VERB(BIGSTRING("\pflatcursorkeys"), opv_flatcursorkeys);
-    ADD_VERB(BIGSTRING("\pgetdisplay"), opv_getdisplay);
-    ADD_VERB(BIGSTRING("\psetdisplay"), opv_setdisplay);
-    ADD_VERB(BIGSTRING("\pgetcursor"), opv_getcursor);
-    ADD_VERB(BIGSTRING("\psetcursor"), opv_setcursor);
-    ADD_VERB(BIGSTRING("\pgetrefcon"), opv_getrefcon);
-    ADD_VERB(BIGSTRING("\psetrefcon"), opv_setrefcon);
-    ADD_VERB(BIGSTRING("\pgetexpansionstate"), opv_getexpansionstate);
-    ADD_VERB(BIGSTRING("\psetexpansionstate"), opv_setexpansionstate);
-    ADD_VERB(BIGSTRING("\pgetscrollstate"), opv_getscrollstate);
-    ADD_VERB(BIGSTRING("\psetscrollstate"), opv_setscrollstate);
-    ADD_VERB(BIGSTRING("\pgetsuboutline"), opv_getsuboutline);
-    ADD_VERB(BIGSTRING("\pinsertoutline"), opv_insertoutline);
-    ADD_VERB(BIGSTRING("\psetmodified"), opv_setmodified);
-    ADD_VERB(BIGSTRING("\pgetselection"), opv_getselection);
-    ADD_VERB(BIGSTRING("\pgetheadnumber"), opv_getheadnumber);
-    ADD_VERB(BIGSTRING("\pvisitall"), opv_visitall);
-    ADD_VERB(BIGSTRING("\pgetselectedsuboutlines"), opv_getselectedsuboutlines);
-    ADD_VERB(BIGSTRING("\pxmltooutline"), opv_xmltooutline);
-    ADD_VERB(BIGSTRING("\poutlinetoxml"), opv_outlinetoxml);
-    ADD_VERB(BIGSTRING("\psethtmlformatting"), opv_sethtmlformatting);
-    ADD_VERB(BIGSTRING("\pgethtmlformatting"), opv_gethtmlformatting);
-    ADD_VERB(BIGSTRING("\psetdynamic"), opv_setdynamic);
-    ADD_VERB(BIGSTRING("\pgetdynamic"), opv_getdynamic);
+    ADD_VERB(BIGSTRING("\013getlinetext"), opv_getlinetext);
+    ADD_VERB(BIGSTRING("\005level"), opv_level);
+    ADD_VERB(BIGSTRING("\011countsubs"), opv_countsubs);
+    ADD_VERB(BIGSTRING("\014countsummits"), opv_countsummits);
+    ADD_VERB(BIGSTRING("\002go"), opv_go);
+    ADD_VERB(BIGSTRING("\013firstsummit"), opv_firstsummit);
+    ADD_VERB(BIGSTRING("\006expand"), opv_expand);
+    ADD_VERB(BIGSTRING("\010collapse"), opv_collapse);
+    ADD_VERB(BIGSTRING("\014subsexpanded"), opv_subsexpanded);
+    ADD_VERB(BIGSTRING("\006insert"), opv_insert);
+    ADD_VERB(BIGSTRING("\004find"), opv_find);
+    ADD_VERB(BIGSTRING("\004sort"), opv_sort);
+    ADD_VERB(BIGSTRING("\013setlinetext"), opv_setlinetext);
+    ADD_VERB(BIGSTRING("\005reorg"), opv_reorg);
+    ADD_VERB(BIGSTRING("\007promote"), opv_promote);
+    ADD_VERB(BIGSTRING("\006demote"), opv_demote);
+    ADD_VERB(BIGSTRING("\005hoist"), opv_hoist);
+    ADD_VERB(BIGSTRING("\007dehoist"), opv_dehoist);
+    ADD_VERB(BIGSTRING("\012deletesubs"), opv_deletesubs);
+    ADD_VERB(BIGSTRING("\012deleteline"), opv_deleteline);
+    ADD_VERB(BIGSTRING("\013tabkeyreorg"), opv_tabkeyreorg);
+    ADD_VERB(BIGSTRING("\016flatcursorkeys"), opv_flatcursorkeys);
+    ADD_VERB(BIGSTRING("\012getdisplay"), opv_getdisplay);
+    ADD_VERB(BIGSTRING("\012setdisplay"), opv_setdisplay);
+    ADD_VERB(BIGSTRING("\011getcursor"), opv_getcursor);
+    ADD_VERB(BIGSTRING("\011setcursor"), opv_setcursor);
+    ADD_VERB(BIGSTRING("\011getrefcon"), opv_getrefcon);
+    ADD_VERB(BIGSTRING("\011setrefcon"), opv_setrefcon);
+    ADD_VERB(BIGSTRING("\021getexpansionstate"), opv_getexpansionstate);
+    ADD_VERB(BIGSTRING("\021setexpansionstate"), opv_setexpansionstate);
+    ADD_VERB(BIGSTRING("\016getscrollstate"), opv_getscrollstate);
+    ADD_VERB(BIGSTRING("\016setscrollstate"), opv_setscrollstate);
+    ADD_VERB(BIGSTRING("\015getsuboutline"), opv_getsuboutline);
+    ADD_VERB(BIGSTRING("\015insertoutline"), opv_insertoutline);
+    ADD_VERB(BIGSTRING("\013setmodified"), opv_setmodified);
+    ADD_VERB(BIGSTRING("\014getselection"), opv_getselection);
+    ADD_VERB(BIGSTRING("\015getheadnumber"), opv_getheadnumber);
+    ADD_VERB(BIGSTRING("\010visitall"), opv_visitall);
+    ADD_VERB(BIGSTRING("\026getselectedsuboutlines"), opv_getselectedsuboutlines);
+    ADD_VERB(BIGSTRING("\014xmltooutline"), opv_xmltooutline);
+    ADD_VERB(BIGSTRING("\014outlinetoxml"), opv_outlinetoxml);
+    ADD_VERB(BIGSTRING("\021sethtmlformatting"), opv_sethtmlformatting);
+    ADD_VERB(BIGSTRING("\021gethtmlformatting"), opv_gethtmlformatting);
+    ADD_VERB(BIGSTRING("\012setdynamic"), opv_setdynamic);
+    ADD_VERB(BIGSTRING("\012getdynamic"), opv_getdynamic);
 
     #undef ADD_VERB
 

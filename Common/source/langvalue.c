@@ -8529,6 +8529,18 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 				log_error(LOG_COMP_LANG, "langgetnodecode: langexternalvaltocode FAILED for %s", PSTR(bs));
 				return (false);
 			}
+
+			#if defined(FRONTIER_HEADLESS)
+			/* Stale code detection: v6 databases may contain pre-compiled code trees
+			 * that are not valid in the headless runtime. If the linked code has a nil
+			 * param1 (no statements), force recompilation from source text. This is
+			 * safe because headless_scriptcompiler always recompiles from the outline. */
+			if (*hcode != nil && (**(*hcode)).param1 == nil) {
+				log_debug(LOG_COMP_LANG, "langgetnodecode: stale linked code for %s (nil param1), forcing recompile", PSTR(bs));
+				*hcode = nil;
+			}
+			#endif
+
 			if (*hcode == nil) { /*it needs to be compiled*/
 
 				log_trace(LOG_COMP_LANG, "langgetnodecode: script needs compilation for %s", PSTR(bs));

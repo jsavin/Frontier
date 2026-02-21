@@ -38,35 +38,35 @@ static boolean bit_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case bitv_get:
             /* Verb #0: bit.get - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case bitv_set:
             /* Verb #1: bit.set - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case bitv_clear:
             /* Verb #2: bit.clear - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case bitv_logicaland:
             /* Verb #3: bit.logicaland - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case bitv_logicalor:
             /* Verb #4: bit.logicalor - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case bitv_logicalxor:
             /* Verb #5: bit.logicalxor - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case bitv_shiftleft:
             /* Verb #6: bit.shiftleft - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         case bitv_shiftright:
             /* Verb #7: bit.shiftright - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -77,7 +77,7 @@ boolean bitinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pbit"), bsname);
+    copystring(BIGSTRING("\003bit"), bsname);
 
     if (!newfunctionprocessor(bsname, &bit_valueproc, false, &htable))
         return false;
@@ -93,14 +93,14 @@ boolean bitinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pget"), bitv_get);
-    ADD_VERB(BIGSTRING("\pset"), bitv_set);
-    ADD_VERB(BIGSTRING("\pclear"), bitv_clear);
-    ADD_VERB(BIGSTRING("\plogicaland"), bitv_logicaland);
-    ADD_VERB(BIGSTRING("\plogicalor"), bitv_logicalor);
-    ADD_VERB(BIGSTRING("\plogicalxor"), bitv_logicalxor);
-    ADD_VERB(BIGSTRING("\pshiftleft"), bitv_shiftleft);
-    ADD_VERB(BIGSTRING("\pshiftright"), bitv_shiftright);
+    ADD_VERB(BIGSTRING("\003get"), bitv_get);
+    ADD_VERB(BIGSTRING("\003set"), bitv_set);
+    ADD_VERB(BIGSTRING("\005clear"), bitv_clear);
+    ADD_VERB(BIGSTRING("\012logicaland"), bitv_logicaland);
+    ADD_VERB(BIGSTRING("\011logicalor"), bitv_logicalor);
+    ADD_VERB(BIGSTRING("\012logicalxor"), bitv_logicalxor);
+    ADD_VERB(BIGSTRING("\011shiftleft"), bitv_shiftleft);
+    ADD_VERB(BIGSTRING("\012shiftright"), bitv_shiftright);
 
     #undef ADD_VERB
 

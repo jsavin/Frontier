@@ -31,7 +31,7 @@ static boolean python_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case pytv_doscript:
             /* Verb #0: python.doscript - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\pnot implemented"), bserror);
+            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
             return false;
         default:
             return false;
@@ -42,7 +42,7 @@ boolean pythoninitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\ppython"), bsname);
+    copystring(BIGSTRING("\006python"), bsname);
 
     if (!newfunctionprocessor(bsname, &python_valueproc, false, &htable))
         return false;
@@ -58,7 +58,7 @@ boolean pythoninitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pdoscript"), pytv_doscript);
+    ADD_VERB(BIGSTRING("\010doscript"), pytv_doscript);
 
     #undef ADD_VERB
 

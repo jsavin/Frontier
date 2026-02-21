@@ -51,7 +51,7 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
             /* clock.set - returns appropriate error (not a stub)
              * @IMPLEMENTED - Correctly implemented to return security error */
             if (bserror)
-                copystring(BIGSTRING("\pCan't set system time because it requires administrator privileges"), bserror);
+                copystring(BIGSTRING("\102Can't set system time because it requires administrator privileges"), bserror);
             return false;
 
         case clov_sleepfor: {
@@ -65,7 +65,7 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
 
             /* Validate non-negative duration */
             if (ctseconds < 0) {
-                if (bserror) copystring(BIGSTRING("\pCan't sleep because negative duration is invalid"), bserror);
+                if (bserror) copystring(BIGSTRING("\060Can't sleep because negative duration is invalid"), bserror);
                 return false;
             }
 
@@ -100,7 +100,7 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
 
             /* Validate non-negative duration */
             if (ctseconds < 0) {
-                if (bserror) copystring(BIGSTRING("\pCan't wait because negative duration is invalid"), bserror);
+                if (bserror) copystring(BIGSTRING("\057Can't wait because negative duration is invalid"), bserror);
                 return false;
             }
 
@@ -124,7 +124,7 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
 
             /* Convert 60ths of a second to milliseconds */
             if (ctsixtieths < 0) {
-                if (bserror) copystring(BIGSTRING("\pCan't wait because negative duration is invalid"), bserror);
+                if (bserror) copystring(BIGSTRING("\057Can't wait because negative duration is invalid"), bserror);
                 return false;
             }
 
@@ -147,7 +147,7 @@ boolean clockinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\pclock"), bsname);
+    copystring(BIGSTRING("\005clock"), bsname);
 
     if (!newfunctionprocessor(bsname, &clock_valueproc, false, &htable))
         return false;
@@ -163,13 +163,13 @@ boolean clockinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pnow"), clov_now);
-    ADD_VERB(BIGSTRING("\pset"), clov_set);
-    ADD_VERB(BIGSTRING("\psleepfor"), clov_sleepfor);
-    ADD_VERB(BIGSTRING("\pticks"), clov_ticks);
-    ADD_VERB(BIGSTRING("\pmilliseconds"), clov_milliseconds);
-    ADD_VERB(BIGSTRING("\pwaitseconds"), clov_waitseconds);
-    ADD_VERB(BIGSTRING("\pwaitsixtieths"), clov_waitsixtieths);
+    ADD_VERB(BIGSTRING("\003now"), clov_now);
+    ADD_VERB(BIGSTRING("\003set"), clov_set);
+    ADD_VERB(BIGSTRING("\010sleepfor"), clov_sleepfor);
+    ADD_VERB(BIGSTRING("\005ticks"), clov_ticks);
+    ADD_VERB(BIGSTRING("\014milliseconds"), clov_milliseconds);
+    ADD_VERB(BIGSTRING("\013waitseconds"), clov_waitseconds);
+    ADD_VERB(BIGSTRING("\015waitsixtieths"), clov_waitsixtieths);
 
     #undef ADD_VERB
 

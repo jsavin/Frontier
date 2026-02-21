@@ -116,7 +116,7 @@ static boolean webserver_valueproc(short token, hdltreenode hparam1,
 
             initvalue(&vadrtable, addressvaluetype);
 
-            if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\padrHeaderTable"), &vadrtable))
+            if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\016adrHeaderTable"), &vadrtable))
                 return false;
 
             if (vadrtable.data.addressvalue != nil) {
@@ -136,7 +136,7 @@ static boolean webserver_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\presponseBody"), &vresponse))
+            if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\014responseBody"), &vresponse))
                 return false;
 
             return webserverbuildresponse(bscode, hheadertable, vresponse.data.stringvalue, vreturned);
@@ -179,7 +179,7 @@ boolean webserverinitverbs(void) {
 
     log_debug(LOG_COMP_LANG, "webserverinitverbs: registering webserver EFP");
 
-    copystring(BIGSTRING("\pwebserver"), bsname);
+    copystring(BIGSTRING("\011webserver"), bsname);
 
     if (!newfunctionprocessor(bsname, &webserver_valueproc, false, &htable)) {
         log_error(LOG_COMP_LANG, "webserverinitverbs: newfunctionprocessor failed");
@@ -197,13 +197,13 @@ boolean webserverinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\pserver"), webv_server);
-    ADD_VERB(BIGSTRING("\pdispatch"), webv_dispatch);
-    ADD_VERB(BIGSTRING("\pparseheaders"), webv_parseheaders);
-    ADD_VERB(BIGSTRING("\pparsecookies"), webv_parsecookies);
-    ADD_VERB(BIGSTRING("\pbuildresponse"), webv_buildresponse);
-    ADD_VERB(BIGSTRING("\pbuilderrorpage"), webv_builderrorpage);
-    ADD_VERB(BIGSTRING("\pgetserverstring"), webv_getserverstring);
+    ADD_VERB(BIGSTRING("\006server"), webv_server);
+    ADD_VERB(BIGSTRING("\010dispatch"), webv_dispatch);
+    ADD_VERB(BIGSTRING("\014parseheaders"), webv_parseheaders);
+    ADD_VERB(BIGSTRING("\014parsecookies"), webv_parsecookies);
+    ADD_VERB(BIGSTRING("\015buildresponse"), webv_buildresponse);
+    ADD_VERB(BIGSTRING("\016builderrorpage"), webv_builderrorpage);
+    ADD_VERB(BIGSTRING("\017getserverstring"), webv_getserverstring);
 
     #undef ADD_VERB
 
