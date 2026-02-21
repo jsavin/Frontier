@@ -4,6 +4,7 @@
 #include "osincludes_portable.h"
 
 #include "process.h"
+#include "threadregistry.h"  /* headless_backgroundtask */
 #include "threads.h"
 #include "fileloop.h"
 #include "launch.h"
@@ -182,10 +183,17 @@ boolean processsleep (hdlprocessthread t, unsigned long timeout) {
     const unsigned long poll_interval_ms = 50;  /* Poll every 50ms */
 
     while (elapsed < ms) {
-        /* Process any pending TCP callbacks */
+        /* Process any pending TCP callbacks (spawns GIL-aware threads) */
         tcp_process_callbacks();
 
-        /* Sleep for poll interval or remaining time, whichever is less */
+        /* Yield the GIL so spawned callback threads can run during our sleep.
+         * Without this, callback threads spawned by tcp_process_callbacks()
+         * would block on GIL acquisition for the entire sleep duration. */
+        headless_backgroundtask(true);
+
+        /* Sleep for poll interval or remaining time, whichever is less.
+         * We hold the GIL here but only for a short interval before
+         * yielding again at the top of the loop. */
         unsigned long sleep_time = (ms - elapsed < poll_interval_ms) ? (ms - elapsed) : poll_interval_ms;
         usleep((useconds_t)(sleep_time * 1000));  /* usleep takes microseconds */
         elapsed += sleep_time;
