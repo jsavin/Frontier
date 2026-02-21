@@ -8536,10 +8536,14 @@ boolean langgetnodecode (hdlhashtable ht, bigstring bs, hdlhashnode hnode, hdltr
 			 * These trees have nil param1 because they were compiled against a
 			 * different verb table layout.
 			 *
+			 * The recompile is a one-time cost per stale node: the script compiler
+			 * (scriptcompilecallback) writes back the freshly compiled tree via
+			 * opverblinkcode(), so subsequent calls find valid compiled code.
+			 *
 			 * Known false positive: a legitimately empty script also compiles to a
-			 * tree with nil param1. In headless mode this causes an extra recompile
-			 * per access, which is acceptable — empty scripts are rare in practice
-			 * and recompilation is cheap (produces the same empty tree).
+			 * tree with nil param1, causing repeated recompilation on every access.
+			 * This is acceptable — empty scripts are rare in practice and
+			 * recompilation is cheap (produces the same empty tree).
 			 *
 			 * The master pointer dereference (*(*hcode)) is safe here because
 			 * langexternalvaltocode just populated the handle from a live node.
