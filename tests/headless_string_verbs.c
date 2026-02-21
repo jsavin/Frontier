@@ -214,8 +214,8 @@ boolean stringinitverbs(void) {
 	ADD_VERB(BIGSTRING("\011urlencode"), urlencodefunc);
 	ADD_VERB(BIGSTRING("\015parsehttpargs"), parseargsfunc);
 	ADD_VERB(BIGSTRING("\015iso8859encode"), iso8859encodefunc);
-	ADD_VERB(BIGSTRING("\020getgifheightwidth"), getgifheightwidthfunc);
-	ADD_VERB(BIGSTRING("\021getjpegheightwidth"), getjpegheightwidthfunc);
+	ADD_VERB(BIGSTRING("\021getgifheightwidth"), getgifheightwidthfunc);
+	ADD_VERB(BIGSTRING("\022getjpegheightwidth"), getjpegheightwidthfunc);
 	ADD_VERB(BIGSTRING("\004wrap"), wrapfunc);
 	ADD_VERB(BIGSTRING("\017davenetmassager"), davenetmassagerfunc);
 	ADD_VERB(BIGSTRING("\014parseaddress"), parseaddressfunc);
