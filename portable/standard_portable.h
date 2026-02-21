@@ -32,6 +32,9 @@
  * Usage: PSTRING("\006", "delete") — fails to compile if \006 != strlen("delete")
  * Replaces: BIGSTRING("\006delete") which has no validation.
  *
+ * Both arguments MUST be string literals. sizeof(s) gives compile-time
+ * string length only for literals; passing a variable produces wrong results.
+ *
  * Note: Uses GNU statement expressions ({ ... }) (GCC/Clang extension) and
  * _Static_assert (C11). The project builds with -std=c17 so both are available.
  * Only valid in expression context (not file-scope initializers). */

@@ -29,8 +29,8 @@ def check_file(filepath):
     errors = []
     with open(filepath, 'r') as f:
         for lineno, line in enumerate(f, 1):
-            # Check for broken \p prefixes
-            for m in re.finditer(r'(?:ADD_VERB|copystring)\(BIGSTRING\("\\p([^"]+)"\)', line):
+            # Check for broken \p prefixes in any BIGSTRING call
+            for m in re.finditer(r'BIGSTRING\("\\p([^"]+)"\)', line):
                 errors.append((filepath, lineno, 'broken_prefix',
                     f'\\p prefix (not valid in modern C): "\\p{m.group(1)}"'))
 
@@ -45,7 +45,7 @@ def check_file(filepath):
                         f'PSTRING \\{octal_str} ({declared_len}) != "{verb_name}" ({actual_len})'))
 
             # Check legacy BIGSTRING("\NNNname") format
-            for m in re.finditer(r'BIGSTRING\("\\([0-7]{3})([^"]+)"\)', line):
+            for m in re.finditer(r'BIGSTRING\("\\([0-7]{3})([^"]*)"\)', line):
                 octal_str = m.group(1)
                 verb_name = m.group(2)
                 declared_len = int(octal_str, 8)

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 r"""Migrate BIGSTRING("\NNNfoo") → PSTRING("\NNN", "foo") in headless verb files.
 
-Only converts BIGSTRING calls that have an octal length prefix (i.e., Pascal
-strings used in verb registration). Other BIGSTRING usage is left unchanged.
+Only converts BIGSTRING calls that have a 3-digit octal length prefix (e.g.,
+\006). Calls using fewer octal digits (e.g., \6) are not matched. Other
+BIGSTRING usage without octal prefixes is left unchanged.
 
 Scope: Intentionally targets only tests/headless_*_verbs.c files. BIGSTRING
 calls in Common/ source files use the legacy format and are not migrated —
