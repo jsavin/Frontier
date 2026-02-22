@@ -27,7 +27,7 @@ def c_strlen(s):
 
 def check_file(filepath):
     errors = []
-    with open(filepath, 'r') as f:
+    with open(filepath, 'r', encoding='utf-8') as f:
         for lineno, line in enumerate(f, 1):
             # Check for broken \p prefixes in any BIGSTRING call
             for m in re.finditer(r'BIGSTRING\("\\p([^"]+)"\)', line):
@@ -66,7 +66,7 @@ def main():
     total_checked = 0
 
     for filepath in files:
-        with open(filepath, 'r') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
         # Count both PSTR and BIGSTRING with octal prefixes
         pstr_count = len(re.findall(r'PSTRING\("\\[0-7]{3}",\s*"', content))
