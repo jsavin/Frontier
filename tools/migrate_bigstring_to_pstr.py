@@ -23,7 +23,7 @@ BIGSTRING_PATTERN = re.compile(r'BIGSTRING\("\\([0-7]{3})([^"]*)"\)')
 
 
 def migrate_file(filepath, dry_run=False):
-    with open(filepath, 'r') as f:
+    with open(filepath, 'r', encoding='utf-8') as f:
         original = f.read()
 
     migrated = BIGSTRING_PATTERN.sub(r'PSTRING("\\\1", "\2")', original)
@@ -34,7 +34,7 @@ def migrate_file(filepath, dry_run=False):
     count = len(BIGSTRING_PATTERN.findall(original))
 
     if not dry_run:
-        with open(filepath, 'w') as f:
+        with open(filepath, 'w', encoding='utf-8') as f:
             f.write(migrated)
 
     return count

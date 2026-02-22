@@ -38,8 +38,11 @@
  * Note: Uses GNU statement expressions ({ ... }) (GCC/Clang extension) and
  * _Static_assert (C11). The project builds with -std=c17 so both are available.
  * Only valid in expression context (not file-scope initializers). */
+#ifdef PSTRING
+#error "PSTRING already defined — possible conflict with legacy Mac headers"
+#endif
 #define PSTRING(len_str, s) \
-    ({ _Static_assert((unsigned char)(len_str "\0")[0] == sizeof(s) - 1, \
+    ({ _Static_assert((unsigned char)(len_str)[0] == sizeof(s) - 1, \
                       "Pascal string length byte mismatch"); \
        BIGSTRING(len_str s); })
 
