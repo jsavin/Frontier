@@ -75,14 +75,14 @@ static boolean shellescapestring(bigstring input, Handle *hescaped) {
     Handle h;
     short i;
 
-    if (!newtexthandle(BIGSTRING("\001'"), &h))
+    if (!newtexthandle(PSTRING("\001", "'"), &h))
         return false;
 
     /* Escape each single quote as '\'' and copy other chars verbatim */
     for (i = 1; i <= stringlength(input); i++) {
         if (input[i] == '\'') {
             /* Close quote, add escaped quote, reopen quote: '\'' */
-            if (!pushtexthandle(BIGSTRING("\004'\\''"), h)) {
+            if (!pushtexthandle(PSTRING("\004", "'\\''"), h)) {
                 disposehandle(h);
                 return false;
             }
@@ -99,7 +99,7 @@ static boolean shellescapestring(bigstring input, Handle *hescaped) {
     }
 
     /* Close final quote */
-    if (!pushtexthandle(BIGSTRING("\001'"), h)) {
+    if (!pushtexthandle(PSTRING("\001", "'"), h)) {
         disposehandle(h);
         return false;
     }
@@ -121,7 +121,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
             #ifdef __APPLE__
             /* macOS: Use sw_vers -productVersion */
-            if (!newtexthandle(BIGSTRING("\027sw_vers -productVersion"), &hcommand))
+            if (!newtexthandle(PSTRING("\027", "sw_vers -productVersion"), &hcommand))
                 return false;
             #else
             /* Linux: Try to get distribution name and version, fall back to uname -r */
@@ -189,7 +189,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * Single quotes prevent all shell interpretation
              * Exit code 0 = process found, non-zero = not found
              */
-            if (!newtexthandle(BIGSTRING("\011pgrep -x "), &hcommand)) {
+            if (!newtexthandle(PSTRING("\011", "pgrep -x "), &hcommand)) {
                 disposehandle(hescaped);
                 return false;
             }
@@ -201,7 +201,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             }
             disposehandle(hescaped);
 
-            if (!pushtexthandle(BIGSTRING("\021 > /dev/null 2>&1"), hcommand)) {
+            if (!pushtexthandle(PSTRING("\021", " > /dev/null 2>&1"), hcommand)) {
                 disposehandle(hcommand);
                 return false;
             }
@@ -251,7 +251,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 return false;
 
             /* Build command: ps aux | tail -n +2 | wc -l (skip header line) */
-            if (!newtexthandle(BIGSTRING("\033ps aux | tail -n +2 | wc -l"), &hcommand))
+            if (!newtexthandle(PSTRING("\033", "ps aux | tail -n +2 | wc -l"), &hcommand))
                 return false;
 
             newemptyhandle(&houtput);
@@ -312,7 +312,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             if (!getstringvalue(hparam1, 1, appname))
                 return false;
 
-            copystring(BIGSTRING("\062sys.getAppPath is not implemented on this platform"), bserror);
+            copystring(PSTRING("\062", "sys.getAppPath is not implemented on this platform"), bserror);
 
             return false;
             }
@@ -331,7 +331,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 return false;
 
             /* Use uname -m to get machine architecture */
-            if (!newtexthandle(BIGSTRING("\010uname -m"), &hcommand))
+            if (!newtexthandle(PSTRING("\010", "uname -m"), &hcommand))
                 return false;
 
             newemptyhandle(&hmachine);
@@ -356,13 +356,13 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 return false;
 
             #ifdef __APPLE__
-            return setstringvalue(BIGSTRING("\005MacOS"), vreturned);
+            return setstringvalue(PSTRING("\005", "MacOS"), vreturned);
             #elif defined(_WIN32)
-            return setstringvalue(BIGSTRING("\007Windows"), vreturned);
+            return setstringvalue(PSTRING("\007", "Windows"), vreturned);
             #elif defined(__linux__)
-            return setstringvalue(BIGSTRING("\005Linux"), vreturned);
+            return setstringvalue(PSTRING("\005", "Linux"), vreturned);
             #else
-            return setstringvalue(BIGSTRING("\007Unknown"), vreturned);
+            return setstringvalue(PSTRING("\007", "Unknown"), vreturned);
             #endif
         case sysv_getenvironmentvariable: {
             /* @IMPLEMENTED sys.getenvironmentvariable(name) - Get environment variable value
@@ -446,7 +446,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
             #else
             if (setenv(cvarname, cvarvalue, 1) != 0) {
             #endif
-                langerrormessage(BIGSTRING("\071Can't set environment variable because system call failed"));
+                langerrormessage(PSTRING("\071", "Can't set environment variable because system call failed"));
                 return false;
             }
 
@@ -601,7 +601,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 return (setbooleanvalue (true, vreturned));
             }
             else {
-                langparamerror (unimplementedverberror, BIGSTRING("\023too many parameters"));
+                langparamerror (unimplementedverberror, PSTRING("\023", "too many parameters"));
                 return (false);
             }
             }
@@ -614,7 +614,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
             /* Don't dispose hcommand — exempted handles are managed by heap/hashtable */
 
-            copystring(BIGSTRING("\067sys.winShellCommand is not implemented on this platform"), bserror);
+            copystring(PSTRING("\067", "sys.winShellCommand is not implemented on this platform"), bserror);
 
             return false;
             }
@@ -627,7 +627,7 @@ boolean sysinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\003sys"), bsname);
+    copystring(PSTRING("\003", "sys"), bsname);
 
     if (!newfunctionprocessor(bsname, &sys_valueproc, false, &htable))
         return false;
@@ -643,22 +643,22 @@ boolean sysinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\011osversion"), sysv_osversion);
-    ADD_VERB(BIGSTRING("\012systemtask"), sysv_systemtask);
-    ADD_VERB(BIGSTRING("\015browsenetwork"), sysv_browsenetwork);
-    ADD_VERB(BIGSTRING("\014appisrunning"), sysv_appisrunning);
-    ADD_VERB(BIGSTRING("\014frontmostapp"), sysv_frontmostapp);
-    ADD_VERB(BIGSTRING("\017bringapptofront"), sysv_bringapptofront);
-    ADD_VERB(BIGSTRING("\011countapps"), sysv_countapps);
-    ADD_VERB(BIGSTRING("\011getnthapp"), sysv_getnthapp);
-    ADD_VERB(BIGSTRING("\012getapppath"), sysv_getapppath);
-    ADD_VERB(BIGSTRING("\010memavail"), sysv_memavail);
-    ADD_VERB(BIGSTRING("\007machine"), sysv_machine);
-    ADD_VERB(BIGSTRING("\002os"), sysv_os);
-    ADD_VERB(BIGSTRING("\026getenvironmentvariable"), sysv_getenvironmentvariable);
-    ADD_VERB(BIGSTRING("\026setenvironmentvariable"), sysv_setenvironmentvariable);
-    ADD_VERB(BIGSTRING("\020unixshellcommand"), sysv_unixshellcommand);
-    ADD_VERB(BIGSTRING("\017winshellcommand"), sysv_winshellcommand);
+    ADD_VERB(PSTRING("\011", "osversion"), sysv_osversion);
+    ADD_VERB(PSTRING("\012", "systemtask"), sysv_systemtask);
+    ADD_VERB(PSTRING("\015", "browsenetwork"), sysv_browsenetwork);
+    ADD_VERB(PSTRING("\014", "appisrunning"), sysv_appisrunning);
+    ADD_VERB(PSTRING("\014", "frontmostapp"), sysv_frontmostapp);
+    ADD_VERB(PSTRING("\017", "bringapptofront"), sysv_bringapptofront);
+    ADD_VERB(PSTRING("\011", "countapps"), sysv_countapps);
+    ADD_VERB(PSTRING("\011", "getnthapp"), sysv_getnthapp);
+    ADD_VERB(PSTRING("\012", "getapppath"), sysv_getapppath);
+    ADD_VERB(PSTRING("\010", "memavail"), sysv_memavail);
+    ADD_VERB(PSTRING("\007", "machine"), sysv_machine);
+    ADD_VERB(PSTRING("\002", "os"), sysv_os);
+    ADD_VERB(PSTRING("\026", "getenvironmentvariable"), sysv_getenvironmentvariable);
+    ADD_VERB(PSTRING("\026", "setenvironmentvariable"), sysv_setenvironmentvariable);
+    ADD_VERB(PSTRING("\020", "unixshellcommand"), sysv_unixshellcommand);
+    ADD_VERB(PSTRING("\017", "winshellcommand"), sysv_winshellcommand);
 
     #undef ADD_VERB
 

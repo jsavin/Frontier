@@ -38,31 +38,31 @@ static boolean mainwindow_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case maiv_showflag:
             /* Verb #0: mainwindow.showflag - GUI not available */
-            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(PSTRING("\110", "Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hideflag:
             /* Verb #1: mainwindow.hideflag - GUI not available */
-            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(PSTRING("\110", "Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showpopup:
             /* Verb #2: mainwindow.showpopup - GUI not available */
-            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(PSTRING("\110", "Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hidepopup:
             /* Verb #3: mainwindow.hidepopup - GUI not available */
-            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(PSTRING("\110", "Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showbuttons:
             /* Verb #4: mainwindow.showbuttons - GUI not available */
-            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(PSTRING("\110", "Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_hidebuttons:
             /* Verb #5: mainwindow.hidebuttons - GUI not available */
-            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(PSTRING("\110", "Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         case maiv_showserverstats:
             /* Verb #6: mainwindow.showserverstats - GUI not available */
-            if (bserror) copystring(BIGSTRING("\110Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
+            if (bserror) copystring(PSTRING("\110", "Can't use mainwindow verbs because GUI is not available in headless mode"), bserror);
             return false;
         default:
             return false;
@@ -73,7 +73,7 @@ boolean mainwindowinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\012mainwindow"), bsname);
+    copystring(PSTRING("\012", "mainwindow"), bsname);
 
     if (!newfunctionprocessor(bsname, &mainwindow_valueproc, false, &htable))
         return false;
@@ -89,13 +89,13 @@ boolean mainwindowinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\010showflag"), maiv_showflag);
-    ADD_VERB(BIGSTRING("\010hideflag"), maiv_hideflag);
-    ADD_VERB(BIGSTRING("\011showpopup"), maiv_showpopup);
-    ADD_VERB(BIGSTRING("\011hidepopup"), maiv_hidepopup);
-    ADD_VERB(BIGSTRING("\013showbuttons"), maiv_showbuttons);
-    ADD_VERB(BIGSTRING("\013hidebuttons"), maiv_hidebuttons);
-    ADD_VERB(BIGSTRING("\017showserverstats"), maiv_showserverstats);
+    ADD_VERB(PSTRING("\010", "showflag"), maiv_showflag);
+    ADD_VERB(PSTRING("\010", "hideflag"), maiv_hideflag);
+    ADD_VERB(PSTRING("\011", "showpopup"), maiv_showpopup);
+    ADD_VERB(PSTRING("\011", "hidepopup"), maiv_hidepopup);
+    ADD_VERB(PSTRING("\013", "showbuttons"), maiv_showbuttons);
+    ADD_VERB(PSTRING("\013", "hidebuttons"), maiv_hidebuttons);
+    ADD_VERB(PSTRING("\017", "showserverstats"), maiv_showserverstats);
 
     #undef ADD_VERB
 

@@ -363,7 +363,7 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
                 if (!tablevaltotable(val, &ht, hnode)) {
                     log_error(LOG_COMP_LANG, "xml.getaddresslist: tablevaltotable failed (not a table)");
                     if (!fllangerror) {
-                        copystring(BIGSTRING("\057Can't coerce the value because it's not a table"), bserror);
+                        copystring(PSTRING("\057", "Can't coerce the value because it's not a table"), bserror);
                         langerrormessage(bserror);
                     }
                     return false;
@@ -880,7 +880,7 @@ boolean xmlinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\003xml"), bsname);
+    copystring(PSTRING("\003", "xml"), bsname);
 
     if (!newfunctionprocessor(bsname, &xml_valueproc, false, &htable))
         return false;
@@ -896,20 +896,20 @@ boolean xmlinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\010addtable"), xmlv_addtable);
-    ADD_VERB(BIGSTRING("\010addvalue"), xmlv_addvalue);
-    ADD_VERB(BIGSTRING("\007compile"), xmlv_compile);
-    ADD_VERB(BIGSTRING("\011decompile"), xmlv_decompile);
-    ADD_VERB(BIGSTRING("\012getaddress"), xmlv_getaddress);
-    ADD_VERB(BIGSTRING("\016getaddresslist"), xmlv_getaddresslist);
-    ADD_VERB(BIGSTRING("\014getattribute"), xmlv_getattribute);
-    ADD_VERB(BIGSTRING("\021getattributevalue"), xmlv_getattributevalue);
-    ADD_VERB(BIGSTRING("\010getvalue"), xmlv_getvalue);
-    ADD_VERB(BIGSTRING("\013valtostring"), xmlv_valtostring);
-    ADD_VERB(BIGSTRING("\031frontiervaluetotaggedtext"), xmlv_frontiervaluetotaggedtext);
-    ADD_VERB(BIGSTRING("\025structtofrontiervalue"), xmlv_structtofrontiervalue);
-    ADD_VERB(BIGSTRING("\016getpathaddress"), xmlv_getpathaddress);
-    ADD_VERB(BIGSTRING("\024converttodisplayname"), xmlv_converttodisplayname);
+    ADD_VERB(PSTRING("\010", "addtable"), xmlv_addtable);
+    ADD_VERB(PSTRING("\010", "addvalue"), xmlv_addvalue);
+    ADD_VERB(PSTRING("\007", "compile"), xmlv_compile);
+    ADD_VERB(PSTRING("\011", "decompile"), xmlv_decompile);
+    ADD_VERB(PSTRING("\012", "getaddress"), xmlv_getaddress);
+    ADD_VERB(PSTRING("\016", "getaddresslist"), xmlv_getaddresslist);
+    ADD_VERB(PSTRING("\014", "getattribute"), xmlv_getattribute);
+    ADD_VERB(PSTRING("\021", "getattributevalue"), xmlv_getattributevalue);
+    ADD_VERB(PSTRING("\010", "getvalue"), xmlv_getvalue);
+    ADD_VERB(PSTRING("\013", "valtostring"), xmlv_valtostring);
+    ADD_VERB(PSTRING("\031", "frontiervaluetotaggedtext"), xmlv_frontiervaluetotaggedtext);
+    ADD_VERB(PSTRING("\025", "structtofrontiervalue"), xmlv_structtofrontiervalue);
+    ADD_VERB(PSTRING("\016", "getpathaddress"), xmlv_getpathaddress);
+    ADD_VERB(PSTRING("\024", "converttodisplayname"), xmlv_converttodisplayname);
 
     #undef ADD_VERB
 

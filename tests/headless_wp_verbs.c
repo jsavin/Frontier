@@ -303,7 +303,7 @@ boolean wpinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\002wp"), bsname);
+    copystring(PSTRING("\002", "wp"), bsname);
 
     if (!newfunctionprocessor(bsname, &wp_valueproc, true, &htable))
         return false;
@@ -317,33 +317,33 @@ boolean wpinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\012intextmode"), wpv_intextmode);
-    ADD_VERB(BIGSTRING("\013settextmode"), wpv_settextmode);
-    ADD_VERB(BIGSTRING("\007gettext"), wpv_gettext);
-    ADD_VERB(BIGSTRING("\007settext"), wpv_settext);
-    ADD_VERB(BIGSTRING("\012getseltext"), wpv_getseltext);
-    ADD_VERB(BIGSTRING("\012getdisplay"), wpv_getdisplay);
-    ADD_VERB(BIGSTRING("\012setdisplay"), wpv_setdisplay);
-    ADD_VERB(BIGSTRING("\010getruler"), wpv_getruler);
-    ADD_VERB(BIGSTRING("\010setruler"), wpv_setruler);
-    ADD_VERB(BIGSTRING("\011getindent"), wpv_getindent);
-    ADD_VERB(BIGSTRING("\011setindent"), wpv_setindent);
-    ADD_VERB(BIGSTRING("\015getleftmargin"), wpv_getleftmargin);
-    ADD_VERB(BIGSTRING("\015setleftmargin"), wpv_setleftmargin);
-    ADD_VERB(BIGSTRING("\016getrightmargin"), wpv_getrightmargin);
-    ADD_VERB(BIGSTRING("\016setrightmargin"), wpv_setrightmargin);
-    ADD_VERB(BIGSTRING("\012setspacing"), wpv_setspacing);
-    ADD_VERB(BIGSTRING("\020setjustification"), wpv_setjustification);
-    ADD_VERB(BIGSTRING("\006settab"), wpv_settab);
-    ADD_VERB(BIGSTRING("\011cleartabs"), wpv_cleartabs);
-    ADD_VERB(BIGSTRING("\011getselect"), wpv_getselection);
-    ADD_VERB(BIGSTRING("\011setselect"), wpv_setselection);
-    ADD_VERB(BIGSTRING("\006insert"), wpv_insert);
-    ADD_VERB(BIGSTRING("\013rulerlength"), wpv_rulerlength);
-    ADD_VERB(BIGSTRING("\002go"), wpv_go);
-    ADD_VERB(BIGSTRING("\012selectword"), wpv_selectword);
-    ADD_VERB(BIGSTRING("\012selectline"), wpv_selectline);
-    ADD_VERB(BIGSTRING("\017selectparagraph"), wpv_selectparagraph);
+    ADD_VERB(PSTRING("\012", "intextmode"), wpv_intextmode);
+    ADD_VERB(PSTRING("\013", "settextmode"), wpv_settextmode);
+    ADD_VERB(PSTRING("\007", "gettext"), wpv_gettext);
+    ADD_VERB(PSTRING("\007", "settext"), wpv_settext);
+    ADD_VERB(PSTRING("\012", "getseltext"), wpv_getseltext);
+    ADD_VERB(PSTRING("\012", "getdisplay"), wpv_getdisplay);
+    ADD_VERB(PSTRING("\012", "setdisplay"), wpv_setdisplay);
+    ADD_VERB(PSTRING("\010", "getruler"), wpv_getruler);
+    ADD_VERB(PSTRING("\010", "setruler"), wpv_setruler);
+    ADD_VERB(PSTRING("\011", "getindent"), wpv_getindent);
+    ADD_VERB(PSTRING("\011", "setindent"), wpv_setindent);
+    ADD_VERB(PSTRING("\015", "getleftmargin"), wpv_getleftmargin);
+    ADD_VERB(PSTRING("\015", "setleftmargin"), wpv_setleftmargin);
+    ADD_VERB(PSTRING("\016", "getrightmargin"), wpv_getrightmargin);
+    ADD_VERB(PSTRING("\016", "setrightmargin"), wpv_setrightmargin);
+    ADD_VERB(PSTRING("\012", "setspacing"), wpv_setspacing);
+    ADD_VERB(PSTRING("\020", "setjustification"), wpv_setjustification);
+    ADD_VERB(PSTRING("\006", "settab"), wpv_settab);
+    ADD_VERB(PSTRING("\011", "cleartabs"), wpv_cleartabs);
+    ADD_VERB(PSTRING("\011", "getselect"), wpv_getselection);
+    ADD_VERB(PSTRING("\011", "setselect"), wpv_setselection);
+    ADD_VERB(PSTRING("\006", "insert"), wpv_insert);
+    ADD_VERB(PSTRING("\013", "rulerlength"), wpv_rulerlength);
+    ADD_VERB(PSTRING("\002", "go"), wpv_go);
+    ADD_VERB(PSTRING("\012", "selectword"), wpv_selectword);
+    ADD_VERB(PSTRING("\012", "selectline"), wpv_selectline);
+    ADD_VERB(PSTRING("\017", "selectparagraph"), wpv_selectparagraph);
 
     #undef ADD_VERB
 

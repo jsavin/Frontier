@@ -39,19 +39,19 @@ static boolean searchengine_valueproc(short token, hdltreenode hparam1,
             return stripmarkupverb(hparam1, vreturned);
         case seav_deindexpage:
             /* Verb #1: searchengine.deindexpage - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case seav_indexpage:
             /* Verb #2: searchengine.indexpage - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case seav_cleanindex:
             /* Verb #3: searchengine.cleanindex - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case seav_mergeresults:
             /* Verb #4: searchengine.mergeresults - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -62,7 +62,7 @@ boolean searchengineinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\014searchengine"), bsname);
+    copystring(PSTRING("\014", "searchengine"), bsname);
 
     if (!newfunctionprocessor(bsname, &searchengine_valueproc, false, &htable))
         return false;
@@ -78,11 +78,11 @@ boolean searchengineinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\013stripmarkup"), seav_stripmarkup);
-    ADD_VERB(BIGSTRING("\013deindexpage"), seav_deindexpage);
-    ADD_VERB(BIGSTRING("\011indexpage"), seav_indexpage);
-    ADD_VERB(BIGSTRING("\012cleanindex"), seav_cleanindex);
-    ADD_VERB(BIGSTRING("\014mergeresults"), seav_mergeresults);
+    ADD_VERB(PSTRING("\013", "stripmarkup"), seav_stripmarkup);
+    ADD_VERB(PSTRING("\013", "deindexpage"), seav_deindexpage);
+    ADD_VERB(PSTRING("\011", "indexpage"), seav_indexpage);
+    ADD_VERB(PSTRING("\012", "cleanindex"), seav_cleanindex);
+    ADD_VERB(PSTRING("\014", "mergeresults"), seav_mergeresults);
 
     #undef ADD_VERB
 

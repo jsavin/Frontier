@@ -229,66 +229,66 @@ static boolean lang_valueproc(short token, hdltreenode hparam1,
             return langabsfunc(hparam1, vreturned);
         case lanv_seteventtimeout:
             /* Verb: lang.seteventtimeout - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_seteventtransactionid:
             /* Verb: lang.seteventtransactionid - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_seteventinteraction:
             /* Verb: lang.seteventinteraction - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_geteventattribute:
             /* Verb: lang.geteventattribute - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_coerceappleitem:
             /* Verb: lang.coerceappleitem - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_getapplelistitem:
             /* Verb: lang.getapplelistitem - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_putapplelistitem:
             /* Verb: lang.putapplelistitem - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_countapplelistitems:
             /* Verb: lang.countapplelistitems - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_systemevent:
             /* Verb: lang.systemevent - AppleEvent verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_ddeevent:
             /* Verb: lang.ddeevent - Legacy Windows DDE verb not supported on this platform (Issue #284) @IMPLEMENTED */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_transactionevent:
             /* Verb: lang.transactionevent - AppleEvent verb not supported on this platform (Issue #284) @IMPLEMENTED */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_msg:
             /* Verb: lang.msg - forward to real implementation */
             return langmsgfunc(hparam1, vreturned);
         case lanv_callxcmd:
             /* Verb: lang.callxcmd - Legacy HyperCard XCMD verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_calldll:
             /* Verb: lang.calldll - Legacy Windows DLL verb not supported on this platform (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_packwindow:
             /* Verb: lang.packwindow - Window management verb not supported in headless mode (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_unpackwindow:
             /* Verb: lang.unpackwindow - Window management verb not supported in headless mode (Issue #284) */
-            if (bserror) copystring(BIGSTRING("\036not supported on this platform"), bserror);
+            if (bserror) copystring(PSTRING("\036", "not supported on this platform"), bserror);
             return false;
         case lanv_callscript:
             /* Verb: lang.callscript - forward to real implementation */
@@ -302,7 +302,7 @@ boolean langinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\004lang"), bsname);
+    copystring(PSTRING("\004", "lang"), bsname);
 
     if (!newfunctionprocessor(bsname, &lang_valueproc, false, &htable))
         return false;
@@ -318,67 +318,67 @@ boolean langinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\013scripterror"), lanv_scripterror);
-    ADD_VERB(BIGSTRING("\003new"), lanv_new);
-    ADD_VERB(BIGSTRING("\006delete"), lanv_delete);
-    ADD_VERB(BIGSTRING("\004edit"), lanv_edit);
-    ADD_VERB(BIGSTRING("\011gettarget"), lanv_gettarget);
-    ADD_VERB(BIGSTRING("\011settarget"), lanv_settarget);
-    ADD_VERB(BIGSTRING("\013cleartarget"), lanv_cleartarget);
-    ADD_VERB(BIGSTRING("\005close"), lanv_close);
-    ADD_VERB(BIGSTRING("\013timecreated"), lanv_timecreated);
-    ADD_VERB(BIGSTRING("\014timemodified"), lanv_timemodified);
-    ADD_VERB(BIGSTRING("\016settimecreated"), lanv_settimecreated);
-    ADD_VERB(BIGSTRING("\017settimemodified"), lanv_settimemodified);
-    ADD_VERB(BIGSTRING("\007boolean"), lanv_boolean);
-    ADD_VERB(BIGSTRING("\004char"), lanv_char);
-    ADD_VERB(BIGSTRING("\005short"), lanv_short);
-    ADD_VERB(BIGSTRING("\004long"), lanv_long);
-    ADD_VERB(BIGSTRING("\004date"), lanv_date);
-    ADD_VERB(BIGSTRING("\011direction"), lanv_direction);
-    ADD_VERB(BIGSTRING("\007string4"), lanv_string4);
-    ADD_VERB(BIGSTRING("\006string"), lanv_string);
-    ADD_VERB(BIGSTRING("\015displaystring"), lanv_displaystring);
-    ADD_VERB(BIGSTRING("\007address"), lanv_address);
-    ADD_VERB(BIGSTRING("\006binary"), lanv_binary);
-    ADD_VERB(BIGSTRING("\015getbinarytype"), lanv_getbinarytype);
-    ADD_VERB(BIGSTRING("\015setbinarytype"), lanv_setbinarytype);
-    ADD_VERB(BIGSTRING("\005point"), lanv_point);
-    ADD_VERB(BIGSTRING("\004rect"), lanv_rect);
-    ADD_VERB(BIGSTRING("\003rgb"), lanv_rgb);
-    ADD_VERB(BIGSTRING("\007pattern"), lanv_pattern);
-    ADD_VERB(BIGSTRING("\005fixed"), lanv_fixed);
-    ADD_VERB(BIGSTRING("\006single"), lanv_single);
-    ADD_VERB(BIGSTRING("\006double"), lanv_double);
-    ADD_VERB(BIGSTRING("\010filespec"), lanv_filespec);
-    ADD_VERB(BIGSTRING("\005alias"), lanv_alias);
-    ADD_VERB(BIGSTRING("\004list"), lanv_list);
-    ADD_VERB(BIGSTRING("\006record"), lanv_record);
-    ADD_VERB(BIGSTRING("\004enum"), lanv_enum);
-    ADD_VERB(BIGSTRING("\010memavail"), lanv_memavail);
-    ADD_VERB(BIGSTRING("\013flushmemory"), lanv_flushmemory);
-    ADD_VERB(BIGSTRING("\006random"), lanv_random);
-    ADD_VERB(BIGSTRING("\010evaluate"), lanv_evaluate);
-    ADD_VERB(BIGSTRING("\016evaluatethread"), lanv_evaluatethread);
-    ADD_VERB(BIGSTRING("\015rollbeachball"), lanv_rollbeachball);
-    ADD_VERB(BIGSTRING("\003abs"), lanv_abs);
-    ADD_VERB(BIGSTRING("\017seteventtimeout"), lanv_seteventtimeout);
-    ADD_VERB(BIGSTRING("\025seteventtransactionid"), lanv_seteventtransactionid);
-    ADD_VERB(BIGSTRING("\023seteventinteraction"), lanv_seteventinteraction);
-    ADD_VERB(BIGSTRING("\021geteventattribute"), lanv_geteventattribute);
-    ADD_VERB(BIGSTRING("\017coerceappleitem"), lanv_coerceappleitem);
-    ADD_VERB(BIGSTRING("\020getapplelistitem"), lanv_getapplelistitem);
-    ADD_VERB(BIGSTRING("\020putapplelistitem"), lanv_putapplelistitem);
-    ADD_VERB(BIGSTRING("\023countapplelistitems"), lanv_countapplelistitems);
-    ADD_VERB(BIGSTRING("\013systemevent"), lanv_systemevent);
-    ADD_VERB(BIGSTRING("\010DDEevent"), lanv_ddeevent);
-    ADD_VERB(BIGSTRING("\020transactionEvent"), lanv_transactionevent);
-    ADD_VERB(BIGSTRING("\003msg"), lanv_msg);
-    ADD_VERB(BIGSTRING("\010callxcmd"), lanv_callxcmd);
-    ADD_VERB(BIGSTRING("\007calldll"), lanv_calldll);
-    ADD_VERB(BIGSTRING("\012packwindow"), lanv_packwindow);
-    ADD_VERB(BIGSTRING("\014unpackwindow"), lanv_unpackwindow);
-    ADD_VERB(BIGSTRING("\012callscript"), lanv_callscript);
+    ADD_VERB(PSTRING("\013", "scripterror"), lanv_scripterror);
+    ADD_VERB(PSTRING("\003", "new"), lanv_new);
+    ADD_VERB(PSTRING("\006", "delete"), lanv_delete);
+    ADD_VERB(PSTRING("\004", "edit"), lanv_edit);
+    ADD_VERB(PSTRING("\011", "gettarget"), lanv_gettarget);
+    ADD_VERB(PSTRING("\011", "settarget"), lanv_settarget);
+    ADD_VERB(PSTRING("\013", "cleartarget"), lanv_cleartarget);
+    ADD_VERB(PSTRING("\005", "close"), lanv_close);
+    ADD_VERB(PSTRING("\013", "timecreated"), lanv_timecreated);
+    ADD_VERB(PSTRING("\014", "timemodified"), lanv_timemodified);
+    ADD_VERB(PSTRING("\016", "settimecreated"), lanv_settimecreated);
+    ADD_VERB(PSTRING("\017", "settimemodified"), lanv_settimemodified);
+    ADD_VERB(PSTRING("\007", "boolean"), lanv_boolean);
+    ADD_VERB(PSTRING("\004", "char"), lanv_char);
+    ADD_VERB(PSTRING("\005", "short"), lanv_short);
+    ADD_VERB(PSTRING("\004", "long"), lanv_long);
+    ADD_VERB(PSTRING("\004", "date"), lanv_date);
+    ADD_VERB(PSTRING("\011", "direction"), lanv_direction);
+    ADD_VERB(PSTRING("\007", "string4"), lanv_string4);
+    ADD_VERB(PSTRING("\006", "string"), lanv_string);
+    ADD_VERB(PSTRING("\015", "displaystring"), lanv_displaystring);
+    ADD_VERB(PSTRING("\007", "address"), lanv_address);
+    ADD_VERB(PSTRING("\006", "binary"), lanv_binary);
+    ADD_VERB(PSTRING("\015", "getbinarytype"), lanv_getbinarytype);
+    ADD_VERB(PSTRING("\015", "setbinarytype"), lanv_setbinarytype);
+    ADD_VERB(PSTRING("\005", "point"), lanv_point);
+    ADD_VERB(PSTRING("\004", "rect"), lanv_rect);
+    ADD_VERB(PSTRING("\003", "rgb"), lanv_rgb);
+    ADD_VERB(PSTRING("\007", "pattern"), lanv_pattern);
+    ADD_VERB(PSTRING("\005", "fixed"), lanv_fixed);
+    ADD_VERB(PSTRING("\006", "single"), lanv_single);
+    ADD_VERB(PSTRING("\006", "double"), lanv_double);
+    ADD_VERB(PSTRING("\010", "filespec"), lanv_filespec);
+    ADD_VERB(PSTRING("\005", "alias"), lanv_alias);
+    ADD_VERB(PSTRING("\004", "list"), lanv_list);
+    ADD_VERB(PSTRING("\006", "record"), lanv_record);
+    ADD_VERB(PSTRING("\004", "enum"), lanv_enum);
+    ADD_VERB(PSTRING("\010", "memavail"), lanv_memavail);
+    ADD_VERB(PSTRING("\013", "flushmemory"), lanv_flushmemory);
+    ADD_VERB(PSTRING("\006", "random"), lanv_random);
+    ADD_VERB(PSTRING("\010", "evaluate"), lanv_evaluate);
+    ADD_VERB(PSTRING("\016", "evaluatethread"), lanv_evaluatethread);
+    ADD_VERB(PSTRING("\015", "rollbeachball"), lanv_rollbeachball);
+    ADD_VERB(PSTRING("\003", "abs"), lanv_abs);
+    ADD_VERB(PSTRING("\017", "seteventtimeout"), lanv_seteventtimeout);
+    ADD_VERB(PSTRING("\025", "seteventtransactionid"), lanv_seteventtransactionid);
+    ADD_VERB(PSTRING("\023", "seteventinteraction"), lanv_seteventinteraction);
+    ADD_VERB(PSTRING("\021", "geteventattribute"), lanv_geteventattribute);
+    ADD_VERB(PSTRING("\017", "coerceappleitem"), lanv_coerceappleitem);
+    ADD_VERB(PSTRING("\020", "getapplelistitem"), lanv_getapplelistitem);
+    ADD_VERB(PSTRING("\020", "putapplelistitem"), lanv_putapplelistitem);
+    ADD_VERB(PSTRING("\023", "countapplelistitems"), lanv_countapplelistitems);
+    ADD_VERB(PSTRING("\013", "systemevent"), lanv_systemevent);
+    ADD_VERB(PSTRING("\010", "DDEevent"), lanv_ddeevent);
+    ADD_VERB(PSTRING("\020", "transactionEvent"), lanv_transactionevent);
+    ADD_VERB(PSTRING("\003", "msg"), lanv_msg);
+    ADD_VERB(PSTRING("\010", "callxcmd"), lanv_callxcmd);
+    ADD_VERB(PSTRING("\007", "calldll"), lanv_calldll);
+    ADD_VERB(PSTRING("\012", "packwindow"), lanv_packwindow);
+    ADD_VERB(PSTRING("\014", "unpackwindow"), lanv_unpackwindow);
+    ADD_VERB(PSTRING("\012", "callscript"), lanv_callscript);
 
     #undef ADD_VERB
 

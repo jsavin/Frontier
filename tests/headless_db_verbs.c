@@ -91,7 +91,7 @@ boolean dbinitverbs(void) {
 
     log_debug(LOG_COMP_LANG, "dbinitverbs: registering headless db processor");
 
-    copystring(BIGSTRING("\002db"), bsname);
+    copystring(PSTRING("\002", "db"), bsname);
 
     /* Initialize sentinel handle to prevent UAF when closing last database
      * This handle is never freed, so hodblist never becomes a dangling pointer */
@@ -115,19 +115,19 @@ boolean dbinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\003new"), dbv_new);
-    ADD_VERB(BIGSTRING("\004open"), dbv_open);
-    ADD_VERB(BIGSTRING("\004save"), dbv_save);
-    ADD_VERB(BIGSTRING("\005close"), dbv_close);
-    ADD_VERB(BIGSTRING("\007defined"), dbv_defined);
-    ADD_VERB(BIGSTRING("\010getvalue"), dbv_getvalue);
-    ADD_VERB(BIGSTRING("\010setvalue"), dbv_setvalue);
-    ADD_VERB(BIGSTRING("\006delete"), dbv_delete);
-    ADD_VERB(BIGSTRING("\010newtable"), dbv_newTable);
-    ADD_VERB(BIGSTRING("\007istable"), dbv_isTable);
-    ADD_VERB(BIGSTRING("\012countitems"), dbv_countitems);
-    ADD_VERB(BIGSTRING("\012getnthitem"), dbv_getnthitem);
-    ADD_VERB(BIGSTRING("\012getmoddate"), dbv_getmoddate);
+    ADD_VERB(PSTRING("\003", "new"), dbv_new);
+    ADD_VERB(PSTRING("\004", "open"), dbv_open);
+    ADD_VERB(PSTRING("\004", "save"), dbv_save);
+    ADD_VERB(PSTRING("\005", "close"), dbv_close);
+    ADD_VERB(PSTRING("\007", "defined"), dbv_defined);
+    ADD_VERB(PSTRING("\010", "getvalue"), dbv_getvalue);
+    ADD_VERB(PSTRING("\010", "setvalue"), dbv_setvalue);
+    ADD_VERB(PSTRING("\006", "delete"), dbv_delete);
+    ADD_VERB(PSTRING("\010", "newtable"), dbv_newTable);
+    ADD_VERB(PSTRING("\007", "istable"), dbv_isTable);
+    ADD_VERB(PSTRING("\012", "countitems"), dbv_countitems);
+    ADD_VERB(PSTRING("\012", "getnthitem"), dbv_getnthitem);
+    ADD_VERB(PSTRING("\012", "getmoddate"), dbv_getmoddate);
 
     #undef ADD_VERB
 

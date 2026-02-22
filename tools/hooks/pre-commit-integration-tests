@@ -151,6 +151,18 @@ if [ -n "$VERB_FILES_CHANGED" ]; then
         exit 1
     fi
 
+    # Check for BIGSTRING with octal prefix — should use PSTRING instead
+    BIGSTRING_VIOLATIONS=$(echo "$VERB_FILES_CHANGED" | xargs git diff --cached -U0 | grep -E '^\+.*BIGSTRING\("\\[0-7]{3}' | grep -v '^\+\+\+' || true)
+    if [ -n "$BIGSTRING_VIOLATIONS" ]; then
+        echo -e "${RED}ERROR: New BIGSTRING() with octal prefix in headless verb files.${NC}" >&2
+        echo "Use PSTRING() instead for compile-time length validation:" >&2
+        echo "  BIGSTRING(\"\\006delete\") → PSTRING(\"\\006\", \"delete\")" >&2
+        echo "" >&2
+        echo "Violations:" >&2
+        echo "$BIGSTRING_VIOLATIONS" | sed 's/^/  /' >&2
+        exit 1
+    fi
+
     # Run the full length verification if available
     if [ -f "$GIT_ROOT/tools/verify_pascal_string_lengths.py" ]; then
         cd "$GIT_ROOT"

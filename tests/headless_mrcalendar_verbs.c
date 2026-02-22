@@ -41,47 +41,47 @@ static boolean mrcalendar_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case mrcv_getaddressday:
             /* Verb #0: mrcalendar.getaddressday - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getdayaddress:
             /* Verb #1: mrcalendar.getdayaddress - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getfirstaddress:
             /* Verb #2: mrcalendar.getfirstaddress - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getfirstday:
             /* Verb #3: mrcalendar.getfirstday - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getlastaddress:
             /* Verb #4: mrcalendar.getlastaddress - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getlastday:
             /* Verb #5: mrcalendar.getlastday - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getmostrecentaddress:
             /* Verb #6: mrcalendar.getmostrecentaddress - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getmostrecentday:
             /* Verb #7: mrcalendar.getmostrecentday - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getnextaddress:
             /* Verb #8: mrcalendar.getnextaddress - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_getnextday:
             /* Verb #9: mrcalendar.getnextday - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mrcv_navigate:
             /* Verb #10: mrcalendar.navigate - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -92,7 +92,7 @@ boolean mrcalendarinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\012mrcalendar"), bsname);
+    copystring(PSTRING("\012", "mrcalendar"), bsname);
 
     if (!newfunctionprocessor(bsname, &mrcalendar_valueproc, false, &htable))
         return false;
@@ -108,17 +108,17 @@ boolean mrcalendarinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\015getaddressday"), mrcv_getaddressday);
-    ADD_VERB(BIGSTRING("\015getdayaddress"), mrcv_getdayaddress);
-    ADD_VERB(BIGSTRING("\017getfirstaddress"), mrcv_getfirstaddress);
-    ADD_VERB(BIGSTRING("\013getfirstday"), mrcv_getfirstday);
-    ADD_VERB(BIGSTRING("\016getlastaddress"), mrcv_getlastaddress);
-    ADD_VERB(BIGSTRING("\012getlastday"), mrcv_getlastday);
-    ADD_VERB(BIGSTRING("\024getmostrecentaddress"), mrcv_getmostrecentaddress);
-    ADD_VERB(BIGSTRING("\020getmostrecentday"), mrcv_getmostrecentday);
-    ADD_VERB(BIGSTRING("\016getnextaddress"), mrcv_getnextaddress);
-    ADD_VERB(BIGSTRING("\012getnextday"), mrcv_getnextday);
-    ADD_VERB(BIGSTRING("\010navigate"), mrcv_navigate);
+    ADD_VERB(PSTRING("\015", "getaddressday"), mrcv_getaddressday);
+    ADD_VERB(PSTRING("\015", "getdayaddress"), mrcv_getdayaddress);
+    ADD_VERB(PSTRING("\017", "getfirstaddress"), mrcv_getfirstaddress);
+    ADD_VERB(PSTRING("\013", "getfirstday"), mrcv_getfirstday);
+    ADD_VERB(PSTRING("\016", "getlastaddress"), mrcv_getlastaddress);
+    ADD_VERB(PSTRING("\012", "getlastday"), mrcv_getlastday);
+    ADD_VERB(PSTRING("\024", "getmostrecentaddress"), mrcv_getmostrecentaddress);
+    ADD_VERB(PSTRING("\020", "getmostrecentday"), mrcv_getmostrecentday);
+    ADD_VERB(PSTRING("\016", "getnextaddress"), mrcv_getnextaddress);
+    ADD_VERB(PSTRING("\012", "getnextday"), mrcv_getnextday);
+    ADD_VERB(PSTRING("\010", "navigate"), mrcv_navigate);
 
     #undef ADD_VERB
 

@@ -60,7 +60,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             bigstring bsmessage;
 
             if (!isInteractiveMode()) {
-                if (bserror) copystring(BIGSTRING("\044Can't use dialog verbs in batch mode"), bserror);
+                if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
@@ -82,7 +82,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             bigstring bsmessage;
 
             if (!isInteractiveMode()) {
-                if (bserror) copystring(BIGSTRING("\044Can't use dialog verbs in batch mode"), bserror);
+                if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
@@ -104,7 +104,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             bigstring bsprompt, bsbutton1, bsbutton2;
 
             if (!isInteractiveMode()) {
-                if (bserror) copystring(BIGSTRING("\044Can't use dialog verbs in batch mode"), bserror);
+                if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
@@ -133,7 +133,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             bigstring bsprompt, bsbutton1, bsbutton2, bsbutton3;
 
             if (!isInteractiveMode()) {
-                if (bserror) copystring(BIGSTRING("\044Can't use dialog verbs in batch mode"), bserror);
+                if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
@@ -165,59 +165,59 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
         case diav_run:
             /* dialog.run - @PLATFORM_SPECIFIC (requires DLOG resources from Mac/Windows resource fork) */
             if (bserror)
-                copystring(BIGSTRING("\064dialog.run requires GUI resources (Mac/Windows only)"), bserror);
+                copystring(PSTRING("\064", "dialog.run requires GUI resources (Mac/Windows only)"), bserror);
             return false;
         case diav_runmodeless:
             /* dialog.runModeless - @PLATFORM_SPECIFIC (requires DLOG resources) */
             if (bserror)
-                copystring(BIGSTRING("\074dialog.runModeless requires GUI resources (Mac/Windows only)"), bserror);
+                copystring(PSTRING("\074", "dialog.runModeless requires GUI resources (Mac/Windows only)"), bserror);
             return false;
         case diav_getvalue:
             /* dialog.getValue - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
             if (bserror)
-                copystring(BIGSTRING("\105dialog.getValue only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
+                copystring(PSTRING("\105", "dialog.getValue only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
         case diav_setvalue:
             /* dialog.setValue - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
             if (bserror)
-                copystring(BIGSTRING("\105dialog.setValue only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
+                copystring(PSTRING("\105", "dialog.setValue only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
         case diav_setitemenable:
             /* dialog.setItemEnable - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
             if (bserror)
-                copystring(BIGSTRING("\112dialog.setItemEnable only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
+                copystring(PSTRING("\112", "dialog.setItemEnable only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
         case diav_showitem:
             /* dialog.showItem - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
             if (bserror)
-                copystring(BIGSTRING("\105dialog.showItem only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
+                copystring(PSTRING("\105", "dialog.showItem only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
         case diav_hideitem:
             /* dialog.hideItem - @PLATFORM_SPECIFIC (only works within dialog.run itemhit callback) */
             if (bserror)
-                copystring(BIGSTRING("\105dialog.hideItem only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
+                copystring(PSTRING("\105", "dialog.hideItem only works in GUI dialog callbacks (Mac/Windows only)"), bserror);
             return false;
 
         /* @IMPLEMENTED - Ghost cruft (card-based dialogs never had UserTalk glue) */
         case diav_runcard:
             /* dialog.runcard - @IMPLEMENTED (ghost cruft, no glue ever existed) */
             if (bserror)
-                copystring(BIGSTRING("\044dialog.runcard was never implemented"), bserror);
+                copystring(PSTRING("\044", "dialog.runcard was never implemented"), bserror);
             return false;
         case diav_runmodalcard:
             /* dialog.runmodalcard - @IMPLEMENTED (ghost cruft, no glue ever existed) */
             if (bserror)
-                copystring(BIGSTRING("\051dialog.runmodalcard was never implemented"), bserror);
+                copystring(PSTRING("\051", "dialog.runmodalcard was never implemented"), bserror);
             return false;
         case diav_ismodalcard:
             /* dialog.ismodalcard - @IMPLEMENTED (ghost cruft, no glue ever existed) */
             if (bserror)
-                copystring(BIGSTRING("\050dialog.ismodalcard was never implemented"), bserror);
+                copystring(PSTRING("\050", "dialog.ismodalcard was never implemented"), bserror);
             return false;
         case diav_setmodalcardtimeout:
             /* dialog.setmodalcardtimeout - @IMPLEMENTED (ghost cruft, no glue ever existed) */
             if (bserror)
-                copystring(BIGSTRING("\060dialog.setmodalcardtimeout was never implemented"), bserror);
+                copystring(PSTRING("\060", "dialog.setmodalcardtimeout was never implemented"), bserror);
             return false;
         case diav_ask: {
             /* dialog.ask(prompt, @adr) - Text input dialog with OK/Cancel.
@@ -228,7 +228,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             bigstring bsvarname;
 
             if (!isInteractiveMode()) {
-                if (bserror) copystring(BIGSTRING("\044Can't use dialog verbs in batch mode"), bserror);
+                if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
@@ -301,7 +301,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             bigstring bsvarname;
 
             if (!isInteractiveMode()) {
-                if (bserror) copystring(BIGSTRING("\044Can't use dialog verbs in batch mode"), bserror);
+                if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
@@ -361,7 +361,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             (void)has_default;  /* Reserved for future default handling */
 
             if (!isInteractiveMode()) {
-                if (bserror) copystring(BIGSTRING("\044Can't use dialog verbs in batch mode"), bserror);
+                if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
@@ -391,7 +391,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             /* Call interactive prompt */
             char *result = dialog_get_string(prompt, default_value);
             if (!result) {
-                if (bserror) copystring(BIGSTRING("\033User cancelled string entry"), bserror);
+                if (bserror) copystring(PSTRING("\033", "User cancelled string entry"), bserror);
                 return false;
             }
 
@@ -411,7 +411,7 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             bigstring bsvarname;
 
             if (!isInteractiveMode()) {
-                if (bserror) copystring(BIGSTRING("\044Can't use dialog verbs in batch mode"), bserror);
+                if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
 
@@ -464,7 +464,7 @@ boolean dialoginitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\006dialog"), bsname);
+    copystring(PSTRING("\006", "dialog"), bsname);
 
     if (!newfunctionprocessor(bsname, &dialog_valueproc, false, &htable))
         return false;
@@ -480,25 +480,25 @@ boolean dialoginitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\005alert"), diav_alert);
-    ADD_VERB(BIGSTRING("\003run"), diav_run);
-    ADD_VERB(BIGSTRING("\013runmodeless"), diav_runmodeless);
-    ADD_VERB(BIGSTRING("\007runcard"), diav_runcard);
-    ADD_VERB(BIGSTRING("\014runmodalcard"), diav_runmodalcard);
-    ADD_VERB(BIGSTRING("\013ismodalcard"), diav_ismodalcard);
-    ADD_VERB(BIGSTRING("\023setmodalcardtimeout"), diav_setmodalcardtimeout);
-    ADD_VERB(BIGSTRING("\010getvalue"), diav_getvalue);
-    ADD_VERB(BIGSTRING("\010setvalue"), diav_setvalue);
-    ADD_VERB(BIGSTRING("\015setitemenable"), diav_setitemenable);
-    ADD_VERB(BIGSTRING("\010showitem"), diav_showitem);
-    ADD_VERB(BIGSTRING("\010hideitem"), diav_hideitem);
-    ADD_VERB(BIGSTRING("\006twoway"), diav_twoway);
-    ADD_VERB(BIGSTRING("\010threeway"), diav_threeway);
-    ADD_VERB(BIGSTRING("\003ask"), diav_ask);
-    ADD_VERB(BIGSTRING("\006getint"), diav_getint);
-    ADD_VERB(BIGSTRING("\006notify"), diav_notify);
-    ADD_VERB(BIGSTRING("\013getuserinfo"), diav_getuserinfo);
-    ADD_VERB(BIGSTRING("\013getpassword"), diav_getpassword);
+    ADD_VERB(PSTRING("\005", "alert"), diav_alert);
+    ADD_VERB(PSTRING("\003", "run"), diav_run);
+    ADD_VERB(PSTRING("\013", "runmodeless"), diav_runmodeless);
+    ADD_VERB(PSTRING("\007", "runcard"), diav_runcard);
+    ADD_VERB(PSTRING("\014", "runmodalcard"), diav_runmodalcard);
+    ADD_VERB(PSTRING("\013", "ismodalcard"), diav_ismodalcard);
+    ADD_VERB(PSTRING("\023", "setmodalcardtimeout"), diav_setmodalcardtimeout);
+    ADD_VERB(PSTRING("\010", "getvalue"), diav_getvalue);
+    ADD_VERB(PSTRING("\010", "setvalue"), diav_setvalue);
+    ADD_VERB(PSTRING("\015", "setitemenable"), diav_setitemenable);
+    ADD_VERB(PSTRING("\010", "showitem"), diav_showitem);
+    ADD_VERB(PSTRING("\010", "hideitem"), diav_hideitem);
+    ADD_VERB(PSTRING("\006", "twoway"), diav_twoway);
+    ADD_VERB(PSTRING("\010", "threeway"), diav_threeway);
+    ADD_VERB(PSTRING("\003", "ask"), diav_ask);
+    ADD_VERB(PSTRING("\006", "getint"), diav_getint);
+    ADD_VERB(PSTRING("\006", "notify"), diav_notify);
+    ADD_VERB(PSTRING("\013", "getuserinfo"), diav_getuserinfo);
+    ADD_VERB(PSTRING("\013", "getpassword"), diav_getpassword);
 
     #undef ADD_VERB
 

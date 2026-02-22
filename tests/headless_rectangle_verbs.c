@@ -97,7 +97,7 @@ boolean rectangleinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\011rectangle"), bsname);
+    copystring(PSTRING("\011", "rectangle"), bsname);
 
     if (!newfunctionprocessor(bsname, &rectangle_valueproc, false, &htable))
         return false;
@@ -113,8 +113,8 @@ boolean rectangleinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\003get"), recv_get);
-    ADD_VERB(BIGSTRING("\003set"), recv_set);
+    ADD_VERB(PSTRING("\003", "get"), recv_get);
+    ADD_VERB(PSTRING("\003", "set"), recv_set);
 
     #undef ADD_VERB
 

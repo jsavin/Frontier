@@ -46,67 +46,67 @@ static boolean editmenu_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case ediv_undo:
             /* Verb #0: editmenu.undo - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_cut:
             /* Verb #1: editmenu.cut - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_copy:
             /* Verb #2: editmenu.copy - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_paste:
             /* Verb #3: editmenu.paste - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_clear:
             /* Verb #4: editmenu.clear - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_selectall:
             /* Verb #5: editmenu.selectall - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_getfont:
             /* Verb #6: editmenu.getfont - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_getfontsize:
             /* Verb #7: editmenu.getfontsize - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_setfont:
             /* Verb #8: editmenu.setfont - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_setfontsize:
             /* Verb #9: editmenu.setfontsize - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_plaintext:
             /* Verb #10: editmenu.plaintext - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_setbold:
             /* Verb #11: editmenu.setbold - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_setitalic:
             /* Verb #12: editmenu.setitalic - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_setunderline:
             /* Verb #13: editmenu.setunderline - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_setoutline:
             /* Verb #14: editmenu.setoutline - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case ediv_setshadow:
             /* Verb #15: editmenu.setshadow - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -117,7 +117,7 @@ boolean editmenuinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\010editmenu"), bsname);
+    copystring(PSTRING("\010", "editmenu"), bsname);
 
     if (!newfunctionprocessor(bsname, &editmenu_valueproc, false, &htable))
         return false;
@@ -133,22 +133,22 @@ boolean editmenuinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\004undo"), ediv_undo);
-    ADD_VERB(BIGSTRING("\003cut"), ediv_cut);
-    ADD_VERB(BIGSTRING("\004copy"), ediv_copy);
-    ADD_VERB(BIGSTRING("\005paste"), ediv_paste);
-    ADD_VERB(BIGSTRING("\005clear"), ediv_clear);
-    ADD_VERB(BIGSTRING("\011selectall"), ediv_selectall);
-    ADD_VERB(BIGSTRING("\007getfont"), ediv_getfont);
-    ADD_VERB(BIGSTRING("\013getfontsize"), ediv_getfontsize);
-    ADD_VERB(BIGSTRING("\007setfont"), ediv_setfont);
-    ADD_VERB(BIGSTRING("\013setfontsize"), ediv_setfontsize);
-    ADD_VERB(BIGSTRING("\011plaintext"), ediv_plaintext);
-    ADD_VERB(BIGSTRING("\007setbold"), ediv_setbold);
-    ADD_VERB(BIGSTRING("\011setitalic"), ediv_setitalic);
-    ADD_VERB(BIGSTRING("\014setunderline"), ediv_setunderline);
-    ADD_VERB(BIGSTRING("\012setoutline"), ediv_setoutline);
-    ADD_VERB(BIGSTRING("\011setshadow"), ediv_setshadow);
+    ADD_VERB(PSTRING("\004", "undo"), ediv_undo);
+    ADD_VERB(PSTRING("\003", "cut"), ediv_cut);
+    ADD_VERB(PSTRING("\004", "copy"), ediv_copy);
+    ADD_VERB(PSTRING("\005", "paste"), ediv_paste);
+    ADD_VERB(PSTRING("\005", "clear"), ediv_clear);
+    ADD_VERB(PSTRING("\011", "selectall"), ediv_selectall);
+    ADD_VERB(PSTRING("\007", "getfont"), ediv_getfont);
+    ADD_VERB(PSTRING("\013", "getfontsize"), ediv_getfontsize);
+    ADD_VERB(PSTRING("\007", "setfont"), ediv_setfont);
+    ADD_VERB(PSTRING("\013", "setfontsize"), ediv_setfontsize);
+    ADD_VERB(PSTRING("\011", "plaintext"), ediv_plaintext);
+    ADD_VERB(PSTRING("\007", "setbold"), ediv_setbold);
+    ADD_VERB(PSTRING("\011", "setitalic"), ediv_setitalic);
+    ADD_VERB(PSTRING("\014", "setunderline"), ediv_setunderline);
+    ADD_VERB(PSTRING("\012", "setoutline"), ediv_setoutline);
+    ADD_VERB(PSTRING("\011", "setshadow"), ediv_setshadow);
 
     #undef ADD_VERB
 

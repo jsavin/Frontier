@@ -33,15 +33,15 @@ static boolean math_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case matv_min:
             /* Verb #0: math.min - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case matv_max:
             /* Verb #1: math.max - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case matv_sqrt:
             /* Verb #2: math.sqrt - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case matv_random: {
             long lower, upper;
@@ -55,7 +55,7 @@ static boolean math_valueproc(short token, hdltreenode hparam1,
 
             if (lower > upper) {
                 if (bserror)
-                    copystring(BIGSTRING("\014bounds error"), bserror);
+                    copystring(PSTRING("\014", "bounds error"), bserror);
                 return false;
             }
 
@@ -72,7 +72,7 @@ boolean mathinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\004math"), bsname);
+    copystring(PSTRING("\004", "math"), bsname);
 
     if (!newfunctionprocessor(bsname, &math_valueproc, false, &htable))
         return false;
@@ -88,10 +88,10 @@ boolean mathinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\003min"), matv_min);
-    ADD_VERB(BIGSTRING("\003max"), matv_max);
-    ADD_VERB(BIGSTRING("\004sqrt"), matv_sqrt);
-    ADD_VERB(BIGSTRING("\006random"), matv_random);
+    ADD_VERB(PSTRING("\003", "min"), matv_min);
+    ADD_VERB(PSTRING("\003", "max"), matv_max);
+    ADD_VERB(PSTRING("\004", "sqrt"), matv_sqrt);
+    ADD_VERB(PSTRING("\006", "random"), matv_random);
 
     #undef ADD_VERB
 

@@ -70,14 +70,14 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
 #ifdef __APPLE__
             uint32_t size = sizeof(path);
             if (_NSGetExecutablePath(path, &size) != 0) {
-                if (bserror) copystring(BIGSTRING("\032could not get program path"), bserror);
+                if (bserror) copystring(PSTRING("\032", "could not get program path"), bserror);
                 return false;
             }
 #else
             /* Linux: read /proc/self/exe symlink */
             ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
             if (len == -1) {
-                if (bserror) copystring(BIGSTRING("\032could not get program path"), bserror);
+                if (bserror) copystring(PSTRING("\032", "could not get program path"), bserror);
                 return false;
             }
             path[len] = '\0';
@@ -102,7 +102,7 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
 
             root_path = cli_get_system_root_path();
             if (!cli_is_system_root_loaded() || root_path[0] == '\0') {
-                if (bserror) copystring(BIGSTRING("\027no database file loaded"), bserror);
+                if (bserror) copystring(PSTRING("\027", "no database file loaded"), bserror);
                 return false;
             }
 
@@ -112,7 +112,7 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
                 size_t cwd_len, path_len;
 
                 if (getcwd(cwd, sizeof(cwd)) == NULL) {
-                    if (bserror) copystring(BIGSTRING("\037could not get current directory"), bserror);
+                    if (bserror) copystring(PSTRING("\037", "could not get current directory"), bserror);
                     return false;
                 }
 
@@ -120,25 +120,25 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
                 cwd_len = strlen(cwd);
                 path_len = strlen(root_path);
                 if (cwd_len + 1 + path_len >= sizeof(fullpath)) {
-                    if (bserror) copystring(BIGSTRING("\015path too long"), bserror);
+                    if (bserror) copystring(PSTRING("\015", "path too long"), bserror);
                     return false;
                 }
 
                 len = snprintf(fullpath, sizeof(fullpath), "%s/%s", cwd, root_path);
                 if (len < 0 || len >= (int)sizeof(fullpath)) {
-                    if (bserror) copystring(BIGSTRING("\015path too long"), bserror);
+                    if (bserror) copystring(PSTRING("\015", "path too long"), bserror);
                     return false;
                 }
             } else {
                 /* Pre-check path length */
                 if (strlen(root_path) >= sizeof(fullpath)) {
-                    if (bserror) copystring(BIGSTRING("\015path too long"), bserror);
+                    if (bserror) copystring(PSTRING("\015", "path too long"), bserror);
                     return false;
                 }
 
                 len = snprintf(fullpath, sizeof(fullpath), "%s", root_path);
                 if (len < 0 || len >= (int)sizeof(fullpath)) {
-                    if (bserror) copystring(BIGSTRING("\015path too long"), bserror);
+                    if (bserror) copystring(PSTRING("\015", "path too long"), bserror);
                     return false;
                 }
             }
@@ -153,23 +153,23 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             return true;
         case frov_requesttofront:
             /* Verb #3: frontier.requesttofront - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_isruntime:
             /* Verb #4: frontier.isruntime - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_countthreads:
             /* Verb #5: frontier.countthreads - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_ispowerpc:
             /* Verb #6: frontier.ispowerpc - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_reclaimmemory:
             /* Verb #7: frontier.reclaimmemory - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_version:
             /* Verb #8: frontier.version - Return product version string */
@@ -196,15 +196,15 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
         }
         case frov_hashstats:
             /* Verb #9: frontier.hashstats - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_gethashloopcount:
             /* Verb #10: frontier.gethashloopcount - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_hideapplication:
             /* Verb #11: frontier.hideapplication - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_isvalidserialnumber: {
             /* frontier.isvalidSerialNumber - in headless mode, always return true.
@@ -223,7 +223,7 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
         }
         case frov_showapplication:
             /* Verb #13: frontier.showapplication - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -264,7 +264,7 @@ boolean frontierinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\010frontier"), bsname);
+    copystring(PSTRING("\010", "frontier"), bsname);
 
     if (!newfunctionprocessor(bsname, &frontier_valueproc, false, &htable))
         return false;
@@ -280,21 +280,21 @@ boolean frontierinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\016getprogrampath"), frov_getprogrampath);
-    ADD_VERB(BIGSTRING("\013getfilepath"), frov_getfilepath);
-    ADD_VERB(BIGSTRING("\014enableagents"), frov_enableagents);
-    ADD_VERB(BIGSTRING("\016requesttofront"), frov_requesttofront);
-    ADD_VERB(BIGSTRING("\011isruntime"), frov_isruntime);
-    ADD_VERB(BIGSTRING("\014countthreads"), frov_countthreads);
-    ADD_VERB(BIGSTRING("\011ispowerpc"), frov_ispowerpc);
-    ADD_VERB(BIGSTRING("\015reclaimmemory"), frov_reclaimmemory);
-    ADD_VERB(BIGSTRING("\007version"), frov_version);
-    ADD_VERB(BIGSTRING("\011hashstats"), frov_hashstats);
-    ADD_VERB(BIGSTRING("\020gethashloopcount"), frov_gethashloopcount);
-    ADD_VERB(BIGSTRING("\017hideapplication"), frov_hideapplication);
-    ADD_VERB(BIGSTRING("\023isvalidserialnumber"), frov_isvalidserialnumber);
-    ADD_VERB(BIGSTRING("\017showapplication"), frov_showapplication);
-    ADD_VERB(BIGSTRING("\012cliversion"), frov_cliversion);
+    ADD_VERB(PSTRING("\016", "getprogrampath"), frov_getprogrampath);
+    ADD_VERB(PSTRING("\013", "getfilepath"), frov_getfilepath);
+    ADD_VERB(PSTRING("\014", "enableagents"), frov_enableagents);
+    ADD_VERB(PSTRING("\016", "requesttofront"), frov_requesttofront);
+    ADD_VERB(PSTRING("\011", "isruntime"), frov_isruntime);
+    ADD_VERB(PSTRING("\014", "countthreads"), frov_countthreads);
+    ADD_VERB(PSTRING("\011", "ispowerpc"), frov_ispowerpc);
+    ADD_VERB(PSTRING("\015", "reclaimmemory"), frov_reclaimmemory);
+    ADD_VERB(PSTRING("\007", "version"), frov_version);
+    ADD_VERB(PSTRING("\011", "hashstats"), frov_hashstats);
+    ADD_VERB(PSTRING("\020", "gethashloopcount"), frov_gethashloopcount);
+    ADD_VERB(PSTRING("\017", "hideapplication"), frov_hideapplication);
+    ADD_VERB(PSTRING("\023", "isvalidserialnumber"), frov_isvalidserialnumber);
+    ADD_VERB(PSTRING("\017", "showapplication"), frov_showapplication);
+    ADD_VERB(PSTRING("\012", "cliversion"), frov_cliversion);
 
     #undef ADD_VERB
 

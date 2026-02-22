@@ -53,7 +53,7 @@ boolean semaphoreinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\011semaphore"), bsname);
+    copystring(PSTRING("\011", "semaphore"), bsname);
 
     if (!newfunctionprocessor(bsname, &semaphore_valueproc, false, &htable))
         return false;
@@ -69,8 +69,8 @@ boolean semaphoreinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\004lock"), semv_lock);
-    ADD_VERB(BIGSTRING("\006unlock"), semv_unlock);
+    ADD_VERB(PSTRING("\004", "lock"), semv_lock);
+    ADD_VERB(PSTRING("\006", "unlock"), semv_unlock);
 
     #undef ADD_VERB
 

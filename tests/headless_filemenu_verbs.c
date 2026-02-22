@@ -203,7 +203,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     /* Search hodblist for the database (skip sentinel at hodblist itself) */
     if (hodblist == nil) {
         log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: hodblist not initialized");
-        langerrormessage(BIGSTRING("\031db: no databases are open"));
+        langerrormessage(PSTRING("\031", "db: no databases are open"));
         return false;
     }
 
@@ -217,7 +217,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
             /* Found it - check if read-only */
             if ((**hodb).flreadonly) {
                 log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: database is read-only");
-                langerrormessage(BIGSTRING("\041Can't save: database is read-only"));
+                langerrormessage(PSTRING("\041", "Can't save: database is read-only"));
                 return false;
             }
 
@@ -908,7 +908,7 @@ boolean filemenuinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\010filemenu"), bsname);
+    copystring(PSTRING("\010", "filemenu"), bsname);
 
     if (!newfunctionprocessor(bsname, &filemenu_valueproc, false, &htable))
         return false;
@@ -924,16 +924,16 @@ boolean filemenuinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\003new"), filv_new);
-    ADD_VERB(BIGSTRING("\004open"), filv_open);
-    ADD_VERB(BIGSTRING("\005close"), filv_close);
-    ADD_VERB(BIGSTRING("\010closeall"), filv_closeall);
-    ADD_VERB(BIGSTRING("\004save"), filv_save);
-    ADD_VERB(BIGSTRING("\010savecopy"), filv_savecopy);
-    ADD_VERB(BIGSTRING("\006revert"), filv_revert);
-    ADD_VERB(BIGSTRING("\005print"), filv_print);
-    ADD_VERB(BIGSTRING("\004quit"), filv_quit);
-    ADD_VERB(BIGSTRING("\006saveas"), filv_saveas);
+    ADD_VERB(PSTRING("\003", "new"), filv_new);
+    ADD_VERB(PSTRING("\004", "open"), filv_open);
+    ADD_VERB(PSTRING("\005", "close"), filv_close);
+    ADD_VERB(PSTRING("\010", "closeall"), filv_closeall);
+    ADD_VERB(PSTRING("\004", "save"), filv_save);
+    ADD_VERB(PSTRING("\010", "savecopy"), filv_savecopy);
+    ADD_VERB(PSTRING("\006", "revert"), filv_revert);
+    ADD_VERB(PSTRING("\005", "print"), filv_print);
+    ADD_VERB(PSTRING("\004", "quit"), filv_quit);
+    ADD_VERB(PSTRING("\006", "saveas"), filv_saveas);
 
     #undef ADD_VERB
 

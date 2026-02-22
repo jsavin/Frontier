@@ -32,11 +32,11 @@ static boolean mouse_valueproc(short token, hdltreenode hparam1,
     switch(token) {
         case mouv_button:
             /* Verb #0: mouse.button - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case mouv_location:
             /* Verb #1: mouse.location - not yet implemented */
-            if (bserror) copystring(BIGSTRING("\017not implemented"), bserror);
+            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         default:
             return false;
@@ -47,7 +47,7 @@ boolean mouseinitverbs(void) {
     hdlhashtable htable = nil;
     bigstring bsname;
 
-    copystring(BIGSTRING("\005mouse"), bsname);
+    copystring(PSTRING("\005", "mouse"), bsname);
 
     if (!newfunctionprocessor(bsname, &mouse_valueproc, false, &htable))
         return false;
@@ -63,8 +63,8 @@ boolean mouseinitverbs(void) {
         } \
     } while(0)
 
-    ADD_VERB(BIGSTRING("\006button"), mouv_button);
-    ADD_VERB(BIGSTRING("\010location"), mouv_location);
+    ADD_VERB(PSTRING("\006", "button"), mouv_button);
+    ADD_VERB(PSTRING("\010", "location"), mouv_location);
 
     #undef ADD_VERB
 
