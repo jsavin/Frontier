@@ -2638,7 +2638,9 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
         databasedata = savedatabasedata;
         return result;
     }
-    return dbreference_internal(adr, ctbytes, pdata);
+    boolean result = dbreference_internal(adr, ctbytes, pdata);
+    databasedata = savedatabasedata;
+    return result;
 }
 
 boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h) {

@@ -977,6 +977,22 @@ static void test_db_context_io_primitives_restore_databasedata(void) {
     assert(databasedata == db_A);
     disposehandle(hsave);
 
+    /* dbreference_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    (void) dbreference_context(&ctx_B, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbreference_context with NULL context: should still restore */
+    databasedata = db_A;
+    (void) dbreference_context(NULL, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbreference_handle_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    Handle href = nil;
+    (void) dbreference_handle_context(&ctx_B, (dbaddress) 0x100, &href);
+    assert(databasedata == db_A);
+
     /* Also verify NULL context is a no-op for databasedata */
     databasedata = db_A;
     (void) dbread_context(NULL, (dbaddress) 0x100, sizeof(buf), buf);
