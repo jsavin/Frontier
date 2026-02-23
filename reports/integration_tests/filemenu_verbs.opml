@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Filemenu Verbs (filemenu_verbs) - 33 tests: 30 pass (90%) 3 skip (9%)</title>
-    <dateCreated>Mon, 16 Feb 2026 18:41:35 GMT</dateCreated>
+    <title>Filemenu Verbs (filemenu_verbs) - 34 tests: 31 pass (91%) 3 skip (8%)</title>
+    <dateCreated>Mon, 23 Feb 2026 05:46:51 GMT</dateCreated>
   </head>
   <body>
     <outline text="fileMenu.new - create new database - fileMenu.new creates a new empty ODB database and opens it">
@@ -277,6 +277,20 @@
       </outline>
       <outline text="Script">
         <outline text="return fileMenu.save()"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.save - save system root with guest database open - Regression test: saving the system root while a guest database is open should not corrupt the databasedata global. Previously, recursive packing of system table externals would switch databasedata to the guest database, causing dbread failures on sibling externals (e.g. menus at addresses valid only in the system root).&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_save_regression.root7&quot;)"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="local(result = fileMenu.save())"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return result"/>
       </outline>
     </outline>
     <outline text="fileMenu.save - save guest database by path - Open a guest database, write a value, then save it by path">
