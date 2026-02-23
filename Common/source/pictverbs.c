@@ -377,16 +377,11 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	boolean fltempload = false;
 	boolean adapter_repack;
 
-	/* Callee-saves: protect databasedata from corruption by nested pack operations */
-	hdldatabaserecord savedatabasedata = databasedata;
-
 	/*
-	2025-12-23: Set mode from context before any database I/O
-	This ensures writes use the correct format (v7 during migration)
+	Phase 3: No direct databasedata mutation. All DB I/O goes through
+	_context() wrappers. Apply mode from context for mode-dependent logic.
 	*/
 	if (ctx != NULL) {
-		if (ctx->database != nil)
-			databasedata = ctx->database;
 #if defined(FRONTIER_HEADLESS)
 		log_debug(LOG_COMP_OP, "pictverbpack_internal: applying mode use_64bit=%d adapter_repack=%d",
 		        (int) ctx->mode.use_64bit_format, (int) ctx->mode.adapter_repack);
@@ -403,7 +398,6 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
-		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -423,20 +417,16 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 
 	hpackedpict = nil; /*force a new handle to be allocated*/
 
-	if (!pictpack (hp, &hpackedpict)) {
-		databasedata = savedatabasedata;
+	if (!pictpack (hp, &hpackedpict))
 		return (false);
-	}
 
-	/* During migration, dbassignhandle will use the global v7 write mode set by caller */
-	fl = dbassignhandle (hpackedpict, &adr);
+	/* Use context-aware wrapper — no direct databasedata mutation */
+	fl = dbassignhandle_context (ctx, hpackedpict, &adr);
 
 	disposehandle (hpackedpict);
 
-	if (!fl) {
-		databasedata = savedatabasedata;
+	if (!fl)
 		return (false);
-	}
 
 	if (fldatabasesaveas && !fltempload)
 		goto pushaddress;
@@ -452,7 +442,6 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 		if (!external_set_ondisk((hdlexternalvariable) hv, adr)) {
 			log_error(LOG_COMP_PICT, "pictverbpack_internal: failed to transition to on-disk state (adr=0x%llx)",
 					(unsigned long long)adr);
-			databasedata = savedatabasedata;
 			return false;
 			}
 		}
@@ -475,7 +464,6 @@ pushaddress:
 	else
 		*flnewdbaddress = true;
 
-	databasedata = savedatabasedata;
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*pictverbpack_internal*/
 

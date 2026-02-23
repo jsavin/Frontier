@@ -2543,16 +2543,18 @@ boolean hashunpacktable_context(const db_context *context, Handle hpacked, boole
 
 boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *adr) {
     /*
-    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
-    Set mode directly from context, call function, done.
-    Caller ensures correct database is active.
+    Context-aware dbassignhandle. Temporarily applies the context's database
+    handle and format mode, calls the legacy function, and restores.
     */
+    hdldatabaserecord savedatabasedata = databasedata;
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
         db_format_mode_apply(&context->mode);
     }
-    return dbassignhandle(h, adr);
+    boolean result = dbassignhandle(h, adr);
+    databasedata = savedatabasedata;
+    return result;
 }
 
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
@@ -2589,41 +2591,42 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 
 boolean dbcopy_context(const db_context *context, dbaddress src, dbaddress *dest) {
     /*
-    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
-    Set mode directly from context, call function, done.
-    Caller ensures correct database is active.
+    Context-aware dbcopy. Temporarily applies the context's database
+    handle and format mode, calls the legacy function, and restores.
     */
+    hdldatabaserecord savedatabasedata = databasedata;
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
         db_format_mode_apply(&context->mode);
     }
-    return dbcopy_internal(src, dest);
+    boolean result = dbcopy_internal(src, dest);
+    databasedata = savedatabasedata;
+    return result;
 }
 
 boolean dbassign_context(const db_context *context, dbaddress *padr, long newsize, ptrvoid pdata) {
     /*
-    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
-    Set mode directly from context, call function, done.
-    Caller ensures correct database is active.
+    Context-aware dbassign. Temporarily applies the context's database
+    handle and format mode, calls the legacy function, and restores.
     */
+    hdldatabaserecord savedatabasedata = databasedata;
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
         db_format_mode_apply(&context->mode);
     }
-    return dbassign_internal(padr, newsize, pdata);
+    boolean result = dbassign_internal(padr, newsize, pdata);
+    databasedata = savedatabasedata;
+    return result;
 }
 
 boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
     /*
-    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
-    Set mode directly from context, call function, done.
-    Caller ensures correct database is active.
-
-    2026-02-03: During migration, global mode may be locked to v7.
-    Use explicit header size from context instead of global mode.
+    Context-aware dbreference. Temporarily applies the context's database
+    handle, calls the legacy function with explicit header size, and restores.
     */
+    hdldatabaserecord savedatabasedata = databasedata;
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
@@ -2631,23 +2634,27 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
         /* During migration with mode lock, can't downgrade global mode to v6.
            Pass explicit header size based on context mode. */
         long header_size = context->mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
-        return dbreference_with_header_size(adr, ctbytes, pdata, header_size);
+        boolean result = dbreference_with_header_size(adr, ctbytes, pdata, header_size);
+        databasedata = savedatabasedata;
+        return result;
     }
     return dbreference_internal(adr, ctbytes, pdata);
 }
 
 boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h) {
     /*
-    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
-    Set mode directly from context, call function, done.
-    Caller ensures correct database is active.
+    Context-aware dbrefhandle. Temporarily applies the context's database
+    handle and format mode, calls the legacy function, and restores.
     */
+    hdldatabaserecord savedatabasedata = databasedata;
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
         db_format_mode_apply(&context->mode);
     }
-    return dbrefhandle(adr, h);
+    boolean result = dbrefhandle(adr, h);
+    databasedata = savedatabasedata;
+    return result;
 }
 
 boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {

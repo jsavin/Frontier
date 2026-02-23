@@ -895,25 +895,18 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	boolean fltempload = false;
 	boolean adapter_repack;
 
-	/* Callee-saves: protect databasedata from corruption by nested pack operations */
-	hdldatabaserecord savedatabasedata = databasedata;
-
 	/*
-	2025-12-20: Set mode from context before any database I/O
-	This ensures writes use the correct format (v7 during migration)
+	Phase 3: No direct databasedata mutation. All DB I/O goes through
+	_context() wrappers. Apply mode from context for mode-dependent logic.
 	*/
-	if (ctx != NULL) {
-		if (ctx->database != nil)
-			databasedata = ctx->database;
+	if (ctx != NULL)
 		db_format_mode_apply(&ctx->mode);
-	}
 
 	adapter_repack = db_format_adapter_force_repack();
 
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
-		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -948,12 +941,11 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		log_error(LOG_COMP_OP, "opverbpackoutline failed for outline at adr=0x%llx",
 		        (unsigned long long) (**hv).oldaddress);
 #endif
-		databasedata = savedatabasedata;
 		return (false);
 	}
 
-	/* During migration, dbassignhandle will use the global v7 write mode set by caller */
-	fl = dbassignhandle (hpackedoutline, &adr);
+	/* Use context-aware wrapper — no direct databasedata mutation */
+	fl = dbassignhandle_context (ctx, hpackedoutline, &adr);
 
 #if defined(FRONTIER_HEADLESS)
 	db_format_mode check_mode = db_format_mode_current();
@@ -968,7 +960,6 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		log_error(LOG_COMP_OP, "dbassignhandle failed for outline adr=0x%llx",
 		        (unsigned long long) (**hv).oldaddress);
 #endif
-		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -1002,7 +993,6 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	else
 		*flnewdbaddress = true;
 
-	databasedata = savedatabasedata;
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*opverbpack_internal*/
 

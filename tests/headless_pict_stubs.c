@@ -91,13 +91,8 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
         return false;
     }
 
-    /* Callee-saves: protect databasedata from corruption by nested pack operations */
-    hdldatabaserecord savedatabasedata = databasedata;
-
     /* Apply context mode if provided (for migration: sets v7 format flags) */
     if (ctx != NULL) {
-        if (ctx->database != nil)
-            databasedata = ctx->database;
         db_format_mode_apply(&ctx->mode);
     }
 
@@ -115,7 +110,6 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
     }
 
     (**h).oldaddress = adr;
-    databasedata = savedatabasedata;
     return pushlongondiskhandle((long) adr, *hpacked);
 }
 
