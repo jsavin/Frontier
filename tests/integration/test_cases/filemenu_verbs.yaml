@@ -307,6 +307,24 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "fileMenu.save - save system root with guest database open"
+    description: >
+      Regression test: saving the system root while a guest database is open
+      should not corrupt the databasedata global. Previously, recursive packing
+      of system table externals would switch databasedata to the guest database,
+      causing dbread failures on sibling externals (e.g. menus at addresses
+      valid only in the system root).
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "filemenu_save_regression.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      local(result = fileMenu.save());
+      fileMenu.closeall();
+      return result
+    expected_success: true
+    expected_result: "true"
+
   # ========================================================================
   # fileMenu.save - Save Guest Database
   # ========================================================================
