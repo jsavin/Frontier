@@ -928,6 +928,68 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
     log_info(LOG_COMP_DB, "[TEST] test_verbpack_internal_callee_saves_databasedata COMPLETED");
 }
 
+static void test_db_context_io_primitives_restore_databasedata(void) {
+    /*
+     * Verify that the Phase 2 _context() wrappers (dbread_context,
+     * dbwrite_context, dbsavehandle_context, dbgeteof_context) restore
+     * databasedata after the call, regardless of success or failure.
+     *
+     * We don't have a real database file open, so the underlying operations
+     * will fail — but the save/restore of databasedata must still work.
+     */
+    hdldatabaserecord baseline_db = databasedata;
+
+    hdldatabaserecord db_A = nil;
+    hdldatabaserecord db_B = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_A));
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_B));
+    (**db_A).fnumdatabase = 300;
+    (**db_B).fnumdatabase = 400;
+
+    db_context ctx_B;
+    db_context_init(&ctx_B);
+    ctx_B.database = db_B;
+
+    char buf[16];
+
+    /* dbread_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    (void) dbread_context(&ctx_B, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbwrite_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    (void) dbwrite_context(&ctx_B, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbgeteof_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    long eof_val = 0;
+    (void) dbgeteof_context(&ctx_B, &eof_val);
+    assert(databasedata == db_A);
+
+    /* dbsavehandle_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    Handle hsave = nil;
+    assert(newclearhandle(8, &hsave));
+    dbaddress save_adr = nildbaddress;
+    (void) dbsavehandle_context(&ctx_B, hsave, &save_adr);
+    assert(databasedata == db_A);
+    disposehandle(hsave);
+
+    /* Also verify NULL context is a no-op for databasedata */
+    databasedata = db_A;
+    (void) dbread_context(NULL, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* Cleanup */
+    databasedata = baseline_db;
+    disposehandle((Handle) db_A);
+    disposehandle((Handle) db_B);
+
+    log_info(LOG_COMP_DB, "[TEST] test_db_context_io_primitives_restore_databasedata COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -950,6 +1012,7 @@ int main(void) {
     TR_RUN(test_db_context_database_swap);
     TR_RUN(test_dbswapglobals_context_scoped);
     TR_RUN(test_verbpack_internal_callee_saves_databasedata);
+    TR_RUN(test_db_context_io_primitives_restore_databasedata);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);

@@ -2649,3 +2649,76 @@ boolean dbreference_handle_context(const db_context *context, dbaddress adr, Han
     }
     return dbrefhandle(adr, h);
 }
+
+boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
+    /*
+    Phase 2: Context-aware dbread. Temporarily applies the context's database
+    handle, calls the legacy dbread (which handles Save As source redirection
+    internally), and restores databasedata.
+    */
+    hdldatabaserecord savedatabasedata = databasedata;
+    boolean result;
+
+    if (context != NULL && context->database != nil)
+        databasedata = context->database;
+
+    result = dbread(adr, ctbytes, pdata);
+
+    databasedata = savedatabasedata;
+    return result;
+}
+
+boolean dbwrite_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
+    /*
+    Phase 2: Context-aware dbwrite. Temporarily applies the context's database
+    handle, calls the legacy dbwrite, and restores databasedata.
+    */
+    hdldatabaserecord savedatabasedata = databasedata;
+    boolean result;
+
+    if (context != NULL && context->database != nil)
+        databasedata = context->database;
+
+    result = dbwrite(adr, ctbytes, pdata);
+
+    databasedata = savedatabasedata;
+    return result;
+}
+
+boolean dbsavehandle_context(const db_context *context, Handle h, dbaddress *adr) {
+    /*
+    Phase 2: Context-aware dbsavehandle. Temporarily applies the context's
+    database handle and format mode, calls the legacy dbsavehandle (which
+    internally calls dballocate/dbassign using databasedata), and restores.
+    */
+    hdldatabaserecord savedatabasedata = databasedata;
+    boolean result;
+
+    if (context != NULL) {
+        if (context->database != nil)
+            databasedata = context->database;
+        db_format_mode_apply(&context->mode);
+    }
+
+    result = dbsavehandle(h, adr);
+
+    databasedata = savedatabasedata;
+    return result;
+}
+
+boolean dbgeteof_context(const db_context *context, long *eof) {
+    /*
+    Phase 2: Context-aware dbgeteof. Temporarily applies the context's
+    database handle and restores.
+    */
+    hdldatabaserecord savedatabasedata = databasedata;
+    boolean result;
+
+    if (context != NULL && context->database != nil)
+        databasedata = context->database;
+
+    result = dbgeteof(eof);
+
+    databasedata = savedatabasedata;
+    return result;
+}
