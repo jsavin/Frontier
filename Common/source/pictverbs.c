@@ -377,6 +377,9 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	boolean fltempload = false;
 	boolean adapter_repack;
 
+	/* Callee-saves: protect databasedata from corruption by nested pack operations */
+	hdldatabaserecord savedatabasedata = databasedata;
+
 	/*
 	2025-12-23: Set mode from context before any database I/O
 	This ensures writes use the correct format (v7 during migration)
@@ -400,6 +403,7 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -419,16 +423,20 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 
 	hpackedpict = nil; /*force a new handle to be allocated*/
 
-	if (!pictpack (hp, &hpackedpict))
+	if (!pictpack (hp, &hpackedpict)) {
+		databasedata = savedatabasedata;
 		return (false);
+	}
 
 	/* During migration, dbassignhandle will use the global v7 write mode set by caller */
 	fl = dbassignhandle (hpackedpict, &adr);
 
 	disposehandle (hpackedpict);
 
-	if (!fl)
+	if (!fl) {
+		databasedata = savedatabasedata;
 		return (false);
+	}
 
 	if (fldatabasesaveas && !fltempload)
 		goto pushaddress;
@@ -444,6 +452,7 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 		if (!external_set_ondisk((hdlexternalvariable) hv, adr)) {
 			log_error(LOG_COMP_PICT, "pictverbpack_internal: failed to transition to on-disk state (adr=0x%llx)",
 					(unsigned long long)adr);
+			databasedata = savedatabasedata;
 			return false;
 			}
 		}
@@ -466,6 +475,7 @@ pushaddress:
 	else
 		*flnewdbaddress = true;
 
+	databasedata = savedatabasedata;
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*pictverbpack_internal*/
 

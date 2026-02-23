@@ -14,6 +14,7 @@
 #include "dbinternal.h"
 #include "langexternal.h"
 #include "tableverbs.h"
+#include "opverbs.h"
 #include "logging.h"
 #include "test_report.h"
 
@@ -841,6 +842,92 @@ static void test_dbswapglobals_context_scoped(void) {
     disposehandle((Handle) hsrc);
     disposehandle((Handle) hdst);
 }
+
+static void test_verbpack_internal_callee_saves_databasedata(void) {
+    /*
+     * Verify the callee-saves invariant: each *verbpack_internal function must
+     * restore databasedata to its original value before returning, even when
+     * the context points to a different database.
+     *
+     * This prevents the bug where packing a child external belonging to
+     * database B corrupts databasedata for the next sibling that expects
+     * database A.
+     */
+    hdldatabaserecord baseline_db = databasedata;
+    db_format_mode baseline_mode = db_format_mode_current();
+
+    /* Create two fake database handles: db_A = "system root", db_B = "guest db" */
+    hdldatabaserecord db_A = nil;
+    hdldatabaserecord db_B = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_A));
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_B));
+    (**db_A).fnumdatabase = 100;
+    (**db_B).fnumdatabase = 200;
+
+    /* Set databasedata to db_A (simulating "we're saving the system root") */
+    databasedata = db_A;
+
+    /* Build a minimal in-memory table external */
+    hdlhashtable htable = nil;
+    assert(newhashtable(&htable));
+
+    hdlexternalvariable hv = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
+    (**hv).id = idtableprocessor;
+    (**hv).flinmemory = 1;
+    (**hv).variabledata = (long) htable;
+    (**hv).oldaddress = (dbaddress) 0x1000;
+
+    Handle hpacked = nil;
+    assert(newclearhandle(0, &hpacked));
+
+    /* Create a context pointing to db_B (the "guest database") */
+    db_context guest_ctx;
+    db_context_init(&guest_ctx);
+    guest_ctx.database = db_B;
+
+    /* Pack using the guest context — this sets databasedata = db_B internally */
+    boolean flnew = false;
+    boolean ok = tableverbpack_internal(&guest_ctx, hv, &hpacked, &flnew);
+
+    /* THE INVARIANT: databasedata must be restored to db_A after the call */
+    assert(databasedata == db_A);
+
+    /* Verify for opverbpack_internal too — create a minimal outline external */
+    databasedata = db_A;  /* reset in case the test above somehow changed it */
+
+    hdlexternalvariable hv_op = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv_op));
+    (**hv_op).id = idoutlineprocessor;
+    (**hv_op).flinmemory = 0;  /* not in memory — early return path */
+    (**hv_op).oldaddress = (dbaddress) 0x2000;
+
+    Handle hpacked_op = nil;
+    assert(newclearhandle(0, &hpacked_op));
+
+    /* This should fail (not in memory) but STILL restore databasedata */
+    boolean flnew_op = false;
+    boolean ok_op = opverbpack_internal(&guest_ctx, hv_op, &hpacked_op, &flnew_op);
+    assert(!ok_op);  /* expected failure: not in memory */
+    assert(databasedata == db_A);  /* invariant must hold even on error paths */
+
+    /* Cleanup */
+    disposehandle(hpacked);
+    disposehandle(hpacked_op);
+    (**hv).variabledata = 0;
+    disposehandle((Handle) hv);
+    disposehandle((Handle) hv_op);
+    (void)htable;  /* skip hash table dispose — requires full runtime */
+    (void)ok;
+
+    databasedata = baseline_db;
+    db_format_mode_apply(&baseline_mode);
+    disposehandle((Handle) db_A);
+    disposehandle((Handle) db_B);
+
+    log_info(LOG_COMP_DB, "[TEST] test_verbpack_internal_callee_saves_databasedata COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -862,6 +949,7 @@ int main(void) {
     TR_RUN(test_procedural_v7_golden_header_and_avail);
     TR_RUN(test_db_context_database_swap);
     TR_RUN(test_dbswapglobals_context_scoped);
+    TR_RUN(test_verbpack_internal_callee_saves_databasedata);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);

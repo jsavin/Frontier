@@ -401,6 +401,9 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	boolean flpreservelinks;
 	hdlwindowinfo hinfo;
 
+	/* Callee-saves: protect databasedata from corruption by nested pack operations */
+	hdldatabaserecord savedatabasedata = databasedata;
+
 	/*
 	2025-12-24: Set mode from context before any database I/O
 	This ensures writes use the correct format (v7 during migration)
@@ -422,6 +425,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
 		log_error(LOG_COMP_OP, "menuverbpack_internal: FAIL - flinmemory=0, caller should have loaded it");
+		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -442,8 +446,10 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	if (fltempload)
 		menuverbunload ((hdlexternalvariable) hv);
 
-	if (!fl)
+	if (!fl) {
+		databasedata = savedatabasedata;
 		return (false);
+	}
 
 	if (fldatabasesaveas)
 		goto pushaddress;
@@ -460,6 +466,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 pushaddress:
 	/* NO mode management - uses whatever mode is currently set by caller */
 
+	databasedata = savedatabasedata;
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*menuverbpack_internal*/
 

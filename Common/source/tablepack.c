@@ -356,6 +356,11 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
     boolean mode64_for_save = false;
 	db_format_mode current_mode;
 
+	/* Callee-saves: protect databasedata from corruption by nested pack operations.
+	   During recursive table packing, child operations may set databasedata to a
+	   different database, which would corrupt sibling operations if not restored. */
+	hdldatabaserecord savedatabasedata = databasedata;
+
 	/*
 	2025-12-20: Set mode from context before any database I/O
 	This ensures writes use the correct format (v7 during migration)
@@ -376,6 +381,7 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -462,8 +468,10 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	if (fltempload)
 		tableverbunload (hv);
 
-	if (!fl)
+	if (!fl) {
+		databasedata = savedatabasedata;
 		return (false);
+	}
 
 	unsigned char adrbuffer[sizeof (dbaddress)];
 	long adrsize;
@@ -490,9 +498,11 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 
 	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
 		log_error(LOG_COMP_TABLE, "enlargehandle failed while packing table");
+		databasedata = savedatabasedata;
 		return (false);
 	}
 
+	databasedata = savedatabasedata;
 	return (true);
 	} /*tableverbpack_internal*/
 

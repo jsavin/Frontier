@@ -895,6 +895,9 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	boolean fltempload = false;
 	boolean adapter_repack;
 
+	/* Callee-saves: protect databasedata from corruption by nested pack operations */
+	hdldatabaserecord savedatabasedata = databasedata;
+
 	/*
 	2025-12-20: Set mode from context before any database I/O
 	This ensures writes use the correct format (v7 during migration)
@@ -910,6 +913,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -944,6 +948,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		log_error(LOG_COMP_OP, "opverbpackoutline failed for outline at adr=0x%llx",
 		        (unsigned long long) (**hv).oldaddress);
 #endif
+		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -963,6 +968,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		log_error(LOG_COMP_OP, "dbassignhandle failed for outline adr=0x%llx",
 		        (unsigned long long) (**hv).oldaddress);
 #endif
+		databasedata = savedatabasedata;
 		return (false);
 	}
 
@@ -996,6 +1002,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	else
 		*flnewdbaddress = true;
 
+	databasedata = savedatabasedata;
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*opverbpack_internal*/
 
