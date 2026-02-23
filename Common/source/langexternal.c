@@ -1075,6 +1075,8 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 	 * Pack with output format mode - children don't change mode
 	 * ================================================================
 	 */
+	hdldatabaserecord savedatabasedata = databasedata;
+
 	switch ((**hv).id) {
 
 		case idoutlineprocessor:
@@ -1102,6 +1104,8 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 			ok = false;
 			break;
 		}
+
+	databasedata = savedatabasedata;
 
 	/* Mode remains in output format - caller will manage further transitions if needed */
 	return (ok);
