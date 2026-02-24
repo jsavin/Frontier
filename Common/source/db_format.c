@@ -2561,9 +2561,10 @@ boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *a
 
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
     /*
-    2025-12-20: Explicit context - NO GUARDS, NO SAVE/RESTORE
-    Set mode directly from context, call function, done.
-    Caller ensures correct database is active.
+    Explicit context — no global mutation at all. Threads file number and
+    header size directly from context, bypassing databasedata entirely.
+    No save/restore needed (unlike sibling _context() functions that
+    temporarily mutate and restore the global).
 
     2026-02-03: During migration, global mode may be locked to v7.
     Use explicit header size from context instead of global mode.
