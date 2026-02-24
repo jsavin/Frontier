@@ -102,7 +102,7 @@ static boolean wp_headless_get_target_record (hdlwprecord *hout, hdlwpvariable *
     if (*hvout == nil)
         return false;
 
-    if (!wpverbinmemory ((hdlexternalvariable) *hvout))
+    if (!wpverbinmemory (NULL, (hdlexternalvariable) *hvout))
         return false;
 
     *hout = (hdlwprecord) (**(*hvout)).variabledata;
@@ -417,7 +417,7 @@ boolean wpverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 	register hdlwpvariable hv = (hdlwpvariable) hvariable;
 	register hdlwprecord hwp;
 	
-	if (!wpverbinmemory ((hdlexternalvariable) hv))
+	if (!wpverbinmemory (NULL, (hdlexternalvariable) hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;
@@ -831,7 +831,7 @@ boolean wpverbgetsize (hdlexternalvariable hvariable, long *size) {
 		
 	else {
 		
-		if (!wpverbinmemory ((hdlexternalvariable) hv))
+		if (!wpverbinmemory (NULL, (hdlexternalvariable) hv))
 			return (false);
 		
 		wppushdata ((hdlwprecord) (**hv).variabledata);
@@ -875,7 +875,7 @@ boolean wpverbpacktotext (hdlexternalvariable h, Handle htext) {
 	Handle hwptext;
 	boolean fltempload = !(**hv).flinmemory;
 	
-	if (!wpverbinmemory ((hdlexternalvariable) hv))
+	if (!wpverbinmemory (NULL, (hdlexternalvariable) hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;
@@ -903,7 +903,7 @@ boolean wpverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *ti
 	register hdlexternalvariable hv = h;
 	register hdlwprecord hwp;
 	
-	if (!wpverbinmemory (hv))
+	if (!wpverbinmemory (NULL, hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;
@@ -921,7 +921,7 @@ boolean wpverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t time
 	register hdlexternalvariable hv = h;
 	register hdlwprecord hwp;
 	
-	if (!wpverbinmemory (hv))
+	if (!wpverbinmemory (NULL, hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;
@@ -988,7 +988,7 @@ boolean wpedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespe
 	WindowPtr w;
 	hdlwindowinfo hi;
 	
-	if (!wpverbinmemory ((hdlexternalvariable) hv)) // couldn't swap it into memory
+	if (!wpverbinmemory (NULL, (hdlexternalvariable) hv)) // couldn't swap it into memory
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata; // it's in memory
@@ -1938,7 +1938,7 @@ boolean wpverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!wpverbinmemory ((hdlexternalvariable) hv))
+	if (!wpverbinmemory (NULL, (hdlexternalvariable) hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;

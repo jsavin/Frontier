@@ -246,7 +246,7 @@ static boolean tableexportwpscrap (const tyvaluerecord *scrapval, Handle *hexpor
 	
 	hv = (hdlexternalvariable) val.data.externalvalue;
 	
-	fl = wpverbinmemory (hv);
+	fl = wpverbinmemory (NULL, hv);
 	
 	if (fl) {
 		
