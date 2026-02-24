@@ -161,7 +161,8 @@ boolean dbreference_internal(dbaddress adr, long maxbytes, ptrvoid pdata);
 
 /* Phase 2: Context-aware wrappers for core DB I/O primitives.
    These temporarily apply the context's database, call the legacy function,
-   and restore databasedata. Stepping stones toward eliminating the global. */
+   and restore databasedata. Stepping stones toward eliminating the global.
+   Intended callers: Phase 3+ pack/save/unpack paths replacing direct dbread/dbwrite. */
 boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata);
 boolean dbwrite_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata);
 boolean dbsavehandle_context(const db_context *context, Handle h, dbaddress *adr);

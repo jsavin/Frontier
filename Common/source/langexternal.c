@@ -962,12 +962,14 @@ boolean ensure_external_in_memory (const db_context *ctx, hdlexternalvariable hv
 boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, Handle *hpacked, boolean *flnewdbaddress) {
 
 	/*
-	2025-12-20: THE ONLY FUNCTION THAT MANAGES MODE FOR EXTERNAL PACKING
+	2025-12-20: MODE MANAGEMENT FOR EXTERNAL PACKING
 
-	Single Decision Point Pattern:
-	  - This function decides when to use v6 read mode vs v7 write mode
-	  - Child pack functions are pure operations - they don't manage mode
-	  - Mode transitions happen in ONE place (here) for entire operation
+	This function decides when to use v6 read mode vs v7 write mode,
+	sets the appropriate mode context, and dispatches to child pack functions.
+	Child pack functions are callee-saves: each saves/restores both
+	databasedata and db_format_mode around its own body. The outer
+	save/restore below is a safety net in case a future child loses
+	the callee-saves invariant.
 	*/
 
 	tydiskexternalhandle rec;
@@ -1071,10 +1073,8 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 		}
 	}
 
-	/* ================================================================
-	 * Pack with output format mode - children don't change mode
-	 * ================================================================
-	 */
+	/* Belt-and-suspenders: children are callee-saves but we restore here
+	   as a safety net in case a future child loses the invariant. */
 	hdldatabaserecord savedatabasedata = databasedata;
 	db_format_mode savedmode = db_format_mode_current();
 

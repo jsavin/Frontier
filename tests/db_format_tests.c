@@ -914,12 +914,56 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
     assert(!ok_op);  /* expected failure: not in memory */
     assert(databasedata == db_A);  /* invariant must hold even on error paths */
 
+    /* Verify databasedata callee-saves for wp (early return: not in memory) */
+    databasedata = db_A;
+    hdlexternalvariable hv_wp = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv_wp));
+    (**hv_wp).id = idwordprocessor;
+    (**hv_wp).flinmemory = 0;
+    Handle hpacked_wp = nil;
+    assert(newclearhandle(0, &hpacked_wp));
+    boolean flnew_wp = false;
+    boolean ok_wp = wpverbpack_internal(&guest_ctx, hv_wp, &hpacked_wp, &flnew_wp);
+    assert(!ok_wp);
+    assert(databasedata == db_A);
+
+    /* Verify databasedata callee-saves for pict (early return: not in memory) */
+    databasedata = db_A;
+    hdlexternalvariable hv_pict = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv_pict));
+    (**hv_pict).id = idpictprocessor;
+    (**hv_pict).flinmemory = 0;
+    Handle hpacked_pict = nil;
+    assert(newclearhandle(0, &hpacked_pict));
+    boolean flnew_pict = false;
+    boolean ok_pict = pictverbpack_internal(&guest_ctx, hv_pict, &hpacked_pict, &flnew_pict);
+    assert(!ok_pict);
+    assert(databasedata == db_A);
+
+    /* Verify databasedata callee-saves for menu (early return: not in memory) */
+    databasedata = db_A;
+    hdlexternalvariable hv_menu = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv_menu));
+    (**hv_menu).id = idmenuprocessor;
+    (**hv_menu).flinmemory = 0;
+    Handle hpacked_menu = nil;
+    assert(newclearhandle(0, &hpacked_menu));
+    boolean flnew_menu = false;
+    (void) menuverbpack_internal(&guest_ctx, hv_menu, &hpacked_menu, &flnew_menu);
+    assert(databasedata == db_A);
+
     /* Cleanup */
     disposehandle(hpacked);
     disposehandle(hpacked_op);
+    disposehandle(hpacked_wp);
+    disposehandle(hpacked_pict);
+    disposehandle(hpacked_menu);
     (**hv).variabledata = 0;
     disposehandle((Handle) hv);
     disposehandle((Handle) hv_op);
+    disposehandle((Handle) hv_wp);
+    disposehandle((Handle) hv_pict);
+    disposehandle((Handle) hv_menu);
     (void)htable;  /* intentional leak: hash table dispose requires full runtime; expected under ASAN */
     (void)ok;  /* return value unchecked: may succeed or fail depending on runtime state; we only assert databasedata restore */
 

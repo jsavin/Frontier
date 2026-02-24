@@ -470,8 +470,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 		shellsetwindowchanges (hinfo, false);
 
 pushaddress:
-	/* NO mode management - uses whatever mode is currently set by caller */
-
+	/* Restore mode before returning (callee-saves invariant) */
 	db_format_mode_apply(&savedmode);
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*menuverbpack_internal*/

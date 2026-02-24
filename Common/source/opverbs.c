@@ -987,7 +987,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		}
 
 	pushaddress:
-	/* NO mode management - uses whatever mode is currently set */
+	/* pushlongondiskhandle is mode-agnostic; restore mode before returning */
 
 	if (!fldatabasesaveas) {
 
