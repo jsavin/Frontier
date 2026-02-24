@@ -62,14 +62,15 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
     if ((h == nil) || (hpacked == nil))
         return false;
 
-    if (!(**h).flinmemory)  {
-        return false;
-    }
-
     db_format_mode savedmode = db_format_mode_current();
 
     if (ctx != NULL)
         db_format_mode_apply(&ctx->mode);
+
+    if (!(**h).flinmemory)  {
+        db_format_mode_apply(&savedmode);
+        return false;
+    }
 
     dbaddress adr = (**h).oldaddress;
 

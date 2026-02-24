@@ -2677,7 +2677,8 @@ boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, p
     /*
     Phase 2: Context-aware dbread. Temporarily applies the context's database
     handle, calls the legacy dbread (which handles Save As source redirection
-    internally), and restores databasedata.
+    internally), and restores databasedata. Format mode is not saved/restored:
+    raw read is mode-agnostic (header interpretation is the caller's concern).
     */
     hdldatabaserecord savedatabasedata = databasedata;
     boolean result;
@@ -2694,7 +2695,8 @@ boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, p
 boolean dbwrite_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
     /*
     Phase 2: Context-aware dbwrite. Temporarily applies the context's database
-    handle, calls the legacy dbwrite, and restores databasedata.
+    handle, calls the legacy dbwrite, and restores databasedata. Format mode
+    is not saved/restored: raw write is mode-agnostic.
     */
     hdldatabaserecord savedatabasedata = databasedata;
     boolean result;
@@ -2734,7 +2736,8 @@ boolean dbsavehandle_context(const db_context *context, Handle h, dbaddress *adr
 boolean dbgeteof_context(const db_context *context, long *eof) {
     /*
     Phase 2: Context-aware dbgeteof. Temporarily applies the context's
-    database handle and restores.
+    database handle and restores. Format mode is not saved/restored:
+    EOF position is mode-agnostic.
     */
     hdldatabaserecord savedatabasedata = databasedata;
     boolean result;

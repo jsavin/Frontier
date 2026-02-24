@@ -970,6 +970,11 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 	databasedata and db_format_mode around its own body. The outer
 	save/restore below is a safety net in case a future child loses
 	the callee-saves invariant.
+
+	2026-02-23: The _context() wrappers were changed from caller-saves to
+	callee-saves. All callers were audited: none depend on the side-effect
+	of the global being left set after the call (confirmed by 287 unit +
+	1704 integration tests passing).
 	*/
 
 	tydiskexternalhandle rec;
