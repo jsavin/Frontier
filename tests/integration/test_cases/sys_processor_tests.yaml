@@ -398,7 +398,7 @@ tests:
   # 2-param variant: command + stdout
   - name: "sys.unixshellcommand - 2 params (command + stdout)"
     description: "Capture stdout to address"
-    skip: "Protocol mode: @address params fail inside 'with' block wrapper — works in REPL"
+    skip: "Protocol mode: @address params fail inside 'with' block wrapper for 2-param variant"
     script: |
       local(stdout);
       sys.unixshellcommand("echo hello", @stdout);
@@ -409,7 +409,7 @@ tests:
   # 3-param variant: command + stdout + stderr
   - name: "sys.unixshellcommand - 3 params (command + stdout + stderr)"
     description: "Capture both stdout and stderr"
-    skip: "Protocol mode: @address params fail inside 'with' block wrapper — works in REPL"
+    skip: "Protocol mode: @address params fail inside 'with' block wrapper for multi-param variants"
     script: |
       local(stdout, stderr);
       sys.unixshellcommand("ls /nonexistent 2>&1", @stdout, @stderr);
