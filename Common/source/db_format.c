@@ -2631,8 +2631,11 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
     /*
     Context-aware dbreference. Temporarily applies the context's database
     handle, calls the legacy function with explicit header size, and restores.
-    Format mode is not saved/restored here: header size is passed explicitly
-    via dbreference_with_header_size, so the global mode is never consulted.
+    Format mode is not saved/restored on the non-NULL path: header size is
+    passed explicitly via dbreference_with_header_size, so the global mode
+    is never consulted. On the NULL path, dbreference_internal reads the
+    current global mode directly; we don't modify it, so no save/restore
+    is needed.
     */
     hdldatabaserecord savedatabasedata = databasedata;
     if (context != NULL) {
@@ -2646,6 +2649,7 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
         databasedata = savedatabasedata;
         return result;
     }
+    /* NULL context: use current global databasedata and mode as-is */
     boolean result = dbreference_internal(adr, ctbytes, pdata);
     databasedata = savedatabasedata;
     return result;

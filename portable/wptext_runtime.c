@@ -572,25 +572,17 @@ boolean wpverbpack(hdlexternalvariable hv, Handle *hpacked, boolean *flnewdbaddr
 }
 
 boolean wpverbpack_internal(const db_context *ctx, hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+    /* Portable WP pack: context is unused because we only read oldaddress
+       (no DB I/O), so no save/restore of databasedata or mode is needed. */
+    (void) ctx;
+
     if ((h == nil) || (hpacked == nil))
         return false;
 
     if (!(**h).flinmemory)
         return false;
 
-    hdldatabaserecord savedatabasedata = databasedata;
-    db_format_mode savedmode = db_format_mode_current();
-
-    if (ctx != NULL) {
-        if (ctx->database != nil)
-            databasedata = ctx->database;
-        db_format_mode_apply(&ctx->mode);
-    }
-
     dbaddress adr = (**h).oldaddress;
-
-    databasedata = savedatabasedata;
-    db_format_mode_apply(&savedmode);
 
     if (flnewdbaddress != NULL)
         *flnewdbaddress = false;
