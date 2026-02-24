@@ -461,7 +461,7 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 		}
 
 pushaddress:
-	/* NO mode management - uses whatever mode is currently set */
+	/* Restore mode before returning (callee-saves invariant) */
 
 	if (!fldatabasesaveas) {
 

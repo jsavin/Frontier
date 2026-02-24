@@ -47,6 +47,7 @@
 #include "windowlayout.h"
 #include "zoom.h"
 #include "db.h"
+#include "db_format.h"
 #include "tablestructure.h"
 #include "shell.h"
 #include "shellprivate.h"
@@ -474,31 +475,31 @@ boolean meloadoutline (dbaddress adr, hdloutlinerecord *houtline) {
 } /*meloadoutline*/
 
 
-boolean mesaveoutline (hdloutlinerecord ho, dbaddress *adr) {
-	
+boolean mesaveoutline (const db_context *ctx, hdloutlinerecord ho, dbaddress *adr) {
+
 	/*
 	save an outline in the database, and return the address of the database
 	memory that was allocated.
 	*/
-	
+
 	register boolean fl;
 	Handle hpackedoutline;
-	
+
 	hpackedoutline = nil; /*allocate a new handle for packing*/
-	
+
 	if (!oppackoutline (ho, &hpackedoutline))
 		return (false);
-	
-	fl = dbsavehandle (hpackedoutline, adr);
-	
+
+	fl = dbsavehandle_context (ctx, hpackedoutline, adr);
+
 	disposehandle (hpackedoutline);
-	
+
 	if (!fl)
 		return (false);
-	
+
 	if (!fldatabasesaveas)
 		(**ho).fldirty = false;
-	
+
 	return (true);
 	} /*mesaveoutline*/
 

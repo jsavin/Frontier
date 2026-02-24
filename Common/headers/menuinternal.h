@@ -59,7 +59,7 @@ extern boolean mereleaserefconroutine (hdlheadrecord, boolean);
 
 extern boolean mepackmenustructure (tysavedmenuinfo *, Handle *);
 
-extern boolean mesavemenurecord (hdlmenurecord, boolean, boolean, dbaddress *, Handle *);
+extern boolean mesavemenurecord (const db_context *, hdlmenurecord, boolean, boolean, dbaddress *, Handle *);
 
 extern boolean mesetupmenurecord (tysavedmenuinfo *, hdloutlinerecord, hdlmenurecord *);
 

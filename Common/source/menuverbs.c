@@ -328,7 +328,7 @@ boolean menuverbmemorypack (hdlexternalvariable hvariable, Handle *hpacked) {
 	
 	hm = (hdlmenurecord) (**hv).variabledata;
 	
-	fl = mesavemenurecord (hm, false, true, nil, &hpush);
+	fl = mesavemenurecord (NULL, hm, false, true, nil, &hpush);
 	
 	if (fltempload)
 		menuverbunload ((hdlexternalvariable) hv);
@@ -402,10 +402,9 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	hdlwindowinfo hinfo;
 
 	/*
-	Phase 3: mesavemenurecord is not yet context-aware, so we must
-	temporarily set databasedata for its benefit. Use scoped save/restore
-	around that call only.
-	TODO: Make mesavemenurecord context-aware (Phase 3 follow-up).
+	Phase 3: mesavemenurecord and its call chain are now fully
+	context-aware — ctx threads through to all DB I/O calls.
+	Mode save/restore is still callee-saves for menuverbpack_internal.
 	*/
 	db_format_mode savedmode = db_format_mode_current();
 
@@ -438,16 +437,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 
 	flpreservelinks = fldatabasesaveas && !fltempload;
 
-	{
-		/* Scoped databasedata for mesavemenurecord (not yet context-aware) */
-		hdldatabaserecord savedatabasedata = databasedata;
-		if (ctx != NULL && ctx->database != nil)
-			databasedata = ctx->database;
-
-		fl = mesavemenurecord (hm, flpreservelinks, false, &adr, nil);
-
-		databasedata = savedatabasedata;
-	}
+	fl = mesavemenurecord (ctx, hm, flpreservelinks, false, &adr, nil);
 
 	if (fltempload)
 		menuverbunload ((hdlexternalvariable) hv);

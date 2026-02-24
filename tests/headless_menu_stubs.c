@@ -400,7 +400,7 @@ boolean meloadoutline (dbaddress adr, hdloutlinerecord *houtline) {
     return meloadoutline_internal (nil, adr, houtline);
 }
 
-boolean mesaveoutline (hdloutlinerecord ho, dbaddress *adr) {
+boolean mesaveoutline (const db_context *ctx, hdloutlinerecord ho, dbaddress *adr) {
     /*
      * Save menu outline to database.
      */
@@ -409,7 +409,7 @@ boolean mesaveoutline (hdloutlinerecord ho, dbaddress *adr) {
     if (!oppackoutline (ho, &hpackedoutline))
         return (false);
 
-    boolean fl = dbsavehandle (hpackedoutline, adr);
+    boolean fl = dbsavehandle_context (ctx, hpackedoutline, adr);
 
     disposehandle (hpackedoutline);
 

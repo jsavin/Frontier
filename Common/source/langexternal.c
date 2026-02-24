@@ -1078,8 +1078,9 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 		}
 	}
 
-	/* Belt-and-suspenders: children are callee-saves but we restore here
-	   as a safety net in case a future child loses the invariant. */
+	/* Belt-and-suspenders safety net: all children are callee-saves and
+	   context-aware (no databasedata mutations in the pack path), but we
+	   restore here defensively in case a future child loses the invariant. */
 	hdldatabaserecord savedatabasedata = databasedata;
 	db_format_mode savedmode = db_format_mode_current();
 
