@@ -73,7 +73,6 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
     dbaddress adr = (**h).oldaddress;
 
-    (**h).oldaddress = adr;
     db_format_mode_apply(&savedmode);
     return pushlongondiskhandle((long) adr, *hpacked);
 }

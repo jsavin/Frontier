@@ -405,6 +405,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	Phase 3: mesavemenurecord is not yet context-aware, so we must
 	temporarily set databasedata for its benefit. Use scoped save/restore
 	around that call only.
+	TODO: Make mesavemenurecord context-aware (Phase 3 follow-up).
 	*/
 	db_format_mode savedmode = db_format_mode_current();
 

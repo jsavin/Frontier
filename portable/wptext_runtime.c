@@ -589,7 +589,6 @@ boolean wpverbpack_internal(const db_context *ctx, hdlexternalvariable h, Handle
 
     dbaddress adr = (**h).oldaddress;
 
-    (**h).oldaddress = adr;
     databasedata = savedatabasedata;
     db_format_mode_apply(&savedmode);
 

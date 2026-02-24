@@ -920,8 +920,8 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
     (**hv).variabledata = 0;
     disposehandle((Handle) hv);
     disposehandle((Handle) hv_op);
-    (void)htable;  /* skip hash table dispose — requires full runtime */
-    (void)ok;
+    (void)htable;  /* intentional leak: hash table dispose requires full runtime; expected under ASAN */
+    (void)ok;  /* return value unchecked: may succeed or fail depending on runtime state; we only assert databasedata restore */
 
     databasedata = baseline_db;
     db_format_mode_apply(&baseline_mode);
