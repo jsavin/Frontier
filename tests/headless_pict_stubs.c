@@ -91,6 +91,8 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
         return false;
     }
 
+    db_format_mode savedmode = db_format_mode_current();
+
     /* Apply context mode if provided (for migration: sets v7 format flags) */
     if (ctx != NULL) {
         db_format_mode_apply(&ctx->mode);
@@ -110,6 +112,7 @@ boolean pictverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
     }
 
     (**h).oldaddress = adr;
+    db_format_mode_apply(&savedmode);
     return pushlongondiskhandle((long) adr, *hpacked);
 }
 

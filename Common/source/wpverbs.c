@@ -636,12 +636,15 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	Phase 3: No direct databasedata mutation. All DB I/O goes through
 	_context() wrappers. Apply mode from context for mode-dependent logic.
 	*/
+	db_format_mode savedmode = db_format_mode_current();
+
 	if (ctx != NULL)
 		db_format_mode_apply(&ctx->mode);
 
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -653,8 +656,10 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 		hpackedwp = (Handle) (**hv).variabledata;
 
-		if (!dbassignhandle_context (ctx, hpackedwp, &adr))
+		if (!dbassignhandle_context (ctx, hpackedwp, &adr)) {
+			db_format_mode_apply(&savedmode);
 			return (false);
+		}
 
 		if (fldatabasesaveas)
 			goto pushaddress;
@@ -681,15 +686,19 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	if (!fldatabasesaveas && !(**hwp).fldirty && !(**hwp).fldirtyview) /*don't need to update the db version of the wpdoc*/
 		goto pushaddress;
 
-	if (!wpverbpackrecord (hwp, &hpackedwp))
+	if (!wpverbpackrecord (hwp, &hpackedwp)) {
+		db_format_mode_apply(&savedmode);
 		return (false);
+	}
 
 	fl = dbassignhandle_context (ctx, hpackedwp, &adr);
 
 	disposehandle (hpackedwp);
 
-	if (!fl)
+	if (!fl) {
+		db_format_mode_apply(&savedmode);
 		return (false);
+	}
 
 	if (fldatabasesaveas)
 		goto pushaddress;
@@ -723,6 +732,7 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		else
 			*flnewdbaddress = true;
 
+		db_format_mode_apply(&savedmode);
 		return (pushlongondiskhandle (adr, *hpacked));
 		} /*wpverbpack_internal*/
 

@@ -362,6 +362,7 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	apply mode from context for mode-dependent logic.
 	*/
 	hdldatabaserecord activedb = (ctx != NULL && ctx->database != nil) ? ctx->database : databasedata;
+	db_format_mode savedmode = db_format_mode_current();
 
 	if (ctx != NULL)
 		db_format_mode_apply(&ctx->mode);
@@ -376,6 +377,7 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -462,8 +464,10 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	if (fltempload)
 		tableverbunload (hv);
 
-	if (!fl)
+	if (!fl) {
+		db_format_mode_apply(&savedmode);
 		return (false);
+	}
 
 	unsigned char adrbuffer[sizeof (dbaddress)];
 	long adrsize;
@@ -490,9 +494,11 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 
 	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
 		log_error(LOG_COMP_TABLE, "enlargehandle failed while packing table");
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
+	db_format_mode_apply(&savedmode);
 	return (true);
 	} /*tableverbpack_internal*/
 

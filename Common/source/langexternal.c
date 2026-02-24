@@ -1076,6 +1076,7 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 	 * ================================================================
 	 */
 	hdldatabaserecord savedatabasedata = databasedata;
+	db_format_mode savedmode = db_format_mode_current();
 
 	switch ((**hv).id) {
 
@@ -1106,8 +1107,8 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 		}
 
 	databasedata = savedatabasedata;
+	db_format_mode_apply(&savedmode);
 
-	/* Mode remains in output format - caller will manage further transitions if needed */
 	return (ok);
 	} /*langexternalpack_internal*/
 

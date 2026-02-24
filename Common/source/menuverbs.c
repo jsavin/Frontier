@@ -406,6 +406,8 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	temporarily set databasedata for its benefit. Use scoped save/restore
 	around that call only.
 	*/
+	db_format_mode savedmode = db_format_mode_current();
+
 	if (ctx != NULL)
 		db_format_mode_apply(&ctx->mode);
 
@@ -420,6 +422,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
 		log_error(LOG_COMP_OP, "menuverbpack_internal: FAIL - flinmemory=0, caller should have loaded it");
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -448,8 +451,10 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	if (fltempload)
 		menuverbunload ((hdlexternalvariable) hv);
 
-	if (!fl)
+	if (!fl) {
+		db_format_mode_apply(&savedmode);
 		return (false);
+	}
 
 	if (fldatabasesaveas)
 		goto pushaddress;
@@ -466,6 +471,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 pushaddress:
 	/* NO mode management - uses whatever mode is currently set by caller */
 
+	db_format_mode_apply(&savedmode);
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*menuverbpack_internal*/
 

@@ -899,6 +899,8 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	Phase 3: No direct databasedata mutation. All DB I/O goes through
 	_context() wrappers. Apply mode from context for mode-dependent logic.
 	*/
+	db_format_mode savedmode = db_format_mode_current();
+
 	if (ctx != NULL)
 		db_format_mode_apply(&ctx->mode);
 
@@ -907,6 +909,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -941,6 +944,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		log_error(LOG_COMP_OP, "opverbpackoutline failed for outline at adr=0x%llx",
 		        (unsigned long long) (**hv).oldaddress);
 #endif
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -960,6 +964,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		log_error(LOG_COMP_OP, "dbassignhandle failed for outline adr=0x%llx",
 		        (unsigned long long) (**hv).oldaddress);
 #endif
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -993,6 +998,7 @@ boolean opverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	else
 		*flnewdbaddress = true;
 
+	db_format_mode_apply(&savedmode);
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*opverbpack_internal*/
 
