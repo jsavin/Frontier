@@ -470,7 +470,12 @@ static boolean mesavemenustructure_v7 (const db_context *ctx, hdlmenurecord hm, 
 
 static boolean mesavemenustructure (const db_context *ctx, hdlmenurecord hm, dbaddress *adr) {
 
-	if (db_format_mode_current().use_64bit_format)
+	/* Dispatch on ctx->mode, not the global, so this function is safe to
+	   call even if the caller hasn't pre-applied the mode to the global. */
+	boolean use_v7 = (ctx != NULL) ? ctx->mode.use_64bit_format
+	                                : db_format_mode_current().use_64bit_format;
+
+	if (use_v7)
 		return mesavemenustructure_v7 (ctx, hm, adr);
 	else
 		return mesavemenustructure_legacy (ctx, hm, adr);

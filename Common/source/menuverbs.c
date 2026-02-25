@@ -328,6 +328,7 @@ boolean menuverbmemorypack (hdlexternalvariable hvariable, Handle *hpacked) {
 	
 	hm = (hdlmenurecord) (**hv).variabledata;
 	
+	/* NULL ctx: memory-only pack, operates on current databasedata global */
 	fl = mesavemenurecord (NULL, hm, false, true, nil, &hpush);
 	
 	if (fltempload)
