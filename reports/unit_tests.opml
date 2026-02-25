@@ -1,14 +1,14 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Unit Tests - 287 tests: 287 pass (100%)</title>
-    <dateCreated>Tue, 24 Feb 2026 07:03:36 GMT</dateCreated>
+    <title>Frontier Unit Tests - 284 tests: 284 pass (100%)</title>
+    <dateCreated>Tue, 24 Feb 2026 07:03:25 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
       <outline text="Run: 2026-02-24 at 07:03 UTC"/>
-      <outline text="Results: 287 passed (100%), 0 failed (0%)"/>
-      <outline text="Executables: 30 (287 tests total)"/>
+      <outline text="Results: 284 passed (100%), 0 failed (0%)"/>
+      <outline text="Executables: 30 (284 tests total)"/>
     </outline>
     <outline text="Cli Runtime Tests (cli_runtime_tests) - 12 tests: 12 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/cli_runtime_tests.opml"/>
     <outline text="Core Tests (core_tests) - 3 tests: 3 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/core_tests.opml"/>

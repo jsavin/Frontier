@@ -163,9 +163,7 @@ static void run_opml_roundtrip(void) {
 static void run_constants_smoke(void) {
     printf("[rt] constants_smoke: start\n");
     fflush(stdout);
-    /* SKIPPED: != operator not working yet - see issue #197 */
-    printf("[rt] SKIPPED: != operator test (issue #197)\n");
-    // eval_expect("true != false", "true");
+    eval_expect("true != false", "true");
     eval_expect("nil == nil", "true");
     eval_expect("flatdown == flatdown", "true");
     eval_expect("infinity > 1000000", "true");

@@ -35,18 +35,14 @@ static void eval_expect(const char *expr, const char *expected) {
 }
 
 static void test_boolean_unary_not(void) {
-    /* SKIPPED: ! operator not working yet - see issue #197 */
-    printf("SKIPPED: test_boolean_unary_not (! operator - issue #197)\n");
-    // eval_expect("! false", "true");
-    // eval_expect("! true", "false");
+    eval_expect("! false", "true");
+    eval_expect("! true", "false");
 }
 
 static void test_comparisons(void) {
     eval_expect("2 > 1", "true");
     eval_expect("1 == 1", "true");
-    /* SKIPPED: != operator not working yet - see issue #197 */
-    printf("SKIPPED: != operator test (issue #197)\n");
-    // eval_expect("1 != 2", "true");
+    eval_expect("1 != 2", "true");
 }
 
 static void test_assign_and_local(void) {

@@ -398,7 +398,7 @@ tests:
   # 2-param variant: command + stdout
   - name: "sys.unixshellcommand - 2 params (command + stdout)"
     description: "Capture stdout to address"
-    skip: "Protocol mode: @address params fail inside 'with' block wrapper — works in REPL"
+    skip: "@address params unreliable in NDJSON protocol mode — works with -e flag"
     script: |
       local(stdout);
       sys.unixshellcommand("echo hello", @stdout);
@@ -409,7 +409,7 @@ tests:
   # 3-param variant: command + stdout + stderr
   - name: "sys.unixshellcommand - 3 params (command + stdout + stderr)"
     description: "Capture both stdout and stderr"
-    skip: "Protocol mode: @address params fail inside 'with' block wrapper — works in REPL"
+    skip: "@address params unreliable in NDJSON protocol mode — works with -e flag"
     script: |
       local(stdout, stderr);
       sys.unixshellcommand("ls /nonexistent 2>&1", @stdout, @stderr);
@@ -420,7 +420,7 @@ tests:
   # 4-param variant: command + stdout + stderr + exitstatus
   - name: "sys.unixshellcommand - 4 params (all outputs)"
     description: "Capture stdout, stderr, and exit status"
-    skip: "Protocol mode: @address params fail inside 'with' block wrapper — works in REPL"
+    skip: "@address params unreliable in NDJSON protocol mode — works with -e flag"
     script: |
       local(stdout, stderr, exitstatus);
       sys.unixshellcommand("echo test", @stdout, @stderr, @exitstatus);
@@ -430,7 +430,7 @@ tests:
 
   - name: "sys.unixshellcommand - 4 params (non-zero exit)"
     description: "Exit status captures non-zero return codes"
-    skip: "Protocol mode: @address params fail inside 'with' block wrapper — works in REPL"
+    skip: "@address params unreliable in NDJSON protocol mode — works with -e flag"
     script: |
       local(stdout, stderr, exitstatus);
       sys.unixshellcommand("exit 42", @stdout, @stderr, @exitstatus);
