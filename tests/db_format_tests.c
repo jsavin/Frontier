@@ -977,9 +977,10 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
 
 static void test_db_context_io_primitives_restore_databasedata(void) {
     /*
-     * Verify that the Phase 2 _context() wrappers (dbread_context,
-     * dbwrite_context, dbsavehandle_context, dbgeteof_context) restore
-     * databasedata after the call, regardless of success or failure.
+     * Verify that all nine _context() wrappers restore databasedata after
+     * the call, regardless of success or failure:
+     *   dbread, dbwrite, dbgeteof, dbsavehandle, dbassign, dbassignhandle,
+     *   dbcopy, dbreference, dbreference_handle.
      *
      * We don't have a real database file open, so the underlying operations
      * will fail — but the save/restore of databasedata must still work.
@@ -1023,6 +1024,27 @@ static void test_db_context_io_primitives_restore_databasedata(void) {
     (void) dbsavehandle_context(&ctx_B, hsave, &save_adr);
     assert(databasedata == db_A);
     disposehandle(hsave);
+
+    /* dbassign_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    dbaddress assign_adr = nildbaddress;
+    (void) dbassign_context(&ctx_B, &assign_adr, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbassignhandle_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    Handle hassign = nil;
+    assert(newclearhandle(8, &hassign));
+    dbaddress assignh_adr = nildbaddress;
+    (void) dbassignhandle_context(&ctx_B, hassign, &assignh_adr);
+    assert(databasedata == db_A);
+    disposehandle(hassign);
+
+    /* dbcopy_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    dbaddress copy_dest = nildbaddress;
+    (void) dbcopy_context(&ctx_B, (dbaddress) 0x100, &copy_dest);
+    assert(databasedata == db_A);
 
     /* dbreference_context: should restore databasedata even on failure */
     databasedata = db_A;

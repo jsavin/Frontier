@@ -2631,14 +2631,15 @@ boolean dbassign_context(const db_context *context, dbaddress *padr, long newsiz
 boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
     /*
     Context-aware dbreference. Temporarily applies the context's database
-    handle, calls the legacy function with explicit header size, and restores.
-    Format mode is not saved/restored on the non-NULL path: header size is
-    passed explicitly via dbreference_with_header_size, so the global mode
-    is never consulted. On the NULL path, dbreference_internal reads the
-    current global mode directly; we don't modify it, so no save/restore
-    is needed.
+    handle, calls the appropriate legacy function, and restores.
+    Format mode is not saved/restored: the non-NULL path passes header size
+    explicitly via dbreference_with_header_size (so the global mode is never
+    consulted), and the NULL path reads the current global mode directly
+    without modifying it.
     */
     hdldatabaserecord savedatabasedata = databasedata;
+    boolean result;
+
     if (context != NULL) {
         if (context->database != nil)
             databasedata = context->database;
@@ -2646,12 +2647,13 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
         /* During migration with mode lock, can't downgrade global mode to v6.
            Pass explicit header size based on context mode. */
         long header_size = context->mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
-        boolean result = dbreference_with_header_size(adr, ctbytes, pdata, header_size);
-        databasedata = savedatabasedata;
-        return result;
+        result = dbreference_with_header_size(adr, ctbytes, pdata, header_size);
     }
-    /* NULL context: use current global databasedata and mode as-is */
-    boolean result = dbreference_internal(adr, ctbytes, pdata);
+    else {
+        /* NULL context: use current global databasedata and mode as-is */
+        result = dbreference_internal(adr, ctbytes, pdata);
+    }
+
     databasedata = savedatabasedata;
     return result;
 }
