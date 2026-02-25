@@ -85,15 +85,16 @@ boolean tableverbgetsize (hdlexternalvariable h, long *size) {
 }
 
 #if !defined(HEADLESS_USE_REAL_TABLEPACK)
-boolean tableverbinmemory (hdlexternalvariable h, hdlhashnode node) {
+boolean tableverbinmemory (const db_context *ctx, hdlexternalvariable h, hdlhashnode node) {
+    (void) ctx;
     (void) h;
     (void) node;
     return true;
 }
 #else
 #include "tableexternal_common.h"
-boolean tableverbinmemory (hdlexternalvariable h, hdlhashnode node) {
-    return tableverbinmemory_common(h, node);
+boolean tableverbinmemory (const db_context *ctx, hdlexternalvariable h, hdlhashnode node) {
+    return tableverbinmemory_common(ctx, h, node);
 }
 #endif
 

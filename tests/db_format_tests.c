@@ -18,6 +18,7 @@
 #include "wpverbs.h"
 #include "pictverbs.h"
 #include "menuverbs.h"
+#include "tableexternal_common.h"
 #include "logging.h"
 #include "test_report.h"
 
@@ -1199,6 +1200,69 @@ static void test_verbpack_internal_callee_saves_format_mode(void) {
     log_info(LOG_COMP_DB, "[TEST] test_verbpack_internal_callee_saves_format_mode COMPLETED");
 }
 
+static void test_tableverbinmemory_common_callee_saves(void) {
+    /*
+     * Phase 4: Verify that tableverbinmemory_common restores databasedata
+     * after its inline save/restore swap. The function temporarily switches
+     * databasedata to (**hv).hdatabase for reading, but must restore the
+     * original value before returning (callee-saves invariant).
+     *
+     * We test the nil-address path (variabledata = nildbaddress) which exercises
+     * the full code path without needing a real database.
+     */
+    hdldatabaserecord baseline_db = databasedata;
+    db_format_mode baseline_mode = db_format_mode_current();
+
+    /* Create two fake database handles: db_A = "system root", db_B = "guest db" */
+    hdldatabaserecord db_A = nil;
+    hdldatabaserecord db_B = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_A));
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_B));
+    (**db_A).fnumdatabase = 100;
+    (**db_B).fnumdatabase = 200;
+
+    /* Set databasedata to db_A (simulating "we're saving the system root") */
+    databasedata = db_A;
+
+    /* Build a minimal table external: flinmemory=false, nildbaddress → triggers
+       the "nil table address" error path, but must NOT touch databasedata. */
+    hdlexternalvariable hv = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
+    (**hv).id = idtableprocessor;
+    (**hv).flinmemory = 0;
+    (**hv).variabledata = (long) nildbaddress;
+    (**hv).hdatabase = db_B;  /* points to guest DB */
+
+    /* Create a context pointing to db_B */
+    db_context guest_ctx;
+    db_context_init(&guest_ctx);
+    guest_ctx.database = db_B;
+    guest_ctx.mode.adapter_repack = true;  /* different from default to detect mutation */
+
+    db_format_mode before = db_format_mode_current();
+
+    /* Call — will fail (nil address) but must restore databasedata */
+    boolean ok = tableverbinmemory_common(&guest_ctx, hv, nil);
+    assert(!ok);  /* expected: nil address triggers failure */
+
+    /* THE INVARIANT: databasedata must be restored to db_A */
+    assert(databasedata == db_A);
+
+    /* THE INVARIANT: format mode must be unchanged */
+    db_format_mode after = db_format_mode_current();
+    assert(before.use_64bit_format == after.use_64bit_format);
+    assert(before.adapter_repack == after.adapter_repack);
+
+    /* Cleanup */
+    disposehandle((Handle) hv);
+    databasedata = baseline_db;
+    db_format_mode_apply(&baseline_mode);
+    disposehandle((Handle) db_A);
+    disposehandle((Handle) db_B);
+
+    log_info(LOG_COMP_DB, "[TEST] test_tableverbinmemory_common_callee_saves COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -1223,6 +1287,7 @@ int main(void) {
     TR_RUN(test_verbpack_internal_callee_saves_databasedata);
     TR_RUN(test_db_context_io_primitives_restore_databasedata);
     TR_RUN(test_verbpack_internal_callee_saves_format_mode);
+    TR_RUN(test_tableverbinmemory_common_callee_saves);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);
