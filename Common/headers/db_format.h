@@ -144,6 +144,8 @@ boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *a
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h);
 boolean dbcopy_context(const db_context *context, dbaddress src, dbaddress *dest);
 boolean dbassign_context(const db_context *context, dbaddress *padr, long newsize, ptrvoid pdata);
+/* Note: unlike other _context() wrappers, dbreference_context does NOT
+   save/restore db_format_mode — it passes header_size explicitly. */
 boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata);
 boolean dballocate_context(const db_context *context, long databytes, ptrvoid pdata, dbaddress *paddress);
 boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h);

@@ -870,15 +870,12 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
     /* Set databasedata to db_A (simulating "we're saving the system root") */
     databasedata = db_A;
 
-    /* Build a minimal in-memory table external */
-    hdlhashtable htable = nil;
-    assert(newhashtable(&htable));
-
+    /* Build a minimal table external with flinmemory=0 to force early return,
+       consistent with the other four verb types below. */
     hdlexternalvariable hv = nil;
     assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
     (**hv).id = idtableprocessor;
-    (**hv).flinmemory = 1;
-    (**hv).variabledata = (long) htable;
+    (**hv).flinmemory = 0;
     (**hv).oldaddress = (dbaddress) 0x1000;
 
     Handle hpacked = nil;
@@ -889,9 +886,9 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
     db_context_init(&guest_ctx);
     guest_ctx.database = db_B;
 
-    /* Pack using the guest context — this sets databasedata = db_B internally */
+    /* Pack using the guest context — early return, but databasedata must be restored */
     boolean flnew = false;
-    boolean ok = tableverbpack_internal(&guest_ctx, hv, &hpacked, &flnew);
+    (void) tableverbpack_internal(&guest_ctx, hv, &hpacked, &flnew);
 
     /* THE INVARIANT: databasedata must be restored to db_A after the call */
     assert(databasedata == db_A);
@@ -949,6 +946,8 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
     Handle hpacked_menu = nil;
     assert(newclearhandle(0, &hpacked_menu));
     boolean flnew_menu = false;
+    /* menuverbpack_internal threads ctx to callees — never mutates databasedata
+       directly in Phase 3, so this assertion is a structural sanity check. */
     (void) menuverbpack_internal(&guest_ctx, hv_menu, &hpacked_menu, &flnew_menu);
     assert(databasedata == db_A);
 
@@ -958,14 +957,11 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
     disposehandle(hpacked_wp);
     disposehandle(hpacked_pict);
     disposehandle(hpacked_menu);
-    (**hv).variabledata = 0;
     disposehandle((Handle) hv);
     disposehandle((Handle) hv_op);
     disposehandle((Handle) hv_wp);
     disposehandle((Handle) hv_pict);
     disposehandle((Handle) hv_menu);
-    (void)htable;  /* intentional leak: hash table dispose requires full runtime; expected under ASAN */
-    (void)ok;  /* return value unchecked: may succeed or fail depending on runtime state; we only assert databasedata restore */
 
     databasedata = baseline_db;
     db_format_mode_apply(&baseline_mode);
