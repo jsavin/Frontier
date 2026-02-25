@@ -357,25 +357,27 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	db_format_mode current_mode;
 
 	/*
-	2025-12-20: Set mode from context before any database I/O
-	This ensures writes use the correct format (v7 during migration)
+	Phase 3: No direct databasedata mutation. All DB I/O goes through
+	_context() wrappers. We derive a local activedb for nil checks and
+	apply mode from context for mode-dependent logic.
 	*/
-	if (ctx != NULL) {
-		if (ctx->database != nil)
-			databasedata = ctx->database;
-		db_format_mode_apply(&ctx->mode);
-	}
+	hdldatabaserecord activedb = (ctx != NULL && ctx->database != nil) ? ctx->database : databasedata;
+	db_format_mode savedmode = db_format_mode_current();
 
-	adapter_repack = db_format_adapter_force_repack() && (databasedata != nil);
+	if (ctx != NULL)
+		db_format_mode_apply(&ctx->mode);
+
+	adapter_repack = db_format_adapter_force_repack() && (activedb != nil);
 
 	/* Trace table packing with context info for debugging nested tables */
-	log_debug(LOG_COMP_TABLE, "tableverbpack_internal start flinmemory=%d adapter_repack=%d databasedata=%p ctx=%p ctx.use_64bit=%d",
-	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) databasedata,
+	log_debug(LOG_COMP_TABLE, "tableverbpack_internal start flinmemory=%d adapter_repack=%d activedb=%p ctx=%p ctx.use_64bit=%d",
+	        (int) (**hv).flinmemory, (int) adapter_repack, (void *) activedb,
 	        (void *) ctx, (ctx != NULL) ? (int)ctx->mode.use_64bit_format : -1);
 
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -418,10 +420,10 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 
 	if (fldatabasesaveas || (**ht).fldirty || flmustsave) {
 		dbaddress adr_before = adr;
-		if (databasedata != nil)
-			fl = dbsavehandle (hpackedtable, &adr);
+		if (activedb != nil)
+			fl = dbsavehandle_context (ctx, hpackedtable, &adr);
 		else {
-			log_debug(LOG_COMP_TABLE, "tableverbpack skipping dbsavehandle; databasedata is nil");
+			log_debug(LOG_COMP_TABLE, "tableverbpack skipping dbsavehandle; no active database");
 			fl = true;
 			adr = 0;
 		}
@@ -462,8 +464,10 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 	if (fltempload)
 		tableverbunload (hv);
 
-	if (!fl)
+	if (!fl) {
+		db_format_mode_apply(&savedmode);
 		return (false);
+	}
 
 	unsigned char adrbuffer[sizeof (dbaddress)];
 	long adrsize;
@@ -490,9 +494,11 @@ boolean tableverbpack_internal (const db_context *ctx, hdlexternalvariable h, Ha
 
 	if (!enlargehandle (*hpacked, adrsize, (ptrchar) adrbuffer)) {
 		log_error(LOG_COMP_TABLE, "enlargehandle failed while packing table");
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
+	db_format_mode_apply(&savedmode);
 	return (true);
 	} /*tableverbpack_internal*/
 

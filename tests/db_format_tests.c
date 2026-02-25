@@ -14,6 +14,10 @@
 #include "dbinternal.h"
 #include "langexternal.h"
 #include "tableverbs.h"
+#include "opverbs.h"
+#include "wpverbs.h"
+#include "pictverbs.h"
+#include "menuverbs.h"
 #include "logging.h"
 #include "test_report.h"
 
@@ -841,6 +845,360 @@ static void test_dbswapglobals_context_scoped(void) {
     disposehandle((Handle) hsrc);
     disposehandle((Handle) hdst);
 }
+
+static void test_verbpack_internal_callee_saves_databasedata(void) {
+    /*
+     * Verify the callee-saves invariant: each *verbpack_internal function must
+     * restore databasedata to its original value before returning, even when
+     * the context points to a different database.
+     *
+     * This prevents the bug where packing a child external belonging to
+     * database B corrupts databasedata for the next sibling that expects
+     * database A.
+     */
+    hdldatabaserecord baseline_db = databasedata;
+    db_format_mode baseline_mode = db_format_mode_current();
+
+    /* Create two fake database handles: db_A = "system root", db_B = "guest db" */
+    hdldatabaserecord db_A = nil;
+    hdldatabaserecord db_B = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_A));
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_B));
+    (**db_A).fnumdatabase = 100;
+    (**db_B).fnumdatabase = 200;
+
+    /* Set databasedata to db_A (simulating "we're saving the system root") */
+    databasedata = db_A;
+
+    /* Build a minimal table external with flinmemory=0 to force early return,
+       consistent with the other four verb types below. */
+    hdlexternalvariable hv = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
+    (**hv).id = idtableprocessor;
+    (**hv).flinmemory = 0;
+    (**hv).oldaddress = (dbaddress) 0x1000;
+
+    Handle hpacked = nil;
+    assert(newclearhandle(0, &hpacked));
+
+    /* Create a context pointing to db_B (the "guest database") */
+    db_context guest_ctx;
+    db_context_init(&guest_ctx);
+    guest_ctx.database = db_B;
+
+    /* Pack using the guest context — early return, but databasedata must be restored */
+    boolean flnew = false;
+    (void) tableverbpack_internal(&guest_ctx, hv, &hpacked, &flnew);
+
+    /* THE INVARIANT: databasedata must be restored to db_A after the call */
+    assert(databasedata == db_A);
+
+    /* Verify for opverbpack_internal too — create a minimal outline external */
+    databasedata = db_A;  /* reset in case the test above somehow changed it */
+
+    hdlexternalvariable hv_op = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv_op));
+    (**hv_op).id = idoutlineprocessor;
+    (**hv_op).flinmemory = 0;  /* not in memory — early return path */
+    (**hv_op).oldaddress = (dbaddress) 0x2000;
+
+    Handle hpacked_op = nil;
+    assert(newclearhandle(0, &hpacked_op));
+
+    /* This should fail (not in memory) but STILL restore databasedata */
+    boolean flnew_op = false;
+    boolean ok_op = opverbpack_internal(&guest_ctx, hv_op, &hpacked_op, &flnew_op);
+    assert(!ok_op);  /* expected failure: not in memory */
+    assert(databasedata == db_A);  /* invariant must hold even on error paths */
+
+    /* Verify databasedata callee-saves for wp (early return: not in memory) */
+    databasedata = db_A;
+    hdlexternalvariable hv_wp = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv_wp));
+    (**hv_wp).id = idwordprocessor;
+    (**hv_wp).flinmemory = 0;
+    Handle hpacked_wp = nil;
+    assert(newclearhandle(0, &hpacked_wp));
+    boolean flnew_wp = false;
+    boolean ok_wp = wpverbpack_internal(&guest_ctx, hv_wp, &hpacked_wp, &flnew_wp);
+    assert(!ok_wp);
+    assert(databasedata == db_A);
+
+    /* Verify databasedata callee-saves for pict (early return: not in memory) */
+    databasedata = db_A;
+    hdlexternalvariable hv_pict = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv_pict));
+    (**hv_pict).id = idpictprocessor;
+    (**hv_pict).flinmemory = 0;
+    Handle hpacked_pict = nil;
+    assert(newclearhandle(0, &hpacked_pict));
+    boolean flnew_pict = false;
+    boolean ok_pict = pictverbpack_internal(&guest_ctx, hv_pict, &hpacked_pict, &flnew_pict);
+    assert(!ok_pict);
+    assert(databasedata == db_A);
+
+    /* Verify databasedata callee-saves for menu (early return: not in memory) */
+    databasedata = db_A;
+    hdlexternalvariable hv_menu = nil;
+    assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv_menu));
+    (**hv_menu).id = idmenuprocessor;
+    (**hv_menu).flinmemory = 0;
+    Handle hpacked_menu = nil;
+    assert(newclearhandle(0, &hpacked_menu));
+    boolean flnew_menu = false;
+    /* menuverbpack_internal threads ctx to callees — never mutates databasedata
+       directly in Phase 3, so this assertion is a structural sanity check. */
+    (void) menuverbpack_internal(&guest_ctx, hv_menu, &hpacked_menu, &flnew_menu);
+    assert(databasedata == db_A);
+
+    /* Cleanup */
+    disposehandle(hpacked);
+    disposehandle(hpacked_op);
+    disposehandle(hpacked_wp);
+    disposehandle(hpacked_pict);
+    disposehandle(hpacked_menu);
+    disposehandle((Handle) hv);
+    disposehandle((Handle) hv_op);
+    disposehandle((Handle) hv_wp);
+    disposehandle((Handle) hv_pict);
+    disposehandle((Handle) hv_menu);
+
+    databasedata = baseline_db;
+    db_format_mode_apply(&baseline_mode);
+    disposehandle((Handle) db_A);
+    disposehandle((Handle) db_B);
+
+    log_info(LOG_COMP_DB, "[TEST] test_verbpack_internal_callee_saves_databasedata COMPLETED");
+}
+
+static void test_db_context_io_primitives_restore_databasedata(void) {
+    /*
+     * Verify that all nine _context() wrappers restore databasedata after
+     * the call, regardless of success or failure:
+     *   dbread, dbwrite, dbgeteof, dbsavehandle, dbassign, dbassignhandle,
+     *   dbcopy, dbreference, dbreference_handle.
+     *
+     * We don't have a real database file open, so the underlying operations
+     * will fail — but the save/restore of databasedata must still work.
+     */
+    hdldatabaserecord baseline_db = databasedata;
+
+    hdldatabaserecord db_A = nil;
+    hdldatabaserecord db_B = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_A));
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_B));
+    (**db_A).fnumdatabase = 300;
+    (**db_B).fnumdatabase = 400;
+
+    db_context ctx_B;
+    db_context_init(&ctx_B);
+    ctx_B.database = db_B;
+
+    char buf[16];
+
+    /* dbread_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    (void) dbread_context(&ctx_B, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbwrite_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    (void) dbwrite_context(&ctx_B, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbgeteof_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    long eof_val = 0;
+    (void) dbgeteof_context(&ctx_B, &eof_val);
+    assert(databasedata == db_A);
+
+    /* dbsavehandle_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    Handle hsave = nil;
+    assert(newclearhandle(8, &hsave));
+    dbaddress save_adr = nildbaddress;
+    (void) dbsavehandle_context(&ctx_B, hsave, &save_adr);
+    assert(databasedata == db_A);
+    disposehandle(hsave);
+
+    /* dbassign_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    dbaddress assign_adr = nildbaddress;
+    (void) dbassign_context(&ctx_B, &assign_adr, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbassignhandle_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    Handle hassign = nil;
+    assert(newclearhandle(8, &hassign));
+    dbaddress assignh_adr = nildbaddress;
+    (void) dbassignhandle_context(&ctx_B, hassign, &assignh_adr);
+    assert(databasedata == db_A);
+    disposehandle(hassign);
+
+    /* dbcopy_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    dbaddress copy_dest = nildbaddress;
+    (void) dbcopy_context(&ctx_B, (dbaddress) 0x100, &copy_dest);
+    assert(databasedata == db_A);
+
+    /* dbreference_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    (void) dbreference_context(&ctx_B, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbreference_context with NULL context: should still restore */
+    databasedata = db_A;
+    (void) dbreference_context(NULL, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* dbreference_handle_context: should restore databasedata even on failure */
+    databasedata = db_A;
+    Handle href = nil;
+    (void) dbreference_handle_context(&ctx_B, (dbaddress) 0x100, &href);
+    assert(databasedata == db_A);
+
+    /* Also verify NULL context is a no-op for databasedata */
+    databasedata = db_A;
+    (void) dbread_context(NULL, (dbaddress) 0x100, sizeof(buf), buf);
+    assert(databasedata == db_A);
+
+    /* Cleanup */
+    databasedata = baseline_db;
+    disposehandle((Handle) db_A);
+    disposehandle((Handle) db_B);
+
+    log_info(LOG_COMP_DB, "[TEST] test_db_context_io_primitives_restore_databasedata COMPLETED");
+}
+
+static void test_verbpack_internal_callee_saves_format_mode(void) {
+    /*
+     * Verify that all five *verbpack_internal functions restore the global
+     * format mode after the call, even on error paths. This is the mode-state
+     * counterpart to test_verbpack_internal_callee_saves_databasedata.
+     *
+     * We test each function on its early-return (not-in-memory) path, which
+     * exercises the mode apply + restore without needing a real database.
+     */
+    hdldatabaserecord baseline_db = databasedata;
+    db_format_mode baseline_mode = db_format_mode_current();
+
+    hdldatabaserecord db_dummy = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &db_dummy));
+    (**db_dummy).fnumdatabase = 999;
+
+    /* Create a context with v7 mode (different from default) */
+    db_context ctx;
+    db_context_init(&ctx);
+    ctx.database = db_dummy;
+    ctx.mode.use_64bit_format = true;
+    ctx.mode.adapter_repack = true;
+
+    Handle hpacked = nil;
+    boolean flnew = false;
+
+    /* --- tableverbpack_internal (early return: not in memory) --- */
+    {
+        hdlexternalvariable hv = nil;
+        assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
+        (**hv).id = idtableprocessor;
+        (**hv).flinmemory = 0;  /* triggers early return */
+        (**hv).oldaddress = (dbaddress) 0x1000;
+
+        assert(newclearhandle(0, &hpacked));
+        db_format_mode before = db_format_mode_current();
+        boolean ok = tableverbpack_internal(&ctx, hv, &hpacked, &flnew);
+        db_format_mode after = db_format_mode_current();
+        assert(!ok);
+        assert(before.use_64bit_format == after.use_64bit_format);
+        assert(before.adapter_repack == after.adapter_repack);
+        disposehandle(hpacked); hpacked = nil;
+        disposehandle((Handle) hv);
+    }
+
+    /* --- opverbpack_internal (early return: not in memory) --- */
+    {
+        hdlexternalvariable hv = nil;
+        assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
+        (**hv).id = idoutlineprocessor;
+        (**hv).flinmemory = 0;
+        (**hv).oldaddress = (dbaddress) 0x2000;
+
+        assert(newclearhandle(0, &hpacked));
+        db_format_mode before = db_format_mode_current();
+        boolean ok = opverbpack_internal(&ctx, hv, &hpacked, &flnew);
+        db_format_mode after = db_format_mode_current();
+        assert(!ok);
+        assert(before.use_64bit_format == after.use_64bit_format);
+        assert(before.adapter_repack == after.adapter_repack);
+        disposehandle(hpacked); hpacked = nil;
+        disposehandle((Handle) hv);
+    }
+
+    /* --- wpverbpack_internal (early return: not in memory) --- */
+    {
+        hdlexternalvariable hv = nil;
+        assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
+        (**hv).id = idwordprocessor;
+        (**hv).flinmemory = 0;
+        (**hv).oldaddress = (dbaddress) 0x3000;
+
+        assert(newclearhandle(0, &hpacked));
+        db_format_mode before = db_format_mode_current();
+        boolean ok = wpverbpack_internal(&ctx, hv, &hpacked, &flnew);
+        db_format_mode after = db_format_mode_current();
+        assert(!ok);
+        assert(before.use_64bit_format == after.use_64bit_format);
+        assert(before.adapter_repack == after.adapter_repack);
+        disposehandle(hpacked); hpacked = nil;
+        disposehandle((Handle) hv);
+    }
+
+    /* --- pictverbpack_internal (early return: not in memory) --- */
+    {
+        hdlexternalvariable hv = nil;
+        assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
+        (**hv).id = idpictprocessor;
+        (**hv).flinmemory = 0;
+        (**hv).oldaddress = (dbaddress) 0x4000;
+
+        assert(newclearhandle(0, &hpacked));
+        db_format_mode before = db_format_mode_current();
+        boolean ok = pictverbpack_internal(&ctx, hv, &hpacked, &flnew);
+        db_format_mode after = db_format_mode_current();
+        assert(!ok);
+        assert(before.use_64bit_format == after.use_64bit_format);
+        assert(before.adapter_repack == after.adapter_repack);
+        disposehandle(hpacked); hpacked = nil;
+        disposehandle((Handle) hv);
+    }
+
+    /* --- menuverbpack_internal (early return: not in memory) --- */
+    {
+        hdlexternalvariable hv = nil;
+        assert(newclearhandle(sizeof(tyexternalvariable), (Handle *)&hv));
+        (**hv).id = idmenuprocessor;
+        (**hv).flinmemory = 0;
+        (**hv).oldaddress = (dbaddress) 0x5000;
+
+        assert(newclearhandle(0, &hpacked));
+        db_format_mode before = db_format_mode_current();
+        (void) menuverbpack_internal(&ctx, hv, &hpacked, &flnew);
+        db_format_mode after = db_format_mode_current();
+        assert(before.use_64bit_format == after.use_64bit_format);
+        assert(before.adapter_repack == after.adapter_repack);
+        disposehandle(hpacked); hpacked = nil;
+        disposehandle((Handle) hv);
+    }
+
+    /* Cleanup */
+    databasedata = baseline_db;
+    db_format_mode_apply(&baseline_mode);
+    disposehandle((Handle) db_dummy);
+
+    log_info(LOG_COMP_DB, "[TEST] test_verbpack_internal_callee_saves_format_mode COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -862,6 +1220,9 @@ int main(void) {
     TR_RUN(test_procedural_v7_golden_header_and_avail);
     TR_RUN(test_db_context_database_swap);
     TR_RUN(test_dbswapglobals_context_scoped);
+    TR_RUN(test_verbpack_internal_callee_saves_databasedata);
+    TR_RUN(test_db_context_io_primitives_restore_databasedata);
+    TR_RUN(test_verbpack_internal_callee_saves_format_mode);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);

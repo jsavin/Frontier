@@ -400,7 +400,7 @@ boolean meloadoutline (dbaddress adr, hdloutlinerecord *houtline) {
     return meloadoutline_internal (nil, adr, houtline);
 }
 
-boolean mesaveoutline (hdloutlinerecord ho, dbaddress *adr) {
+boolean mesaveoutline (const db_context *ctx, hdloutlinerecord ho, dbaddress *adr) {
     /*
      * Save menu outline to database.
      */
@@ -409,7 +409,7 @@ boolean mesaveoutline (hdloutlinerecord ho, dbaddress *adr) {
     if (!oppackoutline (ho, &hpackedoutline))
         return (false);
 
-    boolean fl = dbsavehandle (hpackedoutline, adr);
+    boolean fl = dbsavehandle_context (ctx, hpackedoutline, adr);
 
     disposehandle (hpackedoutline);
 
@@ -520,10 +520,13 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
      * During headless migration, menu externals are preserved as database references
      * without materializing their data. We just pack the v6 address as-is.
      */
-    (void) ctx;  /* Context not needed for address passthrough */
-
     if ((h == nil) || (hp == nil))
         return false;
+
+    db_format_mode savedmode = db_format_mode_current();
+
+    if (ctx != NULL)
+        db_format_mode_apply(&ctx->mode);
 
     dbaddress adr = (**h).oldaddress;
     if (adr == nildbaddress)
@@ -531,6 +534,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
     if (adr == nildbaddress) {
         if (flnew)
             *flnew = false;
+        db_format_mode_apply(&savedmode);
         return false;
     }
 
@@ -539,6 +543,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
         *flnew = true;
 
     (**h).oldaddress = adr;
+    db_format_mode_apply(&savedmode);
     return pushlongondiskhandle((long) adr, *hp);
 }
 

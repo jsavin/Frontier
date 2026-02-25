@@ -231,7 +231,7 @@ extern boolean meloadoutline (dbaddress, hdloutlinerecord *); /*menueditor.c*/
 
 extern boolean mepackoutline (hdloutlinerecord, Handle *);
 
-extern boolean mesaveoutline (hdloutlinerecord, dbaddress *);
+extern boolean mesaveoutline (const db_context *, hdloutlinerecord, dbaddress *);
 
 extern boolean meloadscriptoutline (hdlmenurecord, hdlheadrecord, hdloutlinerecord *, boolean *);
 

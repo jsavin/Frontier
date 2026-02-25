@@ -328,7 +328,8 @@ boolean menuverbmemorypack (hdlexternalvariable hvariable, Handle *hpacked) {
 	
 	hm = (hdlmenurecord) (**hv).variabledata;
 	
-	fl = mesavemenurecord (hm, false, true, nil, &hpush);
+	/* NULL ctx: memory-only pack, operates on current databasedata global */
+	fl = mesavemenurecord (NULL, hm, false, true, nil, &hpush);
 	
 	if (fltempload)
 		menuverbunload ((hdlexternalvariable) hv);
@@ -402,14 +403,14 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	hdlwindowinfo hinfo;
 
 	/*
-	2025-12-24: Set mode from context before any database I/O
-	This ensures writes use the correct format (v7 during migration)
+	Phase 3: mesavemenurecord and its call chain are now fully
+	context-aware — ctx threads through to all DB I/O calls.
+	Mode save/restore is still callee-saves for menuverbpack_internal.
 	*/
-	if (ctx != NULL) {
-		if (ctx->database != nil)
-			databasedata = ctx->database;
+	db_format_mode savedmode = db_format_mode_current();
+
+	if (ctx != NULL)
 		db_format_mode_apply(&ctx->mode);
-	}
 
 	const boolean adapter_repack = db_format_adapter_force_repack();
 
@@ -422,6 +423,7 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
 		log_error(LOG_COMP_OP, "menuverbpack_internal: FAIL - flinmemory=0, caller should have loaded it");
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -432,18 +434,19 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 	if (adapter_repack) {
 		(*flnewdbaddress) = true;
 		(**hm).fldirty = true;
-		/* Mode already set by caller via db_format_mode_apply above - no push/pop! */
 	}
 
 	flpreservelinks = fldatabasesaveas && !fltempload;
 
-	fl = mesavemenurecord (hm, flpreservelinks, false, &adr, nil);
+	fl = mesavemenurecord (ctx, hm, flpreservelinks, false, &adr, nil);
 
 	if (fltempload)
 		menuverbunload ((hdlexternalvariable) hv);
 
-	if (!fl)
+	if (!fl) {
+		db_format_mode_apply(&savedmode);
 		return (false);
+	}
 
 	if (fldatabasesaveas)
 		goto pushaddress;
@@ -458,8 +461,8 @@ boolean menuverbpack_internal (const db_context *ctx, hdlexternalvariable h, Han
 		shellsetwindowchanges (hinfo, false);
 
 pushaddress:
-	/* NO mode management - uses whatever mode is currently set by caller */
-
+	/* Restore mode before returning (callee-saves invariant) */
+	db_format_mode_apply(&savedmode);
 	return (pushlongondiskhandle (adr, *hpacked));
 	} /*menuverbpack_internal*/
 

@@ -225,90 +225,89 @@ typedef struct typackinfo {
 
 
 static boolean mesavescriptvisit (hdlheadrecord hnode, ptrvoid refcon) {
-#pragma unused (refcon)
 
+	const db_context *ctx = (const db_context *) refcon;
 	register hdlheadrecord h = hnode;
-	//ptrpackinfo packinfo = (ptrpackinfo) refcon;
 	register hdloutlinerecord ho;
 	tymenuiteminfo item;
-	
+
 	rollbeachball ();
-	
+
 	assert (menudata != nil);
-	
+
 	if (!megetmenuiteminfo (h, &item)) /*nothing linked, keep visiting*/
 		return (true);
-	
+
 	ho = item.linkedscript.houtline; /*copy into register*/
-	
+
 	if (ho == nil) /*if nil, nothing to worry about saving*/
 		return (true);
-	
+
 	if ((**ho).fldirty) { /*needs saving*/
-		
-		if (!mesaveoutline (ho, &item.linkedscript.adrlink)) /*memory or disk error, stop visiting*/
+
+		if (!mesaveoutline (ctx, ho, &item.linkedscript.adrlink)) /*memory or disk error, stop visiting*/
 			return (false);
 		}
-	
+
 	if (ho != (**menudata).scriptoutline) { /*don't reclaim the active script'*/
-		
+
 		opdisposeoutline (ho, false); /*reclaim the script*/
-	
+
 		item.linkedscript.houtline = nil; /*force us to look to disk*/
 		}
-		
+
 	else { /*'just clear its madechanges bit*/
-		
+
 		windowsetchanges ((**menudata).scriptwindow, false);
-		
+
 		(**ho).fldirty = false;
 		}
-	
+
 	return (mesetmenuiteminfo (h, &item));
 	} /*mesavescriptvisit*/
 	
 
 static boolean mesaveasscriptvisit (hdlheadrecord hnode, ptrvoid refcon) {
-#pragma unused (refcon)
 
 	/*
-	for save as, we need to write a packed version of every script to 
-	the new file.  db.c takes care of redirecting reads & writes as 
+	for save as, we need to write a packed version of every script to
+	the new file.  db.c takes care of redirecting reads & writes as
 	necessary
 	*/
-	
+
+	const db_context *ctx = (const db_context *) refcon;
 	register hdlheadrecord h = hnode;
 	hdloutlinerecord ho;
 	tymenuiteminfo item;
 	dbaddress adr;
 	boolean fltempload = false;
-	
+
 	rollbeachball ();
-	
+
 	if (!megetmenuiteminfo (h, &item)) /*nothing linked, keep visiting*/
 		return (true);
-	
+
 	ho = item.linkedscript.houtline; /*copy into register*/
-	
+
 	if (flconvertingolddatabase)
 		if (!meloadscriptoutline (menudata, h, &ho, &fltempload)) /*error loading script*/
 			return (false);
-	
+
 	if (ho != nil) {
-	
-		if (!mesaveoutline (ho, &adr)) /*memory or disk error, stop visiting*/
+
+		if (!mesaveoutline (ctx, ho, &adr)) /*memory or disk error, stop visiting*/
 			return (false);
 		}
 	else {
-		if (!dbcopy (item.linkedscript.adrlink, &adr)) /*copy packed version to new file*/
+		if (!dbcopy_context (ctx, item.linkedscript.adrlink, &adr)) /*copy packed version to new file*/
 			return (false);
 		}
-	
+
 	if (fltempload)
 		opdisposeoutline (ho, false);
-	
+
 	item.linkedscript.adrlink = adr; /*link in current database will be restored by caller*/
-	
+
 	return (mesetmenuiteminfo (h, &item));
 	} /*mesaveasscriptvisit*/
 
@@ -365,7 +364,7 @@ typedef struct tysavedmenuinfo_v7 {
 _Static_assert(sizeof(tysavedmenuinfo_v7) == 1056, "v7 menu struct must be exactly 1056 bytes");
 
 
-static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
+static boolean mesavemenustructure_legacy (const db_context *ctx, hdlmenurecord hm, dbaddress *adr) {
 
 	/*
 	Legacy (v6) save path: save the menu structure with 32-bit BE addresses.
@@ -386,9 +385,9 @@ static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
 	opoutermostsummit (&hsummit);
 
 	if (fldatabasesaveas)
-		fl = opsiblingvisiter (hsummit, false, &mesaveasscriptvisit, nil);
+		fl = opsiblingvisiter (hsummit, false, &mesaveasscriptvisit, (ptrvoid) ctx);
 	else
-		fl = opsiblingvisiter (hsummit, false, &mesavescriptvisit, nil);
+		fl = opsiblingvisiter (hsummit, false, &mesavescriptvisit, (ptrvoid) ctx);
 
 	assert (opvalidate (op_get_outlinedata()));
 
@@ -403,7 +402,7 @@ static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
 
 	info.adroutline = (**hm).adroutline;
 
-	if (!mesaveoutline (op_get_outlinedata(), &info.adroutline))
+	if (!mesaveoutline (ctx, op_get_outlinedata(), &info.adroutline))
 		return (false);
 
 	/* Capture the updated host-order address before BE32 conversion */
@@ -411,7 +410,7 @@ static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
 
 	db_format_write_be32(&info.adroutline, (uint32_t) info.adroutline);
 
-	fl = dbassign (adr, sizeof (tysavedmenuinfo), &info);
+	fl = dbassign_context (ctx, adr, sizeof (tysavedmenuinfo), &info);
 
 	/* Update in-memory address with new outline address.
 	   During Save As, preserve the original address so the source DB stays valid. */
@@ -422,7 +421,7 @@ static boolean mesavemenustructure_legacy (hdlmenurecord hm, dbaddress *adr) {
 	} /*mesavemenustructure_legacy*/
 
 
-static boolean mesavemenustructure_v7 (hdlmenurecord hm, dbaddress *adr) {
+static boolean mesavemenustructure_v7 (const db_context *ctx, hdlmenurecord hm, dbaddress *adr) {
 
 	/*
 	V7 save path: save the menu structure with 64-bit BE addresses.
@@ -437,9 +436,9 @@ static boolean mesavemenustructure_v7 (hdlmenurecord hm, dbaddress *adr) {
 	opoutermostsummit (&hsummit);
 
 	if (fldatabasesaveas)
-		fl = opsiblingvisiter (hsummit, false, &mesaveasscriptvisit, nil);
+		fl = opsiblingvisiter (hsummit, false, &mesaveasscriptvisit, (ptrvoid) ctx);
 	else
-		fl = opsiblingvisiter (hsummit, false, &mesavescriptvisit, nil);
+		fl = opsiblingvisiter (hsummit, false, &mesavescriptvisit, (ptrvoid) ctx);
 
 	assert (opvalidate (op_get_outlinedata()));
 
@@ -448,7 +447,7 @@ static boolean mesavemenustructure_v7 (hdlmenurecord hm, dbaddress *adr) {
 
 	outline_adr = (**hm).adroutline;
 
-	if (!mesaveoutline (op_get_outlinedata(), &outline_adr))
+	if (!mesaveoutline (ctx, op_get_outlinedata(), &outline_adr))
 		return (false);
 
 	clearbytes (&v7info, sizeof (v7info));
@@ -459,7 +458,7 @@ static boolean mesavemenustructure_v7 (hdlmenurecord hm, dbaddress *adr) {
 	v7info.flags = host_to_disk_uint32 ((uint32_t) ((**hm).flautosmash ? flautosmash_mask : 0));
 	v7info.menuactiveitem = host_to_disk_uint32 ((uint32_t) (**hm).menuactiveitem);
 
-	fl = dbassign (adr, sizeof (tysavedmenuinfo_v7), &v7info);
+	fl = dbassign_context (ctx, adr, sizeof (tysavedmenuinfo_v7), &v7info);
 
 	/* During Save As, preserve the original address so the source DB stays valid. */
 	if (fl && !fldatabasesaveas)
@@ -469,12 +468,17 @@ static boolean mesavemenustructure_v7 (hdlmenurecord hm, dbaddress *adr) {
 	} /*mesavemenustructure_v7*/
 
 
-static boolean mesavemenustructure (hdlmenurecord hm, dbaddress *adr) {
+static boolean mesavemenustructure (const db_context *ctx, hdlmenurecord hm, dbaddress *adr) {
 
-	if (db_format_mode_current().use_64bit_format)
-		return mesavemenustructure_v7 (hm, adr);
+	/* Dispatch on ctx->mode, not the global, so this function is safe to
+	   call even if the caller hasn't pre-applied the mode to the global. */
+	boolean use_v7 = (ctx != NULL) ? ctx->mode.use_64bit_format
+	                                : db_format_mode_current().use_64bit_format;
+
+	if (use_v7)
+		return mesavemenustructure_v7 (ctx, hm, adr);
 	else
-		return mesavemenustructure_legacy (hm, adr);
+		return mesavemenustructure_legacy (ctx, hm, adr);
 	} /*mesavemenustructure*/
 
 
@@ -526,16 +530,19 @@ static boolean mepackmenustructure_legacy (tysavedmenuinfo *info, Handle *hpacke
 	} /*mepackmenustructure_legacy*/
 
 
-boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, boolean flmemory, dbaddress *adr, Handle *hpacked) {
-	
+boolean mesavemenurecord (const db_context *ctx, hdlmenurecord hmenurecord, boolean flpreservelinks, boolean flmemory, dbaddress *adr, Handle *hpacked) {
+
 	/*
 	save the menu record handle in the database.
-	
+
 	dmb 9/21/90:  unfortunately, menudata global is heavily entrenched, set it at the
 	beginning of the routine.
-	
-	dmb 10/23/90: the new flmemory parameter determines whether we're saving to disk 
+
+	dmb 10/23/90: the new flmemory parameter determines whether we're saving to disk
 	(using adr), or packing to memory (using hpacked)
+
+	2026-02-23: ctx parameter threads database context through the save chain,
+	eliminating databasedata mutation in the menu pack path.
 	*/
 	
 	register hdlmenurecord hm = hmenurecord;
@@ -637,7 +644,7 @@ boolean mesavemenurecord (hdlmenurecord hmenurecord, boolean flpreservelinks, bo
 			fl = mepackmenustructure (&info, hpacked);
 			}
 		else {
-			fl = mesavemenustructure (hm, adr);
+			fl = mesavemenustructure (ctx, hm, adr);
 			}
 		}
 	

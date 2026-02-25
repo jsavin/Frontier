@@ -102,7 +102,7 @@ static boolean wp_headless_get_target_record (hdlwprecord *hout, hdlwpvariable *
     if (*hvout == nil)
         return false;
 
-    if (!wpverbinmemory ((hdlexternalvariable) *hvout))
+    if (!wpverbinmemory (NULL, (hdlexternalvariable) *hvout))
         return false;
 
     *hout = (hdlwprecord) (**(*hvout)).variabledata;
@@ -417,7 +417,7 @@ boolean wpverbsetdirty (hdlexternalvariable hvariable, boolean fldirty) {
 	register hdlwpvariable hv = (hdlwpvariable) hvariable;
 	register hdlwprecord hwp;
 	
-	if (!wpverbinmemory ((hdlexternalvariable) hv))
+	if (!wpverbinmemory (NULL, (hdlexternalvariable) hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;
@@ -633,18 +633,18 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	const boolean adapter_repack = db_format_adapter_force_repack();
 
 	/*
-	2025-12-20: Set mode from context before any database I/O
-	This ensures writes use the correct format (v7 during migration)
+	Phase 3: No direct databasedata mutation. All DB I/O goes through
+	_context() wrappers. Apply mode from context for mode-dependent logic.
 	*/
-	if (ctx != NULL) {
-		if (ctx->database != nil)
-			databasedata = ctx->database;
+	db_format_mode savedmode = db_format_mode_current();
+
+	if (ctx != NULL)
 		db_format_mode_apply(&ctx->mode);
-	}
 
 	/* Precondition: external must be in memory */
 	if (!(**hv).flinmemory) {
 		/* This is a programming error - caller should have loaded it */
+		db_format_mode_apply(&savedmode);
 		return (false);
 	}
 
@@ -656,8 +656,10 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 
 		hpackedwp = (Handle) (**hv).variabledata;
 
-		if (!dbassignhandle (hpackedwp, &adr))
+		if (!dbassignhandle_context (ctx, hpackedwp, &adr)) {
+			db_format_mode_apply(&savedmode);
 			return (false);
+		}
 
 		if (fldatabasesaveas)
 			goto pushaddress;
@@ -684,15 +686,19 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 	if (!fldatabasesaveas && !(**hwp).fldirty && !(**hwp).fldirtyview) /*don't need to update the db version of the wpdoc*/
 		goto pushaddress;
 
-	if (!wpverbpackrecord (hwp, &hpackedwp))
+	if (!wpverbpackrecord (hwp, &hpackedwp)) {
+		db_format_mode_apply(&savedmode);
 		return (false);
+	}
 
-	fl = dbassignhandle (hpackedwp, &adr);
+	fl = dbassignhandle_context (ctx, hpackedwp, &adr);
 
 	disposehandle (hpackedwp);
 
-	if (!fl)
+	if (!fl) {
+		db_format_mode_apply(&savedmode);
 		return (false);
+	}
 
 	if (fldatabasesaveas)
 		goto pushaddress;
@@ -726,6 +732,7 @@ boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handl
 		else
 			*flnewdbaddress = true;
 
+		db_format_mode_apply(&savedmode);
 		return (pushlongondiskhandle (adr, *hpacked));
 		} /*wpverbpack_internal*/
 
@@ -824,7 +831,7 @@ boolean wpverbgetsize (hdlexternalvariable hvariable, long *size) {
 		
 	else {
 		
-		if (!wpverbinmemory ((hdlexternalvariable) hv))
+		if (!wpverbinmemory (NULL, (hdlexternalvariable) hv))
 			return (false);
 		
 		wppushdata ((hdlwprecord) (**hv).variabledata);
@@ -868,7 +875,7 @@ boolean wpverbpacktotext (hdlexternalvariable h, Handle htext) {
 	Handle hwptext;
 	boolean fltempload = !(**hv).flinmemory;
 	
-	if (!wpverbinmemory ((hdlexternalvariable) hv))
+	if (!wpverbinmemory (NULL, (hdlexternalvariable) hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;
@@ -896,7 +903,7 @@ boolean wpverbgettimes (hdlexternalvariable h, int64_t *timecreated, int64_t *ti
 	register hdlexternalvariable hv = h;
 	register hdlwprecord hwp;
 	
-	if (!wpverbinmemory (hv))
+	if (!wpverbinmemory (NULL, hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;
@@ -914,7 +921,7 @@ boolean wpverbsettimes (hdlexternalvariable h, int64_t timecreated, int64_t time
 	register hdlexternalvariable hv = h;
 	register hdlwprecord hwp;
 	
-	if (!wpverbinmemory (hv))
+	if (!wpverbinmemory (NULL, hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;
@@ -981,7 +988,7 @@ boolean wpedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespe
 	WindowPtr w;
 	hdlwindowinfo hi;
 	
-	if (!wpverbinmemory ((hdlexternalvariable) hv)) // couldn't swap it into memory
+	if (!wpverbinmemory (NULL, (hdlexternalvariable) hv)) // couldn't swap it into memory
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata; // it's in memory
@@ -1931,7 +1938,7 @@ boolean wpverbfind (hdlexternalvariable hvariable, boolean *flzoom) {
 	
 	fltempload = !(**hv).flinmemory;
 	
-	if (!wpverbinmemory ((hdlexternalvariable) hv))
+	if (!wpverbinmemory (NULL, (hdlexternalvariable) hv))
 		return (false);
 	
 	hwp = (hdlwprecord) (**hv).variabledata;

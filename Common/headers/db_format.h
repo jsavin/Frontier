@@ -144,6 +144,8 @@ boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *a
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h);
 boolean dbcopy_context(const db_context *context, dbaddress src, dbaddress *dest);
 boolean dbassign_context(const db_context *context, dbaddress *padr, long newsize, ptrvoid pdata);
+/* Note: unlike other _context() wrappers, dbreference_context does NOT
+   save/restore db_format_mode — it passes header_size explicitly. */
 boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata);
 boolean dballocate_context(const db_context *context, long databytes, ptrvoid pdata, dbaddress *paddress);
 boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h);
@@ -158,6 +160,15 @@ void dbswapglobals_context(db_context *context);
 boolean dbassign_internal(dbaddress *padr, long newsize, ptrvoid pdata);
 boolean dbcopy_internal(dbaddress adrorig, dbaddress *adrcopy);
 boolean dbreference_internal(dbaddress adr, long maxbytes, ptrvoid pdata);
+
+/* Phase 2: Context-aware wrappers for core DB I/O primitives.
+   These temporarily apply the context's database, call the legacy function,
+   and restore databasedata. Stepping stones toward eliminating the global.
+   Intended callers: Phase 3+ pack/save/unpack paths replacing direct dbread/dbwrite. */
+boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata);
+boolean dbwrite_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata);
+boolean dbsavehandle_context(const db_context *context, Handle h, dbaddress *adr);
+boolean dbgeteof_context(const db_context *context, long *eof);
 
 #ifdef __cplusplus
 } /* extern "C" */

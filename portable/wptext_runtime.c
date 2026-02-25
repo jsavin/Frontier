@@ -571,6 +571,34 @@ boolean wpverbpack(hdlexternalvariable hv, Handle *hpacked, boolean *flnewdbaddr
     return pushlongondiskhandle((long)adr, *hpacked);
 }
 
+boolean wpverbpack_internal(const db_context *ctx, hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+    /* WP pack is read-only (only reads oldaddress, no DB I/O), but we
+       apply the callee-saves pattern for structural consistency with the
+       other four verbpack_internal functions. */
+
+    if ((h == nil) || (hpacked == nil))
+        return false;
+
+    db_format_mode savedmode = db_format_mode_current();
+
+    if (ctx != NULL)
+        db_format_mode_apply(&ctx->mode);
+
+    if (!(**h).flinmemory) {
+        db_format_mode_apply(&savedmode);
+        return false;
+    }
+
+    dbaddress adr = (**h).oldaddress;
+
+    db_format_mode_apply(&savedmode);
+
+    if (flnewdbaddress != NULL)
+        *flnewdbaddress = false;
+
+    return pushlongondiskhandle((long) adr, *hpacked);
+}
+
 boolean wpverbunpack(Handle hpacked, long *ixload, hdlexternalvariable *h) {
     long rawadr = 0;
 

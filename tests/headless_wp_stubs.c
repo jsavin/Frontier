@@ -4,6 +4,8 @@
 #include "wpengine.h"
 #include "wpverbs.h"
 #include "strings.h"
+#include "db.h"
+#include "db_format.h"
 #include "processinternal.h"  /* wp_sel_start/wp_sel_end macros (thread-local via GIL) */
 
 #ifdef FRONTIER_HEADLESS
@@ -56,6 +58,30 @@ boolean wpverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable *h
     return false;
 }
 
+boolean wpverbpack_internal (const db_context *ctx, hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
+    if ((h == nil) || (hpacked == nil))
+        return false;
+
+    db_format_mode savedmode = db_format_mode_current();
+
+    if (ctx != NULL)
+        db_format_mode_apply(&ctx->mode);
+
+    if (!(**h).flinmemory)  {
+        db_format_mode_apply(&savedmode);
+        return false;
+    }
+
+    dbaddress adr = (**h).oldaddress;
+
+    db_format_mode_apply(&savedmode);
+
+    if (flnewdbaddress != NULL)
+        *flnewdbaddress = false;
+
+    return pushlongondiskhandle((long) adr, *hpacked);
+}
+
 boolean wpverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddress) {
     (void) h;
     if (hpacked)
@@ -72,7 +98,8 @@ boolean wpverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
     return false;
 }
 
-boolean wpverbinmemory (hdlexternalvariable h) {
+boolean wpverbinmemory (const db_context *ctx, hdlexternalvariable h) {
+    (void) ctx;
     (void) h;
     return true;
 }
