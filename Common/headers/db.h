@@ -198,6 +198,8 @@ extern boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long heade
 
 extern boolean dbread_fnum(dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
 
+/* hdb: owning database handle, used for the read-only guard.  Pass nil
+   to skip the guard (only when no database handle is available). */
 extern boolean dbwrite_fnum(dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum, hdldatabaserecord hdb);
 
 extern boolean dbgeteof_fnum(long *eof, hdlfilenum fnum);
