@@ -2640,8 +2640,7 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
 
         if (context->database != nil) {
             /* Thread fnum explicitly — no databasedata mutation */
-            hdlfilenum fnum = (hdlfilenum)((**context->database).fnumdatabase);
-            return dbreference_fnum(adr, ctbytes, pdata, header_size, fnum);
+            return dbreference_fnum(adr, ctbytes, pdata, header_size, db_context_fnum(context));
         }
 
         /* Context with nil database: use global databasedata via legacy path */
@@ -2678,8 +2677,7 @@ boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, p
     */
 
     if (context != NULL && context->database != nil) {
-        hdlfilenum fnum = (hdlfilenum)((**context->database).fnumdatabase);
-        return dbread_fnum(adr, ctbytes, pdata, fnum);
+        return dbread_fnum(adr, ctbytes, pdata, db_context_fnum(context));
     }
 
     return dbread(adr, ctbytes, pdata);
@@ -2693,8 +2691,7 @@ boolean dbwrite_context(const db_context *context, dbaddress adr, long ctbytes, 
     */
 
     if (context != NULL && context->database != nil) {
-        hdlfilenum fnum = (hdlfilenum)((**context->database).fnumdatabase);
-        return dbwrite_fnum(adr, ctbytes, pdata, fnum);
+        return dbwrite_fnum(adr, ctbytes, pdata, db_context_fnum(context), context->database);
     }
 
     return dbwrite(adr, ctbytes, pdata);
@@ -2731,8 +2728,7 @@ boolean dbgeteof_context(const db_context *context, long *eof) {
     */
 
     if (context != NULL && context->database != nil) {
-        hdlfilenum fnum = (hdlfilenum)((**context->database).fnumdatabase);
-        return dbgeteof_fnum(eof, fnum);
+        return dbgeteof_fnum(eof, db_context_fnum(context));
     }
 
     return dbgeteof(eof);

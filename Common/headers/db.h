@@ -198,7 +198,7 @@ extern boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long heade
 
 extern boolean dbread_fnum(dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
 
-extern boolean dbwrite_fnum(dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
+extern boolean dbwrite_fnum(dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum, hdldatabaserecord hdb);
 
 extern boolean dbgeteof_fnum(long *eof, hdlfilenum fnum);
 

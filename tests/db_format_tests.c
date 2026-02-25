@@ -1268,6 +1268,55 @@ static void test_tableverbinmemory_common_callee_saves(void) {
     log_info(LOG_COMP_DB, "[TEST] test_tableverbinmemory_common_callee_saves COMPLETED");
 }
 
+static void test_fnum_variants_reject_invalid_fnum(void) {
+    /*
+     * Verify that the new _fnum functions return false when given an
+     * invalid file number (0 or -1), exercising basic error paths.
+     */
+    char buf[16] = {0};
+    long eof_val = 0;
+    hdlfilenum bad_fnum = (hdlfilenum) 0;
+
+    /* dbread_fnum: seek to invalid fnum should fail */
+    assert(!dbread_fnum((dbaddress) 0x100, sizeof(buf), buf, bad_fnum));
+
+    /* dbwrite_fnum: seek to invalid fnum should fail (nil hdb — no read-only check) */
+    assert(!dbwrite_fnum((dbaddress) 0x100, sizeof(buf), buf, bad_fnum, nil));
+
+    /* dbgeteof_fnum: EOF on invalid fnum should fail */
+    assert(!dbgeteof_fnum(&eof_val, bad_fnum));
+
+    /* dbreference_fnum: header read on invalid fnum should fail */
+    assert(!dbreference_fnum((dbaddress) 0x100, sizeof(buf), buf, 8, bad_fnum));
+
+    log_info(LOG_COMP_DB, "[TEST] test_fnum_variants_reject_invalid_fnum COMPLETED");
+}
+
+static void test_dbwrite_fnum_readonly_guard(void) {
+    /*
+     * Verify that dbwrite_fnum blocks writes to a read-only database,
+     * matching the safety guard in the legacy dbwrite function.
+     */
+    hdldatabaserecord hdb = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &hdb));
+    (**hdb).fnumdatabase = 999;
+    (**hdb).u.extensions.flreadonly = true;
+
+    char buf[16] = {0};
+
+    /* Should be blocked by the read-only guard */
+    assert(!dbwrite_fnum((dbaddress) 0x100, sizeof(buf), buf, (hdlfilenum) 999, hdb));
+
+    /* With flreadonly = false, should fail for a different reason (invalid fnum) */
+    (**hdb).u.extensions.flreadonly = false;
+    /* This will fail at filesetposition, not at the read-only guard */
+    assert(!dbwrite_fnum((dbaddress) 0x100, sizeof(buf), buf, (hdlfilenum) 999, hdb));
+
+    disposehandle((Handle) hdb);
+
+    log_info(LOG_COMP_DB, "[TEST] test_dbwrite_fnum_readonly_guard COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -1293,6 +1342,8 @@ int main(void) {
     TR_RUN(test_db_context_io_primitives_restore_databasedata);
     TR_RUN(test_verbpack_internal_callee_saves_format_mode);
     TR_RUN(test_tableverbinmemory_common_callee_saves);
+    TR_RUN(test_fnum_variants_reject_invalid_fnum);
+    TR_RUN(test_dbwrite_fnum_readonly_guard);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);

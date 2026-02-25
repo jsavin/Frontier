@@ -877,6 +877,12 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 
 boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum) {
 
+	/*
+	Like dbread but reads from an explicit file number instead of the global
+	databasedata. Bypasses Save As source redirection intentionally: an
+	explicit fnum means "read from this specific database, period."
+	*/
+
 	if (!filesetposition (fnum, adr))
 		return (false);
 
@@ -887,7 +893,25 @@ boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum
 	} /*dbread_fnum*/
 
 
-boolean dbwrite_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum) {
+boolean dbwrite_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	/*
+	Like dbwrite but writes to an explicit file number instead of the global
+	databasedata. Preserves the read-only guard from dbwrite: callers must
+	pass the database handle so we can check flreadonly.
+	*/
+
+#if defined(FRONTIER_HEADLESS)
+	if (hdb && (**hdb).u.extensions.flreadonly) {
+		log_error(LOG_COMP_DB, "dbwrite_fnum BLOCKED read-only fnum=%ld adr=0x%llx bytes=%ld",
+			(long) fnum,
+			(unsigned long long) adr,
+			ctbytes);
+		return (false);
+	}
+#else
+	(void) hdb;
+#endif
 
 	if (!filesetposition (fnum, adr))
 		return (false);

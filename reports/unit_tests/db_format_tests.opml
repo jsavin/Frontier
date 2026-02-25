@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Db Format Tests (db_format_tests) - 22 tests: 22 pass (100%)</title>
-    <dateCreated>Wed, 25 Feb 2026 08:15:21 GMT</dateCreated>
+    <title>Db Format Tests (db_format_tests) - 24 tests: 24 pass (100%)</title>
+    <dateCreated>Wed, 25 Feb 2026 19:50:39 GMT</dateCreated>
   </head>
   <body>
     <outline text="✓ test_legacy_adapter_widen_to_v7_bytes"/>
@@ -24,6 +24,8 @@
     <outline text="✓ test_db_context_io_primitives_restore_databasedata"/>
     <outline text="✓ test_verbpack_internal_callee_saves_format_mode"/>
     <outline text="✓ test_tableverbinmemory_common_callee_saves"/>
+    <outline text="✓ test_fnum_variants_reject_invalid_fnum"/>
+    <outline text="✓ test_dbwrite_fnum_readonly_guard"/>
     <outline text="✓ test_header_version_and_loader_switch"/>
     <outline text="✓ test_legacy_table_repack_forces_be64_address"/>
     <outline text="✓ test_legacy_record_reference_repacked_to_be64"/>
