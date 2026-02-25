@@ -2643,7 +2643,12 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
             return dbreference_fnum(adr, ctbytes, pdata, header_size, db_context_fnum(context));
         }
 
-        /* Context with nil database: use global databasedata via legacy path */
+        /* FALLBACK: non-NULL context with nil database — reads from global
+           databasedata via legacy path.  This case occurs when the caller
+           constructs a context to override mode only (e.g. force v6 header
+           interpretation) while keeping the current database.  It is NOT a
+           thread-safe path; Phase 7+ should require all contexts to carry a
+           non-nil database handle once the allocation subsystem is converted. */
         return dbreference_with_header_size(adr, ctbytes, pdata, header_size);
     }
 

@@ -901,17 +901,16 @@ boolean dbwrite_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnu
 	pass the database handle so we can check flreadonly.
 	*/
 
-#if defined(FRONTIER_HEADLESS)
+	/* Read-only guard: correctness invariant, enforced in all builds. */
 	if (hdb && (**hdb).u.extensions.flreadonly) {
+#if defined(FRONTIER_HEADLESS)
 		log_error(LOG_COMP_DB, "dbwrite_fnum BLOCKED read-only fnum=%ld adr=0x%llx bytes=%ld",
 			(long) fnum,
 			(unsigned long long) adr,
 			ctbytes);
+#endif
 		return (false);
 	}
-#else
-	(void) hdb;
-#endif
 
 	if (!filesetposition (fnum, adr))
 		return (false);
