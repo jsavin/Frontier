@@ -2630,32 +2630,26 @@ boolean dbassign_context(const db_context *context, dbaddress *padr, long newsiz
 
 boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
     /*
-    Context-aware dbreference. Temporarily applies the context's database
-    handle, calls the appropriate legacy function, and restores.
-    Format mode is not saved/restored: the non-NULL path passes header size
-    explicitly via dbreference_with_header_size (so the global mode is never
-    consulted), and the NULL path reads the current global mode directly
-    without modifying it.
+    Context-aware dbreference. For non-NULL contexts with a database handle,
+    passes fnum explicitly via dbreference_fnum — no global mutation needed.
+    For NULL context, delegates to dbreference_internal (uses global state).
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    boolean result;
 
     if (context != NULL) {
-        if (context->database != nil)
-            databasedata = context->database;
-
-        /* During migration with mode lock, can't downgrade global mode to v6.
-           Pass explicit header size based on context mode. */
         long header_size = context->mode.use_64bit_format ? sizeheader_v7 : sizeheader_v6;
-        result = dbreference_with_header_size(adr, ctbytes, pdata, header_size);
-    }
-    else {
-        /* NULL context: use current global databasedata and mode as-is */
-        result = dbreference_internal(adr, ctbytes, pdata);
+
+        if (context->database != nil) {
+            /* Thread fnum explicitly — no databasedata mutation */
+            hdlfilenum fnum = (hdlfilenum)((**context->database).fnumdatabase);
+            return dbreference_fnum(adr, ctbytes, pdata, header_size, fnum);
+        }
+
+        /* Context with nil database: use global databasedata via legacy path */
+        return dbreference_with_header_size(adr, ctbytes, pdata, header_size);
     }
 
-    databasedata = savedatabasedata;
-    return result;
+    /* NULL context: use current global databasedata and mode as-is */
+    return dbreference_internal(adr, ctbytes, pdata);
 }
 
 boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h) {
@@ -2678,39 +2672,32 @@ boolean dbreference_handle_context(const db_context *context, dbaddress adr, Han
 
 boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
     /*
-    Phase 2: Context-aware dbread. Temporarily applies the context's database
-    handle, calls the legacy dbread (which handles Save As source redirection
-    internally), and restores databasedata. Format mode is not saved/restored:
-    raw read is mode-agnostic (header interpretation is the caller's concern).
+    Context-aware dbread. For non-NULL contexts with a database handle,
+    passes fnum explicitly via dbread_fnum — no global mutation needed.
+    For NULL context or nil database, delegates to legacy dbread.
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    boolean result;
 
-    if (context != NULL && context->database != nil)
-        databasedata = context->database;
+    if (context != NULL && context->database != nil) {
+        hdlfilenum fnum = (hdlfilenum)((**context->database).fnumdatabase);
+        return dbread_fnum(adr, ctbytes, pdata, fnum);
+    }
 
-    result = dbread(adr, ctbytes, pdata);
-
-    databasedata = savedatabasedata;
-    return result;
+    return dbread(adr, ctbytes, pdata);
 }
 
 boolean dbwrite_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
     /*
-    Phase 2: Context-aware dbwrite. Temporarily applies the context's database
-    handle, calls the legacy dbwrite, and restores databasedata. Format mode
-    is not saved/restored: raw write is mode-agnostic.
+    Context-aware dbwrite. For non-NULL contexts with a database handle,
+    passes fnum explicitly via dbwrite_fnum — no global mutation needed.
+    For NULL context or nil database, delegates to legacy dbwrite.
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    boolean result;
 
-    if (context != NULL && context->database != nil)
-        databasedata = context->database;
+    if (context != NULL && context->database != nil) {
+        hdlfilenum fnum = (hdlfilenum)((**context->database).fnumdatabase);
+        return dbwrite_fnum(adr, ctbytes, pdata, fnum);
+    }
 
-    result = dbwrite(adr, ctbytes, pdata);
-
-    databasedata = savedatabasedata;
-    return result;
+    return dbwrite(adr, ctbytes, pdata);
 }
 
 boolean dbsavehandle_context(const db_context *context, Handle h, dbaddress *adr) {
@@ -2738,18 +2725,15 @@ boolean dbsavehandle_context(const db_context *context, Handle h, dbaddress *adr
 
 boolean dbgeteof_context(const db_context *context, long *eof) {
     /*
-    Phase 2: Context-aware dbgeteof. Temporarily applies the context's
-    database handle and restores. Format mode is not saved/restored:
-    EOF position is mode-agnostic.
+    Context-aware dbgeteof. For non-NULL contexts with a database handle,
+    passes fnum explicitly via dbgeteof_fnum — no global mutation needed.
+    For NULL context or nil database, delegates to legacy dbgeteof.
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    boolean result;
 
-    if (context != NULL && context->database != nil)
-        databasedata = context->database;
+    if (context != NULL && context->database != nil) {
+        hdlfilenum fnum = (hdlfilenum)((**context->database).fnumdatabase);
+        return dbgeteof_fnum(eof, fnum);
+    }
 
-    result = dbgeteof(eof);
-
-    databasedata = savedatabasedata;
-    return result;
+    return dbgeteof(eof);
 }

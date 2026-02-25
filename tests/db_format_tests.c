@@ -974,13 +974,18 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
 
 static void test_db_context_io_primitives_restore_databasedata(void) {
     /*
-     * Verify that all nine _context() wrappers restore databasedata after
+     * Verify that all nine _context() wrappers preserve databasedata after
      * the call, regardless of success or failure:
      *   dbread, dbwrite, dbgeteof, dbsavehandle, dbassign, dbassignhandle,
      *   dbcopy, dbreference, dbreference_handle.
      *
+     * After Phase 6, dbread_context, dbwrite_context, dbgeteof_context, and
+     * dbreference_context pass fnum explicitly via _fnum variants and never
+     * touch databasedata at all (when given a non-nil context database).
+     * The remaining 5 wrappers still use save/swap/restore.
+     *
      * We don't have a real database file open, so the underlying operations
-     * will fail — but the save/restore of databasedata must still work.
+     * will fail — but the callee-saves invariant must still hold.
      */
     hdldatabaserecord baseline_db = databasedata;
 

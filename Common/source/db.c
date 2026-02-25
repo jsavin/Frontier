@@ -356,11 +356,6 @@ static boolean dbseteof (long eof) {
 #endif
 
 
-#define ctdatabasestack 10
-
-short topdatabasestack = 0;
-
-hdldatabaserecord databasestack [ctdatabasestack];
 static db_context g_default_db_context;
 typedef struct db_context_guard {
     db_format_mode prev_mode;
@@ -461,54 +456,6 @@ static void db_context_guard_exit_with_saveas(const db_context_guard *guard, con
 }
 
 /* odb_guard functions moved to db_format.c where lang.h globals are available */
-
-boolean dbpushdatabase (hdldatabaserecord hdatabase) {
-	/*
-	when you want to temporarily work with a different databaserecord, call this
-	routine, do your stuff and then call dbpopdatabase.
-	*/
-
-	if (topdatabasestack >= ctdatabasestack) {
-
-		DebugStr (STR_database_stack_overflow);
-
-		return (false);
-		}
-
-	databasestack [topdatabasestack++] = databasedata;
-
-#if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbpushdatabase: old=%p new=%p stack_depth=%d",
-	        (void*)databasedata,
-	        (void*)hdatabase,
-	        topdatabasestack);
-#endif
-
-	databasedata = hdatabase; /*install the new database*/
-	db_sync_use64_to_current_db();
-
-	return (true);
-	} /*dbpushdatabase*/
-
-
-boolean dbpopdatabase (void) {
-
-	if (topdatabasestack <= 0)
-		return (false);
-
-#if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbpopdatabase: old=%p restored=%p stack_depth=%d",
-	        (void*)databasedata,
-	        (void*)databasestack[topdatabasestack - 1],
-	        topdatabasestack);
-#endif
-
-	databasedata = databasestack [--topdatabasestack];
-	db_sync_use64_to_current_db();
-
-	return (true);
-	} /*dbpopdatabase*/
-
 
 static boolean dbrelease_internal (dbaddress); /*6.2b2: Dropped from db.h and declared static*/
 static boolean dballocate (long databytes, ptrvoid pdata, dbaddress *paddress); /*6.2b14 AR: forward declaration for dbwriteshadowavaillist*/
@@ -836,7 +783,7 @@ static boolean dbflushheader (void) {
 
 
 /* Forward declaration for dbreadheader_core which needs to call dbread_fnum */
-static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
+boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
 
 static boolean dbreadheader_core (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance, long header_size, hdlfilenum fnum) {
 
@@ -928,7 +875,7 @@ boolean dbreadheader (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance 
 	} /*dbreadheader*/
 
 
-static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum) {
+boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum) {
 
 	if (!filesetposition (fnum, adr))
 		return (false);
@@ -938,6 +885,24 @@ static boolean dbread_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilen
 
 	return (true);
 	} /*dbread_fnum*/
+
+
+boolean dbwrite_fnum (dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum) {
+
+	if (!filesetposition (fnum, adr))
+		return (false);
+
+	if (!filewrite (fnum, ctbytes, pdata))
+		return (false);
+
+	return (true);
+	} /*dbwrite_fnum*/
+
+
+boolean dbgeteof_fnum (long *eof, hdlfilenum fnum) {
+
+	return (filegeteof (fnum, eof));
+	} /*dbgeteof_fnum*/
 
 
 boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum fnum) {
@@ -1750,6 +1715,39 @@ boolean dbreference_with_header_size(dbaddress adr, long maxbytes, ptrvoid pdata
 	}
 
 	return (dbread(adr + header_size, min(maxbytes, ctbytes - (long) variance), pdata));
+}
+
+boolean dbreference_fnum(dbaddress adr, long maxbytes, ptrvoid pdata, long header_size, hdlfilenum fnum) {
+	/*
+	Like dbreference_with_header_size but reads from an explicit file number
+	instead of the global databasedata. This allows context-aware reads without
+	mutating global state.
+
+	header_size: Must be 8 (v6) or 12 (v7).
+	fnum: File number to read from directly.
+	*/
+	long ctbytes;
+	boolean flfree;
+	tyvariance variance;
+
+	if (header_size != 8 && header_size != 12) {
+		log_error(LOG_COMP_DB, "dbreference_fnum: invalid header_size %ld (must be 8 or 12)", header_size);
+		return (false);
+	}
+
+	/* No dbnormalizeaddress: callers must provide block-start addresses.
+	   dbnormalizeaddress uses global databasedata which may point to a
+	   different file than fnum. */
+
+	if (!dbreadheader_core(adr, &flfree, &ctbytes, &variance, header_size, fnum))
+		return (false);
+
+	if (flfree || (ctbytes < 0)) {
+		dberror(dbfreeblockerror);
+		return (false);
+	}
+
+	return (dbread_fnum(adr + header_size, min(maxbytes, ctbytes - (long) variance), pdata, fnum));
 }
 
 boolean dbreference (dbaddress adr, long maxbytes, ptrvoid pdata) {
@@ -3005,19 +3003,6 @@ void dbgetview (short viewnumber, dbaddress *adrtext) {
 	} /*dbgetview*/
 
 
-void dbcurrentdatabase (hdldatabaserecord hdb) {
-	
-	if (hdb != nil)
-		databasedata = hdb; 
-	} /*dbcurrentdatabase*/
-	
-
-void dbgetcurrentdatabase (hdldatabaserecord *hdb) {
-	
-	*hdb = databasedata;
-	} /*dbgetcurrentdatabase*/
-	
-	
 boolean dbfnumchanged (hdlfilenum newfnum) {
 	
 	register hdldatabaserecord hdb = databasedata;
