@@ -54,6 +54,8 @@ extern boolean wpverbunpack (Handle, long *, hdlexternalvariable *);
 struct db_context; /* forward declaration */
 extern boolean wpverbpack_internal (const struct db_context *, hdlexternalvariable, Handle *, boolean *);
 
+/* ctx parameter is forward-looking (Phase 4: unpack/load path will use it
+   to read from the correct database). All callers currently pass NULL. */
 extern boolean wpverbinmemory (const struct db_context *, hdlexternalvariable);
 
 extern boolean wpverbpacktotext (hdlexternalvariable, Handle);
