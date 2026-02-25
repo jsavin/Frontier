@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Sys Processor Tests (sys_processor_tests) - 49 tests: 45 pass (91%) 4 skip (8%)</title>
-    <dateCreated>Tue, 24 Feb 2026 07:06:42 GMT</dateCreated>
+    <dateCreated>Wed, 25 Feb 2026 06:50:06 GMT</dateCreated>
   </head>
   <body>
     <outline text="sys.osversion - returns OS version string - Get OS version - returns distribution on Linux, sw_vers on macOS">
@@ -411,7 +411,7 @@
     </outline>
     <outline text="sys.unixshellcommand - 2 params (command + stdout) - Capture stdout to address">
       <outline text="Metadata">
-        <outline text="skip: Protocol mode: @address params fail inside 'with' block wrapper for 2-param variant"/>
+        <outline text="skip: @address params unreliable in NDJSON protocol mode — works with -e flag"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -422,7 +422,7 @@
     </outline>
     <outline text="sys.unixshellcommand - 3 params (command + stdout + stderr) - Capture both stdout and stderr">
       <outline text="Metadata">
-        <outline text="skip: Protocol mode: @address params fail inside 'with' block wrapper for multi-param variants"/>
+        <outline text="skip: @address params unreliable in NDJSON protocol mode — works with -e flag"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -433,7 +433,7 @@
     </outline>
     <outline text="sys.unixshellcommand - 4 params (all outputs) - Capture stdout, stderr, and exit status">
       <outline text="Metadata">
-        <outline text="skip: Protocol mode: @address params fail inside 'with' block wrapper — works in REPL"/>
+        <outline text="skip: @address params unreliable in NDJSON protocol mode — works with -e flag"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -444,7 +444,7 @@
     </outline>
     <outline text="sys.unixshellcommand - 4 params (non-zero exit) - Exit status captures non-zero return codes">
       <outline text="Metadata">
-        <outline text="skip: Protocol mode: @address params fail inside 'with' block wrapper — works in REPL"/>
+        <outline text="skip: @address params unreliable in NDJSON protocol mode — works with -e flag"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
