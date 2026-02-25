@@ -294,16 +294,11 @@ static boolean headless_convert_legacy_table_payload(const unsigned char *payloa
 
 boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvariable, hdlhashnode hnode) {
     /*
-    2025-12-27: Uses dbpushdatabase/dbpopdatabase to temporarily switch to table's database.
-
-    ctx parameter is currently unused but kept for API compatibility. This function was
-    refactored to use the database stack (dbpushdatabase/dbpopdatabase) instead of context
-    guards because the table's database handle ((**hv).hdatabase) is the canonical source
-    of truth for which database to read from. The ctx parameter may be used in a future
-    refactoring as part of the broader mode stack elimination work (see CLAUDE.md -
-    "Architectural Patterns to Avoid" section and MODE_STACK_REFACTOR_PLAN.md).
+    2026-02-25: Phase 4 - Inline save/restore of databasedata global.
+    Replaces dbpushdatabase/dbpopdatabase with a direct inline swap so that
+    dbrefhandle and dbnormalizeaddress read from the correct database.
+    The global is always restored before returning (callee-saves).
     */
-    (void)ctx;  /* unused - see comment above */
 
     register hdltablevariable hv = (hdltablevariable) hvariable;
     Handle hpacked;
@@ -319,6 +314,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
 #if !defined(NDEBUG)
     assert(ctx != NULL && "Issue #347: NULL context passed to tableverbinmemory_common - use db_context_init()");
 #endif
+    (void)ctx;  /* ctx validated above; inline swap uses databasedata directly */
 
     log_trace(LOG_COMP_TABLE, "tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d",
             (void *) hvariable,
@@ -331,16 +327,20 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     if ((hnode == nil) || (hnode == HNoNode))
         hnode = nil;
 
-    /* Push the table's database onto the stack (only if non-nil) */
-    boolean pushed_database = false;
-    if ((**hv).hdatabase != nil) {
-        if (!dbpushdatabase((**hv).hdatabase)) {
-            log_error(LOG_COMP_TABLE, "tableverbinmemory_common: dbpushdatabase failed");
-            return false;
-        }
-        pushed_database = true;
-    } else {
+    if ((**hv).hdatabase == nil) {
         log_warn(LOG_COMP_TABLE, "tableverbinmemory nil database for variable");
+    }
+
+    /*
+     * Temporarily switch to the table's database for reading.
+     * The old code used dbpushdatabase/dbpopdatabase to accomplish this.
+     * We do the same global swap inline, avoiding the stack-based API.
+     * This is necessary because dbrefhandle and dbnormalizeaddress read from
+     * the global databasedata, and we need them to target the table's DB.
+     */
+    hdldatabaserecord saved_databasedata = databasedata;
+    if ((**hv).hdatabase != nil) {
+        databasedata = (**hv).hdatabase;
     }
 
     adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
@@ -349,9 +349,14 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
             (void*)(**hv).hdatabase,
             (unsigned long long)adr);
     long payload_offset = 0;
-    log_debug(LOG_COMP_TABLE, "tableverbinmemory dbpush database=%p adr=0x%llx",
+    log_debug(LOG_COMP_TABLE, "tableverbinmemory database=%p adr=0x%llx",
             (void *)(**hv).hdatabase, (unsigned long long) adr);
 
+    /*
+     * Normalize the address against the current databasedata (which we
+     * swapped above to (**hv).hdatabase). This is identical to what the
+     * old dbpushdatabase/dbrefhandle path did.
+     */
     {
         dbaddress normalized = adr;
         if (dbnormalizeaddress(&normalized)) {
@@ -373,7 +378,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         shellinternalerror(idniltableaddress, BIGSTRING ("\x2b" "nil table address.  (Creating empty table.)"));
         fl = false;
     } else {
-        /* Read from the pushed database */
+        /* Read from the (swapped) global databasedata */
         fl = dbrefhandle(adr, &hpacked);
 
         if (!fl) {
@@ -470,8 +475,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     }
 
     if (!fl) {
-        if (pushed_database)
-            dbpopdatabase();
+        databasedata = saved_databasedata;  /* restore before returning */
         return false;
     }
 
@@ -479,9 +483,10 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
 
     (**hv).variabledata = (long) htable; /* link into variable structure */
 
-    /* During migration/repack, clear oldaddress to force new allocation */
+    /* During migration/repack, clear oldaddress to force new allocation. */
+    {
     db_format_mode current_mode = db_format_mode_current();
-    log_debug(LOG_COMP_TABLE, "tableverbinmemory before address assignment: adapter_repack=%d use_64bit=%d databasedata=%p adr=0x%llx",
+    log_debug(LOG_COMP_TABLE, "tableverbinmemory before address assignment: adapter_repack=%d use_64bit=%d database=%p adr=0x%llx",
             (int)current_mode.adapter_repack, (int)current_mode.use_64bit_format,
             (void*)databasedata, (unsigned long long)adr);
 
@@ -493,6 +498,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         (**hv).oldaddress = adr; /* last place this table was stored */
         log_debug(LOG_COMP_TABLE, "tableverbinmemory SET oldaddress=0x%llx variabledata=0x%llx flinmemory=%d",
                 (unsigned long long)adr, (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
+    }
     }
 
     if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_TABLE)) {
@@ -531,8 +537,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
 
     (**htable).thistableshashnode = hnode; /* The var rec is contained in the hashnode... RAB 1/3/00 */
 
-    if (pushed_database)
-        dbpopdatabase();
+    databasedata = saved_databasedata;  /* restore before returning */
 
     return true;
 }
