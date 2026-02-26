@@ -9,6 +9,7 @@
 #ifndef FRONTIER_DB_FORMAT_H
 #define FRONTIER_DB_FORMAT_H
 
+#include <assert.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -135,6 +136,7 @@ void db_saveas_state_apply(const db_saveas_state *state);
    don't repeat the dereference chain.
    Precondition: context != NULL && context->database != nil. */
 static inline hdlfilenum db_context_fnum(const db_context *context) {
+    assert(context != NULL && context->database != nil);
     return (hdlfilenum)((**context->database).fnumdatabase);
 }
 
