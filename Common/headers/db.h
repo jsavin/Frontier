@@ -208,6 +208,26 @@ extern boolean dbreference_fnum(dbaddress adr, long maxbytes, ptrvoid pdata, lon
 
 extern boolean dbrefhandle_fnum(dbaddress adr, Handle *h, long header_size, hdlfilenum fnum);
 
+/* Phase 7, Layer 2: Header/trailer I/O and seteof with explicit file number.
+   These bypass databasedata entirely. */
+extern boolean dbseteof_fnum(long eof, hdlfilenum fnum);
+extern boolean dbreadheader_fnum(dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance, long header_size, hdlfilenum fnum);
+extern boolean dbwriteheader_fnum(dbaddress adr, boolean flfree, long ctbytes, tyvariance variance, hdlfilenum fnum, hdldatabaserecord hdb);
+extern boolean dbwritetrailer_fnum(dbaddress adr, boolean flfree, long ctbytes, hdlfilenum fnum, hdldatabaserecord hdb);
+
+/* Phase 7, Layer 3: Allocator/release with explicit database handle.
+   These do NOT use databasedata or db_context_guard — the caller passes
+   the resolved database handle directly. */
+extern boolean dballocate_hdb(long databytes, ptrvoid pdata, dbaddress *paddress, hdldatabaserecord hdb);
+extern boolean dbrelease_hdb(dbaddress adr, hdldatabaserecord hdb);
+
+/* Phase 7, Layer 4: High-level operations with explicit database handle. */
+extern boolean dbassign_hdb(dbaddress *padr, long newsize, ptrvoid pdata, hdldatabaserecord hdb);
+extern boolean dbcopy_hdb(dbaddress adrorig, dbaddress *adrcopy, hdldatabaserecord hdb);
+extern boolean dbsavehandle_hdb(Handle hsave, dbaddress *adr, hdldatabaserecord hdb);
+extern boolean dbrefhandle_hdb(dbaddress adr, Handle *h, hdldatabaserecord hdb);
+extern boolean dbassignhandle_hdb(Handle h, dbaddress *adr, hdldatabaserecord hdb);
+
 extern boolean dbassign (dbaddress *, long, ptrvoid);
 
 extern boolean dbcopy (dbaddress, dbaddress *);

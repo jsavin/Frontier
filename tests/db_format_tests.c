@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include "frontier.h"
 #include "file.h"
@@ -1395,6 +1396,197 @@ static void test_fnum_variants_success_path(void) {
     log_info(LOG_COMP_DB, "[TEST] test_fnum_variants_success_path COMPLETED");
 }
 
+/* Phase 7 test helpers: open/close a scratch v7 database for _hdb tests.
+   open_scratch_v7_db restores databasedata after dbnew so the test body
+   can prove _hdb functions don't need the global.  close_scratch_v7_db
+   cleans up even if the test body asserts partway through (via goto).
+   Paths include PID for parallel-safe test execution. */
+
+typedef struct {
+    char path[128];
+    hdlfilenum fnum;
+    hdldatabaserecord hdb;
+    hdldatabaserecord saved_db;
+    db_format_mode saved_mode;
+} hdb_test_ctx;
+
+static boolean open_scratch_v7_db(hdb_test_ctx *ctx, const char *suffix) {
+
+    snprintf(ctx->path, sizeof(ctx->path), "/tmp/hdb_%s_%d.db", suffix, (int)getpid());
+    ctx->fnum = 0;
+    ctx->hdb = nil;
+
+    { FILE *f = fopen(ctx->path, "wb"); if (!f) return false; fclose(f); }
+
+    bigstring bspath; tyfilespec fs;
+    bs_from_cstr(ctx->path, bspath);
+    if (!pathtofilespec(bspath, &fs)) return false;
+    if (!openfile(&fs, &ctx->fnum, false)) return false;
+
+    ctx->saved_db = databasedata;
+    ctx->saved_mode = db_format_mode_current();
+
+    if (!dbnew(ctx->fnum, true)) { closefile(ctx->fnum); remove(ctx->path); return false; }
+    ctx->hdb = databasedata;
+
+    /* Restore globals so test body proves _hdb doesn't need them */
+    databasedata = ctx->saved_db;
+    db_format_mode_apply(&ctx->saved_mode);
+    return true;
+}
+
+static void close_scratch_v7_db(hdb_test_ctx *ctx) {
+
+    if (ctx->hdb != nil) {
+        databasedata = ctx->hdb;
+        dbdispose();
+    }
+    databasedata = ctx->saved_db;
+    db_format_mode_apply(&ctx->saved_mode);
+    if (ctx->fnum != 0) closefile(ctx->fnum);
+    if (ctx->path != NULL) remove(ctx->path);
+}
+
+static void test_hdb_allocate_and_read(void) {
+    /*
+     * Phase 7: Exercise dballocate_hdb and dbrefhandle_hdb against a real
+     * temporary database created via dbnew.  Verifies the explicit-hdb
+     * allocator can write data and that dbrefhandle_hdb can read it back.
+     */
+    hdb_test_ctx ctx;
+    assert(open_scratch_v7_db(&ctx, "alloc"));
+
+    /* dballocate_hdb: allocate a block containing 4 bytes */
+    char payload[4] = { 'H', 'D', 'B', '!' };
+    dbaddress adr = nildbaddress;
+    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+    assert(adr != nildbaddress);
+
+    /* dbrefhandle_hdb: read it back */
+    Handle href = nil;
+    if (!dbrefhandle_hdb(adr, &href, ctx.hdb)) goto cleanup;
+    assert(href != nil);
+    assert(GetHandleSize(href) == sizeof(payload));
+    lockhandle(href);
+    assert(memcmp(*href, payload, sizeof(payload)) == 0);
+    unlockhandle(href);
+    disposehandle(href);
+
+    /* Verify databasedata was NOT mutated */
+    assert(databasedata == ctx.saved_db);
+
+cleanup:
+    close_scratch_v7_db(&ctx);
+    log_info(LOG_COMP_DB, "[TEST] test_hdb_allocate_and_read COMPLETED");
+}
+
+static void test_hdb_assign_roundtrip(void) {
+    /*
+     * Phase 7: Exercise dbassign_hdb + dbrefhandle_hdb.  Allocate a block
+     * with dballocate_hdb, then use dbassign_hdb to replace its contents
+     * with larger data, and verify via dbrefhandle_hdb.
+     */
+    hdb_test_ctx ctx;
+    assert(open_scratch_v7_db(&ctx, "assign"));
+
+    /* Allocate initial small block */
+    char small[4] = { 'S', 'M', 'A', 'L' };
+    dbaddress adr = nildbaddress;
+    if (!dballocate_hdb(sizeof(small), small, &adr, ctx.hdb)) goto cleanup;
+
+    /* Assign larger data via dbassign_hdb */
+    char big[16] = "ASSIGN_HDB_OK!!";
+    if (!dbassign_hdb(&adr, sizeof(big), big, ctx.hdb)) goto cleanup;
+    assert(adr != nildbaddress);
+
+    /* Read back */
+    Handle href = nil;
+    if (!dbrefhandle_hdb(adr, &href, ctx.hdb)) goto cleanup;
+    assert(href != nil);
+    assert(GetHandleSize(href) == sizeof(big));
+    lockhandle(href);
+    assert(memcmp(*href, big, sizeof(big)) == 0);
+    unlockhandle(href);
+    disposehandle(href);
+
+    assert(databasedata == ctx.saved_db);
+
+cleanup:
+    close_scratch_v7_db(&ctx);
+    log_info(LOG_COMP_DB, "[TEST] test_hdb_assign_roundtrip COMPLETED");
+}
+
+static void test_hdb_savehandle_roundtrip(void) {
+    /*
+     * Phase 7: Exercise dbsavehandle_hdb — saves a Handle to disk,
+     * reads it back via dbrefhandle_hdb.
+     */
+    hdb_test_ctx ctx;
+    assert(open_scratch_v7_db(&ctx, "save"));
+
+    /* Build a Handle with known contents */
+    char data[8] = "SAVETEST";
+    Handle hsrc = nil;
+    assert(newfilledhandle(data, sizeof(data), &hsrc));
+
+    dbaddress adr = nildbaddress;
+    if (!dbsavehandle_hdb(hsrc, &adr, ctx.hdb)) { disposehandle(hsrc); goto cleanup; }
+    assert(adr != nildbaddress);
+    disposehandle(hsrc);
+
+    /* Read back */
+    Handle href = nil;
+    if (!dbrefhandle_hdb(adr, &href, ctx.hdb)) goto cleanup;
+    assert(href != nil);
+    assert(GetHandleSize(href) == sizeof(data));
+    lockhandle(href);
+    assert(memcmp(*href, data, sizeof(data)) == 0);
+    unlockhandle(href);
+    disposehandle(href);
+
+    assert(databasedata == ctx.saved_db);
+
+cleanup:
+    close_scratch_v7_db(&ctx);
+    log_info(LOG_COMP_DB, "[TEST] test_hdb_savehandle_roundtrip COMPLETED");
+}
+
+static void test_hdb_copy_roundtrip(void) {
+    /*
+     * Phase 7: Exercise dbcopy_hdb — copy a block, verify the copy
+     * has identical contents but a different address.
+     */
+    hdb_test_ctx ctx;
+    assert(open_scratch_v7_db(&ctx, "copy"));
+
+    /* Allocate original block */
+    char payload[8] = "COPYTEST";
+    dbaddress orig_adr = nildbaddress;
+    if (!dballocate_hdb(sizeof(payload), payload, &orig_adr, ctx.hdb)) goto cleanup;
+
+    /* Copy it */
+    dbaddress copy_adr = nildbaddress;
+    if (!dbcopy_hdb(orig_adr, &copy_adr, ctx.hdb)) goto cleanup;
+    assert(copy_adr != nildbaddress);
+    assert(copy_adr != orig_adr);
+
+    /* Read back the copy */
+    Handle href = nil;
+    if (!dbrefhandle_hdb(copy_adr, &href, ctx.hdb)) goto cleanup;
+    assert(href != nil);
+    assert(GetHandleSize(href) == sizeof(payload));
+    lockhandle(href);
+    assert(memcmp(*href, payload, sizeof(payload)) == 0);
+    unlockhandle(href);
+    disposehandle(href);
+
+    assert(databasedata == ctx.saved_db);
+
+cleanup:
+    close_scratch_v7_db(&ctx);
+    log_info(LOG_COMP_DB, "[TEST] test_hdb_copy_roundtrip COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -1423,6 +1615,12 @@ int main(void) {
     TR_RUN(test_fnum_variants_reject_invalid_fnum);
     TR_RUN(test_dbwrite_fnum_readonly_guard);
     TR_RUN(test_fnum_variants_success_path);
+
+    /* Phase 7: _hdb variant success-path tests with real temp databases */
+    TR_RUN(test_hdb_allocate_and_read);
+    TR_RUN(test_hdb_assign_roundtrip);
+    TR_RUN(test_hdb_savehandle_roundtrip);
+    TR_RUN(test_hdb_copy_roundtrip);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);
