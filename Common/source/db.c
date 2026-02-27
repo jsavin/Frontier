@@ -948,19 +948,23 @@ boolean dbreadheader_fnum (dbaddress adr, boolean *flfree, long *ctbytes, tyvari
 	/*
 	Like dbreadheader but uses explicit file number and header size.
 	Delegates to dbreadheader_core which already supports explicit fnum.
+
+	This thin wrapper exists to provide a stable public API name.
+	dbreadheader_core is static and also handles DB_FNUM_USE_GLOBAL
+	for legacy callers — renaming it would conflate the two use cases.
 	*/
 
 	return dbreadheader_core (adr, flfree, ctbytes, variance, header_size, fnum);
 	} /*dbreadheader_fnum*/
 
 
-boolean dbwriteheader_fnum (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance, hdlfilenum fnum, hdldatabaserecord hdb) {
+boolean dbwriteheader_fnum (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance, hdlfilenum fnum, hdldatabaserecord hdb /* format detection only */) {
 
 	/*
 	Like dbwriteheader but writes to an explicit file number.
 	Serializes the block header and writes via dbwrite_fnum.
-	Uses the header size from the database record's headerLength to
-	determine v6 vs v7 format.
+	hdb is used only for v6/v7 format detection (headerLength);
+	all I/O goes through fnum.
 	*/
 
 	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
@@ -994,10 +998,12 @@ boolean dbwriteheader_fnum (dbaddress adr, boolean flfree, long ctbytes, tyvaria
 	} /*dbwriteheader_fnum*/
 
 
-boolean dbwritetrailer_fnum (dbaddress adr, boolean flfree, long ctbytes, hdlfilenum fnum, hdldatabaserecord hdb) {
+boolean dbwritetrailer_fnum (dbaddress adr, boolean flfree, long ctbytes, hdlfilenum fnum, hdldatabaserecord hdb /* format detection only */) {
 
 	/*
 	Like dbwritetrailer but writes to an explicit file number.
+	hdb is used only for v6/v7 format detection (headerLength);
+	all I/O goes through fnum.
 	*/
 
 	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
@@ -3376,9 +3382,11 @@ static void dbclearshadowavaillist_hdb (hdldatabaserecord hdb) {
 	version operates directly on hdb.  Note: when there is a shadow availlist
 	block to release, we still need to use dbrelease_internal (which uses
 	databasedata).  For now, if the shadow block exists and we aren't in
-	Save As, we must temporarily swap databasedata.  This is safe because
-	shadow block release only happens at the start of allocation/release —
-	a rare path that will be fully converted in a future phase.
+	Save As, we must temporarily swap databasedata.
+
+	TODO(Phase 8): Convert dbflushheader and dbrelease_internal to _hdb
+	so this function no longer needs to touch databasedata.
+	Safe under GIL: no yield points between save and restore of databasedata.
 	*/
 
 #ifdef SMART_DB_OPENING
@@ -3499,7 +3507,14 @@ static boolean dbmergeright_hdb (dbaddress adr, long ctbytes, boolean *ptrflmerg
 	if (!dbfindpreviousavail_hdb (rightblockadr, &prevavail, &ixshadow, fnum, hdb))
 		return (false);
 
-	assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
+	{
+		long ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
+
+		if (ixshadow + 1 >= ctavail)
+			return (false); /* corrupt avail list — OOB access */
+
+		assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
+	}
 
 	if (!dbsetavaillink_hdb (prevavail, adr, fnum, hdb))
 		return (false);
@@ -3562,7 +3577,14 @@ static boolean dbmergeleft_hdb (boolean flmerged, dbaddress adr, boolean *ptrflm
 		if (!dbfindpreviousavail_hdb (adr, &prevavail, &ixshadow, fnum, hdb))
 			return (false);
 
-		assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
+		{
+			long ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
+
+			if (ixshadow + 1 >= ctavail)
+				return (false); /* corrupt avail list — OOB access */
+
+			assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
+		}
 
 		if (!dbsetavaillink_hdb (prevavail, nextavail, fnum, hdb))
 			return (false);
@@ -3828,6 +3850,8 @@ boolean dbassign_hdb (dbaddress *padr, long newsize, ptrvoid pdata, hdldatabaser
 	/*
 	Phase 7: Assign data to a database block using explicit hdb.
 	Mirrors dbassign_internal() but routes all I/O through _hdb/_fnum helpers.
+	Does not read or write databasedata.  Reads the global fldatabasesaveas
+	to detect Save As context (forces fresh allocation in destination).
 	*/
 
 	hdlfilenum fnum = db_hdb_fnum(hdb);
@@ -3875,6 +3899,8 @@ boolean dbcopy_hdb (dbaddress adrorig, dbaddress *adrcopy, hdldatabaserecord hdb
 	/*
 	Phase 7: Copy a database block using explicit hdb.
 	Mirrors dbcopy_internal() but routes I/O through _hdb/_fnum helpers.
+	Does not read or write databasedata.  Reads the globals fldatabasesaveas
+	and dbsaveas_source to detect Save As context.
 
 	During Save As, adrorig lives in the *source* database while allocation
 	goes to the destination (hdb).  We must read from the source db, not hdb.
@@ -3985,7 +4011,6 @@ boolean dbassignhandle_hdb (Handle h, dbaddress *adr, hdldatabaserecord hdb) {
 	*/
 
 	register boolean fl;
-	long hsize = (h != nil) ? gethandlesize(h) : 0;
 
 	if (*adr == nildbaddress) { /*creating a new guy*/
 
@@ -4010,7 +4035,7 @@ boolean dbassignhandle_hdb (Handle h, dbaddress *adr, hdldatabaserecord hdb) {
 
 	lockhandle (h);
 
-	fl = dbassign_hdb (adr, hsize, *h, hdb);
+	fl = dbassign_hdb (adr, (long) gethandlesize (h), *h, hdb);
 
 	unlockhandle (h);
 
