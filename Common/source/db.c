@@ -897,8 +897,14 @@ static boolean dbflushheader_hdb (hdldatabaserecord hdb) {
 
 	boolean fl;
 	tydatabaserecord diskrec;
-	hdlfilenum fnum = (hdlfilenum)((**hdb).fnumdatabase);
-	boolean use64log = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+	hdlfilenum fnum;
+	boolean use64log;
+
+	if (hdb == nil)
+		return (false);
+
+	fnum = (hdlfilenum)((**hdb).fnumdatabase);
+	use64log = ((**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
 
 	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
 
@@ -4506,6 +4512,9 @@ boolean dbpushreleasestack_hdb (dbaddress adr, long valtype, hdldatabaserecord h
 
 	if (adr == nildbaddress)
 		return (true);
+
+	if (hdb == nil)
+		return (false);
 
 	hstack = (**hdb).releasestack;
 

@@ -353,7 +353,8 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         dbaddress normalized = adr;
         if (dbnormalizeaddress_hdb(&normalized, hdb)) {
             if (normalized != adr) {
-                dbaddress data_start = normalized + sizeheader;
+                long hs = ((**hdb).headerLength == (long)sizeof(tydatabaserecord_64)) ? sizeheader_v7 : sizeheader_v6;
+                dbaddress data_start = normalized + hs;
                 if (adr > data_start)
                     payload_offset = (long) (adr - data_start);
                 adr = normalized;
