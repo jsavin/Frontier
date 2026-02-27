@@ -1,0 +1,212 @@
+@startuml Frontier System Architecture
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam nodesep 50
+skinparam ranksep 30
+
+title Frontier System Architecture\nLayered View
+
+' ============================================================
+' Layer 1: CLI & REPL
+' ============================================================
+package "CLI & REPL" as cli_layer #E8F4FD {
+    component "REPL\n//Interactive shell, tab completion,\nfile browser, value formatting//" as repl
+    component "CLI Executor\n//Direct expression execution,\nprotocol server mode//" as cli_exec
+    component "main.c\n//Entry point, arg parsing,\nmode routing//" as main
+
+    main --> repl
+    main --> cli_exec
+}
+
+' ============================================================
+' Layer 2: Language Runtime
+' ============================================================
+package "UserTalk Language Runtime" as lang_layer #FFF3E0 {
+    component "Parser\n//Bison 3 grammar + lexer//" as parser
+    component "Evaluator\n//Expression evaluation,\nAST walking, function calls//" as evaluator
+    component "Name Resolution\n//system.paths lookup,\nscope chain search//" as nameres
+    component "Value & Type System\n//Type coercion, Pascal strings,\ntmp stack (GC)//" as typesys
+
+    parser --> evaluator
+    evaluator --> nameres
+    evaluator --> typesys
+}
+
+' ============================================================
+' Layer 3: Kernel Verb Dispatch
+' ============================================================
+package "Kernel Verb Dispatch" as verb_layer #E8F5E9 {
+    component "EFP Table\n//External Function Pointer routing\nlanghandlercall()//" as efp
+    component "Verb Processors\n//50+ C modules: string, file, table,\ndate, math, xml, crypto, regexp,\nscript, thread, db, ipc ...//" as verbs
+
+    efp --> verbs
+}
+
+' ============================================================
+' Layer 4: Core Services (side-by-side)
+' ============================================================
+package "Object Database (ODB)" as odb_layer #F3E5F5 {
+    component "Database Engine\n//Open, save, close, block allocation//" as db_engine
+    component "Table / Hash Ops\n//Lookup, insert, delete, iterate//" as table_ops
+    component "Outline Engine\n//Hierarchical structures,\nscript objects, pack/unpack//" as outline
+    component "Format I/O\n//v7 reader/writer,\nv6 legacy compat//" as format_io
+
+    db_engine --> table_ops
+    db_engine --> format_io
+    db_engine --> outline
+}
+
+package "Networking" as net_layer #FFEBEE {
+    component "TCP Streams\n//256 connection slots,\nstate machine//" as tcp
+    component "Socket Events\n//Async event handling//" as sockevt
+    component "WebServer / IPC\n//HTTP responders,\ninter-process comm//" as webserver
+
+    tcp --> sockevt
+    webserver --> tcp
+}
+
+package "Threading" as thread_layer #FCE4EC {
+    component "GIL\n//Global Interpreter Lock,\nsingle mutex//" as gil
+    component "Thread Registry\n//Per-thread state,\nthread lifecycle//" as threadreg
+
+    gil --> threadreg
+}
+
+package "Text Engine" as text_layer #E0F2F1 {
+    component "WPEngine\n//Rich text editing,\nRTF extraction//" as wpengine
+}
+
+' ============================================================
+' Layer 5: Memory Management
+' ============================================================
+package "Memory Management" as mem_layer #FFF9C4 {
+    component "Heap Allocator\n//Handle-based allocation,\nref counting, tracking//" as memory
+}
+
+' ============================================================
+' Layer 6: Portable Abstraction Layer
+' ============================================================
+package "Portable Abstraction Layer" as portable_layer #ECEFF1 {
+    component "File I/O\n//Cross-platform paths,\nfile operations//" as file_io
+    component "Text Encoding\n//UTF-8 conversion//" as encoding
+    component "Time\n//Portable date/time//" as time_p
+    component "Types & Macros\n//Portable types,\nhandle runtime//" as types
+    component "Headless Stubs\n//100+ GUI verb stubs\nfor CLI mode//" as stubs
+}
+
+' ============================================================
+' Layer 7: Third-Party & OS
+' ============================================================
+package "Third-Party Libraries" as thirdparty_layer #F5F5F5 {
+    component "PCRE" as pcre
+    component "SQLite3" as sqlite
+    component "Paige" as paige
+    component "linenoise" as linenoise
+    component "libyaml" as libyaml
+}
+
+database "Filesystem" as fs {
+    component ".root files\n//v7 ODB format//" as rootfiles
+}
+
+' ============================================================
+' Layer 8: Test Infrastructure (side column)
+' ============================================================
+package "Test Infrastructure" as test_layer #EFEBE9 {
+    component "Unit Tests (C)\n//30+ test programs//" as unit_tests
+    component "Integration Tests\n//Python + YAML,\n1881 test cases//" as integ_tests
+}
+
+' ============================================================
+' Inter-Layer Relationships
+' ============================================================
+
+' CLI -> Runtime
+cli_exec -down-> evaluator : "evaluate"
+repl -down-> evaluator : "evaluate"
+repl -[hidden]right-> cli_exec
+
+' Runtime -> Verb Dispatch
+evaluator -down-> efp : "dispatch verbs"
+
+' Runtime -> ODB (name resolution)
+nameres -down-> table_ops : "resolve names\nvia system.paths"
+
+' Verb layer -> Core Services
+verbs -down-> table_ops : "table/db\noperations"
+verbs -down-> tcp : "network\nI/O"
+verbs -down-> wpengine : "text\nprocessing"
+verbs -down-> memory : "allocate\nvalues"
+
+' ODB -> Memory
+db_engine -down-> memory
+table_ops -down-> memory
+outline -down-> memory
+
+' ODB -> Filesystem
+format_io -down-> rootfiles : "read/write"
+
+' Threading cross-cuts
+evaluator -right-> gil : "yield at\nbackground\ntask"
+tcp -right-> gil
+
+' Core Services -> Portable Layer
+db_engine -down-> types
+verbs -down-> file_io
+wpengine -down-> encoding
+
+' Portable -> Third Party / OS
+file_io -down-> fs
+wpengine -down-> paige
+repl ..> linenoise
+verbs ..> pcre
+verbs ..> sqlite
+
+' Type system -> Memory
+typesys -down-> memory : "tmp stack,\nhandle ops"
+
+' Tests -> CLI
+integ_tests -left-> main : "spawn CLI\nprocess"
+unit_tests -left-> stubs : "link headless\nstubs"
+
+' ============================================================
+' Notes
+' ============================================================
+note bottom of verb_layer
+  **Verb resolution order:**
+  1. Local scope chain
+  2. system.paths (DB tables)
+  3. EFP table (C builtins)
+end note
+
+note bottom of odb_layer
+  **v7 format:** 8-byte blocks,
+  12-byte records, 90-byte header
+end note
+
+note bottom of thread_layer
+  **GIL model:** Real POSIX threads
+  serialized by single mutex.
+  Yield at langbackgroundtask().
+end note
+
+' ============================================================
+' Legend
+' ============================================================
+legend bottom right
+  |= Layer |= Description |
+  | <#E8F4FD> | **CLI & REPL** - User-facing interface |
+  | <#FFF3E0> | **Language Runtime** - UserTalk parser, evaluator, types |
+  | <#E8F5E9> | **Verb Dispatch** - EFP routing to 50+ C verb modules |
+  | <#F3E5F5> | **Object Database** - Persistent hierarchical storage |
+  | <#FFEBEE> | **Networking** - TCP streams, HTTP, IPC |
+  | <#FCE4EC> | **Threading** - GIL-based concurrency |
+  | <#E0F2F1> | **Text Engine** - Rich text via Paige |
+  | <#FFF9C4> | **Memory** - Handle-based heap allocation |
+  | <#ECEFF1> | **Portable Layer** - Cross-platform abstractions |
+  | <#F5F5F5> | **Third-Party** - PCRE, SQLite, Paige, linenoise |
+end legend
+
+@enduml

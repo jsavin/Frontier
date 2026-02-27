@@ -125,9 +125,13 @@ dist/
 /_STATUS_ARCHIVE.md
 test_type.txt
 
-# Claude Code local settings (user-specific paths and permissions)
+# Claude Code local settings and ephemeral state
 .claude/settings.local.json
 .claude/.DS_Store
+.claude/worktrees/
+
+# Windows thumbnail cache
+Thumbs.db
 test_tmp/
 
 # Reports - OPML files are tracked
