@@ -2543,20 +2543,14 @@ boolean hashunpacktable_context(const db_context *context, Handle hpacked, boole
 
 boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *adr) {
     /*
-    Context-aware dbassignhandle. Temporarily applies the context's database
-    handle and format mode, calls the legacy function, and restores both.
+    Phase 7: Explicit context — no global mutation. Threads database handle
+    directly through dbassignhandle_hdb, bypassing databasedata entirely.
+    For NULL context or nil database, falls through to legacy path.
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    db_format_mode savedmode = db_format_mode_current();
-    if (context != NULL) {
-        if (context->database != nil)
-            databasedata = context->database;
-        db_format_mode_apply(&context->mode);
+    if (context != NULL && context->database != nil) {
+        return dbassignhandle_hdb(h, adr, context->database);
     }
-    boolean result = dbassignhandle(h, adr);
-    databasedata = savedatabasedata;
-    db_format_mode_apply(&savedmode);
-    return result;
+    return dbassignhandle(h, adr);
 }
 
 boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h) {
@@ -2594,38 +2588,27 @@ boolean dbrefhandle_context(const db_context *context, dbaddress adr, Handle *h)
 
 boolean dbcopy_context(const db_context *context, dbaddress src, dbaddress *dest) {
     /*
-    Context-aware dbcopy. Temporarily applies the context's database
-    handle and format mode, calls the legacy function, and restores both.
+    Phase 7: Explicit context — no global mutation. Threads database handle
+    directly through dbcopy_hdb, bypassing databasedata entirely.
+    For NULL context or nil database, falls through to legacy path.
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    db_format_mode savedmode = db_format_mode_current();
-    if (context != NULL) {
-        if (context->database != nil)
-            databasedata = context->database;
-        db_format_mode_apply(&context->mode);
+    if (context != NULL && context->database != nil) {
+        return dbcopy_hdb(src, dest, context->database);
     }
-    boolean result = dbcopy_internal(src, dest);
-    databasedata = savedatabasedata;
-    db_format_mode_apply(&savedmode);
-    return result;
+    return dbcopy_internal(src, dest);
 }
 
 boolean dbassign_context(const db_context *context, dbaddress *padr, long newsize, ptrvoid pdata) {
     /*
-    Context-aware dbassign. Temporarily applies the context's database
-    handle and format mode, calls the legacy function, and restores both.
+    Context-aware dbassign. For non-NULL contexts with a database handle,
+    calls dbassign_hdb directly — no global mutation needed.
+    For NULL context, delegates to dbassign_internal (uses global state).
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    db_format_mode savedmode = db_format_mode_current();
-    if (context != NULL) {
-        if (context->database != nil)
-            databasedata = context->database;
-        db_format_mode_apply(&context->mode);
+
+    if (context != NULL && context->database != nil) {
+        return dbassign_hdb(padr, newsize, pdata, context->database);
     }
-    boolean result = dbassign_internal(padr, newsize, pdata);
-    databasedata = savedatabasedata;
-    db_format_mode_apply(&savedmode);
-    return result;
+    return dbassign_internal(padr, newsize, pdata);
 }
 
 boolean dbreference_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
@@ -2658,20 +2641,14 @@ boolean dbreference_context(const db_context *context, dbaddress adr, long ctbyt
 
 boolean dbreference_handle_context(const db_context *context, dbaddress adr, Handle *h) {
     /*
-    Context-aware dbrefhandle. Temporarily applies the context's database
-    handle and format mode, calls the legacy function, and restores both.
+    Phase 7: Explicit context — no global mutation. Threads database handle
+    directly through dbrefhandle_hdb, bypassing databasedata entirely.
+    For NULL context or nil database, falls through to legacy path.
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    db_format_mode savedmode = db_format_mode_current();
-    if (context != NULL) {
-        if (context->database != nil)
-            databasedata = context->database;
-        db_format_mode_apply(&context->mode);
+    if (context != NULL && context->database != nil) {
+        return dbrefhandle_hdb(adr, h, context->database);
     }
-    boolean result = dbrefhandle(adr, h);
-    databasedata = savedatabasedata;
-    db_format_mode_apply(&savedmode);
-    return result;
+    return dbrefhandle(adr, h);
 }
 
 boolean dbread_context(const db_context *context, dbaddress adr, long ctbytes, ptrvoid pdata) {
@@ -2704,25 +2681,14 @@ boolean dbwrite_context(const db_context *context, dbaddress adr, long ctbytes, 
 
 boolean dbsavehandle_context(const db_context *context, Handle h, dbaddress *adr) {
     /*
-    Phase 2: Context-aware dbsavehandle. Temporarily applies the context's
-    database handle and format mode, calls the legacy dbsavehandle (which
-    internally calls dballocate/dbassign using databasedata), and restores both.
+    Phase 7: Explicit context — no global mutation. Threads database handle
+    directly through dbsavehandle_hdb, bypassing databasedata entirely.
+    For NULL context or nil database, falls through to legacy path.
     */
-    hdldatabaserecord savedatabasedata = databasedata;
-    db_format_mode savedmode = db_format_mode_current();
-    boolean result;
-
-    if (context != NULL) {
-        if (context->database != nil)
-            databasedata = context->database;
-        db_format_mode_apply(&context->mode);
+    if (context != NULL && context->database != nil) {
+        return dbsavehandle_hdb(h, adr, context->database);
     }
-
-    result = dbsavehandle(h, adr);
-
-    databasedata = savedatabasedata;
-    db_format_mode_apply(&savedmode);
-    return result;
+    return dbsavehandle(h, adr);
 }
 
 boolean dbgeteof_context(const db_context *context, long *eof) {

@@ -926,6 +926,109 @@ boolean dbgeteof_fnum (long *eof, hdlfilenum fnum) {
 	} /*dbgeteof_fnum*/
 
 
+boolean dbseteof_fnum (long eof, hdlfilenum fnum) {
+
+	/*
+	Like dbseteof but uses explicit file number instead of databasedata.
+	*/
+
+	if ((eof & 0x80000000L) != 0x00000000L) {
+
+		dberror (dbfilesizeerror);
+
+		return (false); /*trying to grow the file beyond 2 GB*/
+		}
+
+	return (fileseteof (fnum, eof));
+	} /*dbseteof_fnum*/
+
+
+boolean dbreadheader_fnum (dbaddress adr, boolean *flfree, long *ctbytes, tyvariance *variance, long header_size, hdlfilenum fnum) {
+
+	/*
+	Like dbreadheader but uses explicit file number and header size.
+	Delegates to dbreadheader_core which already supports explicit fnum.
+	*/
+
+	return dbreadheader_core (adr, flfree, ctbytes, variance, header_size, fnum);
+	} /*dbreadheader_fnum*/
+
+
+boolean dbwriteheader_fnum (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	/*
+	Like dbwriteheader but writes to an explicit file number.
+	Serializes the block header and writes via dbwrite_fnum.
+	Uses the header size from the database record's headerLength to
+	determine v6 vs v7 format.
+	*/
+
+	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+
+	if (use64) {
+		uint64_t raw_size = (uint64_t) ctbytes;
+		tyheader64 header;
+
+		if (flfree)
+			raw_size |= 0x8000000000000000ULL;
+
+		memset(&header, 0, sizeof header);
+		db_format_write_be64(&header.sizefreeword.size, raw_size);
+		db_format_write_be32(&header.variance, (uint32_t) variance);
+
+		return dbwrite_fnum (adr, sizeheader_v7, &header, fnum, hdb);
+	}
+	else {
+		uint32_t raw_size = (uint32_t) ctbytes;
+		tyheader32 header;
+
+		if (flfree)
+			raw_size |= 0x80000000UL;
+
+		memset(&header, 0, sizeof header);
+		db_format_write_be32(&header.sizefreeword.size, raw_size);
+		db_format_write_be32(&header.variance, (uint32_t) variance);
+
+		return dbwrite_fnum (adr, sizeheader_v6, &header, fnum, hdb);
+	}
+	} /*dbwriteheader_fnum*/
+
+
+boolean dbwritetrailer_fnum (dbaddress adr, boolean flfree, long ctbytes, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	/*
+	Like dbwritetrailer but writes to an explicit file number.
+	*/
+
+	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+
+	if (use64) {
+		uint64_t raw_size = (uint64_t) ctbytes;
+		tytrailer64 trailer;
+
+		if (flfree)
+			raw_size |= 0x8000000000000000ULL;
+
+		memset(&trailer, 0, sizeof trailer);
+		db_format_write_be64(&trailer.sizefreeword.size, raw_size);
+
+		return dbwrite_fnum (adr, sizetrailer_v7, &trailer, fnum, hdb);
+	}
+	else {
+		uint32_t raw_size = (uint32_t) ctbytes;
+		tytrailer32 trailer;
+
+		if (flfree)
+			raw_size |= 0x80000000UL;
+
+		memset(&trailer, 0, sizeof trailer);
+		db_format_write_be32(&trailer.sizefreeword.size, raw_size);
+
+		return dbwrite_fnum (adr, sizetrailer_v6, &trailer, fnum, hdb);
+	}
+	} /*dbwritetrailer_fnum*/
+
+
 boolean dbrefhandle_fnum (dbaddress adr, Handle *h, long header_size, hdlfilenum fnum) {
 
 	/*
@@ -2977,7 +3080,942 @@ boolean dbsavehandle (Handle hsave, dbaddress *adr) {
 
 	return (fl);
 	} /*dbsavehandle*/
-	
+
+
+/*============================================================================
+ * Phase 7, Layer 3+4: Explicit-hdb variants of allocator, release, and
+ * high-level database operations.
+ *
+ * These do NOT read from or write to the global databasedata.  Instead they
+ * accept an hdldatabaserecord hdb parameter and derive fnum, availlist,
+ * header size, etc. from (**hdb) directly.
+ *
+ * Design:
+ *   - Each _hdb helper mirrors a static helper above but takes (fnum, hdb).
+ *   - v6 vs v7 format is determined from (**hdb).headerLength, not from
+ *     the global db_format_mode_current().
+ *   - All I/O goes through the Layer 1-2 _fnum functions.
+ *   - The legacy functions (without _hdb suffix) continue to work via
+ *     databasedata for callers not yet converted.
+ *============================================================================*/
+
+/* Helper: determine whether hdb is v7 format (64-bit headers). */
+static inline boolean db_hdb_use64 (hdldatabaserecord hdb) {
+	return (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+}
+
+/* Helper: header size in bytes for the given database. */
+static inline long db_hdb_header_size (hdldatabaserecord hdb) {
+	return db_hdb_use64(hdb) ? sizeheader_v7 : sizeheader_v6;
+}
+
+/* Helper: trailer size in bytes for the given database. */
+static inline long db_hdb_trailer_size (hdldatabaserecord hdb) {
+	return db_hdb_use64(hdb) ? sizetrailer_v7 : sizetrailer_v6;
+}
+
+/* Helper: extract file number from database handle. */
+static inline hdlfilenum db_hdb_fnum (hdldatabaserecord hdb) {
+	return (hdlfilenum)((**hdb).fnumdatabase);
+}
+
+
+static boolean dbwriteheaderandtrailer_hdb (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	long hs = db_hdb_header_size(hdb);
+
+	if (!dbwriteheader_fnum (adr, flfree, ctbytes, variance, fnum, hdb))
+		return (false);
+
+	return dbwritetrailer_fnum (adr + hs + ctbytes, flfree, ctbytes, fnum, hdb);
+	} /*dbwriteheaderandtrailer_hdb*/
+
+
+static boolean dbwriteavailnode_hdb (dbaddress adr, long ctbytes, dbaddress nextlink, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	long hs = db_hdb_header_size(hdb);
+	boolean use64 = db_hdb_use64(hdb);
+
+	assert (adr != nildbaddress);
+	assert ((**hdb).u.extensions.availlistblock == nildbaddress);
+
+	if (!dbwriteheader_fnum (adr, true, ctbytes, 0L, fnum, hdb))
+		return (false);
+
+	{
+		long link_bytes = use64 ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		unsigned char raw[sizeof (uint64_t)];
+
+		if (use64)
+			db_format_write_be64(raw, (uint64_t) nextlink);
+		else
+			db_format_write_be32(raw, (uint32_t) nextlink);
+
+		if (!dbwrite_fnum (adr + hs, link_bytes, raw, fnum, hdb))
+			return (false);
+	}
+
+	if (!dbwritetrailer_fnum (adr + hs + ctbytes, true, ctbytes, fnum, hdb))
+		return (false);
+
+	return (true);
+	} /*dbwriteavailnode_hdb*/
+
+
+static boolean dbreadavailnode_hdb (dbaddress adr, boolean *flfree, long *ctbytes, dbaddress *link, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	long hs = db_hdb_header_size(hdb);
+	boolean use64 = db_hdb_use64(hdb);
+	tyvariance variance;
+
+	if (!dbreadheader_fnum (adr, flfree, ctbytes, &variance, hs, fnum))
+		return (false);
+
+	{
+		long link_bytes = use64 ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		unsigned char raw[sizeof (uint64_t)];
+
+		if (!dbread_fnum (adr + hs, link_bytes, raw, fnum))
+			return (false);
+
+		if (use64)
+			*link = (dbaddress) db_format_read_be64(raw);
+		else
+			*link = (dbaddress) db_format_read_be32(raw);
+	}
+
+	return (true);
+	} /*dbreadavailnode_hdb*/
+
+
+static boolean dbsetavaillink_hdb (dbaddress adr, dbaddress link, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	long hs = db_hdb_header_size(hdb);
+	boolean use64 = db_hdb_use64(hdb);
+
+	assert ((**hdb).u.extensions.availlistblock == nildbaddress);
+
+	if (adr == nildbaddress) { /*special case, set link in file header*/
+
+		(**hdb).availlist = link;
+
+		setdirty (hdb);
+
+		return (true);
+		}
+
+	{
+		long link_bytes = use64 ? (long) sizeof (uint64_t) : (long) sizeof (uint32_t);
+		unsigned char raw[sizeof (uint64_t)];
+
+		if (use64)
+			db_format_write_be64(raw, (uint64_t) link);
+		else
+			db_format_write_be32(raw, (uint32_t) link);
+
+		return dbwrite_fnum (adr + hs, link_bytes, raw, fnum, hdb);
+	}
+	} /*dbsetavaillink_hdb*/
+
+
+static boolean dbwritedatablock_hdb (dbaddress adr, long databytes, long nodebytes, ptrvoid pdata, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	long hs = db_hdb_header_size(hdb);
+
+	if (!dbwriteheader_fnum (adr, false, nodebytes, (tyvariance) nodebytes - databytes, fnum, hdb))
+		return (false);
+
+	if (pdata != nil)
+		if (!dbwrite_fnum (adr + hs, databytes, pdata, fnum, hdb))
+			return (false);
+
+	return dbwritetrailer_fnum (adr + nodebytes + hs, false, nodebytes, fnum, hdb);
+	} /*dbwritedatablock_hdb*/
+
+
+static boolean dbfindpreviousavail_hdb (dbaddress adr, dbaddress *prev, long *ixshadow, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+#ifdef dbshadow
+	hdlavaillistshadow havailshadow = (hdlavaillistshadow) (**hdb).u.extensions.availlistshadow.data;
+	long i, ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
+
+	for (i = 0; i < ctavail; ++i) {
+
+		if ((*havailshadow) [i].adr == adr) {
+
+			if (i > 0)
+				*prev = (*havailshadow) [i - 1].adr;
+			else
+				*prev = nildbaddress;
+
+			*ixshadow = i;
+
+			return (true);
+			}
+		}
+
+	dblogerror (dbfreelisterror);
+
+	return (false);
+#else
+	dbaddress nomad;
+	boolean flfree;
+	long ctbytes;
+	dbaddress nextnomad;
+
+	nomad = (**hdb).availlist;
+
+	if (nomad == adr) {
+
+		*prev = nildbaddress;
+
+		return (true);
+		}
+
+	while (true) {
+
+		if (nomad == nildbaddress)
+			return (false);
+
+		if (!dbreadavailnode_hdb (nomad, &flfree, &ctbytes, &nextnomad, fnum, hdb))
+			return (false);
+
+		if (nextnomad == adr) {
+
+			*prev = nomad;
+
+			return (true);
+			}
+
+		nomad = nextnomad;
+		} /*while*/
+#endif
+	} /*dbfindpreviousavail_hdb*/
+
+
+static boolean dbinsertavailshadow_hdb (long ixshadow, dbaddress adr, long ctbytes, hdldatabaserecord hdb) {
+
+	handlestream s = (**hdb).u.extensions.availlistshadow;
+	tyavailnodeshadow avail;
+
+	assert ((ixshadow >= 0) && (ixshadow <= s.eof / (long) sizeof (tyavailnodeshadow)));
+
+	avail.adr = adr;
+	avail.size = (int64_t) ctbytes;
+
+	s.pos = ixshadow * sizeof (tyavailnodeshadow);
+
+	if (!mergehandlestreamdata (&s, 0L, &avail, sizeof (avail)))
+		return (false);
+
+	(**hdb).u.extensions.availlistshadow = s;
+
+	return (true);
+	} /*dbinsertavailshadow_hdb*/
+
+
+static boolean dbdeleteavailshadow_hdb (long ixshadow, hdldatabaserecord hdb) {
+
+	handlestream s = (**hdb).u.extensions.availlistshadow;
+
+	assert ((ixshadow >= 0) && (ixshadow < s.eof / (long) sizeof (tyavailnodeshadow)));
+
+	s.pos = ixshadow * sizeof (tyavailnodeshadow);
+
+	if (!pullfromhandlestream (&s, sizeof (tyavailnodeshadow), nil))
+		return (false);
+
+	(**hdb).u.extensions.availlistshadow = s;
+
+	return (true);
+	} /*dbdeleteavailshadow_hdb*/
+
+
+static boolean dbsetavailshadow_hdb (long ixshadow, dbaddress adr, long ctbytes, hdldatabaserecord hdb) {
+
+	handlestream s = (**hdb).u.extensions.availlistshadow;
+	tyavailnodeshadow avail;
+
+	assert ((ixshadow >= 0) && (ixshadow < s.eof / (long) sizeof (tyavailnodeshadow)));
+
+	avail.adr = adr;
+	avail.size = (int64_t) ctbytes;
+
+	s.pos = ixshadow * sizeof (tyavailnodeshadow);
+
+	if (!mergehandlestreamdata (&s, sizeof (avail), &avail, sizeof (avail)))
+		return (false);
+
+	(**hdb).u.extensions.availlistshadow = s;
+
+	return (true);
+	} /*dbsetavailshadow_hdb*/
+
+
+static boolean dbsetsize_hdb (dbaddress adr, long size, tyvariance variance, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	return dbwriteheader_fnum (adr, false, size, variance, fnum, hdb);
+	} /*dbsetsize_hdb*/
+
+
+static boolean dbmove_hdb (ptrvoid pdata, long ctbytes, dbaddress adr, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	long hs = db_hdb_header_size(hdb);
+
+	return dbwrite_fnum (adr + hs, ctbytes, pdata, fnum, hdb);
+	} /*dbmove_hdb*/
+
+
+static boolean dbclearshadowavaillist_hdb (hdldatabaserecord hdb) {
+
+	/*
+	Phase 7 variant: Clear shadow avail list using explicit hdb instead of
+	databasedata.  Only used by dballocate_hdb / dbrelease_hdb.
+
+	Unlike the legacy dbclearshadowavaillist which uses context guards, this
+	version operates directly on hdb.  Note: when there is a shadow availlist
+	block to release, we still need to use dbrelease_internal (which uses
+	databasedata).  For now, if the shadow block exists and we aren't in
+	Save As, we must temporarily swap databasedata.  This is safe because
+	shadow block release only happens at the start of allocation/release —
+	a rare path that will be fully converted in a future phase.
+	*/
+
+#ifdef SMART_DB_OPENING
+	if (!fldatabasesaveas && !(**hdb).u.extensions.flreadonly) {
+
+		if ((**hdb).u.extensions.availlistblock != nildbaddress) {
+
+			dbaddress adrblock = (**hdb).u.extensions.availlistblock;
+
+			(**hdb).u.extensions.availlistblock = nildbaddress;
+
+			setdirty (hdb);
+
+			/* Flush the header — this is the one place where _hdb still touches
+			   the global, because dbflushheader() reads databasedata.  We swap
+			   briefly to keep the flush correct.  The header dirty flag was already
+			   set on hdb above. */
+			{
+				hdldatabaserecord savedatabasedata = databasedata;
+				databasedata = hdb;
+				dbflushheader ();
+				databasedata = savedatabasedata;
+			}
+
+			/* Release the old shadow block.  dbrelease_internal uses databasedata,
+			   so swap temporarily. */
+			{
+				hdldatabaserecord savedatabasedata = databasedata;
+				databasedata = hdb;
+				dbrelease_internal (adrblock);
+				databasedata = savedatabasedata;
+			}
+			}
+		}
+#endif
+	} /*dbclearshadowavaillist_hdb*/
+
+
+static boolean dbreadtrailer_hdb (dbaddress adr, boolean *flfree, long *ctbytes, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	/*
+	Like dbreadtrailer but reads from explicit fnum with hdb-derived format.
+	*/
+
+	uint64_t raw_size = 0;
+	boolean use64 = db_hdb_use64(hdb);
+
+	if (use64) {
+		tytrailer64 trailer;
+
+		if (!dbread_fnum (adr, sizetrailer_v7, &trailer, fnum))
+			return (false);
+
+		raw_size = db_format_read_be64((unsigned char *) &trailer.sizefreeword.size);
+	}
+	else {
+		tytrailer32 trailer;
+
+		if (!dbread_fnum (adr, sizetrailer_v6, &trailer, fnum))
+			return (false);
+
+		raw_size = (uint64_t) db_format_read_be32((unsigned char *) &trailer.sizefreeword.size);
+	}
+
+	{
+		uint64_t freeflag = use64 ? 0x8000000000000000ULL : 0x80000000ULL;
+		uint64_t sizemask = use64 ? 0x7FFFFFFFFFFFFFFFULL : 0x7FFFFFFFULL;
+
+		*flfree = (raw_size & freeflag) != 0;
+		*ctbytes = (long) (raw_size & sizemask);
+	}
+
+	return (true);
+	} /*dbreadtrailer_hdb*/
+
+
+static boolean dbmergeright_hdb (dbaddress adr, long ctbytes, boolean *ptrflmergedright, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	long hs = db_hdb_header_size(hdb);
+	long ts = db_hdb_trailer_size(hdb);
+	long eof;
+	dbaddress rightblockadr;
+	boolean flrightfree;
+	long ctrightbytes;
+	dbaddress prevavail, nextavail;
+	long ixshadow;
+
+	*ptrflmergedright = false;
+
+	rightblockadr = adr + hs + ctbytes + ts;
+
+	if (!dbgeteof_fnum (&eof, fnum))
+		return (false);
+
+	if (rightblockadr == eof)
+		return (true);
+
+	if (rightblockadr > eof) {
+
+		dblogerror (dbmergeinvalidblockerror);
+
+		return (false);
+		}
+
+	if (!dbreadavailnode_hdb (rightblockadr, &flrightfree, &ctrightbytes, &nextavail, fnum, hdb))
+		return (false);
+
+	if (ctrightbytes < minblocksize) {
+
+		dblogerror (dbmergeinvalidblockerror);
+
+		return (false);
+		}
+
+	if (!flrightfree)
+		return (true);
+
+	if (!dbfindpreviousavail_hdb (rightblockadr, &prevavail, &ixshadow, fnum, hdb))
+		return (false);
+
+	assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
+
+	if (!dbsetavaillink_hdb (prevavail, adr, fnum, hdb))
+		return (false);
+
+	ctbytes += ctrightbytes + hs + ts;
+
+	if (!dbwriteavailnode_hdb (adr, ctbytes, nextavail, fnum, hdb))
+		return (false);
+
+	if (!dbsetavailshadow_hdb (ixshadow, adr, ctbytes, hdb))
+		return (false);
+
+	*ptrflmergedright = true;
+
+	return (true);
+	} /*dbmergeright_hdb*/
+
+
+static boolean dbmergeleft_hdb (boolean flmerged, dbaddress adr, boolean *ptrflmergedleft, hdlfilenum fnum, hdldatabaserecord hdb) {
+
+	long hs = db_hdb_header_size(hdb);
+	long ts = db_hdb_trailer_size(hdb);
+	dbaddress newadr;
+	long newsize;
+	boolean flfree, flleftfree;
+	long ctbytes, ctleftbytes;
+	dbaddress nextavail, prevavail;
+	long ixshadow;
+
+	*ptrflmergedleft = false;
+
+	if (adr == firstphysicaladdress)
+		return (true);
+
+	if (adr < firstphysicaladdress) {
+
+		dblogerror (dbmergeinvalidblockerror);
+
+		return (false);
+		}
+
+	if (!dbreadtrailer_hdb (adr - ts, &flleftfree, &ctleftbytes, fnum, hdb))
+		return (false);
+
+	if (ctleftbytes < minblocksize) {
+
+		dblogerror (dbmergeinvalidblockerror);
+
+		return (false);
+		}
+
+	if (!flleftfree)
+		return (true);
+
+	if (!dbreadavailnode_hdb (adr, &flfree, &ctbytes, &nextavail, fnum, hdb))
+		return (false);
+
+	if (flmerged) { /*the node we're releasing is already on the avail list, pop him!*/
+
+		if (!dbfindpreviousavail_hdb (adr, &prevavail, &ixshadow, fnum, hdb))
+			return (false);
+
+		assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
+
+		if (!dbsetavaillink_hdb (prevavail, nextavail, fnum, hdb))
+			return (false);
+
+		if (!dbdeleteavailshadow_hdb (ixshadow, hdb))
+			return (false);
+		}
+
+	newsize = ctleftbytes + ctbytes + hs + ts;
+
+	newadr = adr - ts - ctleftbytes - hs;
+
+	if (!dbwriteheaderandtrailer_hdb (newadr, true, newsize, 0L, fnum, hdb))
+		return (false);
+
+	if (!dbfindpreviousavail_hdb (newadr, &prevavail, &ixshadow, fnum, hdb))
+		return (false);
+
+	dbsetavailshadow_hdb (ixshadow, newadr, newsize, hdb);
+
+	*ptrflmergedleft = true;
+
+	return (true);
+	} /*dbmergeleft_hdb*/
+
+
+boolean dballocate_hdb (long databytes, ptrvoid pdata, dbaddress *paddress, hdldatabaserecord hdb) {
+
+	/*
+	Phase 7: Allocate space in database using explicit hdb — no global
+	databasedata access.  Mirrors dballocate() but threads hdb/fnum through
+	every helper call.
+
+	The caller is responsible for passing the correct hdb (already resolved
+	for Save As context if needed).  No db_context_guard is used internally.
+	*/
+
+	hdlfilenum fnum = db_hdb_fnum(hdb);
+	long hs = db_hdb_header_size(hdb);
+	long ts = db_hdb_trailer_size(hdb);
+	long origeof;
+	long nodebytes, newnodebytes;
+	dbaddress nomad, prevnomad, nextnomad;
+	tyvariance variance;
+	long smallestinterestingblock;
+	long ctalloc;
+
+#ifdef SMART_DB_OPENING
+	dbclearshadowavaillist_hdb (hdb);
+#endif
+
+	smallestinterestingblock = max (databytes, (long) minblocksize);
+
+#ifdef dbshadow
+	{
+	hdlavaillistshadow havailshadow = (hdlavaillistshadow) (**hdb).u.extensions.availlistshadow.data;
+	long i, ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
+
+	for (i = 0, prevnomad = nildbaddress; i < ctavail; ++i, prevnomad = nomad) {
+
+		nomad = (*havailshadow) [i].adr;
+
+		if (nomad == nildbaddress)
+			break;
+
+		nodebytes = (*havailshadow) [i].size;
+
+		if (nodebytes < smallestinterestingblock)
+			continue;
+
+		/*found a block to allocate off avail list*/
+
+		nextnomad = (*havailshadow) [i + 1].adr;
+
+		variance = nodebytes - databytes;
+
+		if (variance >= (minblocksize + hs + ts)) { /*split into two blocks*/
+
+			newnodebytes = nodebytes - (databytes + hs + ts);
+
+			if (!dbwriteheaderandtrailer_hdb (nomad, true, newnodebytes, (tyvariance) 0, fnum, hdb))
+				goto failure;
+
+			dbsetavailshadow_hdb (i, nomad, newnodebytes, hdb);
+
+			nomad += hs + newnodebytes + ts;
+
+			if (!dbwritedatablock_hdb (nomad, databytes, databytes, pdata, fnum, hdb))
+				goto failure;
+
+			*paddress = nomad;
+
+			goto success;
+			} /*splitting into two blocks*/
+
+		if (!dbwritedatablock_hdb (nomad, databytes, nodebytes, pdata, fnum, hdb))
+			goto failure;
+
+		*paddress = nomad;
+
+		dbdeleteavailshadow_hdb (i, hdb);
+
+		if (!dbsetavaillink_hdb (prevnomad, nextnomad, fnum, hdb))
+			goto failure;
+
+		goto success;
+		}
+	}
+#else
+	{
+	boolean flfree;
+
+	nomad = (**hdb).availlist;
+
+	prevnomad = nildbaddress;
+
+	while (nomad != nildbaddress) {
+
+		if (!dbreadavailnode_hdb (nomad, &flfree, &nodebytes, &nextnomad, fnum, hdb))
+			goto failure;
+
+		if (nodebytes < smallestinterestingblock)
+			goto nextloop;
+
+		variance = nodebytes - databytes;
+
+		if (variance >= (minblocksize + hs + ts)) {
+
+			newnodebytes = nodebytes - (databytes + hs + ts);
+
+			if (!dbwriteheaderandtrailer_hdb (nomad, true, newnodebytes, (tyvariance) 0, fnum, hdb))
+				goto failure;
+
+			nomad += hs + newnodebytes + ts;
+
+			if (!dbwritedatablock_hdb (nomad, databytes, databytes, pdata, fnum, hdb))
+				goto failure;
+
+			*paddress = nomad;
+
+			goto success;
+			}
+
+		if (!dbwritedatablock_hdb (nomad, databytes, nodebytes, pdata, fnum, hdb))
+			goto failure;
+
+		*paddress = nomad;
+
+		if (!dbsetavaillink_hdb (prevnomad, nextnomad, fnum, hdb))
+			goto failure;
+
+		goto success;
+
+		nextloop:
+
+		prevnomad = nomad;
+
+		nomad = nextnomad;
+		} /*while*/
+	}
+#endif
+
+	if (!dbgeteof_fnum (&origeof, fnum))
+		goto failure;
+
+	if (databytes < minblocksize) {
+
+		ctalloc = minblocksize;
+
+		variance = minblocksize - databytes;
+		}
+	else {
+
+		ctalloc = databytes;
+
+		variance = 0;
+		}
+
+	if (!dbseteof_fnum (origeof + hs + ctalloc + ts, fnum))
+		goto failure;
+
+	if (!dbwritedatablock_hdb (origeof, databytes, ctalloc, pdata, fnum, hdb))
+		goto failure;
+
+	*paddress = origeof;
+
+
+success:
+
+	return (true);
+
+
+failure:
+
+	return (false);
+	} /*dballocate_hdb*/
+
+
+boolean dbrelease_hdb (dbaddress adr, hdldatabaserecord hdb) {
+
+	/*
+	Phase 7: Release a database block using explicit hdb — no global
+	databasedata access.  Mirrors dbrelease_internal().
+	*/
+
+	hdlfilenum fnum = db_hdb_fnum(hdb);
+	long hs = db_hdb_header_size(hdb);
+	boolean flmergedleft, flmergedright;
+	boolean flfree;
+	long ctbytes;
+	tyvariance variance;
+
+	if (adr == nildbaddress)
+		return (true);
+
+#ifdef SMART_DB_OPENING
+	dbclearshadowavaillist_hdb (hdb);
+#endif
+
+	if (!dbreadheader_fnum (adr, &flfree, &ctbytes, &variance, hs, fnum))
+		return (false);
+
+	if (flfree) {
+
+		dberror (dbreleasefreeblockerror);
+
+		return (false);
+		}
+
+	if (!dbmergeright_hdb (adr, ctbytes, &flmergedright, fnum, hdb))
+		return (false);
+
+	if (!dbmergeleft_hdb (flmergedright, adr, &flmergedleft, fnum, hdb))
+		return (false);
+
+	if (flmergedleft || flmergedright)
+		return (true);
+
+	/*no merging -- set free bits in header & trailer, insert at head of avail list*/
+
+	if (!dbwriteavailnode_hdb (adr, ctbytes, (**hdb).availlist, fnum, hdb))
+		return (false);
+
+	(**hdb).availlist = adr;
+
+	if (!dbinsertavailshadow_hdb (0, adr, ctbytes, hdb))
+		return (false);
+
+	setdirty (hdb);
+
+	return (true);
+	} /*dbrelease_hdb*/
+
+
+/*============================================================================
+ * Phase 7, Layer 4: High-level _hdb operations.
+ *============================================================================*/
+
+
+boolean dbassign_hdb (dbaddress *padr, long newsize, ptrvoid pdata, hdldatabaserecord hdb) {
+
+	/*
+	Phase 7: Assign data to a database block using explicit hdb.
+	Mirrors dbassign_internal() but routes all I/O through _hdb/_fnum helpers.
+	*/
+
+	hdlfilenum fnum = db_hdb_fnum(hdb);
+	long hs = db_hdb_header_size(hdb);
+	register dbaddress adr;
+	tyvariance ctunused;
+	long cttotal;
+	boolean flfree;
+
+	adr = *padr;
+
+	if (fldatabasesaveas || (adr == nildbaddress)) { /*during Save As, always allocate fresh in destination*/
+		return dballocate_hdb (newsize, pdata, padr, hdb);
+	}
+
+	if (!dbreadheader_fnum (adr, &flfree, &cttotal, &ctunused, hs, fnum))
+		return (false);
+
+	if (flfree) {
+
+		dberror (dbassignfreeblockerror);
+
+		return (false);
+		}
+
+	if (newsize > cttotal) {
+
+		dbrelease_hdb (adr, hdb); /*ignore return — don't abort saving*/
+
+		return dballocate_hdb (newsize, pdata, padr, hdb);
+		}
+
+	if (newsize != cttotal - ctunused)
+
+		if (!dbsetsize_hdb (adr, cttotal, cttotal - newsize, fnum, hdb))
+
+			return (false);
+
+	return dbmove_hdb (pdata, newsize, adr, fnum, hdb);
+	} /*dbassign_hdb*/
+
+
+boolean dbcopy_hdb (dbaddress adrorig, dbaddress *adrcopy, hdldatabaserecord hdb) {
+
+	/*
+	Phase 7: Copy a database block using explicit hdb.
+	Mirrors dbcopy_internal() but routes I/O through _hdb/_fnum helpers.
+
+	During Save As, adrorig lives in the *source* database while allocation
+	goes to the destination (hdb).  We must read from the source db, not hdb.
+	*/
+
+	register boolean flreturned;
+	Handle hnew;
+	register Handle h;
+	long size;
+
+	/* Determine source db for reads: during Save As the original block
+	   lives in dbsaveas_source, otherwise it's in hdb itself. */
+	hdldatabaserecord source_hdb = (fldatabasesaveas && dbsaveas_source != nil) ? dbsaveas_source : hdb;
+	hdlfilenum src_fnum = db_hdb_fnum(source_hdb);
+	long src_hs = db_hdb_header_size(source_hdb);
+
+	if (adrorig == nildbaddress) {
+
+		*adrcopy = nildbaddress;
+
+		return (true);
+		}
+
+	/* Get logical size of original block from source. */
+	{
+		long total;
+		tyvariance variance;
+		boolean flfree;
+
+		if (!dbreadheader_fnum (adrorig, &flfree, &total, &variance, src_hs, src_fnum))
+			return (false);
+
+		if (flfree) {
+			dberror (dbfreeblockerror);
+			return (false);
+		}
+
+		size = total - (long) variance;
+	}
+
+	if (!newhandle (size, &hnew))
+		return (false);
+
+	h = hnew;
+
+	lockhandle (h);
+
+	/* Read original data from source. */
+	flreturned = dbreference_fnum (adrorig, size, *h, src_hs, src_fnum);
+
+	/* Allocate copy in destination (hdb). */
+	if (flreturned)
+		flreturned = dballocate_hdb (size, *h, adrcopy, hdb);
+
+	unlockhandle (h);
+
+	disposehandle (h);
+
+	return (flreturned);
+	} /*dbcopy_hdb*/
+
+
+boolean dbsavehandle_hdb (Handle hsave, dbaddress *adr, hdldatabaserecord hdb) {
+
+	/*
+	Phase 7: Save a handle to a database block using explicit hdb.
+	Mirrors dbsavehandle().
+	*/
+
+	register Handle h = hsave;
+	register long ctbytes;
+	register boolean fl;
+	dbaddress a = *adr;
+
+	ctbytes = gethandlesize (h);
+
+	lockhandle (h);
+
+	if (a == nildbaddress)
+		fl = dballocate_hdb (ctbytes, *h, &a, hdb);
+	else
+		fl = dbassign_hdb (&a, ctbytes, *h, hdb);
+
+	unlockhandle (h);
+
+	*adr = a;
+
+	return (fl);
+	} /*dbsavehandle_hdb*/
+
+
+boolean dbrefhandle_hdb (dbaddress adr, Handle *h, hdldatabaserecord hdb) {
+
+	/*
+	Phase 7: Read a handle from database using explicit hdb.
+	Mirrors dbrefhandle() but uses explicit fnum and header size.
+	*/
+
+	return dbrefhandle_fnum (adr, h, db_hdb_header_size(hdb), db_hdb_fnum(hdb));
+	} /*dbrefhandle_hdb*/
+
+
+boolean dbassignhandle_hdb (Handle h, dbaddress *adr, hdldatabaserecord hdb) {
+
+	/*
+	Phase 7: Assign a handle to a database block using explicit hdb.
+	Mirrors dbassignhandle().
+	*/
+
+	register boolean fl;
+	long hsize = (h != nil) ? gethandlesize(h) : 0;
+
+	if (*adr == nildbaddress) { /*creating a new guy*/
+
+		if (h == nil) {
+
+			*adr = nildbaddress;
+
+			return (true);
+			}
+
+		lockhandle (h);
+
+		fl = dballocate_hdb ((long) gethandlesize (h), *h, adr, hdb);
+
+		unlockhandle (h);
+
+		return (fl);
+		}
+
+	if (h == nil)
+		return dbassign_hdb (adr, 0, nil, hdb);
+
+	lockhandle (h);
+
+	fl = dbassign_hdb (adr, hsize, *h, hdb);
+
+	unlockhandle (h);
+
+	return (fl);
+	} /*dbassignhandle_hdb*/
+
 
 /*
 boolean dbnewarray (ctelements, sizeelement, pdata, adr) short ctelements, sizeelement; ptrvoid pdata; dbaddress *adr; {
