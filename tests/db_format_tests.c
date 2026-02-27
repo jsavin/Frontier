@@ -1426,7 +1426,7 @@ static boolean open_scratch_v7_db(hdb_test_ctx *ctx, const char *suffix) {
     ctx->saved_db = databasedata;
     ctx->saved_mode = db_format_mode_current();
 
-    if (!dbnew(ctx->fnum, true)) return false;
+    if (!dbnew(ctx->fnum, true)) { closefile(ctx->fnum); remove(ctx->path); return false; }
     ctx->hdb = databasedata;
 
     /* Restore globals so test body proves _hdb doesn't need them */

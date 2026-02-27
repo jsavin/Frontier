@@ -967,6 +967,7 @@ boolean dbwriteheader_fnum (dbaddress adr, boolean flfree, long ctbytes, tyvaria
 	all I/O goes through fnum.
 	*/
 
+	/* Same logic as db_hdb_use64() defined below in Layer 3+ helpers section */
 	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
 
 	if (use64) {
@@ -1006,6 +1007,7 @@ boolean dbwritetrailer_fnum (dbaddress adr, boolean flfree, long ctbytes, hdlfil
 	all I/O goes through fnum.
 	*/
 
+	/* Same logic as db_hdb_use64() defined below in Layer 3+ helpers section */
 	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
 
 	if (use64) {
@@ -3143,7 +3145,11 @@ static boolean dbwriteavailnode_hdb (dbaddress adr, long ctbytes, dbaddress next
 	boolean use64 = db_hdb_use64(hdb);
 
 	assert (adr != nildbaddress);
-	assert ((**hdb).u.extensions.availlistblock == nildbaddress);
+
+	if ((**hdb).u.extensions.availlistblock != nildbaddress) {
+		dberror (dbfreelisterror);
+		return (false);
+	}
 
 	if (!dbwriteheader_fnum (adr, true, ctbytes, 0L, fnum, hdb))
 		return (false);
@@ -3199,7 +3205,10 @@ static boolean dbsetavaillink_hdb (dbaddress adr, dbaddress link, hdlfilenum fnu
 	long hs = db_hdb_header_size(hdb);
 	boolean use64 = db_hdb_use64(hdb);
 
-	assert ((**hdb).u.extensions.availlistblock == nildbaddress);
+	if ((**hdb).u.extensions.availlistblock != nildbaddress) {
+		dberror (dbfreelisterror);
+		return (false);
+	}
 
 	if (adr == nildbaddress) { /*special case, set link in file header*/
 
@@ -3514,8 +3523,10 @@ static boolean dbmergeright_hdb (dbaddress adr, long ctbytes, boolean *ptrflmerg
 	{
 		long ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
 
-		if (ixshadow + 1 >= ctavail)
-			return (false); /* corrupt avail list — OOB access */
+		if (ixshadow + 1 >= ctavail) {
+			dblogerror (dbmergeinvalidblockerror);
+			return (false);
+		}
 
 		assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
 	}
@@ -3576,6 +3587,8 @@ static boolean dbmergeleft_hdb (boolean flmerged, dbaddress adr, boolean *ptrflm
 	if (!dbreadavailnode_hdb (adr, &flfree, &ctbytes, &nextavail, fnum, hdb))
 		return (false);
 
+	(void) flfree; /* only ctbytes and nextavail used for merge logic */
+
 	if (flmerged) { /*the node we're releasing is already on the avail list, pop him!*/
 
 		if (!dbfindpreviousavail_hdb (adr, &prevavail, &ixshadow, fnum, hdb))
@@ -3584,8 +3597,10 @@ static boolean dbmergeleft_hdb (boolean flmerged, dbaddress adr, boolean *ptrflm
 		{
 			long ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
 
-			if (ixshadow + 1 >= ctavail)
-				return (false); /* corrupt avail list — OOB access */
+			if (ixshadow + 1 >= ctavail) {
+				dblogerror (dbmergeinvalidblockerror);
+				return (false);
+			}
 
 			assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
 		}
