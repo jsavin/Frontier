@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include "frontier.h"
 #include "file.h"
@@ -1398,26 +1399,27 @@ static void test_fnum_variants_success_path(void) {
 /* Phase 7 test helpers: open/close a scratch v7 database for _hdb tests.
    open_scratch_v7_db restores databasedata after dbnew so the test body
    can prove _hdb functions don't need the global.  close_scratch_v7_db
-   cleans up even if the test body asserts partway through (via goto). */
+   cleans up even if the test body asserts partway through (via goto).
+   Paths include PID for parallel-safe test execution. */
 
 typedef struct {
-    const char *path;
+    char path[128];
     hdlfilenum fnum;
     hdldatabaserecord hdb;
     hdldatabaserecord saved_db;
     db_format_mode saved_mode;
 } hdb_test_ctx;
 
-static boolean open_scratch_v7_db(hdb_test_ctx *ctx, const char *path) {
+static boolean open_scratch_v7_db(hdb_test_ctx *ctx, const char *suffix) {
 
-    ctx->path = path;
+    snprintf(ctx->path, sizeof(ctx->path), "/tmp/hdb_%s_%d.db", suffix, (int)getpid());
     ctx->fnum = 0;
     ctx->hdb = nil;
 
-    { FILE *f = fopen(path, "wb"); if (!f) return false; fclose(f); }
+    { FILE *f = fopen(ctx->path, "wb"); if (!f) return false; fclose(f); }
 
     bigstring bspath; tyfilespec fs;
-    bs_from_cstr(path, bspath);
+    bs_from_cstr(ctx->path, bspath);
     if (!pathtofilespec(bspath, &fs)) return false;
     if (!openfile(&fs, &ctx->fnum, false)) return false;
 
@@ -1452,7 +1454,7 @@ static void test_hdb_allocate_and_read(void) {
      * allocator can write data and that dbrefhandle_hdb can read it back.
      */
     hdb_test_ctx ctx;
-    assert(open_scratch_v7_db(&ctx, "/tmp/hdb_alloc_test.db"));
+    assert(open_scratch_v7_db(&ctx, "alloc"));
 
     /* dballocate_hdb: allocate a block containing 4 bytes */
     char payload[4] = { 'H', 'D', 'B', '!' };
@@ -1485,7 +1487,7 @@ static void test_hdb_assign_roundtrip(void) {
      * with larger data, and verify via dbrefhandle_hdb.
      */
     hdb_test_ctx ctx;
-    assert(open_scratch_v7_db(&ctx, "/tmp/hdb_assign_test.db"));
+    assert(open_scratch_v7_db(&ctx, "assign"));
 
     /* Allocate initial small block */
     char small[4] = { 'S', 'M', 'A', 'L' };
@@ -1520,7 +1522,7 @@ static void test_hdb_savehandle_roundtrip(void) {
      * reads it back via dbrefhandle_hdb.
      */
     hdb_test_ctx ctx;
-    assert(open_scratch_v7_db(&ctx, "/tmp/hdb_save_test.db"));
+    assert(open_scratch_v7_db(&ctx, "save"));
 
     /* Build a Handle with known contents */
     char data[8] = "SAVETEST";
@@ -1555,7 +1557,7 @@ static void test_hdb_copy_roundtrip(void) {
      * has identical contents but a different address.
      */
     hdb_test_ctx ctx;
-    assert(open_scratch_v7_db(&ctx, "/tmp/hdb_copy_test.db"));
+    assert(open_scratch_v7_db(&ctx, "copy"));
 
     /* Allocate original block */
     char payload[8] = "COPYTEST";

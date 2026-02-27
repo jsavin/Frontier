@@ -2541,6 +2541,15 @@ boolean hashunpacktable_context(const db_context *context, Handle hpacked, boole
     return hashunpacktable_internal(context, hpacked, flmemory, htable);
 }
 
+/*
+Phase 7 _context() wrappers below call _hdb variants which derive v6/v7
+format from (**hdb).headerLength rather than from context->mode.  This is
+safe because db_context_for_destination() always constructs context->mode
+to match the destination database's format.  If this invariant is ever
+violated (mismatched mode vs headerLength), the _hdb path will use the
+authoritative headerLength and the mode field will be ignored.
+*/
+
 boolean dbassignhandle_context(const db_context *context, Handle h, dbaddress *adr) {
     /*
     Phase 7: Explicit context — no global mutation. Threads database handle

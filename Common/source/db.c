@@ -3242,6 +3242,7 @@ static boolean dbwritedatablock_hdb (dbaddress adr, long databytes, long nodebyt
 static boolean dbfindpreviousavail_hdb (dbaddress adr, dbaddress *prev, long *ixshadow, hdlfilenum fnum, hdldatabaserecord hdb) {
 
 #ifdef dbshadow
+	(void) fnum; /* unused in shadow path — all lookups go through havailshadow */
 	hdlavaillistshadow havailshadow = (hdlavaillistshadow) (**hdb).u.extensions.availlistshadow.data;
 	long i, ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
 
@@ -3387,6 +3388,9 @@ static void dbclearshadowavaillist_hdb (hdldatabaserecord hdb) {
 	TODO(Phase 8): Convert dbflushheader and dbrelease_internal to _hdb
 	so this function no longer needs to touch databasedata.
 	Safe under GIL: no yield points between save and restore of databasedata.
+	Verified: dbflushheader does only dbwrite (file I/O); dbrelease_internal
+	does header reads/writes and avail list manipulation.  Neither calls
+	langbackgroundtask() or thread.sleepTicks() (the only GIL yield points).
 	*/
 
 #ifdef SMART_DB_OPENING
@@ -3686,7 +3690,8 @@ boolean dballocate_hdb (long databytes, ptrvoid pdata, dbaddress *paddress, hdld
 
 		*paddress = nomad;
 
-		dbdeleteavailshadow_hdb (i, hdb);
+		if (!dbdeleteavailshadow_hdb (i, hdb))
+			goto failure;
 
 		if (!dbsetavaillink_hdb (prevnomad, nextnomad, fnum, hdb))
 			goto failure;
