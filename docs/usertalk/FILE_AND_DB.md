@@ -1,6 +1,6 @@
 # UserTalk File and Database Operations
 
-Guide to file path requirements, database operations, and macOS sandbox constraints.
+Guide to file path requirements, database operations, and temporary file conventions.
 
 ---
 
@@ -53,27 +53,11 @@ db.new("../databases/test.root")   // Error: no cwd to be relative to
 
 ## macOS Sandbox Constraints
 
-### The Problem
+### Temporary File Locations
 
-frontier-cli runs in the macOS sandbox and **CANNOT access `/tmp`** or system temp directories.
+Both `/tmp` and project-relative paths (`tests/tmp/`) are valid for test scratch files.
 
-**Why this matters for testing:**
-- Unit tests often write temp files
-- Integration tests create test databases
-- Manual CLI testing needs writable locations
-
-### Forbidden Paths
-
-❌ NEVER use these paths in tests or scripts:
-- `/tmp/` - Blocked by macOS sandbox
-- `/var/tmp/` - Blocked by macOS sandbox
-- System temp directories - Blocked by macOS sandbox
-
-### Safe Paths for Testing
-
-✅ ALWAYS use project-relative paths in .gitignore'd subdirectories:
-
-**Project test directories:**
+**Project test directories** (gitignored):
 ```bash
 tests/tmp/unit/          # Unit test outputs
 tests/tmp/integration/   # Integration test outputs
@@ -94,20 +78,19 @@ tests:
 
 The test framework automatically replaces `{FRONTIER_TEST_TMP_DIR}` with a safe project-relative path.
 
-**Manual CLI testing** - Use helper script:
+**Manual CLI testing** - Use `/tmp` or helper script:
 ```bash
-# Get safe temp directory path
-TESTDIR=$(./tools/get_test_temp_path.sh)
+# Option 1: /tmp directly
+./frontier-cli/frontier-cli -e 'db.new("/tmp/test.root")'
 
-# Use in CLI command
+# Option 2: project-relative via helper
+TESTDIR=$(./tools/get_test_temp_path.sh)
 ./frontier-cli/frontier-cli -e "db.new(\"$TESTDIR/test.root\")"
 ```
 
-**C unit tests** - Use project-relative paths:
+**C unit tests** - Use `/tmp` for scratch files:
 ```c
-// In C test code
-char testPath[256];
-snprintf(testPath, sizeof(testPath), "%s/tests/tmp/unit/test.root", getProjectRoot());
+const char *scratch_path = "/tmp/my_test_scratch.db";
 ```
 
 ---
@@ -161,9 +144,8 @@ db.new("/Users/jake/dev/jsavin/Frontier/databases/test.root")
 db.new("test.root")
 // Result: "file not found" error
 
-// ❌ ERROR: Using /tmp (sandbox blocked)
+// ✅ OK: Using /tmp
 db.new("/tmp/test.root")
-// Result: "permission denied" error
 
 // ❌ ERROR: Assuming cwd context
 local(cwd = file.getcwd())
@@ -252,7 +234,6 @@ db.new(dbPath)
 - ✅ Verify paths are absolute before file operations
 
 ### DON'T:
-- ❌ Use `/tmp` or system temp directories
 - ❌ Use relative paths without building absolute paths first
 - ❌ Assume cwd awareness in UserTalk scripts
 - ❌ Hardcode user-specific paths in tests
@@ -265,10 +246,7 @@ db.new(dbPath)
 When delegating file operations work to agents, ALWAYS include this constraint:
 
 ```markdown
-CRITICAL CONSTRAINT: frontier-cli runs in macOS sandbox and CANNOT access /tmp.
-Use project-relative paths in .gitignore'd subdirectories for testing.
-Use $(./tools/get_test_temp_path.sh) to get a safe temp directory.
-
+For test scratch files, use /tmp or project-relative paths (tests/tmp/).
 For integration tests, use {FRONTIER_TEST_TMP_DIR} template in YAML files.
 ```
 
@@ -281,8 +259,8 @@ For integration tests, use {FRONTIER_TEST_TMP_DIR} template in YAML files.
 - **Fix:** Build absolute path with `file.getcwd()` or use full path
 
 ### "Permission denied" errors
-- **Cause:** Trying to access `/tmp` or blocked location
-- **Fix:** Use project-relative path in `tests/tmp/`
+- **Cause:** Trying to write to a read-only location
+- **Fix:** Use `/tmp` or project-relative path in `tests/tmp/`
 
 ### "No such table" errors in guest databases
 - **Cause:** System root not loaded

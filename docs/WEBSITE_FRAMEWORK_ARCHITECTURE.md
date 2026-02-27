@@ -556,7 +556,7 @@ dimensions = html.getGifHeightWidth(testDir + "/sample.gif");
 return dimensions.height > 0 and dimensions.width > 0
 ```
 
-**Critical**: Use `{FRONTIER_TEST_TMP_DIR}` template in integration tests (auto-replaced with safe path). For manual CLI testing, use `$(./tools/get_test_temp_path.sh)` to get a sandbox-accessible path.
+**Note**: Use `{FRONTIER_TEST_TMP_DIR}` template in integration tests (auto-replaced with safe path). For manual CLI testing, `/tmp` or `$(./tools/get_test_temp_path.sh)` both work.
 
 ---
 

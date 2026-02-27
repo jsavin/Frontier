@@ -1331,7 +1331,7 @@ static void test_fnum_variants_success_path(void) {
      * and dbreference_fnum against a real scratch file opened through the
      * Frontier file layer (openfile/closefile).
      */
-    const char *scratch_path = "fnum_scratch_test.db";
+    const char *scratch_path = "/tmp/fnum_scratch_test.db";
 
     /* Create file via fopen so it exists on disk, then open through Frontier */
     { FILE *f = fopen(scratch_path, "wb"); assert(f); fclose(f); }

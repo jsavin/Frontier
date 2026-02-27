@@ -58,7 +58,7 @@ gh pr create --title "..." --body "..." --base develop
 - `tests/tmp/migration/` - Migration test artifacts
 - `tests/tmp/results/` - Test logs and CLI runtime artifacts
 
-Use `$(./tools/get_test_temp_path.sh)` for manual testing paths.
+For test scratch files, `/tmp` or `tests/tmp/` both work.
 
 ### Documentation Quick Links
 

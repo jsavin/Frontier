@@ -262,11 +262,14 @@ tests:
 
 ## Temporary Files in Tests
 
-### macOS Sandbox Restriction ⚠️
+### Temporary File Locations
 
-**CRITICAL**: frontier-cli runs in the macOS sandbox and **CANNOT access `/tmp`** or other system temp directories.
+Both `/tmp` and project-relative paths (`tests/tmp/`) are valid for test scratch files.
 
-### Safe Patterns for Temporary Files
+**C unit tests**: Use `/tmp` directly — it's the simplest option:
+```c
+const char *scratch_path = "/tmp/my_test_scratch.db";
+```
 
 **Integration tests**: Use `{FRONTIER_TEST_TMP_DIR}` template
 ```yaml
@@ -276,34 +279,15 @@ tests:
     expected_success: true
 ```
 
-**Manual CLI tests**: Use `get_test_temp_path.sh` helper
+**Manual CLI tests**: Use `/tmp` or `get_test_temp_path.sh` helper
 ```bash
-# Get safe temp directory
-TESTDIR=$(./tools/get_test_temp_path.sh)
+# Option 1: /tmp directly
+./frontier-cli/frontier-cli -e 'file.write("/tmp/test.txt", "data")'
 
-# Use in frontier-cli command
+# Option 2: project-relative via helper
+TESTDIR=$(./tools/get_test_temp_path.sh)
 ./frontier-cli/frontier-cli -e "file.write(\"$TESTDIR/test.txt\", \"data\")"
 ```
-
-**Direct approach**: Use project-relative paths
-```bash
-# Create test directory (gitignore'd)
-mkdir -p tests/tmp/unit
-
-# Use directly in tests
-./frontier-cli/frontier-cli -e 'file.write("tests/tmp/unit/test.txt", "data")'
-```
-
-### Unsafe Patterns (Will Fail)
-
-❌ **NEVER use `/tmp`**:
-```bash
-# This will FAIL in sandbox
-./frontier-cli/frontier-cli -e 'file.write("/tmp/test.txt", "data")'
-```
-
-❌ **NEVER use `/var/tmp`** or other system directories
-❌ **NEVER use hardcoded absolute paths** outside the project
 
 ---
 
