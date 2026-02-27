@@ -3520,6 +3520,7 @@ static boolean dbmergeright_hdb (dbaddress adr, long ctbytes, boolean *ptrflmerg
 	if (!dbfindpreviousavail_hdb (rightblockadr, &prevavail, &ixshadow, fnum, hdb))
 		return (false);
 
+#ifdef dbshadow
 	{
 		long ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
 
@@ -3530,6 +3531,7 @@ static boolean dbmergeright_hdb (dbaddress adr, long ctbytes, boolean *ptrflmerg
 
 		assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
 	}
+#endif
 
 	if (!dbsetavaillink_hdb (prevavail, adr, fnum, hdb))
 		return (false);
@@ -3594,6 +3596,7 @@ static boolean dbmergeleft_hdb (boolean flmerged, dbaddress adr, boolean *ptrflm
 		if (!dbfindpreviousavail_hdb (adr, &prevavail, &ixshadow, fnum, hdb))
 			return (false);
 
+#ifdef dbshadow
 		{
 			long ctavail = (**hdb).u.extensions.availlistshadow.eof / sizeof (tyavailnodeshadow);
 
@@ -3604,6 +3607,7 @@ static boolean dbmergeleft_hdb (boolean flmerged, dbaddress adr, boolean *ptrflm
 
 			assert ((*(hdlavaillistshadow)(**hdb).u.extensions.availlistshadow.data) [ixshadow + 1].adr == nextavail);
 		}
+#endif
 
 		if (!dbsetavaillink_hdb (prevavail, nextavail, fnum, hdb))
 			return (false);
@@ -3899,7 +3903,8 @@ boolean dbassign_hdb (dbaddress *padr, long newsize, ptrvoid pdata, hdldatabaser
 
 	if (newsize > cttotal) {
 
-		dbrelease_hdb (adr, hdb); /*ignore return — don't abort saving*/
+		if (!dbrelease_hdb (adr, hdb)) /*don't abort saving, but log the failure*/
+			dblogerror (dbfreelisterror);
 
 		return dballocate_hdb (newsize, pdata, padr, hdb);
 		}
