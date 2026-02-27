@@ -3366,7 +3366,7 @@ static boolean dbmove_hdb (ptrvoid pdata, long ctbytes, dbaddress adr, hdlfilenu
 	} /*dbmove_hdb*/
 
 
-static boolean dbclearshadowavaillist_hdb (hdldatabaserecord hdb) {
+static void dbclearshadowavaillist_hdb (hdldatabaserecord hdb) {
 
 	/*
 	Phase 7 variant: Clear shadow avail list using explicit hdb instead of
@@ -3581,7 +3581,8 @@ static boolean dbmergeleft_hdb (boolean flmerged, dbaddress adr, boolean *ptrflm
 	if (!dbfindpreviousavail_hdb (newadr, &prevavail, &ixshadow, fnum, hdb))
 		return (false);
 
-	dbsetavailshadow_hdb (ixshadow, newadr, newsize, hdb);
+	if (!dbsetavailshadow_hdb (ixshadow, newadr, newsize, hdb))
+		return (false);
 
 	*ptrflmergedleft = true;
 
