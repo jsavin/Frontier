@@ -191,7 +191,12 @@ static boolean dbfindblockforaddress_hdb(dbaddress adr, dbaddress *blockstart, l
 	*/
 
 	long eof = 0;
-	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+	boolean use64;
+
+	if (hdb == nil)
+		return (false);
+
+	use64 = ((**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
 	const long header_size = use64 ? sizeheader_v7 : sizeheader_v6;
 	hdlfilenum fnum = (hdlfilenum)((**hdb).fnumdatabase);
 
@@ -275,6 +280,9 @@ boolean dbnormalizeaddress_hdb(dbaddress *adr, hdldatabaserecord hdb) {
 
 	if (adr == NULL || *adr == nildbaddress)
 		return true;
+
+	if (hdb == nil)
+		return false;
 
 	dbaddress resolved = nildbaddress;
 	if (!dbfindblockforaddress_hdb(*adr, &resolved, NULL, NULL, NULL, hdb))
