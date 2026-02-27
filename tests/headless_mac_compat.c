@@ -261,8 +261,6 @@ void invalrect (Rect r) { (void)r; }
 
 // DB stubs (disabled when linking the real database core)
 #if !defined(HEADLESS_LINKS_REAL_DB)
-boolean dbpushdatabase (hdldatabaserecord h) { (void)h; return false; }
-boolean dbpopdatabase (void) { return false; }
 boolean dbcopy (dbaddress a, dbaddress *b) { (void)a; if (b) *b=0; return false; }
 boolean dbassignhandle (Handle h, dbaddress *adr) { (void)h; if (adr) *adr=0; return false; }
 #endif

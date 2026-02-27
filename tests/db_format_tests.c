@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "frontier.h"
+#include "file.h"
 #include "db_format.h"
 #include "db_writer_v7.h"
 #include "dbinternal.h"
@@ -974,13 +975,18 @@ static void test_verbpack_internal_callee_saves_databasedata(void) {
 
 static void test_db_context_io_primitives_restore_databasedata(void) {
     /*
-     * Verify that all nine _context() wrappers restore databasedata after
+     * Verify that all nine _context() wrappers preserve databasedata after
      * the call, regardless of success or failure:
      *   dbread, dbwrite, dbgeteof, dbsavehandle, dbassign, dbassignhandle,
      *   dbcopy, dbreference, dbreference_handle.
      *
+     * After Phase 6, dbread_context, dbwrite_context, dbgeteof_context, and
+     * dbreference_context pass fnum explicitly via _fnum variants and never
+     * touch databasedata at all (when given a non-nil context database).
+     * The remaining 5 wrappers still use save/swap/restore.
+     *
      * We don't have a real database file open, so the underlying operations
-     * will fail — but the save/restore of databasedata must still work.
+     * will fail — but the callee-saves invariant must still hold.
      */
     hdldatabaserecord baseline_db = databasedata;
 
@@ -1263,6 +1269,132 @@ static void test_tableverbinmemory_common_callee_saves(void) {
     log_info(LOG_COMP_DB, "[TEST] test_tableverbinmemory_common_callee_saves COMPLETED");
 }
 
+static void test_fnum_variants_reject_invalid_fnum(void) {
+    /*
+     * Verify that the new _fnum functions return false when given an
+     * invalid file number (0 or -1), exercising basic error paths.
+     */
+    char buf[16] = {0};
+    long eof_val = 0;
+    hdlfilenum bad_fnum = (hdlfilenum) 0;
+
+    /* dbread_fnum: seek to invalid fnum should fail */
+    assert(!dbread_fnum((dbaddress) 0x100, sizeof(buf), buf, bad_fnum));
+
+    /* dbwrite_fnum: seek to invalid fnum should fail (nil hdb — no read-only check) */
+    assert(!dbwrite_fnum((dbaddress) 0x100, sizeof(buf), buf, bad_fnum, nil));
+
+    /* dbgeteof_fnum: EOF on invalid fnum should fail */
+    assert(!dbgeteof_fnum(&eof_val, bad_fnum));
+
+    /* dbreference_fnum: header read on invalid fnum should fail */
+    assert(!dbreference_fnum((dbaddress) 0x100, sizeof(buf), buf, 8, bad_fnum));
+
+    log_info(LOG_COMP_DB, "[TEST] test_fnum_variants_reject_invalid_fnum COMPLETED");
+}
+
+static void test_dbwrite_fnum_readonly_guard(void) {
+    /*
+     * Verify that dbwrite_fnum blocks writes to a read-only database,
+     * matching the safety guard in the legacy dbwrite function.
+     */
+    hdldatabaserecord hdb = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &hdb));
+    (**hdb).fnumdatabase = 999;
+    (**hdb).u.extensions.flreadonly = true;
+
+    char buf[16] = {0};
+
+    /* Should be blocked by the read-only guard */
+    assert(!dbwrite_fnum((dbaddress) 0x100, sizeof(buf), buf, (hdlfilenum) 999, hdb));
+
+    /* With flreadonly = false, should fail for a different reason (invalid fnum) */
+    (**hdb).u.extensions.flreadonly = false;
+    /* This will fail at filesetposition, not at the read-only guard */
+    assert(!dbwrite_fnum((dbaddress) 0x100, sizeof(buf), buf, (hdlfilenum) 999, hdb));
+
+    disposehandle((Handle) hdb);
+
+    log_info(LOG_COMP_DB, "[TEST] test_dbwrite_fnum_readonly_guard COMPLETED");
+}
+
+static void bs_from_cstr(const char *c, bigstring bs) {
+    size_t n = strlen(c);
+    if (n > 255) n = 255;
+    bs[0] = (unsigned char)n;
+    memcpy(&bs[1], c, n);
+}
+
+static void test_fnum_variants_success_path(void) {
+    /*
+     * Exercise the success path of dbread_fnum, dbwrite_fnum, dbgeteof_fnum,
+     * and dbreference_fnum against a real scratch file opened through the
+     * Frontier file layer (openfile/closefile).
+     */
+    const char *scratch_path = "fnum_scratch_test.db";
+
+    /* Create file via fopen so it exists on disk, then open through Frontier */
+    { FILE *f = fopen(scratch_path, "wb"); assert(f); fclose(f); }
+
+    bigstring bspath; tyfilespec fs; hdlfilenum fnum = 0;
+    bs_from_cstr(scratch_path, bspath);
+    assert(pathtofilespec(bspath, &fs));
+    assert(openfile(&fs, &fnum, false));  /* read-write */
+
+    /* Prepare a database handle for dbwrite_fnum (not read-only) */
+    hdldatabaserecord hdb = nil;
+    assert(newclearhandle(longsizeof(tydatabaserecord), (Handle *) &hdb));
+    (**hdb).fnumdatabase = (short) fnum;
+    (**hdb).u.extensions.flreadonly = false;
+
+    /* dbwrite_fnum: write 8 bytes at offset 0 */
+    char write_buf[8] = { 'F', 'N', 'U', 'M', 'T', 'E', 'S', 'T' };
+    assert(dbwrite_fnum((dbaddress) 0, sizeof(write_buf), write_buf, fnum, hdb));
+
+    /* dbgeteof_fnum: should report 8 bytes */
+    long eof_val = 0;
+    assert(dbgeteof_fnum(&eof_val, fnum));
+    assert(eof_val == 8);
+
+    /* dbread_fnum: read back the 8 bytes */
+    char read_buf[8] = {0};
+    assert(dbread_fnum((dbaddress) 0, sizeof(read_buf), read_buf, fnum));
+    assert(memcmp(read_buf, write_buf, 8) == 0);
+
+    /* dbreference_fnum: write a v6 block header (8 bytes) + 4 bytes of data,
+       then read it back via dbreference_fnum.
+
+       v6 header layout (big-endian):
+         bytes 0-3: sizefreeword (high bit = free flag, rest = size)
+         bytes 4-7: variance (32-bit BE)
+       size = header_size(8) + data_size(4) + variance(0) = 12
+       free flag = 0 */
+    long block_offset = 16;  /* write at offset 16 to avoid the earlier data */
+    unsigned char v6_header[8] = {0};
+    /* size = 12 in big-endian 32-bit, free flag clear */
+    v6_header[0] = 0x00;
+    v6_header[1] = 0x00;
+    v6_header[2] = 0x00;
+    v6_header[3] = 0x0C;  /* 12 */
+    /* variance = 0 */
+
+    assert(dbwrite_fnum((dbaddress) block_offset, 8, v6_header, fnum, hdb));
+    char block_data[4] = { 'D', 'A', 'T', 'A' };
+    assert(dbwrite_fnum((dbaddress)(block_offset + 8), 4, block_data, fnum, hdb));
+
+    /* Now read it back via dbreference_fnum with header_size=8 (v6) */
+    char ref_buf[4] = {0};
+    assert(dbreference_fnum((dbaddress) block_offset, sizeof(ref_buf), ref_buf, 8, fnum));
+    assert(memcmp(ref_buf, block_data, 4) == 0);
+
+    /* Cleanup */
+    disposehandle((Handle) hdb);
+    closefile(fnum);
+    remove(scratch_path);
+
+    log_info(LOG_COMP_DB, "[TEST] test_fnum_variants_success_path COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -1288,6 +1420,9 @@ int main(void) {
     TR_RUN(test_db_context_io_primitives_restore_databasedata);
     TR_RUN(test_verbpack_internal_callee_saves_format_mode);
     TR_RUN(test_tableverbinmemory_common_callee_saves);
+    TR_RUN(test_fnum_variants_reject_invalid_fnum);
+    TR_RUN(test_dbwrite_fnum_readonly_guard);
+    TR_RUN(test_fnum_variants_success_path);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);

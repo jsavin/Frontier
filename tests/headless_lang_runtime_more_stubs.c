@@ -37,8 +37,8 @@ long releasethreadglobals (void) { return 1; }
 #if !defined(HEADLESS_LINKS_REAL_DB)
 boolean dbpushreleasestack (dbaddress adr, long valtype) { (void)adr; (void)valtype; return true; }
 boolean dbrefhandle (dbaddress adr, Handle *h) { (void)adr; if (h) *h = nil; return false; }
-/* dbassignhandle, dbcopy, dbpushdatabase, dbpopdatabase, and fldatabasesaveas
- * are provided by headless_mac_compat.c so the symbol definitions stay centralized.
+/* dbassignhandle, dbcopy, and fldatabasesaveas are provided by
+ * headless_mac_compat.c so the symbol definitions stay centralized.
  * When the real database core is linked (HEADLESS_LINKS_REAL_DB), these stubs are
  * omitted to avoid duplicate symbols.
  */

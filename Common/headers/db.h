@@ -196,6 +196,16 @@ extern boolean dbreference_with_header_size(dbaddress adr, long maxbytes, ptrvoi
 
 extern boolean dbrefhandle_with_header_size(dbaddress adr, Handle *h, long header_size);
 
+extern boolean dbread_fnum(dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum);
+
+/* hdb: owning database handle, used for the read-only guard.  Pass nil
+   to skip the guard (only when no database handle is available). */
+extern boolean dbwrite_fnum(dbaddress adr, long ctbytes, ptrvoid pdata, hdlfilenum fnum, hdldatabaserecord hdb);
+
+extern boolean dbgeteof_fnum(long *eof, hdlfilenum fnum);
+
+extern boolean dbreference_fnum(dbaddress adr, long maxbytes, ptrvoid pdata, long header_size, hdlfilenum fnum);
+
 extern boolean dbrefhandle_fnum(dbaddress adr, Handle *h, long header_size, hdlfilenum fnum);
 
 extern boolean dbassign (dbaddress *, long, ptrvoid);
@@ -217,14 +227,6 @@ extern boolean dbassignheapstring (dbaddress *, hdlstring);
 extern void dbsetview (short, dbaddress);
 
 extern void dbgetview (short, dbaddress *);
-
-extern void dbcurrentdatabase (hdldatabaserecord);
-
-extern void dbgetcurrentdatabase (hdldatabaserecord *);
-
-extern boolean dbpushdatabase (hdldatabaserecord);
-
-extern boolean dbpopdatabase (void);
 
 extern boolean dbflushreleasestack (void);
 

@@ -9,6 +9,7 @@
 #ifndef FRONTIER_DB_FORMAT_H
 #define FRONTIER_DB_FORMAT_H
 
+#include <assert.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -129,6 +130,15 @@ db_format_mode db_format_mode_current(void);
 void db_format_mode_apply(const db_format_mode *mode);
 void db_saveas_state_snapshot(db_saveas_state *state);
 void db_saveas_state_apply(const db_saveas_state *state);
+
+/* Extract the file number from a context's database handle.
+   Centralises the (hdlfilenum)((**hdb).fnumdatabase) cast so callers
+   don't repeat the dereference chain.
+   Precondition: context != NULL && context->database != nil. */
+static inline hdlfilenum db_context_fnum(const db_context *context) {
+    assert(context != NULL && context->database != nil);
+    return (hdlfilenum)((**context->database).fnumdatabase);
+}
 
 /* Context initialization API */
 void db_context_init(db_context *context);
