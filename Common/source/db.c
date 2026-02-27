@@ -178,6 +178,111 @@ boolean dbnormalizeaddress(dbaddress *adr) {
 	*adr = resolved;
 	return true;
 }
+
+/* Phase 8 forward declaration — dbreadtrailer_hdb is defined in the Layer 3+
+   section but dbfindblockforaddress_hdb needs it here. */
+static boolean dbreadtrailer_hdb(dbaddress adr, boolean *flfree, long *ctbytes, hdlfilenum fnum, hdldatabaserecord hdb);
+
+static boolean dbfindblockforaddress_hdb(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree, hdldatabaserecord hdb) {
+
+	/*
+	Phase 8: Like dbfindblockforaddress but reads from explicit hdb instead
+	of databasedata.  Uses _fnum variants for all I/O.
+	*/
+
+	long eof = 0;
+	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+	const long header_size = use64 ? sizeheader_v7 : sizeheader_v6;
+	hdlfilenum fnum = (hdlfilenum)((**hdb).fnumdatabase);
+
+	long min_address = firstphysicaladdress;
+	if (hdb != nil && (**hdb).headerLength > 0) {
+		min_address = (**hdb).headerLength;
+	}
+
+	if (adr == nildbaddress)
+		return false;
+
+	if (!dbgeteof_fnum(&eof, fnum))
+		return false;
+
+	if (adr < min_address || adr >= (dbaddress) eof)
+		return false;
+
+	for (dbaddress candidate = adr; candidate >= min_address && (adr - candidate) <= 0x100000; --candidate) {
+		boolean freeflag = false;
+		long node_size = 0;
+		tyvariance node_variance = 0;
+
+		if (!dbreadheader_fnum(candidate, &freeflag, &node_size, &node_variance, header_size, fnum))
+			continue;
+
+		if (node_size <= 0 || node_size > eof)
+			continue;
+
+		if ((node_variance < 0) || (node_variance > node_size))
+			continue;
+
+		dbaddress data_start = candidate + header_size;
+		dbaddress data_end = data_start + (node_size - node_variance);
+
+		if (adr < candidate || adr >= data_end)
+			continue;
+
+		boolean trailer_free = false;
+		long trailer_size = 0;
+		dbaddress trailer_pos = candidate + header_size + node_size;
+
+		if (trailer_pos >= (dbaddress) eof) {
+			log_trace(LOG_COMP_DB,
+				"dbfindblockforaddress_hdb candidate=0x%llx size=%ld variance=%ld eof=%ld trailer=0x%llx",
+				(unsigned long long) candidate,
+				node_size,
+				(long) node_variance,
+				eof,
+				(unsigned long long) trailer_pos);
+			continue;
+		}
+
+		if (!dbreadtrailer_hdb(trailer_pos, &trailer_free, &trailer_size, fnum, hdb))
+			continue;
+
+		if (trailer_size != node_size)
+			continue;
+
+		if (trailer_free != freeflag)
+			continue;
+
+		if (blockstart != NULL)
+			*blockstart = candidate;
+		if (nodebytes != NULL)
+			*nodebytes = node_size;
+		if (variance != NULL)
+			*variance = node_variance;
+		if (flfree != NULL)
+			*flfree = freeflag;
+		return true;
+	}
+
+	return false;
+}
+
+boolean dbnormalizeaddress_hdb(dbaddress *adr, hdldatabaserecord hdb) {
+
+	/*
+	Phase 8: Like dbnormalizeaddress but uses explicit hdb for all I/O.
+	*/
+
+	if (adr == NULL || *adr == nildbaddress)
+		return true;
+
+	dbaddress resolved = nildbaddress;
+	if (!dbfindblockforaddress_hdb(*adr, &resolved, NULL, NULL, NULL, hdb))
+		return false;
+
+	*adr = resolved;
+	return true;
+}
 #endif /* FRONTIER_HEADLESS */
 
 typedef enum {
@@ -780,6 +885,93 @@ static boolean dbflushheader (void) {
 		
 	return (true);
 	} /*dbflushheader*/
+
+
+static boolean dbflushheader_hdb (hdldatabaserecord hdb) {
+
+	/*
+	Phase 8: Like dbflushheader but operates on explicit hdb instead of
+	reading databasedata.  Used by dbclearshadowavaillist_hdb to flush
+	the header of a specific database without mutating the global.
+	*/
+
+	boolean fl;
+	tydatabaserecord diskrec;
+	hdlfilenum fnum = (hdlfilenum)((**hdb).fnumdatabase);
+	boolean use64log = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+
+	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
+
+#if defined(FRONTIER_HEADLESS)
+	log_trace(LOG_COMP_DB, "dbflushheader_hdb enter hdb=%p fnum=%ld dirty=%d use64=%d",
+	        (void *) hdb,
+	        hdb ? (long) (**hdb).fnumdatabase : -1L,
+	        hdb ? (int) isdirty(hdb) : 0,
+	        (int) use64log);
+#endif
+
+	db_format_adapter_enable_wide_writes(NULL);
+
+	if (hdb && (**hdb).u.extensions.flreadonly) {
+#if defined(FRONTIER_HEADLESS)
+		log_trace(LOG_COMP_DB, "dbflushheader_hdb skip write (read-only) fnum=%ld dirty=%d",
+		        (long) (**hdb).fnumdatabase,
+		        (int) isdirty(hdb));
+#endif
+		return (true);
+	}
+
+	if (isdirty (hdb)) {
+
+		cleardirty (hdb);
+
+		diskrec = **hdb;
+
+		#ifdef SMART_DB_OPENING
+			clearbytes (&diskrec.u.extensions.availlistshadow, sizeof (diskrec.u.extensions.availlistshadow));
+			clearbytes (&diskrec.u.extensions.flreadonly, sizeof (diskrec.u.extensions.flreadonly));
+		#else
+			clearbytes (&diskrec.u.growthspace, sizeof (diskrec.u.growthspace));
+		#endif
+
+		{
+			unsigned char diskheader[sizeof (tydatabaserecord_64)];
+
+			if (!db_write_v7_header(&diskrec, diskheader, sizeof (diskheader))) {
+#if defined(FRONTIER_HEADLESS)
+				log_error(LOG_COMP_DB, "dbflushheader_hdb db_write_v7_header failed");
+#endif
+				return (false);
+			}
+
+			fl = dbwrite_fnum ((dbaddress) 0, (long) sizeof (diskheader), diskheader, fnum, hdb);
+
+#if defined(FRONTIER_HEADLESS)
+			if (!fl) {
+				log_error(LOG_COMP_DB, "dbflushheader_hdb dbwrite failed fnum=%ld len=%zu",
+				        hdb ? (long) (**hdb).fnumdatabase : -1L,
+				        sizeof (diskheader));
+			}
+#endif
+		}
+
+		#ifndef FRONTIER_HEADLESS
+		/*flush file buffers*/ {
+			IOParam pb;
+
+			clearbytes (&pb, sizeof (pb));
+
+			pb.ioRefNum = (hdlfilenum)((**hdb).fnumdatabase);
+
+			PBFlushFile ((ParmBlkPtr) &pb, false);
+			}
+		#endif
+
+		return (fl);
+		}
+
+	return (true);
+	} /*dbflushheader_hdb*/
 
 
 /* Forward declaration for dbreadheader_core which needs to call dbread_fnum */
@@ -3385,21 +3577,11 @@ static boolean dbmove_hdb (ptrvoid pdata, long ctbytes, dbaddress adr, hdlfilenu
 static void dbclearshadowavaillist_hdb (hdldatabaserecord hdb) {
 
 	/*
-	Phase 7 variant: Clear shadow avail list using explicit hdb instead of
+	Phase 7/8 variant: Clear shadow avail list using explicit hdb instead of
 	databasedata.  Only used by dballocate_hdb / dbrelease_hdb.
 
-	Unlike the legacy dbclearshadowavaillist which uses context guards, this
-	version operates directly on hdb.  Note: when there is a shadow availlist
-	block to release, we still need to use dbrelease_internal (which uses
-	databasedata).  For now, if the shadow block exists and we aren't in
-	Save As, we must temporarily swap databasedata.
-
-	TODO(Phase 8): Convert dbflushheader and dbrelease_internal to _hdb
-	so this function no longer needs to touch databasedata.
-	Safe under GIL: no yield points between save and restore of databasedata.
-	Verified: dbflushheader does only dbwrite (file I/O); dbrelease_internal
-	does header reads/writes and avail list manipulation.  Neither calls
-	langbackgroundtask() or thread.sleepTicks() (the only GIL yield points).
+	Phase 8: Uses dbflushheader_hdb and dbrelease_hdb directly — no
+	databasedata mutation required.
 	*/
 
 #ifdef SMART_DB_OPENING
@@ -3413,25 +3595,9 @@ static void dbclearshadowavaillist_hdb (hdldatabaserecord hdb) {
 
 			setdirty (hdb);
 
-			/* Flush the header — this is the one place where _hdb still touches
-			   the global, because dbflushheader() reads databasedata.  We swap
-			   briefly to keep the flush correct.  The header dirty flag was already
-			   set on hdb above. */
-			{
-				hdldatabaserecord savedatabasedata = databasedata;
-				databasedata = hdb;
-				dbflushheader ();
-				databasedata = savedatabasedata;
-			}
+			dbflushheader_hdb (hdb);
 
-			/* Release the old shadow block.  dbrelease_internal uses databasedata,
-			   so swap temporarily. */
-			{
-				hdldatabaserecord savedatabasedata = databasedata;
-				databasedata = hdb;
-				dbrelease_internal (adrblock);
-				databasedata = savedatabasedata;
-			}
+			dbrelease_hdb (adrblock, hdb);
 			}
 		}
 #endif
@@ -3561,12 +3727,19 @@ static boolean dbmergeleft_hdb (boolean flmerged, dbaddress adr, boolean *ptrflm
 	dbaddress nextavail, prevavail;
 	long ixshadow;
 
+	/* Phase 8 fix: Use hdb's headerLength instead of the compile-time
+	   constant firstphysicaladdress.  v7 databases have headerLength=90
+	   but firstphysicaladdress=118 (sizeof tydatabaserecord on 64-bit). */
+	long first_data_address = (**hdb).headerLength;
+	if (first_data_address <= 0)
+		first_data_address = firstphysicaladdress;
+
 	*ptrflmergedleft = false;
 
-	if (adr == firstphysicaladdress)
+	if (adr == (dbaddress) first_data_address)
 		return (true);
 
-	if (adr < firstphysicaladdress) {
+	if (adr < (dbaddress) first_data_address) {
 
 		dblogerror (dbmergeinvalidblockerror);
 
@@ -4320,6 +4493,33 @@ boolean dbflushreleasestack (void) {
 	} /*dbflushreleasestack*/
 
 #endif
+
+boolean dbpushreleasestack_hdb (dbaddress adr, long valtype, hdldatabaserecord hdb) {
+#pragma unused(valtype)
+
+	/*
+	Phase 8: Like dbpushreleasestack but pushes onto hdb's release stack
+	directly, without mutating databasedata.  Used by langexternaldisposevariable.
+	*/
+
+	Handle hstack;
+
+	if (adr == nildbaddress)
+		return (true);
+
+	hstack = (**hdb).releasestack;
+
+	if (hstack == nil) {
+
+		if (!newclearhandle (0L, &hstack))
+			return (false);
+
+		(**hdb).releasestack = hstack;
+		}
+
+	return (enlargehandle (hstack, sizeof (adr), &adr));
+	} /*dbpushreleasestack_hdb*/
+
 
 boolean dbflushreleasestack_context(const db_context *context) {
     db_context_guard guard;

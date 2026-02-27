@@ -294,10 +294,9 @@ static boolean headless_convert_legacy_table_payload(const unsigned char *payloa
 
 boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvariable, hdlhashnode hnode) {
     /*
-    2026-02-25: Phase 4 - Inline save/restore of databasedata global.
-    Replaces dbpushdatabase/dbpopdatabase with a direct inline swap so that
-    dbrefhandle and dbnormalizeaddress read from the correct database.
-    The global is always restored before returning (callee-saves).
+    Phase 8: Uses explicit _hdb variants for all database I/O.
+    No databasedata mutation — reads via dbnormalizeaddress_hdb and
+    dbrefhandle_hdb using (**hv).hdatabase directly.
     */
 
     register hdltablevariable hv = (hdltablevariable) hvariable;
@@ -314,7 +313,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
 #if !defined(NDEBUG)
     assert(ctx != NULL && "Issue #347: NULL context passed to tableverbinmemory_common - use db_context_init()");
 #endif
-    (void)ctx;  /* ctx validated above; inline swap uses databasedata directly */
+    (void)ctx;  /* ctx validated above; Phase 8 uses hdb directly */
 
     log_trace(LOG_COMP_TABLE, "tableverbinmemory enter hvariable=%p hnode=%p flinmemory=%d",
             (void *) hvariable,
@@ -332,16 +331,10 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     }
 
     /*
-     * Temporarily switch to the table's database for reading.
-     * The old code used dbpushdatabase/dbpopdatabase to accomplish this.
-     * We do the same global swap inline, avoiding the stack-based API.
-     * This is necessary because dbrefhandle and dbnormalizeaddress read from
-     * the global databasedata, and we need them to target the table's DB.
+     * Phase 8: Use the table's database handle directly via _hdb variants.
+     * No databasedata mutation needed.
      */
-    hdldatabaserecord saved_databasedata = databasedata;
-    if ((**hv).hdatabase != nil) {
-        databasedata = (**hv).hdatabase;
-    }
+    hdldatabaserecord hdb = (**hv).hdatabase;
 
     adr = (dbaddress) (**hv).variabledata;  /* DISK ADDRESS - format depends on source DB */
 
@@ -353,13 +346,12 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
             (void *)(**hv).hdatabase, (unsigned long long) adr);
 
     /*
-     * Normalize the address against the current databasedata (which we
-     * swapped above to (**hv).hdatabase). This is identical to what the
-     * old dbpushdatabase/dbrefhandle path did.
+     * Normalize the address against the table's database handle.
+     * Phase 8: uses _hdb variant — no global swap needed.
      */
     {
         dbaddress normalized = adr;
-        if (dbnormalizeaddress(&normalized)) {
+        if (dbnormalizeaddress_hdb(&normalized, hdb)) {
             if (normalized != adr) {
                 dbaddress data_start = normalized + sizeheader;
                 if (adr > data_start)
@@ -378,8 +370,8 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         shellinternalerror(idniltableaddress, BIGSTRING ("\x2b" "nil table address.  (Creating empty table.)"));
         fl = false;
     } else {
-        /* Read from the (swapped) global databasedata */
-        fl = dbrefhandle(adr, &hpacked);
+        /* Phase 8: read from explicit hdb */
+        fl = dbrefhandle_hdb(adr, &hpacked, hdb);
 
         if (!fl) {
             log_error(LOG_COMP_TABLE, "dbrefhandle failed adr=0x%llx", (unsigned long long)adr);
@@ -475,7 +467,6 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     }
 
     if (!fl) {
-        databasedata = saved_databasedata;  /* restore before returning */
         return false;
     }
 
@@ -488,9 +479,9 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     db_format_mode current_mode = db_format_mode_current();
     log_debug(LOG_COMP_TABLE, "tableverbinmemory before address assignment: adapter_repack=%d use_64bit=%d database=%p adr=0x%llx",
             (int)current_mode.adapter_repack, (int)current_mode.use_64bit_format,
-            (void*)databasedata, (unsigned long long)adr);
+            (void*)hdb, (unsigned long long)adr);
 
-    if (current_mode.adapter_repack && databasedata != nil) {
+    if (current_mode.adapter_repack && hdb != nil) {
         (**hv).oldaddress = nildbaddress;
         log_debug(LOG_COMP_TABLE, "tableverbinmemory CLEARED oldaddress (adapter_repack) adr=0x%llx variabledata=0x%llx flinmemory=%d",
                 (unsigned long long)adr, (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
@@ -536,8 +527,6 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     (**htable).hashtablerefcon = (long) hv; /* we can get from hashtable to variable rec */
 
     (**htable).thistableshashnode = hnode; /* The var rec is contained in the hashnode... RAB 1/3/00 */
-
-    databasedata = saved_databasedata;  /* restore before returning */
 
     return true;
 }

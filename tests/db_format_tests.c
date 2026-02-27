@@ -1587,6 +1587,161 @@ cleanup:
     log_info(LOG_COMP_DB, "[TEST] test_hdb_copy_roundtrip COMPLETED");
 }
 
+/* ============================================================================
+ * Phase 8: Callee-saves and behavioral tests for databasedata elimination
+ * ============================================================================*/
+
+static void test_dbpushreleasestack_hdb_callee_saves(void) {
+    /*
+     * Phase 8: Verify dbpushreleasestack_hdb does not mutate databasedata.
+     */
+    hdb_test_ctx ctx;
+    assert(open_scratch_v7_db(&ctx, "pushrel"));
+
+    /* Allocate a block so we have a real address to push */
+    char payload[4] = { 'P', 'U', 'S', 'H' };
+    dbaddress adr = nildbaddress;
+    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+
+    hdldatabaserecord before = databasedata;
+    boolean ok = dbpushreleasestack_hdb(adr, 42L, ctx.hdb);
+    assert(ok);
+    assert(databasedata == before);
+
+cleanup:
+    close_scratch_v7_db(&ctx);
+    log_info(LOG_COMP_DB, "[TEST] test_dbpushreleasestack_hdb_callee_saves COMPLETED");
+}
+
+static void test_dbpushreleasestack_hdb_targets_correct_db(void) {
+    /*
+     * Phase 8: Create two scratch databases. Push an address to one.
+     * Verify only that one's releasestack is non-nil afterwards.
+     */
+    hdb_test_ctx ctx1, ctx2;
+    assert(open_scratch_v7_db(&ctx1, "pushA"));
+    assert(open_scratch_v7_db(&ctx2, "pushB"));
+
+    /* Allocate a block in ctx1 */
+    char payload[4] = { 'T', 'G', 'T', '!' };
+    dbaddress adr = nildbaddress;
+    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx1.hdb)) goto cleanup;
+
+    /* Confirm both releasestacks start nil */
+    assert((**ctx1.hdb).releasestack == nil);
+    assert((**ctx2.hdb).releasestack == nil);
+
+    /* Push to ctx1 only */
+    boolean ok = dbpushreleasestack_hdb(adr, 99L, ctx1.hdb);
+    assert(ok);
+
+    /* ctx1's releasestack should be non-nil now */
+    assert((**ctx1.hdb).releasestack != nil);
+
+    /* ctx2's releasestack should still be nil */
+    assert((**ctx2.hdb).releasestack == nil);
+
+    assert(databasedata == ctx1.saved_db);
+
+cleanup:
+    close_scratch_v7_db(&ctx2);
+    close_scratch_v7_db(&ctx1);
+    log_info(LOG_COMP_DB, "[TEST] test_dbpushreleasestack_hdb_targets_correct_db COMPLETED");
+}
+
+#if defined(FRONTIER_HEADLESS)
+static void test_dbnormalizeaddress_hdb_callee_saves(void) {
+    /*
+     * Phase 8: Verify dbnormalizeaddress_hdb does not mutate databasedata.
+     */
+    hdb_test_ctx ctx;
+    assert(open_scratch_v7_db(&ctx, "norm"));
+
+    /* Allocate a block so we have a real address */
+    char payload[8] = "NORMADR!";
+    dbaddress adr = nildbaddress;
+    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+
+    hdldatabaserecord before = databasedata;
+    dbaddress normalized = adr;
+    boolean ok = dbnormalizeaddress_hdb(&normalized, ctx.hdb);
+    assert(ok);
+    assert(databasedata == before);
+
+cleanup:
+    close_scratch_v7_db(&ctx);
+    log_info(LOG_COMP_DB, "[TEST] test_dbnormalizeaddress_hdb_callee_saves COMPLETED");
+}
+
+static void test_dbnormalizeaddress_hdb_roundtrip(void) {
+    /*
+     * Phase 8: Allocate a block via dballocate_hdb, normalize its address,
+     * verify it resolves to the block start.
+     */
+    hdb_test_ctx ctx;
+    assert(open_scratch_v7_db(&ctx, "normrt"));
+
+    char payload[16] = "NORMALIZE_RT_OK";
+    dbaddress adr = nildbaddress;
+    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+
+    /* adr should already be the block start, so normalize should be a no-op */
+    dbaddress normalized = adr;
+    boolean ok = dbnormalizeaddress_hdb(&normalized, ctx.hdb);
+    assert(ok);
+    assert(normalized == adr);
+
+    /* Read back through the normalized address to confirm it's valid */
+    Handle href = nil;
+    if (!dbrefhandle_hdb(normalized, &href, ctx.hdb)) goto cleanup;
+    assert(href != nil);
+    assert(GetHandleSize(href) == sizeof(payload));
+    lockhandle(href);
+    assert(memcmp(*href, payload, sizeof(payload)) == 0);
+    unlockhandle(href);
+    disposehandle(href);
+
+    assert(databasedata == ctx.saved_db);
+
+cleanup:
+    close_scratch_v7_db(&ctx);
+    log_info(LOG_COMP_DB, "[TEST] test_dbnormalizeaddress_hdb_roundtrip COMPLETED");
+}
+#endif /* FRONTIER_HEADLESS */
+
+static void test_dbclearshadowavaillist_no_global_swap(void) {
+    /*
+     * Phase 8: Exercise dballocate_hdb / dbrelease_hdb (which internally
+     * call dbclearshadowavaillist_hdb) and verify databasedata is untouched.
+     */
+    hdb_test_ctx ctx;
+    assert(open_scratch_v7_db(&ctx, "shadow"));
+
+    /* Allocate a block */
+    char payload[8] = "SHADOW!!";
+    dbaddress adr = nildbaddress;
+    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+    assert(adr != nildbaddress);
+
+    hdldatabaserecord before = databasedata;
+
+    /* Release it — this triggers dbclearshadowavaillist_hdb internally */
+    boolean ok = dbrelease_hdb(adr, ctx.hdb);
+    assert(ok);
+    assert(databasedata == before);
+
+    /* Allocate again to exercise the free-list reuse path */
+    dbaddress adr2 = nildbaddress;
+    ok = dballocate_hdb(sizeof(payload), payload, &adr2, ctx.hdb);
+    assert(ok);
+    assert(adr2 != nildbaddress);
+    assert(databasedata == before);
+
+cleanup:
+    close_scratch_v7_db(&ctx);
+    log_info(LOG_COMP_DB, "[TEST] test_dbclearshadowavaillist_no_global_swap COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -1621,6 +1776,15 @@ int main(void) {
     TR_RUN(test_hdb_assign_roundtrip);
     TR_RUN(test_hdb_savehandle_roundtrip);
     TR_RUN(test_hdb_copy_roundtrip);
+
+    /* Phase 8: Callee-saves and behavioral tests for databasedata elimination */
+    TR_RUN(test_dbpushreleasestack_hdb_callee_saves);
+    TR_RUN(test_dbpushreleasestack_hdb_targets_correct_db);
+#if defined(FRONTIER_HEADLESS)
+    TR_RUN(test_dbnormalizeaddress_hdb_callee_saves);
+    TR_RUN(test_dbnormalizeaddress_hdb_roundtrip);
+#endif
+    TR_RUN(test_dbclearshadowavaillist_no_global_swap);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);

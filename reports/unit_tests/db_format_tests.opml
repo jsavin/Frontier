@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Db Format Tests (db_format_tests) - 29 tests: 29 pass (100%)</title>
-    <dateCreated>Fri, 27 Feb 2026 07:13:40 GMT</dateCreated>
+    <title>Db Format Tests (db_format_tests) - 34 tests: 34 pass (100%)</title>
+    <dateCreated>Fri, 27 Feb 2026 21:19:05 GMT</dateCreated>
   </head>
   <body>
     <outline text="✓ test_legacy_adapter_widen_to_v7_bytes"/>
@@ -31,6 +31,11 @@
     <outline text="✓ test_hdb_assign_roundtrip"/>
     <outline text="✓ test_hdb_savehandle_roundtrip"/>
     <outline text="✓ test_hdb_copy_roundtrip"/>
+    <outline text="✓ test_dbpushreleasestack_hdb_callee_saves"/>
+    <outline text="✓ test_dbpushreleasestack_hdb_targets_correct_db"/>
+    <outline text="✓ test_dbnormalizeaddress_hdb_callee_saves"/>
+    <outline text="✓ test_dbnormalizeaddress_hdb_roundtrip"/>
+    <outline text="✓ test_dbclearshadowavaillist_no_global_swap"/>
     <outline text="✓ test_header_version_and_loader_switch"/>
     <outline text="✓ test_legacy_table_repack_forces_be64_address"/>
     <outline text="✓ test_legacy_record_reference_repacked_to_be64"/>
