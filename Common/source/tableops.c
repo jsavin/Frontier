@@ -344,25 +344,20 @@ hdldatabaserecord tablegetdatabase (hdlhashtable ht) {
 
 
 boolean tablesortedinversesearch (hdlhashtable htable, langsortedinversesearchcallback visit, ptrvoid refcon) {
-	
+
 	/*
-	like the langhash version, but we push the table's database in case 
-	a disk value must be resolved
+	Phase 9: thread the table's database handle through the refcon
+	wrapper instead of mutating the databasedata global.  Visit
+	callbacks unwrap the context and use copyvaluerecord_internal
+	for disk-value reads.
 	*/
-	
-	hdldatabaserecord hdb = tablegetdatabase (htable);
-	hdldatabaserecord hdbsave = databasedata;
-	boolean fl;
-	
-	if (hdb)
-		databasedata = hdb;
-	
-	fl = hashsortedinversesearch (htable, visit, refcon);
-	
-	if (hdb)
-		databasedata = hdbsave;
-	
-	return (fl);
+
+	tablesortedsearchctx ctx;
+
+	ctx.original_refcon = refcon;
+	ctx.hdb = tablegetdatabase (htable);
+
+	return (hashsortedinversesearch (htable, visit, (ptrvoid) &ctx));
 	} /*tablesortedinversesearch*/
 
 

@@ -1078,10 +1078,9 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 		}
 	}
 
-	/* Belt-and-suspenders safety net: all children are callee-saves and
-	   context-aware (no databasedata mutations in the pack path), but we
-	   restore here defensively in case a future child loses the invariant. */
-	hdldatabaserecord savedatabasedata = databasedata;
+	/* Invariant: all switch branches below must be callee-saves for
+	   databasedata.  Each *verbpack_internal child uses an explicit
+	   db_context and never mutates the global (Phases 1-3). */
 	db_format_mode savedmode = db_format_mode_current();
 
 	switch ((**hv).id) {
@@ -1112,7 +1111,6 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 			break;
 		}
 
-	databasedata = savedatabasedata;
 	db_format_mode_apply(&savedmode);
 
 	return (ok);

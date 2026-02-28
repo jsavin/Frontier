@@ -122,6 +122,17 @@ typedef struct tytablevariable {
 
 typedef boolean (*tyfindvariablecallback) (hdlhashtable, hdlhashnode);
 
+/*
+   Phase 9: Refcon wrapper for tablesortedinversesearch.
+   Carries the database handle through the existing refcon parameter
+   so visit callbacks can build a db_context for disk-value reads
+   without mutating the databasedata global.
+*/
+typedef struct tablesortedsearchctx {
+    ptrvoid original_refcon;
+    hdldatabaserecord hdb;
+} tablesortedsearchctx;
+
 
 /*prototypes*/
 
