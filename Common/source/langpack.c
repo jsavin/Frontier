@@ -474,7 +474,7 @@ static boolean langunpackexternal (hdlexternalhandle *hexternal, hdlpackedvalue 
 	
 	initbeachball (right);
 	
-	fl = langexternalmemoryunpack (hpacked, hexternal);
+	fl = langexternalmemoryunpack (hpacked, hexternal, nil);
 	
 	disposehandle (hpacked);
 	

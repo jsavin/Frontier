@@ -27,11 +27,11 @@ boolean opverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *flne
 }
 
 boolean opverbunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariable *h) {
-    return opverbunpack(hpacked, ixload, h);
+    return opverbunpack(hpacked, ixload, h, databasedata);
 }
 
 boolean opverbscriptunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariable *h) {
-    return opverbscriptunpack(hpacked, ixload, h);
+    return opverbscriptunpack(hpacked, ixload, h, databasedata);
 }
 
 boolean opverbpacktotext_legacy (hdlexternalvariable h, Handle htext) {

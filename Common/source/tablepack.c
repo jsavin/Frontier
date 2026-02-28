@@ -309,13 +309,13 @@ boolean tableverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable
 	
 	ht = htable; /*move into register*/
 	
-	if (!newtablevariable (true, (long) ht, (hdltablevariable *) h, flxml)) {
-		
+	if (!newtablevariable (true, (long) ht, (hdltablevariable *) h, flxml, nil)) { /*in-memory: hdb=nil*/
+
 		tabledisposetable (ht, false);
-		
+
 		return (false);
 		}
-	
+
 	(**ht).hashtablerefcon = (long) *h; /*we can get from hashtable to variable rec*/
 	
 	(**ht).fldirty = true;
@@ -562,14 +562,24 @@ boolean tableverbunpack_internal (const db_context *ctx, Handle hpacked, long *i
 		}
 	}
 
-	return (newtablevariable (false, rawadr, (hdltablevariable *) h, flxml));
+	return (newtablevariable (false, rawadr, (hdltablevariable *) h, flxml, ctx ? ctx->database : databasedata));
 	} /*tableverbunpack_internal*/
 
 
-boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean flxml) {
-	/* Wrapper for backward compatibility - uses global mode state */
+boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean flxml, hdldatabaserecord hdb) {
+
+	if (hdb != nil) {
+		db_context ctx;
+
+		db_context_init (&ctx);
+
+		ctx.database = hdb;
+
+		return tableverbunpack_internal (&ctx, hpacked, ixload, h, flxml);
+		}
+
 	return tableverbunpack_internal (NULL, hpacked, ixload, h, flxml);
-}
+	}
 
 
 static boolean tablepacktotextvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {

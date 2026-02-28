@@ -62,13 +62,13 @@ extern boolean opverbinmemory (const struct db_context *, hdlexternalvariable);
 
 extern boolean opverbpack (hdlexternalvariable, Handle *, boolean *);
 
-extern boolean opverbunpack (Handle, long *, hdlexternalvariable *);
+extern boolean opverbunpack (Handle, long *, hdlexternalvariable *, hdldatabaserecord);
 
 /* Context-aware internal version (used by langexternal layer) */
 struct db_context; /* forward declaration */
 extern boolean opverbpack_internal (const struct db_context *, hdlexternalvariable, Handle *, boolean *);
 
-extern boolean opverbscriptunpack (Handle, long *, hdlexternalvariable *);
+extern boolean opverbscriptunpack (Handle, long *, hdlexternalvariable *, hdldatabaserecord);
 
 extern boolean opverbpacktotext (hdlexternalvariable, Handle);
 

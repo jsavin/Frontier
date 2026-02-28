@@ -249,22 +249,22 @@ boolean findnamedtable (hdlhashtable htable, bigstring bs, hdlhashtable *hnamedt
 	} /*findnamedtable*/
 
 
-boolean newtablevariable (boolean flinmemory, long variabledata, hdltablevariable *h, boolean flxml) {
+boolean newtablevariable (boolean flinmemory, long variabledata, hdltablevariable *h, boolean flxml, hdldatabaserecord hdb) {
 #pragma unused (flxml)
 
 	/*
 	tytablevariable item;
-	
+
 	clearbytes ((ptrchar) &item, longsizeof (item));
-	
+
 	item.flinmemory = flinmemory;
-	
+
 	item.variabledata = variabledata;
-	
+
 	return (newfilledhandle ((ptrchar) &item, longsizeof (item), (Handle *) h));
 	*/
-	
-	if (!langnewexternalvariable (flinmemory, variabledata, (hdlexternalvariable *) h))
+
+	if (!langnewexternalvariable (flinmemory, variabledata, (hdlexternalvariable *) h, hdb))
 		return (false);
 
 	#ifdef xmlfeatures

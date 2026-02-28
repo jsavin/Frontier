@@ -91,10 +91,11 @@ boolean wpverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
     return false;
 }
 
-boolean wpverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
+boolean wpverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, hdldatabaserecord hdb) {
     (void) hpacked;
     (void) ixload;
     (void) h;
+    (void) hdb;
     return false;
 }
 

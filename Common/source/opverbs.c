@@ -353,7 +353,7 @@ boolean opverbdispose (hdlexternalvariable hvariable, boolean fldisk) {
 	} /*opverbdispose*/
 
 
-static boolean newoutlinevariable (boolean flinmemory, long variabledata, hdloutlinevariable *h) {
+static boolean newoutlinevariable (boolean flinmemory, long variabledata, hdloutlinevariable *h, hdldatabaserecord hdb) {
 
 	tyoutlinevariable item;
 
@@ -363,13 +363,14 @@ static boolean newoutlinevariable (boolean flinmemory, long variabledata, hdlout
 
 	item.variabledata = variabledata;
 
-	item.hdatabase = databasedata; // 5.0a18 dmb
+	item.hdatabase = flinmemory ? nil : hdb; // 2026-02: explicit hdb replaces databasedata capture; guard with flinmemory
 
 #if defined(FRONTIER_HEADLESS)
-	log_debug(LOG_COMP_OP, "newoutlinevariable: flinmemory=%d variabledata=0x%llx captured_db=%p (current=%p)",
+	log_debug(LOG_COMP_OP, "newoutlinevariable: flinmemory=%d variabledata=0x%llx captured_db=%p (hdb=%p current=%p)",
 	        (int)flinmemory,
 	        (unsigned long long)variabledata,
 	        (void*)item.hdatabase,
+	        (void*)hdb,
 	        (void*)databasedata);
 #endif
 
@@ -823,7 +824,7 @@ boolean opverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable *h
 	if (!fl)
 		return (false);
 	
-	if (!newoutlinevariable (true, (long) ho, h)) {
+	if (!newoutlinevariable (true, (long) ho, h, nil)) { /*in-memory: hdb=nil*/
 		
 		opdisposeoutline (ho, false);
 		
@@ -1009,7 +1010,7 @@ boolean opverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 }
 	
 	
-boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable) {
+boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable, hdldatabaserecord hdb) {
 
 	long rawadr = 0;
 
@@ -1018,21 +1019,21 @@ boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariab
 
 	log_trace(LOG_COMP_MIGRATION, "opverbunpack: rawadr=0x%lx (32-bit long), casting to dbaddress", (unsigned long)rawadr);
 
-	return (newoutlinevariable (false, (dbaddress) rawadr, (hdloutlinevariable *) hvariable));
+	return (newoutlinevariable (false, (dbaddress) rawadr, (hdloutlinevariable *) hvariable, hdb));
 	} /*opverbunpack*/
 
 
-boolean opverbscriptunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable) {
-	
+boolean opverbscriptunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable, hdldatabaserecord hdb) {
+
 	register hdloutlinevariable hv;
-	
-	if (!opverbunpack (hpacked, ixload, hvariable))
+
+	if (!opverbunpack (hpacked, ixload, hvariable, hdb))
 		return (false);
-	
+
 	hv = (hdloutlinevariable) *hvariable;
-	
+
 	(**hv).flscript = true;
-	
+
 	return (true);
 	} /*opverbscriptunpack*/
 
@@ -1302,7 +1303,7 @@ boolean opverbnew (short id, Handle hdata, hdlexternalvariable *hvariable) {
 	hdlheadrecord hsummit = nil;
 	hdloutlinerecord houtline;
 	
-	if (!newoutlinevariable (true, 0L, (hdloutlinevariable *) hvariable))
+	if (!newoutlinevariable (true, 0L, (hdloutlinevariable *) hvariable, databasedata)) /*creating new object*/
 		return (false);
 	
 	hv = (hdloutlinevariable) *hvariable; /*copy into register*/

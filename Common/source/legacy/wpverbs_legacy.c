@@ -18,7 +18,7 @@ boolean wpverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *flne
 }
 
 boolean wpverbunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariable *h) {
-    return wpverbunpack(hpacked, ixload, h);
+    return wpverbunpack(hpacked, ixload, h, databasedata);
 }
 
 boolean wpverbpacktotext_legacy (hdlexternalvariable h, Handle htext) {

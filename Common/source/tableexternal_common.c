@@ -424,10 +424,18 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
 
             langtraperrors(bsunpackerror, &savecallback, &saverefcon);
 
-            log_trace(LOG_COMP_TABLE, "tableunpacktable enter path=%s adr=0x%llx",
+            log_trace(LOG_COMP_TABLE, "tableunpacktable enter path=%s adr=0x%llx hdb=%p",
                     (langhash_materialize_current_path != NULL) ? langhash_materialize_current_path : "<nil>",
-                    (unsigned long long) adr);
-            fl = tableunpacktable(hpacked, false, &htable); /* always disposes of hpackedtable */
+                    (unsigned long long) adr, (void *)hdb);
+            {
+                /* Build a db_context with the table's own database handle so that
+                   child externals unpacked from this table get the correct hdatabase
+                   instead of the system root (databasedata global). */
+                db_context unpack_ctx;
+                db_context_init(&unpack_ctx);
+                unpack_ctx.database = hdb;
+                fl = tableunpacktable_internal(&unpack_ctx, hpacked, false, &htable);
+            }
 
             languntraperrors(savecallback, saverefcon, !fl);
 

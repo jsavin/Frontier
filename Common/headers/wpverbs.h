@@ -48,7 +48,7 @@ extern boolean wpverbmemoryunpack (Handle, long *, hdlexternalvariable *);
 
 extern boolean wpverbpack (hdlexternalvariable, Handle *, boolean *);
 
-extern boolean wpverbunpack (Handle, long *, hdlexternalvariable *);
+extern boolean wpverbunpack (Handle, long *, hdlexternalvariable *, hdldatabaserecord);
 
 /* Context-aware internal version (used by langexternal layer) */
 struct db_context; /* forward declaration */

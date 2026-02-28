@@ -51,7 +51,7 @@ extern boolean pictverbpack_internal (const db_context *, hdlexternalvariable, H
 
 extern boolean pictverbpack (hdlexternalvariable, Handle *, boolean *);
 
-extern boolean pictverbunpack (Handle, long *, hdlexternalvariable *);
+extern boolean pictverbunpack (Handle, long *, hdlexternalvariable *, hdldatabaserecord);
 
 extern boolean pictverbpacktotext (hdlexternalvariable, Handle);
 

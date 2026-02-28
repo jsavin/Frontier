@@ -326,9 +326,9 @@ boolean wpverbgettypestring (hdlexternalvariable hvariable, bigstring bs) {
 
 
 
-static boolean newwpvariable (boolean flinmemory, boolean flpacked, long variabledata, hdlwpvariable *h) {
+static boolean newwpvariable (boolean flinmemory, boolean flpacked, long variabledata, hdlwpvariable *h, hdldatabaserecord hdb) {
 
-	if (!langnewexternalvariable (flinmemory, variabledata, (hdlexternalvariable *) h))
+	if (!langnewexternalvariable (flinmemory, variabledata, (hdlexternalvariable *) h, hdb))
 		return (false);
 	
 	(***h).flpacked = flpacked;
@@ -450,7 +450,7 @@ boolean wpverbnew (Handle hdata, hdlexternalvariable *hvariable) {
 	hdlwprecord hwp;
 	Rect r;
 	
-	if (!newwpvariable (true, false, 0L, (hdlwpvariable *) hvariable))
+	if (!newwpvariable (true, false, 0L, (hdlwpvariable *) hvariable, databasedata)) /*creating new object*/
 		return (false);
 	
 	hv = (hdlwpvariable) *hvariable; /*copy into register*/
@@ -566,7 +566,7 @@ boolean wpverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable *h
 	if (!loadhandleremains (*ixload, hpacked, &hpackedwp))
 		return (false);
 	
-	return (newwpvariable (true, true, (long) hpackedwp, (hdlwpvariable *) h));	
+	return (newwpvariable (true, true, (long) hpackedwp, (hdlwpvariable *) h, nil));	/*in-memory: hdb=nil*/
 	} /*wpverbmemoryunpack*/
 
 
@@ -747,14 +747,14 @@ boolean wpverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbaddr
 	} /*wpverbpack*/
 
 
-boolean wpverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
+boolean wpverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, hdldatabaserecord hdb) {
 
 	long rawadr = 0;
-	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
+
+	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr))
 		return (false);
 
-	return (newwpvariable (false, false, (dbaddress) rawadr, (hdlwpvariable *) h));
+	return (newwpvariable (false, false, (dbaddress) rawadr, (hdlwpvariable *) h, hdb));
 	} /*wpverbunpack*/
 
 

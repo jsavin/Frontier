@@ -2775,7 +2775,7 @@ static boolean hashpackexternal (handlestream *s, hdlexternalvariable h, int32_t
 	} /*hashpackexternal*/
 
 
-static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhandle *h, int32_t ix) {
+static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhandle *h, int32_t ix, hdldatabaserecord hdb) {
 	Handle hpacked;
 	boolean fl;
 	long lix = (long) ix;
@@ -2815,7 +2815,7 @@ static boolean hashunpackexternal (Handle hget, boolean flmemory, hdlexternalhan
 	if (!loadfromhandletohandle (hget, &lix, ctbytes, true, &hpacked))
 		return (false);
 
-	fl = flmemory ? langexternalmemoryunpack (hpacked, h) : langexternalunpack (hpacked, h);
+	fl = flmemory ? langexternalmemoryunpack (hpacked, h, hdb) : langexternalunpack (hpacked, h, hdb);
 
 	disposehandle (hpacked);
 
@@ -4478,7 +4478,7 @@ log_trace(LOG_COMP_HASH, "opunpacklist returned false path=%s", (langhash_materi
 				case externalvaluetype: {
 					hdlexternalhandle h;
 
-					if (!hashunpackexternal (hstrings, flmemory, &h, ixstrings))
+					if (!hashunpackexternal (hstrings, flmemory, &h, ixstrings, ctx ? ctx->database : nil))
 						goto L1;
 
 					val.data.externalvalue = (Handle) h;

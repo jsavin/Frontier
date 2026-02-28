@@ -1123,29 +1123,29 @@ boolean langexternalpack (hdlexternalhandle h, Handle *hpacked, boolean *flnewdb
 }
 	
 	
-boolean langexternalunpack (Handle hpacked, hdlexternalhandle *h) {
-	
+boolean langexternalunpack (Handle hpacked, hdlexternalhandle *h, hdldatabaserecord hdb) {
+
 	hdlexternalvariable hdata;
 	long ixload = 0;
 	tydiskexternalhandle rec;
 	tyexternalid id;
-	
+
 	*h = nil;
-	
+
 	if (hpacked == nil)
 		return (false);
-	
+
 #if !defined(FRONTIER_HEADLESS)
 	assert (sizeof (tyexternalvariable) == 16L);
 #else
 	assert (sizeof (tyexternalvariable) >= 16L); /* 2025-10-27 Codex: 64-bit headless builds use wider pointers */
 #endif
-	
+
 	rollbeachball ();
-	
+
 	if (!loadfromhandle (hpacked, &ixload, sizeof (rec), &rec))
 		goto cantunpack;
-	
+
 	disktomemshort (rec.versionnumber);
 //	disktomemshort (rec.id);
 
@@ -1158,41 +1158,41 @@ boolean langexternalunpack (Handle hpacked, hdlexternalhandle *h) {
 
 
 	switch (id) {
-		
+
 		case idoutlineprocessor:
-			if (!opverbunpack (hpacked, &ixload, &hdata))
+			if (!opverbunpack (hpacked, &ixload, &hdata, hdb))
 				goto error;
-				
+
 			break;
-		
+
 		case idscriptprocessor:
-			if (!opverbscriptunpack (hpacked, &ixload, &hdata))
+			if (!opverbscriptunpack (hpacked, &ixload, &hdata, hdb))
 				goto error;
-				
+
 			break;
-			
+
 		case idwordprocessor:
-			if (!wpverbunpack (hpacked, &ixload, &hdata))
+			if (!wpverbunpack (hpacked, &ixload, &hdata, hdb))
 				goto error;
-				
+
 			break;
-		
+
 		case idtableprocessor:
-			if (!tableverbunpack (hpacked, &ixload, &hdata, false))
+			if (!tableverbunpack (hpacked, &ixload, &hdata, false, hdb))
 				goto error;
-				
+
 			break;
-		
+
 		case idmenuprocessor:
-			if (!menuverbunpack (hpacked, &ixload, &hdata))
+			if (!menuverbunpack (hpacked, &ixload, &hdata, hdb))
 				goto error;
-			
+
 			break;
-			
+
 		case idpictprocessor:
-			if (!pictverbunpack (hpacked, &ixload, &hdata))
+			if (!pictverbunpack (hpacked, &ixload, &hdata, hdb))
 				goto error;
-			
+
 			break;
 		
 		
@@ -1265,19 +1265,21 @@ boolean langexternalmemorypack (hdlexternalhandle h, Handle *hpacked, hdlhashnod
 	} /*langexternalmemorypack*/
 
 
-boolean langexternalmemoryunpack (Handle hpacked, hdlexternalhandle *h) {
-	
+boolean langexternalmemoryunpack (Handle hpacked, hdlexternalhandle *h, hdldatabaserecord hdb) {
+
 	/*
 	see comment at head of langexternalmemorypack.
 	*/
-	
+
 	hdlexternalvariable hdata;
 	long ixload = 0;
 	tydiskexternalhandle rec;
 	tyexternalid id;
-	
+
+	(void) hdb; /*memory unpack always creates in-memory objects; hdb unused*/
+
 	*h = nil;
-	
+
 	if (hpacked == nil)
 		return (false);
 	
@@ -2901,7 +2903,7 @@ boolean langexternalgetvalsize (tyvaluerecord val, long *size) {
 	} /*langexternalgetvalsize*/
 
 
-boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexternalvariable *h) {
+boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexternalvariable *h, hdldatabaserecord hdb) {
 
 	tyexternalvariable item;
 
@@ -2919,15 +2921,20 @@ boolean langnewexternalvariable (boolean flinmemory, long variabledata, hdlexter
 	 * Background: The 1987-era design captured databasedata globally for all new objects,
 	 * which caused corruption when creating new in-memory tables with a system root loaded.
 	 * This aligns with the intent documented in langexternalsetdatabase() (see line 280).
+	 *
+	 * 2026-02: hdb parameter replaces implicit databasedata capture. Callers in the
+	 * unpack path pass the explicit hdb threaded from the database layer; callers
+	 * creating new objects pass databasedata (or nil for in-memory).
 	 */
-	item.hdatabase = flinmemory ? nil : databasedata;
+	item.hdatabase = flinmemory ? nil : hdb;
 
 	item.oldaddress = nildbaddress; // 2025-12-28: Explicit init to prevent garbage values
 
-	log_trace(LOG_COMP_EXTERNAL, "langnewexternalvariable: flinmemory=%d variabledata=0x%llx hdatabase=%p (current_db=%p)",
+	log_trace(LOG_COMP_EXTERNAL, "langnewexternalvariable: flinmemory=%d variabledata=0x%llx hdatabase=%p (hdb=%p current_db=%p)",
 	        (int)flinmemory,
 	        (unsigned long long)variabledata,
 	        (void *)item.hdatabase,
+	        (void *)hdb,
 	        (void *)databasedata);
 
 	/* New in-memory objects should have hdatabase=nil at creation time;

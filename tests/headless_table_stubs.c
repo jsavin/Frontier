@@ -118,7 +118,7 @@ boolean tableverbdispose (hdlexternalvariable h, boolean fldisk) {
 boolean tableverbnew (hdlexternalvariable *hvariable) {
     hdltablevariable hv;
     hdlhashtable ht;
-    if (!langnewexternalvariable(true, 0L, (hdlexternalvariable *)&hv))
+    if (!langnewexternalvariable(true, 0L, (hdlexternalvariable *)&hv, nil)) /*in-memory*/
         return false;
     if (!newhashtable(&ht)) {
         disposehandle((Handle)hv);
@@ -151,11 +151,12 @@ boolean tableverbpacktotext (hdlexternalvariable h, Handle htext) {
 #endif /* !HEADLESS_USE_REAL_TABLEPACK */
 
 #if !defined(HEADLESS_USE_REAL_TABLEPACK)
-boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean fldisk) {
+boolean tableverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, boolean fldisk, hdldatabaserecord hdb) {
     (void) hpacked;
     (void) ixload;
     (void) h;
     (void) fldisk;
+    (void) hdb;
     return false;
 }
 #endif /* !HEADLESS_USE_REAL_TABLEPACK */
