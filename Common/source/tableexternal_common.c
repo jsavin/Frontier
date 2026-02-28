@@ -348,8 +348,9 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     /*
      * Normalize the address against the table's database handle.
      * Phase 8: uses _hdb variant — no global swap needed.
-     * dbnormalizeaddress_hdb is FRONTIER_HEADLESS only; the only current
-     * build target defines FRONTIER_HEADLESS.
+     * dbnormalizeaddress_hdb is FRONTIER_HEADLESS only.  The non-headless
+     * (classic Mac) build path is being retired; future GUI will be a
+     * separate app communicating over pipes/sockets/REST.
      */
 #if defined(FRONTIER_HEADLESS)
     {

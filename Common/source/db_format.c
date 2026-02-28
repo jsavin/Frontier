@@ -2527,6 +2527,20 @@ void db_context_apply(const db_context *context) {
         databasedata = context->database;
 }
 
+hdlfilenum db_context_fnum(const db_context *context) {
+
+	if (context == NULL || context->database == nil) {
+
+		assert(false && "db_context_fnum: NULL context or nil database");
+
+		log_error(LOG_COMP_DB, "db_context_fnum: NULL context or nil database handle");
+
+		return (hdlfilenum) -1;
+		}
+
+	return (hdlfilenum)((**context->database).fnumdatabase);
+	} /*db_context_fnum*/
+
 boolean hashpacktable_context(const db_context *context, hdlhashtable ht, boolean flsave, Handle *hpacked, boolean *flmustsave) {
     /* Call internal version with explicit context - no more context guard needed */
     return hashpacktable_internal(context, ht, flsave, hpacked, flmustsave);

@@ -135,13 +135,7 @@ void db_saveas_state_apply(const db_saveas_state *state);
    Centralises the (hdlfilenum)((**hdb).fnumdatabase) cast so callers
    don't repeat the dereference chain.
    Precondition: context != NULL && context->database != nil. */
-static inline hdlfilenum db_context_fnum(const db_context *context) {
-    if (context == NULL || context->database == nil) {
-        assert(false && "db_context_fnum: NULL context or nil database");
-        return (hdlfilenum) -1;
-    }
-    return (hdlfilenum)((**context->database).fnumdatabase);
-}
+extern hdlfilenum db_context_fnum(const db_context *context);
 
 /* Context initialization API */
 void db_context_init(db_context *context);
