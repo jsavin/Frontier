@@ -1,10 +1,31 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-02-16)
+Status: In Progress (Updated 2026-02-27)
 
 ## Recently Completed Milestones
 
-### Integration Test Reliability — 0 Failures - ✅ MERGED (Feb 16)
+### databasedata Global Elimination — Phases 1-10 - COMPLETE (Feb 18-27)
+**Resolution**: PRs #447-#461 merged
+- Eliminated all runtime save/swap/restore of databasedata in pack/unpack/save/load paths
+- Explicit DB handle threading through all wrapper functions
+- Removed dead dbpush/dbpop stack infrastructure
+- Added `_fnum` and `_hdb` function variants for thread-safe I/O
+- `dbflushheader` dedup, `db_context_fnum` hardening, scan cap documentation
+- Milestone: Zero runtime databasedata mutation in wrapper layer
+- Filed issues: #455-#458 (all closed by PR #461)
+
+### Startup Stabilization — Bootstrap & Guest DB Fixes - MERGED (Feb 18-22)
+**Resolution**: PRs #434-#444, #446 merged
+- Fixed guest DB script execution (normalization scanned wrong file)
+- Fixed WP text extraction and database context for guest DB externals
+- Fixed heap corruption, file ops, PSTR logging in startup path
+- Stabilized UserTalk startup bootstrap for headless mode
+- TCP callback AST building and direct execution in headless mode
+- GIL yield in REPL event loop, headless thread identity stubs
+- Replaced all broken Pascal string prefixes in verb registrations
+- Added PSTRING macro with compile-time length validation
+
+### Integration Test Reliability — 0 Failures - MERGED (Feb 16)
 **Resolution**: PRs #428-#433 merged
 - NDJSON protocol mode (`--protocol`) for persistent subprocess test execution
 - 8-worker parallel test execution (40s vs 5+ minutes sequential)
@@ -13,19 +34,19 @@ Status: In Progress (Updated 2026-02-16)
 - 40 quick-win test fixes, pexpect PTY harness for dialog tests, unit test segfault fix
 - **Result: 1,881 tests, 0 failures, 189 skipped**
 
-### GIL-Based Threading with Real POSIX Threads - ✅ MERGED (Feb 13)
+### GIL-Based Threading with Real POSIX Threads - MERGED (Feb 13)
 **Resolution**: PR #410 merged
 - Real POSIX threads serialized by a single mutex (Global Interpreter Lock)
 - Yield points at `langbackgroundtask()` and `thread.sleepTicks()`
 - Extends cooperative threading foundation from PR #404
 
-### REPL & UX Improvements - ✅ MERGED (Feb 10-14)
+### REPL & UX Improvements - MERGED (Feb 10-14)
 **Resolution**: PRs #409, #411, #424, #425 merged
 - Ranger-style two-pane file browser for `file.getFileDialog`
 - Guest database navigation in REPL with prompt display
 - `[n]` index syntax and relative paths in `/list` and `/jump`
 
-### Runtime & Verb Improvements - ✅ MERGED (Feb 10-15)
+### Runtime & Verb Improvements - MERGED (Feb 10-15)
 **Resolution**: PRs #412-#420, #426, #427 merged
 - Per-component log levels via `FRONTIER_LOG` and `--log` flag
 - Real `wp.getText()` and `wp.setText()` for headless mode
@@ -34,7 +55,7 @@ Status: In Progress (Updated 2026-02-16)
 - Migration segfault fix for v6 guest databases
 - Stack overflow fix in portable file verbs dispatcher
 
-### Cooperative Threading Infrastructure - ✅ MERGED (Feb 10)
+### Cooperative Threading Infrastructure - MERGED (Feb 10)
 **Resolution**: PR #404 merged
 - Thread registry with main thread registration and iteration
 - Cooperative globals save/restore isolates C globals per-thread
@@ -43,45 +64,45 @@ Status: In Progress (Updated 2026-02-16)
 - 10 integration tests + 19 unit tests (all passing)
 - Filed issue #406 (increase MAX_THREADS beyond 64)
 
-### Startup Hang & BIGSTRING Fix - ✅ MERGED (Feb 10)
+### Startup Hang & BIGSTRING Fix - MERGED (Feb 10)
 **Resolution**: PR #403 merged
 - Fixed 3 wrong BIGSTRING length prefixes making `string.innerCaseName`, `macRomanToUtf8`, `utf8ToMacRoman` unreachable
-- Root cause chain: unreachable verb → error → semaphore not unlocked → 2-hour busy-wait
+- Root cause chain: unreachable verb -> error -> semaphore not unlocked -> 2-hour busy-wait
 - Added defensive `langreleaseallsemaphores` auto-cleanup after startup/REPL execution
 
-### Callback Infrastructure Fix - ✅ MERGED (Feb 10)
+### Callback Infrastructure Fix - MERGED (Feb 10)
 **Resolution**: PR #402 merged
 - Fixed segfault (undefined `langnewtable` symbol), double-free crashes, "too many parameters" errors
 - All 14 callback tests now pass (was: 1 pass + segfault + 12 failures)
 
-### Dist Startup Stability - ✅ MERGED (Feb 10)
+### Dist Startup Stability - MERGED (Feb 10)
 **Resolution**: PR #401 merged
 - Restored `langexternalsetdatabase()` (was no-op, breaking cross-database hdatabase assignment)
 - Fixed `getoutlinefromtarget()` for menu externals (was interpreting menu record as packed outline)
 - NULL guards for `param1` in `langfunctioncall()` and 8 outline traversal functions
 - Eliminated 6,800+ lines of PACK diagnostic noise per save
 
-### Guest Database Context Fix - ✅ MERGED (Feb 8)
+### Guest Database Context Fix - MERGED (Feb 8)
 **Resolution**: PR #400 merged
 - Op verbs now use variable database context instead of system root for guest DB operations
 
-### window.isOpen() - ✅ MERGED (Feb 7-8)
+### window.isOpen() - MERGED (Feb 7-8)
 **Resolution**: PRs #398, #399 merged
 - Address path and file path resolution against system root and guest DBs
 - Unblocks `Frontier.openDataFile()`; raises script errors for path failures
 
-### Portable fileloop & Outline Callbacks - ✅ MERGED (Feb 7)
+### Portable fileloop & Outline Callbacks - MERGED (Feb 7)
 **Resolution**: PR #396 merged
 - POSIX fileloop implementation, fixed `macfilespecisvalid` stub, NULL callback safety
 - Startup script now completes successfully
 
-### fileMenu.saveAs/saveCopy - ✅ MERGED (Feb 7)
+### fileMenu.saveAs/saveCopy - MERGED (Feb 7)
 **Resolution**: PR #394 merged
 - Save-then-copy approach for both system root and guest databases
 - Restored `fldatabasesaveas` guard in menu persistence
 - 28 filemenu integration tests total; closes issues #392 and #395
 
-### Guest Database Lifecycle (fileMenu Verbs) - ✅ MERGED (Feb 5-7)
+### Guest Database Lifecycle (fileMenu Verbs) - MERGED (Feb 5-7)
 **Resolution**: PR #391 merged
 - `fileMenu.open/close/closeall/save` implemented for headless mode
 - Four database corruption bugs fixed
@@ -152,8 +173,8 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,881 total — 0 failures
-- 1,692 passed, 189 skipped, **0 failed** (8-worker parallel batch mode, ~40s)
+### Integration Tests: 1,893 total — 0 failures
+- 1,704 passed, 189 skipped, **0 failed** (8-worker parallel batch mode, ~40s)
 - Fixed from 755 failures (single-worker) via PRs #428-#433
 - Root causes: `langerrordisable` leak, per-worker DB isolation, test script bugs
 
@@ -161,23 +182,26 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ## Next Milestones
 
-### 1. ~~Integration Test Fix Plan~~ — ✅ COMPLETE
-**Result**: 0 failures achieved (was 755). See PRs #428-#433.
+### 1. Startup Flow Stabilization — mainResponder & Manila (IMMEDIATE NEXT)
+**Status**: Startup bootstrap partially stabilized; first-run flow not yet verified end-to-end
+**Goal**: Full first-run experience from clean dist build
+**Key deliverables**:
+- StartupTasks.root loads and patches
+- `finishInstall()` succeeds
+- mainResponder.root installs
+- manila.root installs
+- HTTP server starts
+- Browser opens setupFrontier page
 
-### 2. Startup Flow Stabilization — First Run to Web Setup
-**Status**: Startup script completes but first-run flow (mainResponder/manila bootstrap) not yet verified end-to-end
-**Goal**: Full first-run experience works from clean dist build — startup completes all 14 phases, HTTP server starts, browser opens setupFrontier page
-**Plan**: [`planning/phase4/STARTUP_STABILIZATION_PLAN.md`](planning/phase4/STARTUP_STABILIZATION_PLAN.md)
 **Approach**: Diagnostic-first — run from dist, identify failures, fix iteratively
-**Key areas**:
-- StartupTasks.root loading and `StartupTasksSuite.main()` execution (patches webBrowser glue)
-- First-run flow: `firstRootRun()` → `finishInstall()` → mainResponder/manila install
-- Subsystem init: `html.init()`, `webserver.init()`, `betty.init()`, etc.
-- HTTP server start via `inetd.start()` / `tcp.listenStream`
-- `webBrowser.openUrl()` opening setupFrontier in default browser
-- `wp.newTextObject` stub may be needed for finishInstall
+**Reference**: [`planning/phase4/STARTUP_STABILIZATION_PLAN.md`](planning/phase4/STARTUP_STABILIZATION_PLAN.md)
 
-### 3. GUI Application Prototype
+### 2. Guest Database Save Verification (IMMEDIATE)
+**Goal**: Verify save works end-to-end for system root AND guest databases
+- Confirm databasedata elimination (Phases 1-10) hasn't broken any save paths
+- Test cycle: open guest DB -> modify -> save -> reopen -> verify changes persist
+
+### 3. GUI Application Prototype (After startup works)
 **Status**: Planning complete - ready for implementation
 **Goal**: Native macOS application communicating with frontier-cli
 **What's Ready**:
@@ -187,10 +211,9 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - Architecture with multi-user model, authentication, federation
 
 **Approach**:
-1. Implement protocol layer in frontier-cli
-2. Build table browser (core ODB navigation)
-3. Add script editor with debugging
-4. Iterate on remaining editors
+1. Start with protocol layer + table browser
+2. Add script editor with debugging
+3. Iterate on remaining editors
 
 ### 4. Threading Phase 2
 **Status**: Cooperative foundation in place (PR #404)
@@ -211,30 +234,29 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ## Recommended Work Priority
 
-### Tier 1: Stability & Distribution (Immediate Value)
-1. **Startup Script Hardening**
-   - Validate daemon-mode workflows
-   - Long-running HTTP process testing
-   - BIGSTRING audit for other unreachable verbs
+### Tier 1: Startup Flow & Guest DB Saves (Immediate — North Star)
+1. Run startup diagnostics from dist build
+2. Fix blockers iteratively (mainResponder, manila installation)
+3. Verify guest DB save round-trip
 
 ### Tier 2: GUI Application (User-Facing Value)
-2. **GUI Prototype Implementation**
+4. **GUI Prototype Implementation**
    - Protocol layer in frontier-cli
    - Table browser as first editor
    - Specs ready in `planning/gui/`
 
 ### Tier 3: Strategic Decisions (Gate Major Features)
-3. **Resolve Issue #86** (Runtime context architecture)
+5. **Resolve Issue #86** (Runtime context architecture)
    - Unblocks concurrency model, remote runtime, EFP parity
    - Required for Phase 4 P0a (global state elimination)
    - Major architectural decision
 
-4. **Resolve Issue #88** (HTTP security model)
+6. **Resolve Issue #88** (HTTP security model)
    - Required before broad CLI distribution
    - TCP is secure; need HTTP-level policies
 
 ### Tier 4: Major Feature Work (After Decisions)
-5. **Phase 4 P0a** (Global State Elimination)
+7. **Phase 4 P0a** (Global State Elimination)
    - Launch blocking
    - Hash table context migration
    - Parser state migration
@@ -243,14 +265,14 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
    - Reference: planning/phase4/p0a-critical-thread-safety/README.md
 
 ### Tier 5: Quality & Stability
-6. **P1 Bug Fixes** (As discovered)
+8. **P1 Bug Fixes** (As discovered)
    - Issue #339: Pascal string logging garbage
    - Issue #323: Thread-safe FD table initialization
    - Issue #332: ODB reference counting (foundational for threading)
    - See "P1 Issues" section below
 
 ### Tier 6: Ongoing Improvements
-7. **Verb Coverage Expansion** (Ongoing)
+9. **Verb Coverage Expansion** (Ongoing)
    - Complete remaining fileMenu stubs (4 remaining: new, revert, print, quit)
    - Implement processors at 0%: bit, clipboard, mysql, sqlite, etc.
 
@@ -414,24 +436,25 @@ See planning/_STATUS_ARCHIVE.md for:
 ## Notes
 
 ### Strategic Context
-- **Current focus**: Startup hardening, dist stability, GUI prototype, threading Phase 2
+- **Current focus**: Startup flow stabilization (mainResponder/Manila), guest DB save verification, GUI prototype
 - **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: 1,881 integration tests — **0 failures** (8-worker parallel, ~40s)
+- **Test health**: 1,893 integration tests — **0 failures** (8-worker parallel, ~40s)
 - **Latest release**: v1.0.0-alpha.7 (February 16, 2026)
 - **Compiler warnings**: Zero (fully eliminated)
 
 ### Workstream Status
-- **Cooperative Threading**: ✅ OPERATIONAL - Registry, globals isolation, fire-and-forget semantics
-- **Startup Scripts**: ✅ WORKING - Full startup completes, hang fixed, semaphore cleanup added
-- **Dist Mode**: ✅ STABLE - Multi-run stability, cross-database assignment fixed
-- **Menu System**: ✅ STABILIZED - Migration, headless access, value copying, integration tests
-- **GUI Planning**: ✅ COMPLETE - Full specs ready for implementation
-- **Webserver**: ✅ WORKING - Full web application layer functional
-- **REPL**: ✅ TRANSFORMED - Persistent variables, navigation, event loop
-- **TCP Networking**: ✅ 100% COMPLETE (23/23 verbs)
-- **Compiler Warnings**: ✅ ELIMINATED - Zero warnings
-- **Build/Dist**: ✅ IMPROVED - make dist, --migrate flag
-- **Callback Infrastructure**: ✅ FIXED - All 14 tests passing (was segfaulting)
+- **databasedata Elimination**: COMPLETE (Phases 1-10)
+- **Cooperative Threading**: OPERATIONAL - Registry, globals isolation, fire-and-forget semantics
+- **Startup Scripts**: WORKING - Full startup completes, hang fixed, semaphore cleanup added
+- **Dist Mode**: STABLE - Multi-run stability, cross-database assignment fixed
+- **Menu System**: STABILIZED - Migration, headless access, value copying, integration tests
+- **GUI Planning**: COMPLETE - Full specs ready for implementation
+- **Webserver**: WORKING - Full web application layer functional
+- **REPL**: TRANSFORMED - Persistent variables, navigation, event loop
+- **TCP Networking**: 100% COMPLETE (23/23 verbs)
+- **Compiler Warnings**: ELIMINATED - Zero warnings
+- **Build/Dist**: IMPROVED - make dist, --migrate flag
+- **Callback Infrastructure**: FIXED - All 14 tests passing (was segfaulting)
 - **GUI Implementation**: Ready to begin - planning complete
 - **Documentation**: Strong - comprehensive guides and GUI specs in place

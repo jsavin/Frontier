@@ -1,36 +1,65 @@
 # Current Status
 
-Last Updated: 2026-02-16
+Last Updated: 2026-02-27
 
-## Current Focus: Test Reliability, Threading & NDJSON Protocol
+## Current Focus: Startup Flow Stabilization -- mainResponder, Manila, Guest DB Saves
 
-**Status**: Integration tests at **0 failures** (1,881 tests, 8-worker parallel execution in ~40s). GIL-based threading with real POSIX threads. NDJSON protocol mode for persistent subprocess communication. Per-component logging. Ranger-style file browser. Numerous stability fixes.
+**Status**: Integration tests at **0 failures** (1,893 tests, 8-worker parallel execution in ~40s). 302 unit tests. databasedata global elimination complete (Phases 1-10). Startup bootstrap partially stabilized.
 
 **Latest Release**: **v1.0.0-alpha.7** (February 16, 2026)
 
 **Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete. fileMenu verbs: 7/10 implemented (open, close, closeall, save, saveAs, saveCopy, new).
 
-## Recent Achievements (February 10-16, 2026)
+## Recent Achievements (February 16-27, 2026)
 
-### Integration Test Reliability — 0 Failures - ✅ MERGED
+### Startup Stabilization (PRs #434-#444, #446) - MERGED
+- **PR #434**: Fix guest database script execution -- normalization scanned wrong file
+- **PR #435**: Fix WP text extraction for guest database values
+- **PR #436**: Fix incorrect database context when packing guest database externals
+- **PR #438**: Fix incorrect database format when packing cross-database externals
+- **PR #439**: Startup stabilization -- heap corruption, file ops, PSTR logging
+- **PR #440**: Stabilize UserTalk startup bootstrap for headless mode
+- **PR #441**: Build proper function call AST for TCP callbacks
+- **PR #442**: Execute TCP callbacks directly in headless mode
+- **PR #443**: Yield GIL in REPL event loop and fix headless thread identity stubs
+- **PR #444**: Replace broken Pascal string prefixes in all headless verb registrations
+- **PR #446**: Add PSTRING macro with compile-time length validation
+
+### databasedata Global Elimination -- Phases 1-10 (PRs #447-#461) - MERGED
+- **PR #447**: Save/restore databasedata during recursive packing (pre-work)
+- **PR #448**: Explicit DB context for pack/save path (Phases 1-3)
+- **PR #450**: Unskip != and ! operator tests
+- **PR #451**: Eliminate dbpushdatabase/dbpopdatabase from tableverbinmemory_common (Phase 4)
+- **PR #452**: Remove dead DB stack, add _fnum variants for thread-safe I/O (Phases 5-6)
+- **PR #453**: Explicit DB handle threading for complex _context() wrappers (Phase 7)
+- **PR #454**: Eliminate runtime save/swap/restore of databasedata (Phase 8)
+- **PR #459**: Eliminate last runtime databasedata swap (Phase 9)
+- **PR #460**: Thread explicit hdb through unpack chain for guest DB externals
+- **PR #461**: dbflushheader dedup, db_context_fnum hardening, scan cap docs (Phase 10)
+
+**Milestone: Zero runtime databasedata mutation achieved** -- no pack/unpack/save/load code path mutates the databasedata global anymore. The global still exists for ODB engine context switching (guest DB open/close) and bootstrap, but all wrapper-layer operations use explicit handle threading.
+
+## Earlier Achievements (February 10-16, 2026)
+
+### Integration Test Reliability -- 0 Failures - MERGED
 - **PRs #428-#433**: NDJSON protocol mode, parallel test execution, test fixes
-- Fixed `langerrordisable` leak in `langgethandlercode()` headless fast-path — made ALL headless EFP verb errors uncatchable by try/else
+- Fixed `langerrordisable` leak in `langgethandlercode()` headless fast-path -- made ALL headless EFP verb errors uncatchable by try/else
 - Per-worker database isolation for parallel test workers (each gets own .root7 copy)
 - 40 quick-win test fixes, pexpect PTY harness, unit test segfault fix
 - **Result: 1,881 tests, 0 failures, 189 skipped (8 workers, ~40s)**
 
-### GIL-Based Threading - ✅ MERGED
+### GIL-Based Threading - MERGED
 - **PR #410**: Real POSIX threads with Global Interpreter Lock
 - Yield points at `langbackgroundtask()` and `thread.sleepTicks()`
 - Extends cooperative foundation (PR #404)
 
-### REPL & UX Improvements - ✅ MERGED
+### REPL & UX Improvements - MERGED
 - **PR #424**: Ranger-style two-pane file browser with arrow key navigation
 - **PR #425**: File browser and dialog UX improvements
 - **PR #411**: Guest database REPL navigation and prompt display
 - **PR #409**: `[n]` index syntax and relative paths in `/list` and `/jump`
 
-### Runtime Improvements - ✅ MERGED
+### Runtime Improvements - MERGED
 - **PR #413**: Per-component log levels (`FRONTIER_LOG=comp:level` and `--log` flag)
 - **PR #419, #420**: Consolidate verb registration + real `wp.getText()`/`wp.setText()`
 - **PR #416, #417**: `filemenu.new`, window verb no-ops, named parameters
@@ -40,34 +69,34 @@ Last Updated: 2026-02-16
 - **PR #418**: Startup bootstrap fixes (random() params, log corruption)
 - **PR #412**: Materialize all external types during guest DB loading
 
-### Stability & Bug Fixes - ✅ MERGED
+### Stability & Bug Fixes - MERGED
 - **PR #408**: Resolve startup segfault from context guard and tmp stack bugs
 - **PR #421**: Suppress verb error logging inside UserTalk try blocks
 - **PR #422**: Add script path to error logs, fix getFileDialog parameter count
 
-### Documentation - ✅ MERGED
+### Documentation - MERGED
 - **PR #407**: Centralize shared AI workflow guidance (`docs/AI_SHARED_GUIDELINES.md`)
 
 ## Earlier Achievements (February 7-10, 2026)
 
-### Cooperative Threading Infrastructure - ✅ MERGED
+### Cooperative Threading Infrastructure - MERGED
 - **PR #404**: Add cooperative threading with thread registry for headless mode
 - Thread registry with `register_main_thread()`, `get_nth_thread_id()` for iterating active threads
 - Cooperative globals save/restore (`headless_save_threadglobals`/`headless_restore_threadglobals`) isolates C globals (fllangerror, flreturn, flbreak, flcontinue, flscriptrunning, etc.)
 - Main thread gets ID 2 (`idapplicationthread`), spawned threads start at 3+
-- `scriptError()` in spawned thread stops that thread only — fire-and-forget semantics
+- `scriptError()` in spawned thread stops that thread only -- fire-and-forget semantics
 - `thread.evaluate()`, `thread.callscript()`, `thread.getCurrentID()`, `getCount()`, `exists()`, `kill()`, `sleep()`, `wake()`, `getNthID()` all operational
 - 10 integration tests + 19 unit tests (all passing)
 - Filed issue #406 (increase MAX_THREADS beyond 64)
 
-### Startup Hang Fix - ✅ MERGED
+### Startup Hang Fix - MERGED
 - **PR #403**: Fix startup hang caused by wrong BIGSTRING length prefixes
 - Fixed 3 wrong BIGSTRING prefixes in `headless_string_verbs.c` making `string.innerCaseName`, `string.macRomanToUtf8`, `string.utf8ToMacRoman` unreachable
-- Root cause: `uninstallSubMenu.ut` called unreachable verb → error → semaphore not unlocked → `installSubMenu` busy-wait for 2 hours
+- Root cause: `uninstallSubMenu.ut` called unreachable verb -> error -> semaphore not unlocked -> `installSubMenu` busy-wait for 2 hours
 - Added defensive `langreleaseallsemaphores` auto-cleanup after startup script and REPL execution
 - Verified with macOS `sample` command (832/832 samples in `locksemaphoreverb` busy-wait)
 
-### Callback Infrastructure Fix - ✅ MERGED
+### Callback Infrastructure Fix - MERGED
 - **PR #402**: Fix callback infrastructure segfault and test failures
 - Replaced undefined `langnewtable` symbol (NULL crash) with `tablenewtablevalue`
 - Fixed double-free crashes: deep-copy parameter values with `exemptfromtmpstack`
@@ -75,84 +104,84 @@ Last Updated: 2026-02-16
 - Added `fllangerror = false` reset in TEST macro to prevent error cascade
 - All 14 callback tests now pass (was: 1 pass, segfault, 12 failures)
 
-### Dist Startup Stability - ✅ MERGED
+### Dist Startup Stability - MERGED
 - **PR #401**: Fix dist startup crashes (second run segfault and log spew)
 - Restored `langexternalsetdatabase()` (was turned into a no-op, breaking cross-database hdatabase assignment)
-- Fixed `getoutlinefromtarget()` for menu externals — was interpreting `tysavedmenuinfo` as packed outline
+- Fixed `getoutlinefromtarget()` for menu externals -- was interpreting `tysavedmenuinfo` as packed outline
 - Added NULL guard for `param1` in `langfunctioncall()` for corrupt/uninitialized code trees
 - Added NULL safety to 8 outline traversal functions in `opvisit.c`
 - Downgraded PACK diagnostic logging (eliminated 6,800+ lines of noise per save)
 
-### Guest Database Context Fix - ✅ MERGED
+### Guest Database Context Fix - MERGED
 - **PR #400**: Use variable database context in `getoutlinefromtarget()`
-- Fixed op verbs reading from system root instead of guest DB — caused segfault in `oprecursivelyvisit()`
+- Fixed op verbs reading from system root instead of guest DB -- caused segfault in `oprecursivelyvisit()`
 
-### window.isOpen() Implementation - ✅ MERGED
+### window.isOpen() Implementation - MERGED
 - **PR #398**: Implement `window.isOpen()` for headless mode
 - Path A (address): checks if address resolves to root table of any opened database
 - Path B (string/file path): compares paths using `realpath()` normalization
-- **PR #399**: Follow-up — raise script errors for `realpath()` failures instead of silent false
+- **PR #399**: Follow-up -- raise script errors for `realpath()` failures instead of silent false
 - 10 integration tests (all passing)
 
-### Portable fileloop & Outline Callback Fixes - ✅ MERGED
+### Portable fileloop & Outline Callback Fixes - MERGED
 - **PR #396**: Implement portable fileloop and fix outline callback crashes
 - POSIX `opendir`/`readdir`/`closedir` fileloop implementation replacing stubs
 - Fixed `macfilespecisvalid` stub, NULL callback pointer crashes in outline operations
 - Startup script now completes successfully
 
-### fileMenu.saveAs/saveCopy - ✅ MERGED
+### fileMenu.saveAs/saveCopy - MERGED
 - **PR #394**: Implement `fileMenu.saveAs(path)` and `fileMenu.saveCopy(path)`, restore `fldatabasesaveas` guard
 - Save-then-copy approach for both system root and guest databases
 - 28 filemenu integration tests total; closes issues #392 and #395
 
-### opdisposelist Handle Safety - ✅ MERGED
+### opdisposelist Handle Safety - MERGED
 - Guard against disposed handles in `opdisposelist` to prevent startup segfault
 
 ## Earlier Achievements (February 1-7, 2026)
 
-### Guest Database Lifecycle (fileMenu Verbs) - ✅ MERGED
+### Guest Database Lifecycle (fileMenu Verbs) - MERGED
 - **PR #391**: Implement fileMenu verbs with v7 save format and db corruption fixes
 - `fileMenu.open/close/closeall/save` implemented for headless mode
 - Four corruption bugs fixed, 22 integration tests
 
-### Startup Scripts & Menu System - ✅ MERGED
+### Startup Scripts & Menu System - MERGED
 - **PRs #378, #382, #383-385, #387-390**: Startup scripts, path-based file verbs, menu system stabilization
 - Full startup sequence operational in headless mode
 
-### Compiler Warning Elimination - ✅ COMPLETE
+### Compiler Warning Elimination - COMPLETE
 - **PRs #372, #373**: Zero compiler warnings achieved
 
-### Build & Distribution - ✅ MERGED
+### Build & Distribution - MERGED
 - **PRs #377, #381**: `make dist`, `--migrate` flag
 
-### GUI Application Planning - ✅ DOCUMENTED
+### GUI Application Planning - DOCUMENTED
 - Complete planning directory: `planning/gui/`
 - Architecture, protocol, and all editor specifications documented
 
-### Quality & Documentation - ✅ MERGED
+### Quality & Documentation - MERGED
 - Logging demotions, result truncation removal, OPML test export
 
 ## Active Development Status
 
 ### Verb Implementation Coverage
-- **Overall: 68% (482/710 verbs)** ✅
-- File verbs: 100% (86/86) ✅
-- String verbs: 100% (60/60) ✅
-- Lang verbs: 100% (61/61) ✅
-- Op verbs: 100% (45/45) ✅
-- Table verbs: 100% (18/18) ✅
-- Date verbs: 100% (30/30) ✅
-- DB verbs: 100% (13/13) ✅
-- **TCP verbs: 100% (23/23)** ✅ - COMPLETE
+- **Overall: 68% (482/710 verbs)**
+- File verbs: 100% (86/86)
+- String verbs: 100% (60/60)
+- Lang verbs: 100% (61/61)
+- Op verbs: 100% (45/45)
+- Table verbs: 100% (18/18)
+- Date verbs: 100% (30/30)
+- DB verbs: 100% (13/13)
+- **TCP verbs: 100% (23/23)** - COMPLETE
 - **fileMenu verbs**: 7/10 implemented (open, close, closeall, save, saveAs, saveCopy, new) + 3 stubs
-- Thread verbs: Cooperative threading operational — `evaluate`, `callscript`, `getCurrentID`, `getCount`, `exists`, `kill`, `sleep`, `wake`, `getNthID` all working
+- Thread verbs: Cooperative threading operational -- `evaluate`, `callscript`, `getCurrentID`, `getCount`, `exists`, `kill`, `sleep`, `wake`, `getNthID` all working
 - Many other processors complete (dialog, html, xml, sys, webserver, inetd, etc.)
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: 1,881 tests total
-- **Passed**: 1,692
+- **Current**: 1,893 tests total
+- **Passed**: 1,704
 - **Skipped**: 189
 - **Failed**: **0**
 - Execution: 8 workers, parallel batch mode, ~40 seconds
@@ -183,7 +212,7 @@ All tests running via:
 ### Known Issues (New)
 
 - **Issue #406**: Increase MAX_THREADS beyond legacy 64-thread limit
-- **Issue #397**: opinitcallbacks is not idempotent — unconditional calls cause segfaults
+- **Issue #397**: opinitcallbacks is not idempotent -- unconditional calls cause segfaults
 
 ### Queued Work
 
@@ -208,19 +237,24 @@ All tests running via:
 
 ### Immediate Priorities
 
-1. **Startup Script Hardening / Dist Stability**
-   - Startup script now completes, dist mode runs stably across multiple runs
-   - Continue validating critical-path kernel verbs for daemon mode
-   - Long-running HTTP process testing
+1. **Startup Flow Stabilization -- First Run to Web Setup** (IMMEDIATE)
+   - Goal: Full first-run experience from clean dist build
+   - Run startup diagnostics, identify remaining failures, fix iteratively
+   - Key deliverables: StartupTasks.root loads, mainResponder installs, manila installs, HTTP server starts, browser opens setupFrontier page
+   - Reference: planning/phase4/STARTUP_STABILIZATION_PLAN.md
 
-2. **GUI Application Prototype**
-   - Planning is complete; begin prototype implementation
-   - Start with table browser and protocol layer
+2. **Guest Database Save Verification**
+   - Verify save works for system root AND guest databases
+   - Verify databasedata elimination hasn't broken any save paths
+   - End-to-end: open guest DB -> modify -> save -> reopen -> verify
+
+3. **GUI Application Prototype** (after startup works)
+   - Planning complete; begin with protocol layer + table browser
    - Native macOS app using specs in `planning/gui/`
 
-3. **Threading Phase 2**
+4. **Threading Phase 2** (depends on P0a)
    - Cooperative threading foundation now in place (PR #404)
-   - Next: real POSIX concurrency, increase MAX_THREADS (Issue #406)
+   - Next: increase MAX_THREADS (Issue #406)
    - Depends on Phase 4 P0a global state work for full thread safety
 
 ### Strategic Decisions Required
@@ -233,6 +267,7 @@ Before resuming major infrastructure work, need decisions on:
 
 ### Planning Documents
 - **Phase 4 Overview**: planning/phase4/INDEX.md
+- **Startup Stabilization**: planning/phase4/STARTUP_STABILIZATION_PLAN.md
 - **Threading Plan**: planning/phase4/threading/README.md
 - **Networking Plan**: planning/phase4/networking/INDEX.md
 - **GUI Planning**: planning/gui/README.md
@@ -257,8 +292,9 @@ Before resuming major infrastructure work, need decisions on:
 - **ADR-013**: REPL Event Loop Architecture
 
 ### Progress Reports
-- **Latest**: reports/progress/2026-02-16-threading-protocol-and-test-reliability.md (covers Feb 5-16)
-- **Previous**: reports/progress/2026-02-05-startup-scripts-menus-and-gui-planning.md (covers Feb 1-5)
+- **Latest**: reports/progress/2026-02-27-databasedata-elimination-and-startup-stabilization.md (covers Feb 16-27)
+- **Previous**: reports/progress/2026-02-16-threading-protocol-and-test-reliability.md (covers Feb 5-16)
+- **Earlier**: reports/progress/2026-02-05-startup-scripts-menus-and-gui-planning.md (covers Feb 1-5)
 
 ### Historical Context
 - **Status Archive**: planning/_STATUS_ARCHIVE.md (entries before 2026-01-27)

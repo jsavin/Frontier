@@ -1,8 +1,8 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2026-01-31
+**Last updated:** 2026-02-27
 
-Frontier is being brought back to life. This project is modernizing the classic UserTalk scripting environment and object database into a contemporary cross-platform tool. The headless CLI is now fully functional—you can explore databases, write scripts, and serve web applications, all from the command line. A native GUI application with a documented API is being planned, and any developer will be able to connect their own apps and user interfaces to Frontier. The goal: preserve everything that made Frontier powerful while making it accessible to a new generation of developers, tinkerers, bloggers, writers, podcasters, and product builders.
+Frontier is being brought back to life. This project is modernizing the classic UserTalk scripting environment and object database into a contemporary cross-platform tool. The headless CLI is now fully functional—you can explore databases, write scripts, and serve web applications, all from the command line. Recent work has eliminated global mutable state from the database pack/unpack layer (zero runtime databasedata mutation) and is stabilizing the startup flow for mainResponder and Manila web application support. A native GUI application with a documented API is being planned, and any developer will be able to connect their own apps and user interfaces to Frontier. The goal: preserve everything that made Frontier powerful while making it accessible to a new generation of developers, tinkerers, bloggers, writers, podcasters, and product builders.
 
 ## Latest Release: v1.0.0-alpha.7 (Feb 16, 2026)
 
@@ -25,9 +25,19 @@ Frontier is being brought back to life. This project is modernizing the classic 
 # Visit http://localhost:8080/helloworld in your browser
 ```
 
-**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,692 integration tests passing.
+**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,704 integration tests passing, 302 unit tests passing.
 
 For comprehensive status details, see [STATUS.md](STATUS.md). For release details, see the [v1.0.0-alpha.7 release notes](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.7).
+
+### Development Progress (Feb 16-27, 2026)
+
+Since the last release, 27 PRs have been merged:
+
+- **Startup Stabilization** — Fixed guest DB script execution, WP text extraction, database context for cross-database externals, heap corruption in startup path, Pascal string prefixes, TCP callback infrastructure
+- **databasedata Global Elimination (Phases 1-10)** — All runtime save/swap/restore of the `databasedata` global eliminated from pack/unpack/save/load paths. Explicit DB handle threading throughout the wrapper layer.
+- **PSTRING Macro** — Compile-time length validation for Pascal string constants, replacing error-prone manual encoding
+
+**Current Test Status:** 302 unit tests + 1,893 integration tests — **0 failures** (8-worker parallel, ~40s)
 
 ---
 
@@ -119,7 +129,7 @@ Frontier/
 - `planning/big_endian_portability_audit.md` – current BE v7 portability audit/tasks
 - `codex_sessions/README.md` – how to fetch/view Codex transcript logs
 
-For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session context lives in `planning/progress_reports/README.md`. For recent accomplishments (Jan 16-25), see `docs/WORK_SUMMARY_2026_01_16_TO_NOW.md`.
+For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session context lives in `planning/progress_reports/README.md`. Latest progress report: `reports/progress/2026-02-27-databasedata-elimination-and-startup-stabilization.md`.
 
 ---
 
@@ -168,6 +178,7 @@ From recent progress (Jan 16-25):
 - v6→v7 migration validated with extensive testing
 - Y2038-safe 64-bit timestamps throughout
 - Context guard pattern for safe concurrent database operations
+- databasedata global elimination complete — zero runtime mutation in pack/unpack layer
 
 **Documentation:**
 - ADRs document architectural decisions
