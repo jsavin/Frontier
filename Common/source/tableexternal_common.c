@@ -351,7 +351,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
      */
     {
         dbaddress normalized = adr;
-        if (dbnormalizeaddress_hdb(&normalized, hdb)) {
+        if (dbnormalizeaddress_hdb(&normalized, hdb)) { /* returns false for nil hdb, so hdb is non-nil here */
             if (normalized != adr) {
                 long hs = ((**hdb).headerLength == (long)sizeof(tydatabaserecord_64)) ? sizeheader_v7 : sizeheader_v6;
                 dbaddress data_start = normalized + hs;

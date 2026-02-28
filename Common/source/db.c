@@ -201,7 +201,7 @@ static boolean dbfindblockforaddress_hdb(dbaddress adr, dbaddress *blockstart, l
 	hdlfilenum fnum = (hdlfilenum)((**hdb).fnumdatabase);
 
 	long min_address = firstphysicaladdress;
-	if (hdb != nil && (**hdb).headerLength > 0) {
+	if ((**hdb).headerLength > 0) { /* hdb provably non-nil after early return above */
 		min_address = (**hdb).headerLength;
 	}
 
@@ -231,7 +231,7 @@ static boolean dbfindblockforaddress_hdb(dbaddress adr, dbaddress *blockstart, l
 		dbaddress data_start = candidate + header_size;
 		dbaddress data_end = data_start + (node_size - node_variance);
 
-		if (adr < candidate || adr >= data_end)
+		if (adr >= data_end) /* candidate <= adr by loop invariant */
 			continue;
 
 		boolean trailer_free = false;
