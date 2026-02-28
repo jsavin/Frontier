@@ -183,6 +183,28 @@ boolean dbnormalizeaddress(dbaddress *adr) {
    section but dbfindblockforaddress_hdb needs it here. */
 static boolean dbreadtrailer_hdb(dbaddress adr, boolean *flfree, long *ctbytes, hdlfilenum fnum, hdldatabaserecord hdb);
 
+/*
+ * db_hdb_* helpers — centralised format detection for explicit-handle functions.
+ * Defined early so that all _hdb/_fnum functions can use them.
+ * (Originally in the Layer 3+ section; moved here for Phase 8.)
+ */
+
+static inline boolean db_hdb_use64 (hdldatabaserecord hdb) {
+	return (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+}
+
+static inline long db_hdb_header_size (hdldatabaserecord hdb) {
+	return db_hdb_use64(hdb) ? sizeheader_v7 : sizeheader_v6;
+}
+
+static inline long db_hdb_trailer_size (hdldatabaserecord hdb) {
+	return db_hdb_use64(hdb) ? sizetrailer_v7 : sizetrailer_v6;
+}
+
+static inline hdlfilenum db_hdb_fnum (hdldatabaserecord hdb) {
+	return (hdlfilenum)((**hdb).fnumdatabase);
+}
+
 static boolean dbfindblockforaddress_hdb(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree, hdldatabaserecord hdb) {
 
 	/*
@@ -191,17 +213,15 @@ static boolean dbfindblockforaddress_hdb(dbaddress adr, dbaddress *blockstart, l
 	*/
 
 	long eof = 0;
-	boolean use64;
 
 	if (hdb == nil)
 		return (false);
 
-	use64 = ((**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
-	const long header_size = use64 ? sizeheader_v7 : sizeheader_v6;
-	hdlfilenum fnum = (hdlfilenum)((**hdb).fnumdatabase);
+	const long header_size = db_hdb_header_size(hdb);
+	hdlfilenum fnum = db_hdb_fnum(hdb);
 
 	long min_address = firstphysicaladdress;
-	if ((**hdb).headerLength > 0) { /* hdb provably non-nil after early return above */
+	if ((**hdb).headerLength > 0) {
 		min_address = (**hdb).headerLength;
 	}
 
@@ -903,16 +923,19 @@ static boolean dbflushheader_hdb (hdldatabaserecord hdb) {
 	the header of a specific database without mutating the global.
 	*/
 
+	/*
+	Based on dbflushheader() — must be kept in sync with any changes there.
+	Key difference: reads hdb directly instead of databasedata global.
+	*/
+
 	boolean fl;
 	tydatabaserecord diskrec;
-	hdlfilenum fnum;
-	boolean use64log;
 
 	if (hdb == nil)
 		return (false);
 
-	fnum = (hdlfilenum)((**hdb).fnumdatabase);
-	use64log = ((**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+	hdlfilenum fnum = db_hdb_fnum(hdb);
+	boolean use64log = db_hdb_use64(hdb);
 
 	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
 
@@ -1173,8 +1196,7 @@ boolean dbwriteheader_fnum (dbaddress adr, boolean flfree, long ctbytes, tyvaria
 	all I/O goes through fnum.
 	*/
 
-	/* Same logic as db_hdb_use64() defined below in Layer 3+ helpers section */
-	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+	boolean use64 = db_hdb_use64(hdb);
 
 	if (use64) {
 		uint64_t raw_size = (uint64_t) ctbytes;
@@ -1213,8 +1235,7 @@ boolean dbwritetrailer_fnum (dbaddress adr, boolean flfree, long ctbytes, hdlfil
 	all I/O goes through fnum.
 	*/
 
-	/* Same logic as db_hdb_use64() defined below in Layer 3+ helpers section */
-	boolean use64 = (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+	boolean use64 = db_hdb_use64(hdb);
 
 	if (use64) {
 		uint64_t raw_size = (uint64_t) ctbytes;
@@ -3313,26 +3334,8 @@ boolean dbsavehandle (Handle hsave, dbaddress *adr) {
  *     databasedata for callers not yet converted.
  *============================================================================*/
 
-/* Helper: determine whether hdb is v7 format (64-bit headers). */
-static inline boolean db_hdb_use64 (hdldatabaserecord hdb) {
-	return (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
-}
-
-/* Helper: header size in bytes for the given database. */
-static inline long db_hdb_header_size (hdldatabaserecord hdb) {
-	return db_hdb_use64(hdb) ? sizeheader_v7 : sizeheader_v6;
-}
-
-/* Helper: trailer size in bytes for the given database. */
-static inline long db_hdb_trailer_size (hdldatabaserecord hdb) {
-	return db_hdb_use64(hdb) ? sizetrailer_v7 : sizetrailer_v6;
-}
-
-/* Helper: extract file number from database handle. */
-static inline hdlfilenum db_hdb_fnum (hdldatabaserecord hdb) {
-	return (hdlfilenum)((**hdb).fnumdatabase);
-}
-
+/* db_hdb_* helpers moved to top of file (before dbfindblockforaddress_hdb)
+   so all _hdb/_fnum functions can use them. */
 
 static boolean dbwriteheaderandtrailer_hdb (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance, hdlfilenum fnum, hdldatabaserecord hdb) {
 
