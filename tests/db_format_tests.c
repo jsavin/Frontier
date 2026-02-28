@@ -1601,14 +1601,13 @@ static void test_dbpushreleasestack_hdb_callee_saves(void) {
     /* Allocate a block so we have a real address to push */
     char payload[4] = { 'P', 'U', 'S', 'H' };
     dbaddress adr = nildbaddress;
-    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+    assert(dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb));
 
     hdldatabaserecord before = databasedata;
     boolean ok = dbpushreleasestack_hdb(adr, 42L, ctx.hdb);
     assert(ok);
     assert(databasedata == before);
 
-cleanup:
     close_scratch_v7_db(&ctx);
     log_info(LOG_COMP_DB, "[TEST] test_dbpushreleasestack_hdb_callee_saves COMPLETED");
 }
@@ -1625,7 +1624,7 @@ static void test_dbpushreleasestack_hdb_targets_correct_db(void) {
     /* Allocate a block in ctx1 */
     char payload[4] = { 'T', 'G', 'T', '!' };
     dbaddress adr = nildbaddress;
-    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx1.hdb)) goto cleanup;
+    assert(dballocate_hdb(sizeof(payload), payload, &adr, ctx1.hdb));
 
     /* Confirm both releasestacks start nil */
     assert((**ctx1.hdb).releasestack == nil);
@@ -1643,7 +1642,6 @@ static void test_dbpushreleasestack_hdb_targets_correct_db(void) {
 
     assert(databasedata == ctx1.saved_db);
 
-cleanup:
     close_scratch_v7_db(&ctx2);
     close_scratch_v7_db(&ctx1);
     log_info(LOG_COMP_DB, "[TEST] test_dbpushreleasestack_hdb_targets_correct_db COMPLETED");
@@ -1660,7 +1658,7 @@ static void test_dbnormalizeaddress_hdb_callee_saves(void) {
     /* Allocate a block so we have a real address */
     char payload[8] = "NORMADR!";
     dbaddress adr = nildbaddress;
-    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+    assert(dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb));
 
     hdldatabaserecord before = databasedata;
     dbaddress normalized = adr;
@@ -1668,7 +1666,6 @@ static void test_dbnormalizeaddress_hdb_callee_saves(void) {
     assert(ok);
     assert(databasedata == before);
 
-cleanup:
     close_scratch_v7_db(&ctx);
     log_info(LOG_COMP_DB, "[TEST] test_dbnormalizeaddress_hdb_callee_saves COMPLETED");
 }
@@ -1683,7 +1680,7 @@ static void test_dbnormalizeaddress_hdb_roundtrip(void) {
 
     char payload[16] = "NORMALIZE_RT_OK";
     dbaddress adr = nildbaddress;
-    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+    assert(dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb));
 
     /* adr should already be the block start, so normalize should be a no-op */
     dbaddress normalized = adr;
@@ -1693,7 +1690,7 @@ static void test_dbnormalizeaddress_hdb_roundtrip(void) {
 
     /* Read back through the normalized address to confirm it's valid */
     Handle href = nil;
-    if (!dbrefhandle_hdb(normalized, &href, ctx.hdb)) goto cleanup;
+    assert(dbrefhandle_hdb(normalized, &href, ctx.hdb));
     assert(href != nil);
     assert(GetHandleSize(href) == sizeof(payload));
     lockhandle(href);
@@ -1703,7 +1700,6 @@ static void test_dbnormalizeaddress_hdb_roundtrip(void) {
 
     assert(databasedata == ctx.saved_db);
 
-cleanup:
     close_scratch_v7_db(&ctx);
     log_info(LOG_COMP_DB, "[TEST] test_dbnormalizeaddress_hdb_roundtrip COMPLETED");
 }
@@ -1720,7 +1716,7 @@ static void test_dbclearshadowavaillist_no_global_swap(void) {
     /* Allocate a block */
     char payload[8] = "SHADOW!!";
     dbaddress adr = nildbaddress;
-    if (!dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb)) goto cleanup;
+    assert(dballocate_hdb(sizeof(payload), payload, &adr, ctx.hdb));
     assert(adr != nildbaddress);
 
     hdldatabaserecord before = databasedata;
@@ -1737,7 +1733,6 @@ static void test_dbclearshadowavaillist_no_global_swap(void) {
     assert(adr2 != nildbaddress);
     assert(databasedata == before);
 
-cleanup:
     close_scratch_v7_db(&ctx);
     log_info(LOG_COMP_DB, "[TEST] test_dbclearshadowavaillist_no_global_swap COMPLETED");
 }

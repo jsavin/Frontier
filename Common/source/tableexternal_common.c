@@ -348,12 +348,15 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
     /*
      * Normalize the address against the table's database handle.
      * Phase 8: uses _hdb variant — no global swap needed.
+     * dbnormalizeaddress_hdb is FRONTIER_HEADLESS only; the only current
+     * build target defines FRONTIER_HEADLESS.
      */
+#if defined(FRONTIER_HEADLESS)
     {
         dbaddress normalized = adr;
         if (dbnormalizeaddress_hdb(&normalized, hdb)) { /* returns false for nil hdb, so hdb is non-nil here */
             if (normalized != adr) {
-                long hs = ((**hdb).headerLength == (long)sizeof(tydatabaserecord_64)) ? sizeheader_v7 : sizeheader_v6;
+                long hs = db_hdb_header_size(hdb);
                 dbaddress data_start = normalized + hs;
                 if (adr > data_start)
                     payload_offset = (long) (adr - data_start);
@@ -365,6 +368,7 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
                     (unsigned long long) (**hv).oldaddress, (int)(**hv).flinmemory);
         }
     }
+#endif /* FRONTIER_HEADLESS */
 
     if (adr == nildbaddress) { /* table has never been allocated */
         log_warn(LOG_COMP_TABLE, "tableverbinmemory nil table address (never saved)");

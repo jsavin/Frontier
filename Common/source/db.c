@@ -183,27 +183,7 @@ boolean dbnormalizeaddress(dbaddress *adr) {
    section but dbfindblockforaddress_hdb needs it here. */
 static boolean dbreadtrailer_hdb(dbaddress adr, boolean *flfree, long *ctbytes, hdlfilenum fnum, hdldatabaserecord hdb);
 
-/*
- * db_hdb_* helpers — centralised format detection for explicit-handle functions.
- * Defined early so that all _hdb/_fnum functions can use them.
- * (Originally in the Layer 3+ section; moved here for Phase 8.)
- */
-
-static inline boolean db_hdb_use64 (hdldatabaserecord hdb) {
-	return (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
-}
-
-static inline long db_hdb_header_size (hdldatabaserecord hdb) {
-	return db_hdb_use64(hdb) ? sizeheader_v7 : sizeheader_v6;
-}
-
-static inline long db_hdb_trailer_size (hdldatabaserecord hdb) {
-	return db_hdb_use64(hdb) ? sizetrailer_v7 : sizetrailer_v6;
-}
-
-static inline hdlfilenum db_hdb_fnum (hdldatabaserecord hdb) {
-	return (hdlfilenum)((**hdb).fnumdatabase);
-}
+/* db_hdb_* helpers now live in dbinternal.h (available to all includers). */
 
 static boolean dbfindblockforaddress_hdb(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree, hdldatabaserecord hdb) {
 
@@ -3334,8 +3314,7 @@ boolean dbsavehandle (Handle hsave, dbaddress *adr) {
  *     databasedata for callers not yet converted.
  *============================================================================*/
 
-/* db_hdb_* helpers moved to top of file (before dbfindblockforaddress_hdb)
-   so all _hdb/_fnum functions can use them. */
+/* db_hdb_* helpers now live in dbinternal.h. */
 
 static boolean dbwriteheaderandtrailer_hdb (dbaddress adr, boolean flfree, long ctbytes, tyvariance variance, hdlfilenum fnum, hdldatabaserecord hdb) {
 

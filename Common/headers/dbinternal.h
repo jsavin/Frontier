@@ -116,6 +116,26 @@ typedef struct tytrailer64 {
 #define sizeheader (db_format_mode_current().use_64bit_format ? sizeheader_v7 : sizeheader_v6)
 #define sizetrailer (db_format_mode_current().use_64bit_format ? sizetrailer_v7 : sizetrailer_v6)
 
+/* Explicit-handle format detection helpers — do NOT read global format mode.
+   Used by _hdb/_fnum functions throughout db.c and callers like tableexternal. */
+
+static inline boolean db_hdb_use64 (hdldatabaserecord hdb) {
+	return (hdb != nil && (**hdb).headerLength == (long) sizeof (tydatabaserecord_64));
+}
+
+static inline long db_hdb_header_size (hdldatabaserecord hdb) {
+	return db_hdb_use64(hdb) ? sizeheader_v7 : sizeheader_v6;
+}
+
+static inline long db_hdb_trailer_size (hdldatabaserecord hdb) {
+	return db_hdb_use64(hdb) ? sizetrailer_v7 : sizetrailer_v6;
+}
+
+static inline hdlfilenum db_hdb_fnum (hdldatabaserecord hdb) {
+	if (hdb == nil) return (hdlfilenum) -1;
+	return (hdlfilenum)((**hdb).fnumdatabase);
+}
+
 
 #define dbshadow
 
