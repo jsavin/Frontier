@@ -84,6 +84,21 @@ static void db_sync_use64_to_current_db(void);
    so -1 cannot collide with a real file descriptor. */
 #define DB_FNUM_USE_GLOBAL ((hdlfilenum) -1)
 
+/*
+ * Maximum number of bytes to scan backward when searching for a block header.
+ * The common path (adr == block start) is O(1) — no backward scan needed.
+ * In heavily-fragmented databases, backward scanning could be expensive;
+ * the 1 MB cap prevents runaway scans in pathological cases while covering
+ * all practical block sizes.
+ */
+#define DB_BACKWARD_SCAN_MAX_BYTES  0x100000  /* 1 MB */
+
+/*
+ * dbfindblockforaddress, dbfindblockforaddress_hdb, dbnormalizeaddress,
+ * and dbnormalizeaddress_hdb are headless-only.  The non-headless (classic
+ * Mac) build path is being retired — future GUI will be a separate app
+ * communicating over pipes/sockets/REST.
+ */
 #if defined(FRONTIER_HEADLESS)
 static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long *nodebytes, tyvariance *variance, boolean *flfree) {
 	long eof = 0;
@@ -107,7 +122,7 @@ static boolean dbfindblockforaddress(dbaddress adr, dbaddress *blockstart, long 
 	if (adr < min_address || adr >= (dbaddress) eof)
 		return false;
 
-	for (dbaddress candidate = adr; candidate >= min_address && (adr - candidate) <= 0x100000; --candidate) {
+	for (dbaddress candidate = adr; candidate >= min_address && (adr - candidate) <= DB_BACKWARD_SCAN_MAX_BYTES; --candidate) {
 		boolean freeflag = false;
 		long node_size = 0;
 		tyvariance node_variance = 0;
@@ -214,7 +229,7 @@ static boolean dbfindblockforaddress_hdb(dbaddress adr, dbaddress *blockstart, l
 	if (adr < min_address || adr >= (dbaddress) eof)
 		return false;
 
-	for (dbaddress candidate = adr; candidate >= min_address && (adr - candidate) <= 0x100000; --candidate) {
+	for (dbaddress candidate = adr; candidate >= min_address && (adr - candidate) <= DB_BACKWARD_SCAN_MAX_BYTES; --candidate) {
 		boolean freeflag = false;
 		long node_size = 0;
 		tyvariance node_variance = 0;
@@ -803,38 +818,42 @@ static void dbheaderdirty (void) {
 	} /*dbheaderdirty*/
 
 
-static boolean dbflushheader (void) {
-	
+static boolean dbflushheader_core (hdldatabaserecord hdb, hdlfilenum fnum) {
+
 	/*
-	5.1.5 dmb: copy databasedata to local record for writing
+	Phase 10: Shared core for dbflushheader and dbflushheader_hdb.
+	Takes explicit hdb and fnum — no databasedata global access.
 	*/
-	
-	register hdldatabaserecord hdb = databasedata;
+
 	boolean fl;
-    tydatabaserecord diskrec;
-	boolean use64log = db_use64();
-	
+	tydatabaserecord diskrec;
+
+	if (hdb == nil)
+		return (false);
+
+	boolean use64log = db_hdb_use64 (hdb);
+
 	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
 
 #if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbflushheader enter databasedata=%p fnum=%ld dirty=%d use64=%d",
+	log_trace(LOG_COMP_DB, "dbflushheader_core enter hdb=%p fnum=%ld dirty=%d use64=%d",
 	        (void *) hdb,
-	        hdb ? (long) (**hdb).fnumdatabase : -1L,
-	        hdb ? (int) isdirty(hdb) : 0,
+	        (long) (**hdb).fnumdatabase,
+	        (int) isdirty(hdb),
 	        (int) use64log);
 #endif
-	
+
 	/* If we opened via legacy adapter, flip to wide writes before flushing.
 	 * Call the non-context version directly so the mode persists. */
-    db_format_adapter_enable_wide_writes(NULL);
+	db_format_adapter_enable_wide_writes(NULL);
 
 	/* CRITICAL FIX: Don't write to read-only databases.
 	 * Issue: v6 source database was being modified during migration because
 	 * dbflushheader wrote to it despite flreadonly=1.
 	 * Solution: Skip flush if database is read-only. */
-	if (hdb && (**hdb).u.extensions.flreadonly) {
+	if ((**hdb).u.extensions.flreadonly) {
 #if defined(FRONTIER_HEADLESS)
-		log_trace(LOG_COMP_DB, "dbflushheader skip write (read-only) fnum=%ld dirty=%d",
+		log_trace(LOG_COMP_DB, "dbflushheader_core skip write (read-only) fnum=%ld dirty=%d",
 		        (long) (**hdb).fnumdatabase,
 		        (int) isdirty(hdb));
 #endif
@@ -844,12 +863,12 @@ static boolean dbflushheader (void) {
 	if (isdirty (hdb)) { /*changes made to header*/
 
 		cleardirty (hdb); /*clear it*/
-		
+
 		diskrec = **hdb;
 
-		#ifdef SMART_DB_OPENING		
+		#ifdef SMART_DB_OPENING
 			clearbytes (&diskrec.u.extensions.availlistshadow, sizeof (diskrec.u.extensions.availlistshadow)); /*in-memory structure only*/
-			
+
 			clearbytes (&diskrec.u.extensions.flreadonly, sizeof (diskrec.u.extensions.flreadonly)); /*in-memory structure only*/
 		#else
 			clearbytes (&diskrec.u.growthspace, sizeof (diskrec.u.growthspace)); /*in-memory structure only*/
@@ -860,103 +879,7 @@ static boolean dbflushheader (void) {
 
 			if (!db_write_v7_header(&diskrec, diskheader, sizeof (diskheader))) {
 #if defined(FRONTIER_HEADLESS)
-				log_error(LOG_COMP_DB, "dbflushheader db_write_v7_header failed");
-#endif
-				return (false);
-			}
-
-			fl = dbwrite ((dbaddress) 0, (long) sizeof (diskheader), diskheader);
-
-#if defined(FRONTIER_HEADLESS)
-			if (!fl) {
-				log_error(LOG_COMP_DB, "dbflushheader dbwrite failed fnum=%ld len=%zu",
-				        hdb ? (long) (**hdb).fnumdatabase : -1L,
-				        sizeof (diskheader));
-			}
-#endif
-		}
-		
-		#ifndef FRONTIER_HEADLESS
-		/*flush file buffers*/ {
-			IOParam pb;
-			
-			clearbytes (&pb, sizeof (pb));
-			
-			pb.ioRefNum = (hdlfilenum)((**databasedata).fnumdatabase);
-			
-			PBFlushFile ((ParmBlkPtr) &pb, false);
-			}
-		#endif
-
-		return (fl);
-		} /*changes made to header*/
-		
-	return (true);
-	} /*dbflushheader*/
-
-
-static boolean dbflushheader_hdb (hdldatabaserecord hdb) {
-
-	/*
-	Phase 8: Like dbflushheader but operates on explicit hdb instead of
-	reading databasedata.  Used by dbclearshadowavaillist_hdb to flush
-	the header of a specific database without mutating the global.
-	*/
-
-	/*
-	Based on dbflushheader() — must be kept in sync with any changes there.
-	Key difference: reads hdb directly instead of databasedata global.
-	*/
-
-	boolean fl;
-	tydatabaserecord diskrec;
-
-	if (hdb == nil)
-		return (false);
-
-	hdlfilenum fnum = db_hdb_fnum(hdb);
-	boolean use64log = db_hdb_use64(hdb);
-
-	assert (sizeof (diskrec.u.growthspace) >= sizeof (diskrec.u.extensions));
-
-#if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_DB, "dbflushheader_hdb enter hdb=%p fnum=%ld dirty=%d use64=%d",
-	        (void *) hdb,
-	        hdb ? (long) (**hdb).fnumdatabase : -1L,
-	        hdb ? (int) isdirty(hdb) : 0,
-	        (int) use64log);
-#endif
-
-	db_format_adapter_enable_wide_writes(NULL);
-
-	if (hdb && (**hdb).u.extensions.flreadonly) {
-#if defined(FRONTIER_HEADLESS)
-		log_trace(LOG_COMP_DB, "dbflushheader_hdb skip write (read-only) fnum=%ld dirty=%d",
-		        (long) (**hdb).fnumdatabase,
-		        (int) isdirty(hdb));
-#endif
-		return (true);
-	}
-
-	if (isdirty (hdb)) {
-
-		cleardirty (hdb);
-
-		diskrec = **hdb;
-
-		#ifdef SMART_DB_OPENING
-			clearbytes (&diskrec.u.extensions.availlistshadow, sizeof (diskrec.u.extensions.availlistshadow));
-			clearbytes (&diskrec.u.extensions.flreadonly, sizeof (diskrec.u.extensions.flreadonly));
-		#else
-			clearbytes (&diskrec.u.growthspace, sizeof (diskrec.u.growthspace));
-		#endif
-
-		{
-			unsigned char diskheader[sizeof (tydatabaserecord_64)];
-
-			if (!db_write_v7_header(&diskrec, diskheader, sizeof (diskheader))) {
-#if defined(FRONTIER_HEADLESS)
-				log_error(LOG_COMP_DB, "dbflushheader_hdb db_write_v7_header failed");
+				log_error(LOG_COMP_DB, "dbflushheader_core db_write_v7_header failed");
 #endif
 				return (false);
 			}
@@ -965,8 +888,8 @@ static boolean dbflushheader_hdb (hdldatabaserecord hdb) {
 
 #if defined(FRONTIER_HEADLESS)
 			if (!fl) {
-				log_error(LOG_COMP_DB, "dbflushheader_hdb dbwrite failed fnum=%ld len=%zu",
-				        hdb ? (long) (**hdb).fnumdatabase : -1L,
+				log_error(LOG_COMP_DB, "dbflushheader_core dbwrite failed fnum=%ld len=%zu",
+				        (long) (**hdb).fnumdatabase,
 				        sizeof (diskheader));
 			}
 #endif
@@ -985,9 +908,23 @@ static boolean dbflushheader_hdb (hdldatabaserecord hdb) {
 		#endif
 
 		return (fl);
-		}
+		} /*changes made to header*/
 
 	return (true);
+	} /*dbflushheader_core*/
+
+
+static boolean dbflushheader (void) {
+
+	hdldatabaserecord hdb = databasedata;
+
+	return dbflushheader_core (hdb, db_hdb_fnum (hdb));
+	} /*dbflushheader*/
+
+
+static boolean dbflushheader_hdb (hdldatabaserecord hdb) {
+
+	return dbflushheader_core (hdb, db_hdb_fnum (hdb));
 	} /*dbflushheader_hdb*/
 
 
