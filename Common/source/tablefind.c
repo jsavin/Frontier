@@ -266,6 +266,8 @@ static boolean tablefindvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecor
 
 		if (val.valuetype != externalvaluetype) {
 
+			boolean flresolveddisk = false;
+
 			if (val.fldiskval) {
 				db_context dbctx;
 				if (db_is_v7 (sctx->hdb))
@@ -274,10 +276,19 @@ static boolean tablefindvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecor
 					db_context_init_legacy_read (&dbctx, sctx->hdb);
 				if (!copyvaluerecord_internal (&dbctx, val, &val))
 					return (true);
+				flresolveddisk = true;
 			}
 
-			if (tablesearchcellvalue (hnode, bsname, val))
+			if (tablesearchcellvalue (hnode, bsname, val)) {
+				if (flresolveddisk)
+					if (exemptfromtmpstack (&val))
+						disposevaluerecord (val, false);
 				return (true);
+			}
+
+			if (flresolveddisk)
+				if (exemptfromtmpstack (&val))
+					disposevaluerecord (val, false);
 			}
 		}
 
