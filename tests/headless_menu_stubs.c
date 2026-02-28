@@ -552,11 +552,11 @@ boolean menuverbpack (hdlexternalvariable h, Handle *hp, boolean *flnew) {
     return menuverbpack_internal(NULL, h, hp, flnew);
 }
 
-boolean menuverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
+boolean menuverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, hdldatabaserecord hdb) {
     long rawadr = 0;
     if (!loadlongfromdiskhandle(hpacked, ixload, &rawadr))
         return false;
-    return langnewexternalvariable(false, rawadr, h);
+    return langnewexternalvariable(false, rawadr, h, hdb);
 }
 
 boolean menuverbpacktotext (hdlexternalvariable h, Handle htext) {

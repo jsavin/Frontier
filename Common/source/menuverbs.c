@@ -133,9 +133,9 @@ boolean menuverbgettypestring (hdlexternalvariable hvariable, bigstring bs) {
 	} /*menuverbgettypestring*/
 	
 
-static boolean newmenuvariable (boolean flinmemory, long variabledata, hdlmenuvariable *h) {
+static boolean newmenuvariable (boolean flinmemory, long variabledata, hdlmenuvariable *h, hdldatabaserecord hdb) {
 
-	return (langnewexternalvariable (flinmemory, variabledata, (hdlexternalvariable *) h));
+	return (langnewexternalvariable (flinmemory, variabledata, (hdlexternalvariable *) h, hdb));
 	} /*newmenuvariable*/
 
 
@@ -365,15 +365,15 @@ boolean menuverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable 
 	
 	hm = hmenurecord; /*move into register*/
 	
-	if (!newmenuvariable (true, (long) hm, (hdlmenuvariable *) h)) {
-		
+	if (!newmenuvariable (true, (long) hm, (hdlmenuvariable *) h, nil)) { /*in-memory: hdb=nil*/
+
 		medisposemenurecord (hm, false);
-		
+
 		return (false);
 		}
-	
+
 	(**hm).menurefcon = (long) *h; /*point back to variable*/
-	
+
 	(**hm).fldirty = true;
 	
 	return (true);
@@ -492,14 +492,14 @@ boolean menuverbpack (hdlexternalvariable hvariable, Handle *hpacked, boolean *f
 	} /*menuverbpack*/
 
 
-boolean menuverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
+boolean menuverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, hdldatabaserecord hdb) {
 
 	long rawadr = 0;
 
 	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr))
 		return (false);
 
-	return (newmenuvariable (false, (dbaddress) rawadr, (hdlmenuvariable *) h));
+	return (newmenuvariable (false, (dbaddress) rawadr, (hdlmenuvariable *) h, hdb));
 	} /*menuverbunpack*/
 
 
@@ -724,13 +724,13 @@ boolean menunewmenubar (hdlhashtable htable, bigstring bs, hdlmenurecord *hnewre
 		
 	hm = *hnewrecord; /*copy into register*/
 		
-	if (!newmenuvariable (true, (long) hm, &hv)) {
-		
+	if (!newmenuvariable (true, (long) hm, &hv, databasedata)) { /*creating new object*/
+
 		medisposemenurecord (hm, false);
-		
+
 		return (false);
 		}
-		
+
 	(**hv).variabledata = (long) hm; /*link the menu rec into the variable rec*/
 	
 	(**hm).menurefcon = (long) hv; /*the pointing is mutual*/
@@ -1002,13 +1002,13 @@ boolean menuverbnew (Handle hdata, hdlexternalvariable *hvariable) {
 	
 	hm = hnewrecord; /*copy into register*/
 	
-	if (!newmenuvariable (true, (long) hm, (hdlmenuvariable *) hvariable)) {
-		
+	if (!newmenuvariable (true, (long) hm, (hdlmenuvariable *) hvariable, databasedata)) { /*creating new object*/
+
 		medisposemenurecord (hm, false);
-		
+
 		return (false);
 		}
-	
+
 	hv = (hdlmenuvariable) *hvariable; /*copy into register*/
 	
 	if (hdata != nil) {
@@ -1512,7 +1512,7 @@ static boolean getsubmenuvalue (hdltreenode hfirst, short pnum, hdlheadrecord *h
 	if (!langexternalmemorypack ((hdlexternalvariable) hv, &hpacked, HNoNode))
 		return (false);
 	
-	fl = langexternalmemoryunpack (hpacked, (hdlexternalvariable *) &hv);
+	fl = langexternalmemoryunpack (hpacked, (hdlexternalvariable *) &hv, nil);
 	
 	disposehandle (hpacked);
 	

@@ -181,7 +181,7 @@ extern boolean istablevariable (hdlexternalvariable);
 
 extern boolean gettablevariable (tyvaluerecord, hdltablevariable *, short *);
 
-extern boolean newtablevariable (boolean, long, hdltablevariable *, boolean);
+extern boolean newtablevariable (boolean, long, hdltablevariable *, boolean, hdldatabaserecord);
 
 extern boolean tablenewtablevalue (hdlhashtable *, tyvaluerecord *);
 
@@ -225,6 +225,9 @@ extern boolean tablegetstringlist (short, bigstring);
 extern boolean tablepacktable (hdlhashtable, boolean, Handle *, boolean *); /*tablepack.c*/
 
 extern boolean tableunpacktable (Handle, boolean, hdlhashtable *);
+
+/* Context-aware internal version — threads guest DB handle to child externals */
+extern boolean tableunpacktable_internal (const struct db_context *, Handle, boolean, hdlhashtable *);
 
 /* Legacy (32-bit) pack/unpack entry points used during migration. */
 extern boolean tablepacktable_legacy (hdlhashtable, boolean, Handle *, boolean *);

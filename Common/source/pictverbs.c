@@ -98,9 +98,9 @@ static short errornum = 0;
 
 
 
-static boolean newpictvariable (boolean flinmemory, long variabledata, hdlpictvariable *h) {
+static boolean newpictvariable (boolean flinmemory, long variabledata, hdlpictvariable *h, hdldatabaserecord hdb) {
 
-	return (langnewexternalvariable (flinmemory, variabledata, (hdlexternalvariable *) h));
+	return (langnewexternalvariable (flinmemory, variabledata, (hdlexternalvariable *) h, hdb));
 	} /*newpictvariable*/
 	
 
@@ -141,10 +141,10 @@ boolean pictverbnew (Handle hdata, hdlexternalvariable *hvariable) {
 	
 	hp = pictdata; /*copy into register*/
 	
-	if (!newpictvariable (true, (long) hp, (hdlpictvariable *) hvariable)) {
-		
+	if (!newpictvariable (true, (long) hp, (hdlpictvariable *) hvariable, databasedata)) { /*creating new object*/
+
 		pictdisposerecord (hp);
-		
+
 		return (false);
 		}
 	
@@ -338,10 +338,10 @@ boolean pictverbmemoryunpack (Handle hpacked, long *ixload, hdlexternalvariable 
 	if (!fl)
 		return (false);
 	
-	if (!newpictvariable (true, (long) hpict, (hdlpictvariable *) h)) {
-		
+	if (!newpictvariable (true, (long) hpict, (hdlpictvariable *) h, nil)) { /*in-memory: hdb=nil*/
+
 		pictdisposerecord (hpict);
-		
+
 		return (false);
 		}
 	
@@ -483,14 +483,14 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
 	} /*pictverbpack*/
 
 
-boolean pictverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable) {
+boolean pictverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hvariable, hdldatabaserecord hdb) {
 
 	long rawadr = 0;
-	
-	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr)) 
+
+	if (!loadlongfromdiskhandle (hpacked, ixload, &rawadr))
 		return (false);
-		
-	return (newpictvariable (false, (dbaddress) rawadr, (hdlpictvariable *) hvariable));
+
+	return (newpictvariable (false, (dbaddress) rawadr, (hdlpictvariable *) hvariable, hdb));
 	} /*pictverbunpack*/
 
 

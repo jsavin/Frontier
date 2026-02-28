@@ -814,7 +814,7 @@ boolean tablenewtable (hdltablevariable *hvariable, hdlhashtable *htable) {
 	register hdltablevariable hv;
 	register hdlhashtable ht;
 	
-	if (!newtablevariable (true, 0L, hvariable, false))
+	if (!newtablevariable (true, 0L, hvariable, false, databasedata)) /*creating new object*/
 		return (false);
 	
 	hv = *hvariable; /*copy into register*/
@@ -960,7 +960,7 @@ boolean tableloadsystemtable (dbaddress adr, Handle *hvariable, hdlhashtable *ht
 		}
 	else {
 
-		if (!newtablevariable (false, adr, (hdltablevariable *) hvariable, false))
+		if (!newtablevariable (false, adr, (hdltablevariable *) hvariable, false, databasedata)) /*loading from disk*/
 			return (false);
 
 		hv = (hdlexternalvariable) *hvariable;

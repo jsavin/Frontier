@@ -10,7 +10,7 @@ boolean langexternalpack_legacy (hdlexternalhandle h, Handle *hpacked, boolean *
 }
 
 boolean langexternalunpack_legacy (Handle hpacked, hdlexternalhandle *h) {
-    return langexternalunpack(hpacked, h);
+    return langexternalunpack(hpacked, h, databasedata);
 }
 
 boolean langexternalpacktotext_legacy (hdlexternalhandle h, Handle htext) {

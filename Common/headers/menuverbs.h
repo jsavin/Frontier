@@ -59,7 +59,7 @@ extern boolean menuverbpack (hdlexternalvariable, Handle *, boolean *);
 
 extern boolean menuverbpack_internal (const db_context *, hdlexternalvariable, Handle *, boolean *);
 
-extern boolean menuverbunpack (Handle, long *, hdlexternalvariable *);
+extern boolean menuverbunpack (Handle, long *, hdlexternalvariable *, hdldatabaserecord);
 
 extern boolean menuverbinmemory_context (const db_context *, hdlexternalvariable);
 

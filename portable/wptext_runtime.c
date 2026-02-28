@@ -439,7 +439,7 @@ boolean wpverbnew(Handle h, hdlexternalvariable *hv) {
     if (state == NULL)
         return false;
 
-    if (!langnewexternalvariable(true, 0, hv)) {
+    if (!langnewexternalvariable(true, 0, hv, nil)) { /*in-memory*/
         wp_portable_state_free(state);
         return false;
     }
@@ -506,7 +506,7 @@ boolean wpverbmemoryunpack(Handle hpacked, long *ixload, hdlexternalvariable *h)
     }
 
     hdlexternalvariable hv = nil;
-    if (!langnewexternalvariable(true, (long)(intptr_t)state, &hv)) {
+    if (!langnewexternalvariable(true, (long)(intptr_t)state, &hv, nil)) { /*in-memory*/
         wp_portable_state_free(state);
         disposehandle(hdata);
         return false;
@@ -599,8 +599,10 @@ boolean wpverbpack_internal(const db_context *ctx, hdlexternalvariable h, Handle
     return pushlongondiskhandle((long) adr, *hpacked);
 }
 
-boolean wpverbunpack(Handle hpacked, long *ixload, hdlexternalvariable *h) {
+boolean wpverbunpack(Handle hpacked, long *ixload, hdlexternalvariable *h, hdldatabaserecord hdb) {
     long rawadr = 0;
+
+    (void) hdb; /*portable wp runtime always creates in-memory objects*/
 
     if (!loadlongfromdiskhandle(hpacked, ixload, &rawadr))
         return false;
@@ -610,7 +612,7 @@ boolean wpverbunpack(Handle hpacked, long *ixload, hdlexternalvariable *h) {
         return false;
 
     hdlexternalvariable hv = nil;
-    if (!langnewexternalvariable(true, (long)(intptr_t)state, &hv)) {
+    if (!langnewexternalvariable(true, (long)(intptr_t)state, &hv, nil)) { /*in-memory*/
         wp_portable_state_free(state);
         return false;
     }

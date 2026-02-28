@@ -121,11 +121,11 @@ boolean pictverbpack (hdlexternalvariable h, Handle *hpacked, boolean *flnewdbad
     return pictverbpack_internal(NULL, h, hpacked, flnewdbaddress);
 }
 
-boolean pictverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hv) {
+boolean pictverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *hv, hdldatabaserecord hdb) {
     long rawadr = 0;
     if (!loadlongfromdiskhandle(hpacked, ixload, &rawadr))
         return false;
-    return langnewexternalvariable(false, rawadr, hv);
+    return langnewexternalvariable(false, rawadr, hv, hdb);
 }
 
 boolean pictverbpacktotext (hdlexternalvariable h, Handle htext) {

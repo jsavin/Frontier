@@ -268,10 +268,10 @@ boolean tableverbmemoryunpack_legacy (Handle hpacked, long *ixload, hdlexternalv
 	
 	ht = htable; /*move into register*/
 	
-	if (!newtablevariable (true, (long) ht, (hdltablevariable *) h, flxml)) {
-		
+	if (!newtablevariable (true, (long) ht, (hdltablevariable *) h, flxml, nil)) { /*in-memory: hdb=nil*/
+
 		tabledisposetable (ht, false);
-		
+
 		return (false);
 		}
 	
@@ -482,7 +482,7 @@ boolean tableverbunpack_legacy (Handle hpacked, long *ixload, hdlexternalvariabl
 		}
 	}
 
-	return (newtablevariable (false, rawadr, (hdltablevariable *) h, flxml));
+	return (newtablevariable (false, rawadr, (hdltablevariable *) h, flxml, databasedata));
 	} /*tableverbunpack_legacy*/
 
 

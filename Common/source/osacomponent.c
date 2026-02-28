@@ -2609,7 +2609,7 @@ osaCoerceFromDesc (
     
     copydatahandle (&desc, &h);
     
-    fl = langexternalmemoryunpack (h, (hdlexternalhandle *) &val.data.externalvalue);
+    fl = langexternalmemoryunpack (h, (hdlexternalhandle *) &val.data.externalvalue, nil);
     
     disposehandle (h);
     }

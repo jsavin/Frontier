@@ -158,17 +158,19 @@ boolean opverbpackunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) 
     return false;
 }
 
-boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
+boolean opverbunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, hdldatabaserecord hdb) {
     (void) hpacked;
     (void) ixload;
     (void) h;
+    (void) hdb;
     return false;
 }
 
-boolean opverbscriptunpack (Handle hpacked, long *ixload, hdlexternalvariable *h) {
+boolean opverbscriptunpack (Handle hpacked, long *ixload, hdlexternalvariable *h, hdldatabaserecord hdb) {
     (void) hpacked;
     (void) ixload;
     (void) h;
+    (void) hdb;
     return false;
 }
 

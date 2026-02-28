@@ -226,7 +226,7 @@ extern boolean langexternalsetdirty (hdlexternalhandle, boolean);
 
 extern boolean langexternalpack (hdlexternalhandle, Handle *, boolean *);
 
-extern boolean langexternalunpack (Handle, hdlexternalhandle *);
+extern boolean langexternalunpack (Handle, hdlexternalhandle *, hdldatabaserecord);
 
 /* Context-aware internal version (used by db_format layer) */
 struct db_context; /* forward declaration */
@@ -240,7 +240,7 @@ extern boolean langexternalunpack_legacy (Handle, hdlexternalhandle *);
 
 extern boolean langexternalmemorypack (hdlexternalhandle, Handle *, hdlhashnode);
 
-extern boolean langexternalmemoryunpack (Handle, hdlexternalhandle *);
+extern boolean langexternalmemoryunpack (Handle, hdlexternalhandle *, hdldatabaserecord);
 
 extern boolean langexternalcopyvalue (const tyvaluerecord *, tyvaluerecord *);
 
@@ -280,7 +280,7 @@ extern boolean langexternalvaltocode (tyvaluerecord, hdltreenode *);
 
 extern boolean langexternalgetvalsize (tyvaluerecord, long *);
 
-extern boolean langnewexternalvariable (boolean, long, hdlexternalvariable *);
+extern boolean langnewexternalvariable (boolean, long, hdlexternalvariable *, hdldatabaserecord);
 
 /* Single-point state transition functions (MODE_SINGLE_DECISION_POINT pattern) */
 extern boolean external_set_ondisk (hdlexternalvariable, dbaddress);

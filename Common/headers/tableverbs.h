@@ -62,7 +62,7 @@ extern boolean tableverbmemoryunpack (Handle, long *, hdlexternalvariable *, boo
 
 extern boolean tableverbpack (hdlexternalvariable, Handle *, boolean *);
 
-extern boolean tableverbunpack (Handle, long *, hdlexternalvariable *, boolean);
+extern boolean tableverbunpack (Handle, long *, hdlexternalvariable *, boolean, hdldatabaserecord);
 
 /* Context-aware internal versions (used by langexternal layer) */
 struct db_context; /* forward declaration */
