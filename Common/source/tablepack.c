@@ -593,8 +593,10 @@ static boolean tablepacktotextvisit (bigstring bsname, hdlhashnode hnode, tyvalu
 
 	if (val.fldiskval) {
 		db_context dbctx;
-		db_context_init (&dbctx);
-		dbctx.database = sctx->hdb;
+		if (db_is_v7 (sctx->hdb))
+			db_context_init_v7_read (&dbctx, sctx->hdb);
+		else
+			db_context_init_legacy_read (&dbctx, sctx->hdb);
 		if (!copyvaluerecord_internal (&dbctx, val, &val))
 			return (true);
 	}

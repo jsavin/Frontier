@@ -1740,16 +1740,21 @@ static void test_dbclearshadowavaillist_no_global_swap(void) {
 
 /* Phase 9: tablesortedinversesearch callee-saves test */
 
+static boolean phase9_unreachable_visit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {
+#pragma unused (bsname, hnode, val, refcon)
+    assert (false && "phase9_unreachable_visit: should never be called on empty table");
+    return (false);
+}
+
 static void test_tablesortedinversesearch_no_global_swap (void) {
     /*
      * Phase 9: Create a scratch v7 DB and an empty in-memory hash table.
-     * Point the table's database at the scratch DB (via the external
-     * variable refcon path that tablegetdatabase follows).  Call
-     * tablesortedinversesearch and verify that databasedata is NOT
+     * Call tablesortedinversesearch and verify that databasedata is NOT
      * mutated.
      *
-     * The table is empty so no visit callback fires; the point is to
-     * confirm that the function no longer saves/swaps/restores the global.
+     * The table is empty (hfirstsort == nil) so the visit callback should
+     * never fire. We pass a stub that asserts-false to catch regressions
+     * in hashsortedinversesearch's iteration logic.
      */
     hdb_test_ctx tctx;
     assert (open_scratch_v7_db (&tctx, "tsearch"));
@@ -1759,9 +1764,7 @@ static void test_tablesortedinversesearch_no_global_swap (void) {
 
     hdldatabaserecord before = databasedata;
 
-    /* With an empty sorted list (hfirstsort == nil from newhashtable),
-       hashsortedinversesearch returns false immediately. */
-    boolean fl = tablesortedinversesearch (ht, NULL, NULL);
+    boolean fl = tablesortedinversesearch (ht, &phase9_unreachable_visit, NULL);
 
     /* Verify databasedata was NOT mutated */
     assert (databasedata == before);

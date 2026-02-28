@@ -1078,6 +1078,9 @@ boolean langexternalpack_internal (const db_context *ctx, hdlexternalhandle h, H
 		}
 	}
 
+	/* Invariant: all switch branches below must be callee-saves for
+	   databasedata.  Each *verbpack_internal child uses an explicit
+	   db_context and never mutates the global (Phases 1-3). */
 	db_format_mode savedmode = db_format_mode_current();
 
 	switch ((**hv).id) {
