@@ -2587,25 +2587,22 @@ boolean langexternaldisposevariable (hdlexternalvariable hvariable, boolean fldi
 	hdlwindowinfo hinfo;
 	dbaddress adr;
 	boolean flwindowopen;
-	hdldatabaserecord savedatabasedata = databasedata;
-	
+
 	flwindowopen = langexternalvariablewindowopen (hv, &hinfo);
-	
+
 	if (hinfo != nil) {
-		
+
 		langexternalunregisterwindow (hinfo);
-		
+
 		if (flwindowopen) {
-			
+
 			flinhibitclosedialogs = true;
-			
+
 			shellclosewindow ((**hinfo).macwindow);
-			
+
 			flinhibitclosedialogs = false;
 			}
 		}
-	
-	databasedata = (**hv).hdatabase;
 
 	if ((**hv).flinmemory) {
 
@@ -2617,14 +2614,13 @@ boolean langexternaldisposevariable (hdlexternalvariable hvariable, boolean fldi
 		adr = (dbaddress) (**hv).variabledata;
 
 	/* Only push to release stack if there's a valid database context.
-	   In-memory tables created with lang.new() have hdatabase=NULL. */
-	if (fldisk && databasedata != NULL)
-		dbpushreleasestack (adr, (long) (outlinevaluetype + (**hv).id));
-	
-	databasedata = savedatabasedata;
-	
+	   In-memory tables created with lang.new() have hdatabase=NULL.
+	   Phase 8: use _hdb variant — no databasedata mutation needed. */
+	if (fldisk && (**hv).hdatabase != NULL)
+		dbpushreleasestack_hdb (adr, (long) (outlinevaluetype + (**hv).id), (**hv).hdatabase);
+
 	disposehandle ((Handle) hv);
-	
+
 	return (true);
 	} /*langexternaldisposevariable*/
 

@@ -136,7 +136,10 @@ void db_saveas_state_apply(const db_saveas_state *state);
    don't repeat the dereference chain.
    Precondition: context != NULL && context->database != nil. */
 static inline hdlfilenum db_context_fnum(const db_context *context) {
-    assert(context != NULL && context->database != nil);
+    if (context == NULL || context->database == nil) {
+        assert(false && "db_context_fnum: NULL context or nil database");
+        return (hdlfilenum) -1;
+    }
     return (hdlfilenum)((**context->database).fnumdatabase);
 }
 

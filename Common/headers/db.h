@@ -161,7 +161,11 @@ extern boolean db_test_is_saveas_active(void);
 
 #if defined(FRONTIER_HEADLESS)
 extern boolean dbnormalizeaddress(dbaddress *adr);
+extern boolean dbnormalizeaddress_hdb(dbaddress *adr, hdldatabaserecord hdb);
 #endif
+
+/* Phase 8: Push to release stack of explicit database handle. */
+extern boolean dbpushreleasestack_hdb(dbaddress adr, long valtype, hdldatabaserecord hdb);
 
 
 #ifdef DATABASE_DEBUG
