@@ -1,18 +1,18 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Unit Tests - 300 tests: 300 pass (100%)</title>
-    <dateCreated>Sat, 28 Feb 2026 00:54:07 GMT</dateCreated>
+    <title>Frontier Unit Tests - 302 tests: 302 pass (100%)</title>
+    <dateCreated>Sat, 28 Feb 2026 01:44:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-02-28 at 00:54 UTC"/>
-      <outline text="Results: 300 passed (100%), 0 failed (0%)"/>
-      <outline text="Executables: 30 (300 tests total)"/>
+      <outline text="Run: 2026-02-28 at 01:40 UTC"/>
+      <outline text="Results: 302 passed (100%), 0 failed (0%)"/>
+      <outline text="Executables: 30 (302 tests total)"/>
     </outline>
     <outline text="Cli Runtime Tests (cli_runtime_tests) - 12 tests: 12 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/cli_runtime_tests.opml"/>
     <outline text="Core Tests (core_tests) - 3 tests: 3 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/core_tests.opml"/>
-    <outline text="Db Format Tests (db_format_tests) - 34 tests: 34 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/db_format_tests.opml"/>
+    <outline text="Db Format Tests (db_format_tests) - 36 tests: 36 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/db_format_tests.opml"/>
     <outline text="File Portable Tests (file_portable_tests) - 1 tests: 1 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/file_portable_tests.opml"/>
     <outline text="File Readline Tests (file_readline_tests) - 1 tests: 1 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/file_readline_tests.opml"/>
     <outline text="File Verb Tests (file_verb_tests) - 0 tests" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/file_verb_tests.opml"/>

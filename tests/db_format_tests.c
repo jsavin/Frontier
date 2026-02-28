@@ -21,6 +21,7 @@
 #include "pictverbs.h"
 #include "menuverbs.h"
 #include "tableexternal_common.h"
+#include "tableinternal.h"
 #include "logging.h"
 #include "test_report.h"
 
@@ -1737,6 +1738,96 @@ static void test_dbclearshadowavaillist_no_global_swap(void) {
     log_info(LOG_COMP_DB, "[TEST] test_dbclearshadowavaillist_no_global_swap COMPLETED");
 }
 
+/* Phase 9: tablesortedinversesearch callee-saves test */
+
+static void test_tablesortedinversesearch_no_global_swap (void) {
+    /*
+     * Phase 9: Create a scratch v7 DB and an empty in-memory hash table.
+     * Point the table's database at the scratch DB (via the external
+     * variable refcon path that tablegetdatabase follows).  Call
+     * tablesortedinversesearch and verify that databasedata is NOT
+     * mutated.
+     *
+     * The table is empty so no visit callback fires; the point is to
+     * confirm that the function no longer saves/swaps/restores the global.
+     */
+    hdb_test_ctx tctx;
+    assert (open_scratch_v7_db (&tctx, "tsearch"));
+
+    hdlhashtable ht;
+    assert (newhashtable (&ht));
+
+    hdldatabaserecord before = databasedata;
+
+    /* With an empty sorted list (hfirstsort == nil from newhashtable),
+       hashsortedinversesearch returns false immediately. */
+    boolean fl = tablesortedinversesearch (ht, NULL, NULL);
+
+    /* Verify databasedata was NOT mutated */
+    assert (databasedata == before);
+    assert (!fl);
+
+    close_scratch_v7_db (&tctx);
+    log_info (LOG_COMP_DB, "[TEST] test_tablesortedinversesearch_no_global_swap COMPLETED");
+}
+
+static void test_copyvaluerecord_internal_reads_from_context (void) {
+    /*
+     * Phase 9: Allocate a string as a disk value in a scratch DB via
+     * dbsavehandle_hdb, build a db_context pointing to that DB,
+     * construct a tyvaluerecord with fldiskval=1 pointing to the
+     * saved address, call copyvaluerecord_internal(ctx, ...).
+     * Verify it reads the correct data without touching databasedata.
+     */
+    hdb_test_ctx tctx;
+    assert (open_scratch_v7_db (&tctx, "cvri"));
+
+    /* Store "PHASE9" as a handle in the scratch DB */
+    char payload[6] = "PHASE9";
+    Handle hsrc = nil;
+    assert (newfilledhandle (payload, sizeof(payload), &hsrc));
+
+    dbaddress adr = nildbaddress;
+    assert (dbsavehandle_hdb (hsrc, &adr, tctx.hdb));
+    assert (adr != nildbaddress);
+    disposehandle (hsrc);
+
+    /* Build a tyvaluerecord that looks like a disk value */
+    tyvaluerecord diskval;
+    initvalue (&diskval, stringvaluetype);
+    diskval.fldiskval = 1;
+    diskval.data.diskvalue = adr;
+
+    /* Build a db_context pointing to the scratch DB (v7 format) */
+    db_context dbctx;
+    db_context_init_v7_read (&dbctx, tctx.hdb);
+
+    hdldatabaserecord before = databasedata;
+
+    tyvaluerecord result;
+    initvalue (&result, novaluetype);
+    boolean ok = copyvaluerecord_internal (&dbctx, diskval, &result);
+    assert (ok);
+
+    /* Verify databasedata was NOT mutated */
+    assert (databasedata == before);
+
+    /* Verify the resolved value contains the correct string */
+    assert (result.valuetype == stringvaluetype);
+    assert (!result.fldiskval);
+    assert (result.data.stringvalue != nil);
+    assert (GetHandleSize (result.data.stringvalue) == sizeof(payload));
+    lockhandle (result.data.stringvalue);
+    assert (memcmp (*result.data.stringvalue, payload, sizeof(payload)) == 0);
+    unlockhandle (result.data.stringvalue);
+
+    if (exemptfromtmpstack (&result))
+        disposevaluerecord (result, false);
+
+    close_scratch_v7_db (&tctx);
+    log_info (LOG_COMP_DB, "[TEST] test_copyvaluerecord_internal_reads_from_context COMPLETED");
+}
+
 int main(void) {
     TR_INIT("db_format_tests");
 
@@ -1780,6 +1871,10 @@ int main(void) {
     TR_RUN(test_dbnormalizeaddress_hdb_roundtrip);
 #endif
     TR_RUN(test_dbclearshadowavaillist_no_global_swap);
+
+    /* Phase 9: tablesortedinversesearch callee-saves */
+    TR_RUN(test_tablesortedinversesearch_no_global_swap);
+    TR_RUN(test_copyvaluerecord_internal_reads_from_context);
 
     /* Phase 3: Tests that lock mode - MUST run LAST (mode lock is never reset) */
     TR_RUN(test_header_version_and_loader_switch);

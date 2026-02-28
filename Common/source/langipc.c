@@ -2391,19 +2391,30 @@ boolean langipcapprunning (hdltreenode hparam1, tyvaluerecord *vreturned) {
 static boolean langipcgetparamvisit (bigstring bs, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {
 #pragma unused (hnode)
 
-	hdlverbrecord hv = (hdlverbrecord) refcon;
+	/*
+	Phase 9: unwrap tablesortedsearchctx; use copyvaluerecord_internal
+	to avoid mutating databasedata.
+	*/
+
+	tablesortedsearchctx *sctx = (tablesortedsearchctx *) refcon;
+	hdlverbrecord hv = (hdlverbrecord) sctx->original_refcon;
 	OSType key;
-	
+
 	if (!stringtoostype (bs, &key)) {
-		
+
 		langparamerror (ostypecoerceerror, bs);
-		
+
 		return (true); /*stop visit*/
 		}
-	
-	if (!copyvaluerecord (val, &val))
-		return (false);
-	
+
+	{
+		db_context dbctx;
+		db_context_init (&dbctx);
+		dbctx.database = sctx->hdb;
+		if (!copyvaluerecord_internal (&dbctx, val, &val))
+			return (false);
+	}
+
 	return (!langipcpushparam (&val, key, hv));
 	} /*langipcgetparamvisit*/
 

@@ -577,28 +577,36 @@ static boolean tablepacktotextvisit (bigstring bsname, hdlhashnode hnode, tyvalu
 
 	/*
 	4.0.2b1 dmb: handle fldiskvals. see comment in hashsortedinversesearch
+
+	Phase 9: unwrap tablesortedsearchctx; use copyvaluerecord_internal
+	for disk values to avoid mutating databasedata.
 	*/
-	
-	Handle htextscrap = (Handle) refcon;
+
+	tablesortedsearchctx *sctx = (tablesortedsearchctx *) refcon;
+	Handle htextscrap = (Handle) sctx->original_refcon;
 	boolean fl;
-	
+
 	pushchar (chtab, bsname);
-	
+
 	if (!pushtexthandle (bsname, htextscrap))
 		return (true); /*abort traversal*/
-	
-	if (val.fldiskval)
-		if (!copyvaluerecord (val, &val))
+
+	if (val.fldiskval) {
+		db_context dbctx;
+		db_context_init (&dbctx);
+		dbctx.database = sctx->hdb;
+		if (!copyvaluerecord_internal (&dbctx, val, &val))
 			return (true);
-	
+	}
+
 	fl = langvaluetotextscrap (val, htextscrap);
-	
+
 	if (exemptfromtmpstack (&val))
 		disposevaluerecord (val, false);
-	
+
 	if (!fl)
 		return (true);
-	
+
 	return (false); /*keep going*/
 	} /*tablepacktotextvisit*/
 

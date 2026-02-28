@@ -213,85 +213,96 @@ static boolean tablesearchcellvalue (hdlhashnode hnode, bigstring bscell, tyvalu
 
 
 static boolean tablefindvisit (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon) {
-#pragma unused (refcon)
 
 	/*
-	7/4/91 dmb: langexternalzoom now takes table/name pair instead 
+	7/4/91 dmb: langexternalzoom now takes table/name pair instead
 	of full path.
-	
-	7/29/91 dmb: handle activate events after zooming so deferred visiing 
+
+	7/29/91 dmb: handle activate events after zooming so deferred visiing
 	takes place
-	
+
 	9/12/91 dmb: new marker logic to handle wraparound search
+
+	Phase 9: unwrap tablesortedsearchctx; resolve disk values via
+	copyvaluerecord_internal before tablesearchcellvalue.
 	*/
-	
+
+	tablesortedsearchctx *sctx = (tablesortedsearchctx *) refcon;
 	boolean flzoom;
 	boolean flsearchcell = true;
 	boolean flsearchvalue = true;
-	
+
 	if (!isemptystring (bssearchmarker)) { /*we've haven't passed the marked entry*/
-		
+
 		if (!equalstrings (bsname, bssearchmarker)) { /*we haven't reached the marked entry*/
-			
+
 			flsearchcell = false;
-			
+
 			flsearchvalue = false;
 			}
 		else { /*we're at the marked cell*/
-			
+
 			setemptystring (bssearchmarker);
-			
+
 			flsearchcell = false;
-			
+
 			flsearchvalue = flsearchundermarker;
 			}
 		}
-	
+
 	if (flsearchwrapped) { /*if the search has wrapped, we search *before* the marker, not after*/
-		
+
 		flsearchcell = !flsearchcell;
-		
+
 		flsearchvalue = !flsearchvalue;
 		}
-	
+
 	if (flsearchcell) {
-		
+
 		rollbeachball ();
-		
+
 		if (tablesearchcellname (hnode, bsname))
 			return (true);
-		
+
 		if (val.valuetype != externalvaluetype) {
-			
+
+			if (val.fldiskval) {
+				db_context dbctx;
+				db_context_init (&dbctx);
+				dbctx.database = sctx->hdb;
+				if (!copyvaluerecord_internal (&dbctx, val, &val))
+					return (true);
+			}
+
 			if (tablesearchcellvalue (hnode, bsname, val))
 				return (true);
 			}
 		}
-	
+
 	if (searchparams.flonelevel || !flsearchvalue)
 		return (false);
-	
+
 	if (keyboardescape ()) /*user pressed cmd-period -- stop visiting*/
 		return (true);
-	
+
 	if (!langexternalsearch (val, &flzoom))
 		return (false);
-	
+
 	if (searchparams.flreplaceall) /*keep going*/
 		return (false);
-	
+
 	if (flzoom && searchparams.flzoomfound) {
-		
+
 		hdlwindowinfo hinfo;
-		
+
 		langexternalzoom (val, hsearchtable, bsname);
-		
+
 		if (getfrontwindowinfo (&hinfo))
 			(**hinfo).flopenedforfind = searchparams.flwindowzoomed;
-		
+
 		shellpartialeventloop (activMask); /*handle pending activate events*/
 		}
-	
+
 	return (true);
 	} /*tablefindvisit*/
 
