@@ -994,7 +994,12 @@ static boolean headless_thread_sleep(long ticks) {
         /* Wait until poll_time or wake/kill signal.
          * condvar atomically releases state_mutex while waiting and
          * re-acquires it on return. */
-        pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &poll_time);
+        {
+            int wait_rc = pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &poll_time);
+
+            if (wait_rc != 0 && wait_rc != ETIMEDOUT)
+                log_error(LOG_COMP_THREAD, "headless_thread_sleep: pthread_cond_timedwait failed: %d", wait_rc);
+        }
 
         /* Read state under state_mutex, then release it BEFORE acquiring
          * the GIL. This maintains the lock ordering (GIL → state_mutex)
