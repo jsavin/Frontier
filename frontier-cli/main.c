@@ -1281,6 +1281,52 @@ static boolean load_system_root_database(const char* path) {
     return load_system_root_database_internal(path, true);
 }
 
+/* Saves the system root database to disk before unloading.
+ * Called during cleanup to persist any changes made during script execution
+ * (e.g., user.databases entries created by finishInstall during first-run). */
+static void save_system_root_on_exit(void) {
+    dbaddress root_adr;
+    db_context ctx;
+
+    if (databasedata == nil || rootvariable == nil) {
+        return;
+    }
+
+    /* Skip save if the database header has not been dirtied this session */
+    if (!((**databasedata).flags & dbdirtymask)) {
+        cli_log_info("System root not dirty, skipping save");
+        return;
+    }
+
+    cli_log_info("Saving system root database before exit");
+
+    /* Save the root table using v7 format */
+    {
+        db_format_mode mode = {true, false, false};  /* 64-bit, no adapter_repack, no drop_cancoon */
+        db_format_mode_push(&mode);
+
+        if (!tablesavesystemtable(rootvariable, &root_adr)) {
+            db_format_mode_pop();
+            cli_log_warn("save_system_root_on_exit: tablesavesystemtable failed");
+            return;
+        }
+
+        db_format_mode_pop();
+    }
+
+    /* Flush release stack */
+    db_context_init(&ctx);
+
+    if (!dbflushreleasestack_context(&ctx))
+        cli_log_warn("save_system_root_on_exit: dbflushreleasestack_context failed");
+
+    /* Update views[0] to point to the saved root table;
+     * dbsetview already flushes the header to disk. */
+    dbsetview(cancoonview, root_adr);
+
+    cli_log_info("System root database saved successfully");
+}
+
 /* Unloads the system root database and clears all global table structures. */
 static void unload_system_root_database(void) {
     if (!g_system_root_loaded) {
@@ -1289,6 +1335,9 @@ static void unload_system_root_database(void) {
 
     const char* path = (g_system_root_path[0] != '\0') ? g_system_root_path : "(unknown)";
     cli_log_info("Unloading system root database: %s", path);
+
+    /* Save any changes made during this session before tearing down */
+    save_system_root_on_exit();
 
     if (systemtable != nil) {
         if (!unlinksystemtablestructure()) {
