@@ -36,6 +36,7 @@
 #include "threadregistry.h"
 #include "processinternal.h"
 #include "script_portable.h"
+#include "tcpverbs.h"  /* tcp_process_callbacks */
 #include <errno.h>
 #include <sched.h>
 
@@ -85,6 +86,24 @@ extern void headless_restore_threadglobals(hdlthreadglobals hg);
  */
 static pthread_mutex_t frontier_gil = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t gil_available = PTHREAD_COND_INITIALIZER;
+
+/*
+ * Yield synchronization for headless_backgroundtask().
+ *
+ * When the main thread yields the GIL via backgroundtask, it needs to
+ * actually block long enough for waiting threads (e.g., TCP callback
+ * threads) to acquire the GIL and run. A bare sched_yield() is not
+ * sufficient — it's a hint to the OS scheduler and often returns before
+ * the waiting thread gets scheduled, causing the main thread to immediately
+ * reacquire the GIL (starvation).
+ *
+ * Solution: the yielding thread sleeps on yield_cond for a short timeout
+ * (1ms) WITHOUT holding the GIL. This guarantees the waiting thread gets
+ * a chance to run. The callback thread signals yield_cond when it finishes,
+ * waking the yielder early if no more work is pending.
+ */
+static pthread_mutex_t yield_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t yield_cond = PTHREAD_COND_INITIALIZER;
 
 /*
  * headless_threading_init - Main thread acquires the GIL at startup
@@ -270,6 +289,11 @@ static void *thread_entry_point(void *arg) {
     pthread_mutex_unlock(&frontier_gil);
     pthread_cond_broadcast(&gil_available);
 
+    /* Wake any thread blocked in headless_backgroundtask yield wait */
+    pthread_mutex_lock(&yield_mutex);
+    pthread_cond_signal(&yield_cond);
+    pthread_mutex_unlock(&yield_mutex);
+
     return NULL;
 }
 
@@ -293,7 +317,9 @@ static void *callback_thread_entry_point(void *arg) {
     }
 
     /* Block until we can acquire the GIL */
+    log_debug(LOG_COMP_THREAD, "callback_thread_entry_point: waiting for GIL");
     pthread_mutex_lock(&frontier_gil);
+    log_debug(LOG_COMP_THREAD, "callback_thread_entry_point: acquired GIL, executing callback");
 
     /* Restore this thread's globals (makes C globals point to our state) */
     headless_restore_threadglobals(params->hglobals);
@@ -336,6 +362,13 @@ static void *callback_thread_entry_point(void *arg) {
     /* Release the GIL and signal other threads */
     pthread_mutex_unlock(&frontier_gil);
     pthread_cond_broadcast(&gil_available);
+
+    /* Wake the yielding thread (headless_backgroundtask) so it can
+     * reacquire the GIL promptly instead of waiting for the full
+     * yield timeout to expire. */
+    pthread_mutex_lock(&yield_mutex);
+    pthread_cond_signal(&yield_cond);
+    pthread_mutex_unlock(&yield_mutex);
 
     return NULL;
 }
@@ -838,12 +871,38 @@ boolean headless_backgroundtask(boolean flresting) {
 #pragma unused(flresting)
     hdlthreadglobals my_globals_handle = hthreadglobals;
 
+    /* Process any pending TCP callbacks BEFORE yielding the GIL.
+     * The TCP accept thread enqueues callbacks into a queue, but they
+     * must be dequeued and spawned as GIL-aware threads by the main
+     * thread (or any thread holding the GIL). Without this, callbacks
+     * enqueued during -e mode (no REPL idle loop) would never execute. */
+    tcp_process_callbacks();
+
     headless_save_threadglobals(my_globals_handle);
 
     /* Release the GIL and let other threads run */
     pthread_mutex_unlock(&frontier_gil);
     pthread_cond_broadcast(&gil_available);
-    sched_yield();
+
+    /* Block briefly WITHOUT holding the GIL so waiting threads (e.g., TCP
+     * callback threads) can acquire it and execute. A bare sched_yield()
+     * was insufficient — it often returned before the waiting thread got
+     * scheduled, starving callback threads indefinitely.
+     *
+     * The 1ms timeout is a ceiling; callback threads signal yield_cond
+     * when they finish, waking us early. */
+    {
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += 1000000; /* 1ms */
+        if (ts.tv_nsec >= 1000000000L) {
+            ts.tv_sec++;
+            ts.tv_nsec -= 1000000000L;
+        }
+        pthread_mutex_lock(&yield_mutex);
+        pthread_cond_timedwait(&yield_cond, &yield_mutex, &ts);
+        pthread_mutex_unlock(&yield_mutex);
+    }
 
     /* Reacquire the GIL */
     pthread_mutex_lock(&frontier_gil);
@@ -864,6 +923,11 @@ boolean headless_backgroundtask(boolean flresting) {
  * Sleeps for the specified number of ticks (60 ticks/sec).
  * Releases the GIL during sleep so other threads can run.
  * Can be interrupted by thread.wake() or thread.kill().
+ *
+ * Uses a polling loop (50ms intervals) to periodically reacquire the
+ * GIL and process TCP callbacks. Without this, HTTP requests arriving
+ * during a long sleep would be accepted but never dispatched — the
+ * callback would sit in the queue until the sleep expires.
  */
 static boolean headless_thread_sleep(long ticks) {
     long idthread = (long)(**hthreadglobals).idthread;
@@ -873,47 +937,78 @@ static boolean headless_thread_sleep(long ticks) {
     if (rec == NULL)
         return false;
 
+    /* Process any pending TCP callbacks before sleeping */
+    tcp_process_callbacks();
+
     /* Save globals before releasing the GIL */
     headless_save_threadglobals(my_globals_handle);
 
-    /* Mark as sleeping and compute wake time */
+    /* Mark as sleeping and compute absolute wake time */
     pthread_mutex_lock(&rec->state_mutex);
     rec->is_sleeping = true;
 
-    /* Convert ticks to timespec (60 ticks/sec) */
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
+    struct timespec wake_time;
+    clock_gettime(CLOCK_REALTIME, &wake_time);
     long seconds = ticks / TICKS_PER_SECOND;
     long remaining_ticks = ticks % TICKS_PER_SECOND;
-    ts.tv_sec += seconds;
-    ts.tv_nsec += (remaining_ticks * 1000000000L) / TICKS_PER_SECOND;
-    if (ts.tv_nsec >= 1000000000L) {
-        ts.tv_sec += 1;
-        ts.tv_nsec -= 1000000000L;
+    wake_time.tv_sec += seconds;
+    wake_time.tv_nsec += (remaining_ticks * 1000000000L) / TICKS_PER_SECOND;
+    if (wake_time.tv_nsec >= 1000000000L) {
+        wake_time.tv_sec += 1;
+        wake_time.tv_nsec -= 1000000000L;
     }
 
-    /* Release the GIL so other threads can run while we sleep */
-    pthread_mutex_unlock(&frontier_gil);
-    pthread_cond_broadcast(&gil_available);
+    /* Polling loop: sleep in 50ms intervals, periodically reacquiring
+     * the GIL to process TCP callbacks. This ensures HTTP connections
+     * accepted during a long sleep get dispatched promptly. */
+    boolean was_killed = false;
 
-    /* Wait until timeout or wake signal.
-     * This blocks only this OS thread — others can acquire the GIL.
-     * Returns 0 (signaled), ETIMEDOUT (normal expiry), or error. */
-    {
-        int wait_rc = pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &ts);
+    while (!was_killed) {
+        /* Compute next poll time: min(wake_time, now + 50ms) */
+        struct timespec poll_time;
+        clock_gettime(CLOCK_REALTIME, &poll_time);
+        poll_time.tv_nsec += 50000000L; /* 50ms */
+        if (poll_time.tv_nsec >= 1000000000L) {
+            poll_time.tv_sec++;
+            poll_time.tv_nsec -= 1000000000L;
+        }
 
-        if (wait_rc != 0 && wait_rc != ETIMEDOUT)
-            log_error(LOG_COMP_THREAD, "pthread_cond_timedwait failed: %d", wait_rc);
+        /* Use wake_time if it comes before the next poll */
+        boolean is_final = false;
+        if (poll_time.tv_sec > wake_time.tv_sec ||
+            (poll_time.tv_sec == wake_time.tv_sec && poll_time.tv_nsec >= wake_time.tv_nsec)) {
+            poll_time = wake_time;
+            is_final = true;
+        }
+
+        /* Release the GIL so other threads can run while we sleep */
+        pthread_mutex_unlock(&frontier_gil);
+        pthread_cond_broadcast(&gil_available);
+
+        /* Wait until poll_time or wake/kill signal */
+        int wait_rc = pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &poll_time);
+
+        was_killed = rec->is_killed;
+        boolean was_woken = (wait_rc == 0 && !was_killed); /* signaled by thread.wake() */
+
+        /* Reacquire the GIL to process callbacks */
+        pthread_mutex_lock(&frontier_gil);
+
+        /* Process any TCP callbacks that arrived during the sleep interval */
+        headless_restore_threadglobals(my_globals_handle);
+        tcp_process_callbacks();
+        headless_save_threadglobals(my_globals_handle);
+
+        if (is_final || was_woken || was_killed)
+            break;
     }
 
     rec->is_sleeping = false;
-    boolean was_killed = rec->is_killed;
+    if (!was_killed)
+        was_killed = rec->is_killed;
     pthread_mutex_unlock(&rec->state_mutex);
 
-    /* Reacquire the GIL before touching C globals */
-    pthread_mutex_lock(&frontier_gil);
-
-    /* Restore our globals */
+    /* Restore our globals (GIL already held from loop) */
     headless_restore_threadglobals(my_globals_handle);
 
     release_thread_record(rec);
