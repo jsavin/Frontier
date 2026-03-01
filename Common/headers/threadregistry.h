@@ -121,6 +121,7 @@ typedef struct frontier_pthread_record {
     boolean is_sleeping;            /* Thread is sleeping */
     unsigned long wakeup_ticks;     /* Auto-wake tick count (0 = disabled) */
     boolean is_killed;              /* Thread has been killed */
+    boolean is_woken;               /* Thread.wake() signal (predicate for spurious wakeups) */
     boolean in_use;                 /* Slot is in use */
     int refcount;                   /* Reference count (0 = can destroy primitives; protected by refcount_mutex) */
 } frontier_pthread_record;
