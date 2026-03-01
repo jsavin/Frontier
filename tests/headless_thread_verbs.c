@@ -946,6 +946,7 @@ static boolean headless_thread_sleep(long ticks) {
     /* Mark as sleeping and compute absolute wake time */
     pthread_mutex_lock(&rec->state_mutex);
     rec->is_sleeping = true;
+    rec->is_woken = false;  /* clear predicate before entering sleep loop */
 
     struct timespec wake_time;
     clock_gettime(CLOCK_REALTIME, &wake_time);
@@ -960,10 +961,15 @@ static boolean headless_thread_sleep(long ticks) {
 
     /* Polling loop: sleep in 50ms intervals, periodically reacquiring
      * the GIL to process TCP callbacks. This ensures HTTP connections
-     * accepted during a long sleep get dispatched promptly. */
+     * accepted during a long sleep get dispatched promptly.
+     *
+     * Lock ordering: frontier_gil → state_mutex (same as thread.wake/kill).
+     * After condvar wait re-acquires state_mutex, we must release it BEFORE
+     * acquiring frontier_gil to avoid ABBA deadlock. */
     boolean was_killed = false;
+    boolean was_woken = false;
 
-    while (!was_killed) {
+    while (!was_killed && !was_woken) {
         /* Compute next poll time: min(wake_time, now + 50ms) */
         struct timespec poll_time;
         clock_gettime(CLOCK_REALTIME, &poll_time);
@@ -985,30 +991,39 @@ static boolean headless_thread_sleep(long ticks) {
         pthread_mutex_unlock(&frontier_gil);
         pthread_cond_broadcast(&gil_available);
 
-        /* Wait until poll_time or wake/kill signal */
-        int wait_rc = pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &poll_time);
+        /* Wait until poll_time or wake/kill signal.
+         * condvar atomically releases state_mutex while waiting and
+         * re-acquires it on return. */
+        pthread_cond_timedwait(&rec->wake_cond, &rec->state_mutex, &poll_time);
 
+        /* Read state under state_mutex, then release it BEFORE acquiring
+         * the GIL. This maintains the lock ordering (GIL → state_mutex)
+         * and prevents ABBA deadlock with thread.wake/kill which acquire
+         * state_mutex while holding the GIL. */
         was_killed = rec->is_killed;
-        boolean was_woken = (wait_rc == 0 && !was_killed); /* signaled by thread.wake() */
+        was_woken = rec->is_woken;  /* predicate flag, not condvar return */
+        rec->is_sleeping = (!(is_final || was_woken || was_killed));
+        pthread_mutex_unlock(&rec->state_mutex);
 
-        /* Reacquire the GIL to process callbacks */
+        /* Reacquire the GIL (no other mutex held — safe) */
         pthread_mutex_lock(&frontier_gil);
 
-        /* Process any TCP callbacks that arrived during the sleep interval */
+        /* Process any TCP callbacks that arrived during the sleep interval.
+         * Invariant: tcp_process_callbacks only acquires CALLBACK_QUEUE_LOCK,
+         * never state_mutex, so no deadlock risk here. */
         headless_restore_threadglobals(my_globals_handle);
         tcp_process_callbacks();
         headless_save_threadglobals(my_globals_handle);
 
         if (is_final || was_woken || was_killed)
             break;
+
+        /* Re-lock state_mutex for the next condvar wait iteration */
+        pthread_mutex_lock(&rec->state_mutex);
     }
 
-    rec->is_sleeping = false;
-    if (!was_killed)
-        was_killed = rec->is_killed;
-    pthread_mutex_unlock(&rec->state_mutex);
-
-    /* Restore our globals (GIL already held from loop) */
+    /* Globals are in saved state from the last save_threadglobals in the loop.
+     * Restore them now that we hold the GIL and are done sleeping. */
     headless_restore_threadglobals(my_globals_handle);
 
     release_thread_record(rec);
@@ -1187,6 +1202,7 @@ static boolean thread_valueproc(short token, hdltreenode hparam1,
                 return false;
 
             pthread_mutex_lock(&rec->state_mutex);
+            rec->is_woken = true;  /* predicate flag for spurious wakeup detection */
             pthread_cond_signal(&rec->wake_cond);
             pthread_mutex_unlock(&rec->state_mutex);
 
