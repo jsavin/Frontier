@@ -1292,6 +1292,12 @@ static void save_system_root_on_exit(void) {
         return;
     }
 
+    /* Skip save if the database header has not been dirtied this session */
+    if (!((**databasedata).flags & dbdirtymask)) {
+        cli_log_info("System root not dirty, skipping save");
+        return;
+    }
+
     cli_log_info("Saving system root database before exit");
 
     /* Save the root table using v7 format */
@@ -1312,13 +1318,11 @@ static void save_system_root_on_exit(void) {
     db_context_init(&ctx);
     dbflushreleasestack_context(&ctx);
 
-    /* Update views[0] to point to the saved root table */
+    /* Update views[0] to point to the saved root table;
+     * dbsetview already flushes the header to disk. */
     dbsetview(cancoonview, root_adr);
 
-    /* Flush to disk */
-    if (!dbclose()) {
-        cli_log_warn("save_system_root_on_exit: dbclose (flush) failed");
-    }
+    cli_log_info("System root database saved successfully");
 }
 
 /* Unloads the system root database and clears all global table structures. */
