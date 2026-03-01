@@ -1316,7 +1316,9 @@ static void save_system_root_on_exit(void) {
 
     /* Flush release stack */
     db_context_init(&ctx);
-    dbflushreleasestack_context(&ctx);
+
+    if (!dbflushreleasestack_context(&ctx))
+        cli_log_warn("save_system_root_on_exit: dbflushreleasestack_context failed");
 
     /* Update views[0] to point to the saved root table;
      * dbsetview already flushes the header to disk. */
