@@ -28,6 +28,27 @@ tests:
     expected_success: true
     expected_result: "test.txt"
 
+  - name: "file.fileFromPath - directory path with trailing separator"
+    description: "Trailing separator preserved in returned name (POSIX directory paths)"
+    script: |
+      return file.fileFromPath("/path/to/users/")
+    expected_success: true
+    expected_result: "users/"
+
+  - name: "file.fileFromPath - directory path without trailing separator"
+    description: "No trailing separator returns plain name"
+    script: |
+      return file.fileFromPath("/path/to/users")
+    expected_success: true
+    expected_result: "users"
+
+  - name: "file.fileFromPath - root path"
+    description: "Root path returns separator"
+    script: |
+      return file.fileFromPath("/")
+    expected_success: true
+    expected_result: "/"
+
   - name: "file.exists - nonexistent file"
     description: "Check that nonexistent file returns false"
     script: |
