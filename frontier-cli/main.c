@@ -1292,11 +1292,16 @@ static void save_system_root_on_exit(void) {
         return;
     }
 
-    /* Skip save if the database header has not been dirtied this session */
-    if (!((**databasedata).flags & dbdirtymask)) {
-        cli_log_info("System root not dirty, skipping save");
-        return;
-    }
+    /* Note: We intentionally do NOT check dbdirtymask here.
+     *
+     * The dbdirtymask flag tracks disk-level allocation changes (new blocks
+     * allocated/released), but in-memory table modifications (e.g., new entries
+     * added via hashinsert) set fldirty on hash tables WITHOUT setting dbdirtymask.
+     * This means in-memory changes can exist that dbdirtymask doesn't reflect.
+     *
+     * tablesavesystemtable() is efficient when nothing is dirty — it walks the
+     * in-memory tree checking fldirty/flsubsdirty and no-ops for clean tables.
+     * The cost of an unnecessary walk is minimal compared to losing data. */
 
     cli_log_info("Saving system root database before exit");
 
