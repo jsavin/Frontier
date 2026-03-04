@@ -1949,18 +1949,12 @@ static boolean process_line(const char *line, boolean *running) {
  */
 static int repl_main_blocking(void) {
     boolean running = true;
-    boolean force_interactive = (getenv("FRONTIER_FORCE_INTERACTIVE") != NULL);
     char line_buf[MAX_COMMAND_LEN];
 
     while (running) {
-        // Print prompt
-        if (force_interactive) {
-            fputs(g_repl_prompt, stderr);
-            fflush(stderr);
-        } else {
-            fputs(g_repl_prompt, stdout);
-            fflush(stdout);
-        }
+        // Print prompt to stderr to avoid corrupting captured stdout in piped mode
+        fputs(g_repl_prompt, stderr);
+        fflush(stderr);
 
         // Poll-based input loop: yield GIL while waiting for input
         char *line = NULL;
@@ -1969,7 +1963,8 @@ static int repl_main_blocking(void) {
             struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
             int ready = poll(&pfd, 1, POLL_TIMEOUT_MS);
 
-            if (ready > 0 && (pfd.revents & POLLIN)) {
+            if (ready > 0 && (pfd.revents & (POLLIN | POLLHUP | POLLERR))) {
+                // Input available, EOF, or error — fgets handles all cases
                 line = fgets(line_buf, sizeof(line_buf), stdin);
                 break;
             }
@@ -1984,23 +1979,24 @@ static int repl_main_blocking(void) {
             tcp_process_callbacks();
             headless_backgroundtask(true);
 
-            if (agentsenabled())
+            if (agentsenabled()) {
                 agentscheduler_tick();
+            }
         }
 
-        if (line == NULL)
-            break;  // EOF or read error
+        if (line == NULL) {
+            if (ferror(stdin)) {
+                log_error(LOG_COMP_GENERAL, "stdin read error in blocking REPL: %s", strerror(errno));
+            }
+            break;
+        }
 
         // Strip trailing newline
         size_t len = strlen(line_buf);
         if (len > 0 && line_buf[len - 1] == '\n')
             line_buf[len - 1] = '\0';
 
-        // Add non-empty lines to history
-        if (line_buf[0] != '\0')
-            linenoiseHistoryAdd(line_buf);
-
-        // Process the line
+        // Process the line (process_line handles history via linenoiseHistoryAdd)
         process_line(line_buf, &running);
 
         // Process callbacks after each command
