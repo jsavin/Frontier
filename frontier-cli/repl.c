@@ -1942,30 +1942,66 @@ static boolean process_line(const char *line, boolean *running) {
 
 /* Blocking REPL loop for non-TTY input (fallback mode).
  * Used when stdin is not a terminal (e.g., piped input).
+ *
+ * Uses poll()-based input loop that yields the GIL between input checks,
+ * mirroring the event loop mode's yield pattern. This allows background
+ * threads (TCP callbacks, agents) to run while waiting for input.
  */
 static int repl_main_blocking(void) {
     boolean running = true;
     boolean force_interactive = (getenv("FRONTIER_FORCE_INTERACTIVE") != NULL);
+    char line_buf[MAX_COMMAND_LEN];
 
     while (running) {
-        // In force-interactive mode (testing), manually output the prompt
-        // since linenoise may suppress it when stdin isn't a real TTY
+        // Print prompt
         if (force_interactive) {
             fputs(g_repl_prompt, stderr);
             fflush(stderr);
+        } else {
+            fputs(g_repl_prompt, stdout);
+            fflush(stdout);
         }
 
-        // Read line with blocking linenoise
-        char *line = linenoise(force_interactive ? "" : g_repl_prompt);
+        // Poll-based input loop: yield GIL while waiting for input
+        char *line = NULL;
 
-        if (line == NULL) {
-            // EOF (Ctrl-D) or error
-            break;
+        while (1) {
+            struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
+            int ready = poll(&pfd, 1, POLL_TIMEOUT_MS);
+
+            if (ready > 0 && (pfd.revents & POLLIN)) {
+                line = fgets(line_buf, sizeof(line_buf), stdin);
+                break;
+            }
+
+            if (ready < 0 && errno != EINTR) {
+                // Unrecoverable poll() error
+                log_error(LOG_COMP_GENERAL, "poll() failed in blocking REPL: %s", strerror(errno));
+                return 1;
+            }
+
+            // No input ready — yield GIL so background threads can run
+            tcp_process_callbacks();
+            headless_backgroundtask(true);
+
+            if (agentsenabled())
+                agentscheduler_tick();
         }
+
+        if (line == NULL)
+            break;  // EOF or read error
+
+        // Strip trailing newline
+        size_t len = strlen(line_buf);
+        if (len > 0 && line_buf[len - 1] == '\n')
+            line_buf[len - 1] = '\0';
+
+        // Add non-empty lines to history
+        if (line_buf[0] != '\0')
+            linenoiseHistoryAdd(line_buf);
 
         // Process the line
-        process_line(line, &running);
-        linenoiseFree(line);
+        process_line(line_buf, &running);
 
         // Process callbacks after each command
         tcp_process_callbacks();
