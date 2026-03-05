@@ -270,10 +270,10 @@ tests:
   # Test 2: No local shadowing (backward compatibility)
   - name: "xml.frontiervaluetotaggedtext - global variable (no local shadow)"
     script: |
-      new(tableType, @workspace.globaltest);
-      workspace.globaltest.value = 42;
-      local(result = xml.frontiervaluetotaggedtext(@workspace.globaltest, 0));
-      delete(@workspace.globaltest);
+      new(tableType, @system.temp.globaltest);
+      system.temp.globaltest.value = 42;
+      local(result = xml.frontiervaluetotaggedtext(@system.temp.globaltest, 0));
+      delete(@system.temp.globaltest);
       return result
     expected_contains:
       - "<struct>"
@@ -285,16 +285,16 @@ tests:
   # Test 3: Nested scopes (with statement)
   - name: "xml.frontiervaluetotaggedtext - with statement scope"
     script: |
-      new(tableType, @workspace.outer);
+      new(tableType, @system.temp.outer);
       local(data);
       new(tableType, @data);
       data.value = "inner";
-      with workspace.outer {
+      with system.temp.outer {
         local(data);
         new(tableType, @data);
         data.value = "test";
         local(result = xml.frontiervaluetotaggedtext(@data, 0));
-        delete(@workspace.outer);
+        delete(@system.temp.outer);
         return result
       }
     expected_contains:
@@ -619,9 +619,9 @@ tests:
   - name: "xml.getAddressList - verify list contents"
     script: |
       local(xmlText = "<root><item>first</item><item>second</item></root>");
-      new(tableType, @workspace.xmltest);
-      xml.compile(xmlText, @workspace.xmltest);
-      local(rootAddr = xml.getAddress(@workspace.xmltest, "root"));
+      new(tableType, @system.temp.xmltest);
+      xml.compile(xmlText, @system.temp.xmltest);
+      local(rootAddr = xml.getAddress(@system.temp.xmltest, "root"));
       local(addrList);
       new(listType, @addrList);
       if xml.getAddressList(rootAddr, "item", @addrList) {
@@ -1184,9 +1184,9 @@ tests:
   - name: "xml - getAddressList and iterate"
     script: |
       local(xmlText = "<root><num>1</num><num>2</num><num>3</num></root>");
-      new(tableType, @workspace.xmltest);
-      xml.compile(xmlText, @workspace.xmltest);
-      local(rootAddr = xml.getAddress(@workspace.xmltest, "root"));
+      new(tableType, @system.temp.xmltest);
+      xml.compile(xmlText, @system.temp.xmltest);
+      local(rootAddr = xml.getAddress(@system.temp.xmltest, "root"));
       local(addrList);
       new(listType, @addrList);
       xml.getAddressList(rootAddr, "num", @addrList);

@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Op Outlinetoxml Headless (op_outlinetoxml_headless) - 15 tests: 15 pass (100%)</title>
-    <dateCreated>Fri, 06 Feb 2026 06:03:28 GMT</dateCreated>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="op.outlineToXml - empty outline returns valid OPML - Convert empty outline to OPML (previously caused stack overflow)">
@@ -10,8 +10,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.emptyOutline)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @system.temp.emptyOutline)"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="return string.mid(xml, 1, 5) == &quot;&lt;?xml&quot;"/>
       </outline>
     </outline>
@@ -20,8 +20,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.emptyOutline)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @system.temp.emptyOutline)"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="return string.patternMatch(&quot;&lt;opml&quot;, xml) &gt; 0"/>
       </outline>
     </outline>
@@ -30,8 +30,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.emptyOutline)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @system.temp.emptyOutline)"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="return string.patternMatch(&quot;&lt;head&gt;&quot;, xml) &gt; 0"/>
       </outline>
     </outline>
@@ -40,8 +40,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.emptyOutline)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @system.temp.emptyOutline)"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.emptyOutline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="return string.patternMatch(&quot;&lt;body&gt;&quot;, xml) &gt; 0"/>
       </outline>
     </outline>
@@ -50,10 +50,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.singleLine)"/>
-        <outline text="target.set(@workspace.singleLine)"/>
+        <outline text="lang.new(outlineType, @system.temp.singleLine)"/>
+        <outline text="target.set(@system.temp.singleLine)"/>
         <outline text="op.setLineText(&quot;Hello World&quot;)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.singleLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.singleLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="return string.patternMatch(&quot;Hello World&quot;, xml) &gt; 0"/>
       </outline>
     </outline>
@@ -62,10 +62,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.singleLine)"/>
-        <outline text="target.set(@workspace.singleLine)"/>
+        <outline text="lang.new(outlineType, @system.temp.singleLine)"/>
+        <outline text="target.set(@system.temp.singleLine)"/>
         <outline text="op.setLineText(&quot;Test Line&quot;)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.singleLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.singleLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="return string.patternMatch(&quot;&lt;outline text=&quot;, xml) &gt; 0"/>
       </outline>
     </outline>
@@ -74,12 +74,12 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.multiLine)"/>
-        <outline text="target.set(@workspace.multiLine)"/>
+        <outline text="lang.new(outlineType, @system.temp.multiLine)"/>
+        <outline text="target.set(@system.temp.multiLine)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.multiLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.multiLine, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="local(has1 = string.patternMatch(&quot;Line 1&quot;, xml) &gt; 0)"/>
         <outline text="local(has2 = string.patternMatch(&quot;Line 2&quot;, xml) &gt; 0)"/>
         <outline text="local(has3 = string.patternMatch(&quot;Line 3&quot;, xml) &gt; 0)"/>
@@ -91,12 +91,12 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.nested)"/>
-        <outline text="target.set(@workspace.nested)"/>
+        <outline text="lang.new(outlineType, @system.temp.nested)"/>
+        <outline text="target.set(@system.temp.nested)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Child 2&quot;, down)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.nested, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.nested, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="local(hasParent = string.patternMatch(&quot;Parent&quot;, xml) &gt; 0)"/>
         <outline text="local(hasChild1 = string.patternMatch(&quot;Child 1&quot;, xml) &gt; 0)"/>
         <outline text="local(hasChild2 = string.patternMatch(&quot;Child 2&quot;, xml) &gt; 0)"/>
@@ -108,10 +108,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setLineText(&quot;Content&quot;)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;John Doe&quot;, &quot;john@example.com&quot;))"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.outline, &quot;John Doe&quot;, &quot;john@example.com&quot;))"/>
         <outline text="return string.patternMatch(&quot;John Doe&quot;, xml) &gt; 0"/>
       </outline>
     </outline>
@@ -120,10 +120,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setLineText(&quot;Content&quot;)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;John Doe&quot;, &quot;john@example.com&quot;))"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.outline, &quot;John Doe&quot;, &quot;john@example.com&quot;))"/>
         <outline text="return string.patternMatch(&quot;john@example.com&quot;, xml) &gt; 0"/>
       </outline>
     </outline>
@@ -132,10 +132,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setLineText(&quot;Test&quot;)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;User&quot;, &quot;user@example.com&quot;))"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.outline, &quot;User&quot;, &quot;user@example.com&quot;))"/>
         <outline text="local(hasOpml = string.patternMatch(&quot;&lt;opml&quot;, xml) &gt; 0)"/>
         <outline text="local(hasHead = string.patternMatch(&quot;&lt;head&gt;&quot;, xml) &gt; 0)"/>
         <outline text="local(hasBody = string.patternMatch(&quot;&lt;body&gt;&quot;, xml) &gt; 0)"/>
@@ -148,10 +148,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setLineText(&quot;Test&quot;)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.outline, &quot;User&quot;, &quot;user@example.com&quot;))"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.outline, &quot;User&quot;, &quot;user@example.com&quot;))"/>
         <outline text="return string.mid(xml, 1, 5) == &quot;&lt;?xml&quot;"/>
       </outline>
     </outline>
@@ -160,13 +160,13 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.rtSrc)"/>
-        <outline text="target.set(@workspace.rtSrc)"/>
+        <outline text="lang.new(outlineType, @system.temp.rtSrc)"/>
+        <outline text="target.set(@system.temp.rtSrc)"/>
         <outline text="op.setLineText(&quot;RoundTripTest&quot;)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.rtSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
-        <outline text="lang.new(outlineType, @workspace.rtDst)"/>
-        <outline text="op.xmlToOutline(xml, @workspace.rtDst)"/>
-        <outline text="target.set(@workspace.rtDst)"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.rtSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @system.temp.rtDst)"/>
+        <outline text="op.xmlToOutline(xml, @system.temp.rtDst)"/>
+        <outline text="target.set(@system.temp.rtDst)"/>
         <outline text="op.firstSummit()"/>
         <outline text="return op.getLineText() == &quot;RoundTripTest&quot;"/>
       </outline>
@@ -176,14 +176,14 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.rtMultiSrc)"/>
-        <outline text="target.set(@workspace.rtMultiSrc)"/>
+        <outline text="lang.new(outlineType, @system.temp.rtMultiSrc)"/>
+        <outline text="target.set(@system.temp.rtMultiSrc)"/>
         <outline text="op.setLineText(&quot;First&quot;)"/>
         <outline text="op.insert(&quot;Second&quot;, down)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.rtMultiSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
-        <outline text="lang.new(outlineType, @workspace.rtMultiDst)"/>
-        <outline text="op.xmlToOutline(xml, @workspace.rtMultiDst)"/>
-        <outline text="target.set(@workspace.rtMultiDst)"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.rtMultiSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @system.temp.rtMultiDst)"/>
+        <outline text="op.xmlToOutline(xml, @system.temp.rtMultiDst)"/>
+        <outline text="target.set(@system.temp.rtMultiDst)"/>
         <outline text="op.firstSummit()"/>
         <outline text="local(hasFirst = op.getLineText() == &quot;First&quot;)"/>
         <outline text="op.go(right, 1)"/>
@@ -196,14 +196,14 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.rtNestedSrc)"/>
-        <outline text="target.set(@workspace.rtNestedSrc)"/>
+        <outline text="lang.new(outlineType, @system.temp.rtNestedSrc)"/>
+        <outline text="target.set(@system.temp.rtNestedSrc)"/>
         <outline text="op.setLineText(&quot;Parent&quot;)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
-        <outline text="local(xml = op.outlineToXml(@workspace.rtNestedSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
-        <outline text="lang.new(outlineType, @workspace.rtNestedDst)"/>
-        <outline text="op.xmlToOutline(xml, @workspace.rtNestedDst)"/>
-        <outline text="target.set(@workspace.rtNestedDst)"/>
+        <outline text="local(xml = op.outlineToXml(@system.temp.rtNestedSrc, &quot;User&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @system.temp.rtNestedDst)"/>
+        <outline text="op.xmlToOutline(xml, @system.temp.rtNestedDst)"/>
+        <outline text="target.set(@system.temp.rtNestedDst)"/>
         <outline text="op.firstSummit()"/>
         <outline text="local(hasChild = op.go(right, 1))"/>
         <outline text="return hasChild"/>

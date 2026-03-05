@@ -260,6 +260,39 @@ tests:
 
 ---
 
+## Database State Isolation (system.temp Rule)
+
+**CRITICAL: Integration tests must NEVER mutate anything outside `system.temp` in Frontier.root or any other .root file.**
+
+- Use `system.temp.*` for all temporary test fixtures (outlines, tables, menus, scripts, etc.)
+- `system.temp` is cleared on each process startup, preventing cross-test pollution
+- NEVER use `workspace.*` for test fixtures -- workspace persists to disk via save_on_exit
+- NEVER use `lang.new()` to create/overwrite top-level tables like `@workspace` -- this destroys pre-existing data
+- Even if a test calls `delete()` to clean up, use `system.temp` anyway for safety
+
+### Example Patterns
+
+```usertalk
+// GOOD -- uses system.temp
+lang.new(outlineType, @system.temp.myOutline);
+target.set(@system.temp.myOutline);
+
+// BAD -- mutates workspace (persists to disk)
+lang.new(outlineType, @workspace.myOutline);
+target.set(@workspace.myOutline);
+
+// VERY BAD -- overwrites the entire workspace table!
+lang.new(tableType, @workspace);
+```
+
+### Applies To
+
+- All YAML test files under `tests/integration/test_cases/`
+- Any test that creates temporary database objects
+- Both protocol-mode and per-process tests
+
+---
+
 ## Temporary Files in Tests
 
 ### Temporary File Locations

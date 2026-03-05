@@ -31,8 +31,8 @@ tests:
     description: "Verify op.attributes.addgroup returns 'not supported' error in headless mode"
     skip: "Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.attributes.addgroup("testGroup")
     expected_success: false
@@ -42,8 +42,8 @@ tests:
     description: "Verify op.attributes.getall returns 'not supported' error in headless mode"
     skip: "Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.attributes.getall()
     expected_success: false
@@ -53,8 +53,8 @@ tests:
     description: "Verify op.attributes.getone returns 'not supported' error in headless mode"
     skip: "Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.attributes.getone("testGroup")
     expected_success: false
@@ -64,8 +64,8 @@ tests:
     description: "Verify op.attributes.makeempty returns 'not supported' error in headless mode"
     skip: "Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.attributes.makeempty()
     expected_success: false
@@ -75,8 +75,8 @@ tests:
     description: "Verify op.attributes.setone returns 'not supported' error in headless mode"
     skip: "Phase 3: op.attributes verbs are GUI-only and not supported in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.attributes.setone("testGroup", "testValue")
     expected_success: false

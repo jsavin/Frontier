@@ -2949,6 +2949,23 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	if (hnode != nil && (**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
 		return (false);
 
+	/* Guard against corrupt string/address handles (see v7 visitor for rationale).
+	 * Only check live (non-disk) values — fldiskval entries are handled by hashpackscalar. */
+	if (!val.fldiskval && hnode != nil &&
+		(val.valuetype == addressvaluetype || val.valuetype == stringvaluetype ||
+		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype)) {
+		Handle hdata = (Handle) val.data.binaryvalue;
+		if (hdata != nil) {
+			char *p = *hdata;
+			if (p != NULL && (uintptr_t)p < 0x1000) {
+				log_error(LOG_COMP_HASH, "hashpackvisit_legacy: corrupt handle data ptr=%p handle=%p type=%d name='%.*s'",
+					(void *)p, (void *)hdata, (int)val.valuetype, (int)bsname[0], (char *)&bsname[1]);
+				(**hnode).fldontsave = true;
+				return (false);
+			}
+		}
+	}
+
 	langtraperrors (bspackerror, &savecallback, &saverefcon);
 
 	clearbytes (&rec, sizeof (rec));
@@ -3346,6 +3363,26 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 
 	if ((**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
 		return (false);
+
+	/* Guard against corrupt string/address handles that could SIGSEGV during pack.
+	 * Only check live (non-disk) values — fldiskval entries hold raw disk addresses
+	 * and are handled correctly by hashpackscalar without dereferencing.
+	 * Check both the handle pointer and its data pointer (the "master pointer")
+	 * since heap corruption can leave the handle valid but its data pointer invalid. */
+	if (!val.fldiskval &&
+		(val.valuetype == addressvaluetype || val.valuetype == stringvaluetype ||
+		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype)) {
+		Handle hdata = (Handle) val.data.binaryvalue;
+		if (hdata != nil) {
+			char *p = *hdata;  /* master pointer / data pointer */
+			if (p != NULL && (uintptr_t)p < 0x1000) {
+				log_error(LOG_COMP_HASH, "hashpackvisit_v7: corrupt handle data ptr=%p handle=%p type=%d name='%.*s'",
+					(void *)p, (void *)hdata, (int)val.valuetype, (int)bsname[0], (char *)&bsname[1]);
+				(**hnode).fldontsave = true;
+				return (false); /* skip corrupt entry, continue traversal */
+			}
+		}
+	}
 
 	langtraperrors (bspackerror, &savecallback, &saverefcon);
 

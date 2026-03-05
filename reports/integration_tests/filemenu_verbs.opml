@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Filemenu Verbs (filemenu_verbs) - 34 tests: 31 pass (91%) 3 skip (8%)</title>
-    <dateCreated>Mon, 23 Feb 2026 05:46:51 GMT</dateCreated>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="fileMenu.new - create new database - fileMenu.new creates a new empty ODB database and opens it">
@@ -139,8 +139,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace.notADb)"/>
-        <outline text="target.set(@workspace.notADb)"/>
+        <outline text="lang.new(tableType, @system.temp.notADb)"/>
+        <outline text="target.set(@system.temp.notADb)"/>
         <outline text="local(result = fileMenu.close())"/>
         <outline text="target.clear()"/>
         <outline text="return result"/>

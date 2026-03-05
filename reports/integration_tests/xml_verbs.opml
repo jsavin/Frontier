@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Xml Verbs (xml_verbs) - 93 tests: 93 pass (100%)</title>
-    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="xml.frontiervaluetotaggedtext - simple string">
@@ -225,10 +225,10 @@
         <outline text="expected_contains: ['&lt;struct&gt;', '&lt;name&gt;value&lt;/name&gt;', '&lt;i4&gt;42&lt;/i4&gt;', '&lt;/struct&gt;']"/>
       </outline>
       <outline text="Script">
-        <outline text="new(tableType, @workspace.globaltest)"/>
-        <outline text="workspace.globaltest.value = 42"/>
-        <outline text="local(result = xml.frontiervaluetotaggedtext(@workspace.globaltest, 0))"/>
-        <outline text="delete(@workspace.globaltest)"/>
+        <outline text="new(tableType, @system.temp.globaltest)"/>
+        <outline text="system.temp.globaltest.value = 42"/>
+        <outline text="local(result = xml.frontiervaluetotaggedtext(@system.temp.globaltest, 0))"/>
+        <outline text="delete(@system.temp.globaltest)"/>
         <outline text="return result"/>
       </outline>
     </outline>
@@ -237,16 +237,16 @@
         <outline text="expected_contains: ['&lt;name&gt;value&lt;/name&gt;', '&lt;value&gt;test&lt;/value&gt;']"/>
       </outline>
       <outline text="Script">
-        <outline text="new(tableType, @workspace.outer)"/>
+        <outline text="new(tableType, @system.temp.outer)"/>
         <outline text="local(data)"/>
         <outline text="new(tableType, @data)"/>
         <outline text="data.value = &quot;inner&quot;"/>
-        <outline text="with workspace.outer">
+        <outline text="with system.temp.outer">
           <outline text="local(data)"/>
           <outline text="new(tableType, @data)"/>
           <outline text="data.value = &quot;test&quot;"/>
           <outline text="local(result = xml.frontiervaluetotaggedtext(@data, 0))"/>
-          <outline text="delete(@workspace.outer)"/>
+          <outline text="delete(@system.temp.outer)"/>
           <outline text="return result"/>
         </outline>
       </outline>
@@ -578,9 +578,9 @@
       </outline>
       <outline text="Script">
         <outline text="local(xmlText = &quot;&lt;root&gt;&lt;item&gt;first&lt;/item&gt;&lt;item&gt;second&lt;/item&gt;&lt;/root&gt;&quot;)"/>
-        <outline text="new(tableType, @workspace.xmltest)"/>
-        <outline text="xml.compile(xmlText, @workspace.xmltest)"/>
-        <outline text="local(rootAddr = xml.getAddress(@workspace.xmltest, &quot;root&quot;))"/>
+        <outline text="new(tableType, @system.temp.xmltest)"/>
+        <outline text="xml.compile(xmlText, @system.temp.xmltest)"/>
+        <outline text="local(rootAddr = xml.getAddress(@system.temp.xmltest, &quot;root&quot;))"/>
         <outline text="local(addrList)"/>
         <outline text="new(listType, @addrList)"/>
         <outline text="if xml.getAddressList(rootAddr, &quot;item&quot;, @addrList)">
@@ -1203,9 +1203,9 @@
       </outline>
       <outline text="Script">
         <outline text="local(xmlText = &quot;&lt;root&gt;&lt;num&gt;1&lt;/num&gt;&lt;num&gt;2&lt;/num&gt;&lt;num&gt;3&lt;/num&gt;&lt;/root&gt;&quot;)"/>
-        <outline text="new(tableType, @workspace.xmltest)"/>
-        <outline text="xml.compile(xmlText, @workspace.xmltest)"/>
-        <outline text="local(rootAddr = xml.getAddress(@workspace.xmltest, &quot;root&quot;))"/>
+        <outline text="new(tableType, @system.temp.xmltest)"/>
+        <outline text="xml.compile(xmlText, @system.temp.xmltest)"/>
+        <outline text="local(rootAddr = xml.getAddress(@system.temp.xmltest, &quot;root&quot;))"/>
         <outline text="local(addrList)"/>
         <outline text="new(listType, @addrList)"/>
         <outline text="xml.getAddressList(rootAddr, &quot;num&quot;, @addrList)"/>

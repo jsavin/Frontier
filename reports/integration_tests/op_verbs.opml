@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Op Verbs (op_verbs) - 266 tests: 254 pass (95%) 12 skip (4%)</title>
-    <dateCreated>Tue, 10 Feb 2026 05:47:11 GMT</dateCreated>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="outline creation - lang.new with outlineType - Create new outline object using lang.new(outlineType, @addr)">
@@ -10,17 +10,17 @@
         <outline text="expected_result: optx"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.testOutline)"/>
-        <outline text="return typeof(workspace.testOutline)"/>
+        <outline text="lang.new(outlineType, @system.temp.testOutline)"/>
+        <outline text="return typeof(system.temp.testOutline)"/>
       </outline>
     </outline>
     <outline text="outline target setup - set outline as target - Set outline as target for op verb operations">
       <outline text="Metadata">
-        <outline text="expected_result: workspace.myOutline"/>
+        <outline text="expected_result: system.temp.myOutline"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.myOutline)"/>
-        <outline text="target.set(@workspace.myOutline)"/>
+        <outline text="lang.new(outlineType, @system.temp.myOutline)"/>
+        <outline text="target.set(@system.temp.myOutline)"/>
         <outline text="return string(target.get())"/>
       </outline>
     </outline>
@@ -29,10 +29,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.opTest)"/>
-        <outline text="target.set(@workspace.opTest)"/>
-        <outline text="local(ok1 = typeof(workspace.opTest) == &quot;optx&quot;)"/>
-        <outline text="local(ok2 = string(target.get()) == &quot;workspace.opTest&quot;)"/>
+        <outline text="lang.new(outlineType, @system.temp.opTest)"/>
+        <outline text="target.set(@system.temp.opTest)"/>
+        <outline text="local(ok1 = typeof(system.temp.opTest) == &quot;optx&quot;)"/>
+        <outline text="local(ok2 = string(target.get()) == &quot;system.temp.opTest&quot;)"/>
         <outline text="return ok1 and ok2"/>
       </outline>
     </outline>
@@ -41,8 +41,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="return op.insert(&quot;First line&quot;, down)"/>
       </outline>
     </outline>
@@ -51,8 +51,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="return op.insert(&quot;Line 2&quot;, down)"/>
       </outline>
@@ -62,8 +62,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="return op.insert(&quot;Child&quot;, right)"/>
       </outline>
@@ -73,8 +73,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="return op.insert(&quot;Line 1&quot;, up)"/>
       </outline>
@@ -84,8 +84,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="return op.insert(&quot;Grandchild&quot;, right)"/>
@@ -96,8 +96,8 @@
         <outline text="expected_result: Inserted between 1 and 2"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
@@ -111,8 +111,8 @@
         <outline text="expected_result: Test content"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Test content&quot;, down)"/>
         <outline text="return op.getLineText()"/>
       </outline>
@@ -122,8 +122,8 @@
         <outline text="expected_result: TEXT"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Hello&quot;, down)"/>
         <outline text="return typeof(op.getLineText())"/>
       </outline>
@@ -133,8 +133,8 @@
         <outline text="expected_result: 0"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;&quot;, down)"/>
         <outline text="return sizeOf(op.getLineText())"/>
       </outline>
@@ -144,8 +144,8 @@
         <outline text="expected_result: Line 2"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.go(up, 1)"/>
@@ -158,8 +158,8 @@
         <outline text="expected_result: Line 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.go(up, 1)"/>
@@ -171,8 +171,8 @@
         <outline text="expected_result: Child"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -185,8 +185,8 @@
         <outline text="expected_result: Parent"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -198,8 +198,8 @@
         <outline text="expected_result: Line 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
@@ -212,8 +212,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="return op.go(up, 1)"/>
@@ -224,8 +224,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Only line&quot;, down)"/>
         <outline text="op.go(up, 1)"/>
         <outline text="return op.go(up, 1)"/>
@@ -236,8 +236,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="return op.go(flatup, 1)"/>
@@ -248,8 +248,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.go(up, 1)"/>
@@ -261,8 +261,8 @@
         <outline text="expected_result: First"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;First&quot;, down)"/>
         <outline text="op.insert(&quot;Second&quot;, down)"/>
         <outline text="op.insert(&quot;Third&quot;, down)"/>
@@ -276,8 +276,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.firstSummit()"/>
       </outline>
@@ -287,8 +287,8 @@
         <outline text="expected_result: 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Top level&quot;, down)"/>
         <outline text="return op.level()"/>
       </outline>
@@ -298,8 +298,8 @@
         <outline text="expected_result: 2"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="return op.level()"/>
@@ -310,8 +310,8 @@
         <outline text="expected_result: 3"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
@@ -323,8 +323,8 @@
         <outline text="expected_result: 3"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Child 2&quot;, down)"/>
@@ -338,8 +338,8 @@
         <outline text="expected_result: 0"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Leaf node&quot;, down)"/>
         <outline text="return op.countSubs(1)"/>
       </outline>
@@ -349,8 +349,8 @@
         <outline text="expected_result: 3"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Root&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
@@ -365,8 +365,8 @@
         <outline text="expected_result: 4"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Summit 1&quot;, down)"/>
         <outline text="op.insert(&quot;Summit 2&quot;, down)"/>
         <outline text="op.insert(&quot;Summit 3&quot;, down)"/>
@@ -378,8 +378,8 @@
         <outline text="expected_result: 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="return op.countSummits()"/>
       </outline>
     </outline>
@@ -388,8 +388,8 @@
         <outline text="expected_result: 2"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Summit&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
@@ -401,8 +401,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -415,8 +415,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -429,8 +429,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Leaf Node&quot;, down)"/>
         <outline text="return op.subsExpanded()"/>
       </outline>
@@ -440,8 +440,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="return op.subsExpanded()"/>
       </outline>
     </outline>
@@ -450,8 +450,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -464,8 +464,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Root&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
@@ -479,8 +479,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -493,8 +493,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Node&quot;, down)"/>
         <outline text="return op.collapse()"/>
       </outline>
@@ -504,8 +504,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Child 2&quot;, down)"/>
@@ -538,8 +538,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="/* Cursor is on Child after inserting it */"/>
@@ -553,8 +553,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Top&quot;, down)"/>
         <outline text="return op.promote()"/>
       </outline>
@@ -564,8 +564,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Sibling 1&quot;, down)"/>
         <outline text="op.insert(&quot;Sibling 2&quot;, down)"/>
@@ -596,8 +596,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="/* Cursor is on Line 2 */"/>
@@ -611,8 +611,8 @@
         <outline text="expected_result: Keep me"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Delete me&quot;, down)"/>
         <outline text="op.insert(&quot;Keep me&quot;, down)"/>
         <outline text="op.go(up, 1)"/>
@@ -625,8 +625,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.deleteLine()"/>
       </outline>
@@ -636,8 +636,8 @@
         <outline text="expected_result: 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Only node&quot;, down)"/>
         <outline text="op.deleteLine()"/>
         <outline text="return op.countSummits()"/>
@@ -648,8 +648,8 @@
         <outline text="expected_result: Modified text"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Original text&quot;, down)"/>
         <outline text="op.setLineText(&quot;Modified text&quot;)"/>
         <outline text="return op.getLineText()"/>
@@ -660,8 +660,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Text&quot;, down)"/>
         <outline text="return op.setLineText(&quot;New text&quot;)"/>
       </outline>
@@ -671,8 +671,8 @@
         <outline text="expected_result: 0"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Something&quot;, down)"/>
         <outline text="op.setLineText(&quot;&quot;)"/>
         <outline text="return sizeOf(op.getLineText())"/>
@@ -683,8 +683,8 @@
         <outline text="expected_result: Special: &quot;quotes&quot; &amp; &lt;tags&gt;"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Test&quot;, down)"/>
         <outline text="op.setLineText(&quot;Special: \&quot;quotes\&quot; &amp; &lt;tags&gt;&quot;)"/>
         <outline text="return op.getLineText()"/>
@@ -696,8 +696,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Test&quot;, down)"/>
         <outline text="op.setLineText()"/>
       </outline>
@@ -707,8 +707,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Child 2&quot;, down)"/>
@@ -724,8 +724,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Child 2&quot;, down)"/>
@@ -742,8 +742,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -755,8 +755,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Leaf node&quot;, down)"/>
         <outline text="local(ok = op.deleteSubs())"/>
         <outline text="return ok and (op.countSubs(1) == 0)"/>
@@ -767,8 +767,8 @@
         <outline text="expected_result: 0"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Root&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Grandchild 1&quot;, right)"/>
@@ -785,8 +785,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -798,8 +798,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="local(before = op.level())"/>
@@ -813,8 +813,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="local(before = op.level())"/>
@@ -828,8 +828,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Level 1&quot;, down)"/>
         <outline text="op.insert(&quot;Level 2&quot;, right)"/>
         <outline text="op.insert(&quot;Level 3&quot;, right)"/>
@@ -844,8 +844,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
@@ -861,8 +861,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="return op.reorg(left, 1)"/>
@@ -874,8 +874,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Test&quot;, down)"/>
         <outline text="op.reorg()"/>
       </outline>
@@ -886,8 +886,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Test&quot;, down)"/>
         <outline text="op.reorg(3)"/>
       </outline>
@@ -897,8 +897,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;lowercase text&quot;, down)"/>
         <outline text="op.insert(&quot;UPPERCASE TEXT&quot;, down)"/>
         <outline text="op.firstSummit()"/>
@@ -911,8 +911,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
@@ -925,8 +925,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="return op.find(&quot;Nonexistent&quot;, false, false)"/>
@@ -938,8 +938,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Test&quot;, down)"/>
         <outline text="op.find()"/>
       </outline>
@@ -949,8 +949,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Test&quot;, down)"/>
         <outline text="local(found = op.find(&quot;test&quot;))"/>
         <outline text="return found and (op.getLineText() == &quot;Test&quot;)"/>
@@ -961,8 +961,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Test&quot;, down)"/>
         <outline text="local(found = op.find(&quot;test&quot;, false))"/>
         <outline text="return found and (op.getLineText() == &quot;Test&quot;)"/>
@@ -1018,8 +1018,8 @@
         <outline text="expected_result: TEXT"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Text&quot;, down)"/>
         <outline text="return typeof(op.getLineText())"/>
       </outline>
@@ -1038,8 +1038,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return typeof(op.level())"/>
       </outline>
@@ -1067,8 +1067,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return typeof(op.collapse())"/>
       </outline>
@@ -1078,8 +1078,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="return typeof(op.promote())"/>
@@ -1090,8 +1090,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="return typeof(op.demote())"/>
@@ -1133,8 +1133,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace.notOutline)"/>
-        <outline text="target.set(@workspace.notOutline)"/>
+        <outline text="lang.new(tableType, @system.temp.notOutline)"/>
+        <outline text="target.set(@system.temp.notOutline)"/>
         <outline text="op.insert(&quot;Test&quot;, down)"/>
       </outline>
     </outline>
@@ -1144,8 +1144,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace.table)"/>
-        <outline text="target.set(@workspace.table)"/>
+        <outline text="lang.new(tableType, @system.temp.table)"/>
+        <outline text="target.set(@system.temp.table)"/>
         <outline text="op.getLineText()"/>
       </outline>
     </outline>
@@ -1154,8 +1154,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Chapter 1&quot;, down)"/>
         <outline text="op.insert(&quot;Section 1.1&quot;, right)"/>
         <outline text="op.insert(&quot;Section 1.2&quot;, down)"/>
@@ -1173,8 +1173,8 @@
         <outline text="expected_result: Modified Line 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
@@ -1188,8 +1188,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down);         // Level 1 (empty summit + parent = 2 levels)"/>
         <outline text="op.insert(&quot;Child1&quot;, right);        // Level 2, child of Parent"/>
         <outline text="op.insert(&quot;Child2&quot;, down);         // Level 2, sibling of Child1"/>
@@ -1209,8 +1209,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;L1-Sibling1&quot;, down);     // Level 1"/>
         <outline text="op.insert(&quot;L1-Sibling2&quot;, down);     // Level 1, following sibling"/>
         <outline text="op.insert(&quot;L1-Sibling3&quot;, down);     // Level 1, following sibling"/>
@@ -1228,8 +1228,8 @@
         <outline text="expected_result: 2"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Root&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Child 2&quot;, down)"/>
@@ -1244,8 +1244,8 @@
         <outline text="expected_result: 21"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 20">
           <outline text="op.insert(&quot;Line &quot; + i, down)"/>
@@ -1258,8 +1258,8 @@
         <outline text="expected_result: 10"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(i)"/>
         <outline text="op.insert(&quot;Level 1&quot;, down)"/>
         <outline text="for i = 2 to 10">
@@ -1273,8 +1273,8 @@
         <outline text="expected_result: 6"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 10">
           <outline text="op.insert(&quot;Temp &quot; + i, down)"/>
@@ -1290,8 +1290,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="return typeof(op.getCursor())"/>
       </outline>
@@ -1301,8 +1301,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;First line&quot;, down)"/>
         <outline text="local(cursor = op.getCursor())"/>
         <outline text="return defined(cursor)"/>
@@ -1313,8 +1313,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="local(cursor1 = op.getCursor())"/>
@@ -1328,8 +1328,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.insert(&quot;Grandchild&quot;, right)"/>
@@ -1342,8 +1342,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return typeof(op.getCursor())"/>
       </outline>
@@ -1354,8 +1354,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.getCursor(&quot;extra&quot;)"/>
       </outline>
@@ -1365,8 +1365,8 @@
         <outline text="expected_result: Line 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
@@ -1383,8 +1383,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="local(cursor = op.getCursor())"/>
@@ -1397,8 +1397,8 @@
         <outline text="expected_result: Other line"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Target line&quot;, down)"/>
         <outline text="op.insert(&quot;Other line&quot;, down)"/>
         <outline text="local(targetCursor = op.getCursor())"/>
@@ -1412,8 +1412,8 @@
         <outline text="expected_result: Child 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="local(child1Cursor = op.getCursor())"/>
@@ -1429,8 +1429,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setCursor()"/>
       </outline>
@@ -1441,8 +1441,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setCursor(&quot;not an address&quot;)"/>
       </outline>
@@ -1454,12 +1454,12 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline1)"/>
-        <outline text="lang.new(outlineType, @workspace.outline2)"/>
-        <outline text="target.set(@workspace.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline2)"/>
+        <outline text="target.set(@system.temp.outline1)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="local(cursor1 = op.getCursor())"/>
-        <outline text="target.set(@workspace.outline2)"/>
+        <outline text="target.set(@system.temp.outline2)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.setCursor(cursor1)"/>
       </outline>
@@ -1469,8 +1469,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="return typeof(op.getDisplay())"/>
       </outline>
     </outline>
@@ -1479,8 +1479,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="return op.getDisplay()"/>
       </outline>
     </outline>
@@ -1489,8 +1489,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="return typeof(op.getDisplay())"/>
       </outline>
     </outline>
@@ -1500,8 +1500,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.getDisplay(&quot;extra&quot;)"/>
       </outline>
     </outline>
@@ -1510,8 +1510,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="return op.getDisplay()"/>
       </outline>
@@ -1521,8 +1521,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="op.setDisplay(true)"/>
         <outline text="return op.getDisplay()"/>
@@ -1533,8 +1533,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="return op.setDisplay(false)"/>
       </outline>
     </outline>
@@ -1543,8 +1543,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="local(state1 = op.getDisplay())"/>
         <outline text="op.setDisplay(true)"/>
@@ -1557,8 +1557,8 @@
         <outline text="expected_result: 11"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 10">
@@ -1574,8 +1574,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay()"/>
       </outline>
     </outline>
@@ -1586,8 +1586,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(&quot;true&quot;)"/>
       </outline>
     </outline>
@@ -1596,8 +1596,8 @@
         <outline text="expected_result: list"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -1609,8 +1609,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -1623,8 +1623,8 @@
         <outline text="expected_result: list"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return typeof(op.getExpansionState())"/>
       </outline>
@@ -1635,8 +1635,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.getExpansionState(&quot;extra&quot;)"/>
       </outline>
@@ -1647,8 +1647,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -1670,8 +1670,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -1684,8 +1684,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Child 2&quot;, down)"/>
@@ -1702,8 +1702,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Level 1&quot;, down)"/>
         <outline text="op.insert(&quot;Level 2&quot;, right)"/>
         <outline text="op.insert(&quot;Level 3&quot;, right)"/>
@@ -1721,8 +1721,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -1736,8 +1736,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -1749,8 +1749,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="return typeof(op.getScrollState())"/>
       </outline>
@@ -1760,8 +1760,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="local(state = op.getScrollState())"/>
@@ -1773,8 +1773,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return typeof(op.getScrollState())"/>
       </outline>
@@ -1785,8 +1785,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.getScrollState(&quot;extra&quot;)"/>
       </outline>
@@ -1796,8 +1796,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
@@ -1810,8 +1810,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(state = op.getScrollState())"/>
         <outline text="return op.setScrollState(state)"/>
@@ -1822,8 +1822,8 @@
         <outline text="expected_result: Line 10"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 20">
           <outline text="op.insert(&quot;Line &quot; + i, down)"/>
@@ -1841,8 +1841,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setScrollState()"/>
       </outline>
@@ -1853,8 +1853,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setScrollState(&quot;not an address&quot;)"/>
       </outline>
@@ -1864,8 +1864,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return typeof(op.getRefcon())"/>
       </outline>
@@ -1875,8 +1875,8 @@
         <outline text="expected_result: 0"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.getRefcon()"/>
       </outline>
@@ -1886,8 +1886,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return typeof(op.getRefcon())"/>
       </outline>
@@ -1898,8 +1898,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.getRefcon(&quot;extra&quot;)"/>
       </outline>
@@ -1909,8 +1909,8 @@
         <outline text="expected_result: 12345"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(12345)"/>
         <outline text="return op.getRefcon()"/>
@@ -1921,8 +1921,8 @@
         <outline text="expected_result: -9999"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(-9999)"/>
         <outline text="return op.getRefcon()"/>
@@ -1933,8 +1933,8 @@
         <outline text="expected_result: 0"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(100)"/>
         <outline text="op.setRefcon(0)"/>
@@ -1946,8 +1946,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.setRefcon(42)"/>
       </outline>
@@ -1957,8 +1957,8 @@
         <outline text="expected_result: 99999"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(99999)"/>
         <outline text="return op.getRefcon()"/>
@@ -1969,8 +1969,8 @@
         <outline text="expected_result: 111"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.setRefcon(111)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
@@ -1986,8 +1986,8 @@
         <outline text="expected_result: 777"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.setRefcon(777)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
@@ -2001,8 +2001,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon()"/>
       </outline>
@@ -2014,8 +2014,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(&quot;not a number&quot;)"/>
       </outline>
@@ -2037,8 +2037,8 @@
       </outline>
       <outline text="Script">
         <outline text="target.clear()"/>
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(cursor = op.getCursor())"/>
         <outline text="target.clear()"/>
@@ -2082,8 +2082,8 @@
       </outline>
       <outline text="Script">
         <outline text="target.clear()"/>
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -2109,8 +2109,8 @@
       </outline>
       <outline text="Script">
         <outline text="target.clear()"/>
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(state = op.getScrollState())"/>
         <outline text="target.clear()"/>
@@ -2143,8 +2143,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace.notOutline)"/>
-        <outline text="target.set(@workspace.notOutline)"/>
+        <outline text="lang.new(tableType, @system.temp.notOutline)"/>
+        <outline text="target.set(@system.temp.notOutline)"/>
         <outline text="op.getCursor()"/>
       </outline>
     </outline>
@@ -2154,8 +2154,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace.table)"/>
-        <outline text="target.set(@workspace.table)"/>
+        <outline text="lang.new(tableType, @system.temp.table)"/>
+        <outline text="target.set(@system.temp.table)"/>
         <outline text="op.setDisplay(false)"/>
       </outline>
     </outline>
@@ -2165,8 +2165,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace.table)"/>
-        <outline text="target.set(@workspace.table)"/>
+        <outline text="lang.new(tableType, @system.temp.table)"/>
+        <outline text="target.set(@system.temp.table)"/>
         <outline text="op.getExpansionState()"/>
       </outline>
     </outline>
@@ -2176,8 +2176,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace.table)"/>
-        <outline text="target.set(@workspace.table)"/>
+        <outline text="lang.new(tableType, @system.temp.table)"/>
+        <outline text="target.set(@system.temp.table)"/>
         <outline text="op.getRefcon()"/>
       </outline>
     </outline>
@@ -2186,8 +2186,8 @@
         <outline text="expected_result: Line 2"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.insert(&quot;Line 3&quot;, down)"/>
@@ -2206,8 +2206,8 @@
         <outline text="expected_result: 51"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 50">
@@ -2222,8 +2222,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1a&quot;, right)"/>
         <outline text="op.insert(&quot;Child 1b&quot;, down)"/>
@@ -2248,8 +2248,8 @@
         <outline text="expected_result: 1002"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Item A&quot;, down)"/>
         <outline text="op.setRefcon(1001)"/>
         <outline text="op.insert(&quot;Item B&quot;, down)"/>
@@ -2265,8 +2265,8 @@
         <outline text="expected_result: 100"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="op.insert(&quot;Root&quot;, down)"/>
         <outline text="op.setRefcon(100)"/>
@@ -2286,13 +2286,13 @@
         <outline text="expected_result: Outline 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline1)"/>
-        <outline text="lang.new(outlineType, @workspace.outline2)"/>
-        <outline text="target.set(@workspace.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline2)"/>
+        <outline text="target.set(@system.temp.outline1)"/>
         <outline text="op.insert(&quot;Outline 1&quot;, down)"/>
-        <outline text="target.set(@workspace.outline2)"/>
+        <outline text="target.set(@system.temp.outline2)"/>
         <outline text="op.insert(&quot;Outline 2&quot;, down)"/>
-        <outline text="target.set(@workspace.outline1)"/>
+        <outline text="target.set(@system.temp.outline1)"/>
         <outline text="return op.getLineText()"/>
       </outline>
     </outline>
@@ -2301,8 +2301,8 @@
         <outline text="expected_result: optx"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="return typeof(workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="return typeof(system.temp.outline)"/>
       </outline>
     </outline>
     <outline text="integration - outline with defined - Check outline existence with defined">
@@ -2310,8 +2310,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="return defined(workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="return defined(system.temp.outline)"/>
       </outline>
     </outline>
     <outline text="headless behavior - no window required for outline ops - Outline operations work without GUI windows (headless mode)">
@@ -2319,8 +2319,8 @@
         <outline text="expected_result: Headless line"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.headlessOutline)"/>
-        <outline text="target.set(@workspace.headlessOutline)"/>
+        <outline text="lang.new(outlineType, @system.temp.headlessOutline)"/>
+        <outline text="target.set(@system.temp.headlessOutline)"/>
         <outline text="op.insert(&quot;Headless line&quot;, down)"/>
         <outline text="return op.getLineText()"/>
       </outline>
@@ -2330,8 +2330,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.go(up, 1)"/>
@@ -2343,8 +2343,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -2358,8 +2358,8 @@
         <outline text="expected_result: Line 2"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="local(savedCursor = op.getCursor())"/>
@@ -2376,8 +2376,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Delete me&quot;, down)"/>
         <outline text="local(deadCursor = op.getCursor())"/>
         <outline text="op.insert(&quot;Keep me&quot;, down)"/>
@@ -2391,8 +2391,8 @@
         <outline text="expected_result: Parent"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="local(parentCursor = op.getCursor())"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
@@ -2408,8 +2408,8 @@
         <outline text="expected_result: 5"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;L1&quot;, down)"/>
         <outline text="op.insert(&quot;L2&quot;, right)"/>
         <outline text="op.insert(&quot;L3&quot;, right)"/>
@@ -2426,8 +2426,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="return op.getDisplay()"/>
@@ -2438,8 +2438,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="op.setDisplay(true)"/>
         <outline text="op.setDisplay(true)"/>
@@ -2451,8 +2451,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
@@ -2465,13 +2465,13 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline1)"/>
-        <outline text="lang.new(outlineType, @workspace.outline2)"/>
-        <outline text="target.set(@workspace.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline2)"/>
+        <outline text="target.set(@system.temp.outline1)"/>
         <outline text="op.setDisplay(false)"/>
-        <outline text="target.set(@workspace.outline2)"/>
+        <outline text="target.set(@system.temp.outline2)"/>
         <outline text="op.setDisplay(true)"/>
-        <outline text="target.set(@workspace.outline1)"/>
+        <outline text="target.set(@system.temp.outline1)"/>
         <outline text="return op.getDisplay()"/>
       </outline>
     </outline>
@@ -2482,14 +2482,14 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline1)"/>
-        <outline text="lang.new(outlineType, @workspace.outline2)"/>
-        <outline text="target.set(@workspace.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline2)"/>
+        <outline text="target.set(@system.temp.outline1)"/>
         <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
         <outline text="local(state1 = op.getExpansionState())"/>
-        <outline text="target.set(@workspace.outline2)"/>
+        <outline text="target.set(@system.temp.outline2)"/>
         <outline text="op.insert(&quot;Parent 2&quot;, down)"/>
         <outline text="op.insert(&quot;Child 2&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -2501,8 +2501,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(state = op.getExpansionState())"/>
         <outline text="return defined(state)"/>
       </outline>
@@ -2513,8 +2513,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.insert(&quot;Child 2&quot;, down)"/>
@@ -2534,8 +2534,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -2559,8 +2559,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(state = op.getScrollState())"/>
         <outline text="return defined(state)"/>
       </outline>
@@ -2572,12 +2572,12 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline1)"/>
-        <outline text="lang.new(outlineType, @workspace.outline2)"/>
-        <outline text="target.set(@workspace.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline2)"/>
+        <outline text="target.set(@system.temp.outline1)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="local(state1 = op.getScrollState())"/>
-        <outline text="target.set(@workspace.outline2)"/>
+        <outline text="target.set(@system.temp.outline2)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="op.setScrollState(state1)"/>
       </outline>
@@ -2587,8 +2587,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="local(savedState = op.getScrollState())"/>
@@ -2602,12 +2602,12 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline1)"/>
-        <outline text="lang.new(outlineType, @workspace.outline2)"/>
-        <outline text="target.set(@workspace.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline1)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline2)"/>
+        <outline text="target.set(@system.temp.outline1)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="local(state1 = op.getScrollState())"/>
-        <outline text="target.set(@workspace.outline2)"/>
+        <outline text="target.set(@system.temp.outline2)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
         <outline text="local(state2 = op.getScrollState())"/>
         <outline text="return state1 != state2"/>
@@ -2618,8 +2618,8 @@
         <outline text="expected_result: 2147483647"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(2147483647)"/>
         <outline text="return op.getRefcon()"/>
@@ -2630,8 +2630,8 @@
         <outline text="expected_result: -2147483648"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(-2147483648)"/>
         <outline text="return op.getRefcon()"/>
@@ -2642,8 +2642,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="op.setRefcon(111)"/>
         <outline text="op.insert(&quot;Line 2&quot;, down)"/>
@@ -2662,8 +2662,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.setRefcon(999)"/>
@@ -2679,8 +2679,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 10">
           <outline text="op.insert(&quot;Line &quot; + i, down)"/>
@@ -2702,8 +2702,8 @@
         <outline text="expected_result: 555"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.setRefcon(555)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
@@ -2717,8 +2717,8 @@
         <outline text="expected_result: Parent 2"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent 1&quot;, down)"/>
         <outline text="op.insert(&quot;Child 1a&quot;, right)"/>
         <outline text="op.insert(&quot;Child 1b&quot;, down)"/>
@@ -2743,8 +2743,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Item A&quot;, down)"/>
         <outline text="op.setRefcon(1001)"/>
         <outline text="op.insert(&quot;Item B&quot;, down)"/>
@@ -2764,9 +2764,8 @@
         <outline text="expected_result: Line 20"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace)"/>
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 20">
@@ -2785,20 +2784,20 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.o1)"/>
-        <outline text="lang.new(outlineType, @workspace.o2)"/>
-        <outline text="target.set(@workspace.o1)"/>
+        <outline text="lang.new(outlineType, @system.temp.o1)"/>
+        <outline text="lang.new(outlineType, @system.temp.o2)"/>
+        <outline text="target.set(@system.temp.o1)"/>
         <outline text="op.insert(&quot;O1 Line 1&quot;, down)"/>
         <outline text="op.setRefcon(111)"/>
         <outline text="local(cursor1 = op.getCursor())"/>
-        <outline text="target.set(@workspace.o2)"/>
+        <outline text="target.set(@system.temp.o2)"/>
         <outline text="op.insert(&quot;O2 Line 1&quot;, down)"/>
         <outline text="op.setRefcon(222)"/>
         <outline text="local(cursor2 = op.getCursor())"/>
-        <outline text="target.set(@workspace.o1)"/>
+        <outline text="target.set(@system.temp.o1)"/>
         <outline text="op.setCursor(cursor1)"/>
         <outline text="local(refcon1 = op.getRefcon())"/>
-        <outline text="target.set(@workspace.o2)"/>
+        <outline text="target.set(@system.temp.o2)"/>
         <outline text="op.setCursor(cursor2)"/>
         <outline text="local(refcon2 = op.getRefcon())"/>
         <outline text="return (refcon1 == 111) and (refcon2 == 222)"/>
@@ -2809,8 +2808,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 20">
           <outline text="op.insert(&quot;Line &quot; + i, down)"/>
@@ -2834,8 +2833,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(false)"/>
         <outline text="local(i)"/>
         <outline text="for i = 1 to 100">
@@ -2859,8 +2858,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;L1&quot;, down)"/>
         <outline text="local(i)"/>
         <outline text="for i = 2 to 10">
@@ -2885,8 +2884,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(cursor = op.getCursor())"/>
         <outline text="target.clear()"/>
@@ -2910,8 +2909,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setRefcon(100)"/>
       </outline>
     </outline>
@@ -2920,8 +2919,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.setCursor(12345)"/>
       </outline>
@@ -2931,8 +2930,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.setDisplay(1);  /* UserTalk coerces 1 to true */"/>
         <outline text="return op.getDisplay()"/>
       </outline>
@@ -2944,8 +2943,8 @@
         <outline text="expected_error_type: script_error"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -2957,8 +2956,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.setScrollState(42)"/>
       </outline>
@@ -2968,8 +2967,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(true)"/>
         <outline text="return op.getRefcon()"/>
@@ -2980,8 +2979,8 @@
         <outline text="expected_result: test string"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(&quot;test string&quot;)"/>
         <outline text="return op.getRefcon()"/>
@@ -2992,8 +2991,8 @@
         <outline text="expected_result: 42"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(42)"/>
         <outline text="return op.getRefcon()"/>
@@ -3004,8 +3003,8 @@
         <outline text="expected_result: 3.14159"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setRefcon(3.14159)"/>
         <outline text="return op.getRefcon()"/>
@@ -3016,8 +3015,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(cursor = op.getCursor())"/>
         <outline text="return typeof(cursor)"/>
@@ -3028,8 +3027,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(display = op.getDisplay())"/>
         <outline text="return typeof(display)"/>
       </outline>
@@ -3039,8 +3038,8 @@
         <outline text="expected_result: list"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(state = op.getExpansionState())"/>
         <outline text="return typeof(state)"/>
@@ -3051,8 +3050,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(state = op.getScrollState())"/>
         <outline text="return typeof(state)"/>
@@ -3063,8 +3062,8 @@
         <outline text="expected_result: long"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(refcon = op.getRefcon())"/>
         <outline text="return typeof(refcon)"/>
@@ -3075,8 +3074,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(cursor = op.getCursor())"/>
         <outline text="local(result = op.setCursor(cursor))"/>
@@ -3088,8 +3087,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(result = op.setDisplay(false))"/>
         <outline text="return typeof(result)"/>
       </outline>
@@ -3099,8 +3098,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(state = op.getExpansionState())"/>
         <outline text="local(result = op.setExpansionState(state))"/>
@@ -3112,8 +3111,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(state = op.getScrollState())"/>
         <outline text="local(result = op.setScrollState(state))"/>
@@ -3125,8 +3124,8 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(result = op.setRefcon(100))"/>
         <outline text="return typeof(result)"/>
@@ -3137,8 +3136,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="return op.subsexpanded()"/>
       </outline>
@@ -3148,8 +3147,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child1&quot;, right)"/>
         <outline text="op.insert(&quot;Child2&quot;, down)"/>
@@ -3163,8 +3162,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child1&quot;, right)"/>
         <outline text="op.insert(&quot;Child2&quot;, down)"/>
@@ -3178,8 +3177,8 @@
         <outline text="expected_result: Alice"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Charlie&quot;, down)"/>
         <outline text="op.insert(&quot;Alice&quot;, down)"/>
         <outline text="op.insert(&quot;Bob&quot;, down)"/>
@@ -3195,8 +3194,8 @@
         <outline text="expected_result: Apple,Apple-Child"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Zebra&quot;, down)"/>
         <outline text="op.insert(&quot;Zebra-Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -3217,8 +3216,8 @@
         <outline text="expected_result: Zebra"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Zebra&quot;, right)"/>
         <outline text="op.insert(&quot;Apple&quot;, down)"/>
@@ -3236,8 +3235,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.hoist()"/>
       </outline>
@@ -3247,8 +3246,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.dehoist()"/>
       </outline>
@@ -3258,8 +3257,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.flatcursorkeys(true)"/>
       </outline>
@@ -3269,8 +3268,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.tabkeyreorg(true)"/>
       </outline>
@@ -3281,8 +3280,8 @@
         <outline text="notes: Full functional test of visiting behavior deferred - requires pre-stored callback script infrastructure"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line 1&quot;, down)"/>
         <outline text="return true"/>
       </outline>
@@ -3292,8 +3291,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.sethtmlformatting(true)"/>
       </outline>
@@ -3303,8 +3302,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.gethtmlformatting()"/>
       </outline>
@@ -3314,8 +3313,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.setdynamic(true)"/>
       </outline>
@@ -3325,8 +3324,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.getdynamic()"/>
       </outline>
@@ -3336,8 +3335,8 @@
         <outline text="expected_result: 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;First&quot;, down)"/>
         <outline text="op.insert(&quot;Second&quot;, down)"/>
         <outline text="op.insert(&quot;Third&quot;, down)"/>
@@ -3350,8 +3349,8 @@
         <outline text="expected_result: 3"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;First&quot;, down)"/>
         <outline text="op.insert(&quot;Second&quot;, down)"/>
         <outline text="op.insert(&quot;Third&quot;, down)"/>
@@ -3365,8 +3364,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.setmodified(true)"/>
       </outline>
@@ -3376,8 +3375,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="op.setmodified(true)"/>
         <outline text="return op.setmodified(false)"/>
@@ -3388,8 +3387,8 @@
         <outline text="expected_result: First line&#13;"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;First line&quot;, down)"/>
         <outline text="return op.getsuboutline()"/>
       </outline>
@@ -3399,8 +3398,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child1&quot;, right)"/>
         <outline text="op.insert(&quot;Child2&quot;, down)"/>
@@ -3414,8 +3413,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
         <outline text="op.go(left, 1)"/>
@@ -3428,14 +3427,14 @@
         <outline text="expected_result: 5"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.source)"/>
-        <outline text="lang.new(outlineType, @workspace.dest)"/>
-        <outline text="target.set(@workspace.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.dest)"/>
+        <outline text="target.set(@system.temp.source)"/>
         <outline text="op.insert(&quot;Source1&quot;, down)"/>
         <outline text="op.insert(&quot;Source2&quot;, down)"/>
-        <outline text="target.set(@workspace.dest)"/>
+        <outline text="target.set(@system.temp.dest)"/>
         <outline text="op.insert(&quot;Dest1&quot;, down)"/>
-        <outline text="op.insertoutline(@workspace.source, down)"/>
+        <outline text="op.insertoutline(@system.temp.source, down)"/>
         <outline text="return op.countSummits()"/>
       </outline>
     </outline>
@@ -3444,16 +3443,16 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.source)"/>
-        <outline text="lang.new(outlineType, @workspace.dest)"/>
-        <outline text="target.set(@workspace.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.dest)"/>
+        <outline text="target.set(@system.temp.source)"/>
         <outline text="op.insert(&quot;Source1&quot;, down)"/>
         <outline text="op.insert(&quot;Source2&quot;, down)"/>
         <outline text="local(before = op.countSummits())"/>
-        <outline text="target.set(@workspace.dest)"/>
+        <outline text="target.set(@system.temp.dest)"/>
         <outline text="op.insert(&quot;Dest1&quot;, down)"/>
-        <outline text="op.insertoutline(@workspace.source, down)"/>
-        <outline text="target.set(@workspace.source)"/>
+        <outline text="op.insertoutline(@system.temp.source, down)"/>
+        <outline text="target.set(@system.temp.source)"/>
         <outline text="local(after = op.countSummits())"/>
         <outline text="return before == after"/>
       </outline>
@@ -3463,8 +3462,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;First&quot;, down)"/>
         <outline text="op.insert(&quot;Second&quot;, down)"/>
         <outline text="op.insert(&quot;Third&quot;, down)"/>
@@ -3477,8 +3476,8 @@
         <outline text="expected_result: list"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="local(sel = op.getselection())"/>
         <outline text="return typeOf(sel)"/>
@@ -3489,8 +3488,8 @@
         <outline text="expected_result: 1"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(sel = op.getselection())"/>
         <outline text="return sizeOf(sel)"/>
       </outline>
@@ -3500,11 +3499,11 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;First&quot;, down)"/>
         <outline text="op.insert(&quot;Second&quot;, down)"/>
-        <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(xml = op.outlinetoxml(@system.temp.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="return sizeOf(xml) &gt; 100 and string.mid(xml, 1, 5) == &quot;&lt;?xml&quot;"/>
       </outline>
     </outline>
@@ -3513,10 +3512,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Hello World&quot;, down)"/>
-        <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(xml = op.outlinetoxml(@system.temp.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="return string.patternMatch(&quot;Hello World&quot;, xml) &gt; 0"/>
       </outline>
     </outline>
@@ -3525,11 +3524,11 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Parent&quot;, down)"/>
         <outline text="op.insert(&quot;Child&quot;, right)"/>
-        <outline text="local(xml = op.outlinetoxml(@workspace.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
+        <outline text="local(xml = op.outlinetoxml(@system.temp.outline, &quot;TestUser&quot;, &quot;test@example.com&quot;))"/>
         <outline text="local(hasParent = string.patternMatch(&quot;Parent&quot;, xml) &gt; 0)"/>
         <outline text="local(hasChild = string.patternMatch(&quot;Child&quot;, xml) &gt; 0)"/>
         <outline text="return hasParent and hasChild"/>
@@ -3541,9 +3540,9 @@
       </outline>
       <outline text="Script">
         <outline text="local(xml = &quot;&lt;?xml version=\&quot;1.0\&quot; encoding=\&quot;ISO-8859-1\&quot;?&gt;&lt;opml version=\&quot;1.1\&quot;&gt;&lt;body&gt;&lt;outline text=\&quot;Test\&quot;/&gt;&lt;/body&gt;&lt;/opml&gt;&quot;)"/>
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="local(ok = op.xmltooutline(xml, @workspace.outline, true))"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="local(ok = op.xmltooutline(xml, @system.temp.outline, true))"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.firstSummit()"/>
         <outline text="return ok and op.getLineText() == &quot;Test&quot;"/>
       </outline>
@@ -3553,14 +3552,14 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.out1)"/>
-        <outline text="target.set(@workspace.out1)"/>
+        <outline text="lang.new(outlineType, @system.temp.out1)"/>
+        <outline text="target.set(@system.temp.out1)"/>
         <outline text="op.insert(&quot;Line1&quot;, down)"/>
         <outline text="op.insert(&quot;Line2&quot;, down)"/>
-        <outline text="local(xml = op.outlinetoxml(@workspace.out1, &quot;User&quot;, &quot;user@example.com&quot;))"/>
-        <outline text="lang.new(outlineType, @workspace.out2)"/>
-        <outline text="op.xmltooutline(xml, @workspace.out2, true)"/>
-        <outline text="target.set(@workspace.out2)"/>
+        <outline text="local(xml = op.outlinetoxml(@system.temp.out1, &quot;User&quot;, &quot;user@example.com&quot;))"/>
+        <outline text="lang.new(outlineType, @system.temp.out2)"/>
+        <outline text="op.xmltooutline(xml, @system.temp.out2, true)"/>
+        <outline text="target.set(@system.temp.out2)"/>
         <outline text="op.firstSummit()"/>
         <outline text="op.go(down, 1);  // Move past empty summit to first imported line"/>
         <outline text="local(first = op.getLineText())"/>
@@ -3575,9 +3574,9 @@
       </outline>
       <outline text="Script">
         <outline text="local(xml = &quot;&lt;?xml version=\&quot;1.0\&quot;?&gt;&lt;opml version=\&quot;1.1\&quot;&gt;&lt;body&gt;&lt;outline text=\&quot;NewLine\&quot;/&gt;&lt;/body&gt;&lt;/opml&gt;&quot;)"/>
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="local(ok = op.xmltooutline(xml, @workspace.outline, true))"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="local(ok = op.xmltooutline(xml, @system.temp.outline, true))"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="local(count = op.countSummits())"/>
         <outline text="return ok and (count &gt;= 1)"/>
       </outline>
@@ -3587,11 +3586,11 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.source)"/>
-        <outline text="lang.new(outlineType, @workspace.dest)"/>
-        <outline text="target.set(@workspace.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.dest)"/>
+        <outline text="target.set(@system.temp.source)"/>
         <outline text="op.insert(&quot;Line1&quot;, down)"/>
-        <outline text="local(ok = op.getselectedsuboutlines(@workspace.dest))"/>
+        <outline text="local(ok = op.getselectedsuboutlines(@system.temp.dest))"/>
         <outline text="return ok"/>
       </outline>
     </outline>
@@ -3600,12 +3599,12 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.source)"/>
-        <outline text="lang.new(outlineType, @workspace.dest)"/>
-        <outline text="target.set(@workspace.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.dest)"/>
+        <outline text="target.set(@system.temp.source)"/>
         <outline text="op.insert(&quot;Source Line&quot;, down)"/>
-        <outline text="local(ok = op.getselectedsuboutlines(@workspace.dest))"/>
-        <outline text="return ok and defined(workspace.dest)"/>
+        <outline text="local(ok = op.getselectedsuboutlines(@system.temp.dest))"/>
+        <outline text="return ok and defined(system.temp.dest)"/>
       </outline>
     </outline>
     <outline text="op.getselectedsuboutlines - with destination content - Add to destination outline that already has content">
@@ -3613,15 +3612,15 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.source)"/>
-        <outline text="lang.new(outlineType, @workspace.dest)"/>
-        <outline text="target.set(@workspace.dest)"/>
+        <outline text="lang.new(outlineType, @system.temp.source)"/>
+        <outline text="lang.new(outlineType, @system.temp.dest)"/>
+        <outline text="target.set(@system.temp.dest)"/>
         <outline text="op.insert(&quot;Existing&quot;, down)"/>
         <outline text="local(beforeCount = op.countSummits())"/>
-        <outline text="target.set(@workspace.source)"/>
+        <outline text="target.set(@system.temp.source)"/>
         <outline text="op.insert(&quot;New&quot;, down)"/>
-        <outline text="op.getselectedsuboutlines(@workspace.dest)"/>
-        <outline text="target.set(@workspace.dest)"/>
+        <outline text="op.getselectedsuboutlines(@system.temp.dest)"/>
+        <outline text="target.set(@system.temp.dest)"/>
         <outline text="local(afterCount = op.countSummits())"/>
         <outline text="return afterCount &gt;= beforeCount"/>
       </outline>

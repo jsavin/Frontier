@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Script Processor Verbs (script_processor_verbs) - 43 tests: 7 pass (16%) 36 skip (83%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="script.compile - simple script compiles successfully - Compile a simple UserTalk script and verify success">
@@ -11,9 +11,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.testScript)"/>
-        <outline text="script.setsource(@workspace.testScript, &quot;return 42&quot;)"/>
-        <outline text="return script.compile(@workspace.testScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.testScript)"/>
+        <outline text="script.setsource(@system.temp.testScript, &quot;return 42&quot;)"/>
+        <outline text="return script.compile(@system.temp.testScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - returns boolean type - Compile should return boolean type">
@@ -22,9 +22,9 @@
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.compileTest)"/>
-        <outline text="script.setsource(@workspace.compileTest, &quot;return true&quot;)"/>
-        <outline text="return typeof(script.compile(@workspace.compileTest))"/>
+        <outline text="lang.new(scriptType, @system.temp.compileTest)"/>
+        <outline text="script.setsource(@system.temp.compileTest, &quot;return true&quot;)"/>
+        <outline text="return typeof(script.compile(@system.temp.compileTest))"/>
       </outline>
     </outline>
     <outline text="script.compile - arithmetic expression - Compile script with arithmetic operations">
@@ -33,9 +33,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.mathScript)"/>
-        <outline text="script.setsource(@workspace.mathScript, &quot;return 10 + 20 * 3&quot;)"/>
-        <outline text="return script.compile(@workspace.mathScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.mathScript)"/>
+        <outline text="script.setsource(@system.temp.mathScript, &quot;return 10 + 20 * 3&quot;)"/>
+        <outline text="return script.compile(@system.temp.mathScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - string operations - Compile script with string concatenation">
@@ -44,9 +44,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.stringScript)"/>
-        <outline text="script.setsource(@workspace.stringScript, &quot;return \&quot;hello\&quot; + \&quot; \&quot; + \&quot;world\&quot;&quot;)"/>
-        <outline text="return script.compile(@workspace.stringScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.stringScript)"/>
+        <outline text="script.setsource(@system.temp.stringScript, &quot;return \&quot;hello\&quot; + \&quot; \&quot; + \&quot;world\&quot;&quot;)"/>
+        <outline text="return script.compile(@system.temp.stringScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - local variables - Compile script with local variable declarations">
@@ -55,9 +55,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.localVarScript)"/>
-        <outline text="script.setsource(@workspace.localVarScript, &quot;local(x=5, y=10); return x+y&quot;)"/>
-        <outline text="return script.compile(@workspace.localVarScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.localVarScript)"/>
+        <outline text="script.setsource(@system.temp.localVarScript, &quot;local(x=5, y=10); return x+y&quot;)"/>
+        <outline text="return script.compile(@system.temp.localVarScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - conditional logic - Compile script with if/else statement">
@@ -66,9 +66,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.ifScript)"/>
-        <outline text="script.setsource(@workspace.ifScript, &quot;if true { return \&quot;yes\&quot; } else { return \&quot;no\&quot; }&quot;)"/>
-        <outline text="return script.compile(@workspace.ifScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.ifScript)"/>
+        <outline text="script.setsource(@system.temp.ifScript, &quot;if true { return \&quot;yes\&quot; } else { return \&quot;no\&quot; }&quot;)"/>
+        <outline text="return script.compile(@system.temp.ifScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - loop construct - Compile script with for loop">
@@ -77,9 +77,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.loopScript)"/>
-        <outline text="script.setsource(@workspace.loopScript, &quot;local(i, sum=0); for i=1 to 10 { sum = sum + i }; return sum&quot;)"/>
-        <outline text="return script.compile(@workspace.loopScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.loopScript)"/>
+        <outline text="script.setsource(@system.temp.loopScript, &quot;local(i, sum=0); for i=1 to 10 { sum = sum + i }; return sum&quot;)"/>
+        <outline text="return script.compile(@system.temp.loopScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - syntax error terminates execution - Compilation error should terminate script execution">
@@ -88,9 +88,9 @@
         <outline text="expected_success: False"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.badScript)"/>
-        <outline text="script.setsource(@workspace.badScript, &quot;return 1 + +&quot;)"/>
-        <outline text="script.compile(@workspace.badScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.badScript)"/>
+        <outline text="script.setsource(@system.temp.badScript, &quot;return 1 + +&quot;)"/>
+        <outline text="script.compile(@system.temp.badScript)"/>
         <outline text="return false"/>
       </outline>
     </outline>
@@ -100,9 +100,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.emptyScript)"/>
-        <outline text="script.setsource(@workspace.emptyScript, &quot;&quot;)"/>
-        <outline text="return script.compile(@workspace.emptyScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.emptyScript)"/>
+        <outline text="script.setsource(@system.temp.emptyScript, &quot;&quot;)"/>
+        <outline text="return script.compile(@system.temp.emptyScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - multiline script - Compile multi-line script with statements on separate lines">
@@ -111,9 +111,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.multilineScript)"/>
-        <outline text="script.setsource(@workspace.multilineScript, &quot;local(x = 10);\nlocal(y = 20);\nreturn x + y&quot;)"/>
-        <outline text="return script.compile(@workspace.multilineScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.multilineScript)"/>
+        <outline text="script.setsource(@system.temp.multilineScript, &quot;local(x = 10);\nlocal(y = 20);\nreturn x + y&quot;)"/>
+        <outline text="return script.compile(@system.temp.multilineScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - script with comments - Compile script containing comments">
@@ -122,9 +122,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.commentScript)"/>
-        <outline text="script.setsource(@workspace.commentScript, &quot;// This is a comment\nreturn 42 // another comment&quot;)"/>
-        <outline text="return script.compile(@workspace.commentScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.commentScript)"/>
+        <outline text="script.setsource(@system.temp.commentScript, &quot;// This is a comment\nreturn 42 // another comment&quot;)"/>
+        <outline text="return script.compile(@system.temp.commentScript)"/>
       </outline>
     </outline>
     <outline text="script.compile - non-script object returns false - Attempting to compile non-script object should return false">
@@ -133,8 +133,8 @@
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(tableType, @workspace.notAScript)"/>
-        <outline text="return script.compile(@workspace.notAScript)"/>
+        <outline text="lang.new(tableType, @system.temp.notAScript)"/>
+        <outline text="return script.compile(@system.temp.notAScript)"/>
       </outline>
     </outline>
     <outline text="script execution - direct evaluation of compiled script - Production pattern: call script directly after compilation">
@@ -143,10 +143,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.execTest)"/>
-        <outline text="script.setsource(@workspace.execTest, &quot;return 42&quot;)"/>
-        <outline text="script.compile(@workspace.execTest)"/>
-        <outline text="return @workspace.execTest() == 42"/>
+        <outline text="lang.new(scriptType, @system.temp.execTest)"/>
+        <outline text="script.setsource(@system.temp.execTest, &quot;return 42&quot;)"/>
+        <outline text="script.compile(@system.temp.execTest)"/>
+        <outline text="return @system.temp.execTest() == 42"/>
       </outline>
     </outline>
     <outline text="script execution - script with arithmetic - Verify compiled script executes and returns correct result">
@@ -155,10 +155,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.mathScript)"/>
-        <outline text="script.setsource(@workspace.mathScript, &quot;return 10 + 20 + 12&quot;)"/>
-        <outline text="script.compile(@workspace.mathScript)"/>
-        <outline text="return @workspace.mathScript() == 42"/>
+        <outline text="lang.new(scriptType, @system.temp.mathScript)"/>
+        <outline text="script.setsource(@system.temp.mathScript, &quot;return 10 + 20 + 12&quot;)"/>
+        <outline text="script.compile(@system.temp.mathScript)"/>
+        <outline text="return @system.temp.mathScript() == 42"/>
       </outline>
     </outline>
     <outline text="script execution - inline evaluation for testing - Alternative pattern: use lang.evaluate for simple cases">
@@ -177,10 +177,10 @@
         <outline text="expected_error: script.run is not supported"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.runTest)"/>
-        <outline text="script.setsource(@workspace.runTest, &quot;return 42&quot;)"/>
-        <outline text="script.compile(@workspace.runTest)"/>
-        <outline text="script.run(@workspace.runTest)"/>
+        <outline text="lang.new(scriptType, @system.temp.runTest)"/>
+        <outline text="script.setsource(@system.temp.runTest, &quot;return 42&quot;)"/>
+        <outline text="script.compile(@system.temp.runTest)"/>
+        <outline text="script.run(@system.temp.runTest)"/>
       </outline>
     </outline>
     <outline text="script.getsource - retrieve script source text - Get source code from script object">
@@ -189,10 +189,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.sourceTest)"/>
-        <outline text="script.setsource(@workspace.sourceTest, &quot;return 42&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.sourceTest)"/>
+        <outline text="script.setsource(@system.temp.sourceTest, &quot;return 42&quot;)"/>
         <outline text="local(source)"/>
-        <outline text="script.getsource(@workspace.sourceTest, @source)"/>
+        <outline text="script.getsource(@system.temp.sourceTest, @source)"/>
         <outline text="return source == &quot;return 42&quot;"/>
       </outline>
     </outline>
@@ -202,10 +202,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.setSourceTest)"/>
-        <outline text="script.setsource(@workspace.setSourceTest, &quot;return 100&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.setSourceTest)"/>
+        <outline text="script.setsource(@system.temp.setSourceTest, &quot;return 100&quot;)"/>
         <outline text="local(retrieved)"/>
-        <outline text="script.getsource(@workspace.setSourceTest, @retrieved)"/>
+        <outline text="script.getsource(@system.temp.setSourceTest, @retrieved)"/>
         <outline text="return retrieved == &quot;return 100&quot;"/>
       </outline>
     </outline>
@@ -215,8 +215,8 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.setSourceReturn)"/>
-        <outline text="return script.setsource(@workspace.setSourceReturn, &quot;return 42&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.setSourceReturn)"/>
+        <outline text="return script.setsource(@system.temp.setSourceReturn, &quot;return 42&quot;)"/>
       </outline>
     </outline>
     <outline text="script.getsource - returns boolean true - getsource should return boolean true on success">
@@ -225,10 +225,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.getSourceReturn)"/>
-        <outline text="script.setsource(@workspace.getSourceReturn, &quot;return 42&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.getSourceReturn)"/>
+        <outline text="script.setsource(@system.temp.getSourceReturn, &quot;return 42&quot;)"/>
         <outline text="local(source)"/>
-        <outline text="return script.getsource(@workspace.getSourceReturn, @source)"/>
+        <outline text="return script.getsource(@system.temp.getSourceReturn, @source)"/>
       </outline>
     </outline>
     <outline text="script source verbs - roundtrip test - Set source, get it back, verify unchanged">
@@ -237,10 +237,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.roundtrip)"/>
-        <outline text="script.setsource(@workspace.roundtrip, &quot;local(x = 10);\nreturn x * 2&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.roundtrip)"/>
+        <outline text="script.setsource(@system.temp.roundtrip, &quot;local(x = 10);\nreturn x * 2&quot;)"/>
         <outline text="local(retrieved)"/>
-        <outline text="script.getsource(@workspace.roundtrip, @retrieved)"/>
+        <outline text="script.getsource(@system.temp.roundtrip, @retrieved)"/>
         <outline text="return retrieved == &quot;local(x = 10);\nreturn x * 2&quot;"/>
       </outline>
     </outline>
@@ -250,10 +250,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.emptySource)"/>
-        <outline text="script.setsource(@workspace.emptySource, &quot;&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.emptySource)"/>
+        <outline text="script.setsource(@system.temp.emptySource, &quot;&quot;)"/>
         <outline text="local(retrieved)"/>
-        <outline text="script.getsource(@workspace.emptySource, @retrieved)"/>
+        <outline text="script.getsource(@system.temp.emptySource, @retrieved)"/>
         <outline text="return retrieved == &quot;&quot;"/>
       </outline>
     </outline>
@@ -263,10 +263,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.multiline)"/>
-        <outline text="script.setsource(@workspace.multiline, &quot;local(x = 1);\nlocal(y = 2);\nreturn x + y&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.multiline)"/>
+        <outline text="script.setsource(@system.temp.multiline, &quot;local(x = 1);\nlocal(y = 2);\nreturn x + y&quot;)"/>
         <outline text="local(retrieved)"/>
-        <outline text="script.getsource(@workspace.multiline, @retrieved)"/>
+        <outline text="script.getsource(@system.temp.multiline, @retrieved)"/>
         <outline text="return string.length(retrieved) &gt; 0"/>
       </outline>
     </outline>
@@ -276,10 +276,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.specialChars)"/>
-        <outline text="script.setsource(@workspace.specialChars, &quot;return \&quot;hello\\nworld\&quot;&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.specialChars)"/>
+        <outline text="script.setsource(@system.temp.specialChars, &quot;return \&quot;hello\\nworld\&quot;&quot;)"/>
         <outline text="local(retrieved)"/>
-        <outline text="script.getsource(@workspace.specialChars, @retrieved)"/>
+        <outline text="script.getsource(@system.temp.specialChars, @retrieved)"/>
         <outline text="return string.length(retrieved) &gt; 0"/>
       </outline>
     </outline>
@@ -289,11 +289,11 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.codeTest)"/>
-        <outline text="script.setsource(@workspace.codeTest, &quot;return 42&quot;)"/>
-        <outline text="script.compile(@workspace.codeTest)"/>
+        <outline text="lang.new(scriptType, @system.temp.codeTest)"/>
+        <outline text="script.setsource(@system.temp.codeTest, &quot;return 42&quot;)"/>
+        <outline text="script.compile(@system.temp.codeTest)"/>
         <outline text="local(code)"/>
-        <outline text="script.getcode(@workspace.codeTest, @code)"/>
+        <outline text="script.getcode(@system.temp.codeTest, @code)"/>
         <outline text="return typeof(code) == binaryType"/>
       </outline>
     </outline>
@@ -303,11 +303,11 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.getCodeReturn)"/>
-        <outline text="script.setsource(@workspace.getCodeReturn, &quot;return 42&quot;)"/>
-        <outline text="script.compile(@workspace.getCodeReturn)"/>
+        <outline text="lang.new(scriptType, @system.temp.getCodeReturn)"/>
+        <outline text="script.setsource(@system.temp.getCodeReturn, &quot;return 42&quot;)"/>
+        <outline text="script.compile(@system.temp.getCodeReturn)"/>
         <outline text="local(code)"/>
-        <outline text="return script.getcode(@workspace.getCodeReturn, @code)"/>
+        <outline text="return script.getcode(@system.temp.getCodeReturn, @code)"/>
       </outline>
     </outline>
     <outline text="script.setcode - set compiled bytecode - Set compiled code in script object">
@@ -316,13 +316,13 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.originalScript)"/>
-        <outline text="script.setsource(@workspace.originalScript, &quot;return 42&quot;)"/>
-        <outline text="script.compile(@workspace.originalScript)"/>
+        <outline text="lang.new(scriptType, @system.temp.originalScript)"/>
+        <outline text="script.setsource(@system.temp.originalScript, &quot;return 42&quot;)"/>
+        <outline text="script.compile(@system.temp.originalScript)"/>
         <outline text="local(code)"/>
-        <outline text="script.getcode(@workspace.originalScript, @code)"/>
-        <outline text="lang.new(scriptType, @workspace.copyScript)"/>
-        <outline text="return script.setcode(@workspace.copyScript, @code)"/>
+        <outline text="script.getcode(@system.temp.originalScript, @code)"/>
+        <outline text="lang.new(scriptType, @system.temp.copyScript)"/>
+        <outline text="return script.setcode(@system.temp.copyScript, @code)"/>
       </outline>
     </outline>
     <outline text="script.setcode - returns boolean true - setcode should return boolean true on success">
@@ -331,13 +331,13 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.setCodeReturn)"/>
-        <outline text="script.setsource(@workspace.setCodeReturn, &quot;return 42&quot;)"/>
-        <outline text="script.compile(@workspace.setCodeReturn)"/>
+        <outline text="lang.new(scriptType, @system.temp.setCodeReturn)"/>
+        <outline text="script.setsource(@system.temp.setCodeReturn, &quot;return 42&quot;)"/>
+        <outline text="script.compile(@system.temp.setCodeReturn)"/>
         <outline text="local(code)"/>
-        <outline text="script.getcode(@workspace.setCodeReturn, @code)"/>
-        <outline text="lang.new(scriptType, @workspace.setCodeTarget)"/>
-        <outline text="return script.setcode(@workspace.setCodeTarget, @code)"/>
+        <outline text="script.getcode(@system.temp.setCodeReturn, @code)"/>
+        <outline text="lang.new(scriptType, @system.temp.setCodeTarget)"/>
+        <outline text="return script.setcode(@system.temp.setCodeTarget, @code)"/>
       </outline>
     </outline>
     <outline text="script code verbs - transfer code between scripts - Get code from one script, set it in another, run both">
@@ -346,15 +346,15 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.source)"/>
-        <outline text="script.setsource(@workspace.source, &quot;return 99&quot;)"/>
-        <outline text="script.compile(@workspace.source)"/>
+        <outline text="lang.new(scriptType, @system.temp.source)"/>
+        <outline text="script.setsource(@system.temp.source, &quot;return 99&quot;)"/>
+        <outline text="script.compile(@system.temp.source)"/>
         <outline text="local(code)"/>
-        <outline text="script.getcode(@workspace.source, @code)"/>
-        <outline text="lang.new(scriptType, @workspace.dest)"/>
-        <outline text="script.setcode(@workspace.dest, @code)"/>
-        <outline text="local(result1 = @workspace.source())"/>
-        <outline text="local(result2 = @workspace.dest())"/>
+        <outline text="script.getcode(@system.temp.source, @code)"/>
+        <outline text="lang.new(scriptType, @system.temp.dest)"/>
+        <outline text="script.setcode(@system.temp.dest, @code)"/>
+        <outline text="local(result1 = @system.temp.source())"/>
+        <outline text="local(result2 = @system.temp.dest())"/>
         <outline text="return (result1 == 99) and (result2 == 99)"/>
       </outline>
     </outline>
@@ -364,11 +364,11 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.uncompiled)"/>
-        <outline text="script.setsource(@workspace.uncompiled, &quot;return 42&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.uncompiled)"/>
+        <outline text="script.setsource(@system.temp.uncompiled, &quot;return 42&quot;)"/>
         <outline text="local(code)"/>
         <outline text="try">
-          <outline text="script.getcode(@workspace.uncompiled, @code)"/>
+          <outline text="script.getcode(@system.temp.uncompiled, @code)"/>
           <outline text="return true"/>
         </outline>
         <outline text="else">
@@ -390,9 +390,9 @@
         <outline text="expected_success: False"/>
       </outline>
       <outline text="Script">
-        <outline text="workspace.errorFlag = false"/>
+        <outline text="system.temp.errorFlag = false"/>
         <outline text="script.error(&quot;Error here&quot;)"/>
-        <outline text="workspace.errorFlag = true"/>
+        <outline text="system.temp.errorFlag = true"/>
         <outline text="return false"/>
       </outline>
     </outline>
@@ -443,10 +443,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.lifecycle)"/>
-        <outline text="script.setsource(@workspace.lifecycle, &quot;return 100 + 23&quot;)"/>
-        <outline text="script.compile(@workspace.lifecycle)"/>
-        <outline text="local(result = @workspace.lifecycle())"/>
+        <outline text="lang.new(scriptType, @system.temp.lifecycle)"/>
+        <outline text="script.setsource(@system.temp.lifecycle, &quot;return 100 + 23&quot;)"/>
+        <outline text="script.compile(@system.temp.lifecycle)"/>
+        <outline text="local(result = @system.temp.lifecycle())"/>
         <outline text="return result == 123"/>
       </outline>
     </outline>
@@ -456,13 +456,13 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.modify)"/>
-        <outline text="script.setsource(@workspace.modify, &quot;return 1&quot;)"/>
-        <outline text="script.compile(@workspace.modify)"/>
-        <outline text="local(first = @workspace.modify())"/>
-        <outline text="script.setsource(@workspace.modify, &quot;return 2&quot;)"/>
-        <outline text="script.compile(@workspace.modify)"/>
-        <outline text="local(second = @workspace.modify())"/>
+        <outline text="lang.new(scriptType, @system.temp.modify)"/>
+        <outline text="script.setsource(@system.temp.modify, &quot;return 1&quot;)"/>
+        <outline text="script.compile(@system.temp.modify)"/>
+        <outline text="local(first = @system.temp.modify())"/>
+        <outline text="script.setsource(@system.temp.modify, &quot;return 2&quot;)"/>
+        <outline text="script.compile(@system.temp.modify)"/>
+        <outline text="local(second = @system.temp.modify())"/>
         <outline text="return (first == 1) and (second == 2)"/>
       </outline>
     </outline>
@@ -472,10 +472,10 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.independence)"/>
-        <outline text="script.setsource(@workspace.independence, &quot;return 42&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.independence)"/>
+        <outline text="script.setsource(@system.temp.independence, &quot;return 42&quot;)"/>
         <outline text="local(source)"/>
-        <outline text="script.getsource(@workspace.independence, @source)"/>
+        <outline text="script.getsource(@system.temp.independence, @source)"/>
         <outline text="return source == &quot;return 42&quot;"/>
       </outline>
     </outline>
@@ -485,15 +485,15 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.original)"/>
-        <outline text="script.setsource(@workspace.original, &quot;local(x = 5); return x * x&quot;)"/>
-        <outline text="script.compile(@workspace.original)"/>
+        <outline text="lang.new(scriptType, @system.temp.original)"/>
+        <outline text="script.setsource(@system.temp.original, &quot;local(x = 5); return x * x&quot;)"/>
+        <outline text="script.compile(@system.temp.original)"/>
         <outline text="local(code)"/>
-        <outline text="script.getcode(@workspace.original, @code)"/>
-        <outline text="lang.new(scriptType, @workspace.clone)"/>
-        <outline text="script.setcode(@workspace.clone, @code)"/>
-        <outline text="local(origResult = @workspace.original())"/>
-        <outline text="local(cloneResult = @workspace.clone())"/>
+        <outline text="script.getcode(@system.temp.original, @code)"/>
+        <outline text="lang.new(scriptType, @system.temp.clone)"/>
+        <outline text="script.setcode(@system.temp.clone, @code)"/>
+        <outline text="local(origResult = @system.temp.original())"/>
+        <outline text="local(cloneResult = @system.temp.clone())"/>
         <outline text="return origResult == cloneResult"/>
       </outline>
     </outline>
@@ -503,14 +503,14 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.scriptA)"/>
-        <outline text="lang.new(scriptType, @workspace.scriptB)"/>
-        <outline text="script.setsource(@workspace.scriptA, &quot;return 10&quot;)"/>
-        <outline text="script.setsource(@workspace.scriptB, &quot;return 20&quot;)"/>
-        <outline text="script.compile(@workspace.scriptA)"/>
-        <outline text="script.compile(@workspace.scriptB)"/>
-        <outline text="local(a = @workspace.scriptA())"/>
-        <outline text="local(b = @workspace.scriptB())"/>
+        <outline text="lang.new(scriptType, @system.temp.scriptA)"/>
+        <outline text="lang.new(scriptType, @system.temp.scriptB)"/>
+        <outline text="script.setsource(@system.temp.scriptA, &quot;return 10&quot;)"/>
+        <outline text="script.setsource(@system.temp.scriptB, &quot;return 20&quot;)"/>
+        <outline text="script.compile(@system.temp.scriptA)"/>
+        <outline text="script.compile(@system.temp.scriptB)"/>
+        <outline text="local(a = @system.temp.scriptA())"/>
+        <outline text="local(b = @system.temp.scriptB())"/>
         <outline text="return (a == 10) and (b == 20)"/>
       </outline>
     </outline>
@@ -520,14 +520,14 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.typeTest)"/>
-        <outline text="script.setsource(@workspace.typeTest, &quot;return 42&quot;)"/>
-        <outline text="script.compile(@workspace.typeTest)"/>
-        <outline text="local(compileResult = script.compile(@workspace.typeTest))"/>
-        <outline text="local(runResult = @workspace.typeTest())"/>
+        <outline text="lang.new(scriptType, @system.temp.typeTest)"/>
+        <outline text="script.setsource(@system.temp.typeTest, &quot;return 42&quot;)"/>
+        <outline text="script.compile(@system.temp.typeTest)"/>
+        <outline text="local(compileResult = script.compile(@system.temp.typeTest))"/>
+        <outline text="local(runResult = @system.temp.typeTest())"/>
         <outline text="local(source, code)"/>
-        <outline text="local(getSourceResult = script.getsource(@workspace.typeTest, @source))"/>
-        <outline text="local(getCodeResult = script.getcode(@workspace.typeTest, @code))"/>
+        <outline text="local(getSourceResult = script.getsource(@system.temp.typeTest, @source))"/>
+        <outline text="local(getCodeResult = script.getcode(@system.temp.typeTest, @code))"/>
         <outline text="return (typeof(compileResult) == booleanType) and">
           <outline text="(typeof(getSourceResult) == booleanType) and"/>
           <outline text="(typeof(getCodeResult) == booleanType) and"/>
@@ -542,16 +542,16 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(scriptType, @workspace.recovery)"/>
-        <outline text="script.setsource(@workspace.recovery, &quot;return 1 + +&quot;)"/>
+        <outline text="lang.new(scriptType, @system.temp.recovery)"/>
+        <outline text="script.setsource(@system.temp.recovery, &quot;return 1 + +&quot;)"/>
         <outline text="try">
-          <outline text="script.compile(@workspace.recovery)"/>
+          <outline text="script.compile(@system.temp.recovery)"/>
           <outline text="return false"/>
         </outline>
         <outline text="else">
-          <outline text="script.setsource(@workspace.recovery, &quot;return 42&quot;)"/>
-          <outline text="script.compile(@workspace.recovery)"/>
-          <outline text="return @workspace.recovery() == 42"/>
+          <outline text="script.setsource(@system.temp.recovery, &quot;return 42&quot;)"/>
+          <outline text="script.compile(@system.temp.recovery)"/>
+          <outline text="return @system.temp.recovery() == 42"/>
         </outline>
       </outline>
     </outline>

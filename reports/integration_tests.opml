@@ -1,15 +1,15 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 1911 tests: 1722 pass (90%) 189 skip (9%)</title>
-    <dateCreated>Wed, 25 Feb 2026 06:50:06 GMT</dateCreated>
+    <title>Frontier Integration Tests - 1914 tests: 1725 pass (90%) 189 skip (9%)</title>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-02-25 at 06:49 UTC"/>
-      <outline text="Results: 1703 passed (90%), 189 skipped (10%), 1 failed (0%)"/>
-      <outline text="Duration: 31.3s (8 workers, batch mode)"/>
-      <outline text="YAML-defined: 1911 tests (1722 active, 189 marked skip) across 51 categories"/>
+      <outline text="Run: 2026-03-05 at 19:10 UTC"/>
+      <outline text="Results: 1706 passed (90%), 189 skipped (10%), 1 failed (0%)"/>
+      <outline text="Duration: 46.0s (8 workers, batch mode)"/>
+      <outline text="YAML-defined: 1914 tests (1725 active, 189 marked skip) across 51 categories"/>
     </outline>
     <outline text="Builtins Priority (builtins_priority) - 24 tests: 24 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
     <outline text="Callback Database (callback_database) - 29 tests: 29 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/callback_database.opml"/>
@@ -20,7 +20,7 @@
     <outline text="Dist Stability (dist_stability) - 7 tests: 7 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/dist_stability.opml"/>
     <outline text="Efp Introspection (efp_introspection) - 14 tests: 14 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/efp_introspection.opml"/>
     <outline text="File Dialog Verbs (file_dialog_verbs) - 14 tests: 13 pass (92%) 1 skip (7%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/file_dialog_verbs.opml"/>
-    <outline text="File Verbs (file_verbs) - 81 tests: 75 pass (92%) 6 skip (7%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/file_verbs.opml"/>
+    <outline text="File Verbs (file_verbs) - 84 tests: 78 pass (92%) 6 skip (7%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/file_verbs.opml"/>
     <outline text="Filemenu Verbs (filemenu_verbs) - 34 tests: 31 pass (91%) 3 skip (8%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/filemenu_verbs.opml"/>
     <outline text="Frontier Verbs (frontier_verbs) - 15 tests: 15 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/frontier_verbs.opml"/>
     <outline text="Guest Db Externals (guest_db_externals) - 11 tests: 11 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/guest_db_externals.opml"/>

@@ -42,8 +42,8 @@ tests:
   - name: "wp.getText - returns text from targeted WPText object"
     description: "Create a WPText object, set text, and verify getText returns the text"
     script: |
-      new(wpTextType, @workspace.wpGetTextTest);
-      target.set(@workspace.wpGetTextTest);
+      new(wpTextType, @system.temp.wpGetTextTest);
+      target.set(@system.temp.wpGetTextTest);
       wp.setText("hello from getText test");
       local(t = wp.getText());
       return(sizeOf(t) > 0)
@@ -53,18 +53,18 @@ tests:
   - name: "wp.getText equivalence with string()"
     description: "wp.getText() should produce the same result as string() coercion on the target"
     script: |
-      new(wpTextType, @workspace.wpEquivTest);
-      target.set(@workspace.wpEquivTest);
+      new(wpTextType, @system.temp.wpEquivTest);
+      target.set(@system.temp.wpEquivTest);
       wp.setText("equivalence test content");
-      return(wp.getText() == string(workspace.wpEquivTest))
+      return(wp.getText() == string(system.temp.wpEquivTest))
     expected_success: true
     expected_result: "true"
 
   - name: "wp.setText/getText roundtrip"
     description: "Set text on a WPText object, then get it back and verify match"
     script: |
-      new(wpTextType, @workspace.wpRoundtripTest);
-      target.set(@workspace.wpRoundtripTest);
+      new(wpTextType, @system.temp.wpRoundtripTest);
+      target.set(@system.temp.wpRoundtripTest);
       wp.setText("hello world");
       return(wp.getText() == "hello world")
     expected_success: true
@@ -85,8 +85,8 @@ tests:
   - name: "wp.setText - accepts text parameter"
     description: "wp.setText should accept a string parameter when target is a WPText object"
     script: |
-      new(wpTextType, @workspace.wpSetTextTest);
-      target.set(@workspace.wpSetTextTest);
+      new(wpTextType, @system.temp.wpSetTextTest);
+      target.set(@system.temp.wpSetTextTest);
       wp.setText("hello world")
     expected_success: true
     expected_result: "true"
