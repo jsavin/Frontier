@@ -70,7 +70,7 @@ Minimum expectations:
 - Do not place inline `//` comments inside UserTalk `{ ... }` blocks.
 - Keep indentation consistent inside blocks; avoid stray blank lines with mismatched indentation.
 - Isolate test state under `system.temp.*`, never by mutating `system.*` tables directly.
-- Always clean up temporary test objects (for example `delete(@system.temp.someTestTable)`).
+- Cleanup of `system.temp` objects is unnecessary (the table is non-persistent and recreated fresh each run), but acceptable for clarity.
 
 ## Migration and Data-Safety Invariants
 

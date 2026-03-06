@@ -2949,11 +2949,14 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	if (hnode != nil && (**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
 		return (false);
 
-	/* Guard against corrupt string/address handles (see v7 visitor for rationale).
-	 * Only check live (non-disk) values — fldiskval entries are handled by hashpackscalar. */
+	/* Guard against corrupt string/address/binary handles that could SIGSEGV during pack.
+	 * Only check live (non-disk) values — fldiskval entries are handled by hashpackscalar.
+	 * The 0x1000 threshold works because the first 4096 bytes of virtual address space
+	 * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000. */
 	if (!val.fldiskval && hnode != nil &&
 		(val.valuetype == addressvaluetype || val.valuetype == stringvaluetype ||
-		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype)) {
+		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype ||
+		 val.valuetype == binaryvaluetype)) {
 		Handle hdata = (Handle) val.data.binaryvalue;
 		if (hdata != nil) {
 			char *p = *hdata;
@@ -3364,14 +3367,17 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	if ((**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
 		return (false);
 
-	/* Guard against corrupt string/address handles that could SIGSEGV during pack.
+	/* Guard against corrupt string/address/binary handles that could SIGSEGV during pack.
 	 * Only check live (non-disk) values — fldiskval entries hold raw disk addresses
 	 * and are handled correctly by hashpackscalar without dereferencing.
 	 * Check both the handle pointer and its data pointer (the "master pointer")
-	 * since heap corruption can leave the handle valid but its data pointer invalid. */
+	 * since heap corruption can leave the handle valid but its data pointer invalid.
+	 * The 0x1000 threshold works because the first 4096 bytes of virtual address space
+	 * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000. */
 	if (!val.fldiskval &&
 		(val.valuetype == addressvaluetype || val.valuetype == stringvaluetype ||
-		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype)) {
+		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype ||
+		 val.valuetype == binaryvaluetype)) {
 		Handle hdata = (Handle) val.data.binaryvalue;
 		if (hdata != nil) {
 			char *p = *hdata;  /* master pointer / data pointer */

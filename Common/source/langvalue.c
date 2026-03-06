@@ -400,7 +400,7 @@ static boolean getaddressparts (const tyvaluerecord *val, hdlhashtable *htable, 
 		return (false);
 	}
 
-	if (*hstring == NULL || (uintptr_t) *hstring < 0x1000) {
+	if ((uintptr_t) *hstring < 0x1000) {
 		/* Handle is valid but its data pointer is corrupt (NULL or low address).
 		 * This can happen with stale entries from prior sessions. */
 		setemptystring(bs);
