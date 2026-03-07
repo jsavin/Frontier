@@ -71,6 +71,7 @@ Minimum expectations:
 - Keep indentation consistent inside blocks; avoid stray blank lines with mismatched indentation.
 - Isolate test state under `system.temp.*`, never by mutating `system.*` tables directly.
 - Cleanup of `system.temp` objects is unnecessary (the table is non-persistent and recreated fresh each run), but acceptable for clarity.
+- **NEVER use `new(tableType, @workspace)` or `new(tableType, @workspace.something)`** — this creates persistent tables in workspace that pollute the database across test runs and cause flaky tests. Always use `new(tableType, @system.temp.something)` instead.
 
 ## Migration and Data-Safety Invariants
 

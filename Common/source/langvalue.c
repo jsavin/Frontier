@@ -403,6 +403,8 @@ static boolean getaddressparts (const tyvaluerecord *val, hdlhashtable *htable, 
 	if ((uintptr_t) *hstring < 0x1000) {
 		/* Handle is valid but its data pointer is corrupt (NULL or low address).
 		 * This can happen with stale entries from prior sessions. */
+		log_error(LOG_COMP_LANG, "getaddressparts: corrupt address handle data ptr=%p handle=%p",
+			(void *)*hstring, (void *)hstring);
 		setemptystring(bs);
 		*htable = nil;
 		return (false);

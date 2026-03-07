@@ -359,6 +359,7 @@ class ProtocolExecutor:
         self.cli_path = cli_path
         self.system_root = system_root
         self._proc: Optional[subprocess.Popen] = None
+        self._stderr_file = None
         self._next_id = 1
 
     def start(self):
@@ -436,7 +437,7 @@ class ProtocolExecutor:
 
     def _log_stderr_on_crash(self):
         """Read and log any stderr output from the protocol process."""
-        if not hasattr(self, '_stderr_file') or self._stderr_file is None:
+        if self._stderr_file is None:
             return
         try:
             self._stderr_file.flush()
@@ -449,7 +450,7 @@ class ProtocolExecutor:
 
     def _close_stderr_file(self):
         """Close and remove the stderr temp file."""
-        if not hasattr(self, '_stderr_file') or self._stderr_file is None:
+        if self._stderr_file is None:
             return
         try:
             name = self._stderr_file.name

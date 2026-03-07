@@ -2952,7 +2952,10 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	/* Guard against corrupt string/address/binary handles that could SIGSEGV during pack.
 	 * Only check live (non-disk) values — fldiskval entries are handled by hashpackscalar.
 	 * The 0x1000 threshold works because the first 4096 bytes of virtual address space
-	 * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000. */
+	 * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000.
+	 * Note: codevaluetype and externalvaluetype are also handle-bearing but are NOT included
+	 * here — they have their own packing paths (langpacktree / hashpackexternal) with
+	 * separate error handling, and their handles point to structures, not raw data. */
 	if (!val.fldiskval && hnode != nil &&
 		(val.valuetype == addressvaluetype || val.valuetype == stringvaluetype ||
 		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype ||
@@ -3373,7 +3376,10 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	 * Check both the handle pointer and its data pointer (the "master pointer")
 	 * since heap corruption can leave the handle valid but its data pointer invalid.
 	 * The 0x1000 threshold works because the first 4096 bytes of virtual address space
-	 * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000. */
+	 * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000.
+	 * Note: codevaluetype and externalvaluetype are also handle-bearing but are NOT included
+	 * here — they have their own packing paths (langpacktree / hashpackexternal) with
+	 * separate error handling, and their handles point to structures, not raw data. */
 	if (!val.fldiskval &&
 		(val.valuetype == addressvaluetype || val.valuetype == stringvaluetype ||
 		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype ||
