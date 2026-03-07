@@ -2864,6 +2864,58 @@ typedef struct typackinforecord {
 #pragma options align=reset
 
 
+/* Guard against corrupt string/address/binary handles that could SIGSEGV during pack.
+ * Only checks live (non-disk) values — fldiskval entries hold raw disk addresses and
+ * are handled correctly by hashpackscalar without dereferencing.
+ *
+ * The 0x1000 threshold works because the first 4096 bytes of virtual address space
+ * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000.
+ * NULL (*hdata == NULL) is valid — it represents a zero-length handle (NewHandle(0) sets
+ * the master pointer to NULL), which packs correctly as a 0-length field.
+ *
+ * codevaluetype and externalvaluetype are also handle-bearing but are NOT included here —
+ * they have their own packing paths (langpacktree / hashpackexternal) with separate error
+ * handling, and their handles point to structures, not raw data.
+ *
+ * Note: setting fldontsave is permanent for the session — the node stays skipped on all
+ * subsequent pack calls even if later assigned a valid value. This is acceptable since the
+ * guard only fires on corruption, not on transient states.
+ *
+ * Returns true if corruption was detected (caller should skip this entry). */
+
+static boolean hashpackguard_corrupt_handle(tyvaluerecord val, hdlhashnode hnode,
+		bigstring bsname, const char *visitor_name) {
+
+	if (val.fldiskval)
+		return (false);
+
+	if (hnode == nil)  /* legacy visitor checks this; v7 relies on earlier fldontsave deref */
+		return (false);
+
+	if (val.valuetype != addressvaluetype && val.valuetype != stringvaluetype &&
+		val.valuetype != passwordvaluetype && val.valuetype != oldstringvaluetype &&
+		val.valuetype != binaryvaluetype)
+		return (false);
+
+	Handle hdata = (Handle) val.data.binaryvalue;
+
+	if (hdata == nil)
+		return (false);
+
+	char *p = *hdata;
+
+	if (p != NULL && (uintptr_t)p < 0x1000) {
+		log_error(LOG_COMP_HASH, "%s: corrupt handle data ptr=%p handle=%p type=%d name='%.*s'",
+			visitor_name, (void *)p, (void *)hdata, (int)val.valuetype,
+			(int)bsname[0], (char *)&bsname[1]);
+		(**hnode).fldontsave = true;
+		return (true);
+	}
+
+	return (false);
+} /*hashpackguard_corrupt_handle*/
+
+
 /* Legacy pack visitor (v<=6) */
 static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvaluerecord val, ptrvoid refcon);
 
@@ -2949,28 +3001,8 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	if (hnode != nil && (**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
 		return (false);
 
-	/* Guard against corrupt string/address/binary handles that could SIGSEGV during pack.
-	 * Only check live (non-disk) values — fldiskval entries are handled by hashpackscalar.
-	 * The 0x1000 threshold works because the first 4096 bytes of virtual address space
-	 * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000.
-	 * Note: codevaluetype and externalvaluetype are also handle-bearing but are NOT included
-	 * here — they have their own packing paths (langpacktree / hashpackexternal) with
-	 * separate error handling, and their handles point to structures, not raw data. */
-	if (!val.fldiskval && hnode != nil &&
-		(val.valuetype == addressvaluetype || val.valuetype == stringvaluetype ||
-		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype ||
-		 val.valuetype == binaryvaluetype)) {
-		Handle hdata = (Handle) val.data.binaryvalue;
-		if (hdata != nil) {
-			char *p = *hdata;
-			if (p != NULL && (uintptr_t)p < 0x1000) {
-				log_error(LOG_COMP_HASH, "hashpackvisit_legacy: corrupt handle data ptr=%p handle=%p type=%d name='%.*s'",
-					(void *)p, (void *)hdata, (int)val.valuetype, (int)bsname[0], (char *)&bsname[1]);
-				(**hnode).fldontsave = true;
-				return (false);
-			}
-		}
-	}
+	if (hashpackguard_corrupt_handle(val, hnode, bsname, "hashpackvisit_legacy"))
+		return (false);
 
 	langtraperrors (bspackerror, &savecallback, &saverefcon);
 
@@ -3370,31 +3402,8 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	if ((**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
 		return (false);
 
-	/* Guard against corrupt string/address/binary handles that could SIGSEGV during pack.
-	 * Only check live (non-disk) values — fldiskval entries hold raw disk addresses
-	 * and are handled correctly by hashpackscalar without dereferencing.
-	 * Check both the handle pointer and its data pointer (the "master pointer")
-	 * since heap corruption can leave the handle valid but its data pointer invalid.
-	 * The 0x1000 threshold works because the first 4096 bytes of virtual address space
-	 * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000.
-	 * Note: codevaluetype and externalvaluetype are also handle-bearing but are NOT included
-	 * here — they have their own packing paths (langpacktree / hashpackexternal) with
-	 * separate error handling, and their handles point to structures, not raw data. */
-	if (!val.fldiskval &&
-		(val.valuetype == addressvaluetype || val.valuetype == stringvaluetype ||
-		 val.valuetype == passwordvaluetype || val.valuetype == oldstringvaluetype ||
-		 val.valuetype == binaryvaluetype)) {
-		Handle hdata = (Handle) val.data.binaryvalue;
-		if (hdata != nil) {
-			char *p = *hdata;  /* master pointer / data pointer */
-			if (p != NULL && (uintptr_t)p < 0x1000) {
-				log_error(LOG_COMP_HASH, "hashpackvisit_v7: corrupt handle data ptr=%p handle=%p type=%d name='%.*s'",
-					(void *)p, (void *)hdata, (int)val.valuetype, (int)bsname[0], (char *)&bsname[1]);
-				(**hnode).fldontsave = true;
-				return (false); /* skip corrupt entry, continue traversal */
-			}
-		}
-	}
+	if (hashpackguard_corrupt_handle(val, hnode, bsname, "hashpackvisit_v7"))
+		return (false);
 
 	langtraperrors (bspackerror, &savecallback, &saverefcon);
 

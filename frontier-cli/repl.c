@@ -386,8 +386,8 @@ static boolean resolve_indexed_node(hdlhashtable htable, hdlhashnode hnode, long
      * SIGSEGV when langexternalvaltotable dereferences the stale handle. */
     if (!hashresolvevalue(htable, hnode)) {
         if (error_msg && error_bufsize > 0)
-            snprintf(error_msg, error_bufsize, "failed to resolve value at index %ld in '%s'",
-                     index, context_name ? context_name : "?");
+            snprintf(error_msg, error_bufsize, "failed to resolve value at index %ld ('%s') in '%s'",
+                     index, cname, context_name ? context_name : "?");
         return false;
     }
 

@@ -444,7 +444,12 @@ class ProtocolExecutor:
             self._stderr_file.seek(0)
             stderr_content = self._stderr_file.read().strip()
             if stderr_content:
-                print(f"  [protocol stderr] {stderr_content[:500]}", file=sys.stderr)
+                if len(stderr_content) <= 1000:
+                    print(f"  [protocol stderr] {stderr_content}", file=sys.stderr)
+                else:
+                    # Show head and tail to capture both startup errors and crash traces
+                    print(f"  [protocol stderr head] {stderr_content[:500]}", file=sys.stderr)
+                    print(f"  [protocol stderr tail] {stderr_content[-500:]}", file=sys.stderr)
         except Exception:
             pass
 
