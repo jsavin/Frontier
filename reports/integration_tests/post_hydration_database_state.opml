@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Post Hydration Database State (post_hydration_database_state) - 34 tests: 30 pass (88%) 4 skip (11%)</title>
-    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
+    <title>Post Hydration Database State (post_hydration_database_state) - 38 tests: 34 pass (89%) 4 skip (10%)</title>
+    <dateCreated>Sun, 08 Mar 2026 10:00:13 GMT</dateCreated>
   </head>
   <body>
     <outline text="CRITICAL - string(123) works after hydration - This is THE test for the bug we fixed. If hydrate_system_root_database()&#10;closes the database on success, this test WILL FAIL because:&#10;1. CLI starts up, calls hydrate_system_root_database()&#10;2. (Bug) hydrate closes DB, databasedata = nil&#10;3. Test runs, calls string(123)&#10;4. langfindsymbol() tries to resolve &quot;string&quot; via system.paths&#10;5. system.paths lookup requires database access&#10;6. databasedata is nil -&gt; crash or &quot;Can't find verb&quot; error&#10;&#10;After the fix, the database stays open and string() resolves correctly.&#10;">
@@ -300,6 +300,38 @@
       </outline>
       <outline text="Script">
         <outline text="defined(system) and defined(string) and string(123) == &quot;123&quot;"/>
+      </outline>
+    </outline>
+    <outline text="EFP fallback - inetd.startOne is defined - inetd.startOne is a UserTalk script in the database, NOT a kernel verb.&#10;It must be reachable through the system.paths search, not blocked by&#10;EFP table lookup. Regression test for the headless fast-path bug.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(inetd.startOne)"/>
+      </outline>
+    </outline>
+    <outline text="EFP fallback - inetd.startOne is script type - Verifies typeOf() correctly identifies inetd.startOne as a script (scpt),&#10;not a kernel token (tokn). If the EFP fast-path intercepts, typeOf may&#10;return the wrong type or fail entirely.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeOf(inetd.startOne) == &quot;scpt&quot;"/>
+      </outline>
+    </outline>
+    <outline text="EFP fallback - inetd.isDaemonRunning is defined - Another UserTalk script under inetd that must be reachable via database&#10;lookup, not blocked by EFP table.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(inetd.isDaemonRunning)"/>
+      </outline>
+    </outline>
+    <outline text="EFP fallback - inetd.supervisor is defined - inetd.supervisor IS a kernel verb (registered in headless_inetd_verbs.c).&#10;This test verifies kernel verbs still resolve correctly without the&#10;fast-path.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(inetd.supervisor)"/>
       </outline>
     </outline>
   </body>

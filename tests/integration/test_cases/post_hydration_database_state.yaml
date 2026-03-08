@@ -396,6 +396,9 @@ tests:
       inetd.startOne is a UserTalk script in the database, NOT a kernel verb.
       It must be reachable through the system.paths search, not blocked by
       EFP table lookup. Regression test for the headless fast-path bug.
+      NOTE: We test defined() rather than calling the verb because inetd.startOne
+      requires network infrastructure (tcp.listenStream, user.inetd tables) that
+      is not available in headless integration tests.
     script: 'defined(inetd.startOne)'
     expected_success: true
     expected_result: "true"
@@ -423,5 +426,14 @@ tests:
       This test verifies kernel verbs still resolve correctly without the
       fast-path.
     script: 'defined(inetd.supervisor)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "EFP fallback - tcp.statusStream is defined (non-inetd namespace)"
+    description: |
+      Verify the fix is namespace-general, not inetd-specific. tcp.statusStream
+      is a UserTalk script under the tcp EFP namespace that must also be
+      reachable through system.paths, not blocked by EFP table lookup.
+    script: 'defined(tcp.statusStream)'
     expected_success: true
     expected_result: "true"
