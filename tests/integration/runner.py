@@ -465,8 +465,8 @@ class ProtocolExecutor:
             name = self._stderr_file.name
             self._stderr_file.close()
             os.unlink(name)
-        except Exception:
-            pass
+        except Exception as ex:
+            print(f"  [protocol] failed to close stderr file: {ex}", file=sys.stderr)
         self._stderr_file = None
 
     def execute(self, script: str, timeout: float = 10.0) -> Dict:
@@ -531,7 +531,8 @@ class ProtocolExecutor:
     def reset(self):
         """Clear REPL variables and reset focus between tests."""
         if self._proc is None or self._proc.poll() is not None:
-            # Process already dead — restart for subsequent tests
+            # Process already dead — restart for subsequent tests.
+            # No clearContext needed after restart (fresh process has clean state).
             try:
                 self._restart()
             except Exception as e:

@@ -2907,6 +2907,8 @@ static boolean hashpackguard_corrupt_handle(tyvaluerecord val, hdlhashnode hnode
 		log_error(LOG_COMP_HASH, "%s: corrupt handle data ptr=%p handle=%p type=%d name='%.*s'",
 			visitor_name, (void *)p, (void *)hdata, (int)val.valuetype,
 			(int)bsname[0], (char *)&bsname[1]);
+		/* WARNING: permanent for the session — even if caller later assigns a valid
+		 * value to this node, it will still be skipped on save. */
 		(**hnode).fldontsave = true;
 		return (true);
 	}
