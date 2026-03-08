@@ -375,3 +375,53 @@ tests:
     script: 'defined(system) and defined(string) and string(123) == "123"'
     expected_success: true
     expected_result: "true"
+
+  # ==========================================================================
+  # EFP database script fallback tests
+  #
+  # REGRESSION: Commit 4e217f09 added a headless fast-path in langgethandlercode
+  # that checked efptable BEFORE system.paths for dotted verbs. This violated the
+  # correct search order (system.paths first, efptable last — see
+  # docs/VERB_RESOLUTION_ARCHITECTURE.md). When a verb existed as a UserTalk
+  # script in system.verbs.builtins.<efp>.<verb> but NOT as a kernel verb in the
+  # EFP table, the fast-path claimed success with hnode=nil, blocking the database
+  # fallback and causing "not implemented" errors.
+  #
+  # These tests verify that database scripts under EFP-named tables (inetd, tcp,
+  # file, etc.) are reachable through normal verb resolution.
+  # ==========================================================================
+
+  - name: "EFP fallback - inetd.startOne is defined"
+    description: |
+      inetd.startOne is a UserTalk script in the database, NOT a kernel verb.
+      It must be reachable through the system.paths search, not blocked by
+      EFP table lookup. Regression test for the headless fast-path bug.
+    script: 'defined(inetd.startOne)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "EFP fallback - inetd.startOne is script type"
+    description: |
+      Verifies typeOf() correctly identifies inetd.startOne as a script (scpt),
+      not a kernel token (tokn). If the EFP fast-path intercepts, typeOf may
+      return the wrong type or fail entirely.
+    script: 'typeOf(inetd.startOne) == "scpt"'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "EFP fallback - inetd.isDaemonRunning is defined"
+    description: |
+      Another UserTalk script under inetd that must be reachable via database
+      lookup, not blocked by EFP table.
+    script: 'defined(inetd.isDaemonRunning)'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "EFP fallback - inetd.supervisor is defined"
+    description: |
+      inetd.supervisor IS a kernel verb (registered in headless_inetd_verbs.c).
+      This test verifies kernel verbs still resolve correctly without the
+      fast-path.
+    script: 'defined(inetd.supervisor)'
+    expected_success: true
+    expected_result: "true"
