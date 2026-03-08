@@ -373,14 +373,18 @@ class ProtocolExecutor:
         self._stderr_file = tempfile.NamedTemporaryFile(
             mode='w+', prefix='frontier_protocol_stderr_', suffix='.log', delete=False)
 
-        self._proc = subprocess.Popen(
-            cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=self._stderr_file,
-            text=True,
-            bufsize=1,  # Line buffered
-        )
+        try:
+            self._proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=self._stderr_file,
+                text=True,
+                bufsize=1,  # Line buffered
+            )
+        except Exception:
+            self._close_stderr_file()
+            raise
         self._next_id = 1
 
     def _send_recv(self, msg: dict, timeout: float = 10.0) -> dict:
@@ -450,7 +454,7 @@ class ProtocolExecutor:
                     # Show head and tail to capture both startup errors and crash traces
                     print(f"  [protocol stderr head] {stderr_content[:500]}", file=sys.stderr)
                     print(f"  [protocol stderr tail] {stderr_content[-500:]}", file=sys.stderr)
-        except Exception:
+        except OSError:
             pass
 
     def _close_stderr_file(self):

@@ -387,7 +387,7 @@ static boolean resolve_indexed_node(hdlhashtable htable, hdlhashnode hnode, long
     if (!hashresolvevalue(htable, hnode)) {
         if (error_msg && error_bufsize > 0)
             snprintf(error_msg, error_bufsize, "failed to resolve value at index %ld ('%s') in '%s'",
-                     index, cname, context_name ? context_name : "?");
+                     index, cname[0] ? cname : "?", context_name ? context_name : "?");
         return false;
     }
 
