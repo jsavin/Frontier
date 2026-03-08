@@ -8670,51 +8670,12 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
 	
     disablelangerror (); /*no dialog if an error is encountered*/
 
-/* Headless dotted-name efp fast-path removed; rely on efptable path below. */
-
-#if defined(FRONTIER_HEADLESS)
-    /* Headless fast-path: if asked to resolve within efptable and name is dotted,
-       interpret left as EFP table and right as verb directly. */
-    if ((intable == efptable) && hnamenode && ((**hnamenode).nodetype == dotop)) {
-        bigstring bsleft, bsright;
-        hdlhashtable hleft = nil;
-        setemptystring(bsleft); setemptystring(bsright);
-        if (langgetidentifier((**hnamenode).param1, bsleft) && langgetidentifier((**hnamenode).param2, bsright)) {
-            /* Look up the EFP table by name under efptable */
-            pushhashtable(efptable);
-            if (langexternalgettable(bsleft, &hleft) && (hleft != nil)) {
-                pophashtable();
-                /* Find the verb token in that table */
-                pushhashtable(hleft);
-                if (hashtablelookupnode(hleft, bsright, hnode)) {
-                    pophashtable();
-                    *htable = hleft;
-                    /* Produce kernel special-case: no code (handled by langfunctioncall) */
-                    if (!langgetnodecode(hleft, bsright, *hnode, hcode)) {
-                        /* If not a kernel token, fall back to kernelfunctionvalue via nil code */
-                        *hcode = nil;
-                    }
-                    /* Ensure bsfunctionname is set for kernelfunctionvalue */
-                    copystring(bsright, bsfunctionname);
-                    enablelangerror (); /*re-enable before early return*/
-                    return (true);
-                }
-                pophashtable();
-                /* Even if the verb token wasn't present, allow kernel fallback in headless */
-                *htable = hleft;
-                *hcode = nil;
-                /* Ensure bsfunctionname is set for fallback */
-                copystring(bsright, bsfunctionname);
-                *hnode = nil;
-                enablelangerror (); /*re-enable before early return*/
-                return (true);
-            } else {
-                pophashtable();
-            }
-        }
-        /* fall through to generic path on failure */
-    }
-#endif
+    /* 2025-10-08: A headless EFP fast-path was added here (commit 4e217f09) as a
+     * temporary shim to resolve dotted verbs like file.exists when system tables
+     * weren't loaded. It checked efptable FIRST, violating the correct search
+     * order (system.paths THEN efptable — see VERB_RESOLUTION_ARCHITECTURE.md).
+     * Now that database hydration loads system tables, the generic path below
+     * handles all verb resolution correctly, so the fast-path has been removed. */
 	
 	/* 2026-01-25: RESTORED legacy guard behavior.
 	 * The guard is set ONLY when searching non-default scope (path search iterations).
@@ -8743,10 +8704,7 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
         return (false);
     
     ht = *htable; /*move into register*/
-#if defined(FRONTIER_HEADLESS)
-    /* debug disabled */
-#endif
-	
+
 	if (ht == nil) { /*no table specified*/
 		
 		pushhashtable (intable);
@@ -8882,7 +8840,7 @@ boolean langhandlercall (hdltreenode htree, hdltreenode hparam1, tyvaluerecord *
 
 	if (langgethandlercode (efptable, htree, &hcode, &htable, &hnode)) {
 		
-		assert (hcode == nil); /*see special case in gethandlercode*/
+		assert (hcode == nil); /*kernel verb nodes in efptable produce hcode==nil from langgetnodecode; dispatch is via hnode*/
 		
 		goto runhandler;
 		}
