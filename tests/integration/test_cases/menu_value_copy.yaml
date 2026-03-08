@@ -4,7 +4,7 @@
 # ODB locations, which was previously broken in headless mode. The core issue
 # was that assigning an mbar value from one location to another would fail,
 # preventing operations like:
-#   workspace.copy = userland.virginBookmarkMenu
+#   system.temp.copy = userland.virginBookmarkMenu
 #
 # Test Strategy:
 #   - Test basic copy of empty menubar
@@ -18,15 +18,15 @@ tests:
   # ==========================================================================
 
   - name: "mbar copy - copy menubar value to new location"
-    description: "Create a menubar at workspace.src, copy to workspace.dst, verify typeof is mbar"
+    description: "Create a menubar at system.temp.src, copy to system.temp.dst, verify typeof is mbar"
     skip: false
     skip_reason: ""
     script: |
-      new(menubarType, @workspace.src);
-      workspace.dst = workspace.src;
-      local (result = typeof(workspace.dst) == 'mbar');
-      delete(@workspace.src);
-      delete(@workspace.dst);
+      new(menubarType, @system.temp.src);
+      system.temp.dst = system.temp.src;
+      local (result = typeof(system.temp.dst) == 'mbar');
+      delete(@system.temp.src);
+      delete(@system.temp.dst);
       return result
     expected_success: true
     expected_result: "true"
@@ -40,11 +40,11 @@ tests:
     skip: false
     skip_reason: ""
     script: |
-      new(menubarType, @workspace.src);
-      workspace.dst = workspace.src;
-      local (result = defined(@workspace.dst));
-      delete(@workspace.src);
-      delete(@workspace.dst);
+      new(menubarType, @system.temp.src);
+      system.temp.dst = system.temp.src;
+      local (result = defined(@system.temp.dst));
+      delete(@system.temp.src);
+      delete(@system.temp.dst);
       return result
     expected_success: true
     expected_result: "true"
@@ -58,18 +58,18 @@ tests:
     skip: true
     skip_reason: "menu.addMenuCommand and related menu editing verbs not implemented in headless"
     script: |
-      new(menubarType, @workspace.src);
-      menu.addMenuCommand(@workspace.src, "File", "Open", "fileOpen()");
-      workspace.dst = workspace.src;
-      target.set(@workspace.dst);
+      new(menubarType, @system.temp.src);
+      menu.addMenuCommand(@system.temp.src, "File", "Open", "fileOpen()");
+      system.temp.dst = system.temp.src;
+      target.set(@system.temp.dst);
       op.firstSummit();
       op.expand();
       op.go(right, 1);
-      menu.getScript(@workspace.retrieved);
-      local (result = (workspace.retrieved == "fileOpen()"));
-      delete(@workspace.src);
-      delete(@workspace.dst);
-      try {delete(@workspace.retrieved)};
+      menu.getScript(@system.temp.retrieved);
+      local (result = (system.temp.retrieved == "fileOpen()"));
+      delete(@system.temp.src);
+      delete(@system.temp.dst);
+      try {delete(@system.temp.retrieved)};
       return result
     expected_success: true
     expected_result: "true"
@@ -96,9 +96,9 @@ tests:
     skip: false
     skip_reason: ""
     script: |
-      workspace.testCopy = userland.virginBookmarkMenu;
-      local (result = typeof(workspace.testCopy) == 'mbar');
-      delete(@workspace.testCopy);
+      system.temp.testCopy = userland.virginBookmarkMenu;
+      local (result = typeof(system.temp.testCopy) == 'mbar');
+      delete(@system.temp.testCopy);
       return result
     expected_success: true
     expected_result: "true"

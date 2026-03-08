@@ -196,6 +196,11 @@ Agents must verify fixes work end-to-end, not just fix one piece. Test the compl
 Cross-agent UserTalk invariants and integration-test parser constraints now live in `docs/AI_SHARED_GUIDELINES.md`.
 Use those rules as mandatory baseline guidance.
 
+**Key gotchas (see shared guidelines for full details):**
+- Double quotes for strings — UserTalk uses `"string"` not `'string'`
+- typeof() returns OSType codes (e.g. `'TEXT'`) not descriptive strings
+- Absolute paths required — UserTalk table paths must be fully qualified (e.g. `@workspace.foo`)
+
 ---
 
 ## Critical Testing Constraints

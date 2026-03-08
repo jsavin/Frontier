@@ -379,6 +379,13 @@ typedef union tyvaluedata {
 	} tyvaluedata;
 
 
+/* Minimum valid heap pointer address. The first 4096 bytes of virtual address
+ * space are intentionally unmapped (PROT_NONE) on macOS/Linux. Any non-NULL
+ * pointer below this threshold indicates corruption, not a valid allocation.
+ * Used by corrupt-handle guards in langhash.c and langvalue.c. */
+#define kMinValidPointer ((uintptr_t)0x1000)
+
+
 typedef struct tyvaluerecord {
 	
 	tyvaluetype valuetype;

@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>File Verbs (file_verbs) - 81 tests: 75 pass (92%) 6 skip (7%)</title>
-    <dateCreated>Fri, 20 Feb 2026 00:12:03 GMT</dateCreated>
+    <title>File Verbs (file_verbs) - 84 tests: 78 pass (92%) 6 skip (7%)</title>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="file.fileFromPath - extract filename from path - Extract filename component from path string (like basename)">
@@ -14,6 +14,30 @@
         <outline text="local(fullPath = tmpDir + &quot;/&quot; + &quot;test.txt&quot;)"/>
         <outline text="local(filename = file.fileFromPath(fullPath))"/>
         <outline text="return filename"/>
+      </outline>
+    </outline>
+    <outline text="file.fileFromPath - directory path with trailing separator - Trailing separator preserved in returned name (POSIX directory paths)">
+      <outline text="Metadata">
+        <outline text="expected_result: users/"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.fileFromPath(&quot;/path/to/users/&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.fileFromPath - directory path without trailing separator - No trailing separator returns plain name">
+      <outline text="Metadata">
+        <outline text="expected_result: users"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.fileFromPath(&quot;/path/to/users&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.fileFromPath - root path - Root path returns separator">
+      <outline text="Metadata">
+        <outline text="expected_result: /"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.fileFromPath(&quot;/&quot;)"/>
       </outline>
     </outline>
     <outline text="file.exists - nonexistent file - Check that nonexistent file returns false">

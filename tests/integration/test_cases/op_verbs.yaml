@@ -12,7 +12,7 @@
 # Headless Behavior Notes:
 # - All outline operations require an outline set as target: target.set(@myOutline)
 # - Outlines are in-memory tree data structures (no GUI window required)
-# - Create outlines with: lang.new(outlineType, @workspace.outline)
+# - Create outlines with: lang.new(outlineType, @system.temp.outline)
 # - Cursor position is data structure state (current node), not GUI state
 # - Direction values: up, down, left, right, flatup, flatdown
 # - Expansion state is tree metadata, not visual display state
@@ -27,27 +27,27 @@ tests:
   - name: "outline creation - lang.new with outlineType"
     description: "Create new outline object using lang.new(outlineType, @addr)"
     script: |
-      lang.new(outlineType, @workspace.testOutline);
-      return typeof(workspace.testOutline)
+      lang.new(outlineType, @system.temp.testOutline);
+      return typeof(system.temp.testOutline)
     expected_success: true
     expected_result: "optx"
 
   - name: "outline target setup - set outline as target"
     description: "Set outline as target for op verb operations"
     script: |
-      lang.new(outlineType, @workspace.myOutline);
-      target.set(@workspace.myOutline);
+      lang.new(outlineType, @system.temp.myOutline);
+      target.set(@system.temp.myOutline);
       return string(target.get())
     expected_success: true
-    expected_result: "workspace.myOutline"
+    expected_result: "system.temp.myOutline"
 
   - name: "outline target workflow - full setup cycle"
     description: "Complete workflow: create outline → set as target → verify"
     script: |
-      lang.new(outlineType, @workspace.opTest);
-      target.set(@workspace.opTest);
-      local(ok1 = typeof(workspace.opTest) == "optx");
-      local(ok2 = string(target.get()) == "workspace.opTest");
+      lang.new(outlineType, @system.temp.opTest);
+      target.set(@system.temp.opTest);
+      local(ok1 = typeof(system.temp.opTest) == "optx");
+      local(ok2 = string(target.get()) == "system.temp.opTest");
       return ok1 and ok2
     expected_success: true
     expected_result: "true"
@@ -59,8 +59,8 @@ tests:
   - name: "op.insert - insert first line (down)"
     description: "Insert first line into empty outline using down direction"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       return op.insert("First line", down)
     expected_success: true
     expected_result: "true"
@@ -68,8 +68,8 @@ tests:
   - name: "op.insert - insert sibling line (down)"
     description: "Insert sibling line below current line"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       return op.insert("Line 2", down)
     expected_success: true
@@ -78,8 +78,8 @@ tests:
   - name: "op.insert - insert child line (right)"
     description: "Insert child line under current line (indent)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       return op.insert("Child", right)
     expected_success: true
@@ -88,8 +88,8 @@ tests:
   - name: "op.insert - insert above (up)"
     description: "Insert line above current position"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 2", down);
       return op.insert("Line 1", up)
     expected_success: true
@@ -98,8 +98,8 @@ tests:
   - name: "op.insert - insert parent (left)"
     description: "Insert parent line to the left (outdent and insert)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       return op.insert("Grandchild", right)
@@ -109,8 +109,8 @@ tests:
   - name: "op.insert - cursor moves to inserted headline"
     description: "After insert, bar cursor should be positioned on the new headline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.insert("Line 3", down);
@@ -127,8 +127,8 @@ tests:
   - name: "op.getLineText - read inserted line"
     description: "Get text of line after insertion"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Test content", down);
       return op.getLineText()
     expected_success: true
@@ -137,8 +137,8 @@ tests:
   - name: "op.getLineText - returns string type"
     description: "getLineText returns stringType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Hello", down);
       return typeof(op.getLineText())
     expected_success: true
@@ -147,8 +147,8 @@ tests:
   - name: "op.getLineText - empty line text"
     description: "Get text of empty line (empty string)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("", down);
       return sizeOf(op.getLineText())
     expected_success: true
@@ -161,8 +161,8 @@ tests:
   - name: "op.go - navigate down one line"
     description: "Move cursor down one line in outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.go(up, 1);
@@ -174,8 +174,8 @@ tests:
   - name: "op.go - navigate up one line"
     description: "Move cursor up one line in outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.go(up, 1);
@@ -186,8 +186,8 @@ tests:
   - name: "op.go - navigate right (into child)"
     description: "Move cursor right into first child"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -199,8 +199,8 @@ tests:
   - name: "op.go - navigate left (to parent)"
     description: "Move cursor left to parent node"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -211,8 +211,8 @@ tests:
   - name: "op.go - navigate multiple units"
     description: "Navigate down multiple lines at once"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.insert("Line 3", down);
@@ -224,8 +224,8 @@ tests:
   - name: "op.go - returns boolean on success"
     description: "go() returns true when navigation succeeds"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       return op.go(up, 1)
@@ -235,8 +235,8 @@ tests:
   - name: "op.go - returns false at boundary"
     description: "go() returns false when can't move further (at boundary)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Only line", down);
       op.go(up, 1);
       return op.go(up, 1)
@@ -246,8 +246,8 @@ tests:
   - name: "op.go - flatup direction (skip children)"
     description: "Navigate flatup (previous sibling/parent, skipping children)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       return op.go(flatup, 1)
@@ -257,8 +257,8 @@ tests:
   - name: "op.go - flatdown direction (skip children)"
     description: "Navigate flatdown (next sibling, skipping children)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.go(up, 1);
@@ -273,8 +273,8 @@ tests:
   - name: "op.firstSummit - go to first top-level node"
     description: "Navigate to first summit (top-level node, which is initially empty)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("First", down);
       op.insert("Second", down);
       op.insert("Third", down);
@@ -287,8 +287,8 @@ tests:
   - name: "op.firstSummit - returns boolean true"
     description: "firstSummit returns true on success"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.firstSummit()
     expected_success: true
@@ -301,8 +301,8 @@ tests:
   - name: "op.level - top-level is 1"
     description: "Top-level nodes have level 1"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Top level", down);
       return op.level()
     expected_success: true
@@ -311,8 +311,8 @@ tests:
   - name: "op.level - child is level 2"
     description: "Child nodes have level 2"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       return op.level()
@@ -322,8 +322,8 @@ tests:
   - name: "op.level - grandchild is level 3"
     description: "Grandchild nodes have level 3"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.insert("Grandchild", right);
@@ -338,8 +338,8 @@ tests:
   - name: "op.countSubs - count immediate children (level 1)"
     description: "Count direct children of current node"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child 1", right);
       op.insert("Child 2", down);
@@ -352,8 +352,8 @@ tests:
   - name: "op.countSubs - no children returns 0"
     description: "Leaf nodes have 0 children"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Leaf node", down);
       return op.countSubs(1)
     expected_success: true
@@ -362,8 +362,8 @@ tests:
   - name: "op.countSubs - infinity counts all descendants"
     description: "Use infinity to count all descendants recursively"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Root", down);
       op.insert("Child 1", right);
       op.insert("Grandchild", right);
@@ -381,8 +381,8 @@ tests:
   - name: "op.countSummits - count top-level nodes"
     description: "Count all summit (top-level) nodes in outline (includes empty root)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Summit 1", down);
       op.insert("Summit 2", down);
       op.insert("Summit 3", down);
@@ -393,8 +393,8 @@ tests:
   - name: "op.countSummits - empty outline returns 1"
     description: "Empty outline has 1 summit (the empty root node)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       return op.countSummits()
     expected_success: true
     expected_result: "1"
@@ -402,8 +402,8 @@ tests:
   - name: "op.countSummits - children don't count"
     description: "Child nodes are not counted as summits (empty root + 1 summit)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Summit", down);
       op.insert("Child", right);
       op.insert("Grandchild", right);
@@ -418,8 +418,8 @@ tests:
   - name: "op.subsExpanded - collapsed headline returns false"
     description: "Returns false when current headline's children are collapsed"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -431,8 +431,8 @@ tests:
   - name: "op.subsExpanded - expanded headline returns true"
     description: "Returns true when current headline's children are expanded"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -444,8 +444,8 @@ tests:
   - name: "op.subsExpanded - no children returns false"
     description: "Returns false when headline has no children"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Leaf Node", down);
       return op.subsExpanded()
     expected_success: true
@@ -454,8 +454,8 @@ tests:
   - name: "op.subsExpanded - no parameters"
     description: "Verify op.subsExpanded works with zero parameters on empty outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       return op.subsExpanded()
     expected_success: true
     expected_result: "false"
@@ -467,8 +467,8 @@ tests:
   - name: "op.expand - expand one level"
     description: "Expand current node one level (show immediate children)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -480,8 +480,8 @@ tests:
   - name: "op.expand - expand all descendants (infinity)"
     description: "Expand all descendants using infinity"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Root", down);
       op.insert("Child", right);
       op.insert("Grandchild", right);
@@ -498,8 +498,8 @@ tests:
   - name: "op.collapse - collapse current node"
     description: "Collapse current node (hide all children)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -511,8 +511,8 @@ tests:
   - name: "op.collapse - returns boolean"
     description: "collapse returns true only if something was collapsed"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Node", down);
       return op.collapse()
     expected_success: true
@@ -525,8 +525,8 @@ tests:
   - name: "op.promote - move child to sibling of parent"
     description: "op.promote() promotes children of current node (moves subheads left one level)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child 1", right);
       op.insert("Child 2", down);
@@ -555,8 +555,8 @@ tests:
   - name: "op.promote - returns boolean"
     description: "promote returns true when children exist to promote"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       /* Cursor is on Child after inserting it */
@@ -569,8 +569,8 @@ tests:
   - name: "op.promote - top-level cannot promote"
     description: "Top-level nodes cannot be promoted (already at level 1)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Top", down);
       return op.promote()
     expected_success: true
@@ -583,8 +583,8 @@ tests:
   - name: "op.demote - make sibling a child"
     description: "op.demote() demotes siblings after current node (moves following siblings right to become children)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Sibling 1", down);
       op.insert("Sibling 2", down);
@@ -611,8 +611,8 @@ tests:
   - name: "op.demote - returns boolean"
     description: "demote returns true when siblings exist to demote"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       /* Cursor is on Line 2 */
@@ -629,8 +629,8 @@ tests:
   - name: "op.deleteLine - delete single line"
     description: "Delete current line, cursor moves to next line"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Delete me", down);
       op.insert("Keep me", down);
       op.go(up, 1);
@@ -642,8 +642,8 @@ tests:
   - name: "op.deleteLine - returns boolean true"
     description: "deleteLine returns true on success"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.deleteLine()
     expected_success: true
@@ -652,8 +652,8 @@ tests:
   - name: "op.deleteLine - delete only node creates empty node"
     description: "Deleting the only node creates a new blank node (outline minimal state)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Only node", down);
       op.deleteLine();
       return op.countSummits()
@@ -667,8 +667,8 @@ tests:
   - name: "op.setLineText - modify existing headline"
     description: "Change text of current headline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Original text", down);
       op.setLineText("Modified text");
       return op.getLineText()
@@ -678,8 +678,8 @@ tests:
   - name: "op.setLineText - returns boolean true on success"
     description: "setLineText returns true when successful"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Text", down);
       return op.setLineText("New text")
     expected_success: true
@@ -688,8 +688,8 @@ tests:
   - name: "op.setLineText - set to empty string"
     description: "Set headline text to empty string (valid operation)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Something", down);
       op.setLineText("");
       return sizeOf(op.getLineText())
@@ -699,8 +699,8 @@ tests:
   - name: "op.setLineText - special characters"
     description: "Set text with special characters (quotes, newlines, etc.)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Test", down);
       op.setLineText("Special: \"quotes\" & <tags>");
       return op.getLineText()
@@ -710,8 +710,8 @@ tests:
   - name: "op.setLineText - missing text parameter"
     description: "setLineText requires text parameter (should fail)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Test", down);
       op.setLineText()
     expected_success: false
@@ -720,8 +720,8 @@ tests:
   - name: "op.setLineText - preserves children"
     description: "Setting line text preserves child nodes"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child 1", right);
       op.insert("Child 2", down);
@@ -740,8 +740,8 @@ tests:
   - name: "op.deleteSubs - delete all children under parent"
     description: "Delete all children of current node, parent remains"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child 1", right);
       op.insert("Child 2", down);
@@ -757,8 +757,8 @@ tests:
   - name: "op.deleteSubs - returns boolean true"
     description: "deleteSubs returns true on success"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -769,8 +769,8 @@ tests:
   - name: "op.deleteSubs - no children is no-op"
     description: "deleteSubs on node with no children returns true (no-op)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Leaf node", down);
       local(ok = op.deleteSubs());
       return ok and (op.countSubs(1) == 0)
@@ -780,8 +780,8 @@ tests:
   - name: "op.deleteSubs - multi-level children"
     description: "Delete all descendants (children, grandchildren, etc.)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Root", down);
       op.insert("Child 1", right);
       op.insert("Grandchild 1", right);
@@ -797,8 +797,8 @@ tests:
   - name: "op.deleteSubs - zero parameters required"
     description: "deleteSubs takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -813,8 +813,8 @@ tests:
   - name: "op.reorg - move node left (direction=left, count=1)"
     description: "Move node left one level (promote/outdent)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       local(before = op.level());
@@ -827,8 +827,8 @@ tests:
   - name: "op.reorg - move node right (direction=right, count=1)"
     description: "Move node right one level (demote/indent)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       local(before = op.level());
@@ -841,8 +841,8 @@ tests:
   - name: "op.reorg - move multiple levels left"
     description: "Move node left multiple levels (count > 1)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Level 1", down);
       op.insert("Level 2", right);
       op.insert("Level 3", right);
@@ -856,8 +856,8 @@ tests:
   - name: "op.reorg - move multiple levels right"
     description: "Move node right as far as possible (goes as far as structure allows)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.insert("Line 3", down);
@@ -872,8 +872,8 @@ tests:
   - name: "op.reorg - returns boolean based on success"
     description: "reorg returns true on successful reorganization"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       return op.reorg(left, 1)
@@ -883,8 +883,8 @@ tests:
   - name: "op.reorg - missing direction parameter"
     description: "reorg requires direction parameter (should fail)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Test", down);
       op.reorg()
     expected_success: false
@@ -893,8 +893,8 @@ tests:
   - name: "op.reorg - missing count parameter"
     description: "reorg requires count parameter (should fail)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Test", down);
       op.reorg(3)
     expected_success: false
@@ -920,8 +920,8 @@ tests:
   # - name: "op.find - find existing text (basic search)"
   #   description: "Find text in outline, cursor moves to matching line"
   #   script: |
-  #     lang.new(outlineType, @workspace.outline);
-  #     target.set(@workspace.outline);
+  #     lang.new(outlineType, @system.temp.outline);
+  #     target.set(@system.temp.outline);
   #     op.insert("Line 1", down);
   #     op.insert("Target line", down);
   #     op.insert("Line 3", down);
@@ -934,8 +934,8 @@ tests:
   - name: "op.find - case-sensitive search (flCase=true)"
     description: "Find with case sensitivity enabled - exact case match required"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("lowercase text", down);
       op.insert("UPPERCASE TEXT", down);
       op.firstSummit();
@@ -948,8 +948,8 @@ tests:
   # - name: "op.find - case-insensitive search (flCase=false)"
   #   description: "Find with case insensitivity (matches regardless of case)"
   #   script: |
-  #     lang.new(outlineType, @workspace.outline);
-  #     target.set(@workspace.outline);
+  #     lang.new(outlineType, @system.temp.outline);
+  #     target.set(@system.temp.outline);
   #     op.insert("lowercase text", down);
   #     op.insert("UPPERCASE TEXT", down);
   #     op.firstSummit();
@@ -962,8 +962,8 @@ tests:
   # - name: "op.find - wrap around search (flWrap=true)"
   #   description: "Search wraps around to beginning when reaching end"
   #   script: |
-  #     lang.new(outlineType, @workspace.outline);
-  #     target.set(@workspace.outline);
+  #     lang.new(outlineType, @system.temp.outline);
+  #     target.set(@system.temp.outline);
   #     op.insert("First line", down);
   #     op.insert("Last line", down);
   #     local(found = op.find("First", true, false));
@@ -974,8 +974,8 @@ tests:
   - name: "op.find - no wrap search (flWrap=false)"
     description: "Search without wrap stops at end"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.insert("Line 3", down);
@@ -987,8 +987,8 @@ tests:
   - name: "op.find - not found returns false"
     description: "Returns false when text not found in outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       return op.find("Nonexistent", false, false)
@@ -998,8 +998,8 @@ tests:
   - name: "op.find - missing searchText parameter"
     description: "find requires searchText parameter (should fail)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Test", down);
       op.find()
     expected_success: false
@@ -1008,8 +1008,8 @@ tests:
   - name: "op.find - one parameter (searchText only)"
     description: "flWrap and flCase are optional, defaults to case-insensitive"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Test", down);
       local(found = op.find("test"));
       return found and (op.getLineText() == "Test")
@@ -1019,8 +1019,8 @@ tests:
   - name: "op.find - two parameters (searchText, flWrap)"
     description: "flCase is optional, defaults to case-insensitive"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Test", down);
       local(found = op.find("test", false));
       return found and (op.getLineText() == "Test")
@@ -1031,8 +1031,8 @@ tests:
   # - name: "op.find - searches in children"
   #   description: "Find searches through entire tree structure including children"
   #   script: |
-  #     lang.new(outlineType, @workspace.outline);
-  #     target.set(@workspace.outline);
+  #     lang.new(outlineType, @system.temp.outline);
+  #     target.set(@system.temp.outline);
   #     op.insert("Parent", down);
   #     op.insert("Child with target", right);
   #     op.go(left, 1);
@@ -1079,8 +1079,8 @@ tests:
   - name: "op.getLineText - no parameters"
     description: "op.getLineText takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Text", down);
       return typeof(op.getLineText())
     expected_success: true
@@ -1095,8 +1095,8 @@ tests:
   - name: "op.level - no parameters"
     description: "op.level takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return typeof(op.level())
     expected_success: true
@@ -1117,8 +1117,8 @@ tests:
   - name: "op.collapse - no parameters"
     description: "op.collapse takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return typeof(op.collapse())
     expected_success: true
@@ -1127,8 +1127,8 @@ tests:
   - name: "op.promote - no parameters"
     description: "op.promote takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       return typeof(op.promote())
@@ -1138,8 +1138,8 @@ tests:
   - name: "op.demote - no parameters"
     description: "op.demote takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       return typeof(op.demote())
@@ -1181,8 +1181,8 @@ tests:
   - name: "op.insert - table target should fail"
     description: "op verbs require outlineType target, not tableType"
     script: |
-      lang.new(tableType, @workspace.notOutline);
-      target.set(@workspace.notOutline);
+      lang.new(tableType, @system.temp.notOutline);
+      target.set(@system.temp.notOutline);
       op.insert("Test", down)
     expected_success: false
     expected_error_type: "script_error"
@@ -1190,8 +1190,8 @@ tests:
   - name: "op.getLineText - wrong target type should fail"
     description: "op verbs require outlineType target"
     script: |
-      lang.new(tableType, @workspace.table);
-      target.set(@workspace.table);
+      lang.new(tableType, @system.temp.table);
+      target.set(@system.temp.table);
       op.getLineText()
     expected_success: false
     expected_error_type: "script_error"
@@ -1203,8 +1203,8 @@ tests:
   - name: "workflow - build and navigate outline structure"
     description: "Build multi-level outline and navigate through it"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Chapter 1", down);
       op.insert("Section 1.1", right);
       op.insert("Section 1.2", down);
@@ -1221,8 +1221,8 @@ tests:
   - name: "workflow - insert and modify multiple lines"
     description: "Insert multiple lines and modify their content"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.insert("Line 3", down);
@@ -1235,8 +1235,8 @@ tests:
   - name: "workflow - promote children of current heading"
     description: "Promote all subheads beneath current heading one level to the left"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);         // Level 1 (empty summit + parent = 2 levels)
       op.insert("Child1", right);        // Level 2, child of Parent
       op.insert("Child2", down);         // Level 2, sibling of Child1
@@ -1255,8 +1255,8 @@ tests:
   - name: "workflow - demote following siblings"
     description: "Demote all following siblings to be children of current heading"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("L1-Sibling1", down);     // Level 1
       op.insert("L1-Sibling2", down);     // Level 1, following sibling
       op.insert("L1-Sibling3", down);     // Level 1, following sibling
@@ -1273,8 +1273,8 @@ tests:
   - name: "workflow - expand and collapse state"
     description: "Expand and collapse outline nodes"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Root", down);
       op.insert("Child 1", right);
       op.insert("Child 2", down);
@@ -1292,8 +1292,8 @@ tests:
   - name: "stress test - build large outline"
     description: "Build outline with many nodes (includes empty root)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(i);
       for i = 1 to 20 {
         op.insert("Line " + i, down)
@@ -1305,8 +1305,8 @@ tests:
   - name: "stress test - deep nesting"
     description: "Create deeply nested outline structure"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(i);
       op.insert("Level 1", down);
       for i = 2 to 10 {
@@ -1319,8 +1319,8 @@ tests:
   - name: "stress test - rapid insert and delete"
     description: "Rapidly insert and delete lines"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(i);
       for i = 1 to 10 {
         op.insert("Temp " + i, down)
@@ -1339,8 +1339,8 @@ tests:
   - name: "op.getCursor - returns address type"
     description: "getCursor returns long type (1-based line number) for current cursor position"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       return typeof(op.getCursor())
     expected_success: true
@@ -1349,8 +1349,8 @@ tests:
   - name: "op.getCursor - simple outline cursor position"
     description: "Get cursor position from simple outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("First line", down);
       local(cursor = op.getCursor());
       return defined(cursor)
@@ -1360,8 +1360,8 @@ tests:
   - name: "op.getCursor - cursor changes with navigation"
     description: "Cursor address changes when navigating outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       local(cursor1 = op.getCursor());
@@ -1374,8 +1374,8 @@ tests:
   - name: "op.getCursor - cursor in nested structure"
     description: "Get cursor from nested outline hierarchy"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.insert("Grandchild", right);
@@ -1387,8 +1387,8 @@ tests:
   - name: "op.getCursor - no parameters required"
     description: "getCursor takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return typeof(op.getCursor())
     expected_success: true
@@ -1397,8 +1397,8 @@ tests:
   - name: "op.getCursor - extra parameters should fail"
     description: "getCursor with extra parameters should error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.getCursor("extra")
     expected_success: false
@@ -1407,8 +1407,8 @@ tests:
   - name: "op.setCursor - set cursor to saved address"
     description: "Set cursor to previously saved address position"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.insert("Line 3", down);
@@ -1424,8 +1424,8 @@ tests:
     description: "setCursor returns true when cursor is set successfully"
     skip: "Phase 3: Cursor management not fully implemented in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       local(cursor = op.getCursor());
@@ -1437,8 +1437,8 @@ tests:
   - name: "op.setCursor - round-trip cursor position"
     description: "Get cursor, navigate away, set cursor back - verify position"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Target line", down);
       op.insert("Other line", down);
       local(targetCursor = op.getCursor());
@@ -1451,8 +1451,8 @@ tests:
   - name: "op.setCursor - cursor in nested hierarchy"
     description: "Set cursor to child node address"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child 1", right);
       local(child1Cursor = op.getCursor());
@@ -1466,8 +1466,8 @@ tests:
   - name: "op.setCursor - requires address parameter"
     description: "setCursor requires address parameter (should fail without it)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setCursor()
     expected_success: false
@@ -1476,8 +1476,8 @@ tests:
   - name: "op.setCursor - invalid address type should fail"
     description: "setCursor with non-address type should error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setCursor("not an address")
     expected_success: false
@@ -1487,12 +1487,12 @@ tests:
     description: "setCursor with address from different outline should error"
     skip: "Phase 3: Cross-outline cursor validation not implemented"
     script: |
-      lang.new(outlineType, @workspace.outline1);
-      lang.new(outlineType, @workspace.outline2);
-      target.set(@workspace.outline1);
+      lang.new(outlineType, @system.temp.outline1);
+      lang.new(outlineType, @system.temp.outline2);
+      target.set(@system.temp.outline1);
       op.insert("Line 1", down);
       local(cursor1 = op.getCursor());
-      target.set(@workspace.outline2);
+      target.set(@system.temp.outline2);
       op.insert("Line 2", down);
       op.setCursor(cursor1)
     expected_success: false
@@ -1505,8 +1505,8 @@ tests:
   - name: "op.getDisplay - returns boolean type"
     description: "getDisplay returns boolean for display inhibit state"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       return typeof(op.getDisplay())
     expected_success: true
     expected_result: "bool"
@@ -1514,8 +1514,8 @@ tests:
   - name: "op.getDisplay - default state is true (display enabled)"
     description: "New outlines have display enabled by default"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       return op.getDisplay()
     expected_success: true
     expected_result: "true"
@@ -1523,8 +1523,8 @@ tests:
   - name: "op.getDisplay - no parameters required"
     description: "getDisplay takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       return typeof(op.getDisplay())
     expected_success: true
     expected_result: "bool"
@@ -1532,8 +1532,8 @@ tests:
   - name: "op.getDisplay - extra parameters should fail"
     description: "getDisplay with extra parameters should error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.getDisplay("extra")
     expected_success: false
     expected_error_type: "script_error"
@@ -1541,8 +1541,8 @@ tests:
   - name: "op.setDisplay - set display to false (inhibit display)"
     description: "Disable display for performance during bulk operations"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       return op.getDisplay()
     expected_success: true
@@ -1551,8 +1551,8 @@ tests:
   - name: "op.setDisplay - set display to true (enable display)"
     description: "Enable display after bulk operations"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       op.setDisplay(true);
       return op.getDisplay()
@@ -1562,8 +1562,8 @@ tests:
   - name: "op.setDisplay - returns boolean true on success"
     description: "setDisplay returns true when state is set"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       return op.setDisplay(false)
     expected_success: true
     expected_result: "true"
@@ -1571,8 +1571,8 @@ tests:
   - name: "op.setDisplay - round-trip display state"
     description: "Set display false, verify, set true, verify"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       local(state1 = op.getDisplay());
       op.setDisplay(true);
@@ -1584,8 +1584,8 @@ tests:
   - name: "op.setDisplay - bulk operations with display off"
     description: "Disable display during bulk insert operations (performance optimization)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       local(i);
       for i = 1 to 10 {
@@ -1599,8 +1599,8 @@ tests:
   - name: "op.setDisplay - requires boolean parameter"
     description: "setDisplay requires boolean parameter (should fail without it)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay()
     expected_success: false
     expected_error_type: "script_error"
@@ -1609,8 +1609,8 @@ tests:
     description: "setDisplay with non-boolean type should error"
     skip: "Phase 3: Type validation for setDisplay not implemented"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay("true")
     expected_success: false
     expected_error_type: "script_error"
@@ -1622,8 +1622,8 @@ tests:
   - name: "op.getExpansionState - returns address type"
     description: "getExpansionState returns list containing expansion state data"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -1634,8 +1634,8 @@ tests:
   - name: "op.getExpansionState - simple outline expansion state"
     description: "Get expansion state from simple outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -1647,8 +1647,8 @@ tests:
   - name: "op.getExpansionState - no parameters required"
     description: "getExpansionState takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return typeof(op.getExpansionState())
     expected_success: true
@@ -1657,8 +1657,8 @@ tests:
   - name: "op.getExpansionState - extra parameters should fail"
     description: "getExpansionState with extra parameters should error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.getExpansionState("extra")
     expected_success: false
@@ -1668,8 +1668,8 @@ tests:
     description: "Set expansion state to previously saved state"
     skip: "Phase 3: Expansion state management not fully implemented"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent 1", down);
       op.insert("Child 1", right);
       op.go(left, 1);
@@ -1690,8 +1690,8 @@ tests:
   - name: "op.setExpansionState - returns boolean true on success"
     description: "setExpansionState returns true when state is set successfully"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -1703,8 +1703,8 @@ tests:
   - name: "op.setExpansionState - round-trip expansion state"
     description: "Get state, modify expansion, restore state"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child 1", right);
       op.insert("Child 2", down);
@@ -1720,8 +1720,8 @@ tests:
   - name: "op.setExpansionState - complex outline with multiple levels"
     description: "Save and restore expansion state in multi-level outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Level 1", down);
       op.insert("Level 2", right);
       op.insert("Level 3", right);
@@ -1737,8 +1737,8 @@ tests:
   - name: "op.setExpansionState - requires address parameter"
     description: "setExpansionState requires address parameter (should fail without it)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -1750,8 +1750,8 @@ tests:
     description: "setExpansionState with non-address type should error"
     skip: "Phase 3: Type validation returns json_parse_error instead of script_error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -1766,8 +1766,8 @@ tests:
   - name: "op.getScrollState - returns address type"
     description: "getScrollState returns long (1-based line number) for scroll position"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       return typeof(op.getScrollState())
     expected_success: true
@@ -1776,8 +1776,8 @@ tests:
   - name: "op.getScrollState - simple outline scroll state"
     description: "Get scroll state from simple outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       local(state = op.getScrollState());
@@ -1788,8 +1788,8 @@ tests:
   - name: "op.getScrollState - no parameters required"
     description: "getScrollState takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return typeof(op.getScrollState())
     expected_success: true
@@ -1798,8 +1798,8 @@ tests:
   - name: "op.getScrollState - extra parameters should fail"
     description: "getScrollState with extra parameters should error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.getScrollState("extra")
     expected_success: false
@@ -1808,8 +1808,8 @@ tests:
   - name: "op.setScrollState - restore saved scroll state"
     description: "Set scroll state to previously saved state"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.insert("Line 3", down);
@@ -1821,8 +1821,8 @@ tests:
   - name: "op.setScrollState - returns boolean true on success"
     description: "setScrollState returns true when state is set successfully"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(state = op.getScrollState());
       return op.setScrollState(state)
@@ -1832,8 +1832,8 @@ tests:
   - name: "op.setScrollState - round-trip scroll state"
     description: "Get scroll state, navigate, restore scroll state (noop in headless)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(i);
       for i = 1 to 20 {
         op.insert("Line " + i, down)
@@ -1849,8 +1849,8 @@ tests:
   - name: "op.setScrollState - requires address parameter"
     description: "setScrollState requires address parameter (should fail without it)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setScrollState()
     expected_success: false
@@ -1859,8 +1859,8 @@ tests:
   - name: "op.setScrollState - invalid address type should fail"
     description: "setScrollState with non-address type should error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setScrollState("not an address")
     expected_success: false
@@ -1873,8 +1873,8 @@ tests:
   - name: "op.getRefcon - returns long type"
     description: "getRefcon returns long (32-bit integer) reference constant"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return typeof(op.getRefcon())
     expected_success: true
@@ -1883,8 +1883,8 @@ tests:
   - name: "op.getRefcon - default refcon is zero"
     description: "New outline nodes have refcon initialized to 0"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.getRefcon()
     expected_success: true
@@ -1893,8 +1893,8 @@ tests:
   - name: "op.getRefcon - no parameters required"
     description: "getRefcon takes no parameters"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return typeof(op.getRefcon())
     expected_success: true
@@ -1903,8 +1903,8 @@ tests:
   - name: "op.getRefcon - extra parameters should fail"
     description: "getRefcon with extra parameters should error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.getRefcon("extra")
     expected_success: false
@@ -1913,8 +1913,8 @@ tests:
   - name: "op.setRefcon - set positive refcon value"
     description: "Set refcon to positive integer value"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(12345);
       return op.getRefcon()
@@ -1924,8 +1924,8 @@ tests:
   - name: "op.setRefcon - set negative refcon value"
     description: "Set refcon to negative integer value"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(-9999);
       return op.getRefcon()
@@ -1935,8 +1935,8 @@ tests:
   - name: "op.setRefcon - set zero refcon value"
     description: "Set refcon to zero (reset to default)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(100);
       op.setRefcon(0);
@@ -1947,8 +1947,8 @@ tests:
   - name: "op.setRefcon - returns boolean true on success"
     description: "setRefcon returns true when refcon is set successfully"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.setRefcon(42)
     expected_success: true
@@ -1957,8 +1957,8 @@ tests:
   - name: "op.setRefcon - round-trip refcon value"
     description: "Set refcon, verify with getRefcon"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(99999);
       return op.getRefcon()
@@ -1968,8 +1968,8 @@ tests:
   - name: "op.setRefcon - different refcon per node"
     description: "Each node can have independent refcon value"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.setRefcon(111);
       op.insert("Line 2", down);
@@ -1984,8 +1984,8 @@ tests:
   - name: "op.setRefcon - refcon persists across navigation"
     description: "Refcon value persists when navigating away and back"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.setRefcon(777);
       op.insert("Line 2", down);
@@ -1997,8 +1997,8 @@ tests:
   - name: "op.setRefcon - requires long parameter"
     description: "setRefcon requires long parameter (should fail without it)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon()
     expected_success: false
@@ -2008,8 +2008,8 @@ tests:
     description: "setRefcon with non-long type should error"
     skip: "Phase 3: Type validation for setRefcon not implemented"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon("not a number")
     expected_success: false
@@ -2031,8 +2031,8 @@ tests:
     description: "setCursor requires outline set as target"
     script: |
       target.clear();
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(cursor = op.getCursor());
       target.clear();
@@ -2068,8 +2068,8 @@ tests:
     description: "setExpansionState requires outline set as target"
     script: |
       target.clear();
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -2091,8 +2091,8 @@ tests:
     description: "setScrollState requires outline set as target"
     script: |
       target.clear();
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(state = op.getScrollState());
       target.clear();
@@ -2123,8 +2123,8 @@ tests:
   - name: "op.getCursor - table target should fail"
     description: "getCursor requires outlineType target, not tableType"
     script: |
-      lang.new(tableType, @workspace.notOutline);
-      target.set(@workspace.notOutline);
+      lang.new(tableType, @system.temp.notOutline);
+      target.set(@system.temp.notOutline);
       op.getCursor()
     expected_success: false
     expected_error_type: "script_error"
@@ -2132,8 +2132,8 @@ tests:
   - name: "op.setDisplay - wrong target type should fail"
     description: "setDisplay requires outlineType target"
     script: |
-      lang.new(tableType, @workspace.table);
-      target.set(@workspace.table);
+      lang.new(tableType, @system.temp.table);
+      target.set(@system.temp.table);
       op.setDisplay(false)
     expected_success: false
     expected_error_type: "script_error"
@@ -2141,8 +2141,8 @@ tests:
   - name: "op.getExpansionState - wrong target type should fail"
     description: "getExpansionState requires outlineType target"
     script: |
-      lang.new(tableType, @workspace.table);
-      target.set(@workspace.table);
+      lang.new(tableType, @system.temp.table);
+      target.set(@system.temp.table);
       op.getExpansionState()
     expected_success: false
     expected_error_type: "script_error"
@@ -2150,8 +2150,8 @@ tests:
   - name: "op.getRefcon - wrong target type should fail"
     description: "getRefcon requires outlineType target"
     script: |
-      lang.new(tableType, @workspace.table);
-      target.set(@workspace.table);
+      lang.new(tableType, @system.temp.table);
+      target.set(@system.temp.table);
       op.getRefcon()
     expected_success: false
     expected_error_type: "script_error"
@@ -2163,8 +2163,8 @@ tests:
   - name: "workflow - save and restore cursor during bulk operations"
     description: "Save cursor, do bulk operations, restore cursor position"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.insert("Line 3", down);
@@ -2182,8 +2182,8 @@ tests:
   - name: "workflow - disable display during bulk insert and restore"
     description: "Disable display, insert many lines, re-enable display"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       local(i);
       for i = 1 to 50 {
@@ -2197,8 +2197,8 @@ tests:
   - name: "workflow - save expansion state before collapse and restore"
     description: "Save expansion state, collapse all, restore state"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent 1", down);
       op.insert("Child 1a", right);
       op.insert("Child 1b", down);
@@ -2222,8 +2222,8 @@ tests:
   - name: "workflow - refcon as node identifier"
     description: "Use refcon to mark and find specific nodes"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Item A", down);
       op.setRefcon(1001);
       op.insert("Item B", down);
@@ -2238,8 +2238,8 @@ tests:
   - name: "workflow - multiple state operations combined"
     description: "Combine cursor, display, expansion, and refcon operations"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       op.insert("Root", down);
       op.setRefcon(100);
@@ -2262,13 +2262,13 @@ tests:
   - name: "integration - outline with target.get/set"
     description: "Switch between multiple outline targets"
     script: |
-      lang.new(outlineType, @workspace.outline1);
-      lang.new(outlineType, @workspace.outline2);
-      target.set(@workspace.outline1);
+      lang.new(outlineType, @system.temp.outline1);
+      lang.new(outlineType, @system.temp.outline2);
+      target.set(@system.temp.outline1);
       op.insert("Outline 1", down);
-      target.set(@workspace.outline2);
+      target.set(@system.temp.outline2);
       op.insert("Outline 2", down);
-      target.set(@workspace.outline1);
+      target.set(@system.temp.outline1);
       return op.getLineText()
     expected_success: true
     expected_result: "Outline 1"
@@ -2276,16 +2276,16 @@ tests:
   - name: "integration - outline with typeof"
     description: "Verify outline type with typeof"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      return typeof(workspace.outline)
+      lang.new(outlineType, @system.temp.outline);
+      return typeof(system.temp.outline)
     expected_success: true
     expected_result: "optx"
 
   - name: "integration - outline with defined"
     description: "Check outline existence with defined"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      return defined(workspace.outline)
+      lang.new(outlineType, @system.temp.outline);
+      return defined(system.temp.outline)
     expected_success: true
     expected_result: "true"
 
@@ -2296,8 +2296,8 @@ tests:
   - name: "headless behavior - no window required for outline ops"
     description: "Outline operations work without GUI windows (headless mode)"
     script: |
-      lang.new(outlineType, @workspace.headlessOutline);
-      target.set(@workspace.headlessOutline);
+      lang.new(outlineType, @system.temp.headlessOutline);
+      target.set(@system.temp.headlessOutline);
       op.insert("Headless line", down);
       return op.getLineText()
     expected_success: true
@@ -2306,8 +2306,8 @@ tests:
   - name: "headless behavior - cursor is data structure state"
     description: "Cursor position is data, not GUI state (headless compatible)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       op.go(up, 1);
@@ -2318,8 +2318,8 @@ tests:
   - name: "headless behavior - expansion state is metadata"
     description: "Expansion state is tree metadata, not visual state"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -2343,8 +2343,8 @@ tests:
   - name: "op.getCursor - cursor persists during outline modification"
     description: "Saved cursor remains valid after inserting new nodes elsewhere"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       local(savedCursor = op.getCursor());
@@ -2359,8 +2359,8 @@ tests:
     description: "Setting cursor to deleted node should error or return false"
     skip: "Phase 3: Deleted node cursor validation not implemented"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Delete me", down);
       local(deadCursor = op.getCursor());
       op.insert("Keep me", down);
@@ -2373,8 +2373,8 @@ tests:
   - name: "op.setCursor - cursor after deleteSubs"
     description: "Parent cursor remains valid after deleting children"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       local(parentCursor = op.getCursor());
       op.insert("Child 1", right);
@@ -2389,8 +2389,8 @@ tests:
   - name: "op.getCursor - cursor in deeply nested structure"
     description: "Cursor correctly identifies position in deep nesting"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("L1", down);
       op.insert("L2", right);
       op.insert("L3", right);
@@ -2410,8 +2410,8 @@ tests:
   - name: "op.setDisplay - double disable is idempotent"
     description: "Setting display false twice should work (idempotent)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       op.setDisplay(false);
       return op.getDisplay()
@@ -2421,8 +2421,8 @@ tests:
   - name: "op.setDisplay - double enable is idempotent"
     description: "Setting display true twice should work (idempotent)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       op.setDisplay(true);
       op.setDisplay(true);
@@ -2433,8 +2433,8 @@ tests:
   - name: "op.setDisplay - state persists across operations"
     description: "Display state remains after outline operations"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
@@ -2446,13 +2446,13 @@ tests:
   - name: "op.getDisplay - independent across multiple outlines"
     description: "Each outline has independent display state"
     script: |
-      lang.new(outlineType, @workspace.outline1);
-      lang.new(outlineType, @workspace.outline2);
-      target.set(@workspace.outline1);
+      lang.new(outlineType, @system.temp.outline1);
+      lang.new(outlineType, @system.temp.outline2);
+      target.set(@system.temp.outline1);
       op.setDisplay(false);
-      target.set(@workspace.outline2);
+      target.set(@system.temp.outline2);
       op.setDisplay(true);
-      target.set(@workspace.outline1);
+      target.set(@system.temp.outline1);
       return op.getDisplay()
     expected_success: true
     expected_result: "false"
@@ -2465,14 +2465,14 @@ tests:
     description: "Expansion state is outline-specific"
     skip: "Phase 3: Cross-outline state validation not implemented"
     script: |
-      lang.new(outlineType, @workspace.outline1);
-      lang.new(outlineType, @workspace.outline2);
-      target.set(@workspace.outline1);
+      lang.new(outlineType, @system.temp.outline1);
+      lang.new(outlineType, @system.temp.outline2);
+      target.set(@system.temp.outline1);
       op.insert("Parent 1", down);
       op.insert("Child 1", right);
       op.go(left, 1);
       local(state1 = op.getExpansionState());
-      target.set(@workspace.outline2);
+      target.set(@system.temp.outline2);
       op.insert("Parent 2", down);
       op.insert("Child 2", right);
       op.go(left, 1);
@@ -2483,8 +2483,8 @@ tests:
   - name: "op.getExpansionState - empty outline state"
     description: "Get expansion state from empty outline (edge case)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(state = op.getExpansionState());
       return defined(state)
     expected_success: true
@@ -2494,8 +2494,8 @@ tests:
     description: "Expansion state restoration after adding/removing nodes"
     skip: "Phase 3: Expansion state restoration not fully implemented"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child 1", right);
       op.insert("Child 2", down);
@@ -2514,8 +2514,8 @@ tests:
   - name: "op.getExpansionState - state is independent of cursor"
     description: "Expansion state captures entire outline, not just cursor position"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent 1", down);
       op.insert("Child 1", right);
       op.go(left, 1);
@@ -2542,8 +2542,8 @@ tests:
   - name: "op.getScrollState - empty outline scroll state"
     description: "Get scroll state from empty outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(state = op.getScrollState());
       return defined(state)
     expected_success: true
@@ -2553,12 +2553,12 @@ tests:
     description: "Scroll state is outline-specific"
     skip: "Phase 3: Cross-outline scroll state validation not implemented"
     script: |
-      lang.new(outlineType, @workspace.outline1);
-      lang.new(outlineType, @workspace.outline2);
-      target.set(@workspace.outline1);
+      lang.new(outlineType, @system.temp.outline1);
+      lang.new(outlineType, @system.temp.outline2);
+      target.set(@system.temp.outline1);
       op.insert("Line 1", down);
       local(state1 = op.getScrollState());
-      target.set(@workspace.outline2);
+      target.set(@system.temp.outline2);
       op.insert("Line 2", down);
       op.setScrollState(state1)
     expected_success: false
@@ -2567,8 +2567,8 @@ tests:
   - name: "op.setScrollState - state persists after outline modification"
     description: "Scroll state remains valid after inserting nodes"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.insert("Line 2", down);
       local(savedState = op.getScrollState());
@@ -2581,12 +2581,12 @@ tests:
   - name: "op.getScrollState - independent across multiple outlines"
     description: "Each outline has independent scroll state (always 1 in headless)"
     script: |
-      lang.new(outlineType, @workspace.outline1);
-      lang.new(outlineType, @workspace.outline2);
-      target.set(@workspace.outline1);
+      lang.new(outlineType, @system.temp.outline1);
+      lang.new(outlineType, @system.temp.outline2);
+      target.set(@system.temp.outline1);
       op.insert("Line 1", down);
       local(state1 = op.getScrollState());
-      target.set(@workspace.outline2);
+      target.set(@system.temp.outline2);
       op.insert("Line 2", down);
       local(state2 = op.getScrollState());
       return state1 != state2
@@ -2600,8 +2600,8 @@ tests:
   - name: "op.setRefcon - large positive value (32-bit boundary)"
     description: "Test refcon with large positive value near INT32_MAX"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(2147483647);
       return op.getRefcon()
@@ -2611,8 +2611,8 @@ tests:
   - name: "op.setRefcon - large negative value (32-bit boundary)"
     description: "Test refcon with large negative value near INT32_MIN"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(-2147483648);
       return op.getRefcon()
@@ -2622,8 +2622,8 @@ tests:
   - name: "op.getRefcon - refcon persists after navigation"
     description: "Refcon values persist when navigating away and back"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       op.setRefcon(111);
       op.insert("Line 2", down);
@@ -2641,8 +2641,8 @@ tests:
   - name: "op.setRefcon - refcon survives promote/demote"
     description: "Refcon value persists when changing node hierarchy"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.setRefcon(999);
@@ -2657,8 +2657,8 @@ tests:
   - name: "op.setRefcon - refcon independent across nodes"
     description: "Each node has independent refcon value (no interference)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(i);
       for i = 1 to 10 {
         op.insert("Line " + i, down);
@@ -2679,8 +2679,8 @@ tests:
   - name: "op.getRefcon - refcon after insert preserves parent refcon"
     description: "Inserting child doesn't affect parent refcon"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.setRefcon(555);
       op.insert("Child", right);
@@ -2697,8 +2697,8 @@ tests:
   - name: "workflow - save all state before bulk operation and restore"
     description: "Save cursor, expansion, scroll state, perform operations, restore all state"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent 1", down);
       op.insert("Child 1a", right);
       op.insert("Child 1b", down);
@@ -2722,8 +2722,8 @@ tests:
   - name: "workflow - refcon as node metadata during tree reorganization"
     description: "Use refcon to track nodes during complex reorganization"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Item A", down);
       op.setRefcon(1001);
       op.insert("Item B", down);
@@ -2742,9 +2742,8 @@ tests:
   - name: "workflow - display off during state save/restore cycle"
     description: "Disable display, save state, modify outline, restore state, enable display"
     script: |
-      lang.new(tableType, @workspace);
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       local(i);
       for i = 1 to 20 {
@@ -2762,20 +2761,20 @@ tests:
   - name: "workflow - multiple outline state management"
     description: "Manage state for multiple outlines simultaneously"
     script: |
-      lang.new(outlineType, @workspace.o1);
-      lang.new(outlineType, @workspace.o2);
-      target.set(@workspace.o1);
+      lang.new(outlineType, @system.temp.o1);
+      lang.new(outlineType, @system.temp.o2);
+      target.set(@system.temp.o1);
       op.insert("O1 Line 1", down);
       op.setRefcon(111);
       local(cursor1 = op.getCursor());
-      target.set(@workspace.o2);
+      target.set(@system.temp.o2);
       op.insert("O2 Line 1", down);
       op.setRefcon(222);
       local(cursor2 = op.getCursor());
-      target.set(@workspace.o1);
+      target.set(@system.temp.o1);
       op.setCursor(cursor1);
       local(refcon1 = op.getRefcon());
-      target.set(@workspace.o2);
+      target.set(@system.temp.o2);
       op.setCursor(cursor2);
       local(refcon2 = op.getRefcon());
       return (refcon1 == 111) and (refcon2 == 222)
@@ -2789,8 +2788,8 @@ tests:
   - name: "stress test - rapid cursor save/restore cycles"
     description: "Repeatedly save and restore cursor during navigation"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(i);
       for i = 1 to 20 {
         op.insert("Line " + i, down)
@@ -2813,8 +2812,8 @@ tests:
   - name: "stress test - many refcon assignments"
     description: "Assign refcon to many nodes in large outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(false);
       local(i);
       for i = 1 to 100 {
@@ -2837,8 +2836,8 @@ tests:
   - name: "stress test - expansion state with deep nesting"
     description: "Save and restore expansion state in deeply nested outline"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("L1", down);
       local(i);
       for i = 2 to 10 {
@@ -2865,8 +2864,8 @@ tests:
   - name: "error recovery - setCursor after outline deleted"
     description: "Setting cursor fails gracefully if outline no longer exists"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(cursor = op.getCursor());
       target.clear();
@@ -2886,8 +2885,8 @@ tests:
     description: "Setting refcon on empty outline should fail"
     skip: "Phase 3: Error validation for missing target not implemented"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setRefcon(100)
     expected_success: false
     expected_error_type: "script_error"
@@ -2899,8 +2898,8 @@ tests:
   - name: "type safety - setCursor with invalid cursor returns false"
     description: "setCursor returns false when given a cursor that can't be set"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.setCursor(12345)
     expected_success: true
@@ -2909,8 +2908,8 @@ tests:
   - name: "type safety - setDisplay with non-boolean coerces to boolean"
     description: "setDisplay coerces non-boolean types via UserTalk type coercion (1 -> true)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.setDisplay(1);  /* UserTalk coerces 1 to true */
       return op.getDisplay()
     expected_success: true
@@ -2920,8 +2919,8 @@ tests:
     description: "setExpansionState takes a list of line numbers (coercion error for string)"
     skip: "Phase 3: Type validation returns json_parse_error instead of script_error"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -2932,8 +2931,8 @@ tests:
   - name: "type safety - setScrollState is noop in headless"
     description: "setScrollState returns true and does nothing in headless mode (scroll state is visual)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.setScrollState(42)
     expected_success: true
@@ -2942,8 +2941,8 @@ tests:
   - name: "type safety - setRefcon accepts any type (boolean)"
     description: "setRefcon can store boolean values (round-trip test)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(true);
       return op.getRefcon()
@@ -2953,8 +2952,8 @@ tests:
   - name: "type safety - setRefcon accepts any type (string)"
     description: "setRefcon can store string values (round-trip test)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon("test string");
       return op.getRefcon()
@@ -2964,8 +2963,8 @@ tests:
   - name: "type safety - setRefcon accepts any type (long)"
     description: "setRefcon can store long values (round-trip test)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(42);
       return op.getRefcon()
@@ -2975,8 +2974,8 @@ tests:
   - name: "type safety - setRefcon accepts any type (double)"
     description: "setRefcon can store double values (round-trip test)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setRefcon(3.14159);
       return op.getRefcon()
@@ -2990,8 +2989,8 @@ tests:
   - name: "return type - getCursor returns address"
     description: "Verify getCursor return type is longType (1-based line number)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(cursor = op.getCursor());
       return typeof(cursor)
@@ -3001,8 +3000,8 @@ tests:
   - name: "return type - getDisplay returns boolean"
     description: "Verify getDisplay return type is booleanType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(display = op.getDisplay());
       return typeof(display)
     expected_success: true
@@ -3011,8 +3010,8 @@ tests:
   - name: "return type - getExpansionState returns address"
     description: "Verify getExpansionState return type is listType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(state = op.getExpansionState());
       return typeof(state)
@@ -3022,8 +3021,8 @@ tests:
   - name: "return type - getScrollState returns address"
     description: "Verify getScrollState return type is longType (1-based line number)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(state = op.getScrollState());
       return typeof(state)
@@ -3033,8 +3032,8 @@ tests:
   - name: "return type - getRefcon returns long"
     description: "Verify getRefcon return type is longType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(refcon = op.getRefcon());
       return typeof(refcon)
@@ -3044,8 +3043,8 @@ tests:
   - name: "return type - setCursor returns boolean"
     description: "Verify setCursor return type is booleanType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(cursor = op.getCursor());
       local(result = op.setCursor(cursor));
@@ -3056,8 +3055,8 @@ tests:
   - name: "return type - setDisplay returns boolean"
     description: "Verify setDisplay return type is booleanType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(result = op.setDisplay(false));
       return typeof(result)
     expected_success: true
@@ -3066,8 +3065,8 @@ tests:
   - name: "return type - setExpansionState returns boolean"
     description: "Verify setExpansionState return type is booleanType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(state = op.getExpansionState());
       local(result = op.setExpansionState(state));
@@ -3078,8 +3077,8 @@ tests:
   - name: "return type - setScrollState returns boolean"
     description: "Verify setScrollState return type is booleanType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(state = op.getScrollState());
       local(result = op.setScrollState(state));
@@ -3090,8 +3089,8 @@ tests:
   - name: "return type - setRefcon returns boolean"
     description: "Verify setRefcon return type is booleanType"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(result = op.setRefcon(100));
       return typeof(result)
@@ -3105,8 +3104,8 @@ tests:
   - name: "op.subsexpanded - check expansion state (not expanded)"
     description: "Verify op.subsexpanded returns false when node has no children"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       return op.subsexpanded()
     expected_success: true
@@ -3115,8 +3114,8 @@ tests:
   - name: "op.subsexpanded - check expansion state (collapsed)"
     description: "Verify op.subsexpanded returns false when children are collapsed"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child1", right);
       op.insert("Child2", down);
@@ -3129,8 +3128,8 @@ tests:
   - name: "op.subsexpanded - check expansion state (expanded)"
     description: "Verify op.subsexpanded returns true when children are expanded"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child1", right);
       op.insert("Child2", down);
@@ -3143,8 +3142,8 @@ tests:
   - name: "op.sort - sort siblings alphabetically"
     description: "Verify op.sort orders sibling nodes alphabetically"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Charlie", down);
       op.insert("Alice", down);
       op.insert("Bob", down);
@@ -3159,8 +3158,8 @@ tests:
   - name: "op.sort - sort preserves subheads"
     description: "Verify op.sort keeps children with their parents after sorting"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Zebra", down);
       op.insert("Zebra-Child", right);
       op.go(left, 1);
@@ -3180,8 +3179,8 @@ tests:
   - name: "op.sort - sort only siblings at same level"
     description: "Verify op.sort doesn't sort children, only siblings"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Zebra", right);
       op.insert("Apple", down);
@@ -3198,8 +3197,8 @@ tests:
   - name: "op.hoist - GUI-only operation returns error"
     description: "Verify op.hoist returns false in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.hoist()
     expected_success: true
@@ -3208,8 +3207,8 @@ tests:
   - name: "op.dehoist - GUI-only operation returns error"
     description: "Verify op.dehoist returns false in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.dehoist()
     expected_success: true
@@ -3218,8 +3217,8 @@ tests:
   - name: "op.flatcursorkeys - noop returns success"
     description: "Verify op.flatcursorkeys returns true (noop) in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.flatcursorkeys(true)
     expected_success: true
@@ -3228,8 +3227,8 @@ tests:
   - name: "op.tabkeyreorg - noop returns success"
     description: "Verify op.tabkeyreorg returns true (noop) in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.tabkeyreorg(true)
     expected_success: true
@@ -3238,8 +3237,8 @@ tests:
   - name: "op.visitall - verify verb exists (functional test deferred)"
     description: "Verify op.visitall exists and is not stubbed (doesn't test actual visiting behavior)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line 1", down);
       return true
     expected_success: true
@@ -3253,8 +3252,8 @@ tests:
   - name: "op.sethtmlformatting - noop returns false"
     description: "Verify op.sethtmlformatting returns false (noop) in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.sethtmlformatting(true)
     expected_success: true
@@ -3263,8 +3262,8 @@ tests:
   - name: "op.gethtmlformatting - noop returns false"
     description: "Verify op.gethtmlformatting returns false (noop) in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.gethtmlformatting()
     expected_success: true
@@ -3273,8 +3272,8 @@ tests:
   - name: "op.setdynamic - noop returns false"
     description: "Verify op.setdynamic returns false (noop) in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.setdynamic(true)
     expected_success: true
@@ -3283,8 +3282,8 @@ tests:
   - name: "op.getdynamic - noop returns false"
     description: "Verify op.getdynamic returns false (noop) in headless mode"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.getdynamic()
     expected_success: true
@@ -3297,8 +3296,8 @@ tests:
   - name: "op.getheadnumber - first node"
     description: "Verify op.getheadnumber returns 1 for first sibling"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("First", down);
       op.insert("Second", down);
       op.insert("Third", down);
@@ -3310,8 +3309,8 @@ tests:
   - name: "op.getheadnumber - third node"
     description: "Verify op.getheadnumber returns 3 for third sibling"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("First", down);
       op.insert("Second", down);
       op.insert("Third", down);
@@ -3324,8 +3323,8 @@ tests:
   - name: "op.setmodified - set dirty flag true"
     description: "Verify op.setmodified(true) marks outline as modified"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       return op.setmodified(true)
     expected_success: true
@@ -3334,8 +3333,8 @@ tests:
   - name: "op.setmodified - clear dirty flag false"
     description: "Verify op.setmodified(false) clears dirty flag"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       op.setmodified(true);
       return op.setmodified(false)
@@ -3345,8 +3344,8 @@ tests:
   - name: "op.getsuboutline - single line"
     description: "Verify op.getsuboutline extracts text from single line"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("First line", down);
       return op.getsuboutline()
     expected_success: true
@@ -3355,8 +3354,8 @@ tests:
   - name: "op.getsuboutline - multi-level indented"
     description: "Verify op.getsuboutline extracts indented text from hierarchy"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child1", right);
       op.insert("Child2", down);
@@ -3369,8 +3368,8 @@ tests:
   - name: "op.getsuboutline - flindent false"
     description: "Verify op.getsuboutline(false) returns unindented text without tabs"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
       op.go(left, 1);
@@ -3382,14 +3381,14 @@ tests:
   - name: "op.insertoutline - insert source into target"
     description: "Verify op.insertoutline copies structure from source to target"
     script: |
-      lang.new(outlineType, @workspace.source);
-      lang.new(outlineType, @workspace.dest);
-      target.set(@workspace.source);
+      lang.new(outlineType, @system.temp.source);
+      lang.new(outlineType, @system.temp.dest);
+      target.set(@system.temp.source);
       op.insert("Source1", down);
       op.insert("Source2", down);
-      target.set(@workspace.dest);
+      target.set(@system.temp.dest);
       op.insert("Dest1", down);
-      op.insertoutline(@workspace.source, down);
+      op.insertoutline(@system.temp.source, down);
       return op.countSummits()
     expected_success: true
     expected_result: "5"
@@ -3397,16 +3396,16 @@ tests:
   - name: "op.insertoutline - preserve source outline"
     description: "Verify op.insertoutline does not modify source outline"
     script: |
-      lang.new(outlineType, @workspace.source);
-      lang.new(outlineType, @workspace.dest);
-      target.set(@workspace.source);
+      lang.new(outlineType, @system.temp.source);
+      lang.new(outlineType, @system.temp.dest);
+      target.set(@system.temp.source);
       op.insert("Source1", down);
       op.insert("Source2", down);
       local(before = op.countSummits());
-      target.set(@workspace.dest);
+      target.set(@system.temp.dest);
       op.insert("Dest1", down);
-      op.insertoutline(@workspace.source, down);
-      target.set(@workspace.source);
+      op.insertoutline(@system.temp.source, down);
+      target.set(@system.temp.source);
       local(after = op.countSummits());
       return before == after
     expected_success: true
@@ -3415,8 +3414,8 @@ tests:
   - name: "op.getselection - no nodes marked returns cursor"
     description: "Verify op.getselection returns list with current cursor when no nodes are marked"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("First", down);
       op.insert("Second", down);
       op.insert("Third", down);
@@ -3428,8 +3427,8 @@ tests:
   - name: "op.getselection - returns list type"
     description: "Verify op.getselection returns a list"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Line", down);
       local(sel = op.getselection());
       return typeOf(sel)
@@ -3439,8 +3438,8 @@ tests:
   - name: "op.getselection - empty outline"
     description: "Verify op.getselection works with empty outline (just summit)"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       local(sel = op.getselection());
       return sizeOf(sel)
     expected_success: true
@@ -3453,11 +3452,11 @@ tests:
   - name: "op.outlinetoxml - basic conversion"
     description: "Convert simple outline to OPML XML format"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("First", down);
       op.insert("Second", down);
-      local(xml = op.outlinetoxml(@workspace.outline, "TestUser", "test@example.com"));
+      local(xml = op.outlinetoxml(@system.temp.outline, "TestUser", "test@example.com"));
       return sizeOf(xml) > 100 and string.mid(xml, 1, 5) == "<?xml"
     expected_success: true
     expected_result: "true"
@@ -3465,10 +3464,10 @@ tests:
   - name: "op.outlinetoxml - contains outline text"
     description: "Verify OPML contains headline text"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Hello World", down);
-      local(xml = op.outlinetoxml(@workspace.outline, "TestUser", "test@example.com"));
+      local(xml = op.outlinetoxml(@system.temp.outline, "TestUser", "test@example.com"));
       return string.patternMatch("Hello World", xml) > 0
     expected_success: true
     expected_result: "true"
@@ -3476,11 +3475,11 @@ tests:
   - name: "op.outlinetoxml - preserves hierarchy"
     description: "Verify OPML preserves parent-child structure"
     script: |
-      lang.new(outlineType, @workspace.outline);
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      target.set(@system.temp.outline);
       op.insert("Parent", down);
       op.insert("Child", right);
-      local(xml = op.outlinetoxml(@workspace.outline, "TestUser", "test@example.com"));
+      local(xml = op.outlinetoxml(@system.temp.outline, "TestUser", "test@example.com"));
       local(hasParent = string.patternMatch("Parent", xml) > 0);
       local(hasChild = string.patternMatch("Child", xml) > 0);
       return hasParent and hasChild
@@ -3491,9 +3490,9 @@ tests:
     description: "Import simple OPML XML into outline"
     script: |
       local(xml = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><opml version=\"1.1\"><body><outline text=\"Test\"/></body></opml>");
-      lang.new(outlineType, @workspace.outline);
-      local(ok = op.xmltooutline(xml, @workspace.outline, true));
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      local(ok = op.xmltooutline(xml, @system.temp.outline, true));
+      target.set(@system.temp.outline);
       op.firstSummit();
       return ok and op.getLineText() == "Test"
     expected_success: true
@@ -3502,14 +3501,14 @@ tests:
   - name: "op.xmltooutline - round trip"
     description: "Export outline to XML and re-import preserves content"
     script: |
-      lang.new(outlineType, @workspace.out1);
-      target.set(@workspace.out1);
+      lang.new(outlineType, @system.temp.out1);
+      target.set(@system.temp.out1);
       op.insert("Line1", down);
       op.insert("Line2", down);
-      local(xml = op.outlinetoxml(@workspace.out1, "User", "user@example.com"));
-      lang.new(outlineType, @workspace.out2);
-      op.xmltooutline(xml, @workspace.out2, true);
-      target.set(@workspace.out2);
+      local(xml = op.outlinetoxml(@system.temp.out1, "User", "user@example.com"));
+      lang.new(outlineType, @system.temp.out2);
+      op.xmltooutline(xml, @system.temp.out2, true);
+      target.set(@system.temp.out2);
       op.firstSummit();
       op.go(down, 1);  // Move past empty summit to first imported line
       local(first = op.getLineText());
@@ -3523,9 +3522,9 @@ tests:
     description: "Import XML into empty outline with flnewoutline=true"
     script: |
       local(xml = "<?xml version=\"1.0\"?><opml version=\"1.1\"><body><outline text=\"NewLine\"/></body></opml>");
-      lang.new(outlineType, @workspace.outline);
-      local(ok = op.xmltooutline(xml, @workspace.outline, true));
-      target.set(@workspace.outline);
+      lang.new(outlineType, @system.temp.outline);
+      local(ok = op.xmltooutline(xml, @system.temp.outline, true));
+      target.set(@system.temp.outline);
       local(count = op.countSummits());
       return ok and (count >= 1)
     expected_success: true
@@ -3534,11 +3533,11 @@ tests:
   - name: "op.getselectedsuboutlines - empty source"
     description: "Get selected suboutlines from outline with no marked nodes"
     script: |
-      lang.new(outlineType, @workspace.source);
-      lang.new(outlineType, @workspace.dest);
-      target.set(@workspace.source);
+      lang.new(outlineType, @system.temp.source);
+      lang.new(outlineType, @system.temp.dest);
+      target.set(@system.temp.source);
       op.insert("Line1", down);
-      local(ok = op.getselectedsuboutlines(@workspace.dest));
+      local(ok = op.getselectedsuboutlines(@system.temp.dest));
       return ok
     expected_success: true
     expected_result: "true"
@@ -3546,27 +3545,27 @@ tests:
   - name: "op.getselectedsuboutlines - destination outline type"
     description: "Verify destination remains valid outline after operation"
     script: |
-      lang.new(outlineType, @workspace.source);
-      lang.new(outlineType, @workspace.dest);
-      target.set(@workspace.source);
+      lang.new(outlineType, @system.temp.source);
+      lang.new(outlineType, @system.temp.dest);
+      target.set(@system.temp.source);
       op.insert("Source Line", down);
-      local(ok = op.getselectedsuboutlines(@workspace.dest));
-      return ok and defined(workspace.dest)
+      local(ok = op.getselectedsuboutlines(@system.temp.dest));
+      return ok and defined(system.temp.dest)
     expected_success: true
     expected_result: "true"
 
   - name: "op.getselectedsuboutlines - with destination content"
     description: "Add to destination outline that already has content"
     script: |
-      lang.new(outlineType, @workspace.source);
-      lang.new(outlineType, @workspace.dest);
-      target.set(@workspace.dest);
+      lang.new(outlineType, @system.temp.source);
+      lang.new(outlineType, @system.temp.dest);
+      target.set(@system.temp.dest);
       op.insert("Existing", down);
       local(beforeCount = op.countSummits());
-      target.set(@workspace.source);
+      target.set(@system.temp.source);
       op.insert("New", down);
-      op.getselectedsuboutlines(@workspace.dest);
-      target.set(@workspace.dest);
+      op.getselectedsuboutlines(@system.temp.dest);
+      target.set(@system.temp.dest);
       local(afterCount = op.countSummits());
       return afterCount >= beforeCount
     expected_success: true

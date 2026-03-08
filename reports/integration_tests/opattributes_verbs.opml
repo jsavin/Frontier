@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Opattributes Verbs (opattributes_verbs) - 7 tests: 0 pass (0%) 7 skip (100%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="op.attributes.addgroup - GUI-only stub returns error - Verify op.attributes.addgroup returns 'not supported' error in headless mode">
@@ -12,8 +12,8 @@
         <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.attributes.addgroup(&quot;testGroup&quot;)"/>
       </outline>
@@ -25,8 +25,8 @@
         <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.attributes.getall()"/>
       </outline>
@@ -38,8 +38,8 @@
         <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.attributes.getone(&quot;testGroup&quot;)"/>
       </outline>
@@ -51,8 +51,8 @@
         <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.attributes.makeempty()"/>
       </outline>
@@ -64,8 +64,8 @@
         <outline text="expected_error_contains: op.attributes verbs are not supported in headless mode"/>
       </outline>
       <outline text="Script">
-        <outline text="lang.new(outlineType, @workspace.outline)"/>
-        <outline text="target.set(@workspace.outline)"/>
+        <outline text="lang.new(outlineType, @system.temp.outline)"/>
+        <outline text="target.set(@system.temp.outline)"/>
         <outline text="op.insert(&quot;Line&quot;, down)"/>
         <outline text="return op.attributes.setone(&quot;testGroup&quot;, &quot;testValue&quot;)"/>
       </outline>

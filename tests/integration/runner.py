@@ -359,6 +359,7 @@ class ProtocolExecutor:
         self.cli_path = cli_path
         self.system_root = system_root
         self._proc: Optional[subprocess.Popen] = None
+        self._stderr_file = None
         self._next_id = 1
 
     def start(self):
@@ -367,14 +368,23 @@ class ProtocolExecutor:
         if self.system_root:
             cmd.extend(['--system-root', self.system_root])
 
-        self._proc = subprocess.Popen(
-            cmd,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            bufsize=1,  # Line buffered
-        )
+        # Redirect stderr to temp file to capture crash diagnostics
+        # (using a file avoids pipe buffer deadlocks)
+        self._stderr_file = tempfile.NamedTemporaryFile(
+            mode='w+', prefix='frontier_protocol_stderr_', suffix='.log', delete=False)
+
+        try:
+            self._proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=self._stderr_file,
+                text=True,
+                bufsize=1,  # Line buffered
+            )
+        except Exception:
+            self._close_stderr_file()
+            raise
         self._next_id = 1
 
     def _send_recv(self, msg: dict, timeout: float = 10.0) -> dict:
@@ -415,6 +425,7 @@ class ProtocolExecutor:
 
     def _restart(self):
         """Restart the protocol process after it dies."""
+        self._log_stderr_on_crash()
         try:
             if self._proc is not None:
                 self._proc.kill()
@@ -422,10 +433,41 @@ class ProtocolExecutor:
         except Exception:
             pass
         self._proc = None
+        self._close_stderr_file()
         try:
             self.start()
         except Exception as e:
             raise RuntimeError(f"Protocol executor restart failed: {e}") from e
+
+    def _log_stderr_on_crash(self):
+        """Read and log any stderr output from the protocol process."""
+        if self._stderr_file is None:
+            return
+        try:
+            self._stderr_file.flush()
+            self._stderr_file.seek(0)
+            stderr_content = self._stderr_file.read().strip()
+            if stderr_content:
+                if len(stderr_content) <= 1000:
+                    print(f"  [protocol stderr] {stderr_content}", file=sys.stderr)
+                else:
+                    # Show head and tail to capture both startup errors and crash traces
+                    print(f"  [protocol stderr head] {stderr_content[:500]}", file=sys.stderr)
+                    print(f"  [protocol stderr tail] {stderr_content[-500:]}", file=sys.stderr)
+        except OSError:
+            pass
+
+    def _close_stderr_file(self):
+        """Close and remove the stderr temp file."""
+        if self._stderr_file is None:
+            return
+        try:
+            name = self._stderr_file.name
+            self._stderr_file.close()
+            os.unlink(name)
+        except Exception:
+            pass
+        self._stderr_file = None
 
     def execute(self, script: str, timeout: float = 10.0) -> Dict:
         """
@@ -489,18 +531,29 @@ class ProtocolExecutor:
     def reset(self):
         """Clear REPL variables and reset focus between tests."""
         if self._proc is None or self._proc.poll() is not None:
+            # Process already dead — restart for subsequent tests
+            try:
+                self._restart()
+            except Exception as e:
+                print(f"  [protocol] restart after death failed: {e}", file=sys.stderr)
             return
         try:
             self._send_recv({'op': 'script/clearContext'}, timeout=5.0)
         except Exception:
-            pass  # Best effort — process may have died
+            # clearContext failed — process may have died, restart
+            try:
+                self._restart()
+            except Exception as e:
+                print(f"  [protocol] restart after clearContext failure: {e}", file=sys.stderr)
 
     def stop(self):
         """Gracefully shut down the protocol process."""
         if self._proc is None:
+            self._close_stderr_file()
             return
         if self._proc.poll() is not None:
             self._proc = None
+            self._close_stderr_file()
             return
         try:
             self._send_recv({'op': 'shutdown'}, timeout=5.0)
@@ -512,6 +565,7 @@ class ProtocolExecutor:
             self._proc.kill()
             self._proc.wait()
         self._proc = None
+        self._close_stderr_file()
 
     @property
     def is_alive(self) -> bool:
@@ -869,6 +923,22 @@ class TestRunner:
                 and self.protocol_executor.is_alive
                 and _is_protocol_compatible(test)):
             output = self.protocol_executor.execute(script, timeout=test.timeout)
+
+            # If protocol failed due to process death, retry with per-process.
+            # These errors come from _send_recv(): "Protocol process not running",
+            # "Protocol process died unexpectedly", "Protocol process closed stdout".
+            if (not output.get('success')
+                    and output.get('error_type') == 'execution_error'
+                    and 'Protocol process' in str(output.get('error', ''))):
+                stdin_input = test.get_stdin_with_substitutions(self.test_root_dir)
+                test_env = test.environment.copy()
+                if stdin_input is not None and not test.batch_mode:
+                    test_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
+                output = self.cli.execute(
+                    script, timeout=test.timeout,
+                    stdin_input=stdin_input,
+                    batch_mode=test.batch_mode,
+                    env=test_env)
 
             # Reset state after each test
             self.protocol_executor.reset()

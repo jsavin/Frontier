@@ -2,21 +2,21 @@
 <opml version="2.0">
   <head>
     <title>Menu Value Copy (menu_value_copy) - 5 tests: 4 pass (80%) 1 skip (20%)</title>
-    <dateCreated>Fri, 06 Feb 2026 06:03:28 GMT</dateCreated>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
-    <outline text="mbar copy - copy menubar value to new location - Create a menubar at workspace.src, copy to workspace.dst, verify typeof is mbar">
+    <outline text="mbar copy - copy menubar value to new location - Create a menubar at system.temp.src, copy to system.temp.dst, verify typeof is mbar">
       <outline text="Metadata">
         <outline text="skip: False"/>
         <outline text="skip_reason: "/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="new(menubarType, @workspace.src)"/>
-        <outline text="workspace.dst = workspace.src"/>
-        <outline text="local (result = typeof(workspace.dst) == 'mbar')"/>
-        <outline text="delete(@workspace.src)"/>
-        <outline text="delete(@workspace.dst)"/>
+        <outline text="new(menubarType, @system.temp.src)"/>
+        <outline text="system.temp.dst = system.temp.src"/>
+        <outline text="local (result = typeof(system.temp.dst) == 'mbar')"/>
+        <outline text="delete(@system.temp.src)"/>
+        <outline text="delete(@system.temp.dst)"/>
         <outline text="return result"/>
       </outline>
     </outline>
@@ -27,11 +27,11 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="new(menubarType, @workspace.src)"/>
-        <outline text="workspace.dst = workspace.src"/>
-        <outline text="local (result = defined(@workspace.dst))"/>
-        <outline text="delete(@workspace.src)"/>
-        <outline text="delete(@workspace.dst)"/>
+        <outline text="new(menubarType, @system.temp.src)"/>
+        <outline text="system.temp.dst = system.temp.src"/>
+        <outline text="local (result = defined(@system.temp.dst))"/>
+        <outline text="delete(@system.temp.src)"/>
+        <outline text="delete(@system.temp.dst)"/>
         <outline text="return result"/>
       </outline>
     </outline>
@@ -42,18 +42,18 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="new(menubarType, @workspace.src)"/>
-        <outline text="menu.addMenuCommand(@workspace.src, &quot;File&quot;, &quot;Open&quot;, &quot;fileOpen()&quot;)"/>
-        <outline text="workspace.dst = workspace.src"/>
-        <outline text="target.set(@workspace.dst)"/>
+        <outline text="new(menubarType, @system.temp.src)"/>
+        <outline text="menu.addMenuCommand(@system.temp.src, &quot;File&quot;, &quot;Open&quot;, &quot;fileOpen()&quot;)"/>
+        <outline text="system.temp.dst = system.temp.src"/>
+        <outline text="target.set(@system.temp.dst)"/>
         <outline text="op.firstSummit()"/>
         <outline text="op.expand()"/>
         <outline text="op.go(right, 1)"/>
-        <outline text="menu.getScript(@workspace.retrieved)"/>
-        <outline text="local (result = (workspace.retrieved == &quot;fileOpen()&quot;))"/>
-        <outline text="delete(@workspace.src)"/>
-        <outline text="delete(@workspace.dst)"/>
-        <outline text="try {delete(@workspace.retrieved)}"/>
+        <outline text="menu.getScript(@system.temp.retrieved)"/>
+        <outline text="local (result = (system.temp.retrieved == &quot;fileOpen()&quot;))"/>
+        <outline text="delete(@system.temp.src)"/>
+        <outline text="delete(@system.temp.dst)"/>
+        <outline text="try {delete(@system.temp.retrieved)}"/>
         <outline text="return result"/>
       </outline>
     </outline>
@@ -74,9 +74,9 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="workspace.testCopy = userland.virginBookmarkMenu"/>
-        <outline text="local (result = typeof(workspace.testCopy) == 'mbar')"/>
-        <outline text="delete(@workspace.testCopy)"/>
+        <outline text="system.temp.testCopy = userland.virginBookmarkMenu"/>
+        <outline text="local (result = typeof(system.temp.testCopy) == 'mbar')"/>
+        <outline text="delete(@system.temp.testCopy)"/>
         <outline text="return result"/>
       </outline>
     </outline>

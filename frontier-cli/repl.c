@@ -362,7 +362,7 @@ static boolean apply_index_to_table(hdlhashtable htable, long index,
  *
  * Returns true on success.
  */
-static boolean resolve_indexed_node(hdlhashnode hnode, long index,
+static boolean resolve_indexed_node(hdlhashtable htable, hdlhashnode hnode, long index,
                                      const char *context_name,
                                      boolean is_last,
                                      typathlookupresult *result,
@@ -380,6 +380,16 @@ static boolean resolve_indexed_node(hdlhashnode hnode, long index,
     /* apply_index_to_table() guarantees hnode != nil && *hnode != nil on success.
      * Assert this contract rather than silently handling a violation. */
     assert(hnode != nil && *hnode != nil);
+
+    /* Resolve on-disk values before reading. Without this, nodes with
+     * unresolved external handles (e.g. when using --skip-startup) cause
+     * SIGSEGV when langexternalvaltotable dereferences the stale handle. */
+    if (!hashresolvevalue(htable, hnode)) {
+        if (error_msg && error_bufsize > 0)
+            snprintf(error_msg, error_bufsize, "failed to resolve value at index %ld ('%s') in '%s'",
+                     index, cname[0] ? cname : "?", context_name ? context_name : "?");
+        return false;
+    }
 
     tyvaluerecord nodeval = (**hnode).val;
 
@@ -494,7 +504,7 @@ static boolean apply_and_resolve_index(hdlhashtable htable, long index,
     if (!apply_index_to_table(htable, index, context_name, &hnode, error_msg, error_bufsize))
         return false;
 
-    if (!resolve_indexed_node(hnode, index, context_name, is_last, result, out_table,
+    if (!resolve_indexed_node(htable, hnode, index, context_name, is_last, result, out_table,
                                name_path, name_path_bufsize, name_path_len,
                                resolved_name_path, resolved_bufsize,
                                error_msg, error_bufsize))

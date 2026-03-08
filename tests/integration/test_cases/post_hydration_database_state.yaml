@@ -127,8 +127,8 @@ tests:
     description: |
       Verify we can write to workspace table (requires open database).
     script: |
-      workspace.test_post_hydration = "success";
-      return workspace.test_post_hydration
+      system.temp.test_post_hydration = "success";
+      return system.temp.test_post_hydration
     expected_success: true
     expected_result: "success"
 
@@ -164,8 +164,8 @@ tests:
       This tests script infrastructure independent of migration.
       NOTE: Runtime script creation has pre-existing issues. Skip for now.
     script: |
-      workspace.testScript = script("return 42");
-      return workspace.testScript()
+      system.temp.testScript = script("return 42");
+      return system.temp.testScript()
     expected_success: true
     expected_result: "42"
     skip: true
@@ -237,8 +237,8 @@ tests:
       Verify lang.new() still works for creating tables.
       NOTE: Has pre-existing opcode 34 error - not related to hydration fix.
     script: |
-      lang.new(tableType, @workspace.newTable);
-      return typeof(workspace.newTable)
+      lang.new(tableType, @system.temp.newTable);
+      return typeof(system.temp.newTable)
     expected_success: true
     expected_result: "tabl"
     skip: true
@@ -249,9 +249,9 @@ tests:
       Verify table assignments still work.
       NOTE: Has pre-existing opcode 34 error - not related to hydration fix.
     script: |
-      lang.new(tableType, @workspace.assignTest);
-      workspace.assignTest.key1 = "value1";
-      return workspace.assignTest.key1
+      lang.new(tableType, @system.temp.assignTest);
+      system.temp.assignTest.key1 = "value1";
+      return system.temp.assignTest.key1
     expected_success: true
     expected_result: "value1"
     skip: true

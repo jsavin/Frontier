@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Migration Externals (migration_externals) - 19 tests: 16 pass (84%) 3 skip (15%)</title>
-    <dateCreated>Wed, 04 Feb 2026 10:39:17 GMT</dateCreated>
+    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
   </head>
   <body>
     <outline text="Deep script execution - system.verbs.globals.string - The string verb should work after migration">
@@ -177,8 +177,8 @@
         </outline>
         <outline text="} else">
           <outline text="// Create a test menu if none exist"/>
-          <outline text="lang.new(menuType, @workspace.testMenu)"/>
-          <outline text="if typeOf(workspace.testMenu) == 'menu'">
+          <outline text="lang.new(menuType, @system.temp.testMenu)"/>
+          <outline text="if typeOf(system.temp.testMenu) == 'menu'">
             <outline text="return &quot;created test menu&quot;"/>
           </outline>
           <outline text="return &quot;no menus found&quot;"/>

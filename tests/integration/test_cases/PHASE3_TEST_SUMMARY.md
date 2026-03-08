@@ -48,8 +48,8 @@ Lines 2257-2317
 - name: "op.getCursor - cursor persists during outline modification"
   description: "Saved cursor remains valid after inserting new nodes elsewhere"
   script: |
-    lang.new(outlineType, @workspace.outline);
-    target.set(@workspace.outline);
+    lang.new(outlineType, @system.temp.outline);
+    target.set(@system.temp.outline);
     op.insert("Line 1", down);
     op.insert("Line 2", down);
     local(savedCursor = op.getCursor());
@@ -72,13 +72,13 @@ Lines 2319-2371
 - name: "op.getDisplay - independent across multiple outlines"
   description: "Each outline has independent display state"
   script: |
-    lang.new(outlineType, @workspace.outline1);
-    lang.new(outlineType, @workspace.outline2);
-    target.set(@workspace.outline1);
+    lang.new(outlineType, @system.temp.outline1);
+    lang.new(outlineType, @system.temp.outline2);
+    target.set(@system.temp.outline1);
     op.setDisplay(false);
-    target.set(@workspace.outline2);
+    target.set(@system.temp.outline2);
     op.setDisplay(true);
-    target.set(@workspace.outline1);
+    target.set(@system.temp.outline1);
     return op.getDisplay()
   expected_success: true
   expected_result: "false"
@@ -111,8 +111,8 @@ Lines 2503-2598
 - name: "op.setRefcon - large positive value (32-bit boundary)"
   description: "Test refcon with large positive value near INT32_MAX"
   script: |
-    lang.new(outlineType, @workspace.outline);
-    target.set(@workspace.outline);
+    lang.new(outlineType, @system.temp.outline);
+    target.set(@system.temp.outline);
     op.insert("Line", down);
     op.setRefcon(2147483647);
     return op.getRefcon()
@@ -132,8 +132,8 @@ Lines 2600-2690
 - name: "workflow - save all state before bulk operation and restore"
   description: "Save cursor, expansion, scroll state, perform operations, restore all state"
   script: |
-    lang.new(outlineType, @workspace.outline);
-    target.set(@workspace.outline);
+    lang.new(outlineType, @system.temp.outline);
+    target.set(@system.temp.outline);
     op.insert("Parent 1", down);
     op.insert("Child 1a", right);
     op.insert("Child 1b", down);
@@ -166,8 +166,8 @@ Lines 2692-2761
 - name: "stress test - many refcon assignments"
   description: "Assign refcon to many nodes in large outline"
   script: |
-    lang.new(outlineType, @workspace.outline);
-    target.set(@workspace.outline);
+    lang.new(outlineType, @system.temp.outline);
+    target.set(@system.temp.outline);
     op.setDisplay(false);
     local(i);
     for i = 1 to 100 {
@@ -207,8 +207,8 @@ Lines 2796-2849
 - name: "type safety - setCursor requires address type"
   description: "setCursor rejects non-address types"
   script: |
-    lang.new(outlineType, @workspace.outline);
-    target.set(@workspace.outline);
+    lang.new(outlineType, @system.temp.outline);
+    target.set(@system.temp.outline);
     op.insert("Line", down);
     op.setCursor(12345)
   expected_success: false
@@ -226,8 +226,8 @@ Lines 2851-2964
 - name: "return type - getCursor returns address"
   description: "Verify getCursor return type is addressType"
   script: |
-    lang.new(outlineType, @workspace.outline);
-    target.set(@workspace.outline);
+    lang.new(outlineType, @system.temp.outline);
+    target.set(@system.temp.outline);
     op.insert("Line", down);
     local(cursor = op.getCursor());
     return typeof(cursor)

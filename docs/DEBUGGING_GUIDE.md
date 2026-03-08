@@ -164,6 +164,19 @@ rm -f databases/Frontier.root7
 2. Verify external loading happened
 3. Trace through `langexternalgettable()` or similar
 
+### Corrupt Handle Guards During Save
+
+**Symptom**: Entries silently missing from saved database, or SIGSEGV during save-on-exit
+
+**Cause**: `hashpackvisit_legacy` and `hashpackvisit_v7` guard against corrupt handles (data pointer < 0x1000) for string/address/password/binary value types. When detected, the entry's `fldontsave` flag is set and it is skipped — the save completes successfully but the entry is silently dropped.
+
+**How to Diagnose**:
+- Check stderr/logs for `"corrupt handle data ptr="` messages from `hashpackvisit_legacy` or `hashpackvisit_v7`
+- The log includes the handle pointer, data pointer, value type, and node name
+- `getaddressparts` in `langvalue.c` also logs corrupt address handles as warnings
+
+**What's covered**: `addressvaluetype`, `stringvaluetype`, `passwordvaluetype`, `oldstringvaluetype`, `binaryvaluetype`. Other handle-bearing types (`codevaluetype`, `externalvaluetype`) have their own packing paths with separate error handling.
+
 ### Verb Resolution Failures
 
 **Symptom**: "Can't call X" or verb not found

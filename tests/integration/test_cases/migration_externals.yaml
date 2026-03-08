@@ -186,8 +186,8 @@ tests:
         return "found " + string(menuCount) + " menus"
       } else {
         // Create a test menu if none exist
-        lang.new(menuType, @workspace.testMenu);
-        if typeOf(workspace.testMenu) == 'menu' {
+        lang.new(menuType, @system.temp.testMenu);
+        if typeOf(system.temp.testMenu) == 'menu' {
           return "created test menu"
         };
         return "no menus found"

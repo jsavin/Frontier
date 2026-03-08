@@ -157,8 +157,8 @@ tests:
   - name: "fileMenu.close - target is not a guest database"
     description: "close when target points at a non-guest-database table is a no-op"
     script: |
-      lang.new(tableType, @workspace.notADb);
-      target.set(@workspace.notADb);
+      lang.new(tableType, @system.temp.notADb);
+      target.set(@system.temp.notADb);
       local(result = fileMenu.close());
       target.clear();
       return result
