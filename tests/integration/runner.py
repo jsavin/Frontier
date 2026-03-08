@@ -530,8 +530,8 @@ class ProtocolExecutor:
             # Process already dead — restart for subsequent tests
             try:
                 self._restart()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  [protocol] restart after death failed: {e}", file=sys.stderr)
             return
         try:
             self._send_recv({'op': 'script/clearContext'}, timeout=5.0)
@@ -539,8 +539,8 @@ class ProtocolExecutor:
             # clearContext failed — process may have died, restart
             try:
                 self._restart()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  [protocol] restart after clearContext failure: {e}", file=sys.stderr)
 
     def stop(self):
         """Gracefully shut down the protocol process."""
@@ -920,10 +920,12 @@ class TestRunner:
                 and _is_protocol_compatible(test)):
             output = self.protocol_executor.execute(script, timeout=test.timeout)
 
-            # If protocol failed due to process death, retry with per-process
+            # If protocol failed due to process death, retry with per-process.
+            # These errors come from _send_recv(): "Protocol process not running",
+            # "Protocol process died unexpectedly", "Protocol process closed stdout".
             if (not output.get('success')
                     and output.get('error_type') == 'execution_error'
-                    and 'not running' in str(output.get('error', ''))):
+                    and 'Protocol process' in str(output.get('error', ''))):
                 stdin_input = test.get_stdin_with_substitutions(self.test_root_dir)
                 test_env = test.environment.copy()
                 if stdin_input is not None and not test.batch_mode:

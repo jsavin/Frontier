@@ -2868,8 +2868,7 @@ typedef struct typackinforecord {
  * Only checks live (non-disk) values — fldiskval entries hold raw disk addresses and
  * are handled correctly by hashpackscalar without dereferencing.
  *
- * The 0x1000 threshold works because the first 4096 bytes of virtual address space
- * are intentionally unmapped (PROT_NONE) on macOS/Linux, so any valid heap pointer >= 0x1000.
+ * Uses kMinValidPointer (0x1000) threshold — see lang.h for rationale.
  * NULL (*hdata == NULL) is valid — it represents a zero-length handle (NewHandle(0) sets
  * the master pointer to NULL), which packs correctly as a 0-length field.
  *
@@ -2904,7 +2903,7 @@ static boolean hashpackguard_corrupt_handle(tyvaluerecord val, hdlhashnode hnode
 
 	char *p = *hdata;
 
-	if (p != NULL && (uintptr_t)p < 0x1000) {
+	if (p != NULL && (uintptr_t)p < kMinValidPointer) {
 		log_error(LOG_COMP_HASH, "%s: corrupt handle data ptr=%p handle=%p type=%d name='%.*s'",
 			visitor_name, (void *)p, (void *)hdata, (int)val.valuetype,
 			(int)bsname[0], (char *)&bsname[1]);
@@ -2998,8 +2997,11 @@ static boolean hashpackvisit_legacy (bigstring bsname, hdlhashnode hnode, tyvalu
 	ccmsg (bsname, false);
 	*/
 
-	if (hnode != nil && (**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
+	if (hnode != nil && (**hnode).fldontsave && !flexternalmemorypack) { /*keep traversing the table*/
+		log_trace(LOG_COMP_HASH, "hashpackvisit_legacy: skipping fldontsave node name='%.*s'",
+			(int)bsname[0], (char *)&bsname[1]);
 		return (false);
+	}
 
 	if (hashpackguard_corrupt_handle(val, hnode, bsname, "hashpackvisit_legacy"))
 		return (false);
@@ -3399,8 +3401,11 @@ static boolean hashpackvisit_v7 (bigstring bsname, hdlhashnode hnode, tyvaluerec
 	int32_t name_index = 0;
 	int32_t data_index = 0;
 
-	if ((**hnode).fldontsave && !flexternalmemorypack) /*keep traversing the table*/
+	if ((**hnode).fldontsave && !flexternalmemorypack) { /*keep traversing the table*/
+		log_trace(LOG_COMP_HASH, "hashpackvisit_v7: skipping fldontsave node name='%.*s'",
+			(int)bsname[0], (char *)&bsname[1]);
 		return (false);
+	}
 
 	if (hashpackguard_corrupt_handle(val, hnode, bsname, "hashpackvisit_v7"))
 		return (false);

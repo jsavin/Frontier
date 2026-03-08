@@ -392,7 +392,7 @@ static boolean getaddressparts (const tyvaluerecord *val, hdlhashtable *htable, 
 	hdlstring hstring = (*val).data.addressvalue;
 	long ixtable;
 
-	if (hstring == nil || (uintptr_t) hstring < 0x1000) {
+	if (hstring == nil || (uintptr_t) hstring < kMinValidPointer) {
 		/* Handle pointer is nil or suspiciously small (likely a raw disk address
 		 * rather than a valid heap handle). Avoid dereferencing. */
 		setemptystring(bs);
@@ -400,9 +400,12 @@ static boolean getaddressparts (const tyvaluerecord *val, hdlhashtable *htable, 
 		return (false);
 	}
 
-	if ((uintptr_t) *hstring < 0x1000) {
+	if ((uintptr_t) *hstring < kMinValidPointer) {
 		/* Handle is valid but its data pointer is corrupt (NULL or low address).
-		 * This can happen with stale entries from prior sessions. */
+		 * This can happen with stale entries from prior sessions.
+		 * Note: unlike the pack guards in langhash.c, NULL is NOT valid here —
+		 * address values must hold a non-empty path string, so a zero-length
+		 * handle is always corrupt for this type. */
 		log_error(LOG_COMP_LANG, "getaddressparts: corrupt address handle data ptr=%p handle=%p",
 			(void *)*hstring, (void *)hstring);
 		setemptystring(bs);
