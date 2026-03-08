@@ -437,3 +437,14 @@ tests:
     script: 'defined(tcp.statusStream)'
     expected_success: true
     expected_result: "true"
+
+  - name: "EFP fallback - nonexistent verb under EFP namespace returns false"
+    description: |
+      Guards against the exact failure mode of the removed fast-path: a dotted
+      name under an EFP namespace that does NOT exist must return defined()==false,
+      not silently succeed with a nil node. The old fast-path returned true with
+      hnode=nil for any EFP-prefixed verb not in the kernel table, which blocked
+      the database fallback and caused false "not implemented" results.
+    script: 'defined(inetd.nonExistentVerb1234)'
+    expected_success: true
+    expected_result: "false"

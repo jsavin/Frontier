@@ -8843,7 +8843,7 @@ boolean langhandlercall (hdltreenode htree, hdltreenode hparam1, tyvaluerecord *
 
 	if (langgethandlercode (efptable, htree, &hcode, &htable, &hnode)) {
 		
-		assert (hcode == nil); /*see special case in gethandlercode*/
+		assert (hcode == nil); /*kernel verb nodes in efptable produce hcode==nil from langgetnodecode; dispatch is via hnode*/
 		
 		goto runhandler;
 		}
