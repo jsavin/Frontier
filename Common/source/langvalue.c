@@ -8704,10 +8704,7 @@ static boolean langgethandlercode (hdlhashtable intable, hdltreenode hnamenode, 
         return (false);
     
     ht = *htable; /*move into register*/
-#if defined(FRONTIER_HEADLESS)
-    /* debug disabled */
-#endif
-	
+
 	if (ht == nil) { /*no table specified*/
 		
 		pushhashtable (intable);
