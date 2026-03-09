@@ -1,8 +1,36 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-02-27)
+Status: In Progress (Updated 2026-03-08)
 
 ## Recently Completed Milestones
+
+### EFP Fast-Path Regression Fix - MERGED (Mar 8)
+**Resolution**: PR #469 merged
+- Removed stale headless EFP fast-path in `langgethandlercode()` that violated verb resolution search order
+- The fast-path checked `efptable` BEFORE `system.paths`, blocking database scripts under EFP-named tables
+- Broke `inetd.startOne`, `inetd.isDaemonRunning`, and other UserTalk scripts under inetd/tcp/file tables
+- Added 7 regression tests covering inetd + tcp namespaces (positive and negative cases)
+
+### Integration Test Reliability — 19 Fixes + Protocol Resilience - MERGED (Mar 8)
+**Resolution**: PR #468 merged
+- Fixed 19 consistently-failing integration tests
+- Corrupt handle guards for pack-on-exit (`kMinValidPointer`, `hashpackguard_corrupt_handle()`)
+- Protocol executor: restart-on-failure, per-process fallback retry, stderr capture
+- Hardened `getaddressparts` NULL guards, error context in `resolve_indexed_node`
+
+### CLI State Persistence - MERGED (Mar 1-2)
+**Resolution**: PRs #462, #464 merged
+- Save system root database on CLI exit for state persistence
+- Always save on exit (dbdirtymask was unreliable)
+
+### GIL & Threading Fixes - MERGED (Mar 1-4)
+**Resolution**: PRs #463, #467 merged
+- Resolve GIL deadlock preventing HTTP callback dispatch
+- Enable GIL yielding in blocking REPL mode
+
+### File Path Fix - MERGED (Mar 2)
+**Resolution**: PR #466 merged
+- Handle trailing path separators in `portable_filefrompath`
 
 ### databasedata Global Elimination — Phases 1-10 - COMPLETE (Feb 18-27)
 **Resolution**: PRs #447-#461 merged
@@ -173,10 +201,10 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,893 total — 0 failures
-- 1,704 passed, 189 skipped, **0 failed** (8-worker parallel batch mode, ~40s)
-- Fixed from 755 failures (single-worker) via PRs #428-#433
-- Root causes: `langerrordisable` leak, per-worker DB isolation, test script bugs
+### Integration Tests: 1,920 total — 0 failures
+- 1,713 passed, 189 skipped, **0 failed** (8-worker parallel batch mode, ~37s)
+- Fixed from 755 failures (single-worker) via PRs #428-#433, #468
+- Root causes: `langerrordisable` leak, per-worker DB isolation, corrupt handle guards, protocol executor resilience
 
 ---
 
@@ -439,7 +467,7 @@ See planning/_STATUS_ARCHIVE.md for:
 - **Current focus**: Startup flow stabilization (mainResponder/Manila), guest DB save verification, GUI prototype
 - **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: 1,893 integration tests — **0 failures** (8-worker parallel, ~40s)
+- **Test health**: 1,920 integration tests — **0 failures** (8-worker parallel, ~37s)
 - **Latest release**: v1.0.0-alpha.7 (February 16, 2026)
 - **Compiler warnings**: Zero (fully eliminated)
 

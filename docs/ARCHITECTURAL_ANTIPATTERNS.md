@@ -64,10 +64,19 @@ boolean langexternalgettable(bigstring bs, hdlhashtable *htable) {
 - Only verb dispatch needs to know about EFP internal structure
 - Introspection should reflect the logical database structure
 
+**Second instance (PR #469, March 2026)**:
+The same anti-pattern reappeared in `langgethandlercode()` — a headless EFP fast-path
+checked efptable BEFORE system.paths for dotted verbs. When a verb existed as a UserTalk
+script (e.g., `inetd.startOne` in `system.verbs.builtins.inetd`) but NOT as a kernel verb,
+the fast-path returned true with `hnode=nil`, blocking the database fallback. The fast-path
+was removed entirely.
+
 **How to recognize this pattern**:
 - If you're adding EFP table searches to name resolution functions → STOP
+- If you're adding EFP table searches that run BEFORE system.paths → STOP
 - If verb dispatch works but introspection is wrong → Check if EFP search is in wrong place
 - If `parentOf()` or `typeOf()` returns EFP internal paths → EFP search is prioritized too early
+- If UserTalk scripts under EFP-named tables return "not implemented" → EFP lookup is blocking database fallback
 
 **Files**:
 - `Common/source/langexternal.c` - Name resolution (NO efptable search)

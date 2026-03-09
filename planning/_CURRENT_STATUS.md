@@ -1,43 +1,43 @@
 # Current Status
 
-Last Updated: 2026-02-27
+Last Updated: 2026-03-08
 
-## Current Focus: Startup Flow Stabilization -- mainResponder, Manila, Guest DB Saves
+## Current Focus: Startup Flow Stabilization -- mainResponder, Manila, Web Setup
 
-**Status**: Integration tests at **0 failures** (1,893 tests, 8-worker parallel execution in ~40s). 302 unit tests. databasedata global elimination complete (Phases 1-10). Startup bootstrap partially stabilized.
+**Status**: Integration tests at **0 failures** (1,920 tests, 8-worker parallel execution in ~37s). 302 unit tests. databasedata global elimination complete (Phases 1-10). Startup bootstrap partially stabilized. System root saves on exit. Webserver startup attempted but blocked by inetd.startOne script dependencies.
 
 **Latest Release**: **v1.0.0-alpha.7** (February 16, 2026)
 
 **Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete. fileMenu verbs: 7/10 implemented (open, close, closeall, save, saveAs, saveCopy, new).
 
-## Recent Achievements (February 16-27, 2026)
+## Recent Achievements (February 28 - March 8, 2026)
 
-### Startup Stabilization (PRs #434-#444, #446) - MERGED
-- **PR #434**: Fix guest database script execution -- normalization scanned wrong file
-- **PR #435**: Fix WP text extraction for guest database values
-- **PR #436**: Fix incorrect database context when packing guest database externals
-- **PR #438**: Fix incorrect database format when packing cross-database externals
-- **PR #439**: Startup stabilization -- heap corruption, file ops, PSTR logging
-- **PR #440**: Stabilize UserTalk startup bootstrap for headless mode
-- **PR #441**: Build proper function call AST for TCP callbacks
-- **PR #442**: Execute TCP callbacks directly in headless mode
-- **PR #443**: Yield GIL in REPL event loop and fix headless thread identity stubs
-- **PR #444**: Replace broken Pascal string prefixes in all headless verb registrations
-- **PR #446**: Add PSTRING macro with compile-time length validation
+### EFP Fast-Path Regression Fix (PR #469) - MERGED
+- Removed stale headless EFP fast-path in `langgethandlercode()` that checked `efptable` BEFORE `system.paths` for dotted verbs, violating the documented search order
+- The fast-path (added Oct 2025 as a "temporary shim") returned success with `hnode=nil` for UserTalk scripts under EFP-named tables, blocking database fallback
+- Broke `inetd.startOne`, `inetd.isDaemonRunning`, and other UserTalk scripts under EFP-named tables
+- Added 7 regression tests (inetd + tcp namespaces, positive and negative cases)
 
-### databasedata Global Elimination -- Phases 1-10 (PRs #447-#461) - MERGED
-- **PR #447**: Save/restore databasedata during recursive packing (pre-work)
-- **PR #448**: Explicit DB context for pack/save path (Phases 1-3)
-- **PR #450**: Unskip != and ! operator tests
-- **PR #451**: Eliminate dbpushdatabase/dbpopdatabase from tableverbinmemory_common (Phase 4)
-- **PR #452**: Remove dead DB stack, add _fnum variants for thread-safe I/O (Phases 5-6)
-- **PR #453**: Explicit DB handle threading for complex _context() wrappers (Phase 7)
-- **PR #454**: Eliminate runtime save/swap/restore of databasedata (Phase 8)
-- **PR #459**: Eliminate last runtime databasedata swap (Phase 9)
-- **PR #460**: Thread explicit hdb through unpack chain for guest DB externals
-- **PR #461**: dbflushheader dedup, db_context_fnum hardening, scan cap docs (Phase 10)
+### Integration Test Reliability (PR #468) - MERGED
+- Fixed 19 consistently-failing integration tests
+- Root causes: corrupt handle guards for pack-on-exit (SIGSEGV), protocol executor process death without recovery
+- Added `kMinValidPointer` constant, `hashpackguard_corrupt_handle()` shared helper
+- Protocol executor: restart-on-failure in `reset()`, per-process fallback retry, stderr capture to temp file
+- Hardened `getaddressparts` NULL guards, `fldontsave` skip logging, `resolve_indexed_node` error context
 
-**Milestone: Zero runtime databasedata mutation achieved** -- no pack/unpack/save/load code path mutates the databasedata global anymore. The global still exists for ODB engine context switching (guest DB open/close) and bootstrap, but all wrapper-layer operations use explicit handle threading.
+### CLI State Persistence (PRs #462, #464) - MERGED
+- **PR #462**: Save system root database on CLI exit for state persistence
+- **PR #464**: Always save system root on exit instead of checking dbdirtymask (the mask was unreliable)
+- In-memory changes now persist across CLI sessions
+
+### GIL & Threading Fixes (PRs #463, #467) - MERGED
+- **PR #463**: Resolve GIL deadlock preventing HTTP callback dispatch (TCP accept handler was blocking without yielding)
+- **PR #467**: Enable GIL yielding in blocking REPL mode (readline blocks without yielding, starving background threads)
+
+### File Path Fix (PR #466) - MERGED
+- Handle trailing path separators in `portable_filefrompath` (was returning empty filename for paths like `/foo/bar/`)
+
+## Earlier Achievements (February 16-27, 2026)
 
 ## Earlier Achievements (February 10-16, 2026)
 
@@ -180,11 +180,11 @@ Last Updated: 2026-02-27
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: 1,893 tests total
-- **Passed**: 1,704
+- **Current**: 1,920 tests total
+- **Passed**: 1,713 (was 1,704)
 - **Skipped**: 189
 - **Failed**: **0**
-- Execution: 8 workers, parallel batch mode, ~40 seconds
+- Execution: 8 workers, parallel batch mode, ~37 seconds
 - NDJSON protocol mode eliminates ~210ms startup cost per test
 
 All tests running via:

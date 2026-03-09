@@ -50,6 +50,14 @@ Previously, EFP tables were searched BEFORE `system.paths`, causing introspectio
 Verb dispatch still works because `langhandlercall()` has its own search order that checks
 efptable AFTER system.paths (see langvalue.c lines ~8737-8760).
 
+**Fixed (PR #469)**: A second instance of the same anti-pattern was found in `langgethandlercode()`.
+A headless EFP fast-path (added Oct 2025 as a "temporary shim") checked efptable BEFORE
+system.paths for dotted verbs. When a verb existed as a UserTalk script in
+`system.verbs.builtins.<efp>.<verb>` but NOT as a kernel verb, the fast-path returned success
+with `hnode=nil`, blocking the database fallback. This broke `inetd.startOne` and other UserTalk
+scripts under EFP-named tables. The fast-path was removed entirely since database hydration now
+loads system tables at startup.
+
 ## Function Reference
 
 ### `langdirecttablelookup(htable, bsname, *hresult)`

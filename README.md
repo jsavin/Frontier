@@ -1,8 +1,8 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2026-02-27
+**Last updated:** 2026-03-08
 
-Frontier is being brought back to life. This project is modernizing the classic UserTalk scripting environment and object database into a contemporary cross-platform tool. The headless CLI is now fully functional—you can explore databases, write scripts, and serve web applications, all from the command line. Recent work has eliminated global mutable state from the database pack/unpack layer (zero runtime databasedata mutation) and is stabilizing the startup flow for mainResponder and Manila web application support. A native GUI application with a documented API is being planned, and any developer will be able to connect their own apps and user interfaces to Frontier. The goal: preserve everything that made Frontier powerful while making it accessible to a new generation of developers, tinkerers, bloggers, writers, podcasters, and product builders.
+Frontier is being brought back to life. This project is modernizing the classic UserTalk scripting environment and object database into a contemporary cross-platform tool. The headless CLI is now fully functional—you can explore databases, write scripts, and serve web applications, all from the command line. Recent work has fixed GIL deadlocks blocking HTTP callbacks, added state persistence on CLI exit, and hardened the integration test infrastructure for zero flaky failures. A native GUI application with a documented API is being planned, and any developer will be able to connect their own apps and user interfaces to Frontier. The goal: preserve everything that made Frontier powerful while making it accessible to a new generation of developers, tinkerers, bloggers, writers, podcasters, and product builders.
 
 ## Latest Release: v1.0.0-alpha.7 (Feb 16, 2026)
 
@@ -25,19 +25,22 @@ Frontier is being brought back to life. This project is modernizing the classic 
 # Visit http://localhost:8080/helloworld in your browser
 ```
 
-**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,704 integration tests passing, 302 unit tests passing.
+**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,713 integration tests passing, 302 unit tests passing.
 
 For comprehensive status details, see [STATUS.md](STATUS.md). For release details, see the [v1.0.0-alpha.7 release notes](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.7).
 
-### Development Progress (Feb 16-27, 2026)
+### Development Progress (Feb 16 - Mar 8, 2026)
 
-Since the last release, 27 PRs have been merged:
+Since the last release, 35 PRs have been merged:
 
+- **CLI State Persistence** — System root database saves on CLI exit; in-memory changes persist across sessions
+- **GIL & Threading Fixes** — Resolved deadlock blocking HTTP callback dispatch; GIL yielding in blocking REPL mode
+- **Integration Test Hardening** — Fixed 19 consistently-failing tests (corrupt handle guards, protocol executor resilience)
+- **EFP Fast-Path Regression Fix** — Removed stale headless fast-path that violated verb resolution search order, blocking UserTalk scripts under EFP-named tables
 - **Startup Stabilization** — Fixed guest DB script execution, WP text extraction, database context for cross-database externals, heap corruption in startup path, Pascal string prefixes, TCP callback infrastructure
 - **databasedata Global Elimination (Phases 1-10)** — All runtime save/swap/restore of the `databasedata` global eliminated from pack/unpack/save/load paths. Explicit DB handle threading throughout the wrapper layer.
-- **PSTRING Macro** — Compile-time length validation for Pascal string constants, replacing error-prone manual encoding
 
-**Current Test Status:** 302 unit tests + 1,893 integration tests — **0 failures** (8-worker parallel, ~40s)
+**Current Test Status:** 302 unit tests + 1,920 integration tests — **0 failures** (8-worker parallel, ~37s)
 
 ---
 
@@ -166,7 +169,7 @@ From recent progress (Jan 16-25):
 
 **Security and Testing:**
 - Security hardening built in from start (SSRF protection, DNS rebinding protection for TCP networking)
-- Comprehensive test coverage (0 failures, 1,881 tests, 8-worker parallel execution)
+- Comprehensive test coverage (0 failures, 1,920 tests, 8-worker parallel execution)
 - Integration tests required for all verb implementations
 
 **Thread Safety:**
