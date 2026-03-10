@@ -143,11 +143,19 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             copyctopstring(fullpath, bspath);
             return setstringvalue(bspath, vreturned);
         }
-        case frov_enableagents:
-            /* frontier.enableAgents - no-op in headless mode (agents not supported) */
+        case frov_enableagents: {
+            /* frontier.enableAgents(bool) - no-op in headless mode (agents not supported) */
             /* Startup script calls this, so we return true to not fail the script */
+            boolean flenabled;
+
+            flnextparamislast = true;
+
+            if (!getbooleanvalue(hparam1, 1, &flenabled))
+                return false;
+
             setbooleanvalue(true, vreturned);
             return true;
+        }
         case frov_requesttofront:
             /* Verb #3: frontier.requesttofront - not yet implemented */
             if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
@@ -159,7 +167,7 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             setbooleanvalue(false, vreturned);
             return true;
         case frov_countthreads:
-            /* Verb #5: frontier.countthreads - delegate to processthreadcount */
+            /* Verb #5: frontier.countthreads - delegate to processthreadcount (process.h) */
             if (!langcheckparamcount(hparam1, 0))
                 return false;
             return setlongvalue(processthreadcount(), vreturned);

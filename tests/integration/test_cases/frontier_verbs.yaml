@@ -208,7 +208,10 @@ tests:
   - name: "frontier.reclaimMemory - succeeds"
     description: |
       reclaimMemory is a no-op on modern systems where the OS handles
-      memory management. Returns true to indicate success.
+      memory management. Returns boolean true to indicate success.
+      Note: the original reclaimmemoryfunc returns a long (bytes freed
+      via hashflushcache). Headless intentionally returns boolean since
+      there is no hash cache to flush.
     script: "Frontier.reclaimMemory()"
     expected_success: true
     expected_result: "true"
