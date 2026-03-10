@@ -13,6 +13,7 @@ Based on Phase 3 categorization from MISSING_VERBS_REVIEW_WITH_AUDITS.md
 STUB_ERROR = 'error'      # Return false with specific error message
 STUB_NOOP = 'noop'        # Return true silently (safe no-op)
 STUB_FORWARD = 'forward'  # Forward to real C implementation function
+STUB_CUSTOM = 'custom'    # Hand-implemented in the C file; generator must not overwrite
 STUB_DEFAULT = 'default'  # Generic "not implemented" error
 
 # Error message templates by category
@@ -138,6 +139,20 @@ STUB_CONFIGS = {
     ('target', 'get'): (STUB_FORWARD, 'langgettargetfunc'),
     ('target', 'set'): (STUB_FORWARD, 'langsettargetfunc'),
     ('target', 'clear'): (STUB_FORWARD, 'langcleartargetfunc'),
+
+    # Category 4: Hand-Implemented (Custom) Frontier Verbs
+    # These are hand-implemented in headless_frontier_verbs.c and must not
+    # be overwritten by the generator. Each has specific headless behavior.
+    ('frontier', 'getprogrampath'): (STUB_CUSTOM, 'returns path to CLI executable'),
+    ('frontier', 'getfilepath'): (STUB_CUSTOM, 'returns path to loaded database'),
+    ('frontier', 'enableagents'): (STUB_CUSTOM, 'no-op, returns true'),
+    ('frontier', 'isruntime'): (STUB_CUSTOM, 'returns false (CLI is not runtime-only)'),
+    ('frontier', 'countthreads'): (STUB_CUSTOM, 'delegates to processthreadcount()'),
+    ('frontier', 'ispowerpc'): (STUB_CUSTOM, 'returns true (suppresses legacy 68k workarounds)'),
+    ('frontier', 'reclaimmemory'): (STUB_CUSTOM, 'no-op, returns true (modern OS handles memory)'),
+    ('frontier', 'version'): (STUB_CUSTOM, 'returns product version string'),
+    ('frontier', 'cliversion'): (STUB_CUSTOM, 'returns CLI distribution version'),
+    ('frontier', 'isvalidserialnumber'): (STUB_CUSTOM, 'always returns true in headless'),
 }
 
 
@@ -209,6 +224,14 @@ def get_stub_implementation(processor: str, verb: str, token_name: str) -> list:
         lines.extend([
             f"            /* Verb: {processor}.{verb} - forward to real implementation */",
             f"            return {func_name}(hparam1, vreturned);",
+        ])
+    elif stub_type == STUB_CUSTOM:
+        # Hand-implemented in the C file; generator emits a placeholder comment
+        description = config or 'hand-implemented'
+        lines.extend([
+            f"            /* Verb: {processor}.{verb} - CUSTOM: {description} */",
+            f"            /* This verb is hand-implemented. Do not auto-generate. */",
+            f"            #error \"{processor}.{verb} is marked STUB_CUSTOM -- do not regenerate this file\"",
         ])
     else:  # STUB_DEFAULT
         lines.extend([

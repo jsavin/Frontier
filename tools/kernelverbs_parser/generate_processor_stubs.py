@@ -29,7 +29,7 @@ from parse_kernelverbs import (
     EXCLUDED_PROCESSORS,
     CORE_IMPLEMENTED_PROCESSORS,
 )
-from stub_config import get_stub_implementation
+from stub_config import get_stub_implementation, get_stub_config, STUB_CUSTOM
 
 
 def validate_stub_generation_paths(input_path: str, output_dir: str) -> bool:
@@ -155,14 +155,36 @@ def generate_processor_stub(processor: EFPProcessor, verb_names: List[str]) -> s
     ])
 
     # Generate switch cases for all verbs using stub_config
+    has_custom_verbs = False
     for i in range(verb_count):
         prefix = f"{proc_name[0:3]}v"
         token_name = f"{prefix}_{verb_names[i]}"
         verb_name = verb_names[i]
 
+        # Warn about STUB_CUSTOM verbs that will be overwritten
+        stub_type, _ = get_stub_config(proc_name, verb_name)
+        if stub_type == STUB_CUSTOM:
+            print(f"WARNING: {proc_name}.{verb_name} is marked STUB_CUSTOM "
+                  f"(hand-implemented). Regenerating will overwrite the "
+                  f"hand-implemented code. Restore from git with: "
+                  f"git checkout -- tests/headless_{proc_name}_verbs.c",
+                  file=sys.stderr)
+            has_custom_verbs = True
+
         # Get stub implementation from config
         stub_lines = get_stub_implementation(proc_name, verb_name, token_name)
         lines.extend(stub_lines)
+
+    if has_custom_verbs:
+        # Note: we still write the file even though it contains STUB_CUSTOM verbs.
+        # The generated code includes #error directives that prevent compilation,
+        # which is the real safeguard. The stderr message below tells the developer
+        # how to recover (restore the hand-maintained file from git).
+        print(f"ERROR: Processor '{proc_name}' has STUB_CUSTOM verbs. "
+              f"The generated file will NOT compile (intentional #error guard). "
+              f"This file should be hand-maintained, not regenerated. "
+              f"Restore with: git checkout -- tests/headless_{proc_name}_verbs.c",
+              file=sys.stderr)
 
     lines.extend([
         '        default:',
