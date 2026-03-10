@@ -156,21 +156,34 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
         case frov_isruntime:
-            /* Verb #4: frontier.isruntime - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
-        case frov_countthreads:
-            /* Verb #5: frontier.countthreads - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            /* Verb #4: frontier.isruntime - headless CLI is not a runtime-only build */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            setbooleanvalue(false, vreturned);
+            return true;
+        case frov_countthreads: {
+            /* Verb #5: frontier.countthreads - delegate to processthreadcount */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            setlongvalue(processthreadcount(), vreturned);
+            return true;
+        }
         case frov_ispowerpc:
-            /* Verb #6: frontier.ispowerpc - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            /* Verb #6: frontier.ispowerpc - return true to suppress legacy 68k workarounds.
+             * Historical context: In 2000-era Frontier, "not isPowerPC" meant 68k Mac which
+             * needed extra listener sockets because its TCP stack couldn't handle concurrent
+             * connections. Modern systems don't need this workaround, so returning true
+             * prevents inetd.startOne from creating duplicate listeners on the same port. */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            setbooleanvalue(true, vreturned);
+            return true;
         case frov_reclaimmemory:
-            /* Verb #7: frontier.reclaimmemory - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            /* Verb #7: frontier.reclaimmemory - no-op, modern OS handles memory */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            setbooleanvalue(true, vreturned);
+            return true;
         case frov_version:
             /* Verb #8: frontier.version - Return product version string */
             /* Derived from git tag: CLI major + 10 (e.g., CLI v1.0.0-alpha.6 → "11.0a6") */

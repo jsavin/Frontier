@@ -7,6 +7,10 @@
 #   - frontier.version() - Returns version string
 #   - frontier.enableAgents() - No-op in headless (returns true)
 #   - frontier.isValidSerialNumber() - Always returns true in headless
+#   - frontier.isPowerPC() - Returns true (suppresses legacy 68k workarounds)
+#   - frontier.isRuntime() - Returns false (CLI is not runtime-only)
+#   - frontier.countThreads() - Returns active thread count
+#   - frontier.reclaimMemory() - No-op, returns true
 
 tests:
   # frontier.getProgramPath tests
@@ -127,5 +131,84 @@ tests:
     description: "Empty serial number still returns true in headless"
     script: |
       return frontier.isValidSerialNumber("")
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # frontier.isPowerPC tests
+  # ==========================================================================
+  # Returns true in headless mode to suppress legacy 68k Mac workarounds.
+  # Historical context: In 2000-era Frontier, "not isPowerPC" meant 68k Mac
+  # which needed extra listener sockets because its TCP stack couldn't handle
+  # concurrent connections. inetd.startOne() calls tcp.listenStream's UserTalk
+  # wrapper which checks isPowerPC() — returning true prevents the wrapper from
+  # creating duplicate listeners on the same port.
+
+  - name: "frontier.isPowerPC - returns boolean"
+    description: "isPowerPC must return a boolean value"
+    script: 'typeOf(Frontier.isPowerPC()) == "bool"'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.isPowerPC - returns true in headless mode"
+    description: |
+      Returns true to suppress legacy 68k Mac TCP workarounds.
+      Modern systems don't need extra listener sockets.
+    script: "Frontier.isPowerPC()"
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # frontier.isRuntime tests
+  # ==========================================================================
+  # Returns false — headless CLI is a full development environment.
+
+  - name: "frontier.isRuntime - returns boolean"
+    description: "isRuntime must return a boolean value"
+    script: 'typeOf(Frontier.isRuntime()) == "bool"'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.isRuntime - returns false for CLI"
+    description: |
+      Headless CLI is not a runtime-only build — it has full
+      development capabilities (REPL, script editing, etc.).
+    script: "Frontier.isRuntime()"
+    expected_success: true
+    expected_result: "false"
+
+  # ==========================================================================
+  # frontier.countThreads tests
+  # ==========================================================================
+  # Returns the number of active threads (at least 1).
+
+  - name: "frontier.countThreads - returns a number"
+    description: "countThreads must return a numeric value"
+    script: 'typeOf(Frontier.countThreads()) == "long"'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.countThreads - at least 1"
+    description: "There is always at least one thread (the main/REPL thread)"
+    script: "Frontier.countThreads() >= 1"
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # frontier.reclaimMemory tests
+  # ==========================================================================
+  # No-op on modern systems — returns true.
+
+  - name: "frontier.reclaimMemory - returns boolean"
+    description: "reclaimMemory must return a boolean value"
+    script: 'typeOf(Frontier.reclaimMemory()) == "bool"'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "frontier.reclaimMemory - succeeds"
+    description: |
+      reclaimMemory is a no-op on modern systems where the OS handles
+      memory management. Returns true to indicate success.
+    script: "Frontier.reclaimMemory()"
     expected_success: true
     expected_result: "true"
