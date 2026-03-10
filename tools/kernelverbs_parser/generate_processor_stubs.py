@@ -176,9 +176,14 @@ def generate_processor_stub(processor: EFPProcessor, verb_names: List[str]) -> s
         lines.extend(stub_lines)
 
     if has_custom_verbs:
+        # Note: we still write the file even though it contains STUB_CUSTOM verbs.
+        # The generated code includes #error directives that prevent compilation,
+        # which is the real safeguard. The stderr message below tells the developer
+        # how to recover (restore the hand-maintained file from git).
         print(f"ERROR: Processor '{proc_name}' has STUB_CUSTOM verbs. "
               f"The generated file will NOT compile (intentional #error guard). "
-              f"This file should be hand-maintained, not regenerated.",
+              f"This file should be hand-maintained, not regenerated. "
+              f"Restore with: git checkout -- tests/headless_{proc_name}_verbs.c",
               file=sys.stderr)
 
     lines.extend([

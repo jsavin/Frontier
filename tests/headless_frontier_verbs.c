@@ -153,6 +153,8 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
             if (!getbooleanvalue(hparam1, 1, &flenabled))
                 return false;
 
+            (void)flenabled;  /* accepted but not used in headless mode */
+
             setbooleanvalue(true, vreturned);
             return true;
         }
