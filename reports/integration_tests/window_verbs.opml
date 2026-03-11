@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Window Verbs (window_verbs) - 10 tests: 8 pass (80%) 2 skip (20%)</title>
-    <dateCreated>Tue, 17 Feb 2026 07:23:22 GMT</dateCreated>
+    <title>Window Verbs (window_verbs) - 16 tests: 13 pass (81%) 3 skip (18%)</title>
+    <dateCreated>Wed, 11 Mar 2026 07:35:03 GMT</dateCreated>
   </head>
   <body>
     <outline text="window.isOpen - @root returns true - The system root address is always 'open' in headless mode">
@@ -104,6 +104,70 @@
         <outline text="local (fname = file.filefrompath(p))"/>
         <outline text="local (relpath = dir + &quot;./&quot; + fname)"/>
         <outline text="return window.isOpen(relpath)"/>
+      </outline>
+    </outline>
+    <outline text="window.getFile - @root returns a string - window.getFile(@root) returns the file path of the system root database">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return typeOf(window.getFile(@root)) == stringType"/>
+      </outline>
+    </outline>
+    <outline text="window.getFile - @root path contains .root - The path returned for @root should be a .root database file">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (p = window.getFile(@root))"/>
+        <outline text="return p contains &quot;.root&quot;"/>
+      </outline>
+    </outline>
+    <outline text="window.getFile - @root path is non-empty - The path returned for @root should be a non-empty file path">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (p = window.getFile(@root))"/>
+        <outline text="return sizeOf(p) &gt; 0"/>
+      </outline>
+    </outline>
+    <outline text="window.getFile - @system returns same path as @root - system table is in the same database as root, so paths should match">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return window.getFile(@system) == window.getFile(@root)"/>
+      </outline>
+    </outline>
+    <outline text="window.getFile - local variable returns empty string - A local variable is not stored in any database, so getFile returns empty">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 42)"/>
+        <outline text="return window.getFile(@x) == &quot;&quot;"/>
+      </outline>
+    </outline>
+    <outline text="window.getFile - guest database returns its path - After opening a guest DB, window.getFile on its root address returns a path containing its filename">
+      <outline text="Metadata">
+        <outline text="skip: Requires guest database files adjacent to system root; not available in per-worker test environment"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderfrompath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;Guest Databases/apps/manila.root7&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="guestpath = sysdir + &quot;Guest Databases/apps/manila.root&quot;}"/>
+        </outline>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath)"/>
+        <outline text="local (p = window.getFile(@manila))"/>
+        <outline text="local (result = p contains &quot;manila&quot;)"/>
+        <outline text="fileMenu.closeAll()"/>
+        <outline text="return result"/>
       </outline>
     </outline>
     <outline text="window.msg - no-op returns true - window.msg is a no-op in headless mode but returns true">

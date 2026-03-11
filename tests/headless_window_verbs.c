@@ -35,6 +35,8 @@
 #include "langinternal.h"
 #include "tablestructure.h"
 #include "odbinternal.h"
+#include "tableverbs.h"
+#include "langexternal.h"
 #include "logging.h"
 
 /* From file_portable.c — declared locally because #include "file.h"
@@ -472,10 +474,83 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             /* window.about - no-op in headless mode (no GUI to display About window) */
             setbooleanvalue(true, vreturned);
             return true;
-        case winv_getfile:
-            /* Verb: window.getfile - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+        case winv_getfile: {
+            /* window.getFile(adr) — return the database file path for an address.
+             * Determines which .root database file contains the object at the
+             * given address and returns its file path as a string. */
+            tyvaluerecord val;
+            hdlhashtable htable;
+            bigstring bsname;
+            hdldatabaserecord hdb = nil;
+            boolean fl;
+
+            flnextparamislast = true;
+
+            if (!getaddressparam(hparam1, 1, &val))
+                return false;
+
+            fl = getaddressvalue(val, &htable, bsname);
+
+            /* val is an address value on the tmp stack — cleaned up automatically
+             * when the current statement finishes (no manual dispose needed). */
+
+            if (!fl)
+                return false;
+
+            if (htable == nil) {
+                /* htable == nil means an unresolved single identifier (e.g., @root,
+                 * @manila). Check filewindowtable first for guest DB roots, then
+                 * fall back to roottable for the system root database. */
+                hdlhashnode hnode;
+
+                if (hashtablelookupnode(filewindowtable, bsname, &hnode)) {
+                    if ((**hnode).val.valuetype == externalvaluetype)
+                        hdb = langexternalgetdatabase((hdlexternalvariable) (**hnode).val.data.externalvalue);
+                }
+
+                if (hdb == nil)
+                    hdb = tablegetdatabase(roottable);
+            }
+            else if (htable == filewindowtable) {
+                /* Guest DB root — look up the node to get its external variable */
+                hdlhashnode hnode;
+
+                if (hashtablelookupnode(filewindowtable, bsname, &hnode)) {
+                    if ((**hnode).val.valuetype == externalvaluetype)
+                        hdb = langexternalgetdatabase((hdlexternalvariable) (**hnode).val.data.externalvalue);
+                }
+            }
+            else {
+                /* Address is inside a table — get DB from the table's refcon */
+                hdb = tablegetdatabase(htable);
+            }
+
+            if (hdb != nil) {
+                const char *path = headless_fnum_path((hdlfilenum)((**hdb).fnumdatabase));
+
+                if (path != nil) {
+                    size_t pathlen = strlen(path);
+
+                    if (pathlen > 255) {
+                        log_warn(LOG_COMP_LANG, "window.getFile: path is %zu bytes, exceeds bigstring limit of 255", pathlen);
+
+                        if (bserror)
+                            copystring(PSTRING("\065", "Can't get file path because it exceeds 255 characters"), bserror);
+
+                        return false;
+                    }
+
+                    bigstring bspath;
+
+                    copyctopstring(path, bspath);
+
+                    return setstringvalue(bspath, vreturned);
+                }
+            }
+
+            /* No database found (e.g., local variable) — return empty string */
+            return setstringvalue(PSTRING("\000", ""), vreturned);
+        }
         case winv_isreadonly:
             /* Verb: window.isreadonly - not yet implemented */
             if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);

@@ -153,6 +153,9 @@ STUB_CONFIGS = {
     ('frontier', 'version'): (STUB_CUSTOM, 'returns product version string'),
     ('frontier', 'cliversion'): (STUB_CUSTOM, 'returns CLI distribution version'),
     ('frontier', 'isvalidserialnumber'): (STUB_CUSTOM, 'always returns true in headless'),
+
+    # Category 4b: Hand-Implemented (Custom) Window Verbs
+    ('window', 'getfile'): (STUB_CUSTOM, 'returns database file path for address'),
 }
 
 

@@ -110,6 +110,70 @@ tests:
   # Other window verbs (existing stubs/implementations)
   # ========================================================================
 
+  # ========================================================================
+  # window.getFile — returns database file path for an address
+  # ========================================================================
+
+  - name: "window.getFile - @root returns a string"
+    description: "window.getFile(@root) returns the file path of the system root database"
+    script: |
+      return typeOf(window.getFile(@root)) == stringType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.getFile - @root path contains .root"
+    description: "The path returned for @root should be a .root database file"
+    script: |
+      local (p = window.getFile(@root));
+      return p contains ".root"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.getFile - @root path is non-empty"
+    description: "The path returned for @root should be a non-empty file path"
+    script: |
+      local (p = window.getFile(@root));
+      return sizeOf(p) > 0
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.getFile - @system returns same path as @root"
+    description: "system table is in the same database as root, so paths should match"
+    script: |
+      return window.getFile(@system) == window.getFile(@root)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.getFile - local variable returns empty string"
+    description: "A local variable is not stored in any database, so getFile returns empty"
+    script: |
+      local (x = 42);
+      return window.getFile(@x) == ""
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.getFile - guest database returns its path"
+    description: "After opening a guest DB, window.getFile on its root address returns a path containing its filename"
+    skip: "Requires guest database files adjacent to system root; not available in per-worker test environment"
+    script: |
+      local (sysdir = file.folderfrompath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/manila.root7");
+      if not file.exists(guestpath) {
+        guestpath = sysdir + "Guest Databases/apps/manila.root"};
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath);
+      local (p = window.getFile(@manila));
+      local (result = p contains "manila");
+      fileMenu.closeAll();
+      return result
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Other window verbs (existing stubs/implementations)
+  # ========================================================================
+
   - name: "window.msg - no-op returns true"
     description: "window.msg is a no-op in headless mode but returns true"
     script: |
