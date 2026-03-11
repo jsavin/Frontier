@@ -482,13 +482,19 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             hdlhashtable htable;
             bigstring bsname;
             hdldatabaserecord hdb = nil;
+            boolean fl;
 
             flnextparamislast = true;
 
             if (!getaddressparam(hparam1, 1, &val))
                 return false;
 
-            if (!getaddressvalue(val, &htable, bsname))
+            fl = getaddressvalue(val, &htable, bsname);
+
+            /* val is an address value on the tmp stack — cleaned up automatically
+             * when the current statement finishes (no manual dispose needed). */
+
+            if (!fl)
                 return false;
 
             if (htable == nil) {
@@ -499,8 +505,10 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 /* Guest DB root — look up the node to get its external variable */
                 hdlhashnode hnode;
 
-                if (hashtablelookupnode(filewindowtable, bsname, &hnode))
-                    hdb = langexternalgetdatabase((hdlexternalvariable) (**hnode).val.data.externalvalue);
+                if (hashtablelookupnode(filewindowtable, bsname, &hnode)) {
+                    if ((**hnode).val.valuetype == externalvaluetype)
+                        hdb = langexternalgetdatabase((hdlexternalvariable) (**hnode).val.data.externalvalue);
+                }
             }
             else {
                 /* Address is inside a table — get DB from the table's refcon */
@@ -511,6 +519,13 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 const char *path = headless_fnum_path((hdlfilenum)((**hdb).fnumdatabase));
 
                 if (path != nil) {
+                    size_t len = strlen(path);
+
+                    if (len > 255) {
+                        log_warn(LOG_COMP_LANG, "window.getFile: path truncated from %zu to 255 bytes", len);
+                        len = 255;
+                    }
+
                     bigstring bspath;
 
                     copyctopstring(path, bspath);

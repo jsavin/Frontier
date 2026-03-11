@@ -152,6 +152,24 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "window.getFile - guest database returns its path"
+    description: "After opening a guest DB, window.getFile on its root address returns a path containing its filename"
+    skip: "Requires guest database files adjacent to system root; not available in per-worker test environment"
+    script: |
+      local (sysdir = file.folderfrompath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "Guest Databases/apps/manila.root7");
+      if not file.exists(guestpath) {
+        guestpath = sysdir + "Guest Databases/apps/manila.root"};
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath);
+      local (p = window.getFile(@manila));
+      local (result = p contains "manila");
+      fileMenu.closeAll();
+      return result
+    expected_success: true
+    expected_result: "true"
+
   # ========================================================================
   # Other window verbs (existing stubs/implementations)
   # ========================================================================
