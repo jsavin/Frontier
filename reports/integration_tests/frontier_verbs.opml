@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Verbs (frontier_verbs) - 15 tests: 15 pass (100%)</title>
-    <dateCreated>Sun, 15 Feb 2026 08:17:42 GMT</dateCreated>
+    <title>Frontier Verbs (frontier_verbs) - 23 tests: 23 pass (100%)</title>
+    <dateCreated>Wed, 11 Mar 2026 07:05:59 GMT</dateCreated>
   </head>
   <body>
     <outline text="frontier.getProgramPath - returns string - getProgramPath should return a string value">
@@ -133,6 +133,70 @@
       </outline>
       <outline text="Script">
         <outline text="return frontier.isValidSerialNumber(&quot;&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="frontier.isPowerPC - returns boolean - isPowerPC must return a boolean value">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeOf(Frontier.isPowerPC()) == &quot;bool&quot;"/>
+      </outline>
+    </outline>
+    <outline text="frontier.isPowerPC - returns true in headless mode - Returns true to suppress legacy 68k Mac TCP workarounds.&#10;Modern systems don't need extra listener sockets.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="Frontier.isPowerPC()"/>
+      </outline>
+    </outline>
+    <outline text="frontier.isRuntime - returns boolean - isRuntime must return a boolean value">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeOf(Frontier.isRuntime()) == &quot;bool&quot;"/>
+      </outline>
+    </outline>
+    <outline text="frontier.isRuntime - returns false for CLI - Headless CLI is not a runtime-only build — it has full&#10;development capabilities (REPL, script editing, etc.).&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="Frontier.isRuntime()"/>
+      </outline>
+    </outline>
+    <outline text="frontier.countThreads - returns a number - countThreads must return a numeric value">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeOf(Frontier.countThreads()) == &quot;long&quot;"/>
+      </outline>
+    </outline>
+    <outline text="frontier.countThreads - at least 1 - There is always at least one thread (the main/REPL thread)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="Frontier.countThreads() &gt;= 1"/>
+      </outline>
+    </outline>
+    <outline text="frontier.reclaimMemory - returns boolean - reclaimMemory must return a boolean value">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeOf(Frontier.reclaimMemory()) == &quot;bool&quot;"/>
+      </outline>
+    </outline>
+    <outline text="frontier.reclaimMemory - succeeds - reclaimMemory is a no-op on modern systems where the OS handles&#10;memory management. Returns boolean true to indicate success.&#10;Note: the original reclaimmemoryfunc returns a long (bytes freed&#10;via hashflushcache). Headless intentionally returns boolean since&#10;there is no hash cache to flush.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="Frontier.reclaimMemory()"/>
       </outline>
     </outline>
   </body>

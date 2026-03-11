@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Post Hydration Database State (post_hydration_database_state) - 38 tests: 34 pass (89%) 4 skip (10%)</title>
-    <dateCreated>Sun, 08 Mar 2026 10:00:13 GMT</dateCreated>
+    <title>Post Hydration Database State (post_hydration_database_state) - 40 tests: 36 pass (90%) 4 skip (10%)</title>
+    <dateCreated>Wed, 11 Mar 2026 07:05:59 GMT</dateCreated>
   </head>
   <body>
     <outline text="CRITICAL - string(123) works after hydration - This is THE test for the bug we fixed. If hydrate_system_root_database()&#10;closes the database on success, this test WILL FAIL because:&#10;1. CLI starts up, calls hydrate_system_root_database()&#10;2. (Bug) hydrate closes DB, databasedata = nil&#10;3. Test runs, calls string(123)&#10;4. langfindsymbol() tries to resolve &quot;string&quot; via system.paths&#10;5. system.paths lookup requires database access&#10;6. databasedata is nil -&gt; crash or &quot;Can't find verb&quot; error&#10;&#10;After the fix, the database stays open and string() resolves correctly.&#10;">
@@ -302,7 +302,7 @@
         <outline text="defined(system) and defined(string) and string(123) == &quot;123&quot;"/>
       </outline>
     </outline>
-    <outline text="EFP fallback - inetd.startOne is defined - inetd.startOne is a UserTalk script in the database, NOT a kernel verb.&#10;It must be reachable through the system.paths search, not blocked by&#10;EFP table lookup. Regression test for the headless fast-path bug.&#10;">
+    <outline text="EFP fallback - inetd.startOne is defined - inetd.startOne is a UserTalk script in the database, NOT a kernel verb.&#10;It must be reachable through the system.paths search, not blocked by&#10;EFP table lookup. Regression test for the headless fast-path bug.&#10;NOTE: We test defined() rather than calling the verb because inetd.startOne&#10;requires network infrastructure (tcp.listenStream, user.inetd tables) that&#10;is not available in headless integration tests.&#10;">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
@@ -332,6 +332,22 @@
       </outline>
       <outline text="Script">
         <outline text="defined(inetd.supervisor)"/>
+      </outline>
+    </outline>
+    <outline text="EFP fallback - tcp.statusStream is defined (non-inetd namespace) - Verify the fix is namespace-general, not inetd-specific. tcp.statusStream&#10;is a UserTalk script under the tcp EFP namespace that must also be&#10;reachable through system.paths, not blocked by EFP table lookup.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(tcp.statusStream)"/>
+      </outline>
+    </outline>
+    <outline text="EFP fallback - nonexistent verb under EFP namespace returns false - Guards against the exact failure mode of the removed fast-path: a dotted&#10;name under an EFP namespace that does NOT exist must return defined()==false,&#10;not silently succeed with a nil node. The old fast-path returned true with&#10;hnode=nil for any EFP-prefixed verb not in the kernel table, which blocked&#10;the database fallback and caused false &quot;not implemented&quot; results.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="defined(inetd.nonExistentVerb1234)"/>
       </outline>
     </outline>
   </body>
