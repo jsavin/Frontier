@@ -529,8 +529,10 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 const char *path = headless_fnum_path((hdlfilenum)((**hdb).fnumdatabase));
 
                 if (path != nil) {
-                    if (strlen(path) > 255) {
-                        log_warn(LOG_COMP_LANG, "window.getFile: path is %zu bytes, exceeds bigstring limit of 255", strlen(path));
+                    size_t pathlen = strlen(path);
+
+                    if (pathlen > 255) {
+                        log_warn(LOG_COMP_LANG, "window.getFile: path is %zu bytes, exceeds bigstring limit of 255", pathlen);
 
                         if (bserror)
                             copystring(PSTRING("\065", "Can't get file path because it exceeds 255 characters"), bserror);
