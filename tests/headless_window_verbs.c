@@ -35,6 +35,8 @@
 #include "langinternal.h"
 #include "tablestructure.h"
 #include "odbinternal.h"
+#include "tableverbs.h"
+#include "langexternal.h"
 #include "logging.h"
 
 /* From file_portable.c — declared locally because #include "file.h"
@@ -472,10 +474,54 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             /* window.about - no-op in headless mode (no GUI to display About window) */
             setbooleanvalue(true, vreturned);
             return true;
-        case winv_getfile:
-            /* Verb: window.getfile - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+        case winv_getfile: {
+            /* window.getFile(adr) — return the database file path for an address.
+             * Determines which .root database file contains the object at the
+             * given address and returns its file path as a string. */
+            tyvaluerecord val;
+            hdlhashtable htable;
+            bigstring bsname;
+            hdldatabaserecord hdb = nil;
+
+            flnextparamislast = true;
+
+            if (!getaddressparam(hparam1, 1, &val))
+                return false;
+
+            if (!getaddressvalue(val, &htable, bsname))
+                return false;
+
+            if (htable == nil) {
+                /* Address IS a root table (e.g., @root) — get DB from roottable */
+                hdb = tablegetdatabase(roottable);
+            }
+            else if (htable == filewindowtable) {
+                /* Guest DB root — look up the node to get its external variable */
+                hdlhashnode hnode;
+
+                if (hashtablelookupnode(filewindowtable, bsname, &hnode))
+                    hdb = langexternalgetdatabase((hdlexternalvariable) (**hnode).val.data.externalvalue);
+            }
+            else {
+                /* Address is inside a table — get DB from the table's refcon */
+                hdb = tablegetdatabase(htable);
+            }
+
+            if (hdb != nil) {
+                const char *path = headless_fnum_path((hdlfilenum)((**hdb).fnumdatabase));
+
+                if (path != nil) {
+                    bigstring bspath;
+
+                    copyctopstring(path, bspath);
+
+                    return setstringvalue(bspath, vreturned);
+                }
+            }
+
+            /* No database found (e.g., local variable) — return empty string */
+            return setstringvalue(PSTRING("\000", ""), vreturned);
+        }
         case winv_isreadonly:
             /* Verb: window.isreadonly - not yet implemented */
             if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
