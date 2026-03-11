@@ -498,8 +498,18 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 return false;
 
             if (htable == nil) {
-                /* Address IS a root table (e.g., @root) — get DB from roottable */
-                hdb = tablegetdatabase(roottable);
+                /* htable == nil means an unresolved single identifier (e.g., @root,
+                 * @manila). Check filewindowtable first for guest DB roots, then
+                 * fall back to roottable for the system root database. */
+                hdlhashnode hnode;
+
+                if (hashtablelookupnode(filewindowtable, bsname, &hnode)) {
+                    if ((**hnode).val.valuetype == externalvaluetype)
+                        hdb = langexternalgetdatabase((hdlexternalvariable) (**hnode).val.data.externalvalue);
+                }
+
+                if (hdb == nil)
+                    hdb = tablegetdatabase(roottable);
             }
             else if (htable == filewindowtable) {
                 /* Guest DB root — look up the node to get its external variable */
