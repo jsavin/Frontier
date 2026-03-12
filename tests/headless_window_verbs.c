@@ -508,7 +508,7 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                         hdb = langexternalgetdatabase((hdlexternalvariable) (**hnode).val.data.externalvalue);
                 }
 
-                if (hdb == nil)
+                if (hdb == nil && equalstrings(bsname, nameroottable))
                     hdb = tablegetdatabase(roottable);
             }
             else if (htable == filewindowtable) {
