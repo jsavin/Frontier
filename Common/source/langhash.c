@@ -172,8 +172,20 @@ static boolean langhash_prepare_wordprocessor_value(const db_context *ctx, bigst
 	if ((**hv).id != idwordprocessor)
 		return true;
 
+	/*
+	 * 2026-03-11: Suppress errors during path lookup. This is only for
+	 * a logging hint — failure is expected for guest database items
+	 * where getfullpath can't walk the table hierarchy across database
+	 * boundaries. Without suppression, getfullpath raises nopatherror
+	 * which poisons the script's error state (fllangerror) and breaks
+	 * try/else blocks. See issue #477.
+	 */
+	disablelangerror ();
+
 	if (!langexternalgetfullpath(currenthashtable, bsname, bspath, nil))
 		copystring(bsname, bspath);
+
+	enablelangerror ();
 
 	/* Pascal string length byte must fit plus NUL. */
 	if ((size_t) bspath[0] >= (sizeof pathbuf) - 1)
