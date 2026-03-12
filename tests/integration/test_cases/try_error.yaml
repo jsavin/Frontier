@@ -1,0 +1,129 @@
+# Integration tests for tryError variable in try/else blocks
+#
+# Bug #477: tryError undefined when table array errors occur inside try blocks.
+# Root cause: tablearrayvalue() in langvalue.c set fllangerror=true BEFORE
+# calling the error callback, preventing langtryerror() from capturing the
+# error message into the tryerror handle. The else block then couldn't find
+# the tryError local variable.
+
+tests:
+  # ========================================================================
+  # Basic tryError functionality
+  # ========================================================================
+
+  - name: "tryError - basic scriptError caught"
+    description: "tryError should be defined in else block after scriptError"
+    script: |
+      try {
+        scriptError("hello from try")}
+      else {
+        return tryError}
+    expected_success: true
+    expected_result: "hello from try"
+
+  - name: "tryError - division by zero caught"
+    description: "tryError should capture division by zero error"
+    script: |
+      try {
+        local (x = 1/0)}
+      else {
+        return tryError contains "divide"}
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Table array errors — the specific bug scenario from #477
+  # ========================================================================
+
+  - name: "tryError - table string index not found"
+    description: "tryError should be defined when table[key] fails for nonexistent key"
+    script: |
+      local (t); new(tableType, @t);
+      try {
+        local (x = t["nonexistent"])}
+      else {
+        return typeOf(tryError) == stringType}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tryError - table string index error message"
+    description: "tryError error message should mention the missing key"
+    script: |
+      local (t); new(tableType, @t);
+      try {
+        local (x = t["badkey"])}
+      else {
+        return tryError contains "badkey"}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tryError - table integer index out of range"
+    description: "tryError should be defined when table[n] is out of range"
+    script: |
+      local (t); new(tableType, @t);
+      try {
+        local (x = t[99])}
+      else {
+        return typeOf(tryError) == stringType}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tryError - array subscript on non-table"
+    description: "tryError should be defined when subscripting a non-table value"
+    script: |
+      local (x = "hello");
+      try {
+        local (y = x["key"])}
+      else {
+        return typeOf(tryError) == stringType}
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Nested try/else — matches mainResponder.respond pattern
+  # ========================================================================
+
+  - name: "tryError - nested try with inner table error"
+    description: "Inner try catches table error, outer try catches rethrown error"
+    script: |
+      try {
+        local (t); new(tableType, @t);
+        try {
+          local (x = t["missing"])}
+        else {
+          scriptError("inner caught: " + tryError)}}
+      else {
+        return tryError contains "inner caught"}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tryError - nested try both with table errors"
+    description: "Both inner and outer try blocks catch table array errors"
+    script: |
+      local (t); new(tableType, @t);
+      try {
+        try {
+          local (x = t["first"])}
+        else {
+          local (s = tryError);
+          local (y = t["second"])}}
+      else {
+        return tryError contains "second"}
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # tryError in success path (no error)
+  # ========================================================================
+
+  - name: "tryError - success path does not enter else"
+    description: "When try body succeeds, else block is not executed"
+    script: |
+      local (result = "success");
+      try {
+        local (x = 1 + 1)}
+      else {
+        result = "error"};
+      return result
+    expected_success: true
+    expected_result: "success"
