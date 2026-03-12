@@ -250,14 +250,37 @@ boolean langerrormessage (bigstring bs) {
 	}
 
 	fllangerror = true; /*only display once for each script*/
-	
-	
+
+	/*
+	2026-03-12: Populate tryerror as a safety net when callback has been
+	replaced during a thread context switch.
+
+	When thread context switches occur inside a try body (at
+	langbackgroundtask yield points), pushprocess/popprocess can replace
+	the errormessagecallback with the incoming thread's callback instead
+	of langtryerror. If the error then fires under the wrong callback,
+	langtryerror never runs and tryerror stays nil, causing "tryError
+	hasn't been defined" in the else block.
+
+	We detect this situation by checking if tryerror is nil (meaning
+	we're not currently accumulating a try error) and populate it here.
+	If langtryerror does run as the callback, it will find tryerror
+	already set and skip its own allocation.
+
+	When NOT inside a try block, evaluatetry is not on the call stack,
+	so tryerror will remain set until the next evaluatetry entry clears
+	it (evaluatetry already handles non-nil tryerror at cleanup).
+	*/
+	if (tryerror == nil)
+		newtexthandle (bs, &tryerror);
+
+
 	langseterrorcallbackline ();
-	
-	
+
+
 	if (!(*langcallbacks.debugerrormessagecallback) (bs, langcallbacks.errormessagerefcon))
 		return (false);
-	
+
 	return ((*langcallbacks.errormessagecallback) (bs, langcallbacks.errormessagerefcon));
 	} /*langerrormessage*/
 

@@ -994,13 +994,18 @@ static boolean langtryerror (bigstring bsmsg, ptrvoid refcon) {
 #pragma unused (refcon)
 
 	/*
-	6/25/92 dmb: when an error occurs during a try block, we stash it in 
-	the tryerror handle.  it is later placed in the stack frame of the 
+	6/25/92 dmb: when an error occurs during a try block, we stash it in
+	the tryerror handle.  it is later placed in the stack frame of the
 	else statement, if it exists, by evaluatelist
+
+	2026-03-12: tryerror may already be set by langerrormessage's safety
+	net (which pre-populates it to survive callback replacement during
+	thread context switches). If so, skip the duplicate allocation.
 	*/
-	
-	assert (tryerror == nil);
-	
+
+	if (tryerror != nil)
+		return (false);
+
 	newtexthandle (bsmsg, &tryerror); /*if out of mem, script won't be able to get error*/
 	
 	#if fltryerrorstackcode
@@ -1026,8 +1031,17 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 	register hdltreenode h = htry;
 	boolean fl;
 	langerrormessagecallback savecallback;
+	boolean saveflerror;
 
-	assert (tryerror == nil);
+	/*
+	2026-03-12: tryerror may be non-nil if langerrormessage populated it
+	as a safety net for an error that occurred outside any try block.
+	Clean it up before entering the new try scope.
+	*/
+	if (tryerror != nil) {
+		disposehandle (tryerror);
+		tryerror = nil;
+		}
 
 	#if fltryerrorstackcode
 		assert (tryerrorstack == nil);
@@ -1037,6 +1051,10 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 
 	langcallbacks.errormessagecallback = &langtryerror;
 
+	saveflerror = fllangerror;
+
+	fllangerror = false; /*clear so langerrormessage can call langtryerror callback*/
+
 	disablelangerrorlog (); /*suppress error logging but allow callback to capture error*/
 
 	fl = evaluatelist ((**h).param2, valtree);
@@ -1044,40 +1062,65 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 	enablelangerrorlog (); /*restore error logging*/
 
 	langcallbacks.errormessagecallback = savecallback;
-	
+
 	if (!fllangerror) {
-		
+
+		fllangerror = saveflerror; /*restore previous error state*/
+
 		assert (tryerror == nil);
 
 		#if fltryerrorstackcode
 			assert (tryerrorstack == nil);
-		#endif		
+		#endif
 
 		return (fl); /*might be false if script has been killed*/
 		}
-	
-	fllangerror = false; /*recover*/
-	
+
+	fllangerror = false; /*recover -- error was caught by try/else*/
+
 	h = (**h).param3;
-	
+
 	if (h == nil) {
-		
+
 		disposehandle (tryerror);
-		
+
 		tryerror = nil;
-		
+
 		#if fltryerrorstackcode
 			opdisposelist ((hdllistrecord) tryerrorstack);
 	//		disposehandle (tryerrorstack);
-			
+
 			tryerrorstack = nil;
 		#endif
-		
+
 		return (true);
 		}
 
+	if (tryerror == nil) {
+		/*
+		2026-03-12: Ensure tryerror is always defined in else blocks.
+
+		When a thread context switch occurs inside a try body (at a
+		langbackgroundtask yield point), pushprocess/popprocess replace
+		langcallbacks.errormessagecallback with the incoming thread's
+		callback (langerrordialog) instead of langtryerror. If the error
+		then fires under the wrong callback, tryerror stays nil.
+
+		Rather than trying to make the callback survive context switches
+		(which would require changes to the threading model), we provide
+		a fallback: if fllangerror is set but tryerror is nil, synthesize
+		a generic error message so the else block can always access
+		tryError.
+		*/
+		bigstring bsfallback;
+
+		copystring (BIGSTRING ("\x1c" "Unknown error in try block."), bsfallback);
+
+		newtexthandle (bsfallback, &tryerror);
+		}
+
 	//assert (tryerror != nil); //6.1b8 AR: attempt to catch "tryerror not defined" situations
-	
+
 	return (evaluatelist (h, valtree)); /*will take care of tryerror automatically*/
 	} /*evaluatetry*/
 

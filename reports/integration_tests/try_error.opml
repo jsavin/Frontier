@@ -1,0 +1,145 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Try Error (try_error) - 9 tests: 9 pass (100%)</title>
+    <dateCreated>Thu, 12 Mar 2026 05:37:05 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="tryError - basic scriptError caught - tryError should be defined in else block after scriptError">
+      <outline text="Metadata">
+        <outline text="expected_result: hello from try"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="scriptError(&quot;hello from try&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return tryError}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tryError - division by zero caught - tryError should capture division by zero error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="local (x = 1/0)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return tryError contains &quot;divide&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tryError - table string index not found - tryError should be defined when table[key] fails for nonexistent key">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (t); new(tableType, @t)"/>
+        <outline text="try">
+          <outline text="local (x = t[&quot;nonexistent&quot;])}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return typeOf(tryError) == stringType}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tryError - table string index error message - tryError error message should mention the missing key">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (t); new(tableType, @t)"/>
+        <outline text="try">
+          <outline text="local (x = t[&quot;badkey&quot;])}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return tryError contains &quot;badkey&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tryError - table integer index out of range - tryError should be defined when table[n] is out of range">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (t); new(tableType, @t)"/>
+        <outline text="try">
+          <outline text="local (x = t[99])}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return typeOf(tryError) == stringType}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tryError - array subscript on non-table - tryError should be defined when subscripting a non-table value">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = &quot;hello&quot;)"/>
+        <outline text="try">
+          <outline text="local (y = x[&quot;key&quot;])}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return typeOf(tryError) == stringType}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tryError - nested try with inner table error - Inner try catches table error, outer try catches rethrown error">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="local (t); new(tableType, @t)"/>
+          <outline text="try">
+            <outline text="local (x = t[&quot;missing&quot;])}"/>
+          </outline>
+          <outline text="else">
+            <outline text="scriptError(&quot;inner caught: &quot; + tryError)}}"/>
+          </outline>
+        </outline>
+        <outline text="else">
+          <outline text="return tryError contains &quot;inner caught&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tryError - nested try both with table errors - Both inner and outer try blocks catch table array errors">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (t); new(tableType, @t)"/>
+        <outline text="try">
+          <outline text="try">
+            <outline text="local (x = t[&quot;first&quot;])}"/>
+          </outline>
+          <outline text="else">
+            <outline text="local (s = tryError)"/>
+            <outline text="local (y = t[&quot;second&quot;])}}"/>
+          </outline>
+        </outline>
+        <outline text="else">
+          <outline text="return tryError contains &quot;second&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="tryError - success path does not enter else - When try body succeeds, else block is not executed">
+      <outline text="Metadata">
+        <outline text="expected_result: success"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (result = &quot;success&quot;)"/>
+        <outline text="try">
+          <outline text="local (x = 1 + 1)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="result = &quot;error&quot;}"/>
+        </outline>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

@@ -5719,8 +5719,6 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 	
 	if (!langexternalvaltotable (*varray, &htable, HNoNode)) {
 
-		fllangerror = true;
-
 		langarrayreferror (arraynottableerror, bsname, varray, nil);
 
 		return (false);
@@ -5740,8 +5738,6 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 		
 		if (!fl) {
 
-			fllangerror = true;
-
 			langarrayreferror (arraystringindexerror, bsname, varray, vindex);
 
 			return (false);
@@ -5756,8 +5752,6 @@ static boolean tablearrayvalue (tyvaluerecord *varray, bigstring bsname, tyvalue
 		intindex = (*vindex).data.longvalue;
 		
 		if ((intindex <= 0) || !hashgetiteminfo (htable, intindex - 1, bsname, val)) {
-
-			fllangerror = true;
 
 			langarrayreferror (arrayindexerror, bsname, varray, vindex);
 
