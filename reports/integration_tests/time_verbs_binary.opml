@@ -1,0 +1,69 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Time Verbs Binary (time_verbs_binary) - 5 tests: 5 pass (100%)</title>
+    <dateCreated>Fri, 13 Mar 2026 07:34:35 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="timeModified - binary object returns boolean type - timeModified on a binaryType should return boolean false, not throw">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(binaryType, @scratchpad.testBin)"/>
+        <outline text="local (result = timeModified(@scratchpad.testBin))"/>
+        <outline text="local (t = typeOf(result) == booleanType)"/>
+        <outline text="delete(@scratchpad.testBin)"/>
+        <outline text="return t"/>
+      </outline>
+    </outline>
+    <outline text="timeModified - binary object value is false - timeModified on a binaryType should return false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(binaryType, @scratchpad.testBin2)"/>
+        <outline text="local (r = timeModified(@scratchpad.testBin2))"/>
+        <outline text="delete(@scratchpad.testBin2)"/>
+        <outline text="return r"/>
+      </outline>
+    </outline>
+    <outline text="timeModified - table object returns date - timeModified on a table should return a date, not boolean">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @scratchpad.testTbl)"/>
+        <outline text="local (result = timeModified(@scratchpad.testTbl))"/>
+        <outline text="local (t = typeOf(result) == dateType)"/>
+        <outline text="delete(@scratchpad.testTbl)"/>
+        <outline text="return t"/>
+      </outline>
+    </outline>
+    <outline text="timeCreated - binary object returns boolean false - timeCreated on a binaryType should return false, not throw">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(binaryType, @scratchpad.testBin3)"/>
+        <outline text="local (result = timeCreated(@scratchpad.testBin3))"/>
+        <outline text="local (t = typeOf(result) == booleanType)"/>
+        <outline text="delete(@scratchpad.testBin3)"/>
+        <outline text="return t"/>
+      </outline>
+    </outline>
+    <outline text="timeModified - respond.ut fallback pattern works - The pattern from respond.ut: check typeof, fallback to clock.now()">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(binaryType, @scratchpad.testBin4)"/>
+        <outline text="local (moddate = timeModified(@scratchpad.testBin4))"/>
+        <outline text="if typeOf(moddate) == booleanType {moddate = clock.now()}"/>
+        <outline text="local (t = typeOf(moddate) == dateType)"/>
+        <outline text="delete(@scratchpad.testBin4)"/>
+        <outline text="return t"/>
+      </outline>
+    </outline>
+  </body>
+</opml>
