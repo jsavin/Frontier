@@ -1600,12 +1600,15 @@ boolean langtimecreatedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	Get creation time of an object (table, outline, script, etc.)
 	Parameters:
 	  1. address - object address (table, outline, etc.)
-	Returns: date value (frontier_time_t)
+	Returns: date value, or false if the object doesn't support timestamps.
+
+	2026-03-13: Return boolean false (not error) for unsupported types.
+	Matches original Frontier dispatch behavior (case timecreatedfunc).
 	*/
 	int64_t timecreated, timemodified;
 
 	if (!gettimesverb (hparam1, &timecreated, &timemodified))
-		return (false);  /* Propagate error */
+		return (setbooleanvalue (false, vreturned));
 
 	return (setdatevalue (timecreated, vreturned));
 	} /*langtimecreatedfunc*/
@@ -1616,12 +1619,17 @@ boolean langtimemodifiedfunc (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	Get modification time of an object (table, outline, script, etc.)
 	Parameters:
 	  1. address - object address (table, outline, etc.)
-	Returns: date value (frontier_time_t)
+	Returns: date value, or false if the object doesn't support timestamps.
+
+	2026-03-13: Return boolean false (not error) for unsupported types.
+	Matches original Frontier dispatch behavior (case timemodifiedfunc).
+	UserTalk code like respond.ut checks typeof(moddate)==booleantype
+	to detect objects without timestamps (e.g. binaryType).
 	*/
 	int64_t timecreated, timemodified;
 
 	if (!gettimesverb (hparam1, &timecreated, &timemodified))
-		return (false);  /* Propagate error */
+		return (setbooleanvalue (false, vreturned));
 
 	return (setdatevalue (timemodified, vreturned));
 	} /*langtimemodifiedfunc*/

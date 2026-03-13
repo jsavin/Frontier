@@ -1,0 +1,74 @@
+# Integration tests for timeModified/timeCreated on binary objects
+#
+# Bug: timeModified() and timeCreated() returned a script error for
+# binaryType objects instead of boolean false. This broke mainResponder
+# image serving because respond.ut calls timeModified(adr) on binary
+# resources and expects typeof(result)==booleanType for unsupported types.
+
+tests:
+  # ========================================================================
+  # timeModified on binary objects — must return false, not error
+  # ========================================================================
+
+  - name: "timeModified - binary object returns boolean type"
+    description: "timeModified on a binaryType should return boolean false, not throw"
+    script: |
+      new(binaryType, @scratchpad.testBin);
+      local (result = timeModified(@scratchpad.testBin));
+      local (t = typeOf(result) == booleanType);
+      delete(@scratchpad.testBin);
+      return t
+    expected_success: true
+    expected_result: "true"
+
+  - name: "timeModified - binary object value is false"
+    description: "timeModified on a binaryType should return false"
+    script: |
+      new(binaryType, @scratchpad.testBin2);
+      local (r = timeModified(@scratchpad.testBin2));
+      delete(@scratchpad.testBin2);
+      return r
+    expected_success: true
+    expected_result: "false"
+
+  - name: "timeModified - table object returns date"
+    description: "timeModified on a table should return a date, not boolean"
+    script: |
+      new(tableType, @scratchpad.testTbl);
+      local (result = timeModified(@scratchpad.testTbl));
+      local (t = typeOf(result) == dateType);
+      delete(@scratchpad.testTbl);
+      return t
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # timeCreated on binary objects — same fix
+  # ========================================================================
+
+  - name: "timeCreated - binary object returns boolean false"
+    description: "timeCreated on a binaryType should return false, not throw"
+    script: |
+      new(binaryType, @scratchpad.testBin3);
+      local (result = timeCreated(@scratchpad.testBin3));
+      local (t = typeOf(result) == booleanType);
+      delete(@scratchpad.testBin3);
+      return t
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Respond pattern — typeof check for fallback
+  # ========================================================================
+
+  - name: "timeModified - respond.ut fallback pattern works"
+    description: "The pattern from respond.ut: check typeof, fallback to clock.now()"
+    script: |
+      new(binaryType, @scratchpad.testBin4);
+      local (moddate = timeModified(@scratchpad.testBin4));
+      if typeOf(moddate) == booleanType {moddate = clock.now()};
+      local (t = typeOf(moddate) == dateType);
+      delete(@scratchpad.testBin4);
+      return t
+    expected_success: true
+    expected_result: "true"
