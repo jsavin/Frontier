@@ -57,6 +57,27 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "timeCreated - binary object value is false"
+    description: "timeCreated on a binaryType should return false"
+    script: |
+      new(binaryType, @scratchpad.testBin3b);
+      local (r = timeCreated(@scratchpad.testBin3b));
+      delete(@scratchpad.testBin3b);
+      return r
+    expected_success: true
+    expected_result: "false"
+
+  - name: "timeCreated - table object returns date"
+    description: "timeCreated on a table should return a date, not boolean"
+    script: |
+      new(tableType, @scratchpad.testTbl2);
+      local (result = timeCreated(@scratchpad.testTbl2));
+      local (t = typeOf(result) == dateType);
+      delete(@scratchpad.testTbl2);
+      return t
+    expected_success: true
+    expected_result: "true"
+
   # ========================================================================
   # Respond pattern — typeof check for fallback
   # ========================================================================

@@ -505,9 +505,17 @@ typedef enum tylangtoken { /*verbs that are processed by langverbs.c*/
 
 
 static boolean gettimesverb (hdltreenode hparam1, int64_t *timecreated, int64_t *timemodified) {
-	
+
 	/*
-	get the creation date and modification date of the object indicated in hparam1
+	get the creation date and modification date of the object indicated in hparam1.
+
+	returns false both when the address is invalid (getvarvalue fails) and when
+	the value type doesn't support timestamps (e.g. binaryType). callers
+	(langtimecreatedfunc, langtimemodifiedfunc, and the case dispatch)
+	intentionally treat both failure modes the same: return boolean false to
+	the script rather than a script error. this matches original Frontier
+	behavior — UserTalk code like respond.ut checks typeof(result)==booleanType
+	to detect objects without timestamps.
 	*/
 	
 	hdlhashtable htable;
