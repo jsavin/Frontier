@@ -20,7 +20,6 @@ third_party/Paige/build*/
 
 xcuserdata
 
-build_Xcode/tools/*.a
 local_scripts/
 
 tests/core_tests
@@ -106,11 +105,6 @@ tests/databases/*.root
 # Log files (test artifacts, build logs, etc.)
 *.log
 tests/*.log
-build_Xcode_modern/*.log
-
-# Build directory executables
-build_Xcode_modern/Frontier_*
-
 .anthropic/
 .codex/
 .cache/
