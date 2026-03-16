@@ -151,14 +151,14 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {"log", required_argument, 0, 'L'},
         {"skip-startup", no_argument, 0, 'S'},
         {"protocol", no_argument, 0, 'P'},
-        {"ws-port", required_argument, 0, 'W'},
+        {"ws-port", optional_argument, 0, 'W'},
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'V'},
         {0, 0, 0, 0}
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDPW:ShV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDPW::ShV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -276,8 +276,8 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 break;
 
             case 'W':
-                // WebSocket server port
-                {
+                // WebSocket server port (default: 5337, Frontier admin is on 5336)
+                if (optarg != NULL && optarg[0] != '\0') {
                     char *endptr;
                     long port = strtol(optarg, &endptr, 10);
                     if (*endptr != '\0' || port < 1 || port > 65535) {
@@ -285,6 +285,8 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                         return false;
                     }
                     options->ws_port = (int)port;
+                } else {
+                    options->ws_port = CLI_DEFAULT_WS_PORT;
                 }
                 break;
 

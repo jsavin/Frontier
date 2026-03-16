@@ -59,6 +59,7 @@ void cli_print_help(const char* program_name);
 
 // Default values
 #define CLI_DEFAULT_PORT 8080
+#define CLI_DEFAULT_WS_PORT 5337  /* WebSocket ODB access (Frontier admin is on 5336) */
 #define CLI_MAX_SCRIPT_LENGTH 8192
 #define CLI_MAX_PATH_LENGTH 1024
 
