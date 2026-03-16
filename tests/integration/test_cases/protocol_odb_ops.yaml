@@ -1,0 +1,643 @@
+# Protocol-native ODB operation tests
+#
+# Tests the NDJSON protocol handler's ODB CRUD operations:
+#   odb/get, odb/set, odb/list, odb/delete
+#
+# These tests use the protocol_ops field to send raw NDJSON messages
+# and validate the raw JSON responses. They require the ProtocolExecutor
+# (--protocol mode) and are not compatible with per-process CLI execution.
+#
+# All operations use batch semantics: params.items is always an array,
+# responses always include a results array with per-item outcomes.
+
+tests:
+  # ========================================================================
+  # odb/list — Read operations (safe, no mutations)
+  # ========================================================================
+
+  - name: "odb/list - list workspace children"
+    description: "List top-level children of workspace table"
+    protocol_ops:
+      - op: "odb/list"
+        params:
+          items:
+            - path: "workspace"
+              depth: 1
+        validate:
+          success: true
+          result_count: 1
+          entries_min: 1
+
+  - name: "odb/list - list system table children"
+    description: "List children of system table"
+    protocol_ops:
+      - op: "odb/list"
+        params:
+          items:
+            - path: "system"
+              depth: 1
+        validate:
+          success: true
+          result_count: 1
+          entries_min: 1
+
+  - name: "odb/list - list with depth 0 (existence check)"
+    description: "Depth 0 should confirm path exists without listing children"
+    protocol_ops:
+      - op: "odb/list"
+        params:
+          items:
+            - path: "workspace"
+              depth: 0
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: true
+              path: "workspace"
+
+  - name: "odb/list - nonexistent path"
+    description: "Listing a path that doesn't exist should return per-item error"
+    protocol_ops:
+      - op: "odb/list"
+        params:
+          items:
+            - path: "workspace.nonexistent_path_xyz_12345"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: false
+
+  - name: "odb/list - batch list multiple paths"
+    description: "List multiple paths in one request"
+    protocol_ops:
+      - op: "odb/list"
+        params:
+          items:
+            - path: "workspace"
+              depth: 1
+            - path: "system"
+              depth: 1
+        validate:
+          success: true
+          result_count: 2
+
+  # ========================================================================
+  # odb/get — Read operations
+  # ========================================================================
+
+  - name: "odb/get - get workspace table"
+    description: "Get workspace table metadata (type should be table)"
+    protocol_ops:
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - type: "table"
+              name: "workspace"
+
+  - name: "odb/get - nonexistent path"
+    description: "Getting a nonexistent path should return per-item error"
+    protocol_ops:
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.definitely_does_not_exist_99999"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: false
+
+  - name: "odb/get - batch get multiple paths"
+    description: "Get multiple paths in one request"
+    protocol_ops:
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace"
+            - path: "system"
+        validate:
+          success: true
+          result_count: 2
+          results:
+            - type: "table"
+            - type: "table"
+
+  # ========================================================================
+  # odb/set + odb/get — Write and read back
+  # ========================================================================
+
+  - name: "odb/set - create string value"
+    description: "Create a string value in workspace and read it back"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_string"
+              type: "string"
+              value: "hello from protocol tests"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: true
+        description: "set string"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_string"
+        validate:
+          success: true
+          results:
+            - type: "string"
+              value: "hello from protocol tests"
+              name: "test_proto_string"
+        description: "verify string"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_proto_string"
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "cleanup"
+
+  - name: "odb/set - create long value"
+    description: "Create an integer (long) value and read it back"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_long"
+              type: "long"
+              value: 42
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "set long"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_long"
+        validate:
+          success: true
+          results:
+            - type: "long"
+              value: 42
+        description: "verify long"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_proto_long"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "odb/set - create boolean true"
+    description: "Create a boolean value and read it back"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_bool"
+              type: "boolean"
+              value: true
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "set bool"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_bool"
+        validate:
+          success: true
+          results:
+            - type: "boolean"
+              value: true
+        description: "verify bool"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_proto_bool"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "odb/set - create boolean false"
+    description: "Create a boolean false value"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_bool_f"
+              type: "boolean"
+              value: false
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "set bool false"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_bool_f"
+        validate:
+          success: true
+          results:
+            - type: "boolean"
+              value: false
+        description: "verify bool false"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_proto_bool_f"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "odb/set - create double value"
+    description: "Create a floating-point (double) value and read it back"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_double"
+              type: "double"
+              value: 3.14159
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "set double"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_double"
+        validate:
+          success: true
+          results:
+            - type: "double"
+        description: "verify double (type only - floating point comparison is fragile)"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_proto_double"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "odb/set - overwrite existing value"
+    description: "Setting a path that already exists should overwrite it"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_overwrite"
+              type: "string"
+              value: "original"
+        validate:
+          success: true
+        description: "create original"
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_overwrite"
+              type: "string"
+              value: "replaced"
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "overwrite"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_overwrite"
+        validate:
+          success: true
+          results:
+            - value: "replaced"
+        description: "verify overwrite"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_proto_overwrite"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "odb/set - type inference from JSON value"
+    description: "When type is omitted, infer from JSON value type"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_infer_str"
+              value: "auto string"
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "set string (inferred)"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_infer_str"
+        validate:
+          success: true
+          results:
+            - type: "string"
+              value: "auto string"
+        description: "verify inferred string"
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_infer_num"
+              value: 99
+        validate:
+          success: true
+        description: "set number (inferred)"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_infer_num"
+        validate:
+          success: true
+          results:
+            - type: "long"
+              value: 99
+        description: "verify inferred number"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_proto_infer_str"
+            - path: "workspace.test_proto_infer_num"
+        validate:
+          success: true
+        description: "cleanup"
+
+  # ========================================================================
+  # odb/set - batch operations
+  # ========================================================================
+
+  - name: "odb/set - batch create multiple values"
+    description: "Create multiple values in a single request"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_batch_a"
+              type: "string"
+              value: "alpha"
+            - path: "workspace.test_batch_b"
+              type: "long"
+              value: 2
+            - path: "workspace.test_batch_c"
+              type: "boolean"
+              value: true
+        validate:
+          success: true
+          result_count: 3
+          results:
+            - success: true
+            - success: true
+            - success: true
+        description: "batch set"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_batch_a"
+            - path: "workspace.test_batch_b"
+            - path: "workspace.test_batch_c"
+        validate:
+          success: true
+          result_count: 3
+          results:
+            - value: "alpha"
+            - value: 2
+            - value: true
+        description: "batch verify"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_batch_a"
+            - path: "workspace.test_batch_b"
+            - path: "workspace.test_batch_c"
+        validate:
+          success: true
+          result_count: 3
+        description: "batch cleanup"
+
+  # ========================================================================
+  # odb/delete — Delete operations
+  # ========================================================================
+
+  - name: "odb/delete - delete nonexistent path"
+    description: "Deleting a nonexistent path should return per-item error"
+    protocol_ops:
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.this_path_never_existed_xyz"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: false
+
+  - name: "odb/delete - create then delete"
+    description: "Create a value, verify it exists, delete it, verify it's gone"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_proto_delete_me"
+              type: "string"
+              value: "temporary"
+        validate:
+          success: true
+        description: "create"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_delete_me"
+        validate:
+          success: true
+          results:
+            - value: "temporary"
+        description: "verify exists"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_proto_delete_me"
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "delete"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_proto_delete_me"
+        validate:
+          success: true
+          results:
+            - success: false
+        description: "verify gone"
+
+  # ========================================================================
+  # odb/list — After mutations
+  # ========================================================================
+
+  - name: "odb/list - verify created items appear in listing"
+    description: "Create items, verify they appear in odb/list, then clean up"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_list_item_1"
+              type: "string"
+              value: "one"
+            - path: "workspace.test_list_item_2"
+              type: "long"
+              value: 2
+        validate:
+          success: true
+        description: "create items"
+      - op: "odb/list"
+        params:
+          items:
+            - path: "workspace"
+              depth: 1
+        validate:
+          success: true
+          entries_include:
+            - name: "test_list_item_1"
+              type: "string"
+            - name: "test_list_item_2"
+              type: "long"
+        description: "verify items in listing"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_list_item_1"
+            - path: "workspace.test_list_item_2"
+        validate:
+          success: true
+        description: "cleanup"
+
+  # ========================================================================
+  # odb/set — Error cases
+  # ========================================================================
+
+  - name: "odb/set - missing value defaults to empty"
+    description: "Setting a string without a value should create an empty string"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_no_value"
+              type: "string"
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "set empty string"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_no_value"
+        validate:
+          success: true
+          results:
+            - type: "string"
+              value: ""
+        description: "verify empty"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_no_value"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "odb/set - invalid parent path"
+    description: "Setting under a nonexistent parent should fail"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.nonexistent_parent_xyz.child"
+              type: "string"
+              value: "test"
+        validate:
+          success: true
+          results:
+            - success: false
+
+  # ========================================================================
+  # Per-item error isolation
+  # ========================================================================
+
+  - name: "odb/get - mixed success and failure in batch"
+    description: "One bad path should not fail the entire batch"
+    protocol_ops:
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace"
+            - path: "workspace.this_path_does_not_exist_abc"
+            - path: "system"
+        validate:
+          success: true
+          result_count: 3
+          results:
+            - type: "table"
+            - success: false
+            - type: "table"
+
+  # ========================================================================
+  # Protocol error handling
+  # ========================================================================
+
+  - name: "odb/get - missing items array"
+    description: "Omitting params.items should return error"
+    protocol_ops:
+      - op: "odb/get"
+        params: {}
+        validate:
+          success: false
+
+  - name: "odb/set - missing items array"
+    description: "Omitting params.items should return error"
+    protocol_ops:
+      - op: "odb/set"
+        params: {}
+        validate:
+          success: false
+
+  - name: "odb/list - missing items array"
+    description: "Omitting params.items should return error"
+    protocol_ops:
+      - op: "odb/list"
+        params: {}
+        validate:
+          success: false
+
+  - name: "odb/delete - missing items array"
+    description: "Omitting params.items should return error"
+    protocol_ops:
+      - op: "odb/delete"
+        params: {}
+        validate:
+          success: false

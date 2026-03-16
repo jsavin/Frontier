@@ -528,6 +528,14 @@ class ProtocolExecutor:
                 'exit_code': 1,
             }
 
+    def send_raw(self, msg: dict, timeout: float = 10.0) -> dict:
+        """
+        Send a raw NDJSON message and return the raw response dict.
+        Unlike execute(), this does NOT normalize the response — the caller
+        gets the exact JSON response from the protocol process.
+        """
+        return self._send_recv(msg, timeout=timeout)
+
     def reset(self):
         """Clear REPL variables and reset focus between tests."""
         if self._proc is None or self._proc.poll() is not None:
@@ -742,6 +750,9 @@ class TestCase:
         self.expected_output_contains = data.get('expected_output_contains', [])  # Substrings in stdout/stderr
         self.expected_output_not_contains = data.get('expected_output_not_contains', [])  # Forbidden substrings
 
+        # Protocol-native test support (raw NDJSON operations like odb/get, odb/set, etc.)
+        self.protocol_ops = data.get('protocol_ops', [])  # List of {op, params, validate} dicts
+
     def get_script_with_substitutions(self, test_root_dir: Optional[str] = None) -> str:
         """Get the script with path substitutions applied."""
         script = self.script
@@ -899,7 +910,9 @@ class TestRunner:
                 print(f"    {test.description}")
 
         # Route to appropriate executor
-        if test.interactive_steps:
+        if test.protocol_ops:
+            return self.run_protocol_test(test)
+        elif test.interactive_steps:
             if not HAS_PEXPECT:
                 return TestResult(
                     name=test.name,
@@ -913,6 +926,186 @@ class TestRunner:
             return self.run_repl_test(test)
         else:
             return self.run_batch_test(test)
+
+    def run_protocol_test(self, test: TestCase) -> TestResult:
+        """
+        Run a protocol-native test that sends raw NDJSON operations.
+
+        Each step in test.protocol_ops is a dict with:
+          - op: operation name (e.g. "odb/get")
+          - params: parameters dict
+          - validate: dict of assertions on the response:
+              - success: expected top-level success boolean
+              - results: list of per-item assertions (each a dict of key/value checks)
+              - error_contains: string expected in error message
+              - result_path: dotted path into response to check (e.g. "results.0.value")
+              - result_value: expected value at result_path
+        """
+        if self.protocol_executor is None or not self.protocol_executor.is_alive:
+            return TestResult(
+                test.name, False,
+                error="Protocol executor not available (required for protocol_ops tests)")
+
+        try:
+            for step_idx, step in enumerate(test.protocol_ops):
+                op = step.get('op')
+                params = step.get('params', {})
+                validate = step.get('validate', {})
+                step_desc = step.get('description', f'step {step_idx + 1}')
+
+                msg = {'op': op}
+                if params:
+                    msg['params'] = params
+
+                try:
+                    resp = self.protocol_executor.send_raw(msg, timeout=test.timeout)
+                except TimeoutError:
+                    return TestResult(
+                        test.name, False,
+                        error=f"Timeout at {step_desc}: op={op}")
+                except RuntimeError as e:
+                    try:
+                        self.protocol_executor._restart()
+                    except Exception:
+                        pass
+                    return TestResult(
+                        test.name, False,
+                        error=f"Protocol error at {step_desc}: {e}")
+
+                # Validate response
+                err = self._validate_protocol_response(resp, validate, step_desc)
+                if err is not None:
+                    details = f"Response: {json.dumps(resp, indent=2)}" if self.verbose else None
+                    return TestResult(test.name, False, error=err, details=details)
+
+            # All steps passed
+            self.protocol_executor.reset()
+            return TestResult(test.name, True)
+
+        except Exception as e:
+            return TestResult(test.name, False, error=f"Unexpected error: {e}")
+
+    @staticmethod
+    def _validate_protocol_response(resp: dict, validate: dict, step_desc: str) -> Optional[str]:
+        """Validate a raw protocol response against assertions. Returns error string or None."""
+        import re
+
+        # Check top-level success
+        if 'success' in validate:
+            expected = validate['success']
+            actual = resp.get('success')
+            if actual != expected:
+                return f"[{step_desc}] Expected success={expected}, got success={actual}"
+
+        # Check error message contains
+        if 'error_contains' in validate:
+            expected_substr = validate['error_contains']
+            error_obj = resp.get('error', {})
+            error_msg = error_obj.get('message', '') if isinstance(error_obj, dict) else str(error_obj)
+            if expected_substr not in error_msg:
+                return f"[{step_desc}] Expected error containing {expected_substr!r}, got {error_msg!r}"
+
+        # Check results array items
+        if 'results' in validate:
+            actual_results = resp.get('results', [])
+            expected_results = validate['results']
+            if len(expected_results) > len(actual_results):
+                return (f"[{step_desc}] Expected {len(expected_results)} results, "
+                        f"got {len(actual_results)}")
+
+            for i, expected_item in enumerate(expected_results):
+                actual_item = actual_results[i]
+                for key, expected_val in expected_item.items():
+                    if key == '_exists':
+                        # Check that a key exists (or doesn't) in the result item
+                        for check_key, should_exist in expected_val.items():
+                            if should_exist and check_key not in actual_item:
+                                return f"[{step_desc}] results[{i}]: expected key '{check_key}' to exist"
+                            if not should_exist and check_key in actual_item:
+                                return f"[{step_desc}] results[{i}]: expected key '{check_key}' to not exist"
+                        continue
+                    if key == '_contains':
+                        # Check that a string value contains a substring
+                        for check_key, substr in expected_val.items():
+                            actual_val = str(actual_item.get(check_key, ''))
+                            if substr not in actual_val:
+                                return (f"[{step_desc}] results[{i}].{check_key}: "
+                                        f"expected to contain {substr!r}, got {actual_val!r}")
+                        continue
+                    if key == '_pattern':
+                        # Check that a value matches a regex pattern
+                        for check_key, pattern in expected_val.items():
+                            actual_val = str(actual_item.get(check_key, ''))
+                            if not re.search(pattern, actual_val):
+                                return (f"[{step_desc}] results[{i}].{check_key}: "
+                                        f"expected to match {pattern!r}, got {actual_val!r}")
+                        continue
+
+                    actual_val = actual_item.get(key)
+                    # Allow flexible type comparison (e.g. int vs string "42")
+                    if actual_val != expected_val and str(actual_val) != str(expected_val):
+                        return (f"[{step_desc}] results[{i}].{key}: "
+                                f"expected {expected_val!r}, got {actual_val!r}")
+
+        # Check result (singular) — for script/eval responses which use "result" not "results"
+        if 'result' in validate:
+            actual_result = resp.get('result', {})
+            expected_result = validate['result']
+            if isinstance(expected_result, dict) and isinstance(actual_result, dict):
+                for key, expected_val in expected_result.items():
+                    actual_val = actual_result.get(key)
+                    if actual_val != expected_val and str(actual_val) != str(expected_val):
+                        return (f"[{step_desc}] result.{key}: "
+                                f"expected {expected_val!r}, got {actual_val!r}")
+            elif actual_result != expected_result and str(actual_result) != str(expected_result):
+                return f"[{step_desc}] result: expected {expected_result!r}, got {actual_result!r}"
+
+        # Check result_count (number of items in results array)
+        if 'result_count' in validate:
+            actual_count = len(resp.get('results', []))
+            expected_count = validate['result_count']
+            if actual_count != expected_count:
+                return f"[{step_desc}] Expected {expected_count} results, got {actual_count}"
+
+        # Check results[0].entries count (for odb/list)
+        if 'entries_count' in validate:
+            results = resp.get('results', [])
+            if not results:
+                return f"[{step_desc}] No results to check entries_count"
+            entries = results[0].get('entries', [])
+            expected = validate['entries_count']
+            if len(entries) != expected:
+                return f"[{step_desc}] Expected {expected} entries, got {len(entries)}"
+
+        # Check entries_min (at least N entries)
+        if 'entries_min' in validate:
+            results = resp.get('results', [])
+            if not results:
+                return f"[{step_desc}] No results to check entries_min"
+            entries = results[0].get('entries', [])
+            expected_min = validate['entries_min']
+            if len(entries) < expected_min:
+                return f"[{step_desc}] Expected at least {expected_min} entries, got {len(entries)}"
+
+        # Check specific entries by name (for odb/list)
+        if 'entries_include' in validate:
+            results = resp.get('results', [])
+            if not results:
+                return f"[{step_desc}] No results to check entries_include"
+            entries = results[0].get('entries', [])
+            entry_names = {e.get('name') for e in entries}
+            for expected_entry in validate['entries_include']:
+                name = expected_entry.get('name')
+                if name not in entry_names:
+                    return f"[{step_desc}] Expected entry named {name!r} not found in listing"
+                # Check type if specified
+                if 'type' in expected_entry:
+                    matching = [e for e in entries if e.get('name') == name]
+                    if matching and matching[0].get('type') != expected_entry['type']:
+                        return (f"[{step_desc}] Entry {name!r}: expected type "
+                                f"{expected_entry['type']!r}, got {matching[0].get('type')!r}")
+
+        return None
 
     def run_batch_test(self, test: TestCase) -> TestResult:
         """Run a test in batch mode. Uses protocol executor if available and compatible."""
