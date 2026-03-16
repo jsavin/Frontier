@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 
 /* ========================================================================
  * Internal helpers
@@ -54,6 +55,16 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
         return false;
     }
 
+    /* Validate path characters — only allow alphanumeric, dots, and underscores.
+     * langexpandtodotparams() compiles and evaluates the path as UserTalk, so
+     * unsanitized input could execute arbitrary expressions. */
+    for (long i = 0; i < pathlen; i++) {
+        char ch = path[i];
+        if (!isalnum((unsigned char)ch) && ch != '.' && ch != '_') {
+            return false;
+        }
+    }
+
     setstringlength(bspath, (short)pathlen);
     memcpy(stringbaseaddress(bspath), path, pathlen);
 
@@ -62,17 +73,11 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
     /* For bare names like "workspace" (no dot), langexpandtodotparams
      * returns htable == nil. In this case, search the root table. */
     if (ok && *htable == nil) {
+        extern hdlhashtable roottable;
         hdlhashtable hspecial;
         if (langgetspecialtable(bsname, &hspecial)) {
-            /* bsname was a special table name (root, workspace, etc.)
-             * The special table IS the resolved table. For get/list to work,
-             * we need the parent table that contains it + the name.
-             * Use the special table's parent as the lookup context. */
-            extern hdlhashtable roottable;
             *htable = hspecial;
         } else {
-            /* Try roottable as parent for non-special names */
-            extern hdlhashtable roottable;
             *htable = roottable;
         }
     }

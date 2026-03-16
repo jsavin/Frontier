@@ -10,6 +10,7 @@ import concurrent.futures
 import json
 import multiprocessing
 import os
+import re
 import select
 import shutil
 import subprocess
@@ -992,7 +993,6 @@ class TestRunner:
     @staticmethod
     def _validate_protocol_response(resp: dict, validate: dict, step_desc: str) -> Optional[str]:
         """Validate a raw protocol response against assertions. Returns error string or None."""
-        import re
 
         # Check top-level success
         if 'success' in validate:
@@ -1046,7 +1046,13 @@ class TestRunner:
                         continue
 
                     actual_val = actual_item.get(key)
-                    # Allow flexible type comparison (e.g. int vs string "42")
+                    # For boolean fields, require exact type match to catch
+                    # string "true" vs JSON boolean true mismatches
+                    if key == 'success' and type(actual_val) is not type(expected_val):
+                        return (f"[{step_desc}] results[{i}].{key}: "
+                                f"type mismatch: expected {type(expected_val).__name__} "
+                                f"{expected_val!r}, got {type(actual_val).__name__} {actual_val!r}")
+                    # Allow flexible type comparison for other fields (e.g. int vs string "42")
                     if actual_val != expected_val and str(actual_val) != str(expected_val):
                         return (f"[{step_desc}] results[{i}].{key}: "
                                 f"expected {expected_val!r}, got {actual_val!r}")

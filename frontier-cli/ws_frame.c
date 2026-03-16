@@ -41,14 +41,17 @@ static void base64_encode_raw(const uint8_t *in, size_t in_len,
 
     while (i < in_len && j + 4 < out_size) {
         uint32_t a = in[i++];
-        uint32_t b = (i < in_len) ? in[i++] : 0;
-        uint32_t c = (i < in_len) ? in[i++] : 0;
+        /* Track how many input bytes contributed to this triple */
+        int bytes_in_triple = 1;
+        uint32_t b = 0, c = 0;
+        if (i < in_len) { b = in[i++]; bytes_in_triple++; }
+        if (i < in_len) { c = in[i++]; bytes_in_triple++; }
         uint32_t triple = (a << 16) | (b << 8) | c;
 
         out[j++] = b64_table[(triple >> 18) & 0x3F];
         out[j++] = b64_table[(triple >> 12) & 0x3F];
-        out[j++] = (i >= in_len + 1) ? '=' : b64_table[(triple >> 6) & 0x3F];
-        out[j++] = (i >= in_len) ? '=' : b64_table[triple & 0x3F];
+        out[j++] = (bytes_in_triple < 2) ? '=' : b64_table[(triple >> 6) & 0x3F];
+        out[j++] = (bytes_in_triple < 3) ? '=' : b64_table[triple & 0x3F];
     }
     out[j] = '\0';
 }
@@ -85,8 +88,10 @@ ws_frame_status_t ws_frame_decode(uint8_t *buf, size_t len, ws_frame_t *frame) {
         header_len = 10;
     }
 
-    /* Sanity check — reject frames > 16 MB */
-    if (payload_len > 16 * 1024 * 1024) {
+    /* Reject frames that exceed the receive buffer (WS_CLIENT_BUF_SIZE = 256KB).
+     * Without this check, a frame between 256KB and 16MB would fill the buffer
+     * and return INCOMPLETE forever, hanging the connection. */
+    if (payload_len > 256 * 1024) {
         return WS_FRAME_ERROR;
     }
 

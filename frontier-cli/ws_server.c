@@ -90,8 +90,9 @@ static ws_conn_t *find_free_slot(ws_server_t *server) {
 
 static void set_nonblocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
-    if (flags >= 0) {
-        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        log_error(LOG_COMP_GENERAL, "ws: set_nonblocking failed (fd=%d): %s",
+                  fd, strerror(errno));
     }
 }
 
