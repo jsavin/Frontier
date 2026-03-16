@@ -65,6 +65,7 @@
 #include "cli_utils.h"
 #include "repl.h"
 #include "protocol_handler.h"
+#include "ws_server.h"
 
 extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
@@ -375,6 +376,19 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Start WebSocket server if --ws-port was specified
+    ws_server_t ws_server;
+    ws_server_t *ws_server_ptr = NULL;
+
+    if (g_cli_options.ws_port > 0) {
+        if (ws_server_init(&ws_server, g_cli_options.ws_port) == 0) {
+            ws_server_ptr = &ws_server;
+            g_ws_server = ws_server_ptr;
+        } else {
+            log_error(LOG_COMP_GENERAL, "Failed to start WebSocket server on port %d", g_cli_options.ws_port);
+        }
+    }
+
     // Determine execution mode
     boolean success = false;
     int exit_code = 0;
@@ -389,6 +403,12 @@ int main(int argc, char* argv[]) {
     } else {
         // Interactive mode - enter REPL
         exit_code = repl_main(&g_cli_options);
+    }
+
+    // Shutdown WebSocket server
+    if (ws_server_ptr != NULL) {
+        ws_server_shutdown(ws_server_ptr);
+        g_ws_server = NULL;
     }
 
     // Cleanup

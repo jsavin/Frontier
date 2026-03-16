@@ -1,0 +1,51 @@
+/*
+ * Frontier CLI - ODB Operations
+ *
+ * odb_ops.h - ODB path resolution, value serialization, and CRUD operations
+ *
+ * Provides the implementation for odb/get, odb/set, odb/list, odb/delete.
+ * Each function takes path/value parameters and returns a cJSON object
+ * representing the per-item result (suitable for embedding in a batch
+ * response array).
+ *
+ * Copyright (C) 1992-2004 UserLand Software, Inc.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ */
+
+#ifndef ODB_OPS_H
+#define ODB_OPS_H
+
+#include "../third_party/cJSON/cJSON.h"
+
+/*
+ * Get a value from the ODB at the given dotted path.
+ * Returns a cJSON object with: path, name, type, value, success.
+ */
+cJSON *odb_get_value(const char *path);
+
+/*
+ * Set (create or overwrite) a value in the ODB at the given dotted path.
+ * type_str is the value type name ("string", "long", "boolean", etc.).
+ * value_json is the cJSON node containing the value.
+ * Returns a cJSON object with: path, success, [error].
+ */
+cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_json);
+
+/*
+ * List children of a table at the given dotted path.
+ * depth: 0 = just confirm exists, 1 = direct children, 2+ = recurse, -1 = full recursive
+ * max_results: cap on total entries returned.
+ * Returns a cJSON object with: path, entries[], success.
+ */
+cJSON *odb_list_children(const char *path, int depth, int max_results);
+
+/*
+ * Delete a value from the ODB at the given dotted path.
+ * Returns a cJSON object with: path, success, [error].
+ */
+cJSON *odb_delete_value(const char *path);
+
+#endif /* ODB_OPS_H */

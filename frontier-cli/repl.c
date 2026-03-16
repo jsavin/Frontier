@@ -43,6 +43,7 @@
 #include "../Common/headers/process.h"      /* agentsenabled, agentscheduler_tick */
 #include "../Common/headers/langinternal.h" /* flreplmode */
 #include "../Common/headers/threadregistry.h" /* headless_backgroundtask */
+#include "ws_server.h"                       /* g_ws_server, ws_server_* */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -2080,12 +2081,28 @@ int repl_main(cli_options_t *options) {
 
     // 6. Event loop
     while (running) {
-        // 6.1 Poll stdin with timeout
-        struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
-        int ready = poll(&pfd, 1, POLL_TIMEOUT_MS);
+        // 6.1 Poll stdin (+ WebSocket sockets if active) with timeout
+        struct pollfd pfds[1 + WS_MAX_CLIENTS + 1];
+        pfds[0].fd = STDIN_FILENO;
+        pfds[0].events = POLLIN;
+        pfds[0].revents = 0;
+        int nfds = 1;
+        int ws_start = -1;
+
+        if (g_ws_server != NULL) {
+            ws_start = nfds;
+            nfds += ws_server_pollfds(g_ws_server, pfds, nfds);
+        }
+
+        int ready = poll(pfds, (nfds_t)nfds, POLL_TIMEOUT_MS);
+
+        // 6.1.1 Handle WebSocket events (before stdin to avoid latency)
+        if (ready > 0 && g_ws_server != NULL && ws_start >= 0) {
+            ws_server_handle_events(g_ws_server, pfds, ws_start);
+        }
 
         // 6.2 Feed input to linenoise if available
-        if (ready > 0 && (pfd.revents & POLLIN)) {
+        if (ready > 0 && (pfds[0].revents & POLLIN)) {
             char *result = linenoiseEditFeed(&ls);
 
             if (result == linenoiseEditMore) {
