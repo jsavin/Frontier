@@ -67,9 +67,9 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
             /* bsname was a special table name (root, workspace, etc.)
              * The special table IS the resolved table. For get/list to work,
              * we need the parent table that contains it + the name.
-             * Use roottable as parent. */
+             * Use the special table's parent as the lookup context. */
             extern hdlhashtable roottable;
-            *htable = roottable;
+            *htable = hspecial;
         } else {
             /* Try roottable as parent for non-special names */
             extern hdlhashtable roottable;
@@ -209,8 +209,10 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                         buf[len] = '\0';
                         cJSON *s = cJSON_CreateString(buf);
                         free(buf);
+                        disposevaluerecord(coerced, false);
                         return s;
                     }
+                    disposevaluerecord(coerced, false);
                 }
                 return cJSON_CreateString("");
             }
@@ -251,8 +253,10 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                             cJSON *obj = cJSON_CreateObject();
                             cJSON_AddStringToObject(obj, "source", buf);
                             free(buf);
+                            disposevaluerecord(coerced, false);
                             return obj;
                         }
+                        disposevaluerecord(coerced, false);
                     }
                     return cJSON_CreateNull();
                 }
@@ -268,8 +272,10 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                         buf[len] = '\0';
                         cJSON *s = cJSON_CreateString(buf);
                         free(buf);
+                        disposevaluerecord(coerced, false);
                         return s;
                     }
+                    disposevaluerecord(coerced, false);
                 }
                 return cJSON_CreateNull();
             }
@@ -293,8 +299,10 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                         buf[len] = '\0';
                         cJSON *s = cJSON_CreateString(buf);
                         free(buf);
+                        disposevaluerecord(coerced, false);
                         return s;
                     }
+                    disposevaluerecord(coerced, false);
                 }
                 return cJSON_CreateNull();
             }

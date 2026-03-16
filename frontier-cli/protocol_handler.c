@@ -168,8 +168,17 @@ int protocol_main(cli_options_t *options) {
 
             /* Handle stdin data */
             if (!stdin_eof && (pfds[0].revents & POLLIN)) {
+                size_t remaining_space = PROTOCOL_LINE_MAX - 1 - line_pos;
+                if (remaining_space == 0) {
+                    /* Buffer is full without a newline — discard the oversized line */
+                    log_error(LOG_COMP_GENERAL,
+                              "protocol: line exceeds %d bytes, discarding",
+                              PROTOCOL_LINE_MAX);
+                    line_pos = 0;
+                    continue;
+                }
                 ssize_t n = read(STDIN_FILENO, line_buf + line_pos,
-                                 PROTOCOL_LINE_MAX - 1 - line_pos);
+                                 remaining_space);
                 if (n > 0) {
                     line_pos += (size_t)n;
                     line_buf[line_pos] = '\0';

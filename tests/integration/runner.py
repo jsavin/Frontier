@@ -938,8 +938,6 @@ class TestRunner:
               - success: expected top-level success boolean
               - results: list of per-item assertions (each a dict of key/value checks)
               - error_contains: string expected in error message
-              - result_path: dotted path into response to check (e.g. "results.0.value")
-              - result_value: expected value at result_path
         """
         if self.protocol_executor is None or not self.protocol_executor.is_alive:
             return TestResult(
@@ -952,6 +950,11 @@ class TestRunner:
                 params = step.get('params', {})
                 validate = step.get('validate', {})
                 step_desc = step.get('description', f'step {step_idx + 1}')
+
+                if op is None:
+                    return TestResult(
+                        test.name, False,
+                        error=f"protocol_ops step missing 'op' field at {step_desc}")
 
                 msg = {'op': op}
                 if params:
@@ -979,11 +982,12 @@ class TestRunner:
                     return TestResult(test.name, False, error=err, details=details)
 
             # All steps passed
-            self.protocol_executor.reset()
             return TestResult(test.name, True)
 
         except Exception as e:
             return TestResult(test.name, False, error=f"Unexpected error: {e}")
+        finally:
+            self.protocol_executor.reset()
 
     @staticmethod
     def _validate_protocol_response(resp: dict, validate: dict, step_desc: str) -> Optional[str]:

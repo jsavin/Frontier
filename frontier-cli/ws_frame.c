@@ -47,8 +47,8 @@ static void base64_encode_raw(const uint8_t *in, size_t in_len,
 
         out[j++] = b64_table[(triple >> 18) & 0x3F];
         out[j++] = b64_table[(triple >> 12) & 0x3F];
-        out[j++] = (i > in_len + 1) ? '=' : b64_table[(triple >> 6) & 0x3F];
-        out[j++] = (i > in_len) ? '=' : b64_table[triple & 0x3F];
+        out[j++] = (i >= in_len + 1) ? '=' : b64_table[(triple >> 6) & 0x3F];
+        out[j++] = (i >= in_len) ? '=' : b64_table[triple & 0x3F];
     }
     out[j] = '\0';
 }
