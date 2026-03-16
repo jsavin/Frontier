@@ -458,6 +458,13 @@ cJSON *odb_get_value(const char *path) {
 
 cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_json) {
 
+    /* When value_json is NULL (value field omitted from request):
+     * - string: defaults to empty string ""
+     * - long/int: defaults to 0
+     * - boolean: defaults to false
+     * - double: defaults to 0.0
+     * This matches C zero-initialization semantics for tyvaluerecord. */
+
     hdlhashtable htable;
     bigstring bsname;
 
@@ -607,6 +614,15 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
         if (!resolve_path(path, &htable, bsname)) {
             return make_error_result(path, "Path not found");
         }
+
+        /* Verify the named entry actually exists in the parent table.
+         * resolve_path() only confirms the parent table exists; without this
+         * check, a path like "workspace.does_not_exist" would return success. */
+        hdlhashnode hnode;
+        if (!hashtablelookupnode(htable, bsname, &hnode)) {
+            return make_error_result(path, "Path not found");
+        }
+
         cJSON *result = cJSON_CreateObject();
         cJSON_AddStringToObject(result, "path", path);
         cJSON_AddBoolToObject(result, "success", 1);

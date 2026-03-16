@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Protocol Odb Ops (protocol_odb_ops) - 26 tests: 26 pass (100%)</title>
-    <dateCreated>Mon, 16 Mar 2026 19:35:57 GMT</dateCreated>
+    <title>Protocol Odb Ops (protocol_odb_ops) - 27 tests: 27 pass (100%)</title>
+    <dateCreated>Mon, 16 Mar 2026 22:29:18 GMT</dateCreated>
   </head>
   <body>
     <outline text="odb/list - list workspace children - List top-level children of workspace table">
@@ -43,6 +43,11 @@
     <outline text="odb/get - batch get multiple paths - Get multiple paths in one request">
       <outline text="Metadata">
         <outline text="protocol_ops: [{'op': 'odb/get', 'params': {'items': [{'path': 'workspace'}, {'path': 'system'}]}, 'validate': {'success': True, 'result_count': 2, 'results': [{'type': 'table'}, {'type': 'table'}]}}]"/>
+      </outline>
+    </outline>
+    <outline text="odb/list - recursive depth 2 - Create nested values and list with depth 2 to verify recursive listing">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'script/eval', 'params': {'expression': 'new(tableType, @workspace.test_depth_table)'}, 'validate': {'success': True}, 'description': 'create subtable'}, {'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_depth_table.nested_val', 'type': 'string', 'value': 'deep'}]}, 'validate': {'success': True}, 'description': 'set nested value'}, {'op': 'odb/list', 'params': {'items': [{'path': 'workspace', 'depth': 2}]}, 'validate': {'success': True, 'entries_include': [{'name': 'test_depth_table', 'type': 'table'}]}, 'description': 'list with depth 2'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_depth_table'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
       </outline>
     </outline>
     <outline text="odb/set - create string value - Create a string value in workspace and read it back">

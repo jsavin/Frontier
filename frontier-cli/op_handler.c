@@ -241,7 +241,7 @@ static void transport_send(transport_t *transport, const char *json) {
  * Format and send a response. Uses a static buffer for small responses
  * and falls back to malloc for larger ones.
  */
-static void send_response(transport_t *transport, const char *fmt, ...) {
+static void send_response(transport_t *transport, long id, const char *fmt, ...) {
     char buf[4096];
     va_list args;
 
@@ -252,13 +252,23 @@ static void send_response(transport_t *transport, const char *fmt, ...) {
     if (n >= 0 && (size_t)n < sizeof(buf)) {
         transport->write_line(transport->ctx, buf, (size_t)n);
     } else if (n >= 0) {
-        char *heap = malloc((size_t)n + 1);
+        size_t needed = (size_t)n + 1;
+        char *heap = malloc(needed);
         if (heap != NULL) {
             va_start(args, fmt);
-            vsnprintf(heap, (size_t)n + 1, fmt, args);
+            vsnprintf(heap, needed, fmt, args);
             va_end(args);
             transport->write_line(transport->ctx, heap, (size_t)n);
             free(heap);
+        } else {
+            log_error(LOG_COMP_GENERAL, "op_handler: failed to allocate response buffer (%zu bytes)", needed);
+            /* Send minimal error so client doesn't hang */
+            char fallback[128];
+            int fb = snprintf(fallback, sizeof(fallback),
+                              "{\"id\":%ld,\"success\":false,\"error\":{\"message\":\"Server out of memory\"}}", id);
+            if (fb > 0 && (size_t)fb < sizeof(fallback)) {
+                transport->write_line(transport->ctx, fallback, (size_t)fb);
+            }
         }
     }
 }
@@ -267,7 +277,7 @@ static void send_response(transport_t *transport, const char *fmt, ...) {
  * Send a simple success ack.
  */
 static void send_ack(long id, transport_t *transport) {
-    send_response(transport, "{\"id\":%ld,\"success\":true}", id);
+    send_response(transport, id, "{\"id\":%ld,\"success\":true}", id);
 }
 
 /*
@@ -285,7 +295,7 @@ static void send_error(long id, const char *message, transport_t *transport) {
 
     fprintf(f, "{\"id\":%ld,\"error\":{\"message\":", id);
     cli_json_write_escaped_string(f, message);
-    fprintf(f, ",\"category\":\"script\"},\"success\":false}");
+    fprintf(f, "},\"success\":false}");
     fclose(f);
 
     if (buf != NULL) {
@@ -303,7 +313,7 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
     tyvaluerecord coerced = *val;
 
     if (coerced.valuetype == novaluetype) {
-        send_response(transport,
+        send_response(transport, id,
             "{\"id\":%ld,\"result\":{\"value\":null,\"type\":\"none\"},\"success\":true}",
             id);
         return;
@@ -312,7 +322,7 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
     if (coerced.valuetype == externalvaluetype) {
         hdlexternalvariable hv = (hdlexternalvariable)coerced.data.externalvalue;
         if (hv != nil && (**hv).id == idtableprocessor) {
-            send_response(transport,
+            send_response(transport, id,
                 "{\"id\":%ld,\"result\":{\"value\":\"[table]\",\"type\":\"table\"},\"success\":true}",
                 id);
             return;
@@ -320,7 +330,7 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
     }
 
     if (!coercetostring(&coerced)) {
-        send_response(transport,
+        send_response(transport, id,
             "{\"id\":%ld,\"result\":{\"value\":null,\"type\":\"%s\"},\"success\":true}",
             id, type_name);
         return;

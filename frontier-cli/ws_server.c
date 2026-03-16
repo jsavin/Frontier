@@ -168,6 +168,12 @@ static void handle_frame(ws_conn_t *conn) {
                     .write_line = ws_write_line,
                 };
 
+                /* GIL invariant: op_dispatch() accesses Frontier runtime globals (hash tables,
+                 * lang APIs, etc.) which require the GIL to be held (see ADR-014). This is
+                 * satisfied because ws_server_handle_events() is only called from the REPL
+                 * event loop and protocol_main() poll loop, both of which run on the main
+                 * thread with the GIL held. If this code is ever called from a non-GIL
+                 * context, runtime state corruption will occur. */
                 int shutdown = op_dispatch(json, frame.payload_len, &transport);
                 free(json);
 
@@ -339,6 +345,10 @@ void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_
     if (server->listen_fd >= 0) {
         idx++;
     }
+
+    /* pollfd layout is deterministic: fds[start_index] = listen socket,
+     * fds[start_index + 1 + i] = client slot i. With WS_MAX_CLIENTS = 8
+     * the linear scan is harmless, but the mapping is direct if needed. */
 
     /* Check client sockets */
     for (int i = 0; i < WS_MAX_CLIENTS; i++) {

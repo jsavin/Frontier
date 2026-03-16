@@ -129,6 +129,43 @@ tests:
             - type: "table"
             - type: "table"
 
+  - name: "odb/list - recursive depth 2"
+    description: "Create nested values and list with depth 2 to verify recursive listing"
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: 'new(tableType, @workspace.test_depth_table)'
+        validate:
+          success: true
+        description: "create subtable"
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_depth_table.nested_val"
+              type: "string"
+              value: "deep"
+        validate:
+          success: true
+        description: "set nested value"
+      - op: "odb/list"
+        params:
+          items:
+            - path: "workspace"
+              depth: 2
+        validate:
+          success: true
+          entries_include:
+            - name: "test_depth_table"
+              type: "table"
+        description: "list with depth 2"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_depth_table"
+        validate:
+          success: true
+        description: "cleanup"
+
   # ========================================================================
   # odb/set + odb/get — Write and read back
   # ========================================================================

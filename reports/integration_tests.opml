@@ -1,15 +1,15 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 1985 tests: 1795 pass (90%) 190 skip (9%)</title>
-    <dateCreated>Mon, 16 Mar 2026 19:35:57 GMT</dateCreated>
+    <title>Frontier Integration Tests - 1986 tests: 1796 pass (90%) 190 skip (9%)</title>
+    <dateCreated>Mon, 16 Mar 2026 22:29:18 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-03-16 at 18:52 UTC"/>
-      <outline text="Results: 1777 passed (90%), 190 skipped (10%), 0 failed (0%)"/>
-      <outline text="Duration: 34.3s (8 workers, batch mode)"/>
-      <outline text="YAML-defined: 1985 tests (1795 active, 190 marked skip) across 55 categories"/>
+      <outline text="Run: 2026-03-16 at 22:29 UTC"/>
+      <outline text="Results: 1778 passed (90%), 190 skipped (10%), 0 failed (0%)"/>
+      <outline text="Duration: 36.3s (8 workers, batch mode)"/>
+      <outline text="YAML-defined: 1986 tests (1796 active, 190 marked skip) across 55 categories"/>
     </outline>
     <outline text="Builtins Priority (builtins_priority) - 24 tests: 24 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
     <outline text="Callback Database (callback_database) - 29 tests: 29 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/callback_database.opml"/>
@@ -38,7 +38,7 @@
     <outline text="Opattributes Verbs (opattributes_verbs) - 7 tests: 0 pass (0%) 7 skip (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/opattributes_verbs.opml"/>
     <outline text="Path Resolution (path_resolution) - 39 tests: 39 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/path_resolution.opml"/>
     <outline text="Post Hydration Database State (post_hydration_database_state) - 40 tests: 36 pass (90%) 4 skip (10%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/post_hydration_database_state.opml"/>
-    <outline text="Protocol Odb Ops (protocol_odb_ops) - 26 tests: 26 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/protocol_odb_ops.opml"/>
+    <outline text="Protocol Odb Ops (protocol_odb_ops) - 27 tests: 27 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/protocol_odb_ops.opml"/>
     <outline text="Protocol Script Ops (protocol_script_ops) - 9 tests: 9 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/protocol_script_ops.opml"/>
     <outline text="Repl Basic (repl_basic) - 56 tests: 56 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/repl_basic.opml"/>
     <outline text="Repl Commands (repl_commands) - 81 tests: 61 pass (75%) 20 skip (24%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/repl_commands.opml"/>
