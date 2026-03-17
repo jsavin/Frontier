@@ -65,6 +65,16 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
         }
     }
 
+    /* Reject paths with consecutive dots, leading dot, or trailing dot */
+    if (pathlen > 0 && (path[0] == '.' || path[pathlen - 1] == '.')) {
+        return false;
+    }
+    for (long i = 0; i < pathlen - 1; i++) {
+        if (path[i] == '.' && path[i + 1] == '.') {
+            return false;
+        }
+    }
+
     setstringlength(bspath, (short)pathlen);
     memcpy(stringbaseaddress(bspath), path, pathlen);
 
@@ -328,7 +338,9 @@ static cJSON *make_error_result(const char *path, const char *error_msg) {
     if (path != NULL) {
         cJSON_AddStringToObject(obj, "path", path);
     }
-    cJSON_AddStringToObject(obj, "error", error_msg);
+    cJSON *error_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(error_obj, "message", error_msg);
+    cJSON_AddItemToObject(obj, "error", error_obj);
     cJSON_AddBoolToObject(obj, "success", 0);
     return obj;
 }
@@ -376,8 +388,13 @@ static int list_table_entries(hdlhashtable htable, const char *path_prefix,
         memcpy(name, stringbaseaddress(bsname), namelen);
         name[namelen] = '\0';
 
-        /* Build full path */
+        /* Build full path — skip entry if path would be truncated */
         char child_path[1024];
+        size_t needed = strlen(path_prefix) + 1 + strlen(name) + 1;
+        if (needed > sizeof(child_path)) {
+            hnode = (**hnode).sortedlink;
+            continue;  /* Skip entry rather than produce a truncated path */
+        }
         snprintf(child_path, sizeof(child_path), "%s.%s", path_prefix, name);
 
         /* Get type info */

@@ -102,7 +102,8 @@ char *op_json_extract_string(const char *json, const char *key) {
                         pos += 4;
 
                         if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
-                            if (pos[1] == '\\' && pos[2] == 'u') {
+                            if (pos[1] == '\\' && pos[2] == 'u' &&
+                                pos[3] != '\0' && pos[4] != '\0' && pos[5] != '\0' && pos[6] != '\0') {
                                 char hex2[5] = { pos[3], pos[4], pos[5], pos[6], '\0' };
                                 unsigned int low = (unsigned int)strtoul(hex2, NULL, 16);
                                 if (low >= 0xDC00 && low <= 0xDFFF) {
@@ -416,6 +417,16 @@ static void handle_clear_context(long id, transport_t *transport) {
  * ODB operation handlers
  * ======================================================================== */
 
+/*
+ * Add an error field as {"message":"..."} object to a cJSON item.
+ * Ensures per-item errors match the top-level send_error() format.
+ */
+static void cjson_add_error_object(cJSON *item, const char *message) {
+    cJSON *error_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(error_obj, "message", message);
+    cJSON_AddItemToObject(item, "error", error_obj);
+}
+
 static void handle_odb_get(long id, const char *json_line, transport_t *transport) {
     cJSON *root = cJSON_Parse(json_line);
     if (root == NULL) {
@@ -441,7 +452,7 @@ static void handle_odb_get(long id, const char *json_line, transport_t *transpor
 
         if (!cJSON_IsString(path_json)) {
             cJSON *err = cJSON_CreateObject();
-            cJSON_AddStringToObject(err, "error", "Missing 'path'");
+            cjson_add_error_object(err, "Missing 'path'");
             cJSON_AddBoolToObject(err, "success", 0);
             cJSON_AddItemToArray(results, err);
             continue;
@@ -449,6 +460,12 @@ static void handle_odb_get(long id, const char *json_line, transport_t *transpor
 
         const char *path = path_json->valuestring;
         cJSON *result_item = odb_get_value(path);
+        if (result_item == NULL) {
+            result_item = cJSON_CreateObject();
+            cJSON_AddStringToObject(result_item, "path", path);
+            cjson_add_error_object(result_item, "Internal error");
+            cJSON_AddBoolToObject(result_item, "success", 0);
+        }
         cJSON_AddItemToArray(results, result_item);
     }
 
@@ -494,7 +511,7 @@ static void handle_odb_set(long id, const char *json_line, transport_t *transpor
 
         if (!cJSON_IsString(path_json)) {
             cJSON *err = cJSON_CreateObject();
-            cJSON_AddStringToObject(err, "error", "Missing 'path'");
+            cjson_add_error_object(err, "Missing 'path'");
             cJSON_AddBoolToObject(err, "success", 0);
             cJSON_AddItemToArray(results, err);
             continue;
@@ -504,6 +521,12 @@ static void handle_odb_set(long id, const char *json_line, transport_t *transpor
         const char *type_str = cJSON_IsString(type_json) ? type_json->valuestring : NULL;
 
         cJSON *result_item = odb_set_value(path, type_str, value_json);
+        if (result_item == NULL) {
+            result_item = cJSON_CreateObject();
+            cJSON_AddStringToObject(result_item, "path", path);
+            cjson_add_error_object(result_item, "Internal error");
+            cJSON_AddBoolToObject(result_item, "success", 0);
+        }
         cJSON_AddItemToArray(results, result_item);
     }
 
@@ -549,7 +572,7 @@ static void handle_odb_list(long id, const char *json_line, transport_t *transpo
 
         if (!cJSON_IsString(path_json)) {
             cJSON *err = cJSON_CreateObject();
-            cJSON_AddStringToObject(err, "error", "Missing 'path'");
+            cjson_add_error_object(err, "Missing 'path'");
             cJSON_AddBoolToObject(err, "success", 0);
             cJSON_AddItemToArray(results, err);
             continue;
@@ -560,6 +583,12 @@ static void handle_odb_list(long id, const char *json_line, transport_t *transpo
         int max_results = cJSON_IsNumber(max_json) ? (int)max_json->valuedouble : 10000;
 
         cJSON *result_item = odb_list_children(path, depth, max_results);
+        if (result_item == NULL) {
+            result_item = cJSON_CreateObject();
+            cJSON_AddStringToObject(result_item, "path", path);
+            cjson_add_error_object(result_item, "Internal error");
+            cJSON_AddBoolToObject(result_item, "success", 0);
+        }
         cJSON_AddItemToArray(results, result_item);
     }
 
@@ -603,7 +632,7 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 
         if (!cJSON_IsString(path_json)) {
             cJSON *err = cJSON_CreateObject();
-            cJSON_AddStringToObject(err, "error", "Missing 'path'");
+            cjson_add_error_object(err, "Missing 'path'");
             cJSON_AddBoolToObject(err, "success", 0);
             cJSON_AddItemToArray(results, err);
             continue;
@@ -611,6 +640,12 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 
         const char *path = path_json->valuestring;
         cJSON *result_item = odb_delete_value(path);
+        if (result_item == NULL) {
+            result_item = cJSON_CreateObject();
+            cJSON_AddStringToObject(result_item, "path", path);
+            cjson_add_error_object(result_item, "Internal error");
+            cJSON_AddBoolToObject(result_item, "success", 0);
+        }
         cJSON_AddItemToArray(results, result_item);
     }
 

@@ -51,12 +51,23 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
         return;
     }
 
-    /* Best-effort write — non-blocking socket may not accept all bytes.
-     * For this initial implementation we don't buffer partial writes.
-     * A production server would need a send queue. */
-    ssize_t n = write(wctx->fd, frame, frame_len);
-    if (n < 0) {
-        log_debug(LOG_COMP_GENERAL, "ws: write failed: %s", strerror(errno));
+    size_t written = 0;
+    while (written < frame_len) {
+        ssize_t n = write(wctx->fd, frame + written, frame_len - written);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* Non-blocking socket can't accept more data right now.
+                 * For this initial implementation, drop the remainder. */
+                log_debug(LOG_COMP_GENERAL, "ws: partial write (fd=%d): %zu/%zu bytes",
+                          wctx->fd, written, frame_len);
+                break;
+            }
+            log_debug(LOG_COMP_GENERAL, "ws: write failed (fd=%d): %s",
+                      wctx->fd, strerror(errno));
+            break;
+        }
+        written += (size_t)n;
     }
 
     free(frame);

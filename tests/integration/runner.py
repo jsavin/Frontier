@@ -1028,6 +1028,19 @@ class TestRunner:
                             if not should_exist and check_key in actual_item:
                                 return f"[{step_desc}] results[{i}]: expected key '{check_key}' to not exist"
                         continue
+                    if key == '_strict_type':
+                        # Check that actual values match expected type AND value exactly
+                        for check_key, expected_typed_val in expected_val.items():
+                            actual_typed_val = actual_item.get(check_key)
+                            if type(actual_typed_val) is not type(expected_typed_val):
+                                return (f"[{step_desc}] results[{i}].{check_key}: "
+                                        f"type mismatch: expected {type(expected_typed_val).__name__} "
+                                        f"{expected_typed_val!r}, got {type(actual_typed_val).__name__} "
+                                        f"{actual_typed_val!r}")
+                            if actual_typed_val != expected_typed_val:
+                                return (f"[{step_desc}] results[{i}].{check_key}: "
+                                        f"expected {expected_typed_val!r}, got {actual_typed_val!r}")
+                        continue
                     if key == '_contains':
                         # Check that a string value contains a substring
                         for check_key, substr in expected_val.items():
