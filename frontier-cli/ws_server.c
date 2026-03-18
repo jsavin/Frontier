@@ -68,8 +68,9 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
             }
             log_debug(LOG_COMP_GENERAL, "ws: write failed (fd=%d): %s, closing connection",
                       wctx->fd, strerror(errno));
-            close(wctx->fd);
+            int dead_fd = wctx->fd;
             wctx->fd = -1;
+            close(dead_fd);
             break;
         }
         written += (size_t)n;
@@ -78,10 +79,11 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
     if (written < frame_len && wctx->fd >= 0) {
         /* Partial frame sent — connection is now in a corrupt state.
          * Close the fd; the next poll iteration will clean up. */
-        log_debug(LOG_COMP_GENERAL, "ws: closing connection after partial frame (fd=%d): %zu/%zu bytes",
-                  wctx->fd, written, frame_len);
-        close(wctx->fd);
+        int dead_fd = wctx->fd;
         wctx->fd = -1;
+        log_debug(LOG_COMP_GENERAL, "ws: closing connection after partial frame (fd=%d): %zu/%zu bytes",
+                  dead_fd, written, frame_len);
+        close(dead_fd);
     }
 
     free(frame);

@@ -228,6 +228,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                     return cJSON_CreateString("");
                 }
                 long len = gethandlesize(h);
+                if (len < 0) return cJSON_CreateString("");
                 /* Create null-terminated copy for cJSON */
                 char *buf = malloc(len + 1);
                 if (buf == NULL) {
@@ -248,6 +249,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                 if (coercetostring(&coerced)) {
                     Handle h = coerced.data.stringvalue;
                     long len = gethandlesize(h);
+                    if (len < 0) { disposevaluerecord(coerced, false); return cJSON_CreateString(""); }
                     char *buf = malloc(len + 1);
                     if (buf != NULL) {
                         memcpy(buf, *h, len);
@@ -291,6 +293,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                     if (coercetostring(&coerced)) {
                         Handle h = coerced.data.stringvalue;
                         long len = gethandlesize(h);
+                        if (len < 0) { disposevaluerecord(coerced, false); return cJSON_CreateNull(); }
                         char *buf = malloc(len + 1);
                         if (buf != NULL) {
                             memcpy(buf, *h, len);
@@ -311,6 +314,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                 if (coercetostring(&coerced)) {
                     Handle h = coerced.data.stringvalue;
                     long len = gethandlesize(h);
+                    if (len < 0) { disposevaluerecord(coerced, false); return cJSON_CreateNull(); }
                     char *buf = malloc(len + 1);
                     if (buf != NULL) {
                         memcpy(buf, *h, len);
@@ -329,7 +333,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
             *out_type = "binary";
             {
                 Handle h = val->data.binaryvalue;
-                if (h == nil || gethandlesize(h) == 0) {
+                if (h == nil || gethandlesize(h) <= 0) {
                     return cJSON_CreateString("");
                 }
                 long bin_len = gethandlesize(h);
@@ -353,6 +357,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                 if (coercetostring(&coerced)) {
                     Handle h = coerced.data.stringvalue;
                     long len = gethandlesize(h);
+                    if (len < 0) { disposevaluerecord(coerced, false); return cJSON_CreateNull(); }
                     char *buf = malloc(len + 1);
                     if (buf != NULL) {
                         memcpy(buf, *h, len);
@@ -628,7 +633,9 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
 
         default:
             if (type_str == NULL) {
-                /* Infer type from JSON value */
+                /* Infer type from JSON value.
+                 * Each branch creates at most one heap value in `val`.
+                 * exemptfromtmpstack() after hashassign() covers it. */
                 if (cJSON_IsString(value_json)) {
                     const char *s = value_json->valuestring;
                     Handle h;

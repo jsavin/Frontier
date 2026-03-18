@@ -228,7 +228,9 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
         return -1;
     }
 
-    /* Extract the key value (up to CRLF) */
+    /* Extract the key value (up to CRLF).
+     * RFC 6455 requires exactly 24 base64 characters, but we don't validate
+     * the format — SHA-1 on any input still produces a valid accept key. */
     char ws_key[64];
     int ki = 0;
     while (*key_start && *key_start != '\r' && *key_start != '\n' && ki < 63) {
@@ -255,14 +257,25 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
 
         /* Check against localhost allowlist */
         bool origin_ok = false;
-        /* Common localhost origin patterns */
-        if (strncasecmp(origin_val, "http://localhost", 16) == 0 ||
-            strncasecmp(origin_val, "https://localhost", 17) == 0 ||
-            strncasecmp(origin_val, "http://127.0.0.1", 16) == 0 ||
-            strncasecmp(origin_val, "https://127.0.0.1", 17) == 0 ||
-            strncasecmp(origin_val, "http://[::1]", 12) == 0 ||
-            strncasecmp(origin_val, "https://[::1]", 13) == 0) {
-            origin_ok = true;
+        /* Common localhost origin patterns.
+         * Verify the character after the hostname is ':', '/', or '\0'
+         * to prevent prefix-match bypass (e.g. "http://localhost.attacker.com"). */
+        static const struct { const char *prefix; int len; } allowed[] = {
+            { "http://localhost",  16 },
+            { "https://localhost", 17 },
+            { "http://127.0.0.1",  16 },
+            { "https://127.0.0.1", 17 },
+            { "http://[::1]",      12 },
+            { "https://[::1]",     13 },
+        };
+        for (int ai = 0; ai < 6; ai++) {
+            if (strncasecmp(origin_val, allowed[ai].prefix, allowed[ai].len) == 0) {
+                char next = origin_val[allowed[ai].len];
+                if (next == '\0' || next == ':' || next == '/') {
+                    origin_ok = true;
+                    break;
+                }
+            }
         }
 
         if (!origin_ok) {

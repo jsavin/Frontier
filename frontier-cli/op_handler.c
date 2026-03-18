@@ -118,6 +118,7 @@ char *op_json_extract_string(const char *json, const char *key) {
                         }
 
                         size_t need = (codepoint < 0x80) ? 1 : (codepoint < 0x800) ? 2 : (codepoint < 0x10000) ? 3 : 4;
+                        if (len + need >= OP_MAX_STRING) { free(result); return NULL; }
                         if (len + need >= capacity) {
                             capacity = (capacity + need) * 2;
                             char *tmp = realloc(result, capacity);
@@ -127,20 +128,17 @@ char *op_json_extract_string(const char *json, const char *key) {
                         if (codepoint < 0x80) {
                             c = (char)codepoint;
                         } else if (codepoint < 0x800) {
-                            if (len + 2 >= OP_MAX_STRING) { free(result); return NULL; }
                             result[len++] = (char)(0xC0 | (codepoint >> 6));
                             result[len++] = (char)(0x80 | (codepoint & 0x3F));
                             pos++;
                             continue;
                         } else if (codepoint < 0x10000) {
-                            if (len + 3 >= OP_MAX_STRING) { free(result); return NULL; }
                             result[len++] = (char)(0xE0 | (codepoint >> 12));
                             result[len++] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
                             result[len++] = (char)(0x80 | (codepoint & 0x3F));
                             pos++;
                             continue;
                         } else {
-                            if (len + 4 >= OP_MAX_STRING) { free(result); return NULL; }
                             result[len++] = (char)(0xF0 | (codepoint >> 18));
                             result[len++] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
                             result[len++] = (char)(0x80 | ((codepoint >> 6) & 0x3F));

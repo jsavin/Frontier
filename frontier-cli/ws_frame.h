@@ -22,7 +22,10 @@
  * rejected to prevent buffer-fill hangs. */
 #define WS_MAX_FRAME_PAYLOAD (256 * 1024)
 
-/* WebSocket opcodes (RFC 6455 section 5.2) */
+/* WebSocket opcodes (RFC 6455 section 5.2)
+ * Note: Continuation frames (FIN=0) are not supported. All messages must
+ * fit in a single frame. This is intentional — our JSON protocol messages
+ * are well within the 256KB frame limit and no client sends fragmented. */
 #define WS_OPCODE_CONTINUATION 0x0
 #define WS_OPCODE_TEXT         0x1
 #define WS_OPCODE_BINARY       0x2
