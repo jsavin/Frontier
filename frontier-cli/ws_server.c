@@ -78,13 +78,16 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
         written += (size_t)n;
     }
 
-    free(frame);
-
-    /* If we couldn't send the complete frame, close the connection
-     * to prevent sending a subsequent frame into a corrupted stream. */
     if (written < frame_len) {
-        shutdown(wctx->fd, SHUT_WR);
+        /* Partial frame sent — connection is now in a corrupt state.
+         * Close the fd; the next poll iteration will clean up. */
+        log_debug(LOG_COMP_GENERAL, "ws: closing connection after partial frame (fd=%d): %zu/%zu bytes",
+                  wctx->fd, written, frame_len);
+        close(wctx->fd);
+        wctx->fd = -1;
     }
+
+    free(frame);
 }
 
 /* ========================================================================
@@ -366,7 +369,7 @@ void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_
                 set_nonblocking(client_fd);
                 slot->fd = client_fd;
                 slot->state = WS_STATE_HANDSHAKE;
-                slot->recv_buf = malloc(WS_CLIENT_BUF_SIZE);
+                slot->recv_buf = malloc(WS_CLIENT_BUF_SIZE);  /* Must match WS_MAX_FRAME_PAYLOAD in ws_frame.h */
                 slot->recv_len = 0;
                 if (slot->recv_buf == NULL) {
                     close(client_fd);

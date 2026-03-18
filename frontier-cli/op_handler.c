@@ -658,8 +658,33 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
     (void)len;
 
-    char *op = op_json_extract_string(json_line, "op");
-    long id = op_json_extract_int(json_line, "id");
+    /* GIL INVARIANT: This function must be called with the GIL held.
+     * All ODB and script operations access Frontier runtime globals
+     * (hash tables, lang APIs) that require serialized access (ADR-014).
+     * No runtime assertion is available since the GIL is a simple mutex
+     * without an "is-held-by-current-thread" query API. */
+
+    /* TODO: Consider per-connection rate limiting or wall-clock timeout
+     * for expensive operations (odb/list depth:-1, script/eval). */
+
+    /* Parse envelope fields (op, id) using cJSON for safety.
+     * WebSocket clients can send crafted JSON where strstr-based
+     * extraction would match keys inside string values. */
+    cJSON *envelope = cJSON_Parse(json_line);
+    if (envelope == NULL) {
+        return 0;
+    }
+
+    cJSON *op_json = cJSON_GetObjectItemCaseSensitive(envelope, "op");
+    cJSON *id_json = cJSON_GetObjectItemCaseSensitive(envelope, "id");
+
+    char *op = NULL;
+    if (cJSON_IsString(op_json) && op_json->valuestring != NULL) {
+        op = strdup(op_json->valuestring);
+    }
+    long id = (cJSON_IsNumber(id_json)) ? (long)id_json->valuedouble : LONG_MIN;
+
+    cJSON_Delete(envelope);
 
     if (op == NULL) {
         if (id != LONG_MIN) {

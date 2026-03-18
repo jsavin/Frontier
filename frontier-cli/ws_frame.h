@@ -17,6 +17,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Maximum allowed frame payload size — matches the receive buffer size
+ * in ws_server.h (WS_CLIENT_BUF_SIZE). Frames larger than this are
+ * rejected to prevent buffer-fill hangs. */
+#define WS_MAX_FRAME_PAYLOAD (256 * 1024)
+
 /* WebSocket opcodes (RFC 6455 section 5.2) */
 #define WS_OPCODE_CONTINUATION 0x0
 #define WS_OPCODE_TEXT         0x1

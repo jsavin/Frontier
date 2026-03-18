@@ -88,10 +88,11 @@ ws_frame_status_t ws_frame_decode(uint8_t *buf, size_t len, ws_frame_t *frame) {
         header_len = 10;
     }
 
-    /* Reject frames that exceed the receive buffer (WS_CLIENT_BUF_SIZE = 256KB).
-     * Without this check, a frame between 256KB and 16MB would fill the buffer
-     * and return INCOMPLETE forever, hanging the connection. */
-    if (payload_len > 256 * 1024) {
+    /* Reject frames that exceed the receive buffer, and check for
+     * integer overflow in header_len + payload_len. Without the size
+     * check, a frame between WS_MAX_FRAME_PAYLOAD and 16MB would fill
+     * the buffer and return INCOMPLETE forever, hanging the connection. */
+    if (payload_len > WS_MAX_FRAME_PAYLOAD || header_len + (size_t)payload_len < header_len) {
         return WS_FRAME_ERROR;
     }
 
@@ -229,6 +230,10 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
         ws_key[ki++] = *key_start++;
     }
     ws_key[ki] = '\0';
+
+    /* TODO: Validate Origin header to prevent cross-site WebSocket hijacking.
+     * Currently any page that can reach the server port can open a connection.
+     * An allowlist of localhost/127.0.0.1 would reduce attack surface. */
 
     /* Trim trailing whitespace */
     while (ki > 0 && (ws_key[ki-1] == ' ' || ws_key[ki-1] == '\t')) {

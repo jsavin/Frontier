@@ -35,6 +35,8 @@
 #include <math.h>
 #include <ctype.h>
 
+#define MAX_RECURSION_DEPTH 32
+
 extern hdlhashtable roottable;
 
 /* ========================================================================
@@ -52,7 +54,7 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
 
     bigstring bspath;
 
-    long pathlen = (long)strlen(path);
+    size_t pathlen = strlen(path);
     if (pathlen > 255) {
         return false;
     }
@@ -60,7 +62,7 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
     /* Validate path characters — only allow alphanumeric, dots, and underscores.
      * langexpandtodotparams() compiles and evaluates the path as UserTalk, so
      * unsanitized input could execute arbitrary expressions. */
-    for (long i = 0; i < pathlen; i++) {
+    for (size_t i = 0; i < pathlen; i++) {
         char ch = path[i];
         if (!isalnum((unsigned char)ch) && ch != '.' && ch != '_') {
             return false;
@@ -71,7 +73,7 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
     if (pathlen > 0 && (path[0] == '.' || path[pathlen - 1] == '.')) {
         return false;
     }
-    for (long i = 0; i < pathlen - 1; i++) {
+    for (size_t i = 0; i + 1 < pathlen; i++) {
         if (path[i] == '.' && path[i + 1] == '.') {
             return false;
         }
@@ -335,6 +337,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
 static cJSON *make_error_result(const char *path, const char *error_msg) {
 
     cJSON *obj = cJSON_CreateObject();
+    if (obj == NULL) return NULL;
 
     if (path != NULL) {
         cJSON_AddStringToObject(obj, "path", path);
@@ -374,7 +377,11 @@ static tyvaluetype parse_value_type(const char *type_str) {
  */
 static int list_table_entries(hdlhashtable htable, const char *path_prefix,
                               int depth, int max_results, int *count_ptr,
-                              cJSON *entries) {
+                              cJSON *entries, int recursion_level) {
+
+    if (recursion_level > MAX_RECURSION_DEPTH) {
+        return *count_ptr;  /* Stop recursing to prevent stack overflow */
+    }
 
     hdlhashnode hnode = (**htable).hfirstsort;
 
@@ -420,7 +427,8 @@ static int list_table_entries(hdlhashtable htable, const char *path_prefix,
             if (langexternalvaltotable(val, &hsubtable, nil)) {
                 int sub_depth = (depth == -1) ? -1 : depth - 1;
                 list_table_entries(hsubtable, child_path, sub_depth,
-                                   max_results, count_ptr, entries);
+                                   max_results, count_ptr, entries,
+                                   recursion_level + 1);
             }
         }
 
@@ -465,6 +473,7 @@ cJSON *odb_get_value(const char *path) {
     name[namelen] = '\0';
 
     cJSON *result = cJSON_CreateObject();
+    if (result == NULL) return NULL;
     cJSON_AddStringToObject(result, "path", path);
     cJSON_AddStringToObject(result, "name", name);
     cJSON_AddStringToObject(result, "type", type);
@@ -623,6 +632,7 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
     exemptfromtmpstack(&val);
 
     cJSON *result = cJSON_CreateObject();
+    if (result == NULL) return NULL;
     cJSON_AddStringToObject(result, "path", path);
     cJSON_AddBoolToObject(result, "success", 1);
     return result;
@@ -656,6 +666,7 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
         }
 
         cJSON *result = cJSON_CreateObject();
+        if (result == NULL) return NULL;
         cJSON_AddStringToObject(result, "path", path);
         cJSON_AddBoolToObject(result, "success", 1);
         return result;
@@ -693,9 +704,10 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
     /* List children */
     cJSON *entries = cJSON_CreateArray();
     int count = 0;
-    list_table_entries(target_table, path, depth, max_results, &count, entries);
+    list_table_entries(target_table, path, depth, max_results, &count, entries, 0);
 
     cJSON *result = cJSON_CreateObject();
+    if (result == NULL) return NULL;
     cJSON_AddStringToObject(result, "path", path);
     cJSON_AddItemToObject(result, "entries", entries);
     cJSON_AddBoolToObject(result, "success", 1);
@@ -726,6 +738,7 @@ cJSON *odb_delete_value(const char *path) {
     }
 
     cJSON *result = cJSON_CreateObject();
+    if (result == NULL) return NULL;
     cJSON_AddStringToObject(result, "path", path);
     cJSON_AddBoolToObject(result, "success", 1);
     return result;
