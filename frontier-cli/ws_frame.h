@@ -77,4 +77,10 @@ uint8_t *ws_frame_encode(uint8_t opcode, const uint8_t *payload, size_t payload_
 int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response_size,
                  size_t *request_len);
 
+/*
+ * Base64-encode raw bytes into a caller-supplied output buffer.
+ * Output is NUL-terminated. out_size must be at least ((in_len+2)/3)*4 + 1.
+ */
+void base64_encode_raw(const uint8_t *in, size_t in_len, char *out, size_t out_size);
+
 #endif /* WS_FRAME_H */

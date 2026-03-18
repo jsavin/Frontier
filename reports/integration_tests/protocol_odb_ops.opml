@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Protocol Odb Ops (protocol_odb_ops) - 33 tests: 33 pass (100%)</title>
-    <dateCreated>Wed, 18 Mar 2026 17:22:03 GMT</dateCreated>
+    <title>Protocol Odb Ops (protocol_odb_ops) - 34 tests: 34 pass (100%)</title>
+    <dateCreated>Wed, 18 Mar 2026 18:03:54 GMT</dateCreated>
   </head>
   <body>
     <outline text="odb/list - list workspace children - List top-level children of workspace table">
@@ -123,6 +123,11 @@
     <outline text="odb/set - path with space rejected - Paths with spaces should be rejected">
       <outline text="Metadata">
         <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test space', 'type': 'string', 'value': 'should fail'}]}, 'validate': {'success': True, 'result_count': 1, 'results': [{'success': False}]}}]"/>
+      </outline>
+    </outline>
+    <outline text="odb/get - path with semicolon rejected - Paths with semicolons should be rejected to prevent expression injection">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'odb/get', 'params': {'items': [{'path': 'workspace;system'}]}, 'validate': {'success': True, 'result_count': 1, 'results': [{'success': False}]}}]"/>
       </outline>
     </outline>
     <outline text="odb/get - mixed success and failure in batch - One bad path should not fail the entire batch">

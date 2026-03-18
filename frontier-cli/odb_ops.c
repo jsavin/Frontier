@@ -29,6 +29,8 @@
 #include "../Common/headers/tablestructure.h"
 #include "../Common/headers/op.h"
 
+#include "ws_frame.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,33 +40,6 @@
 #define MAX_RECURSION_DEPTH 32
 
 extern hdlhashtable roottable;
-
-/* ========================================================================
- * Minimal base64 encoder for binary value serialization
- * ======================================================================== */
-
-static const char odb_b64_table[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-static void odb_base64_encode(const uint8_t *in, size_t in_len,
-                               char *out, size_t out_size) {
-    size_t i = 0, j = 0;
-
-    while (i < in_len && j + 4 < out_size) {
-        uint32_t a = in[i++];
-        int bytes_in_triple = 1;
-        uint32_t b = 0, c = 0;
-        if (i < in_len) { b = in[i++]; bytes_in_triple++; }
-        if (i < in_len) { c = in[i++]; bytes_in_triple++; }
-        uint32_t triple = (a << 16) | (b << 8) | c;
-
-        out[j++] = odb_b64_table[(triple >> 18) & 0x3F];
-        out[j++] = odb_b64_table[(triple >> 12) & 0x3F];
-        out[j++] = (bytes_in_triple < 2) ? '=' : odb_b64_table[(triple >> 6) & 0x3F];
-        out[j++] = (bytes_in_triple < 3) ? '=' : odb_b64_table[triple & 0x3F];
-    }
-    out[j] = '\0';
-}
 
 /* ========================================================================
  * Internal helpers
@@ -343,7 +318,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                 if (b64_buf == NULL) {
                     return cJSON_CreateString("");
                 }
-                odb_base64_encode((const uint8_t *)*h, (size_t)bin_len, b64_buf, b64_len);
+                base64_encode_raw((const uint8_t *)*h, (size_t)bin_len, b64_buf, b64_len);
                 cJSON *s = cJSON_CreateString(b64_buf);
                 free(b64_buf);
                 return s;
@@ -758,7 +733,10 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
         return make_error_result(path, "Could not resolve as table");
     }
 
-    /* List children */
+    /* Warning: depth:-1 traverses the full subtree while holding the GIL with no
+     * yield points (langbackgroundtask). On large databases this can block the
+     * runtime for the duration. Acceptable for a localhost tool; for production
+     * use, add periodic yield points or pagination. */
     cJSON *entries = cJSON_CreateArray();
     int count = 0;
     bool truncated = false;

@@ -109,6 +109,8 @@ static int process_line(char *line, size_t len, transport_t *transport) {
 int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
     (void)options;
 
+    int stdin_flags = -1;  /* saved stdin fcntl flags; restored before return */
+
     char *line_buf = malloc(PROTOCOL_LINE_MAX);
     if (line_buf == NULL) {
         fprintf(stderr, "protocol: failed to allocate line buffer\n");
@@ -130,7 +132,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
     if (ws_server != NULL) {
         /* poll()-based event loop: multiplex stdin + WebSocket */
         /* Make stdin non-blocking for poll integration */
-        int stdin_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+        stdin_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
         fcntl(STDIN_FILENO, F_SETFL, stdin_flags | O_NONBLOCK);
 
         size_t line_pos = 0;
@@ -223,8 +225,6 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
             }
         }
 
-        /* Restore stdin blocking mode */
-        fcntl(STDIN_FILENO, F_SETFL, stdin_flags);
     } else {
         /* Simple blocking fgets loop (no WS server) */
         while (fgets(line_buf, PROTOCOL_LINE_MAX, stdin) != NULL) {
@@ -233,6 +233,14 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
                 break;
             }
         }
+    }
+
+    /* Restore stdin to blocking mode on all exit paths. When the WebSocket
+     * server is active we set stdin non-blocking for poll(); restore the
+     * original flags so downstream code (e.g. atexit handlers) isn't
+     * surprised by non-blocking stdin. */
+    if (stdin_flags >= 0) {
+        fcntl(STDIN_FILENO, F_SETFL, stdin_flags);
     }
 
     free(line_buf);

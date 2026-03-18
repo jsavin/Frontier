@@ -36,7 +36,7 @@ static const char *WS_MAGIC_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 static const char b64_table[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-static void base64_encode_raw(const uint8_t *in, size_t in_len,
+void base64_encode_raw(const uint8_t *in, size_t in_len,
                               char *out, size_t out_size) {
     size_t i = 0, j = 0;
 
@@ -181,6 +181,7 @@ static const char *find_header(const char *headers, const char *name) {
     const char *p = headers;
     size_t name_len = strlen(name);
 
+    /* Only match at line starts — p always points to the beginning of a line. */
     while (*p) {
         if (strncasecmp(p, name, name_len) == 0) {
             p += name_len;
@@ -189,7 +190,7 @@ static const char *find_header(const char *headers, const char *name) {
             /* Return pointer to value start */
             return p;
         }
-        /* Skip to next line */
+        /* Skip to next line start */
         while (*p && *p != '\n') p++;
         if (*p == '\n') p++;
     }

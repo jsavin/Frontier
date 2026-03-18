@@ -215,9 +215,9 @@ static void handle_frame(ws_conn_t *conn) {
                 int shutdown = op_dispatch(json, frame.payload_len, &transport);
                 free(json);
 
-                /* Propagate write errors: ws_write_line closes the fd and sets
-                 * wctx.fd = -1 on failure. Sync that back to conn so the
-                 * next poll iteration doesn't use a stale/reused fd. */
+                /* Sync write-error state back to conn. If op_dispatch is extended to support
+                 * streaming (multiple write_line calls), consider storing ws_conn_t* directly
+                 * in ws_transport_ctx_t to avoid caller-side sync. */
                 if (wctx.fd < 0) {
                     conn->fd = -1;
                     conn->state = WS_STATE_EMPTY;
@@ -272,6 +272,24 @@ static void handle_frame(ws_conn_t *conn) {
             case WS_OPCODE_PONG:
                 /* Ignore unsolicited pongs */
                 break;
+
+            case WS_OPCODE_CONTINUATION:
+                /* RFC 6455: send 1003 (unsupported) for fragmented messages we can't process */
+                {
+                    uint8_t close_payload[2];
+                    close_payload[0] = (uint8_t)(1003 >> 8);
+                    close_payload[1] = (uint8_t)(1003 & 0xFF);
+                    size_t close_len;
+                    uint8_t *close_frame = ws_frame_encode(WS_OPCODE_CLOSE,
+                                                            close_payload, 2, &close_len);
+                    if (close_frame != NULL) {
+                        write(conn->fd, close_frame, close_len);
+                        free(close_frame);
+                    }
+                }
+                log_debug(LOG_COMP_GENERAL, "ws: unsupported continuation frame, closing (fd=%d)", conn->fd);
+                close_client(conn);
+                return;
 
             default:
                 break;

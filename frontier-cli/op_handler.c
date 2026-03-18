@@ -58,7 +58,7 @@
 /* WARNING: strstr-based key matching can match a key name that appears
  * inside a string value. Only safe for machine-generated JSON with
  * predictable keys. Do not use for user-controlled key names. */
-char *op_json_extract_string(const char *json, const char *key) {
+static char *op_json_extract_string(const char *json, const char *key) {
     char pattern[128];
     snprintf(pattern, sizeof(pattern), "\"%s\"", key);
 
@@ -181,7 +181,7 @@ char *op_json_extract_string(const char *json, const char *key) {
  * Extract a JSON integer value for a given key.
  * Returns the integer value, or LONG_MIN if not found.
  */
-long op_json_extract_int(const char *json, const char *key) {
+static long op_json_extract_int(const char *json, const char *key) {
     char pattern[128];
     snprintf(pattern, sizeof(pattern), "\"%s\"", key);
 
@@ -419,7 +419,15 @@ static void handle_clear_context(long id, transport_t *transport) {
 
     /* Reset error state to a known baseline. These are intentional
      * protocol-level resets (not mid-operation mutations), so no context
-     * guard is needed — we're establishing a clean state, not restoring one. */
+     * guard is needed — we're establishing a clean state, not restoring one.
+     *
+     * Note: This resets global error state (langerrordisable, langerrorlogdisable,
+     * fllangerror) for the entire process. Over the WebSocket transport, multiple
+     * long-lived clients share a single process lifetime, so one client's
+     * clearContext affects all subsequent operations. The GIL serializes access
+     * so there's no race, but the blast radius is process-wide.
+     * Acceptable for a localhost-only tool; would need per-session state for
+     * multi-user use. */
     langerrordisable = 0;
     langerrorlogdisable = 0;
     fllangerror = false;
