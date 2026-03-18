@@ -28,6 +28,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <poll.h>
 
 /* Global server pointer — set by main.c, used by repl.c event loop */
 ws_server_t *g_ws_server = NULL;
@@ -57,11 +58,16 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
         if (n < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                /* Non-blocking socket can't accept more data right now.
-                 * For this initial implementation, drop the remainder. */
-                log_debug(LOG_COMP_GENERAL, "ws: partial write (fd=%d): %zu/%zu bytes",
-                          wctx->fd, written, frame_len);
-                break;
+                /* Wait briefly for socket to become writable.
+                 * For localhost, this resolves quickly. */
+                struct pollfd pfd = { .fd = wctx->fd, .events = POLLOUT };
+                int pret = poll(&pfd, 1, 1000);  /* 1 second timeout */
+                if (pret <= 0) {
+                    log_debug(LOG_COMP_GENERAL, "ws: write stalled (fd=%d): %zu/%zu bytes",
+                              wctx->fd, written, frame_len);
+                    break;
+                }
+                continue;  /* Retry the write */
             }
             log_debug(LOG_COMP_GENERAL, "ws: write failed (fd=%d): %s",
                       wctx->fd, strerror(errno));
@@ -323,6 +329,11 @@ int ws_server_pollfds(ws_server_t *server, struct pollfd *fds, int start_index) 
 }
 
 void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_index) {
+    /* PRECONDITION: Must be called with GIL held on the main thread.
+     * This function dispatches operations that access Frontier runtime globals
+     * (hash tables, lang APIs, etc.) which are not thread-safe (see ADR-014).
+     * Currently called from: REPL event loop (repl.c) and protocol_main() poll loop.
+     * Adding calls from other contexts requires GIL acquisition first. */
 
     int idx = start_index;
 

@@ -940,6 +940,10 @@ class TestRunner:
               - results: list of per-item assertions (each a dict of key/value checks)
               - error_contains: string expected in error message
         """
+        # Note: If a test fails before its cleanup step, stale test_proto_*
+        # entries may remain in workspace. This is acceptable for now — tests
+        # use unique prefixes and check specific paths, so stale entries from
+        # prior runs don't cause false failures.
         if self.protocol_executor is None or not self.protocol_executor.is_alive:
             return TestResult(
                 test.name, False,
@@ -992,7 +996,15 @@ class TestRunner:
 
     @staticmethod
     def _validate_protocol_response(resp: dict, validate: dict, step_desc: str) -> Optional[str]:
-        """Validate a raw protocol response against assertions. Returns error string or None."""
+        """Validate a raw protocol response against assertions. Returns error string or None.
+
+        Type coercion rules:
+        - 'success' field: strict type match (bool only, catches "true" vs true)
+        - '_strict_type' assertions: strict type + value match
+        - All other fields: flexible comparison (falls back to str() if types differ)
+
+        Use _strict_type when the JSON wire type matters (e.g., number vs string).
+        """
 
         # Check top-level success
         if 'success' in validate:

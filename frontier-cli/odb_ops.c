@@ -616,6 +616,11 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
         return make_error_result(path, "Failed to assign value");
     }
 
+    /* Exempt heap-allocated values from the tmp stack so the GC doesn't
+     * collect the handle while it's stored in the persistent hash table.
+     * See docs/ARCHITECTURAL_ANTIPATTERNS.md (Tmp Stack Ownership). */
+    exemptfromtmpstack(&val);
+
     cJSON *result = cJSON_CreateObject();
     cJSON_AddStringToObject(result, "path", path);
     cJSON_AddBoolToObject(result, "success", 1);
@@ -623,6 +628,15 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
 }
 
 cJSON *odb_list_children(const char *path, int depth, int max_results) {
+
+    /* Validate parameters — reject negative max_results and out-of-range depth.
+     * depth == -1 is valid (full recursive), but other negatives are not. */
+    if (max_results < 0) {
+        max_results = 10000;  /* default */
+    }
+    if (depth < -1) {
+        return make_error_result(path, "Invalid depth (use -1 for recursive, 0+ for limited)");
+    }
 
     /* depth 0 = just confirm it exists */
     if (depth == 0) {

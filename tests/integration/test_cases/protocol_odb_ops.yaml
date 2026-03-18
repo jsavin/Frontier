@@ -324,7 +324,9 @@ tests:
           success: true
           results:
             - type: "double"
-        description: "verify double (type only - floating point comparison is fragile)"
+              _pattern:
+                value: "^3\\.14"
+        description: "verify double value starts with 3.14"
       - op: "odb/delete"
         params:
           items:
@@ -678,3 +680,47 @@ tests:
         params: {}
         validate:
           success: false
+
+  # ========================================================================
+  # Empty batch (edge case)
+  # ========================================================================
+
+  - name: "odb/get - empty items array"
+    description: "Sending an empty items array should succeed with empty results"
+    protocol_ops:
+      - op: "odb/get"
+        params:
+          items: []
+        validate:
+          success: true
+          result_count: 0
+
+  - name: "odb/set - empty items array"
+    description: "Sending an empty items array should succeed with empty results"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items: []
+        validate:
+          success: true
+          result_count: 0
+
+  - name: "odb/list - empty items array"
+    description: "Sending an empty items array should succeed with empty results"
+    protocol_ops:
+      - op: "odb/list"
+        params:
+          items: []
+        validate:
+          success: true
+          result_count: 0
+
+  - name: "odb/delete - empty items array"
+    description: "Sending an empty items array should succeed with empty results"
+    protocol_ops:
+      - op: "odb/delete"
+        params:
+          items: []
+        validate:
+          success: true
+          result_count: 0
