@@ -7,7 +7,7 @@
  * writes one JSON response line to stdout. The actual operation logic lives
  * in op_handler.c; this file only handles the stdio framing.
  *
- * When a WebSocket server is active (g_ws_server != NULL), uses poll() to
+ * When a WebSocket server is active (ws_server != NULL), uses poll() to
  * multiplex between stdin and WebSocket connections. Otherwise uses blocking
  * fgets() for backwards compatibility.
  *
@@ -106,7 +106,7 @@ static int process_line(char *line, size_t len, transport_t *transport) {
  * Main protocol loop
  * ======================================================================== */
 
-int protocol_main(cli_options_t *options) {
+int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
     (void)options;
 
     char *line_buf = malloc(PROTOCOL_LINE_MAX);
@@ -127,7 +127,7 @@ int protocol_main(cli_options_t *options) {
 
     log_info(LOG_COMP_GENERAL, "Protocol mode: ready for NDJSON on stdin");
 
-    if (g_ws_server != NULL) {
+    if (ws_server != NULL) {
         /* poll()-based event loop: multiplex stdin + WebSocket */
         /* Make stdin non-blocking for poll integration */
         int stdin_flags = fcntl(STDIN_FILENO, F_GETFL, 0);
@@ -153,7 +153,7 @@ int protocol_main(cli_options_t *options) {
             nfds = 1;
 
             int ws_start = nfds;
-            nfds += ws_server_pollfds(g_ws_server, pfds, ws_start);
+            nfds += ws_server_pollfds(ws_server, pfds, ws_start);
 
             int ready = poll(pfds, (nfds_t)nfds, PROTOCOL_POLL_TIMEOUT_MS);
 
@@ -164,7 +164,7 @@ int protocol_main(cli_options_t *options) {
             }
 
             /* Handle WebSocket events */
-            ws_server_handle_events(g_ws_server, pfds, ws_start);
+            ws_server_handle_events(ws_server, pfds, ws_start);
 
             /* Handle stdin data */
             if (!stdin_eof && (pfds[0].revents & POLLIN)) {

@@ -664,8 +664,11 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
      * No runtime assertion is available since the GIL is a simple mutex
      * without an "is-held-by-current-thread" query API. */
 
-    /* TODO: Consider per-connection rate limiting or wall-clock timeout
-     * for expensive operations (odb/list depth:-1, script/eval). */
+    /* Rate limiting: Not implemented in this PR. Per-connection request
+     * counting or wall-clock timeouts for expensive operations (odb/list
+     * depth:-1, script/eval) are tracked as a future enhancement.
+     * The server currently relies on localhost-only binding and the
+     * WS_MAX_CLIENTS cap (8) to limit exposure. */
 
     /* Parse envelope fields (op, id) using cJSON for safety.
      * WebSocket clients can send crafted JSON where strstr-based
@@ -685,6 +688,10 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
     long id = (cJSON_IsNumber(id_json)) ? (long)id_json->valuedouble : LONG_MIN;
 
     cJSON_Delete(envelope);
+
+    /* Memory ownership: `op` is strdup'd and freed at the end of this function.
+     * The shutdown handler frees op before its early return. All other paths
+     * fall through to the free(op) at function end. No leak on any path. */
 
     if (op == NULL) {
         if (id != LONG_MIN) {

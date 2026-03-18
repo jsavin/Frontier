@@ -33,11 +33,38 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <ctype.h>
+#include <stdint.h>
 
 #define MAX_RECURSION_DEPTH 32
 
 extern hdlhashtable roottable;
+
+/* ========================================================================
+ * Minimal base64 encoder for binary value serialization
+ * ======================================================================== */
+
+static const char odb_b64_table[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static void odb_base64_encode(const uint8_t *in, size_t in_len,
+                               char *out, size_t out_size) {
+    size_t i = 0, j = 0;
+
+    while (i < in_len && j + 4 < out_size) {
+        uint32_t a = in[i++];
+        int bytes_in_triple = 1;
+        uint32_t b = 0, c = 0;
+        if (i < in_len) { b = in[i++]; bytes_in_triple++; }
+        if (i < in_len) { c = in[i++]; bytes_in_triple++; }
+        uint32_t triple = (a << 16) | (b << 8) | c;
+
+        out[j++] = odb_b64_table[(triple >> 18) & 0x3F];
+        out[j++] = odb_b64_table[(triple >> 12) & 0x3F];
+        out[j++] = (bytes_in_triple < 2) ? '=' : odb_b64_table[(triple >> 6) & 0x3F];
+        out[j++] = (bytes_in_triple < 3) ? '=' : odb_b64_table[triple & 0x3F];
+    }
+    out[j] = '\0';
+}
 
 /* ========================================================================
  * Internal helpers
@@ -64,7 +91,7 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
      * unsanitized input could execute arbitrary expressions. */
     for (size_t i = 0; i < pathlen; i++) {
         char ch = path[i];
-        if (!isalnum((unsigned char)ch) && ch != '.' && ch != '_') {
+        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')) && ch != '.' && ch != '_') {
             return false;
         }
     }
@@ -300,8 +327,23 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
 
         case binaryvaluetype:
             *out_type = "binary";
-            /* TODO: base64 encode for binary data */
-            return cJSON_CreateString("[binary data]");
+            {
+                Handle h = val->data.binaryvalue;
+                if (h == nil || gethandlesize(h) == 0) {
+                    return cJSON_CreateString("");
+                }
+                long bin_len = gethandlesize(h);
+                /* base64 output: 4 chars per 3 input bytes, rounded up, plus NUL */
+                size_t b64_len = (((size_t)bin_len + 2) / 3) * 4 + 1;
+                char *b64_buf = malloc(b64_len);
+                if (b64_buf == NULL) {
+                    return cJSON_CreateString("");
+                }
+                odb_base64_encode((const uint8_t *)*h, (size_t)bin_len, b64_buf, b64_len);
+                cJSON *s = cJSON_CreateString(b64_buf);
+                free(b64_buf);
+                return s;
+            }
 
         case listvaluetype:
         case recordvaluetype:
@@ -377,7 +419,8 @@ static tyvaluetype parse_value_type(const char *type_str) {
  */
 static int list_table_entries(hdlhashtable htable, const char *path_prefix,
                               int depth, int max_results, int *count_ptr,
-                              cJSON *entries, int recursion_level) {
+                              cJSON *entries, int recursion_level,
+                              bool *truncated) {
 
     if (recursion_level > MAX_RECURSION_DEPTH) {
         return *count_ptr;  /* Stop recursing to prevent stack overflow */
@@ -400,6 +443,7 @@ static int list_table_entries(hdlhashtable htable, const char *path_prefix,
         char child_path[1024];
         size_t needed = strlen(path_prefix) + 1 + strlen(name) + 1;
         if (needed > sizeof(child_path)) {
+            if (truncated != NULL) *truncated = true;
             hnode = (**hnode).sortedlink;
             continue;  /* Skip entry rather than produce a truncated path */
         }
@@ -428,7 +472,7 @@ static int list_table_entries(hdlhashtable htable, const char *path_prefix,
                 int sub_depth = (depth == -1) ? -1 : depth - 1;
                 list_table_entries(hsubtable, child_path, sub_depth,
                                    max_results, count_ptr, entries,
-                                   recursion_level + 1);
+                                   recursion_level + 1, truncated);
             }
         }
 
@@ -555,7 +599,7 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
         case doublevaluetype: {
             double d = cJSON_IsNumber(value_json) ? value_json->valuedouble : 0.0;
             if (!setdoublevalue(d, &val)) {
-                return make_error_result(path, "Memory allocation failed for double");
+                return make_error_result(path, "Memory allocation failed");
             }
             break;
         }
@@ -600,7 +644,7 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
                         val.data.longvalue = (long)d;
                     } else {
                         if (!setdoublevalue(d, &val)) {
-                            return make_error_result(path, "Memory allocation failed for double");
+                            return make_error_result(path, "Memory allocation failed");
                         }
                     }
                 } else if (cJSON_IsBool(value_json)) {
@@ -704,12 +748,16 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
     /* List children */
     cJSON *entries = cJSON_CreateArray();
     int count = 0;
-    list_table_entries(target_table, path, depth, max_results, &count, entries, 0);
+    bool truncated = false;
+    list_table_entries(target_table, path, depth, max_results, &count, entries, 0, &truncated);
 
     cJSON *result = cJSON_CreateObject();
     if (result == NULL) return NULL;
     cJSON_AddStringToObject(result, "path", path);
     cJSON_AddItemToObject(result, "entries", entries);
+    if (truncated) {
+        cJSON_AddBoolToObject(result, "truncated", 1);
+    }
     cJSON_AddBoolToObject(result, "success", 1);
     return result;
 }

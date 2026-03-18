@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 /* RFC 6455 magic GUID for Sec-WebSocket-Accept */
 static const char *WS_MAGIC_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
@@ -91,7 +92,11 @@ ws_frame_status_t ws_frame_decode(uint8_t *buf, size_t len, ws_frame_t *frame) {
     /* Reject frames that exceed the receive buffer, and check for
      * integer overflow in header_len + payload_len. Without the size
      * check, a frame between WS_MAX_FRAME_PAYLOAD and 16MB would fill
-     * the buffer and return INCOMPLETE forever, hanging the connection. */
+     * the buffer and return INCOMPLETE forever, hanging the connection.
+     *
+     * The 4-byte mask key is not included in the overflow check because
+     * WS_MAX_FRAME_PAYLOAD (256KB) + max header (10) + mask (4) cannot
+     * overflow size_t on any supported platform. */
     if (payload_len > WS_MAX_FRAME_PAYLOAD || header_len + (size_t)payload_len < header_len) {
         return WS_FRAME_ERROR;
     }
@@ -231,9 +236,39 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
     }
     ws_key[ki] = '\0';
 
-    /* TODO: Validate Origin header to prevent cross-site WebSocket hijacking.
-     * Currently any page that can reach the server port can open a connection.
-     * An allowlist of localhost/127.0.0.1 would reduce attack surface. */
+    /* Validate Origin header to prevent cross-site WebSocket hijacking.
+     * Only allow connections from localhost origins. If no Origin is present,
+     * allow the connection (non-browser clients like wscat don't send Origin). */
+    const char *origin = find_header(str, "Origin:");
+    if (origin != NULL) {
+        /* Extract origin value (up to CRLF) */
+        char origin_val[256];
+        int oi = 0;
+        while (*origin && *origin != '\r' && *origin != '\n' && oi < 255) {
+            origin_val[oi++] = *origin++;
+        }
+        origin_val[oi] = '\0';
+        /* Trim trailing whitespace */
+        while (oi > 0 && (origin_val[oi-1] == ' ' || origin_val[oi-1] == '\t')) {
+            origin_val[--oi] = '\0';
+        }
+
+        /* Check against localhost allowlist */
+        bool origin_ok = false;
+        /* Common localhost origin patterns */
+        if (strncasecmp(origin_val, "http://localhost", 16) == 0 ||
+            strncasecmp(origin_val, "https://localhost", 17) == 0 ||
+            strncasecmp(origin_val, "http://127.0.0.1", 16) == 0 ||
+            strncasecmp(origin_val, "https://127.0.0.1", 17) == 0 ||
+            strncasecmp(origin_val, "http://[::1]", 12) == 0 ||
+            strncasecmp(origin_val, "https://[::1]", 13) == 0) {
+            origin_ok = true;
+        }
+
+        if (!origin_ok) {
+            return -1;
+        }
+    }
 
     /* Trim trailing whitespace */
     while (ki > 0 && (ws_key[ki-1] == ' ' || ws_key[ki-1] == '\t')) {

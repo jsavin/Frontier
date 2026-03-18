@@ -653,6 +653,19 @@ tests:
           results:
             - success: false
 
+  - name: "odb/get - path with semicolon rejected"
+    description: "Paths with semicolons should be rejected to prevent expression injection"
+    protocol_ops:
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace;system"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: false
+
   # ========================================================================
   # Per-item error isolation
   # ========================================================================

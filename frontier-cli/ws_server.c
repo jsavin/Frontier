@@ -30,9 +30,6 @@
 #include <arpa/inet.h>
 #include <poll.h>
 
-/* Global server pointer — set by main.c, used by repl.c event loop */
-ws_server_t *g_ws_server = NULL;
-
 /* ========================================================================
  * WebSocket transport — write_line callback for transport_t
  *

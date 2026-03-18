@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Protocol Odb Ops (protocol_odb_ops) - 27 tests: 27 pass (100%)</title>
-    <dateCreated>Mon, 16 Mar 2026 22:29:18 GMT</dateCreated>
+    <title>Protocol Odb Ops (protocol_odb_ops) - 33 tests: 33 pass (100%)</title>
+    <dateCreated>Wed, 18 Mar 2026 17:22:03 GMT</dateCreated>
   </head>
   <body>
     <outline text="odb/list - list workspace children - List top-level children of workspace table">
@@ -72,7 +72,7 @@
     </outline>
     <outline text="odb/set - create double value - Create a floating-point (double) value and read it back">
       <outline text="Metadata">
-        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_double', 'type': 'double', 'value': 3.14159}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set double'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_double'}]}, 'validate': {'success': True, 'results': [{'type': 'double'}]}, 'description': 'verify double (type only - floating point comparison is fragile)'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_double'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_double', 'type': 'double', 'value': 3.14159}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set double'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_double'}]}, 'validate': {'success': True, 'results': [{'type': 'double', '_pattern': {'value': '^3\\.14'}}]}, 'description': 'verify double value starts with 3.14'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_double'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
       </outline>
     </outline>
     <outline text="odb/set - overwrite existing value - Setting a path that already exists should overwrite it">
@@ -115,6 +115,16 @@
         <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.nonexistent_parent_xyz.child', 'type': 'string', 'value': 'test'}]}, 'validate': {'success': True, 'results': [{'success': False}]}}]"/>
       </outline>
     </outline>
+    <outline text="odb/get - path with invalid characters rejected - Paths with spaces, hyphens, or special chars should be rejected by the allowlist">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test-hyphen'}]}, 'validate': {'success': True, 'result_count': 1, 'results': [{'success': False}]}}]"/>
+      </outline>
+    </outline>
+    <outline text="odb/set - path with space rejected - Paths with spaces should be rejected">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test space', 'type': 'string', 'value': 'should fail'}]}, 'validate': {'success': True, 'result_count': 1, 'results': [{'success': False}]}}]"/>
+      </outline>
+    </outline>
     <outline text="odb/get - mixed success and failure in batch - One bad path should not fail the entire batch">
       <outline text="Metadata">
         <outline text="protocol_ops: [{'op': 'odb/get', 'params': {'items': [{'path': 'workspace'}, {'path': 'workspace.this_path_does_not_exist_abc'}, {'path': 'system'}]}, 'validate': {'success': True, 'result_count': 3, 'results': [{'type': 'table'}, {'success': False}, {'type': 'table'}]}}]"/>
@@ -138,6 +148,26 @@
     <outline text="odb/delete - missing items array - Omitting params.items should return error">
       <outline text="Metadata">
         <outline text="protocol_ops: [{'op': 'odb/delete', 'params': {}, 'validate': {'success': False}}]"/>
+      </outline>
+    </outline>
+    <outline text="odb/get - empty items array - Sending an empty items array should succeed with empty results">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'odb/get', 'params': {'items': []}, 'validate': {'success': True, 'result_count': 0}}]"/>
+      </outline>
+    </outline>
+    <outline text="odb/set - empty items array - Sending an empty items array should succeed with empty results">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': []}, 'validate': {'success': True, 'result_count': 0}}]"/>
+      </outline>
+    </outline>
+    <outline text="odb/list - empty items array - Sending an empty items array should succeed with empty results">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'odb/list', 'params': {'items': []}, 'validate': {'success': True, 'result_count': 0}}]"/>
+      </outline>
+    </outline>
+    <outline text="odb/delete - empty items array - Sending an empty items array should succeed with empty results">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'odb/delete', 'params': {'items': []}, 'validate': {'success': True, 'result_count': 0}}]"/>
       </outline>
     </outline>
   </body>

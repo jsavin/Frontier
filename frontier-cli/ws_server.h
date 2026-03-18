@@ -51,13 +51,6 @@ typedef struct {
 } ws_server_t;
 
 /*
- * Global pointer to the active WebSocket server.
- * Set by main.c when --ws-port is specified, used by the REPL event loop
- * to include WS sockets in its poll() array.
- */
-extern ws_server_t *g_ws_server;
-
-/*
  * Initialize the WebSocket server — creates and binds the listen socket.
  * Returns 0 on success, -1 on error.
  */

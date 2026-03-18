@@ -43,7 +43,7 @@
 #include "../Common/headers/process.h"      /* agentsenabled, agentscheduler_tick */
 #include "../Common/headers/langinternal.h" /* flreplmode */
 #include "../Common/headers/threadregistry.h" /* headless_backgroundtask */
-#include "ws_server.h"                       /* g_ws_server, ws_server_* */
+#include "ws_server.h"                       /* ws_server_t, ws_server_* */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -2020,7 +2020,7 @@ static int repl_main_blocking(void) {
 /* Main REPL entry point: runs event loop with non-blocking linenoise.
  * Falls back to blocking mode if stdin is not a TTY.
  */
-int repl_main(cli_options_t *options) {
+int repl_main(cli_options_t *options, ws_server_t *ws_server) {
     (void)options;  /* Unused in Phase 1 */
 
     boolean running = true;
@@ -2089,16 +2089,16 @@ int repl_main(cli_options_t *options) {
         int nfds = 1;
         int ws_start = -1;
 
-        if (g_ws_server != NULL) {
+        if (ws_server != NULL) {
             ws_start = nfds;
-            nfds += ws_server_pollfds(g_ws_server, pfds, nfds);
+            nfds += ws_server_pollfds(ws_server, pfds, nfds);
         }
 
         int ready = poll(pfds, (nfds_t)nfds, POLL_TIMEOUT_MS);
 
         // 6.1.1 Handle WebSocket events (before stdin to avoid latency)
-        if (ready > 0 && g_ws_server != NULL && ws_start >= 0) {
-            ws_server_handle_events(g_ws_server, pfds, ws_start);
+        if (ready > 0 && ws_server != NULL && ws_start >= 0) {
+            ws_server_handle_events(ws_server, pfds, ws_start);
         }
 
         // 6.2 Feed input to linenoise if available

@@ -28,11 +28,12 @@
 #define PROTOCOL_HANDLER_H
 
 #include "cli_parser.h"
+#include "ws_server.h"
 
 /*
  * Main protocol loop. Reads NDJSON from stdin, dispatches operations,
  * writes NDJSON responses to stdout. Returns exit code (0 = clean shutdown).
  */
-int protocol_main(cli_options_t *options);
+int protocol_main(cli_options_t *options, ws_server_t *ws_server);
 
 #endif /* PROTOCOL_HANDLER_H */

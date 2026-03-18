@@ -383,7 +383,6 @@ int main(int argc, char* argv[]) {
     if (g_cli_options.ws_port > 0) {
         if (ws_server_init(&ws_server, g_cli_options.ws_port) == 0) {
             ws_server_ptr = &ws_server;
-            g_ws_server = ws_server_ptr;
         } else {
             log_error(LOG_COMP_GENERAL, "Failed to start WebSocket server on port %d", g_cli_options.ws_port);
         }
@@ -395,20 +394,19 @@ int main(int argc, char* argv[]) {
 
     if (g_cli_options.protocol_mode) {
         // NDJSON protocol mode - structured JSON over stdin/stdout
-        exit_code = protocol_main(&g_cli_options);
+        exit_code = protocol_main(&g_cli_options, ws_server_ptr);
     } else if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {
         // Batch mode - execute script and exit
         success = execute_script_mode();
         exit_code = success ? 0 : 1;
     } else {
         // Interactive mode - enter REPL
-        exit_code = repl_main(&g_cli_options);
+        exit_code = repl_main(&g_cli_options, ws_server_ptr);
     }
 
     // Shutdown WebSocket server
     if (ws_server_ptr != NULL) {
         ws_server_shutdown(ws_server_ptr);
-        g_ws_server = NULL;
     }
 
     // Cleanup

@@ -15,6 +15,7 @@
 #define REPL_H
 
 #include "cli_parser.h"
+#include "ws_server.h"
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/lang.h"  /* For hdlhashtable */
 
@@ -23,7 +24,7 @@
 
 // Main REPL entry point
 // Returns: exit code (0 for success, 1 for error)
-int repl_main(cli_options_t *options);
+int repl_main(cli_options_t *options, ws_server_t *ws_server);
 
 /* Result from index-aware path navigation (repl_navigate_path_ex).
  * Can represent either a table or a scalar value at the end of a path. */

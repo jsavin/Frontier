@@ -1116,9 +1116,43 @@ class TestRunner:
             if len(entries) != expected:
                 return f"[{step_desc}] Expected {expected} entries, got {len(entries)}"
 
-        # TODO: entries_min, entries_count, and entries_include currently only
-        # inspect results[0].entries. For multi-path odb/list batches, extend
-        # these to accept an index parameter (e.g., entries_min_0, entries_min_1).
+        # Indexed entries validators (entries_count_N, entries_min_N, entries_include_N)
+        # inspect results[N].entries for multi-path odb/list batches.
+        for key in validate:
+            for prefix, checker in [
+                ('entries_count_', 'count'),
+                ('entries_min_', 'min'),
+                ('entries_include_', 'include'),
+            ]:
+                if key.startswith(prefix):
+                    idx_str = key[len(prefix):]
+                    try:
+                        idx = int(idx_str)
+                    except ValueError:
+                        continue
+                    results = resp.get('results', [])
+                    if idx >= len(results):
+                        return f"[{step_desc}] Result index {idx} out of range (have {len(results)} results)"
+                    entries = results[idx].get('entries', [])
+                    expected_val = validate[key]
+
+                    if checker == 'count':
+                        if len(entries) != expected_val:
+                            return f"[{step_desc}] results[{idx}]: Expected {expected_val} entries, got {len(entries)}"
+                    elif checker == 'min':
+                        if len(entries) < expected_val:
+                            return f"[{step_desc}] results[{idx}]: Expected at least {expected_val} entries, got {len(entries)}"
+                    elif checker == 'include':
+                        entry_names = {e.get('name') for e in entries}
+                        for expected_entry in expected_val:
+                            name = expected_entry.get('name')
+                            if name not in entry_names:
+                                return f"[{step_desc}] results[{idx}]: Expected entry named {name!r} not found"
+                            if 'type' in expected_entry:
+                                matching = [e for e in entries if e.get('name') == name]
+                                if matching and matching[0].get('type') != expected_entry['type']:
+                                    return (f"[{step_desc}] results[{idx}]: Entry {name!r}: expected type "
+                                            f"{expected_entry['type']!r}, got {matching[0].get('type')!r}")
 
         # Check entries_min (at least N entries)
         if 'entries_min' in validate:
