@@ -215,6 +215,20 @@ static void handle_frame(ws_conn_t *conn) {
                 int shutdown = op_dispatch(json, frame.payload_len, &transport);
                 free(json);
 
+                /* Propagate write errors: ws_write_line closes the fd and sets
+                 * wctx.fd = -1 on failure. Sync that back to conn so the
+                 * next poll iteration doesn't use a stale/reused fd. */
+                if (wctx.fd < 0) {
+                    conn->fd = -1;
+                    conn->state = WS_STATE_EMPTY;
+                    if (conn->recv_buf != NULL) {
+                        free(conn->recv_buf);
+                        conn->recv_buf = NULL;
+                    }
+                    conn->recv_len = 0;
+                    return;
+                }
+
                 if (shutdown) {
                     /* Send close frame */
                     size_t close_len;

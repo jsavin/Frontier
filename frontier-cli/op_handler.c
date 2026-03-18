@@ -360,9 +360,24 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
  * ======================================================================== */
 
 static void handle_script_eval(long id, const char *json_line, transport_t *transport) {
-    char *expression = op_json_extract_string(json_line, "expression");
-    if (expression == NULL) {
+    /* Use cJSON for expression extraction — strstr-based op_json_extract_string
+     * could match "expression" inside a string value from untrusted WebSocket input. */
+    cJSON *root = cJSON_Parse(json_line);
+    if (root == NULL) {
+        send_error(id, "Invalid JSON", transport);
+        return;
+    }
+    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+    cJSON *expr_json = params ? cJSON_GetObjectItemCaseSensitive(params, "expression") : NULL;
+    if (!cJSON_IsString(expr_json) || expr_json->valuestring == NULL) {
         send_error(id, "Missing 'expression' in params", transport);
+        cJSON_Delete(root);
+        return;
+    }
+    char *expression = strdup(expr_json->valuestring);
+    cJSON_Delete(root);
+    if (expression == NULL) {
+        send_error(id, "Memory allocation failed", transport);
         return;
     }
 

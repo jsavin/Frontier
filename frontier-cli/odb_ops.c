@@ -625,7 +625,9 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
             const char *s = cJSON_IsString(value_json) ? value_json->valuestring : "";
             bigstring bsaddr;
             size_t slen = strlen(s);
-            if (slen > 255) slen = 255;
+            if (slen > 255) {
+                return make_error_result(path, "Address value too long (max 255 characters)");
+            }
             setstringlength(bsaddr, (short)slen);
             memcpy(stringbaseaddress(bsaddr), s, slen);
             if (!setexemptaddressvalue(nil, bsaddr, &val)) {
@@ -677,6 +679,7 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
     pophashtable();
 
     if (!ok) {
+        disposevaluerecord(val, false);
         return make_error_result(path, "Failed to assign value");
     }
 
