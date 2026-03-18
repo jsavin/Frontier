@@ -413,7 +413,8 @@ static tyvaluetype parse_value_type(const char *type_str) {
     if (strcmp(type_str, "date") == 0)      return datevaluetype;
     if (strcmp(type_str, "direction") == 0) return directionvaluetype;
     if (strcmp(type_str, "address") == 0)   return addressvaluetype;
-    if (strcmp(type_str, "binary") == 0)    return binaryvaluetype;
+    /* binary type is readable via odb/get (base64-encoded) but not settable
+     * via odb/set — creating binary values requires base64 decode (future). */
     return novaluetype;
 }
 
@@ -622,12 +623,14 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
 
         case addressvaluetype: {
             const char *s = cJSON_IsString(value_json) ? value_json->valuestring : "";
-            Handle h;
-            if (!newfilledhandle((void *)s, strlen(s), &h)) {
+            bigstring bsaddr;
+            size_t slen = strlen(s);
+            if (slen > 255) slen = 255;
+            setstringlength(bsaddr, (short)slen);
+            memcpy(stringbaseaddress(bsaddr), s, slen);
+            if (!setexemptaddressvalue(nil, bsaddr, &val)) {
                 return make_error_result(path, "Memory allocation failed");
             }
-            val.valuetype = addressvaluetype;
-            val.data.stringvalue = h;
             break;
         }
 

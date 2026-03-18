@@ -1025,7 +1025,7 @@ class TestRunner:
         if 'results' in validate:
             actual_results = resp.get('results', [])
             expected_results = validate['results']
-            if len(expected_results) > len(actual_results):
+            if len(actual_results) != len(expected_results):
                 return (f"[{step_desc}] Expected {len(expected_results)} results, "
                         f"got {len(actual_results)}")
 

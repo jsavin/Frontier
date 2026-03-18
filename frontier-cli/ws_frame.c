@@ -288,7 +288,9 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
         ws_key[--ki] = '\0';
     }
 
-    /* Compute accept key: SHA1(key + GUID), then base64 */
+    /* Compute accept key: SHA1(key + GUID), then base64.
+     * concat[128] fits: ws_key is at most 63 chars (ki < 63 above)
+     * + WS_MAGIC_GUID is 36 chars + NUL = 100 bytes max. */
     char concat[128];
     snprintf(concat, sizeof(concat), "%s%s", ws_key, WS_MAGIC_GUID);
 

@@ -58,7 +58,7 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
                 /* Wait briefly for socket to become writable.
                  * For localhost, this resolves quickly. */
                 struct pollfd pfd = { .fd = wctx->fd, .events = POLLOUT };
-                int pret = poll(&pfd, 1, 1000);  /* 1 second timeout */
+                int pret = poll(&pfd, 1, 100);  /* 100ms — avoid stalling GIL */
                 if (pret <= 0) {
                     log_debug(LOG_COMP_GENERAL, "ws: write stalled (fd=%d): %zu/%zu bytes",
                               wctx->fd, written, frame_len);

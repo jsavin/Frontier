@@ -315,6 +315,11 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
         }
     }
 
+    /* Track whether coercion allocated a new handle (non-string types).
+     * If the value is already a string, coercetostring is a no-op and
+     * coerced shares the same handle — disposing it would double-free. */
+    boolean coerced_allocated = (coerced.valuetype != stringvaluetype);
+
     if (!coercetostring(&coerced)) {
         send_response(transport, id,
             "{\"id\":%ld,\"result\":{\"value\":null,\"type\":\"%s\"},\"success\":true}",
@@ -330,6 +335,7 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
     size_t buf_len = 0;
     FILE *f = open_memstream(&buf, &buf_len);
     if (f == NULL) {
+        if (coerced_allocated) disposevaluerecord(coerced, false);
         return;
     }
 
@@ -342,6 +348,11 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
         transport->write_line(transport->ctx, buf, buf_len);
         free(buf);
     }
+
+    /* Dispose the coerced value only if coercion allocated a new handle.
+     * String values pass through coercetostring() as a no-op, sharing the
+     * same handle as the original — the caller disposes that one. */
+    if (coerced_allocated) disposevaluerecord(coerced, false);
 }
 
 /* ========================================================================
@@ -391,6 +402,9 @@ static void handle_clear_context(long id, transport_t *transport) {
 
     repl_jump_path("");
 
+    /* Reset error state to a known baseline. These are intentional
+     * protocol-level resets (not mid-operation mutations), so no context
+     * guard is needed — we're establishing a clean state, not restoring one. */
     langerrordisable = 0;
     langerrorlogdisable = 0;
     fllangerror = false;
