@@ -35,6 +35,8 @@
 #include <math.h>
 #include <ctype.h>
 
+extern hdlhashtable roottable;
+
 /* ========================================================================
  * Internal helpers
  * ======================================================================== */
@@ -83,7 +85,6 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
     /* For bare names like "workspace" (no dot), langexpandtodotparams
      * returns htable == nil. In this case, search the root table. */
     if (ok && *htable == nil) {
-        extern hdlhashtable roottable;
         hdlhashtable hspecial;
         if (langgetspecialtable(bsname, &hspecial)) {
             *htable = hspecial;
@@ -124,7 +125,7 @@ static const char *external_type_name(tyvaluerecord *val) {
 /*
  * Get the simple type name string for a value type.
  */
-static const char *type_name_str(tyvaluetype t) {
+const char *type_name_str(tyvaluetype t) {
 
     switch (t) {
         case novaluetype:        return "none";

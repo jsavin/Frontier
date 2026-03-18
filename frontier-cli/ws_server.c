@@ -69,14 +69,22 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
                 }
                 continue;  /* Retry the write */
             }
-            log_debug(LOG_COMP_GENERAL, "ws: write failed (fd=%d): %s",
+            log_debug(LOG_COMP_GENERAL, "ws: write failed (fd=%d): %s, closing connection",
                       wctx->fd, strerror(errno));
+            close(wctx->fd);
+            wctx->fd = -1;
             break;
         }
         written += (size_t)n;
     }
 
     free(frame);
+
+    /* If we couldn't send the complete frame, close the connection
+     * to prevent sending a subsequent frame into a corrupted stream. */
+    if (written < frame_len) {
+        shutdown(wctx->fd, SHUT_WR);
+    }
 }
 
 /* ========================================================================
@@ -136,11 +144,17 @@ static void handle_handshake(ws_conn_t *conn) {
     }
 
     /* Send the upgrade response */
-    ssize_t sent = write(conn->fd, response, (size_t)n);
-    if (sent < 0) {
-        log_debug(LOG_COMP_GENERAL, "ws: failed to send handshake response");
-        close_client(conn);
-        return;
+    size_t resp_len = (size_t)n;
+    size_t resp_written = 0;
+    while (resp_written < resp_len) {
+        ssize_t sent = write(conn->fd, response + resp_written, resp_len - resp_written);
+        if (sent < 0) {
+            if (errno == EINTR) continue;
+            log_debug(LOG_COMP_GENERAL, "ws: failed to send handshake response: %s", strerror(errno));
+            close_client(conn);
+            return;
+        }
+        resp_written += (size_t)sent;
     }
 
     /* Remove consumed request bytes */

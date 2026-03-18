@@ -624,6 +624,35 @@ tests:
           results:
             - success: false
 
+
+  - name: "odb/get - path with invalid characters rejected"
+    description: "Paths with spaces, hyphens, or special chars should be rejected by the allowlist"
+    protocol_ops:
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test-hyphen"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: false
+
+  - name: "odb/set - path with space rejected"
+    description: "Paths with spaces should be rejected"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test space"
+              type: "string"
+              value: "should fail"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: false
+
   # ========================================================================
   # Per-item error isolation
   # ========================================================================

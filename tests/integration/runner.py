@@ -1082,6 +1082,10 @@ class TestRunner:
                         return (f"[{step_desc}] results[{i}].{key}: "
                                 f"expected {expected_val!r}, got {actual_val!r}")
 
+        # Note: The 'result' (singular) section does not support meta-assertions
+        # (_strict_type, _exists, _contains, _pattern) — only 'results' (plural) does.
+        # This is acceptable because script/eval responses have simple structure.
+
         # Check result (singular) — for script/eval responses which use "result" not "results"
         if 'result' in validate:
             actual_result = resp.get('result', {})
@@ -1111,6 +1115,10 @@ class TestRunner:
             expected = validate['entries_count']
             if len(entries) != expected:
                 return f"[{step_desc}] Expected {expected} entries, got {len(entries)}"
+
+        # TODO: entries_min, entries_count, and entries_include currently only
+        # inspect results[0].entries. For multi-path odb/list batches, extend
+        # these to accept an index parameter (e.g., entries_min_0, entries_min_1).
 
         # Check entries_min (at least N entries)
         if 'entries_min' in validate:

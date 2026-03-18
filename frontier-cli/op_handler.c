@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <limits.h>
 
 #include "../third_party/cJSON/cJSON.h"
 
@@ -54,6 +55,9 @@
  * Handles JSON escape sequences in the value (\n, \t, \\, \", \uXXXX).
  * Returns a malloc'd C string (caller must free), or NULL if key not found.
  */
+/* WARNING: strstr-based key matching can match a key name that appears
+ * inside a string value. Only safe for machine-generated JSON with
+ * predictable keys. Do not use for user-controlled key names. */
 char *op_json_extract_string(const char *json, const char *key) {
     char pattern[128];
     snprintf(pattern, sizeof(pattern), "\"%s\"", key);
@@ -177,7 +181,7 @@ char *op_json_extract_string(const char *json, const char *key) {
 
 /*
  * Extract a JSON integer value for a given key.
- * Returns the integer value, or -1 if not found.
+ * Returns the integer value, or LONG_MIN if not found.
  */
 long op_json_extract_int(const char *json, const char *key) {
     char pattern[128];
@@ -185,7 +189,7 @@ long op_json_extract_int(const char *json, const char *key) {
 
     const char *pos = strstr(json, pattern);
     if (pos == NULL) {
-        return -1;
+        return LONG_MIN;
     }
 
     pos += strlen(pattern);
@@ -197,34 +201,10 @@ long op_json_extract_int(const char *json, const char *key) {
     char *end;
     long val = strtol(pos, &end, 10);
     if (end == pos) {
-        return -1;
+        return LONG_MIN;
     }
 
     return val;
-}
-
-/* ========================================================================
- * Value type name for JSON response
- * ======================================================================== */
-
-static const char *valuetype_name(tyvaluetype t) {
-    switch (t) {
-        case novaluetype:       return "none";
-        case charvaluetype:     return "char";
-        case intvaluetype:      return "int";
-        case longvaluetype:     return "long";
-        case booleanvaluetype:  return "boolean";
-        case stringvaluetype:   return "string";
-        case doublevaluetype:   return "double";
-        case datevaluetype:     return "date";
-        case addressvaluetype:  return "address";
-        case directionvaluetype:return "direction";
-        case externalvaluetype: return "external";
-        case listvaluetype:     return "list";
-        case recordvaluetype:   return "record";
-        case binaryvaluetype:   return "binary";
-        default:                return "unknown";
-    }
 }
 
 /* ========================================================================
@@ -291,6 +271,13 @@ static void send_error(long id, const char *message, transport_t *transport) {
     size_t buf_len = 0;
     FILE *f = open_memstream(&buf, &buf_len);
     if (f == NULL) {
+        /* Fallback: send minimal error so client doesn't hang */
+        char fallback[256];
+        int fb = snprintf(fallback, sizeof(fallback),
+                          "{\"id\":%ld,\"success\":false,\"error\":{\"message\":\"Internal error\"}}", id);
+        if (fb > 0 && (size_t)fb < sizeof(fallback)) {
+            transport->write_line(transport->ctx, fallback, (size_t)fb);
+        }
         return;
     }
 
@@ -309,7 +296,7 @@ static void send_error(long id, const char *message, transport_t *transport) {
  * Send a success response with a script eval result value.
  */
 static void send_eval_success(long id, tyvaluerecord *val, transport_t *transport) {
-    const char *type_name = valuetype_name(val->valuetype);
+    const char *type_name = type_name_str(val->valuetype);
 
     tyvaluerecord coerced = *val;
 
@@ -675,7 +662,7 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
     long id = op_json_extract_int(json_line, "id");
 
     if (op == NULL) {
-        if (id >= 0) {
+        if (id != LONG_MIN) {
             send_error(id, "Missing 'op' field", transport);
         }
         return 0;
@@ -698,7 +685,7 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         free(op);
         return 1;  /* signal shutdown */
     } else {
-        if (id >= 0) {
+        if (id != LONG_MIN) {
             char err[256];
             snprintf(err, sizeof(err), "Unknown operation: %s", op);
             send_error(id, err, transport);
