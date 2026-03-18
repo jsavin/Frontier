@@ -403,6 +403,11 @@ static int list_table_entries(hdlhashtable htable, const char *path_prefix,
                               cJSON *entries, int recursion_level,
                               bool *truncated) {
 
+    /* Hard depth limit to prevent unbounded stack growth. Combined with the
+     * max_results cap (default 10,000), this provides two independent bounds
+     * on traversal cost. No GIL yield points (langbackgroundtask) are added
+     * mid-traversal because yielding while iterating hash table sorted links
+     * risks stale pointers if another thread mutates the table. */
     if (recursion_level > MAX_RECURSION_DEPTH) {
         return *count_ptr;  /* Stop recursing to prevent stack overflow */
     }
@@ -654,6 +659,10 @@ cJSON *odb_set_value(const char *path, const char *type_str, const cJSON *value_
     pophashtable();
 
     if (!ok) {
+        /* hashassign does NOT take ownership on failure — the caller retains
+         * ownership and must dispose the value. Verified in langhash.c:
+         * copyvaluedata failure returns false without storing; hashinsert
+         * failure returns false without storing. No double-free risk. */
         disposevaluerecord(val, false);
         return make_error_result(path, "Failed to assign value");
     }

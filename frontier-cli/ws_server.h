@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <poll.h>
+#include <time.h>
 
 /* Maximum concurrent WebSocket clients */
 #define WS_MAX_CLIENTS 8
@@ -35,12 +36,17 @@ typedef enum {
     WS_STATE_OPEN,          /* WebSocket connection established */
 } ws_conn_state_t;
 
+/* Maximum seconds a connection may remain in HANDSHAKE state before
+ * being closed. Prevents slowloris-style resource exhaustion. */
+#define WS_HANDSHAKE_TIMEOUT_SECS 5
+
 /* Per-connection state */
 typedef struct {
     int fd;
     ws_conn_state_t state;
     uint8_t *recv_buf;
     size_t recv_len;
+    time_t handshake_start;  /* time(NULL) when connection entered HANDSHAKE state */
 } ws_conn_t;
 
 /* Server state */

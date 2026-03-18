@@ -8,9 +8,8 @@
  * script/clearContext, odb/get etc., shutdown) live here so both transports share one
  * implementation.
  *
- * JSON parsing for the envelope (op, id) uses the simple string-scanning
- * helpers already proven in protocol_handler.c. ODB operations that need
- * array parsing use the vendored cJSON library.
+ * JSON parsing uses the vendored cJSON library for both envelope fields
+ * (op, id) and ODB operation parameters.
  *
  * Copyright (C) 1992-2004 UserLand Software, Inc.
  * This program is free software; you can redistribute it and/or modify
@@ -36,174 +35,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <limits.h>
 
 #include "../third_party/cJSON/cJSON.h"
-
-#define OP_MAX_STRING 8192
-
-/* ========================================================================
- * Minimal JSON field extraction (same as protocol_handler.c originals)
- *
- * These helpers extract string and integer values from a known-schema JSON
- * line. They are NOT general-purpose JSON parsers — they rely on the input
- * being machine-generated with predictable formatting.
- * ======================================================================== */
-
-/*
- * Extract a JSON string value for a given key from a JSON line.
- * Handles JSON escape sequences in the value (\n, \t, \\, \", \uXXXX).
- * Returns a malloc'd C string (caller must free), or NULL if key not found.
- */
-/* WARNING: strstr-based key matching can match a key name that appears
- * inside a string value. Only safe for machine-generated JSON with
- * predictable keys. Do not use for user-controlled key names. */
-static char *op_json_extract_string(const char *json, const char *key) {
-    char pattern[128];
-    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
-
-    const char *pos = strstr(json, pattern);
-    if (pos == NULL) {
-        return NULL;
-    }
-
-    pos += strlen(pattern);
-
-    while (*pos == ' ' || *pos == ':') {
-        pos++;
-    }
-
-    if (*pos != '"') {
-        return NULL;
-    }
-    pos++;
-
-    size_t capacity = 256;
-    size_t len = 0;
-    char *result = malloc(capacity);
-    if (result == NULL) {
-        return NULL;
-    }
-
-    while (*pos != '\0' && *pos != '"') {
-        char c;
-
-        if (*pos == '\\') {
-            pos++;
-            switch (*pos) {
-                case '"':  c = '"';  break;
-                case '\\': c = '\\'; break;
-                case '/':  c = '/';  break;
-                case 'b':  c = '\b'; break;
-                case 'f':  c = '\f'; break;
-                case 'n':  c = '\n'; break;
-                case 'r':  c = '\r'; break;
-                case 't':  c = '\t'; break;
-                case 'u': {
-                    if (pos[1] && pos[2] && pos[3] && pos[4]) {
-                        char hex[5] = { pos[1], pos[2], pos[3], pos[4], '\0' };
-                        unsigned int codepoint = (unsigned int)strtoul(hex, NULL, 16);
-                        pos += 4;
-
-                        if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
-                            if (pos[1] == '\\' && pos[2] == 'u' &&
-                                pos[3] != '\0' && pos[4] != '\0' && pos[5] != '\0' && pos[6] != '\0') {
-                                char hex2[5] = { pos[3], pos[4], pos[5], pos[6], '\0' };
-                                unsigned int low = (unsigned int)strtoul(hex2, NULL, 16);
-                                if (low >= 0xDC00 && low <= 0xDFFF) {
-                                    codepoint = 0x10000 + ((codepoint - 0xD800) << 10) + (low - 0xDC00);
-                                    pos += 6;
-                                }
-                            }
-                        }
-
-                        size_t need = (codepoint < 0x80) ? 1 : (codepoint < 0x800) ? 2 : (codepoint < 0x10000) ? 3 : 4;
-                        if (len + need >= OP_MAX_STRING) { free(result); return NULL; }
-                        if (len + need >= capacity) {
-                            capacity = (capacity + need) * 2;
-                            char *tmp = realloc(result, capacity);
-                            if (tmp == NULL) { free(result); return NULL; }
-                            result = tmp;
-                        }
-                        if (codepoint < 0x80) {
-                            c = (char)codepoint;
-                        } else if (codepoint < 0x800) {
-                            result[len++] = (char)(0xC0 | (codepoint >> 6));
-                            result[len++] = (char)(0x80 | (codepoint & 0x3F));
-                            pos++;
-                            continue;
-                        } else if (codepoint < 0x10000) {
-                            result[len++] = (char)(0xE0 | (codepoint >> 12));
-                            result[len++] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-                            result[len++] = (char)(0x80 | (codepoint & 0x3F));
-                            pos++;
-                            continue;
-                        } else {
-                            result[len++] = (char)(0xF0 | (codepoint >> 18));
-                            result[len++] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
-                            result[len++] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-                            result[len++] = (char)(0x80 | (codepoint & 0x3F));
-                            pos++;
-                            continue;
-                        }
-                    } else {
-                        c = '?';
-                    }
-                    break;
-                }
-                default:
-                    c = *pos;
-                    break;
-            }
-        } else {
-            c = *pos;
-        }
-
-        if (len + 1 >= OP_MAX_STRING) {
-            free(result);
-            return NULL;
-        }
-        if (len + 1 >= capacity) {
-            capacity *= 2;
-            char *tmp = realloc(result, capacity);
-            if (tmp == NULL) { free(result); return NULL; }
-            result = tmp;
-        }
-        result[len++] = c;
-        pos++;
-    }
-
-    result[len] = '\0';
-    return result;
-}
-
-/*
- * Extract a JSON integer value for a given key.
- * Returns the integer value, or LONG_MIN if not found.
- */
-static long op_json_extract_int(const char *json, const char *key) {
-    char pattern[128];
-    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
-
-    const char *pos = strstr(json, pattern);
-    if (pos == NULL) {
-        return LONG_MIN;
-    }
-
-    pos += strlen(pattern);
-
-    while (*pos == ' ' || *pos == ':') {
-        pos++;
-    }
-
-    char *end;
-    long val = strtol(pos, &end, 10);
-    if (end == pos) {
-        return LONG_MIN;
-    }
-
-    return val;
-}
 
 /* ========================================================================
  * Response helpers — build JSON response string, send via transport
@@ -264,7 +97,8 @@ static void send_ack(long id, transport_t *transport) {
  */
 static void send_error(long id, const char *message, transport_t *transport) {
     /* Build the response with properly escaped error message.
-     * We use a FILE* buffer via open_memstream for JSON escaping. */
+     * We use a FILE* buffer via open_memstream for JSON escaping.
+     * Note: open_memstream requires POSIX.1-2008 / macOS 10.13+. */
     char *buf = NULL;
     size_t buf_len = 0;
     FILE *f = open_memstream(&buf, &buf_len);
@@ -602,6 +436,9 @@ static void handle_odb_list(long id, const char *json_line, transport_t *transpo
 
         const char *path = path_json->valuestring;
         int depth = cJSON_IsNumber(depth_json) ? (int)depth_json->valuedouble : 1;
+        /* Default max_results of 10,000: high enough for power-user localhost
+         * exploration, bounded enough to prevent accidental OOM on huge databases.
+         * Combined with MAX_RECURSION_DEPTH (32) in list_table_entries(). */
         int max_results = cJSON_IsNumber(max_json) ? (int)max_json->valuedouble : 10000;
 
         cJSON *result_item = odb_list_children(path, depth, max_results);
@@ -720,7 +557,8 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
     if (cJSON_IsString(op_json) && op_json->valuestring != NULL) {
         op = strdup(op_json->valuestring);
     }
-    long id = (cJSON_IsNumber(id_json)) ? (long)id_json->valuedouble : LONG_MIN;
+    bool id_present = cJSON_IsNumber(id_json);
+    long id = id_present ? (long)id_json->valuedouble : 0;
 
     cJSON_Delete(envelope);
 
@@ -729,9 +567,7 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
      * fall through to the free(op) at function end. No leak on any path. */
 
     if (op == NULL) {
-        if (id != LONG_MIN) {
-            send_error(id, "Missing 'op' field", transport);
-        }
+        send_error(id, "Missing 'op' field", transport);
         return 0;
     }
 
@@ -752,11 +588,9 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         free(op);
         return 1;  /* signal shutdown */
     } else {
-        if (id != LONG_MIN) {
-            char err[256];
-            snprintf(err, sizeof(err), "Unknown operation: %s", op);
-            send_error(id, err, transport);
-        }
+        char err[256];
+        snprintf(err, sizeof(err), "Unknown operation: %s", op);
+        send_error(id, err, transport);
     }
 
     free(op);

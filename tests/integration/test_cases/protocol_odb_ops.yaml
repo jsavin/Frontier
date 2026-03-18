@@ -325,7 +325,7 @@ tests:
           results:
             - type: "double"
               _pattern:
-                value: "^3\\.14"
+                value: "3\\.14.*"
         description: "verify double value starts with 3.14"
       - op: "odb/delete"
         params:

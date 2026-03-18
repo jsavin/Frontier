@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
@@ -61,16 +62,22 @@ static void stdio_write_line(void *ctx, const char *json, size_t len) {
  * Setup and teardown of the protocol output channel
  * ======================================================================== */
 
+/* Saved original stdout fd for restoration during teardown.
+ * Set by setup_protocol_output(), used by teardown_protocol_output(). */
+static int g_saved_stdout_fd = -1;
+
 static int setup_protocol_output(void) {
     int saved_stdout_fd = dup(STDOUT_FILENO);
     if (saved_stdout_fd < 0) {
         fprintf(stderr, "protocol: failed to dup stdout\n");
         return -1;
     }
+    g_saved_stdout_fd = saved_stdout_fd;
     g_protocol_out = fdopen(saved_stdout_fd, "w");
     if (g_protocol_out == NULL) {
         fprintf(stderr, "protocol: failed to fdopen saved stdout\n");
         close(saved_stdout_fd);
+        g_saved_stdout_fd = -1;
         return -1;
     }
     setvbuf(g_protocol_out, NULL, _IOLBF, 0);
@@ -80,8 +87,16 @@ static int setup_protocol_output(void) {
 
 static void teardown_protocol_output(void) {
     if (g_protocol_out != NULL) {
-        fclose(g_protocol_out);
+        fflush(g_protocol_out);
+        /* Restore the original stdout fd so downstream code (e.g. atexit
+         * handlers) sees a normal stdout. We must dup the saved fd before
+         * fclose, because fclose closes the underlying fd (g_saved_stdout_fd). */
+        if (g_saved_stdout_fd >= 0) {
+            dup2(g_saved_stdout_fd, STDOUT_FILENO);
+        }
+        fclose(g_protocol_out);  /* closes g_saved_stdout_fd */
         g_protocol_out = NULL;
+        g_saved_stdout_fd = -1;
     }
 }
 
@@ -138,6 +153,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
         size_t line_pos = 0;
         int running = 1;
         int stdin_eof = 0;
+        bool draining = false;  /* true while discarding an oversized line */
 
         while (running) {
             struct pollfd pfds[1 + WS_MAX_CLIENTS + 1];
@@ -172,17 +188,37 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
             if (!stdin_eof && (pfds[0].revents & POLLIN)) {
                 size_t remaining_space = PROTOCOL_LINE_MAX - 1 - line_pos;
                 if (remaining_space == 0) {
-                    /* Buffer is full without a newline — discard the oversized line */
+                    /* Buffer is full without a newline — enter drain mode to
+                     * skip the rest of this oversized line until we see a newline. */
                     log_error(LOG_COMP_GENERAL,
                               "protocol: line exceeds %d bytes, discarding",
                               PROTOCOL_LINE_MAX);
                     line_pos = 0;
+                    draining = true;
                     continue;
                 }
                 ssize_t n = read(STDIN_FILENO, line_buf + line_pos,
                                  remaining_space);
                 if (n > 0) {
-                    line_pos += (size_t)n;
+                    /* If draining, skip bytes until we find a newline */
+                    if (draining) {
+                        const char *nl = memchr(line_buf + line_pos, '\n', (size_t)n);
+                        if (nl == NULL) {
+                            /* Still in oversized line, discard everything */
+                            continue;
+                        }
+                        /* Found newline — keep data after it, resume normal processing */
+                        size_t skip = (size_t)(nl - (line_buf + line_pos)) + 1;
+                        size_t remaining = (size_t)n - skip;
+                        if (remaining > 0) {
+                            memmove(line_buf, line_buf + line_pos + skip, remaining);
+                        }
+                        line_pos = remaining;
+                        draining = false;
+                        /* Fall through to process any complete lines in the kept data */
+                    } else {
+                        line_pos += (size_t)n;
+                    }
                     line_buf[line_pos] = '\0';
 
                     /* Process complete lines */

@@ -405,6 +405,7 @@ void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_
                 set_nonblocking(client_fd);
                 slot->fd = client_fd;
                 slot->state = WS_STATE_HANDSHAKE;
+                slot->handshake_start = time(NULL);
                 slot->recv_buf = malloc(WS_CLIENT_BUF_SIZE);  /* Must match WS_MAX_FRAME_PAYLOAD in ws_frame.h */
                 slot->recv_len = 0;
                 if (slot->recv_buf == NULL) {
@@ -424,6 +425,18 @@ void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_
     /* pollfd layout is deterministic: fds[start_index] = listen socket,
      * fds[start_index + 1 + i] = client slot i. With WS_MAX_CLIENTS = 8
      * the linear scan is harmless, but the mapping is direct if needed. */
+
+    /* Enforce handshake timeout — close connections stuck in HANDSHAKE state */
+    time_t now = time(NULL);
+    for (int i = 0; i < WS_MAX_CLIENTS; i++) {
+        if (server->clients[i].state == WS_STATE_HANDSHAKE) {
+            if (now - server->clients[i].handshake_start >= WS_HANDSHAKE_TIMEOUT_SECS) {
+                log_debug(LOG_COMP_GENERAL, "ws: handshake timeout (fd=%d), closing",
+                          server->clients[i].fd);
+                close_client(&server->clients[i]);
+            }
+        }
+    }
 
     /* Check client sockets */
     for (int i = 0; i < WS_MAX_CLIENTS; i++) {

@@ -802,10 +802,11 @@ class TestCase:
                 if expected_string not in actual_result:
                     return False, f"Expected result to contain {expected_string!r}, but got {actual_result!r}"
 
-        # Check if result matches expected pattern (regex)
+        # Check if result matches expected pattern (regex, full match).
+        # Use .* prefix/suffix in the pattern for partial matching.
         if self.expected_success and self.expected_pattern is not None:
             actual_result = str(output.get('result', ''))
-            if not re.search(self.expected_pattern, actual_result):
+            if not re.fullmatch(self.expected_pattern, actual_result):
                 return False, f"Expected result to match pattern {self.expected_pattern!r}, but got {actual_result!r}"
 
         # Check result type if specified
@@ -1062,10 +1063,11 @@ class TestRunner:
                                         f"expected to contain {substr!r}, got {actual_val!r}")
                         continue
                     if key == '_pattern':
-                        # Check that a value matches a regex pattern
+                        # Check that a value matches a regex pattern (full match).
+                        # Use .* prefix/suffix in the pattern for partial matching.
                         for check_key, pattern in expected_val.items():
                             actual_val = str(actual_item.get(check_key, ''))
-                            if not re.search(pattern, actual_val):
+                            if not re.fullmatch(pattern, actual_val):
                                 return (f"[{step_desc}] results[{i}].{check_key}: "
                                         f"expected to match {pattern!r}, got {actual_val!r}")
                         continue
