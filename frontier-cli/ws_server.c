@@ -78,7 +78,7 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
         written += (size_t)n;
     }
 
-    if (written < frame_len) {
+    if (written < frame_len && wctx->fd >= 0) {
         /* Partial frame sent — connection is now in a corrupt state.
          * Close the fd; the next poll iteration will clean up. */
         log_debug(LOG_COMP_GENERAL, "ws: closing connection after partial frame (fd=%d): %zu/%zu bytes",
@@ -191,7 +191,12 @@ static void handle_frame(ws_conn_t *conn) {
             case WS_OPCODE_TEXT: {
                 /* Null-terminate the payload for JSON parsing */
                 char *json = malloc(frame.payload_len + 1);
-                if (json == NULL) break;
+                if (json == NULL) {
+                    log_debug(LOG_COMP_GENERAL, "ws: malloc failed for frame payload (fd=%d, %zu bytes)",
+                              conn->fd, frame.payload_len);
+                    close_client(conn);
+                    return;
+                }
                 memcpy(json, frame.payload, frame.payload_len);
                 json[frame.payload_len] = '\0';
 
