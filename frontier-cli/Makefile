@@ -83,6 +83,7 @@ CLI_SOURCES = \
     odb_ops.c \
     ws_server.c \
     ws_frame.c \
+    base64_util.c \
     headless_scripts_loader.c \
     terminal_control.c \
     dialog_prompts.c \

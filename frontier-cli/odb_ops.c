@@ -29,7 +29,7 @@
 #include "../Common/headers/tablestructure.h"
 #include "../Common/headers/op.h"
 
-#include "ws_frame.h"
+#include "base64_util.h"
 
 #include <stdio.h>
 #include <stdlib.h>

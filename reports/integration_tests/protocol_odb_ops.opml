@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Protocol Odb Ops (protocol_odb_ops) - 34 tests: 34 pass (100%)</title>
-    <dateCreated>Wed, 18 Mar 2026 18:03:54 GMT</dateCreated>
+    <dateCreated>Wed, 18 Mar 2026 19:46:31 GMT</dateCreated>
   </head>
   <body>
     <outline text="odb/list - list workspace children - List top-level children of workspace table">
@@ -72,7 +72,7 @@
     </outline>
     <outline text="odb/set - create double value - Create a floating-point (double) value and read it back">
       <outline text="Metadata">
-        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_double', 'type': 'double', 'value': 3.14159}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set double'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_double'}]}, 'validate': {'success': True, 'results': [{'type': 'double', '_pattern': {'value': '^3\\.14'}}]}, 'description': 'verify double value starts with 3.14'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_double'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_double', 'type': 'double', 'value': 3.14159}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set double'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_double'}]}, 'validate': {'success': True, 'results': [{'type': 'double', '_pattern': {'value': '3\\.14.*'}}]}, 'description': 'verify double value starts with 3.14'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_double'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
       </outline>
     </outline>
     <outline text="odb/set - overwrite existing value - Setting a path that already exists should overwrite it">

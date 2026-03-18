@@ -731,7 +731,7 @@ class TestCase:
         self.expected_result_type = data.get('expected_result_type')
         self.expected_error_type = data.get('expected_error_type')
         self.expected_contains = data.get('expected_contains')  # List of strings that should be in result
-        self.expected_pattern = data.get('expected_pattern')    # Regex pattern to match result
+        self.expected_pattern = data.get('expected_pattern')    # Regex pattern — uses re.fullmatch (exact match; use .* for partial)
         self.expected_error_contains = data.get('expected_error_contains')  # String that should be in error
         self.description = data.get('description', '')
         self.timeout = data.get('timeout', 10)  # Default 10 seconds, configurable per test

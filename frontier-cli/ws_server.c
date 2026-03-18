@@ -219,13 +219,11 @@ static void handle_frame(ws_conn_t *conn) {
                  * streaming (multiple write_line calls), consider storing ws_conn_t* directly
                  * in ws_transport_ctx_t to avoid caller-side sync. */
                 if (wctx.fd < 0) {
+                    /* ws_write_line already closed the fd — mark it invalid so
+                     * close_client() skips the close() call, then let close_client
+                     * handle the remaining cleanup (free recv_buf, reset state). */
                     conn->fd = -1;
-                    conn->state = WS_STATE_EMPTY;
-                    if (conn->recv_buf != NULL) {
-                        free(conn->recv_buf);
-                        conn->recv_buf = NULL;
-                    }
-                    conn->recv_len = 0;
+                    close_client(conn);
                     return;
                 }
 
@@ -234,8 +232,11 @@ static void handle_frame(ws_conn_t *conn) {
                     size_t close_len;
                     uint8_t *close_frame = ws_frame_encode(WS_OPCODE_CLOSE, NULL, 0, &close_len);
                     if (close_frame != NULL) {
-                        write(conn->fd, close_frame, close_len);
+                        ssize_t n = write(conn->fd, close_frame, close_len);
                         free(close_frame);
+                        if (n < 0) {
+                            log_debug(LOG_COMP_GENERAL, "ws: shutdown close write failed (fd=%d): %s", conn->fd, strerror(errno));
+                        }
                     }
                     close_client(conn);
                     return;
@@ -249,8 +250,13 @@ static void handle_frame(ws_conn_t *conn) {
                 uint8_t *pong = ws_frame_encode(WS_OPCODE_PONG,
                                                  frame.payload, frame.payload_len, &pong_len);
                 if (pong != NULL) {
-                    write(conn->fd, pong, pong_len);
+                    ssize_t n = write(conn->fd, pong, pong_len);
                     free(pong);
+                    if (n < 0) {
+                        log_debug(LOG_COMP_GENERAL, "ws: pong write failed (fd=%d): %s", conn->fd, strerror(errno));
+                        close_client(conn);
+                        return;
+                    }
                 }
                 break;
             }
@@ -261,8 +267,11 @@ static void handle_frame(ws_conn_t *conn) {
                 uint8_t *close_frame = ws_frame_encode(WS_OPCODE_CLOSE,
                                                         frame.payload, frame.payload_len, &close_len);
                 if (close_frame != NULL) {
-                    write(conn->fd, close_frame, close_len);
+                    ssize_t n = write(conn->fd, close_frame, close_len);
                     free(close_frame);
+                    if (n < 0) {
+                        log_debug(LOG_COMP_GENERAL, "ws: close frame write failed (fd=%d): %s", conn->fd, strerror(errno));
+                    }
                 }
                 log_info(LOG_COMP_GENERAL, "ws: client disconnected (fd=%d)", conn->fd);
                 close_client(conn);
@@ -283,8 +292,11 @@ static void handle_frame(ws_conn_t *conn) {
                     uint8_t *close_frame = ws_frame_encode(WS_OPCODE_CLOSE,
                                                             close_payload, 2, &close_len);
                     if (close_frame != NULL) {
-                        write(conn->fd, close_frame, close_len);
+                        ssize_t n = write(conn->fd, close_frame, close_len);
                         free(close_frame);
+                        if (n < 0) {
+                            log_debug(LOG_COMP_GENERAL, "ws: continuation close write failed (fd=%d): %s", conn->fd, strerror(errno));
+                        }
                     }
                 }
                 log_debug(LOG_COMP_GENERAL, "ws: unsupported continuation frame, closing (fd=%d)", conn->fd);
@@ -331,10 +343,13 @@ int ws_server_init(ws_server_t *server, int port) {
     int reuse = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
+    /* Security: The WebSocket server binds to INADDR_LOOPBACK (127.0.0.1) only.
+     * No authentication is required — this is intentional for localhost-only CLI tooling.
+     * Do NOT change the bind address to INADDR_ANY (0.0.0.0) without adding authentication. */
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);  /* localhost only */
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     addr.sin_port = htons((uint16_t)port);
 
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -506,13 +521,17 @@ void ws_server_shutdown(ws_server_t *server) {
 
     for (int i = 0; i < WS_MAX_CLIENTS; i++) {
         if (server->clients[i].state != WS_STATE_EMPTY) {
-            /* Try to send close frame */
+            /* Try to send close frame (best-effort during shutdown) */
             if (server->clients[i].state == WS_STATE_OPEN) {
                 size_t close_len;
                 uint8_t *close_frame = ws_frame_encode(WS_OPCODE_CLOSE, NULL, 0, &close_len);
                 if (close_frame != NULL) {
-                    write(server->clients[i].fd, close_frame, close_len);
+                    ssize_t n = write(server->clients[i].fd, close_frame, close_len);
                     free(close_frame);
+                    if (n < 0) {
+                        log_debug(LOG_COMP_GENERAL, "ws: shutdown close write failed (fd=%d): %s",
+                                  server->clients[i].fd, strerror(errno));
+                    }
                 }
             }
             close_client(&server->clients[i]);

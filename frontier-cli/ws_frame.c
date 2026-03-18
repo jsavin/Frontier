@@ -19,6 +19,7 @@
  */
 
 #include "ws_frame.h"
+#include "base64_util.h"
 #include "../Common/headers/sha.h"
 
 #include <stdio.h>
@@ -28,36 +29,6 @@
 
 /* RFC 6455 magic GUID for Sec-WebSocket-Accept */
 static const char *WS_MAGIC_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-
-/* ========================================================================
- * Minimal base64 encoder for handshake (20-byte SHA1 → 28-char base64)
- * ======================================================================== */
-
-static const char b64_table[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-/* Callers must provide an output buffer of at least (in_len + 2) / 3 * 4 + 1
- * bytes. If the buffer is too small, output is silently truncated. */
-void base64_encode_raw(const uint8_t *in, size_t in_len,
-                              char *out, size_t out_size) {
-    size_t i = 0, j = 0;
-
-    while (i < in_len && j + 4 < out_size) {
-        uint32_t a = in[i++];
-        /* Track how many input bytes contributed to this triple */
-        int bytes_in_triple = 1;
-        uint32_t b = 0, c = 0;
-        if (i < in_len) { b = in[i++]; bytes_in_triple++; }
-        if (i < in_len) { c = in[i++]; bytes_in_triple++; }
-        uint32_t triple = (a << 16) | (b << 8) | c;
-
-        out[j++] = b64_table[(triple >> 18) & 0x3F];
-        out[j++] = b64_table[(triple >> 12) & 0x3F];
-        out[j++] = (bytes_in_triple < 2) ? '=' : b64_table[(triple >> 6) & 0x3F];
-        out[j++] = (bytes_in_triple < 3) ? '=' : b64_table[triple & 0x3F];
-    }
-    out[j] = '\0';
-}
 
 /* ========================================================================
  * Frame decode
