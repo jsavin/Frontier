@@ -163,11 +163,18 @@ static void handle_handshake(ws_conn_t *conn) {
     /* Send the upgrade response */
     size_t resp_len = (size_t)n;
     size_t resp_written = 0;
+    int eagain_retries = 0;
+    #define MAX_HANDSHAKE_RETRIES 10
     while (resp_written < resp_len) {
         ssize_t sent = write(conn->fd, response + resp_written, resp_len - resp_written);
         if (sent < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if (++eagain_retries > MAX_HANDSHAKE_RETRIES) {
+                    log_debug(LOG_COMP_GENERAL, "ws: handshake write stalled after %d retries", eagain_retries);
+                    close_client(conn);
+                    return;
+                }
                 /* Note: This poll() holds the GIL for up to 20ms. Acceptable for
                  * localhost; a misbehaving client could stall UserTalk execution
                  * by this amount per retry. */
@@ -205,6 +212,19 @@ static void handle_frame(ws_conn_t *conn) {
 
         if (status == WS_FRAME_ERROR) {
             log_debug(LOG_COMP_GENERAL, "ws: frame error, closing connection (fd=%d)", conn->fd);
+            close_client(conn);
+            return;
+        }
+
+        /* RFC 6455 §5.1: server MUST close connection on unmasked client frame */
+        if (!frame.masked) {
+            uint8_t close_payload[2] = { (uint8_t)(1002 >> 8), (uint8_t)(1002 & 0xFF) };
+            size_t close_len = 0;
+            uint8_t *close_frame = ws_frame_encode(WS_OPCODE_CLOSE, close_payload, 2, &close_len);
+            if (close_frame != NULL) {
+                write(conn->fd, close_frame, close_len);
+                free(close_frame);
+            }
             close_client(conn);
             return;
         }

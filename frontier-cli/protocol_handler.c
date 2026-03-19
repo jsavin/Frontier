@@ -156,7 +156,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
         bool draining = false;  /* true while discarding an oversized line */
 
         while (running) {
-            struct pollfd pfds[1 + WS_MAX_CLIENTS + 1];
+            struct pollfd pfds[WS_POLL_FDS_COUNT + 1];
             memset(pfds, 0, sizeof(pfds));
             int nfds = 0;
 

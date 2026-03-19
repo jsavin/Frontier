@@ -59,11 +59,11 @@ static void transport_send(transport_t *transport, const char *json) {
  * Format and send a response. Uses a static buffer for small responses
  * and falls back to malloc for larger ones.
  *
- * Note: Three response-building mechanisms coexist in this file:
- * - send_response: vsnprintf for simple pre-escaped JSON (e.g. odb results)
- * - send_error / send_eval_success: open_memstream for runtime JSON escaping
- * - ODB handlers: cJSON_PrintUnformatted for structured results
- * Consolidating to a single mechanism is a follow-up task.
+ * TODO(#482): Consolidate to cJSON as the single JSON-building mechanism.
+ * Three mechanisms currently coexist: vsnprintf (this function),
+ * open_memstream (send_error/send_eval_success), and cJSON (ODB handlers).
+ * The vsnprintf path is a latent injection risk if future callers pass
+ * user-controlled strings through %s format specifiers.
  */
 static void send_response(transport_t *transport, long id, const char *fmt, ...) {
     char buf[4096];
@@ -605,6 +605,15 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
 
     if (op == NULL) {
         send_error(id, "Missing 'op' field", transport);
+        return 0;
+    }
+
+    /* Require id field so clients can correlate responses.
+     * Send "id":null (not "id":0) for missing ids per JSON-RPC convention. */
+    if (!id_present) {
+        const char *err_resp = "{\"id\":null,\"error\":{\"message\":\"Missing 'id' field\"},\"success\":false}";
+        transport_send(transport, err_resp);
+        free(op);
         return 0;
     }
 

@@ -74,7 +74,7 @@ uint8_t *ws_frame_encode(uint8_t opcode, const uint8_t *payload, size_t payload_
  * Returns the number of bytes written to response, or -1 on error.
  * Sets *request_len to the number of bytes consumed from buf (the full HTTP request).
  */
-int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response_size,
+int ws_handshake(uint8_t *buf, size_t len, char *response, size_t response_size,
                  size_t *request_len);
 
 #endif /* WS_FRAME_H */

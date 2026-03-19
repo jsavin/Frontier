@@ -27,6 +27,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+_Static_assert(sizeof(size_t) >= 8, "WebSocket frame encoding requires 64-bit size_t");
+
 /* RFC 6455 magic GUID for Sec-WebSocket-Accept */
 static const char *WS_MAGIC_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
@@ -176,11 +178,11 @@ static const char *find_header(const char *headers, const char *name) {
     return NULL;
 }
 
-int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response_size,
+int ws_handshake(uint8_t *buf, size_t len, char *response, size_t response_size,
                  size_t *request_len) {
 
     /* Find end of HTTP headers (\r\n\r\n) */
-    const char *str = (const char *)buf;
+    char *str = (char *)buf;
     const char *end = NULL;
 
     for (size_t i = 0; i + 3 < len; i++) {
@@ -200,7 +202,7 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
     /* NUL-terminate the header block so find_header() can use C string ops
      * safely. We overwrite the final '\n' of "\r\n\r\n" which is at end[-1].
      * This byte is within the recv_buf allocation and is no longer needed. */
-    ((char *)buf)[*request_len - 1] = '\0';
+    str[*request_len - 1] = '\0';
 
     /* Verify it's a GET request */
     if (strncmp(str, "GET ", 4) != 0) {

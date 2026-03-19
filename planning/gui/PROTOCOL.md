@@ -205,6 +205,13 @@ The existing XML-RPC endpoint at `/RPC2` remains unchanged. This protocol operat
 }
 ```
 
+### 3.5 Response Schema: `result` vs `results`
+
+- `script/eval` responses use `"result"` (singular object with `value` and `type` fields)
+- ODB operations use `"results"` (plural array of per-item result objects)
+
+This is a deliberate design decision: `script/eval` returns a single value while ODB operations are batch-capable and return one result per item.
+
 ---
 
 ## 4. Versioning
