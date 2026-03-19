@@ -1022,6 +1022,14 @@ class TestRunner:
             if expected_substr not in error_msg:
                 return f"[{step_desc}] Expected error containing {expected_substr!r}, got {error_msg!r}"
 
+        # Check result_count first (before per-item loop) so count mismatches
+        # produce a clear message rather than an IndexError or confusing diff.
+        if 'result_count' in validate:
+            actual_count = len(resp.get('results', []))
+            expected_count = validate['result_count']
+            if actual_count != expected_count:
+                return f"[{step_desc}] Expected {expected_count} results, got {actual_count}"
+
         # Check results array items
         if 'results' in validate:
             actual_results = resp.get('results', [])
@@ -1101,14 +1109,9 @@ class TestRunner:
             elif actual_result != expected_result and str(actual_result) != str(expected_result):
                 return f"[{step_desc}] result: expected {expected_result!r}, got {actual_result!r}"
 
-        # Check result_count (number of items in results array)
-        if 'result_count' in validate:
-            actual_count = len(resp.get('results', []))
-            expected_count = validate['result_count']
-            if actual_count != expected_count:
-                return f"[{step_desc}] Expected {expected_count} results, got {actual_count}"
-
-        # Check results[0].entries count (for odb/list)
+        # Check results[0].entries count (for odb/list).
+        # Note: Unindexed entries_count/entries_min/entries_include always inspect results[0].
+        # For multi-path batches, use the indexed variants (entries_count_N, entries_min_N, etc).
         if 'entries_count' in validate:
             results = resp.get('results', [])
             if not results:

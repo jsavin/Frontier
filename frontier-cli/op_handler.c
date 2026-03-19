@@ -55,6 +55,12 @@ static void transport_send(transport_t *transport, const char *json) {
 /*
  * Format and send a response. Uses a static buffer for small responses
  * and falls back to malloc for larger ones.
+ *
+ * Note: Three response-building mechanisms coexist in this file:
+ * - send_response: vsnprintf for simple pre-escaped JSON (e.g. odb results)
+ * - send_error / send_eval_success: open_memstream for runtime JSON escaping
+ * - ODB handlers: cJSON_PrintUnformatted for structured results
+ * Consolidating to a single mechanism is a follow-up task.
  */
 static void send_response(transport_t *transport, long id, const char *fmt, ...) {
     char buf[4096];
