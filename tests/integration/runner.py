@@ -980,8 +980,8 @@ class TestRunner:
                 except RuntimeError as e:
                     try:
                         self.protocol_executor._restart()
-                    except Exception:
-                        pass
+                    except Exception as restart_err:
+                        logging.warning("Protocol executor restart failed: %s", restart_err)
                     return TestResult(
                         test.name, False,
                         error=f"Protocol error at {step_desc}: {e}")

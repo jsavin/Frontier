@@ -30,6 +30,12 @@
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <poll.h>
+#include <assert.h>
+
+/* The receive buffer must be at least as large as the max frame payload,
+ * otherwise a valid frame could exceed the buffer and never be decoded. */
+_Static_assert(WS_CLIENT_BUF_SIZE >= WS_MAX_FRAME_PAYLOAD,
+               "WS_CLIENT_BUF_SIZE must be >= WS_MAX_FRAME_PAYLOAD");
 
 /* ========================================================================
  * WebSocket transport — write_line callback for transport_t

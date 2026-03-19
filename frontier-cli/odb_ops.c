@@ -358,10 +358,10 @@ static tyvaluetype parse_value_type(const char *type_str) {
     if (strcmp(type_str, "float") == 0)     return doublevaluetype;
     if (strcmp(type_str, "char") == 0)      return charvaluetype;
     if (strcmp(type_str, "date") == 0)      return datevaluetype;
-    if (strcmp(type_str, "direction") == 0) return directionvaluetype;
     if (strcmp(type_str, "address") == 0)   return addressvaluetype;
-    /* binary type is readable via odb/get (base64-encoded) but not settable
-     * via odb/set — creating binary values requires base64 decode (future). */
+    /* direction, list, record, and binary types are readable via odb/get but
+     * not settable via odb/set. direction/list/record have no meaningful JSON
+     * representation for set; binary would require base64 decode (future). */
     return novaluetype;
 }
 
