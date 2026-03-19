@@ -94,6 +94,14 @@ Follow that file before starting non-trivial work.
 
 ## Communication Standards
 
+### Documentation Audiences
+
+This project has a technical partner (Dave Winer) who is deeply technical. When writing docs or summaries for this project, apply the global documentation writing defaults from `~/.claude/CLAUDE.md` with these project-specific additions:
+
+- **Dave Winer** is a technical stakeholder — use the "technical stakeholders" audience level (architecture, integration approaches, trade-off rationale). He does not need code-level details but appreciates technical depth.
+- **Planning docs** (`planning/`) target internal technical audience — full detail is appropriate.
+- **Phase references** are shared vocabulary across all audiences.
+
 ### Privacy & Entity References
 
 - **NEVER mention specific people or entities** (partnerships, companies, individuals) unless the user explicitly asks
