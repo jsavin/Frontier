@@ -82,6 +82,11 @@ int ws_server_pollfds(ws_server_t *server, struct pollfd *fds, int start_index);
 void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_index);
 
 /*
+ * Return the number of currently connected clients (handshaking or open).
+ */
+int ws_server_client_count(ws_server_t *server);
+
+/*
  * Shut down the server — close all connections and the listen socket.
  */
 void ws_server_shutdown(ws_server_t *server);

@@ -257,6 +257,13 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
                 stdin_eof = 1;
             }
 
+            /* Exit when stdin is closed and no WebSocket clients remain */
+            if (stdin_eof && ws_server_client_count(ws_server) == 0) {
+                log_info(LOG_COMP_GENERAL, "protocol: stdin closed and no WebSocket clients, exiting");
+                running = 0;
+                break;
+            }
+
             /* If stdin is closed but WS server still has clients, keep running */
             if (stdin_eof && !running) {
                 break;

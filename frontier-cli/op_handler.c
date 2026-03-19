@@ -294,7 +294,13 @@ static void handle_clear_context(long id, transport_t *transport) {
  */
 static void cjson_add_error_object(cJSON *item, const char *message) {
     cJSON *error_obj = cJSON_CreateObject();
-    if (error_obj == NULL) return;  /* OOM — item will lack "error" field */
+    if (error_obj == NULL) {
+        /* OOM fallback: try adding error as a flat string instead of an object.
+         * The response will have "error":"message" rather than
+         * "error":{"message":"..."}, but at least the client gets something. */
+        cJSON_AddStringToObject(item, "error", message);
+        return;
+    }
     cJSON_AddStringToObject(error_obj, "message", message);
     cJSON_AddItemToObject(item, "error", error_obj);
 }

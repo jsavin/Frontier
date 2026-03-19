@@ -27,12 +27,11 @@
 #include <string.h>
 #include <stdbool.h>
 
-/* Documents the design intent: the encode path uses 64-bit shifts for the
- * extended payload length field. On 32-bit platforms the shifts still work
- * (high bytes are zero), but this assert flags that 64-bit is the expected
- * target. The decode path has a runtime guard (SIZE_MAX check) so it is
- * safe on 32-bit regardless. */
-_Static_assert(sizeof(size_t) >= 8, "WebSocket frame encoding requires 64-bit size_t");
+/* Design assumption: the encode path uses 64-bit shifts for the extended
+ * payload length field. On 32-bit platforms the shifts still work (high
+ * bytes are zero), but 64-bit size_t is the expected target. The decode
+ * path has a runtime guard (SIZE_MAX check) that rejects oversize frames
+ * on 32-bit, so correctness is maintained regardless of pointer width. */
 
 /* RFC 6455 magic GUID for Sec-WebSocket-Accept */
 static const char *WS_MAGIC_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";

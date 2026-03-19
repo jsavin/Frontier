@@ -741,24 +741,16 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
 
 cJSON *odb_delete_value(const char *path) {
 
-    /* Prevent accidental deletion of root-level structural tables.
-     * These are the standard Frontier root tables — well-known top-level
-     * entries in the root hash table that define the database structure.
-     * Deleting any of them would corrupt the database.
-     * A path without dots is a bare root-level name. */
-    static const char *protected_roots[] = {
-        "system", "workspace", "temp", "user", "Frontier",
-        "suites", "websites", "scratchpad",
-        "apps", "tools", "calendar", "mainResponder", "radio", "mail",
-        NULL
-    };
-
+    /* Reject ALL root-level deletions (paths with no dot separator).
+     * Any bare name like "workspace", "system", or even a user-created
+     * root table would be dangerous to delete. Use a dotted path
+     * (e.g. "workspace.child") to delete children instead. */
     if (strchr(path, '.') == NULL) {
-        for (int i = 0; protected_roots[i] != NULL; i++) {
-            if (strcmp(path, protected_roots[i]) == 0) {
-                return make_error_result(path, "Cannot delete root-level table");
-            }
-        }
+        char err[320];
+        snprintf(err, sizeof(err),
+                 "Cannot delete root-level table '%s' — use a dotted path to delete children",
+                 path);
+        return make_error_result(path, err);
     }
 
     hdlhashtable htable;

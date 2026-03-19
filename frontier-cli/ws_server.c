@@ -579,6 +579,17 @@ void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_
     }
 }
 
+int ws_server_client_count(ws_server_t *server) {
+    int count = 0;
+    for (int i = 0; i < WS_MAX_CLIENTS; i++) {
+        if (server->clients[i].state == WS_STATE_HANDSHAKE ||
+            server->clients[i].state == WS_STATE_OPEN) {
+            count++;
+        }
+    }
+    return count;
+}
+
 void ws_server_shutdown(ws_server_t *server) {
 
     for (int i = 0; i < WS_MAX_CLIENTS; i++) {
