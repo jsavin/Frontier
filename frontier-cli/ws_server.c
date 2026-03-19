@@ -420,7 +420,7 @@ int ws_server_init(ws_server_t *server, int port) {
         return -1;
     }
 
-    if (listen(fd, 4) < 0) {
+    if (listen(fd, WS_MAX_CLIENTS) < 0) {
         log_error(LOG_COMP_GENERAL, "ws: listen() failed: %s", strerror(errno));
         close(fd);
         return -1;

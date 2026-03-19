@@ -201,7 +201,19 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
                 ssize_t n = read(STDIN_FILENO, line_buf + line_pos,
                                  remaining_space);
                 if (n > 0) {
-                    /* If draining, skip bytes until we find a newline */
+                    /* Drain mode: discard an oversized line until we find its newline.
+                     *
+                     * Buffer state transitions:
+                     *   1. Enter drain mode: line_pos is reset to 0 (above, when buffer fills
+                     *      without a newline).
+                     *   2. Each read() fills line_buf starting at line_pos (which is 0 during
+                     *      drain), so the fresh data always lands at the start of the buffer.
+                     *   3. memchr() searches the freshly-read n bytes for a newline.
+                     *   4. No newline found: keep line_pos = 0 and loop, effectively discarding
+                     *      the data we just read by overwriting it on the next read().
+                     *   5. Newline found: memmove() shifts post-newline data to the start of
+                     *      line_buf, set line_pos to the remaining byte count, clear draining
+                     *      flag, and fall through to normal line processing. */
                     if (draining) {
                         const char *nl = memchr(line_buf + line_pos, '\n', (size_t)n);
                         if (nl == NULL) {
