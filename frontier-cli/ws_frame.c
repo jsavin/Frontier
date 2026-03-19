@@ -27,6 +27,11 @@
 #include <string.h>
 #include <stdbool.h>
 
+/* Documents the design intent: the encode path uses 64-bit shifts for the
+ * extended payload length field. On 32-bit platforms the shifts still work
+ * (high bytes are zero), but this assert flags that 64-bit is the expected
+ * target. The decode path has a runtime guard (SIZE_MAX check) so it is
+ * safe on 32-bit regardless. */
 _Static_assert(sizeof(size_t) >= 8, "WebSocket frame encoding requires 64-bit size_t");
 
 /* RFC 6455 magic GUID for Sec-WebSocket-Accept */
@@ -62,6 +67,13 @@ ws_frame_status_t ws_frame_decode(uint8_t *buf, size_t len, ws_frame_t *frame) {
             payload_len = (payload_len << 8) | buf[2 + i];
         }
         header_len = 10;
+
+        /* Runtime guard for 32-bit platforms: if the 64-bit payload length
+         * exceeds what size_t can represent, reject the frame rather than
+         * silently truncating. On 64-bit this is always false. */
+        if (payload_len > (uint64_t)SIZE_MAX) {
+            return WS_FRAME_ERROR;
+        }
     }
 
     /* Reject frames that exceed the receive buffer, and check for

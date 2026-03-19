@@ -65,6 +65,9 @@ static void transport_send(transport_t *transport, const char *json) {
  * The vsnprintf path is a latent injection risk if future callers pass
  * user-controlled strings through %s format specifiers.
  */
+static void send_response(transport_t *transport, long id, const char *fmt, ...)
+    __attribute__((format(printf, 3, 4)));
+
 static void send_response(transport_t *transport, long id, const char *fmt, ...) {
     char buf[4096];
     va_list args;

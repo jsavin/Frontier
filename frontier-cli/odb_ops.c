@@ -742,12 +742,15 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
 cJSON *odb_delete_value(const char *path) {
 
     /* Prevent accidental deletion of root-level structural tables.
-     * These are well-known top-level entries in the root hash table;
-     * deleting them would corrupt the database structure.
+     * These are the standard Frontier root tables — well-known top-level
+     * entries in the root hash table that define the database structure.
+     * Deleting any of them would corrupt the database.
      * A path without dots is a bare root-level name. */
     static const char *protected_roots[] = {
         "system", "workspace", "temp", "user", "Frontier",
-        "suites", "websites", "scratchpad", NULL
+        "suites", "websites", "scratchpad",
+        "apps", "tools", "calendar", "mainResponder", "radio", "mail",
+        NULL
     };
 
     if (strchr(path, '.') == NULL) {
