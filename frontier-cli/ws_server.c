@@ -37,11 +37,16 @@
  * ======================================================================== */
 
 typedef struct {
-    int fd;
+    ws_conn_t *conn;
 } ws_transport_ctx_t;
 
 static void ws_write_line(void *ctx, const char *json, size_t len) {
     ws_transport_ctx_t *wctx = (ws_transport_ctx_t *)ctx;
+    int fd = wctx->conn->fd;
+
+    if (fd < 0) {
+        return;  /* connection already dead */
+    }
 
     size_t frame_len;
     uint8_t *frame = ws_frame_encode(WS_OPCODE_TEXT, (const uint8_t *)json, len, &frame_len);
@@ -51,39 +56,39 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
 
     size_t written = 0;
     while (written < frame_len) {
-        ssize_t n = write(wctx->fd, frame + written, frame_len - written);
+        ssize_t n = write(fd, frame + written, frame_len - written);
         if (n < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 /* Wait briefly for socket to become writable.
                  * For localhost, this resolves quickly. */
-                struct pollfd pfd = { .fd = wctx->fd, .events = POLLOUT };
+                struct pollfd pfd = { .fd = fd, .events = POLLOUT };
                 int pret = poll(&pfd, 1, 100);  /* 100ms — avoid stalling GIL */
                 if (pret <= 0) {
                     log_debug(LOG_COMP_GENERAL, "ws: write stalled (fd=%d): %zu/%zu bytes",
-                              wctx->fd, written, frame_len);
+                              fd, written, frame_len);
                     break;
                 }
                 continue;  /* Retry the write */
             }
             log_debug(LOG_COMP_GENERAL, "ws: write failed (fd=%d): %s, closing connection",
-                      wctx->fd, strerror(errno));
-            int dead_fd = wctx->fd;
-            wctx->fd = -1;
-            close(dead_fd);
-            break;
+                      fd, strerror(errno));
+            wctx->conn->fd = -1;
+            close(fd);
+            free(frame);
+            return;
         }
         written += (size_t)n;
     }
 
-    if (written < frame_len && wctx->fd >= 0) {
+    if (written < frame_len && wctx->conn->fd >= 0) {
         /* Partial frame sent — connection is now in a corrupt state.
          * Close the fd; the next poll iteration will clean up. */
-        int dead_fd = wctx->fd;
-        wctx->fd = -1;
+        fd = wctx->conn->fd;
+        wctx->conn->fd = -1;
         log_debug(LOG_COMP_GENERAL, "ws: closing connection after partial frame (fd=%d): %zu/%zu bytes",
-                  dead_fd, written, frame_len);
-        close(dead_fd);
+                  fd, written, frame_len);
+        close(fd);
     }
 
     free(frame);
@@ -152,6 +157,11 @@ static void handle_handshake(ws_conn_t *conn) {
         ssize_t sent = write(conn->fd, response + resp_written, resp_len - resp_written);
         if (sent < 0) {
             if (errno == EINTR) continue;
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                struct pollfd pfd = { .fd = conn->fd, .events = POLLOUT };
+                poll(&pfd, 1, 100);  /* 100ms timeout */
+                continue;
+            }
             log_debug(LOG_COMP_GENERAL, "ws: failed to send handshake response: %s", strerror(errno));
             close_client(conn);
             return;
@@ -199,8 +209,11 @@ static void handle_frame(ws_conn_t *conn) {
                 memcpy(json, frame.payload, frame.payload_len);
                 json[frame.payload_len] = '\0';
 
-                /* Dispatch via shared operation handler */
-                ws_transport_ctx_t wctx = { .fd = conn->fd };
+                /* Dispatch via shared operation handler.
+                 * ws_transport_ctx_t holds a pointer to conn so ws_write_line
+                 * can invalidate conn->fd directly on write errors, avoiding
+                 * stale-fd divergence between wctx and conn. */
+                ws_transport_ctx_t wctx = { .conn = conn };
                 transport_t transport = {
                     .ctx = &wctx,
                     .write_line = ws_write_line,
@@ -215,14 +228,9 @@ static void handle_frame(ws_conn_t *conn) {
                 int shutdown = op_dispatch(json, frame.payload_len, &transport);
                 free(json);
 
-                /* Sync write-error state back to conn. If op_dispatch is extended to support
-                 * streaming (multiple write_line calls), consider storing ws_conn_t* directly
-                 * in ws_transport_ctx_t to avoid caller-side sync. */
-                if (wctx.fd < 0) {
-                    /* ws_write_line already closed the fd — mark it invalid so
-                     * close_client() skips the close() call, then let close_client
-                     * handle the remaining cleanup (free recv_buf, reset state). */
-                    conn->fd = -1;
+                /* ws_write_line updates conn->fd directly on error — check
+                 * if the connection was invalidated during dispatch. */
+                if (conn->fd < 0) {
                     close_client(conn);
                     return;
                 }
@@ -281,6 +289,27 @@ static void handle_frame(ws_conn_t *conn) {
             case WS_OPCODE_PONG:
                 /* Ignore unsolicited pongs */
                 break;
+
+            case WS_OPCODE_BINARY:
+                /* Binary frames not supported — send 1003 (Unsupported Data) */
+                {
+                    uint8_t close_payload[2];
+                    close_payload[0] = (uint8_t)(1003 >> 8);   /* 0x03 */
+                    close_payload[1] = (uint8_t)(1003 & 0xFF); /* 0xEB */
+                    size_t close_len;
+                    uint8_t *close_frame = ws_frame_encode(WS_OPCODE_CLOSE,
+                                                            close_payload, 2, &close_len);
+                    if (close_frame != NULL) {
+                        ssize_t n = write(conn->fd, close_frame, close_len);
+                        free(close_frame);
+                        if (n < 0) {
+                            log_debug(LOG_COMP_GENERAL, "ws: binary-reject close write failed (fd=%d): %s", conn->fd, strerror(errno));
+                        }
+                    }
+                }
+                log_debug(LOG_COMP_GENERAL, "ws: unsupported binary frame, closing (fd=%d)", conn->fd);
+                close_client(conn);
+                return;
 
             case WS_OPCODE_CONTINUATION:
                 /* RFC 6455: send 1003 (unsupported) for fragmented messages we can't process */
@@ -383,14 +412,21 @@ int ws_server_pollfds(ws_server_t *server, struct pollfd *fds, int start_index) 
         idx++;
     }
 
-    /* Client sockets */
+    /* Client sockets — always populate all WS_MAX_CLIENTS slots so that
+     * ws_server_handle_events() can safely scan the fixed range without
+     * reading uninitialized pollfd entries.  Unused slots get fd = -1
+     * which poll() ignores. */
     for (int i = 0; i < WS_MAX_CLIENTS; i++) {
         if (server->clients[i].state != WS_STATE_EMPTY) {
             fds[idx].fd = server->clients[i].fd;
             fds[idx].events = POLLIN;
             fds[idx].revents = 0;
-            idx++;
+        } else {
+            fds[idx].fd = -1;
+            fds[idx].events = 0;
+            fds[idx].revents = 0;
         }
+        idx++;
     }
 
     return idx - start_index;

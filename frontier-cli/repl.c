@@ -2083,6 +2083,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
     while (running) {
         // 6.1 Poll stdin (+ WebSocket sockets if active) with timeout
         struct pollfd pfds[1 + WS_MAX_CLIENTS + 1];
+        memset(pfds, 0, sizeof(pfds));
         pfds[0].fd = STDIN_FILENO;
         pfds[0].events = POLLIN;
         pfds[0].revents = 0;

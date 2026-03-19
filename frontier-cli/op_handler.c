@@ -38,6 +38,9 @@
 
 #include "../third_party/cJSON/cJSON.h"
 
+/* Maximum number of items in a single ODB batch request */
+#define OP_MAX_BATCH_SIZE 1000
+
 /* ========================================================================
  * Response helpers — build JSON response string, send via transport
  * ======================================================================== */
@@ -299,8 +302,14 @@ static void handle_odb_get(long id, const char *json_line, transport_t *transpor
         return;
     }
 
-    cJSON *results = cJSON_CreateArray();
     int count = cJSON_GetArraySize(items);
+    if (count > OP_MAX_BATCH_SIZE) {
+        send_error(id, "Batch too large (max 1000 items)", transport);
+        cJSON_Delete(root);
+        return;
+    }
+
+    cJSON *results = cJSON_CreateArray();
 
     for (int i = 0; i < count; i++) {
         cJSON *item = cJSON_GetArrayItem(items, i);
@@ -356,8 +365,14 @@ static void handle_odb_set(long id, const char *json_line, transport_t *transpor
         return;
     }
 
-    cJSON *results = cJSON_CreateArray();
     int count = cJSON_GetArraySize(items);
+    if (count > OP_MAX_BATCH_SIZE) {
+        send_error(id, "Batch too large (max 1000 items)", transport);
+        cJSON_Delete(root);
+        return;
+    }
+
+    cJSON *results = cJSON_CreateArray();
 
     for (int i = 0; i < count; i++) {
         cJSON *item = cJSON_GetArrayItem(items, i);
@@ -417,8 +432,14 @@ static void handle_odb_list(long id, const char *json_line, transport_t *transpo
         return;
     }
 
-    cJSON *results = cJSON_CreateArray();
     int count = cJSON_GetArraySize(items);
+    if (count > OP_MAX_BATCH_SIZE) {
+        send_error(id, "Batch too large (max 1000 items)", transport);
+        cJSON_Delete(root);
+        return;
+    }
+
+    cJSON *results = cJSON_CreateArray();
 
     for (int i = 0; i < count; i++) {
         cJSON *item = cJSON_GetArrayItem(items, i);
@@ -482,8 +503,14 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
         return;
     }
 
-    cJSON *results = cJSON_CreateArray();
     int count = cJSON_GetArraySize(items);
+    if (count > OP_MAX_BATCH_SIZE) {
+        send_error(id, "Batch too large (max 1000 items)", transport);
+        cJSON_Delete(root);
+        return;
+    }
+
+    cJSON *results = cJSON_CreateArray();
 
     for (int i = 0; i < count; i++) {
         cJSON *item = cJSON_GetArrayItem(items, i);

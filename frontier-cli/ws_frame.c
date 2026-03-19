@@ -291,5 +291,9 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
         "\r\n",
         accept_key);
 
+    if (n < 0 || (size_t)n >= response_size) {
+        return -1;  /* encoding error or truncated */
+    }
+
     return n;
 }
