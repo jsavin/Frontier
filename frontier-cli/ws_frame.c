@@ -149,6 +149,7 @@ uint8_t *ws_frame_encode(uint8_t opcode, const uint8_t *payload, size_t payload_
 
 /*
  * Case-insensitive header search.
+ * Note: `name` must include the trailing colon (e.g., "Sec-WebSocket-Key:").
  */
 static const char *find_header(const char *headers, const char *name) {
     const char *p = headers;
@@ -219,7 +220,9 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
 
     /* Validate Origin header to prevent cross-site WebSocket hijacking.
      * Only allow connections from localhost origins. If no Origin is present,
-     * allow the connection (non-browser clients like wscat don't send Origin). */
+     * allow the connection (non-browser clients like wscat don't send Origin).
+     * Note: file:// origins (local HTML files) also lack an Origin header and
+     * are allowed through. This is an accepted risk for a localhost-only tool. */
     const char *origin = find_header(str, "Origin:");
     if (origin != NULL) {
         /* Extract origin value (up to CRLF) */

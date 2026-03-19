@@ -63,7 +63,10 @@ static boolean resolve_path(const char *path, hdlhashtable *htable, bigstring bs
 
     /* Validate path characters — only allow alphanumeric, dots, and underscores.
      * langexpandtodotparams() compiles and evaluates the path as UserTalk, so
-     * unsanitized input could execute arbitrary expressions. */
+     * unsanitized input could execute arbitrary expressions.
+     * Known limitation: ODB keys containing hyphens or other special characters
+     * are not reachable via this API. Expanding the allowlist requires careful
+     * analysis of which characters UserTalk treats as operators. */
     for (size_t i = 0; i < pathlen; i++) {
         char ch = path[i];
         if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')) && ch != '.' && ch != '_') {

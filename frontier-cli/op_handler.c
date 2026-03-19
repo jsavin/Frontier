@@ -288,6 +288,7 @@ static void handle_clear_context(long id, transport_t *transport) {
  */
 static void cjson_add_error_object(cJSON *item, const char *message) {
     cJSON *error_obj = cJSON_CreateObject();
+    if (error_obj == NULL) return;  /* OOM — item will lack "error" field */
     cJSON_AddStringToObject(error_obj, "message", message);
     cJSON_AddItemToObject(item, "error", error_obj);
 }

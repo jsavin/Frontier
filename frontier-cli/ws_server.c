@@ -506,18 +506,9 @@ void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_
 
         ws_conn_t *conn = &server->clients[i];
 
-        /* Find this fd in the pollfd array */
-        int pfd_idx = -1;
-        for (int j = idx; j < idx + WS_MAX_CLIENTS; j++) {
-            if (fds[j].fd == conn->fd) {
-                pfd_idx = j;
-                break;
-            }
-        }
-
-        if (pfd_idx < 0) {
-            continue;
-        }
+        /* Direct mapping: client slot i is at fds[idx + i] since
+         * ws_server_pollfds populates all WS_MAX_CLIENTS slots in order. */
+        int pfd_idx = idx + i;
 
         if (!(fds[pfd_idx].revents & POLLIN)) {
             continue;
