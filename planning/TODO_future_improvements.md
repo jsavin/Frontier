@@ -511,4 +511,108 @@ Notes
 - **Open Questions:** Where to run the LSP (inside `frontier-cli` vs. standalone daemon), how to secure bridge calls against untrusted inputs, and what API surfaces need refactoring for re-entrancy/thread safety.
 - **Next Steps:** Spike a thin protocol doc under `planning/phase5/` capturing LSP capabilities and interop surfaces, prototype symbol extraction atop existing parser code, and identify runtime boundaries that need refactoring before we can host the bridge in-process.
 
+### Debugging Infrastructure [P2]
+
+**Priority:** P2 — Valuable once the GUI and NDJSON protocol are more mature
+**Timeline:** After GUI Phase 1 (table editor) and `odb/*` protocol operations are implemented
+**Depends on:** NDJSON protocol event support (server-initiated messages), GUI application
+
+#### Interactive UserTalk Debugger
+
+Build a debugger that leverages the NDJSON/WebSocket protocol for communication between the runtime and GUI.
+
+**Core capabilities:**
+- Set/clear breakpoints on script lines (by ODB path + line number)
+- Step into, step over, step out, continue
+- Inspect local variables, parameters, and ODB state at pause points
+- View the full call stack with source context at each frame
+
+**Protocol operations needed:**
+- `debug/setBreakpoint`, `debug/clearBreakpoint` — manage breakpoints by ODB path + line
+- `debug/step`, `debug/stepOver`, `debug/stepOut`, `debug/continue` — execution control
+- `debug/inspect` — examine variables and expressions at the current pause point
+- Server-initiated `debug.paused` event — sent when a breakpoint is hit, includes stack frames and current line
+
+**Implementation approach:**
+- Add yield points in the UserTalk evaluator loop that check a per-thread breakpoint table
+- When a breakpoint is hit, the thread releases the GIL and enters a mini event loop reading debug commands from the protocol until `continue` or `step` is received
+- Releasing the GIL while paused allows other threads to continue executing normally
+- Similar pattern to existing `langbackgroundtask()` yield points
+
+#### Concurrent Debug Sessions
+
+The GIL does not prevent multiple simultaneous debug sessions. Each thread has its own execution context and stack, and a paused thread simply waits for input without holding the GIL.
+
+**Requirements:**
+- Per-thread debug state (breakpoint list, pause location, step mode)
+- Per-session debug channel — each user's debug commands route to their thread
+- Breakpoint ownership — Alice's breakpoint on script X doesn't pause Bob's thread when Bob calls the same script (unless shared breakpoints are explicitly enabled)
+
+#### Cross-Process Distributed Debugging
+
+Legacy Frontier had a unique capability: when client and server code ran in the same process, the web server (betty) would skip the network call and invoke the "remote" method directly within the executing thread. This meant you could set a breakpoint in server code, start debugging client code, and the debugger would pause at the server breakpoint with the full client+server call stack available at once.
+
+This capability can be extended to work across multiple Frontier processes over the network using the NDJSON/WebSocket protocol:
+
+1. Client process calls a remote method on the server process via WebSocket RPC
+2. Server process hits a breakpoint during that call
+3. Server sends a `debug.paused` event back over the WebSocket, including its local stack frames
+4. Client process (already blocked waiting for the RPC response) also pauses
+5. Debugger UI presents both stack segments as one unified stack — client frames at the bottom, network boundary in the middle, server frames at the top
+
+**Key enablers:**
+- Request ID correlation ties the client's outbound call to the server's inbound handler, identifying which threads to associate
+- Both processes can emit `debug.paused` events and accept debug commands
+- The client thread is already blocked on the RPC response, so pausing it is free
+- Stepping out past the RPC boundary requires coordinated resume: server sends result, client receives it, client pauses at the next line after the call
+
+This is essentially distributed debugging without a separate debug protocol — the application protocol *is* the debug protocol, because the RPC boundary and the debug boundary are the same system.
+
+### VS Code / Cursor Integration [P2]
+
+**Priority:** P2 — Valuable for developers who prefer VS Code or Cursor over the native GUI
+**Timeline:** After the native GUI debugger is working; the VS Code integration layers on top
+**Depends on:** UserTalk Language Server (see Phase 5+ exploration section above), debugging infrastructure
+
+A full VS Code/Cursor experience for UserTalk development would require several components:
+
+#### UserTalk Language Extension
+
+Basic language support for `.ut` files in VS Code:
+- Syntax highlighting via TextMate grammar or Tree-sitter parser
+- File association and icon for `.ut` extension
+- Bracket matching, auto-indent, comment toggling
+
+#### Language Server (LSP)
+
+An LSP-compliant language server providing IDE features. This extends the existing "UserTalk Language Server & Bridge" item (Phase 5+) with VS Code-specific integration:
+- Autocomplete for verb names, table paths, and ODB addresses
+- Go-to-definition — navigate `@system.verbs.xyz` to the actual script in the ODB
+- Hover info showing verb signatures and docstrings
+- Diagnostic errors (syntax errors as you type)
+- The language server communicates with `frontier-cli` over the NDJSON/WebSocket protocol to resolve ODB paths and retrieve type information
+
+#### DAP Adapter (Debug Adapter Protocol)
+
+A thin adapter translating VS Code's Debug Adapter Protocol to Frontier's native debug protocol:
+- Maps DAP `setBreakpoints`, `continue`, `next`, `stepIn`, `stepOut` to native debug operations
+- Translates `debug.paused` events into DAP `stopped` events
+- Exposes UserTalk variables and ODB state through DAP's variable inspection interface
+- This is a translation layer only — the native GUI debugger should be built first, and the DAP adapter wraps the same underlying protocol
+
+**Note:** The DAP adapter is optional. The native Frontier GUI will provide a debugger that understands UserTalk natively (outline structure, ODB context, cross-process stack unification). DAP flattens these into generic "source file + line number" concepts, losing some of the unique capabilities. The adapter is for developers who prefer to stay in VS Code/Cursor for casual debugging.
+
+#### ODB Explorer Sidebar
+
+A custom VS Code TreeDataProvider that displays the object database in a sidebar panel:
+- Browse the ODB hierarchy (tables, scripts, outlines, etc.)
+- Open objects in the editor (scripts open as editable text, tables show structure)
+- Create, rename, delete, and move objects
+- Uses `odb/get`, `odb/children`, `odb/set` protocol operations
+- Receives `odb.updated`/`odb.created`/`odb.deleted` events to stay in sync
+
+This is necessary because ODB is not a filesystem — VS Code's built-in file explorer doesn't apply. The ODB explorer provides the equivalent of Frontier's table window within the VS Code UI.
+
+---
+
 These items provide a parking lot for work that spans or follows the current phases. Revisit after each phase review to reprioritise.
