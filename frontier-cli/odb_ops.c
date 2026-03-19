@@ -132,7 +132,7 @@ static const char *external_type_name(tyvaluerecord *val) {
 /*
  * Get the simple type name string for a value type.
  */
-const char *type_name_str(tyvaluetype t) {
+const char *odb_type_name_str(tyvaluetype t) {
 
     switch (t) {
         case novaluetype:        return "none";
@@ -329,7 +329,7 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
 
         case listvaluetype:
         case recordvaluetype:
-            *out_type = type_name_str(val->valuetype);
+            *out_type = odb_type_name_str(val->valuetype);
             {
                 tyvaluerecord coerced = *val;
                 if (coercetostring(&coerced)) {
@@ -452,7 +452,7 @@ static int list_table_entries(hdlhashtable htable, const char *path_prefix,
         if (val.valuetype == externalvaluetype) {
             type = external_type_name(&val);
         } else {
-            type = type_name_str(val.valuetype);
+            type = odb_type_name_str(val.valuetype);
         }
 
         cJSON *entry = cJSON_CreateObject();
@@ -701,7 +701,8 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
         return make_error_result(path, "Invalid depth (use -1 for recursive, 0+ for limited)");
     }
 
-    /* depth 0 = just confirm it exists */
+    /* depth=0: Returns the table node itself with no child entries.
+     * Useful for confirming a path exists and is a table. */
     if (depth == 0) {
         hdlhashtable htable;
         bigstring bsname;
@@ -774,6 +775,23 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
 }
 
 cJSON *odb_delete_value(const char *path) {
+
+    /* Prevent accidental deletion of root-level structural tables.
+     * These are well-known top-level entries in the root hash table;
+     * deleting them would corrupt the database structure.
+     * A path without dots is a bare root-level name. */
+    static const char *protected_roots[] = {
+        "system", "workspace", "temp", "user", "Frontier",
+        "suites", "websites", "scratchpad", NULL
+    };
+
+    if (strchr(path, '.') == NULL) {
+        for (int i = 0; protected_roots[i] != NULL; i++) {
+            if (strcmp(path, protected_roots[i]) == 0) {
+                return make_error_result(path, "Cannot delete root-level table");
+            }
+        }
+    }
 
     hdlhashtable htable;
     bigstring bsname;

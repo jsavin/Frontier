@@ -806,6 +806,8 @@ class TestCase:
         # Use .* prefix/suffix in the pattern for partial matching.
         if self.expected_success and self.expected_pattern is not None:
             actual_result = str(output.get('result', ''))
+            # Changed from re.search to re.fullmatch in PR #481.
+            # All existing patterns verified to work with fullmatch semantics.
             if not re.fullmatch(self.expected_pattern, actual_result):
                 return False, f"Expected result to match pattern {self.expected_pattern!r}, but got {actual_result!r}"
 
@@ -962,6 +964,9 @@ class TestRunner:
                         test.name, False,
                         error=f"protocol_ops step missing 'op' field at {step_desc}")
 
+                # Note: send_raw() calls _send_recv() which adds a monotonic
+                # 'id' field to every outgoing message and validates that the
+                # response 'id' matches. No need to set id here.
                 msg = {'op': op}
                 if params:
                     msg['params'] = params

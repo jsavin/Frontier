@@ -88,7 +88,6 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
     if (written < frame_len && wctx->conn->fd >= 0) {
         /* Partial frame sent — connection is now in a corrupt state.
          * Close the fd; the next poll iteration will clean up. */
-        fd = wctx->conn->fd;
         wctx->conn->fd = -1;
         log_debug(LOG_COMP_GENERAL, "ws: closing connection after partial frame (fd=%d): %zu/%zu bytes",
                   fd, written, frame_len);

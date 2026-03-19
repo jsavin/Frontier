@@ -137,7 +137,7 @@ static void send_error(long id, const char *message, transport_t *transport) {
  * Send a success response with a script eval result value.
  */
 static void send_eval_success(long id, tyvaluerecord *val, transport_t *transport) {
-    const char *type_name = type_name_str(val->valuetype);
+    const char *type_name = odb_type_name_str(val->valuetype);
 
     tyvaluerecord coerced = *val;
 

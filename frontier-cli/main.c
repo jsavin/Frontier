@@ -633,6 +633,7 @@ static void print_usage(const char* program_name) {
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
     printf("  --log SPEC               Set per-component log levels (e.g., db:trace,lang:warn)\n");
+    printf("  --ws-port PORT           Start WebSocket server on PORT (localhost only, no auth)\n");
     printf("  -h, --help               Show this help message\n");
     printf("  --version                Show version information\n");
     printf("\n");

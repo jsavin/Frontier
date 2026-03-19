@@ -25,7 +25,7 @@
  * Get the simple type name string for a value type.
  * Shared with op_handler.c to avoid duplicate implementations.
  */
-const char *type_name_str(tyvaluetype t);
+const char *odb_type_name_str(tyvaluetype t);
 
 /*
  * Get a value from the ODB at the given dotted path.
