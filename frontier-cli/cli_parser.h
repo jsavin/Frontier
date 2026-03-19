@@ -36,6 +36,7 @@ typedef struct {
     boolean force_overwrite;    // Force overwrite existing output file (-f/--force)
     boolean skip_startup;       // Skip startup scripts (--skip-startup)
     boolean protocol_mode;      // NDJSON protocol mode (--protocol)
+    int ws_port;                // WebSocket server port (--ws-port), 0 = disabled
     boolean show_help;          // Show help flag
     boolean show_version;       // Show version flag
 } cli_options_t;
@@ -58,6 +59,7 @@ void cli_print_help(const char* program_name);
 
 // Default values
 #define CLI_DEFAULT_PORT 8080
+#define CLI_DEFAULT_WS_PORT 5337  /* WebSocket ODB access (Frontier admin is on 5336) */
 #define CLI_MAX_SCRIPT_LENGTH 8192
 #define CLI_MAX_PATH_LENGTH 1024
 

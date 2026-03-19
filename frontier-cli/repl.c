@@ -43,6 +43,7 @@
 #include "../Common/headers/process.h"      /* agentsenabled, agentscheduler_tick */
 #include "../Common/headers/langinternal.h" /* flreplmode */
 #include "../Common/headers/threadregistry.h" /* headless_backgroundtask */
+#include "ws_server.h"                       /* ws_server_t, ws_server_* */
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -2019,7 +2020,7 @@ static int repl_main_blocking(void) {
 /* Main REPL entry point: runs event loop with non-blocking linenoise.
  * Falls back to blocking mode if stdin is not a TTY.
  */
-int repl_main(cli_options_t *options) {
+int repl_main(cli_options_t *options, ws_server_t *ws_server) {
     (void)options;  /* Unused in Phase 1 */
 
     boolean running = true;
@@ -2080,12 +2081,30 @@ int repl_main(cli_options_t *options) {
 
     // 6. Event loop
     while (running) {
-        // 6.1 Poll stdin with timeout
-        struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
-        int ready = poll(&pfd, 1, POLL_TIMEOUT_MS);
+        // 6.1 Poll stdin (+ WebSocket sockets if active) with timeout
+        struct pollfd pfds[WS_POLL_FDS_COUNT + 1];
+        memset(pfds, 0, sizeof(pfds));
+        pfds[0].fd = STDIN_FILENO;
+        pfds[0].events = POLLIN;
+        pfds[0].revents = 0;
+        int nfds = 1;
+        int ws_start = -1;
+
+        if (ws_server != NULL) {
+            ws_start = nfds;
+            nfds += ws_server_pollfds(ws_server, pfds, nfds);
+        }
+
+        int ready = poll(pfds, (nfds_t)nfds, POLL_TIMEOUT_MS);
+
+        // 6.1.1 Handle WebSocket events (before stdin to avoid latency)
+        // GIL is held here — ws_server_handle_events calls op_dispatch which requires it.
+        if (ready > 0 && ws_server != NULL && ws_start >= 0) {
+            ws_server_handle_events(ws_server, pfds, ws_start);
+        }
 
         // 6.2 Feed input to linenoise if available
-        if (ready > 0 && (pfd.revents & POLLIN)) {
+        if (ready > 0 && (pfds[0].revents & POLLIN)) {
             char *result = linenoiseEditFeed(&ls);
 
             if (result == linenoiseEditMore) {

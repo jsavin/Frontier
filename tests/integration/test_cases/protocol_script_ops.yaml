@@ -1,0 +1,140 @@
+# Protocol-native script operation tests
+#
+# Tests the NDJSON protocol handler's script operations:
+#   script/eval, script/clearContext, shutdown
+#   Also tests unknown operation handling and malformed requests.
+#
+# These tests use the protocol_ops field to send raw NDJSON messages
+# and validate the raw JSON responses.
+
+tests:
+  # ========================================================================
+  # script/eval — Basic evaluation
+  # ========================================================================
+
+  - name: "protocol script/eval - arithmetic"
+    description: "Simple arithmetic expression"
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "1 + 1"
+        validate:
+          success: true
+          result:
+            value: "2"
+            type: "long"
+
+  - name: "protocol script/eval - string expression"
+    description: "String concatenation"
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: '"hello" + " " + "world"'
+        validate:
+          success: true
+
+  - name: "protocol script/eval - UserTalk typeof"
+    description: "typeof on a table should return table type"
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "typeOf(workspace)"
+        validate:
+          success: true
+
+  - name: "protocol script/eval - error expression"
+    description: "Invalid expression should return success:false"
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "this_is_not_a_valid_thing+++"
+        validate:
+          success: false
+
+  - name: "protocol script/eval - missing expression"
+    description: "Omitting expression should return error"
+    protocol_ops:
+      - op: "script/eval"
+        params: {}
+        validate:
+          success: false
+
+  # ========================================================================
+  # script/clearContext
+  # ========================================================================
+
+  - name: "protocol script/clearContext - basic"
+    description: "clearContext should succeed"
+    protocol_ops:
+      - op: "script/clearContext"
+        validate:
+          success: true
+
+  # ========================================================================
+  # Unknown operation
+  # ========================================================================
+
+  - name: "protocol unknown operation"
+    description: "Sending an unknown op should return error"
+    protocol_ops:
+      - op: "this/does/not/exist"
+        validate:
+          success: false
+          error_contains: "Unknown operation"
+
+  # ========================================================================
+  # script/eval + ODB integration
+  # ========================================================================
+
+  - name: "protocol script/eval - create and read via ODB"
+    description: "Use script/eval to set a value, then read it with odb/get"
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: 'workspace.test_script_odb = "from script"'
+        validate:
+          success: true
+        description: "set via script"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_script_odb"
+        validate:
+          success: true
+          results:
+            - type: "string"
+              value: "from script"
+        description: "read via odb"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_script_odb"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "protocol odb/set then script/eval read"
+    description: "Use odb/set to create a value, then read it with script/eval"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_odb_script"
+              type: "long"
+              value: 777
+        validate:
+          success: true
+        description: "set via odb"
+      - op: "script/eval"
+        params:
+          expression: "workspace.test_odb_script"
+        validate:
+          success: true
+        description: "read via script"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_odb_script"
+        validate:
+          success: true
+        description: "cleanup"

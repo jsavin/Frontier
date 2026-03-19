@@ -177,6 +177,8 @@ tests:
 
 **Optional fields:**
 - `expected_result_type`: Validates the `result_type` field from JSON output
+- `expected_pattern`: Regex pattern matched against the result using `re.fullmatch` (exact match). Use `.*` prefix/suffix for partial matching (e.g., `".*\\d+.*"` to match any string containing a number).
+- `expected_contains`: List of substrings the result must contain
 - `timeout`: Per-test timeout in seconds (default: 10)
 - `description`: Human-readable test description
 

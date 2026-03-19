@@ -10,6 +10,7 @@ import concurrent.futures
 import json
 import multiprocessing
 import os
+import re
 import select
 import shutil
 import subprocess
@@ -528,6 +529,14 @@ class ProtocolExecutor:
                 'exit_code': 1,
             }
 
+    def send_raw(self, msg: dict, timeout: float = 10.0) -> dict:
+        """
+        Send a raw NDJSON message and return the raw response dict.
+        Unlike execute(), this does NOT normalize the response — the caller
+        gets the exact JSON response from the protocol process.
+        """
+        return self._send_recv(msg, timeout=timeout)
+
     def reset(self):
         """Clear REPL variables and reset focus between tests."""
         if self._proc is None or self._proc.poll() is not None:
@@ -722,7 +731,7 @@ class TestCase:
         self.expected_result_type = data.get('expected_result_type')
         self.expected_error_type = data.get('expected_error_type')
         self.expected_contains = data.get('expected_contains')  # List of strings that should be in result
-        self.expected_pattern = data.get('expected_pattern')    # Regex pattern to match result
+        self.expected_pattern = data.get('expected_pattern')    # Regex pattern — uses re.fullmatch (exact match; use .* for partial)
         self.expected_error_contains = data.get('expected_error_contains')  # String that should be in error
         self.description = data.get('description', '')
         self.timeout = data.get('timeout', 10)  # Default 10 seconds, configurable per test
@@ -741,6 +750,9 @@ class TestCase:
         self.repl_mode = data.get('repl_mode', False)  # Run test in REPL interactive mode
         self.expected_output_contains = data.get('expected_output_contains', [])  # Substrings in stdout/stderr
         self.expected_output_not_contains = data.get('expected_output_not_contains', [])  # Forbidden substrings
+
+        # Protocol-native test support (raw NDJSON operations like odb/get, odb/set, etc.)
+        self.protocol_ops = data.get('protocol_ops', [])  # List of {op, params, validate} dicts
 
     def get_script_with_substitutions(self, test_root_dir: Optional[str] = None) -> str:
         """Get the script with path substitutions applied."""
@@ -790,10 +802,13 @@ class TestCase:
                 if expected_string not in actual_result:
                     return False, f"Expected result to contain {expected_string!r}, but got {actual_result!r}"
 
-        # Check if result matches expected pattern (regex)
+        # Check if result matches expected pattern (regex, full match).
+        # Use .* prefix/suffix in the pattern for partial matching.
         if self.expected_success and self.expected_pattern is not None:
             actual_result = str(output.get('result', ''))
-            if not re.search(self.expected_pattern, actual_result):
+            # Changed from re.search to re.fullmatch in PR #481.
+            # All existing patterns verified to work with fullmatch semantics.
+            if not re.fullmatch(self.expected_pattern, actual_result):
                 return False, f"Expected result to match pattern {self.expected_pattern!r}, but got {actual_result!r}"
 
         # Check result type if specified
@@ -899,7 +914,9 @@ class TestRunner:
                 print(f"    {test.description}")
 
         # Route to appropriate executor
-        if test.interactive_steps:
+        if test.protocol_ops:
+            return self.run_protocol_test(test)
+        elif test.interactive_steps:
             if not HAS_PEXPECT:
                 return TestResult(
                     name=test.name,
@@ -913,6 +930,269 @@ class TestRunner:
             return self.run_repl_test(test)
         else:
             return self.run_batch_test(test)
+
+    def run_protocol_test(self, test: TestCase) -> TestResult:
+        """
+        Run a protocol-native test that sends raw NDJSON operations.
+
+        Each step in test.protocol_ops is a dict with:
+          - op: operation name (e.g. "odb/get")
+          - params: parameters dict
+          - validate: dict of assertions on the response:
+              - success: expected top-level success boolean
+              - results: list of per-item assertions (each a dict of key/value checks)
+              - error_contains: string expected in error message
+        """
+        # Note: If a test fails before its cleanup step, stale test_proto_*
+        # entries may remain in workspace. This is acceptable for now — tests
+        # use unique prefixes and check specific paths, so stale entries from
+        # prior runs don't cause false failures.
+        if self.protocol_executor is None or not self.protocol_executor.is_alive:
+            return TestResult(
+                test.name, False,
+                error="Protocol executor not available (required for protocol_ops tests)")
+
+        try:
+            for step_idx, step in enumerate(test.protocol_ops):
+                op = step.get('op')
+                params = step.get('params', {})
+                validate = step.get('validate', {})
+                step_desc = step.get('description', f'step {step_idx + 1}')
+
+                if op is None:
+                    return TestResult(
+                        test.name, False,
+                        error=f"protocol_ops step missing 'op' field at {step_desc}")
+
+                # Note: send_raw() calls _send_recv() which adds a monotonic
+                # 'id' field to every outgoing message and validates that the
+                # response 'id' matches. No need to set id here.
+                msg = {'op': op}
+                if params:
+                    msg['params'] = params
+
+                try:
+                    resp = self.protocol_executor.send_raw(msg, timeout=test.timeout)
+                except TimeoutError:
+                    return TestResult(
+                        test.name, False,
+                        error=f"Timeout at {step_desc}: op={op}")
+                except RuntimeError as e:
+                    try:
+                        self.protocol_executor._restart()
+                    except Exception as restart_err:
+                        logging.warning("Protocol executor restart failed: %s", restart_err)
+                    return TestResult(
+                        test.name, False,
+                        error=f"Protocol error at {step_desc}: {e}")
+
+                # Validate response
+                err = self._validate_protocol_response(resp, validate, step_desc)
+                if err is not None:
+                    details = f"Response: {json.dumps(resp, indent=2)}" if self.verbose else None
+                    return TestResult(test.name, False, error=err, details=details)
+
+            # All steps passed
+            return TestResult(test.name, True)
+
+        except Exception as e:
+            return TestResult(test.name, False, error=f"Unexpected error: {e}")
+        finally:
+            self.protocol_executor.reset()
+
+    @staticmethod
+    def _validate_protocol_response(resp: dict, validate: dict, step_desc: str) -> Optional[str]:
+        """Validate a raw protocol response against assertions. Returns error string or None.
+
+        Type coercion rules:
+        - 'success' field: strict type match (bool only, catches "true" vs true)
+        - '_strict_type' assertions: strict type + value match
+        - All other fields: flexible comparison (falls back to str() if types differ)
+
+        Use _strict_type when the JSON wire type matters (e.g., number vs string).
+        """
+
+        # Check top-level success
+        if 'success' in validate:
+            expected = validate['success']
+            actual = resp.get('success')
+            if actual != expected:
+                return f"[{step_desc}] Expected success={expected}, got success={actual}"
+
+        # Check error message contains
+        if 'error_contains' in validate:
+            expected_substr = validate['error_contains']
+            error_obj = resp.get('error', {})
+            error_msg = error_obj.get('message', '') if isinstance(error_obj, dict) else str(error_obj)
+            if expected_substr not in error_msg:
+                return f"[{step_desc}] Expected error containing {expected_substr!r}, got {error_msg!r}"
+
+        # Check result_count first (before per-item loop) so count mismatches
+        # produce a clear message rather than an IndexError or confusing diff.
+        if 'result_count' in validate:
+            actual_count = len(resp.get('results', []))
+            expected_count = validate['result_count']
+            if actual_count != expected_count:
+                return f"[{step_desc}] Expected {expected_count} results, got {actual_count}"
+
+        # Check results array items
+        if 'results' in validate:
+            actual_results = resp.get('results', [])
+            expected_results = validate['results']
+            if len(actual_results) != len(expected_results):
+                return (f"[{step_desc}] Expected {len(expected_results)} results, "
+                        f"got {len(actual_results)}")
+
+            for i, expected_item in enumerate(expected_results):
+                actual_item = actual_results[i]
+                for key, expected_val in expected_item.items():
+                    if key == '_exists':
+                        # Check that a key exists (or doesn't) in the result item
+                        for check_key, should_exist in expected_val.items():
+                            if should_exist and check_key not in actual_item:
+                                return f"[{step_desc}] results[{i}]: expected key '{check_key}' to exist"
+                            if not should_exist and check_key in actual_item:
+                                return f"[{step_desc}] results[{i}]: expected key '{check_key}' to not exist"
+                        continue
+                    if key == '_strict_type':
+                        # Check that actual values match expected type AND value exactly
+                        for check_key, expected_typed_val in expected_val.items():
+                            actual_typed_val = actual_item.get(check_key)
+                            if type(actual_typed_val) is not type(expected_typed_val):
+                                return (f"[{step_desc}] results[{i}].{check_key}: "
+                                        f"type mismatch: expected {type(expected_typed_val).__name__} "
+                                        f"{expected_typed_val!r}, got {type(actual_typed_val).__name__} "
+                                        f"{actual_typed_val!r}")
+                            if actual_typed_val != expected_typed_val:
+                                return (f"[{step_desc}] results[{i}].{check_key}: "
+                                        f"expected {expected_typed_val!r}, got {actual_typed_val!r}")
+                        continue
+                    if key == '_contains':
+                        # Check that a string value contains a substring
+                        for check_key, substr in expected_val.items():
+                            actual_val = str(actual_item.get(check_key, ''))
+                            if substr not in actual_val:
+                                return (f"[{step_desc}] results[{i}].{check_key}: "
+                                        f"expected to contain {substr!r}, got {actual_val!r}")
+                        continue
+                    if key == '_pattern':
+                        # Check that a value matches a regex pattern (full match).
+                        # Use .* prefix/suffix in the pattern for partial matching.
+                        for check_key, pattern in expected_val.items():
+                            actual_val = str(actual_item.get(check_key, ''))
+                            if not re.fullmatch(pattern, actual_val):
+                                return (f"[{step_desc}] results[{i}].{check_key}: "
+                                        f"expected to match {pattern!r}, got {actual_val!r}")
+                        continue
+
+                    actual_val = actual_item.get(key)
+                    # For boolean fields, require exact type match to catch
+                    # string "true" vs JSON boolean true mismatches
+                    if key == 'success' and type(actual_val) is not type(expected_val):
+                        return (f"[{step_desc}] results[{i}].{key}: "
+                                f"type mismatch: expected {type(expected_val).__name__} "
+                                f"{expected_val!r}, got {type(actual_val).__name__} {actual_val!r}")
+                    # Allow flexible type comparison for other fields (e.g. int vs string "42")
+                    if actual_val != expected_val and str(actual_val) != str(expected_val):
+                        return (f"[{step_desc}] results[{i}].{key}: "
+                                f"expected {expected_val!r}, got {actual_val!r}")
+
+        # Note: The 'result' (singular) section does not support meta-assertions
+        # (_strict_type, _exists, _contains, _pattern) — only 'results' (plural) does.
+        # This is acceptable because script/eval responses have simple structure.
+
+        # Check result (singular) — for script/eval responses which use "result" not "results"
+        if 'result' in validate:
+            actual_result = resp.get('result', {})
+            expected_result = validate['result']
+            if isinstance(expected_result, dict) and isinstance(actual_result, dict):
+                for key, expected_val in expected_result.items():
+                    actual_val = actual_result.get(key)
+                    if actual_val != expected_val and str(actual_val) != str(expected_val):
+                        return (f"[{step_desc}] result.{key}: "
+                                f"expected {expected_val!r}, got {actual_val!r}")
+            elif actual_result != expected_result and str(actual_result) != str(expected_result):
+                return f"[{step_desc}] result: expected {expected_result!r}, got {actual_result!r}"
+
+        # Check results[0].entries count (for odb/list).
+        # Note: Unindexed entries_count/entries_min/entries_include always inspect results[0].
+        # For multi-path batches, use the indexed variants (entries_count_N, entries_min_N, etc).
+        if 'entries_count' in validate:
+            results = resp.get('results', [])
+            if not results:
+                return f"[{step_desc}] No results to check entries_count"
+            entries = results[0].get('entries', [])
+            expected = validate['entries_count']
+            if len(entries) != expected:
+                return f"[{step_desc}] Expected {expected} entries, got {len(entries)}"
+
+        # Indexed entries validators (entries_count_N, entries_min_N, entries_include_N)
+        # inspect results[N].entries for multi-path odb/list batches.
+        for key in validate:
+            for prefix, checker in [
+                ('entries_count_', 'count'),
+                ('entries_min_', 'min'),
+                ('entries_include_', 'include'),
+            ]:
+                if key.startswith(prefix):
+                    idx_str = key[len(prefix):]
+                    try:
+                        idx = int(idx_str)
+                    except ValueError:
+                        continue
+                    results = resp.get('results', [])
+                    if idx >= len(results):
+                        return f"[{step_desc}] Result index {idx} out of range (have {len(results)} results)"
+                    entries = results[idx].get('entries', [])
+                    expected_val = validate[key]
+
+                    if checker == 'count':
+                        if len(entries) != expected_val:
+                            return f"[{step_desc}] results[{idx}]: Expected {expected_val} entries, got {len(entries)}"
+                    elif checker == 'min':
+                        if len(entries) < expected_val:
+                            return f"[{step_desc}] results[{idx}]: Expected at least {expected_val} entries, got {len(entries)}"
+                    elif checker == 'include':
+                        entry_names = {e.get('name') for e in entries}
+                        for expected_entry in expected_val:
+                            name = expected_entry.get('name')
+                            if name not in entry_names:
+                                return f"[{step_desc}] results[{idx}]: Expected entry named {name!r} not found"
+                            if 'type' in expected_entry:
+                                matching = [e for e in entries if e.get('name') == name]
+                                if matching and matching[0].get('type') != expected_entry['type']:
+                                    return (f"[{step_desc}] results[{idx}]: Entry {name!r}: expected type "
+                                            f"{expected_entry['type']!r}, got {matching[0].get('type')!r}")
+
+        # Check entries_min (at least N entries)
+        if 'entries_min' in validate:
+            results = resp.get('results', [])
+            if not results:
+                return f"[{step_desc}] No results to check entries_min"
+            entries = results[0].get('entries', [])
+            expected_min = validate['entries_min']
+            if len(entries) < expected_min:
+                return f"[{step_desc}] Expected at least {expected_min} entries, got {len(entries)}"
+
+        # Check specific entries by name (for odb/list)
+        if 'entries_include' in validate:
+            results = resp.get('results', [])
+            if not results:
+                return f"[{step_desc}] No results to check entries_include"
+            entries = results[0].get('entries', [])
+            entry_names = {e.get('name') for e in entries}
+            for expected_entry in validate['entries_include']:
+                name = expected_entry.get('name')
+                if name not in entry_names:
+                    return f"[{step_desc}] Expected entry named {name!r} not found in listing"
+                # Check type if specified
+                if 'type' in expected_entry:
+                    matching = [e for e in entries if e.get('name') == name]
+                    if matching and matching[0].get('type') != expected_entry['type']:
+                        return (f"[{step_desc}] Entry {name!r}: expected type "
+                                f"{expected_entry['type']!r}, got {matching[0].get('type')!r}")
+
+        return None
 
     def run_batch_test(self, test: TestCase) -> TestResult:
         """Run a test in batch mode. Uses protocol executor if available and compatible."""

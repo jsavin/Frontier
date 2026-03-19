@@ -151,13 +151,14 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {"log", required_argument, 0, 'L'},
         {"skip-startup", no_argument, 0, 'S'},
         {"protocol", no_argument, 0, 'P'},
+        {"ws-port", optional_argument, 0, 'W'},
         {"help", no_argument, 0, 'h'},
         {"version", no_argument, 0, 'V'},
         {0, 0, 0, 0}
     };
 
     // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDPShV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDPW::ShV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -272,6 +273,21 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             case 'P':
                 // NDJSON protocol mode (structured JSON over stdin/stdout)
                 options->protocol_mode = true;
+                break;
+
+            case 'W':
+                // WebSocket server port (default: 5337, Frontier admin is on 5336)
+                if (optarg != NULL && optarg[0] != '\0') {
+                    char *endptr;
+                    long port = strtol(optarg, &endptr, 10);
+                    if (*endptr != '\0' || port < 1 || port > 65535) {
+                        log_error(LOG_COMP_GENERAL, "Error: Invalid WebSocket port: %s", optarg);
+                        return false;
+                    }
+                    options->ws_port = (int)port;
+                } else {
+                    options->ws_port = CLI_DEFAULT_WS_PORT;
+                }
                 break;
 
             case 'h':
@@ -398,6 +414,7 @@ void cli_print_options(const cli_options_t* options) {
     printf("  Force Overwrite: %s\n", options->force_overwrite ? "yes" : "no");
     printf("  Skip Startup: %s\n", options->skip_startup ? "yes" : "no");
     printf("  Protocol Mode: %s\n", options->protocol_mode ? "yes" : "no");
+    printf("  WebSocket Port: %d\n", options->ws_port);
     printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
     printf("  Debug: %s\n", options->debug ? "yes" : "no");
     printf("  Output JSON: %s\n", options->output_json ? "yes" : "no");

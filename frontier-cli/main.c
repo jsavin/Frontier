@@ -65,6 +65,7 @@
 #include "cli_utils.h"
 #include "repl.h"
 #include "protocol_handler.h"
+#include "ws_server.h"
 
 extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
@@ -375,20 +376,37 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Start WebSocket server if --ws-port was specified
+    ws_server_t ws_server;
+    ws_server_t *ws_server_ptr = NULL;
+
+    if (g_cli_options.ws_port > 0) {
+        if (ws_server_init(&ws_server, g_cli_options.ws_port) == 0) {
+            ws_server_ptr = &ws_server;
+        } else {
+            log_error(LOG_COMP_GENERAL, "Failed to start WebSocket server on port %d", g_cli_options.ws_port);
+        }
+    }
+
     // Determine execution mode
     boolean success = false;
     int exit_code = 0;
 
     if (g_cli_options.protocol_mode) {
         // NDJSON protocol mode - structured JSON over stdin/stdout
-        exit_code = protocol_main(&g_cli_options);
+        exit_code = protocol_main(&g_cli_options, ws_server_ptr);
     } else if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {
         // Batch mode - execute script and exit
         success = execute_script_mode();
         exit_code = success ? 0 : 1;
     } else {
         // Interactive mode - enter REPL
-        exit_code = repl_main(&g_cli_options);
+        exit_code = repl_main(&g_cli_options, ws_server_ptr);
+    }
+
+    // Shutdown WebSocket server
+    if (ws_server_ptr != NULL) {
+        ws_server_shutdown(ws_server_ptr);
     }
 
     // Cleanup
@@ -615,6 +633,9 @@ static void print_usage(const char* program_name) {
     printf("  -v, --verbose            Verbose output\n");
     printf("  --debug                  Debug mode\n");
     printf("  --log SPEC               Set per-component log levels (e.g., db:trace,lang:warn)\n");
+    printf("  --ws-port PORT           Start WebSocket server on PORT (localhost only, no auth).\n");
+    printf("                           WARNING: Any local process or browser page (including file://)\n");
+    printf("                           can access the ODB while the server is running.\n");
     printf("  -h, --help               Show this help message\n");
     printf("  --version                Show version information\n");
     printf("\n");

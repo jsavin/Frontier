@@ -54,7 +54,7 @@ PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
 CMAKE_BIN = $(shell if [ -x $(THIRDPARTYDIR)/cmake-install/bin/cmake ] && ! $(THIRDPARTYDIR)/cmake-install/bin/cmake --version 2>&1 | grep -q "Error"; then echo "$(THIRDPARTYDIR)/cmake-install/bin/cmake"; else echo "cmake"; fi)
 PAIGE_ARCHES = arm64;x86_64
 
-INCLUDES += -I$(PAIGE_DIR)/PGHEADER -I$(THIRDPARTYDIR)/linenoise
+INCLUDES += -I$(PAIGE_DIR)/PGHEADER -I$(THIRDPARTYDIR)/linenoise -I$(THIRDPARTYDIR)/cJSON
 LIBS = $(PAIGE_LIB)
 LDFLAGS = -Wl,-undefined,dynamic_lookup
 
@@ -79,6 +79,11 @@ CLI_SOURCES = \
     cli_executor.c \
     cli_json_output.c \
     protocol_handler.c \
+    op_handler.c \
+    odb_ops.c \
+    ws_server.c \
+    ws_frame.c \
+    base64_util.c \
     headless_scripts_loader.c \
     terminal_control.c \
     dialog_prompts.c \
@@ -91,6 +96,9 @@ CLI_SOURCES = \
     repl_eval.c \
     repl_output.c \
     repl_variables.c
+
+# cJSON (vendored JSON parser)
+CJSON_SOURCES = $(THIRDPARTYDIR)/cJSON/cJSON.c
 
 # Core runtime sources needed for script execution (aligned with tests/runtime_tests)
 RUNTIME_SOURCES = \
@@ -222,12 +230,13 @@ all: build dist
 # Use 'make build' when you don't need dist/ updated
 build: strings_generated kernel_verbs_generated $(TARGET)
 
-$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(PAIGE_LIB) $(LINENOISE_SRC)
+$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(CJSON_SOURCES) $(PAIGE_LIB) $(LINENOISE_SRC)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
 		$(CLI_SOURCES) \
+		$(CJSON_SOURCES) \
 		$(FRONTIER_SOURCES) \
 		$(LINENOISE_SRC) \
-		-o $(TARGET) $(LIBS) $(LDFLAGS)
+		-o $(TARGET) $(LIBS) $(LDFLAGS) -lm
 
 $(STRINGS_COMPILER):
 	$(MAKE) -C $(STRINGS_COMPILER_DIR)

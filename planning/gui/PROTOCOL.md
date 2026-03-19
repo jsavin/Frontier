@@ -205,6 +205,13 @@ The existing XML-RPC endpoint at `/RPC2` remains unchanged. This protocol operat
 }
 ```
 
+### 3.5 Response Schema: `result` vs `results`
+
+- `script/eval` responses use `"result"` (singular object with `value` and `type` fields)
+- ODB operations use `"results"` (plural array of per-item result objects)
+
+This is a deliberate design decision: `script/eval` returns a single value while ODB operations are batch-capable and return one result per item.
+
 ---
 
 ## 4. Versioning
@@ -769,6 +776,65 @@ POST /api/odb/copy
 - `2003` - Name already exists at destination
 - `2010` - Permission denied
 
+### 6.11 odb/list - List Table Children
+
+Lists the children of a table, with optional recursive depth.
+
+**WebSocket:**
+```json
+{
+  "op": "odb/list",
+  "id": 9,
+  "params": {
+    "path": "workspace.scratchpad",
+    "depth": 1,
+    "maxResults": 1000
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `path` | string | Yes | - | Dot-path to table |
+| `depth` | integer | No | 1 | How deep to list: 0=existence check only, 1=direct children, -1=all descendants |
+| `maxResults` | integer | No | 10000 | Maximum entries to return |
+
+**Response (depth >= 1):**
+```json
+{
+  "id": 9,
+  "result": {
+    "path": "workspace.scratchpad",
+    "entries": [
+      {"name": "config", "path": "workspace.scratchpad.config", "type": "table"},
+      {"name": "greeting", "path": "workspace.scratchpad.greeting", "type": "string"}
+    ],
+    "success": true
+  }
+}
+```
+
+**Note:** When `depth=0`, the response contains only `path` and `success` fields (no `entries` key). This serves as an existence check, confirming the path exists without enumerating children.
+
+**Response (depth=0, existence check):**
+```json
+{
+  "id": 9,
+  "result": {
+    "path": "workspace.scratchpad",
+    "success": true
+  }
+}
+```
+
+If the result count exceeds `maxResults`, the response includes `"truncated": true`.
+
+**Errors:**
+- `2001` - Path not found
+- `2008` - Not a table (path points to a non-table value)
+
 ---
 
 ## 7. Event Subscription System
@@ -1204,6 +1270,7 @@ URL paths do not contain version numbers:
 | POST | `/api/odb/rename` | Rename object |
 | POST | `/api/odb/move` | Move object |
 | POST | `/api/odb/copy` | Copy object |
+| POST | `/api/odb/list` | List table children |
 | POST | `/api/subscribe` | Create subscription |
 | POST | `/api/unsubscribe` | Remove subscription |
 
@@ -1220,6 +1287,7 @@ URL paths do not contain version numbers:
 | `odb/rename` | Rename object |
 | `odb/move` | Move object |
 | `odb/copy` | Copy object |
+| `odb/list` | List table children |
 | `subscribe` | Create subscription |
 | `subscribe/renew` | Renew subscription |
 | `unsubscribe` | Remove subscription |
