@@ -487,20 +487,20 @@ tests:
   # odb/delete — Delete operations
   # ========================================================================
 
-  - name: "odb/delete - rejects root-level table deletion"
-    description: "Protected-root denylist prevents deleting structural tables"
+  - name: "odb/delete - rejects protected root-level table deletion"
+    description: "Protected-root list prevents deleting structural tables like system"
     protocol_ops:
       - op: "odb/delete"
         params:
           items:
-            - path: "workspace"
+            - path: "system"
         validate:
           success: true
           result_count: 1
           results:
             - success: false
               _contains:
-                error: "Cannot delete root-level table"
+                error: "Cannot delete protected root-level table"
 
   - name: "odb/delete - delete nonexistent path"
     description: "Deleting a nonexistent path should return per-item error"

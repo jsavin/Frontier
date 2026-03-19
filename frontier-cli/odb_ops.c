@@ -741,16 +741,23 @@ cJSON *odb_list_children(const char *path, int depth, int max_results) {
 
 cJSON *odb_delete_value(const char *path) {
 
-    /* Reject ALL root-level deletions (paths with no dot separator).
-     * Any bare name like "workspace", "system", or even a user-created
-     * root table would be dangerous to delete. Use a dotted path
-     * (e.g. "workspace.child") to delete children instead. */
+    /* Protect structural root-level tables from deletion.
+     * Non-protected root tables (e.g. user-created or guest database tables)
+     * can be deleted. This list is intentionally conservative and may be
+     * made configurable in a future update. */
+    static const char *protected_roots[] = {
+        "system", "temp", "user", "suites",
+        "websites", "apps", "tools", NULL
+    };
     if (strchr(path, '.') == NULL) {
-        char err[320];
-        snprintf(err, sizeof(err),
-                 "Cannot delete root-level table '%s' — use a dotted path to delete children",
-                 path);
-        return make_error_result(path, err);
+        for (int i = 0; protected_roots[i] != NULL; i++) {
+            if (strcmp(path, protected_roots[i]) == 0) {
+                char err[320];
+                snprintf(err, sizeof(err),
+                         "Cannot delete protected root-level table '%s'", path);
+                return make_error_result(path, err);
+            }
+        }
     }
 
     hdlhashtable htable;
