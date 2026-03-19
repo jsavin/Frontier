@@ -19,8 +19,10 @@ static const char b64_table[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /* Callers must provide an output buffer of at least (in_len + 2) / 3 * 4 + 1
- * bytes. If the buffer is too small, output is silently truncated. */
-void base64_encode_raw(const uint8_t *in, size_t in_len,
+ * bytes. Returns the number of base64 characters written (excluding NUL).
+ * If the buffer is too small, output is truncated and the return value
+ * will be less than the expected ((in_len+2)/3)*4. */
+size_t base64_encode_raw(const uint8_t *in, size_t in_len,
                               char *out, size_t out_size) {
     size_t i = 0, j = 0;
 
@@ -42,4 +44,5 @@ void base64_encode_raw(const uint8_t *in, size_t in_len,
         out[j++] = (bytes_in_triple < 3) ? '=' : b64_table[triple & 0x3F];
     }
     out[j] = '\0';
+    return j;
 }

@@ -182,7 +182,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
                 break;
             }
 
-            /* Handle WebSocket events */
+            /* Handle WebSocket events (GIL held — required by op_dispatch) */
             ws_server_handle_events(ws_server, pfds, ws_start);
 
             /* Handle stdin data */

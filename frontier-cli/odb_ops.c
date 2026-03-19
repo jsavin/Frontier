@@ -154,6 +154,23 @@ const char *odb_type_name_str(tyvaluetype t) {
 }
 
 /*
+ * Create a cJSON string from a Frontier Handle (pascal-style, not NUL-terminated).
+ * Returns NULL on nil handle, negative size, or malloc failure.
+ */
+static cJSON *cjson_string_from_handle(Handle h) {
+    if (h == nil) return NULL;
+    long len = gethandlesize(h);
+    if (len < 0) return NULL;
+    char *buf = malloc(len + 1);
+    if (buf == NULL) return NULL;
+    memcpy(buf, *h, len);
+    buf[len] = '\0';
+    cJSON *s = cJSON_CreateString(buf);
+    free(buf);
+    return s;
+}
+
+/*
  * Convert a Frontier tyvaluerecord to a cJSON value for get responses.
  * Returns the type name via out_type.
  */
@@ -201,43 +218,18 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
         case stringvaluetype:
             *out_type = "string";
             {
-                Handle h = val->data.stringvalue;
-                if (h == nil) {
-                    return cJSON_CreateString("");
-                }
-                long len = gethandlesize(h);
-                if (len < 0) return cJSON_CreateString("");
-                /* Create null-terminated copy for cJSON */
-                char *buf = malloc(len + 1);
-                if (buf == NULL) {
-                    return cJSON_CreateString("");
-                }
-                memcpy(buf, *h, len);
-                buf[len] = '\0';
-                cJSON *s = cJSON_CreateString(buf);
-                free(buf);
-                return s;
+                cJSON *s = cjson_string_from_handle(val->data.stringvalue);
+                return s ? s : cJSON_CreateString("");
             }
 
         case addressvaluetype:
             *out_type = "address";
             {
-                /* Coerce to string representation */
                 tyvaluerecord coerced = *val;
                 if (coercetostring(&coerced)) {
-                    Handle h = coerced.data.stringvalue;
-                    long len = gethandlesize(h);
-                    if (len < 0) { disposevaluerecord(coerced, false); return cJSON_CreateString(""); }
-                    char *buf = malloc(len + 1);
-                    if (buf != NULL) {
-                        memcpy(buf, *h, len);
-                        buf[len] = '\0';
-                        cJSON *s = cJSON_CreateString(buf);
-                        free(buf);
-                        disposevaluerecord(coerced, false);
-                        return s;
-                    }
+                    cJSON *s = cjson_string_from_handle(coerced.data.stringvalue);
                     disposevaluerecord(coerced, false);
+                    return s ? s : cJSON_CreateString("");
                 }
                 return cJSON_CreateString("");
             }
@@ -269,20 +261,13 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                     /* For scripts, coerce to string to get source */
                     tyvaluerecord coerced = *val;
                     if (coercetostring(&coerced)) {
-                        Handle h = coerced.data.stringvalue;
-                        long len = gethandlesize(h);
-                        if (len < 0) { disposevaluerecord(coerced, false); return cJSON_CreateNull(); }
-                        char *buf = malloc(len + 1);
-                        if (buf != NULL) {
-                            memcpy(buf, *h, len);
-                            buf[len] = '\0';
+                        cJSON *src = cjson_string_from_handle(coerced.data.stringvalue);
+                        disposevaluerecord(coerced, false);
+                        if (src != NULL) {
                             cJSON *obj = cJSON_CreateObject();
-                            cJSON_AddStringToObject(obj, "source", buf);
-                            free(buf);
-                            disposevaluerecord(coerced, false);
+                            cJSON_AddItemToObject(obj, "source", src);
                             return obj;
                         }
-                        disposevaluerecord(coerced, false);
                     }
                     return cJSON_CreateNull();
                 }
@@ -290,19 +275,9 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
                 /* Other external types: coerce to string */
                 tyvaluerecord coerced = *val;
                 if (coercetostring(&coerced)) {
-                    Handle h = coerced.data.stringvalue;
-                    long len = gethandlesize(h);
-                    if (len < 0) { disposevaluerecord(coerced, false); return cJSON_CreateNull(); }
-                    char *buf = malloc(len + 1);
-                    if (buf != NULL) {
-                        memcpy(buf, *h, len);
-                        buf[len] = '\0';
-                        cJSON *s = cJSON_CreateString(buf);
-                        free(buf);
-                        disposevaluerecord(coerced, false);
-                        return s;
-                    }
+                    cJSON *s = cjson_string_from_handle(coerced.data.stringvalue);
                     disposevaluerecord(coerced, false);
+                    return s ? s : cJSON_CreateNull();
                 }
                 return cJSON_CreateNull();
             }
@@ -333,19 +308,9 @@ static cJSON *value_to_json(tyvaluerecord *val, const char **out_type) {
             {
                 tyvaluerecord coerced = *val;
                 if (coercetostring(&coerced)) {
-                    Handle h = coerced.data.stringvalue;
-                    long len = gethandlesize(h);
-                    if (len < 0) { disposevaluerecord(coerced, false); return cJSON_CreateNull(); }
-                    char *buf = malloc(len + 1);
-                    if (buf != NULL) {
-                        memcpy(buf, *h, len);
-                        buf[len] = '\0';
-                        cJSON *s = cJSON_CreateString(buf);
-                        free(buf);
-                        disposevaluerecord(coerced, false);
-                        return s;
-                    }
+                    cJSON *s = cjson_string_from_handle(coerced.data.stringvalue);
                     disposevaluerecord(coerced, false);
+                    return s ? s : cJSON_CreateNull();
                 }
                 return cJSON_CreateNull();
             }

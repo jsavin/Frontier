@@ -63,11 +63,12 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 /* Wait briefly for socket to become writable.
                  * For localhost, this resolves quickly. */
-                /* Note: This poll() holds the GIL for up to 100ms. Acceptable for
+                /* Note: This poll() holds the GIL for up to 20ms. Acceptable for
                  * localhost; a misbehaving client could stall UserTalk execution
-                 * by this amount per retry. */
+                 * by this amount per retry. The stall is bounded: if poll times
+                 * out, the partial-frame cleanup below closes the connection. */
                 struct pollfd pfd = { .fd = fd, .events = POLLOUT };
-                int pret = poll(&pfd, 1, 100);
+                int pret = poll(&pfd, 1, 20);
                 if (pret <= 0) {
                     log_debug(LOG_COMP_GENERAL, "ws: write stalled (fd=%d): %zu/%zu bytes",
                               fd, written, frame_len);
@@ -161,11 +162,11 @@ static void handle_handshake(ws_conn_t *conn) {
         if (sent < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                /* Note: This poll() holds the GIL for up to 100ms. Acceptable for
+                /* Note: This poll() holds the GIL for up to 20ms. Acceptable for
                  * localhost; a misbehaving client could stall UserTalk execution
                  * by this amount per retry. */
                 struct pollfd pfd = { .fd = conn->fd, .events = POLLOUT };
-                poll(&pfd, 1, 100);
+                poll(&pfd, 1, 20);
                 continue;
             }
             log_debug(LOG_COMP_GENERAL, "ws: failed to send handshake response: %s", strerror(errno));

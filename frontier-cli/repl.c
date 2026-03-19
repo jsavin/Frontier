@@ -2098,6 +2098,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
         int ready = poll(pfds, (nfds_t)nfds, POLL_TIMEOUT_MS);
 
         // 6.1.1 Handle WebSocket events (before stdin to avoid latency)
+        // GIL is held here — ws_server_handle_events calls op_dispatch which requires it.
         if (ready > 0 && ws_server != NULL && ws_start >= 0) {
             ws_server_handle_events(ws_server, pfds, ws_start);
         }
