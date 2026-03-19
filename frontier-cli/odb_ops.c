@@ -365,6 +365,10 @@ static cJSON *make_error_result(const char *path, const char *error_msg) {
         cJSON_AddStringToObject(obj, "path", path);
     }
     cJSON *error_obj = cJSON_CreateObject();
+    if (error_obj == NULL) {
+        cJSON_Delete(obj);
+        return NULL;
+    }
     cJSON_AddStringToObject(error_obj, "message", error_msg);
     cJSON_AddItemToObject(obj, "error", error_obj);
     cJSON_AddBoolToObject(obj, "success", 0);
@@ -414,7 +418,11 @@ static int list_table_entries(hdlhashtable htable, const char *path_prefix,
 
     hdlhashnode hnode = (**htable).hfirstsort;
 
-    while (hnode != nil && *count_ptr < max_results) {
+    while (hnode != nil) {
+        if (*count_ptr >= max_results) {
+            if (truncated != NULL) *truncated = true;
+            break;
+        }
         bigstring bsname;
         gethashkey(hnode, bsname);
 

@@ -28,6 +28,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 
 /* ========================================================================
@@ -62,8 +63,11 @@ static void ws_write_line(void *ctx, const char *json, size_t len) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 /* Wait briefly for socket to become writable.
                  * For localhost, this resolves quickly. */
+                /* Note: This poll() holds the GIL for up to 100ms. Acceptable for
+                 * localhost; a misbehaving client could stall UserTalk execution
+                 * by this amount per retry. */
                 struct pollfd pfd = { .fd = fd, .events = POLLOUT };
-                int pret = poll(&pfd, 1, 100);  /* 100ms — avoid stalling GIL */
+                int pret = poll(&pfd, 1, 100);
                 if (pret <= 0) {
                     log_debug(LOG_COMP_GENERAL, "ws: write stalled (fd=%d): %zu/%zu bytes",
                               fd, written, frame_len);
@@ -158,8 +162,11 @@ static void handle_handshake(ws_conn_t *conn) {
         if (sent < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* Note: This poll() holds the GIL for up to 100ms. Acceptable for
+                 * localhost; a misbehaving client could stall UserTalk execution
+                 * by this amount per retry. */
                 struct pollfd pfd = { .fd = conn->fd, .events = POLLOUT };
-                poll(&pfd, 1, 100);  /* 100ms timeout */
+                poll(&pfd, 1, 100);
                 continue;
             }
             log_debug(LOG_COMP_GENERAL, "ws: failed to send handshake response: %s", strerror(errno));
@@ -454,6 +461,8 @@ void ws_server_handle_events(ws_server_t *server, struct pollfd *fds, int start_
                 close(client_fd);
             } else {
                 set_nonblocking(client_fd);
+                int flag = 1;
+                setsockopt(client_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
                 slot->fd = client_fd;
                 slot->state = WS_STATE_HANDSHAKE;
                 slot->handshake_start = time(NULL);

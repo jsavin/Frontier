@@ -24,6 +24,9 @@ void base64_encode_raw(const uint8_t *in, size_t in_len,
                               char *out, size_t out_size) {
     size_t i = 0, j = 0;
 
+    /* Guard: need room for 4 output bytes (j..j+3) plus the NUL terminator
+     * that is written at out[j] after the loop. So j+4 < out_size ensures
+     * both the 4-byte write and the subsequent NUL are in bounds. */
     while (i < in_len && j + 4 < out_size) {
         uint32_t a = in[i++];
         /* Track how many input bytes contributed to this triple */

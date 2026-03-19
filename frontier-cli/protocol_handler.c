@@ -245,6 +245,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
                     }
                 } else if (n == 0) {
                     stdin_eof = 1;
+                    log_info(LOG_COMP_GENERAL, "protocol: stdin closed, continuing to serve WebSocket clients");
                     /* Process any remaining data in buffer */
                     if (line_pos > 0) {
                         line_buf[line_pos] = '\0';
