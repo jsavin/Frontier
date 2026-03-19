@@ -197,6 +197,11 @@ int ws_handshake(const uint8_t *buf, size_t len, char *response, size_t response
 
     *request_len = (size_t)(end - str);
 
+    /* NUL-terminate the header block so find_header() can use C string ops
+     * safely. We overwrite the final '\n' of "\r\n\r\n" which is at end[-1].
+     * This byte is within the recv_buf allocation and is no longer needed. */
+    ((char *)buf)[*request_len - 1] = '\0';
+
     /* Verify it's a GET request */
     if (strncmp(str, "GET ", 4) != 0) {
         return -1;

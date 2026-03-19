@@ -40,6 +40,9 @@
 
 /* Maximum number of items in a single ODB batch request */
 #define OP_MAX_BATCH_SIZE 1000
+#define STRINGIFY_HELPER(x) #x
+#define STRINGIFY(x) STRINGIFY_HELPER(x)
+#define OP_BATCH_ERR "Batch too large (max " STRINGIFY(OP_MAX_BATCH_SIZE) " items)"
 
 /* ========================================================================
  * Response helpers — build JSON response string, send via transport
@@ -311,7 +314,7 @@ static void handle_odb_get(long id, const char *json_line, transport_t *transpor
 
     int count = cJSON_GetArraySize(items);
     if (count > OP_MAX_BATCH_SIZE) {
-        send_error(id, "Batch too large (max 1000 items)", transport);
+        send_error(id, OP_BATCH_ERR, transport);
         cJSON_Delete(root);
         return;
     }
@@ -374,7 +377,7 @@ static void handle_odb_set(long id, const char *json_line, transport_t *transpor
 
     int count = cJSON_GetArraySize(items);
     if (count > OP_MAX_BATCH_SIZE) {
-        send_error(id, "Batch too large (max 1000 items)", transport);
+        send_error(id, OP_BATCH_ERR, transport);
         cJSON_Delete(root);
         return;
     }
@@ -441,7 +444,7 @@ static void handle_odb_list(long id, const char *json_line, transport_t *transpo
 
     int count = cJSON_GetArraySize(items);
     if (count > OP_MAX_BATCH_SIZE) {
-        send_error(id, "Batch too large (max 1000 items)", transport);
+        send_error(id, OP_BATCH_ERR, transport);
         cJSON_Delete(root);
         return;
     }
@@ -512,7 +515,7 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 
     int count = cJSON_GetArraySize(items);
     if (count > OP_MAX_BATCH_SIZE) {
-        send_error(id, "Batch too large (max 1000 items)", transport);
+        send_error(id, OP_BATCH_ERR, transport);
         cJSON_Delete(root);
         return;
     }
