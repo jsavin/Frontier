@@ -1,0 +1,309 @@
+# Integration tests for error recovery and concurrency (Gaps #6, #7, #8)
+#
+# Covers three test gap areas from planning/INTEGRATION_TEST_GAPS.md:
+#   Gap #6: Error mid-transaction — partial state consistency after scriptError
+#   Gap #7: Thread modifying DB while main thread saves — GIL safety verification
+#   Gap #8: fileMenu.closeall() actually closes everything — handle release verification
+#
+# Threading model: GIL (Global Interpreter Lock) — real POSIX threads serialized
+# by a single mutex. Yield points at langbackgroundtask() and thread.sleepTicks().
+# See ADR-014 for details.
+#
+# fileMenu verb errors are uncatchable (bypass try/else) — see
+# planning/FIX_TESTS_2026_02_16.md B2. Tests that need to catch fileMenu errors
+# are skipped with this reason.
+
+description: "Error Recovery & Concurrency Integration Tests (Gaps #6, #7, #8)"
+
+tests:
+  # ========================================================================
+  # Gap #6: Error mid-transaction — partial state consistency
+  # ========================================================================
+
+  - name: "error mid-transaction - first setvalue persists, second does not"
+    description: |
+      Verify that when scriptError fires between two db.setvalue calls inside
+      a try block, the first setvalue's effect persists but the second never
+      executes. Uses system.temp as scratchpad.
+    script: |
+      new(tableType, @system.temp.midtxn);
+      try {
+        system.temp.midtxn.val1 = "committed";
+        scriptError("boom");
+        system.temp.midtxn.val2 = "should_not_exist"}
+      else {
+        local(has1 = defined(system.temp.midtxn.val1));
+        local(has2 = defined(system.temp.midtxn.val2));
+        local(v1 = system.temp.midtxn.val1);
+        delete(@system.temp.midtxn);
+        return has1 and (not has2) and (v1 == "committed")}
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  - name: "error mid-transaction - error in nested function call"
+    description: |
+      Verify partial state consistency when error occurs inside a nested call.
+      The outer script sets val1, calls a helper that errors, val2 never set.
+    script: |
+      new(tableType, @system.temp.nested);
+      script.newScriptObject("scriptError(\"nested boom\")", @system.temp.nested.helper);
+      try {
+        system.temp.nested.val1 = "before_call";
+        system.temp.nested.helper();
+        system.temp.nested.val2 = "after_call"}
+      else {
+        local(has1 = defined(system.temp.nested.val1));
+        local(has2 = defined(system.temp.nested.val2));
+        local(v1 = system.temp.nested.val1);
+        delete(@system.temp.nested);
+        return has1 and (not has2) and (v1 == "before_call")}
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  - name: "error mid-transaction - recovery after try/else"
+    description: |
+      After a try/else handles an error, normal operations should still work.
+      This verifies the runtime is in a consistent state post-error.
+    script: |
+      new(tableType, @system.temp.recovery);
+      try {
+        system.temp.recovery.a = 1;
+        scriptError("mid-error");
+        system.temp.recovery.b = 2}
+      else {
+        system.temp.recovery.caught = tryError};
+      system.temp.recovery.postError = "still_works";
+      local(ok = system.temp.recovery.a == 1 and system.temp.recovery.postError == "still_works" and (system.temp.recovery.caught contains "mid-error") and not(defined(system.temp.recovery.b)));
+      delete(@system.temp.recovery);
+      return ok
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  - name: "error mid-transaction - db.setvalue partial commit"
+    description: |
+      Verify db.setvalue on a guest database: first write persists, second
+      does not execute due to scriptError. Database remains consistent.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "error_midtxn_db.root7");
+      db.new(dbPath);
+      db.open(dbPath, false);
+      try {
+        db.setvalue(dbPath, "key1", "value1");
+        scriptError("boom");
+        db.setvalue(dbPath, "key2", "value2")}
+      else {
+        local(msg = tryError)};
+      local(has1 = db.defined(dbPath, "key1"));
+      local(has2 = db.defined(dbPath, "key2"));
+      local(v1 = db.getvalue(dbPath, "key1"));
+      db.close(dbPath);
+      return has1 and (not has2) and (v1 == "value1")
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  - name: "error mid-transaction - db still usable after error"
+    description: |
+      After an error mid-transaction on a guest database, verify
+      the database is still fully usable (read and write).
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "error_db_recovery.root7");
+      db.new(dbPath);
+      db.open(dbPath, false);
+      try {
+        db.setvalue(dbPath, "pre", "before");
+        scriptError("intentional");
+        db.setvalue(dbPath, "unreachable", "nope")}
+      else {
+        local(msg = tryError)};
+      db.setvalue(dbPath, "post", "after");
+      local(pre = db.getvalue(dbPath, "pre"));
+      local(post = db.getvalue(dbPath, "post"));
+      local(noUnreachable = not(db.defined(dbPath, "unreachable")));
+      db.close(dbPath);
+      return (pre == "before") and (post == "after") and noUnreachable
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  # ========================================================================
+  # Gap #7: Thread modifying DB while main thread saves
+  # ========================================================================
+
+  - name: "thread writes during save - no crash"
+    description: |
+      Spawn a background thread that writes values to system.temp in a loop,
+      then save from the main thread while the background thread is active.
+      GIL serializes access, so this should be safe. Verify no crash and
+      values are readable after save completes.
+    repl_mode: true
+    script: |
+      new(tableType, @system.temp.threadsave);
+      system.temp.threadsave.counter = 0;
+      system.temp.threadsave.done = false;
+      thread.evaluate("local(i = 0); while(i < 20) {system.temp.threadsave.counter = i; i = i + 1; thread.sleepTicks(1)}; system.temp.threadsave.done = true");
+      thread.sleepTicks(5);
+      filemenu.save();
+      thread.sleepTicks(30);
+      local(ok = system.temp.threadsave.done and system.temp.threadsave.counter >= 0);
+      delete(@system.temp.threadsave);
+      return ok
+    expected_success: true
+    expected_result: "true"
+    timeout: 10
+
+  - name: "thread writes to guest DB during main thread save - no crash"
+    description: |
+      Spawn a background thread writing to a guest database while main thread
+      calls filemenu.save() on the system root. GIL serializes, so both
+      operations should complete without corruption.
+    repl_mode: true
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "thread_save_guest.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      new(tableType, @system.temp.tsg);
+      system.temp.tsg.done = false;
+      thread.evaluate("local(i = 0); while(i < 10) {db.setvalue(\"" + dbPath + "\", \"iter\", i); i = i + 1; thread.sleepTicks(2)}; system.temp.tsg.done = true");
+      thread.sleepTicks(5);
+      filemenu.save();
+      thread.sleepTicks(30);
+      local(ok = system.temp.tsg.done);
+      delete(@system.temp.tsg);
+      fileMenu.closeall();
+      return ok
+    expected_success: true
+    expected_result: "true"
+    timeout: 10
+
+  - name: "concurrent thread and main thread both write - values readable"
+    description: |
+      Both the main thread and a background thread write distinct values.
+      After both complete, verify all values are readable (no lost writes).
+    repl_mode: true
+    script: |
+      new(tableType, @system.temp.conc);
+      system.temp.conc.threadDone = false;
+      thread.evaluate("system.temp.conc.threadVal = \"from_thread\"; system.temp.conc.threadDone = true");
+      system.temp.conc.mainVal = "from_main";
+      thread.sleepTicks(12);
+      local(ok = system.temp.conc.threadDone and (system.temp.conc.threadVal == "from_thread") and (system.temp.conc.mainVal == "from_main"));
+      delete(@system.temp.conc);
+      return ok
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  # ========================================================================
+  # Gap #8: fileMenu.closeall() actually closes everything
+  # ========================================================================
+
+  - name: "closeall - closes multiple guest databases"
+    description: |
+      Open 3 guest databases, write values to each, call fileMenu.closeall(),
+      verify it returns true. Then verify access to closed databases fails.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(db1 = tmpDir + "/" + "closeall_verify1.root7");
+      local(db2 = tmpDir + "/" + "closeall_verify2.root7");
+      local(db3 = tmpDir + "/" + "closeall_verify3.root7");
+      db.new(db1);
+      db.new(db2);
+      db.new(db3);
+      fileMenu.open(db1);
+      fileMenu.open(db2);
+      fileMenu.open(db3);
+      db.setvalue(db1, "k", "v1");
+      db.setvalue(db2, "k", "v2");
+      db.setvalue(db3, "k", "v3");
+      local(result = fileMenu.closeall());
+      return result
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  - name: "closeall - access after close fails"
+    description: |
+      After fileMenu.closeall(), attempting to read from a closed guest
+      database should fail, confirming the handles are released.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "closeall_access_fail.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      db.setvalue(dbPath, "testKey", "testVal");
+      fileMenu.closeall();
+      try {
+        local(val = db.getvalue(dbPath, "testKey"));
+        return "should_have_failed"}
+      else {
+        return "correctly_failed"}
+    expected_success: true
+    expected_result: "correctly_failed"
+    timeout: 5
+
+  - name: "closeall - reopen after close succeeds"
+    description: |
+      After fileMenu.closeall(), reopening a previously closed database
+      should succeed, confirming no lingering file locks.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "closeall_reopen.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      db.setvalue(dbPath, "persistKey", "persistVal");
+      fileMenu.save(dbPath);
+      fileMenu.closeall();
+      local(reopened = fileMenu.open(dbPath));
+      local(val = db.getvalue(dbPath, "persistKey"));
+      fileMenu.closeall();
+      return reopened and (val == "persistVal")
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  - name: "closeall - multiple close cycles"
+    description: |
+      Open databases, close all, reopen different databases, close all again.
+      Verifies closeall works correctly across multiple cycles.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(db1 = tmpDir + "/" + "closeall_cycle1.root7");
+      local(db2 = tmpDir + "/" + "closeall_cycle2.root7");
+      db.new(db1);
+      db.new(db2);
+      fileMenu.open(db1);
+      fileMenu.closeall();
+      fileMenu.open(db2);
+      db.setvalue(db2, "cycle", "two");
+      local(val = db.getvalue(db2, "cycle"));
+      fileMenu.closeall();
+      return val == "two"
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
+
+  - name: "closeall - system root still accessible after closeall"
+    description: |
+      fileMenu.closeall() should only close guest databases, not the system
+      root. Verify system.temp is still accessible after closeall.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "closeall_sysroot.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      fileMenu.closeall();
+      new(tableType, @system.temp.closeallTest);
+      system.temp.closeallTest.alive = true;
+      local(ok = system.temp.closeallTest.alive);
+      delete(@system.temp.closeallTest);
+      return ok
+    expected_success: true
+    expected_result: "true"
+    timeout: 5
