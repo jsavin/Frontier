@@ -1,0 +1,362 @@
+# Persistence and save operation integration tests
+#
+# These tests cover gaps #1-#5 from planning/INTEGRATION_TEST_GAPS.md:
+#   Gap #1: filemenu.save() via protocol (script/eval)
+#   Gap #2: Guest DB full lifecycle round-trip
+#   Gap #3: System root + guest DB both modified and saved
+#   Gap #4: Protocol mutations are in-memory only without save
+#   Gap #5: Guest DBs flushed on shutdown (save + close sequence)
+#
+# Tests use a mix of protocol_ops (for protocol-layer coverage) and
+# script mode (for multi-step UserTalk sequences).
+
+tests:
+  # ========================================================================
+  # Gap #1: filemenu.save() via protocol
+  #
+  # Verifies that a GUI client calling filemenu.save() through the NDJSON
+  # protocol layer (via script/eval) successfully saves the system root.
+  # ========================================================================
+
+  - name: "protocol filemenu.save - save system root via script/eval"
+    description: "Call filemenu.save() through protocol script/eval and verify success"
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "filemenu.save()"
+        validate:
+          success: true
+          result:
+            value: "true"
+        description: "save system root via protocol"
+
+  - name: "protocol filemenu.save - create value then save via protocol"
+    description: "Create a value via odb/set, then save system root via script/eval"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_persist_proto_save"
+              type: "string"
+              value: "protocol_save_test"
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "create value via protocol"
+      - op: "script/eval"
+        params:
+          expression: "filemenu.save()"
+        validate:
+          success: true
+          result:
+            value: "true"
+        description: "save system root via protocol"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_persist_proto_save"
+        validate:
+          success: true
+          results:
+            - type: "string"
+              value: "protocol_save_test"
+        description: "verify value still readable after save"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_persist_proto_save"
+        validate:
+          success: true
+        description: "cleanup"
+
+  # ========================================================================
+  # Gap #2: Guest DB full lifecycle round-trip
+  #
+  # Tests the complete sequence: open guest DB -> modify values -> save ->
+  # close -> reopen -> verify values survived the close/reopen cycle.
+  # ========================================================================
+
+  - name: "guest DB lifecycle - open, write, save, close, reopen, verify"
+    description: >
+      Full round-trip: create a guest database, open it via fileMenu.open,
+      write a value, save, close all, reopen with db.open, verify the value
+      persisted across the close/reopen cycle.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "persist_lifecycle.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      db.setvalue(dbPath, "roundTripKey", "roundTripValue");
+      fileMenu.save(dbPath);
+      fileMenu.closeall();
+      db.open(dbPath, false);
+      local(val = db.getvalue(dbPath, "roundTripKey"));
+      db.close(dbPath);
+      return val
+    expected_success: true
+    expected_result: "roundTripValue"
+
+  - name: "guest DB lifecycle - multiple values survive round-trip"
+    description: >
+      Write multiple values of different types to a guest database, save,
+      close, reopen, and verify all values survived.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "persist_multi_values.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      db.setvalue(dbPath, "strVal", "hello");
+      db.setvalue(dbPath, "numVal", 42);
+      db.setvalue(dbPath, "boolVal", true);
+      fileMenu.save(dbPath);
+      fileMenu.closeall();
+      db.open(dbPath, false);
+      local(s = db.getvalue(dbPath, "strVal"));
+      local(n = db.getvalue(dbPath, "numVal"));
+      local(b = db.getvalue(dbPath, "boolVal"));
+      db.close(dbPath);
+      return (s == "hello") and (n == 42) and (b == true)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "guest DB lifecycle - nested table survives round-trip"
+    description: >
+      Create a nested table in a guest database, save, close, reopen,
+      and verify the table structure and values survived.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "persist_nested.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      db.newtable(dbPath, "myTable");
+      db.setvalue(dbPath, "myTable.innerKey", "innerValue");
+      fileMenu.save(dbPath);
+      fileMenu.closeall();
+      db.open(dbPath, false);
+      local(exists = db.istable(dbPath, "myTable"));
+      local(val = db.getvalue(dbPath, "myTable.innerKey"));
+      db.close(dbPath);
+      return exists and (val == "innerValue")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Gap #3: System root + guest DB both modified and saved
+  #
+  # Modifies values in both the system root and a guest database, saves
+  # both, closes and reopens the guest DB, then verifies both databases
+  # retained their changes. This exercises the pack/unpack context switching
+  # between databases (a historical corruption risk area).
+  # ========================================================================
+
+  - name: "dual DB - modify and save both system root and guest DB"
+    description: >
+      Modify a value in the system root (workspace.scratchpad), open and
+      modify a guest database, save the system root, save the guest DB,
+      close/reopen the guest DB, and verify both values survived.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "persist_dual_db.root7");
+      workspace.scratchpad = "dual_db_sysroot_value";
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      db.setvalue(dbPath, "guestKey", "dual_db_guest_value");
+      fileMenu.save();
+      fileMenu.save(dbPath);
+      fileMenu.closeall();
+      db.open(dbPath, false);
+      local(sysVal = workspace.scratchpad);
+      local(guestVal = db.getvalue(dbPath, "guestKey"));
+      db.close(dbPath);
+      return (sysVal == "dual_db_sysroot_value") and (guestVal == "dual_db_guest_value")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "dual DB - interleaved modifications and saves"
+    description: >
+      Interleave modifications between system root and guest DB to stress
+      the database context switching during pack/save operations.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "persist_interleaved.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      workspace.scratchpad = "interleaved_sys_1";
+      db.setvalue(dbPath, "key1", "interleaved_guest_1");
+      workspace.scratchpad = "interleaved_sys_2";
+      db.setvalue(dbPath, "key2", "interleaved_guest_2");
+      fileMenu.save();
+      fileMenu.save(dbPath);
+      fileMenu.closeall();
+      db.open(dbPath, false);
+      local(sysVal = workspace.scratchpad);
+      local(g1 = db.getvalue(dbPath, "key1"));
+      local(g2 = db.getvalue(dbPath, "key2"));
+      db.close(dbPath);
+      return (sysVal == "interleaved_sys_2") and (g1 == "interleaved_guest_1") and (g2 == "interleaved_guest_2")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Gap #4: Protocol mutations are in-memory only without save
+  #
+  # Verifies that odb/set changes are immediately readable in memory.
+  # Documents the persistence contract: without an explicit filemenu.save(),
+  # these changes exist only in memory and would not survive a restart.
+  #
+  # NOTE: The integration test framework gives each test worker a fresh
+  # .root7 copy, so we cannot verify non-persistence across restarts.
+  # Instead, we verify the in-memory contract and document the expectation.
+  # ========================================================================
+
+  - name: "in-memory only - odb/set readable without save"
+    description: >
+      Verify that odb/set creates values readable in memory without save.
+      PERSISTENCE CONTRACT: Without an explicit filemenu.save(), these
+      changes are in-memory only and will not survive process restart.
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.test_inmemory_nosave"
+              type: "string"
+              value: "ephemeral_value"
+        validate:
+          success: true
+          results:
+            - success: true
+        description: "create value without saving"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_inmemory_nosave"
+        validate:
+          success: true
+          results:
+            - type: "string"
+              value: "ephemeral_value"
+        description: "verify value is readable in memory (no save was called)"
+      # NOTE: We intentionally do NOT call filemenu.save() here.
+      # In a real scenario, this value would be lost on process exit.
+      # The test framework cannot verify this because each test gets a
+      # fresh database copy, but the contract is documented here.
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_inmemory_nosave"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "in-memory only - script/eval mutation readable without save"
+    description: >
+      Verify that script/eval mutations are in memory without save.
+      Same persistence contract as odb/set: no save means no persistence.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: 'workspace.test_inmemory_script = "script_ephemeral"'
+        validate:
+          success: true
+        description: "set value via script without saving"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.test_inmemory_script"
+        validate:
+          success: true
+          results:
+            - type: "string"
+              value: "script_ephemeral"
+        description: "verify value readable in memory"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.test_inmemory_script"
+        validate:
+          success: true
+        description: "cleanup"
+
+  # ========================================================================
+  # Gap #5: Guest DBs flushed on shutdown
+  #
+  # Verifies that the save + close sequence for guest databases works
+  # without errors. On clean shutdown, Frontier should save and close all
+  # guest databases. We test the explicit save+close sequence since the
+  # test framework cannot easily test actual process shutdown behavior.
+  #
+  # NOTE: The 'shutdown' protocol op terminates the process, which would
+  # end the test worker. Instead, we test the equivalent user-facing
+  # sequence: filemenu.save(guestPath) + filemenu.closeall().
+  # ========================================================================
+
+  - name: "shutdown flush - save and close guest DB sequence"
+    description: >
+      Open a guest database, modify it, explicitly save and close it.
+      This is the sequence that should happen on clean shutdown.
+      Verify the data persists by reopening after close.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "persist_shutdown_flush.root7");
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      db.setvalue(dbPath, "shutdownKey", "shutdownValue");
+      fileMenu.save(dbPath);
+      fileMenu.closeall();
+      db.open(dbPath, false);
+      local(val = db.getvalue(dbPath, "shutdownKey"));
+      db.close(dbPath);
+      return val
+    expected_success: true
+    expected_result: "shutdownValue"
+
+  - name: "shutdown flush - multiple guest DBs saved and closed"
+    description: >
+      Open multiple guest databases, modify each, save each, close all.
+      Verifies that the shutdown sequence works for multiple databases.
+      On clean shutdown, all guest DBs should be saved before closing.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath1 = tmpDir + "/" + "persist_shutdown_multi1.root7");
+      local(dbPath2 = tmpDir + "/" + "persist_shutdown_multi2.root7");
+      db.new(dbPath1);
+      db.new(dbPath2);
+      fileMenu.open(dbPath1);
+      fileMenu.open(dbPath2);
+      db.setvalue(dbPath1, "key1", "value1");
+      db.setvalue(dbPath2, "key2", "value2");
+      fileMenu.save(dbPath1);
+      fileMenu.save(dbPath2);
+      fileMenu.closeall();
+      db.open(dbPath1, false);
+      db.open(dbPath2, false);
+      local(v1 = db.getvalue(dbPath1, "key1"));
+      local(v2 = db.getvalue(dbPath2, "key2"));
+      db.close(dbPath1);
+      db.close(dbPath2);
+      return (v1 == "value1") and (v2 == "value2")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "shutdown flush - save system root then close guest DBs"
+    description: >
+      Full shutdown sequence: save system root, save all guest DBs,
+      close all guest DBs. Verifies the complete clean shutdown path.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "persist_full_shutdown.root7");
+      workspace.scratchpad = "shutdown_sysroot";
+      db.new(dbPath);
+      fileMenu.open(dbPath);
+      db.setvalue(dbPath, "shutKey", "shutVal");
+      fileMenu.save();
+      fileMenu.save(dbPath);
+      fileMenu.closeall();
+      db.open(dbPath, false);
+      local(sysOk = workspace.scratchpad == "shutdown_sysroot");
+      local(guestVal = db.getvalue(dbPath, "shutKey"));
+      db.close(dbPath);
+      return sysOk and (guestVal == "shutVal")
+    expected_success: true
+    expected_result: "true"
