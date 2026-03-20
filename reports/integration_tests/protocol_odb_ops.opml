@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Protocol Odb Ops (protocol_odb_ops) - 34 tests: 34 pass (100%)</title>
-    <dateCreated>Wed, 18 Mar 2026 19:46:31 GMT</dateCreated>
+    <title>Protocol Odb Ops (protocol_odb_ops) - 35 tests: 35 pass (100%)</title>
+    <dateCreated>Fri, 20 Mar 2026 22:59:12 GMT</dateCreated>
   </head>
   <body>
     <outline text="odb/list - list workspace children - List top-level children of workspace table">
@@ -57,17 +57,17 @@
     </outline>
     <outline text="odb/set - create long value - Create an integer (long) value and read it back">
       <outline text="Metadata">
-        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_long', 'type': 'long', 'value': 42}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set long'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_long'}]}, 'validate': {'success': True, 'results': [{'type': 'long', 'value': 42}]}, 'description': 'verify long'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_long'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_long', 'type': 'long', 'value': 42}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set long'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_long'}]}, 'validate': {'success': True, 'results': [{'type': 'long', '_strict_type': {'value': 42}}]}, 'description': 'verify long'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_long'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
       </outline>
     </outline>
     <outline text="odb/set - create boolean true - Create a boolean value and read it back">
       <outline text="Metadata">
-        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_bool', 'type': 'boolean', 'value': True}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set bool'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_bool'}]}, 'validate': {'success': True, 'results': [{'type': 'boolean', 'value': True}]}, 'description': 'verify bool'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_bool'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_bool', 'type': 'boolean', 'value': True}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set bool'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_bool'}]}, 'validate': {'success': True, 'results': [{'type': 'boolean', '_strict_type': {'value': True}}]}, 'description': 'verify bool'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_bool'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
       </outline>
     </outline>
     <outline text="odb/set - create boolean false - Create a boolean false value">
       <outline text="Metadata">
-        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_bool_f', 'type': 'boolean', 'value': False}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set bool false'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_bool_f'}]}, 'validate': {'success': True, 'results': [{'type': 'boolean', 'value': False}]}, 'description': 'verify bool false'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_bool_f'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_bool_f', 'type': 'boolean', 'value': False}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set bool false'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_bool_f'}]}, 'validate': {'success': True, 'results': [{'type': 'boolean', '_strict_type': {'value': False}}]}, 'description': 'verify bool false'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_bool_f'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
       </outline>
     </outline>
     <outline text="odb/set - create double value - Create a floating-point (double) value and read it back">
@@ -82,12 +82,17 @@
     </outline>
     <outline text="odb/set - type inference from JSON value - When type is omitted, infer from JSON value type">
       <outline text="Metadata">
-        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_infer_str', 'value': 'auto string'}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set string (inferred)'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_infer_str'}]}, 'validate': {'success': True, 'results': [{'type': 'string', 'value': 'auto string'}]}, 'description': 'verify inferred string'}, {'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_infer_num', 'value': 99}]}, 'validate': {'success': True}, 'description': 'set number (inferred)'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_infer_num'}]}, 'validate': {'success': True, 'results': [{'type': 'long', 'value': 99}]}, 'description': 'verify inferred number'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_infer_str'}, {'path': 'workspace.test_proto_infer_num'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_infer_str', 'value': 'auto string'}]}, 'validate': {'success': True, 'results': [{'success': True}]}, 'description': 'set string (inferred)'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_infer_str'}]}, 'validate': {'success': True, 'results': [{'type': 'string', 'value': 'auto string'}]}, 'description': 'verify inferred string'}, {'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_proto_infer_num', 'value': 99}]}, 'validate': {'success': True}, 'description': 'set number (inferred)'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_proto_infer_num'}]}, 'validate': {'success': True, 'results': [{'type': 'long', '_strict_type': {'value': 99}}]}, 'description': 'verify inferred number'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_proto_infer_str'}, {'path': 'workspace.test_proto_infer_num'}]}, 'validate': {'success': True}, 'description': 'cleanup'}]"/>
       </outline>
     </outline>
     <outline text="odb/set - batch create multiple values - Create multiple values in a single request">
       <outline text="Metadata">
-        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_batch_a', 'type': 'string', 'value': 'alpha'}, {'path': 'workspace.test_batch_b', 'type': 'long', 'value': 2}, {'path': 'workspace.test_batch_c', 'type': 'boolean', 'value': True}]}, 'validate': {'success': True, 'result_count': 3, 'results': [{'success': True}, {'success': True}, {'success': True}]}, 'description': 'batch set'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_batch_a'}, {'path': 'workspace.test_batch_b'}, {'path': 'workspace.test_batch_c'}]}, 'validate': {'success': True, 'result_count': 3, 'results': [{'value': 'alpha'}, {'value': 2}, {'value': True}]}, 'description': 'batch verify'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_batch_a'}, {'path': 'workspace.test_batch_b'}, {'path': 'workspace.test_batch_c'}]}, 'validate': {'success': True, 'result_count': 3}, 'description': 'batch cleanup'}]"/>
+        <outline text="protocol_ops: [{'op': 'odb/set', 'params': {'items': [{'path': 'workspace.test_batch_a', 'type': 'string', 'value': 'alpha'}, {'path': 'workspace.test_batch_b', 'type': 'long', 'value': 2}, {'path': 'workspace.test_batch_c', 'type': 'boolean', 'value': True}]}, 'validate': {'success': True, 'result_count': 3, 'results': [{'success': True}, {'success': True}, {'success': True}]}, 'description': 'batch set'}, {'op': 'odb/get', 'params': {'items': [{'path': 'workspace.test_batch_a'}, {'path': 'workspace.test_batch_b'}, {'path': 'workspace.test_batch_c'}]}, 'validate': {'success': True, 'result_count': 3, 'results': [{'value': 'alpha'}, {'_strict_type': {'value': 2}}, {'_strict_type': {'value': True}}]}, 'description': 'batch verify'}, {'op': 'odb/delete', 'params': {'items': [{'path': 'workspace.test_batch_a'}, {'path': 'workspace.test_batch_b'}, {'path': 'workspace.test_batch_c'}]}, 'validate': {'success': True, 'result_count': 3}, 'description': 'batch cleanup'}]"/>
+      </outline>
+    </outline>
+    <outline text="odb/delete - rejects protected root-level table deletion - Protected-root list prevents deleting structural tables like system">
+      <outline text="Metadata">
+        <outline text="protocol_ops: [{'op': 'odb/delete', 'params': {'items': [{'path': 'system'}]}, 'validate': {'success': True, 'result_count': 1, 'results': [{'success': False, '_contains': {'error': 'Cannot delete protected root-level table'}}]}}]"/>
       </outline>
     </outline>
     <outline text="odb/delete - delete nonexistent path - Deleting a nonexistent path should return per-item error">
