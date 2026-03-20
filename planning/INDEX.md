@@ -145,6 +145,7 @@ The archive holds completed/retired material for historical reference.
 - **CRDT Foundation**: `planning/phase6/CRDT_FOUNDATION_ROADMAP.md` - Collaborative ODB foundation
 - **Multi-User Collaboration**: `planning/phase6/EXTERNAL_ATOMICITY_AND_COLLABORATION_ROADMAP.md`
 - **Database Corruption Prevention**: `planning/DATABASE_CORRUPTION_PREVENTION.md`
+- **Integration Test Gaps**: `planning/INTEGRATION_TEST_GAPS.md` - Prioritized test coverage gaps (persistence, concurrency, verbs)
 
 ### Reference Documentation
 - **Legacy Glossary**: `planning/legacy_glossary.md` - Historical Frontier terminology
