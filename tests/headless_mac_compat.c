@@ -263,8 +263,8 @@ void invalrect (Rect r) { (void)r; }
 #if !defined(HEADLESS_LINKS_REAL_DB)
 boolean dbcopy (dbaddress a, dbaddress *b) { (void)a; if (b) *b=0; return false; }
 boolean dbassignhandle (Handle h, dbaddress *adr) { (void)h; if (adr) *adr=0; return false; }
-#endif
 hdldatabaserecord databasedata = nil;
+#endif
 
 // Process/debug stubs
 boolean debuggingcurrentprocess (void) { return false; }
