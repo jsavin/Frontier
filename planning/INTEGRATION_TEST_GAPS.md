@@ -35,9 +35,9 @@ These gaps risk inconsistent state or resource leaks.
 
 | # | Gap | Description | Status |
 |---|-----|-------------|--------|
-| 6 | **Error mid-transaction** | No test for: `try { db.setvalue(x); error(); db.setvalue(y) }` — verify first setvalue committed and DB not left in inconsistent state. | Not started |
-| 7 | **Thread modifying DB while main thread saves** | GIL serializes access, but no test proves databasedata global stays consistent when a background thread is actively modifying tables while `filemenu.save()` runs on the main thread. | Not started |
-| 8 | **`fileMenu.closeall()` actually closes everything** | Tests check return value is true but don't verify all guest DB handles are actually released and the `hodblist` linked list is properly cleared. | Not started |
+| 6 | **Error mid-transaction** | No test for: `try { db.setvalue(x); error(); db.setvalue(y) }` — verify first setvalue committed and DB not left in inconsistent state. | Done — `error_recovery_concurrency_tests.yaml` |
+| 7 | **Thread modifying DB while main thread saves** | GIL serializes access, but no test proves databasedata global stays consistent when a background thread is actively modifying tables while `filemenu.save()` runs on the main thread. | Done — `error_recovery_concurrency_tests.yaml` |
+| 8 | **`fileMenu.closeall()` actually closes everything** | Tests check return value is true but don't verify all guest DB handles are actually released and the `hodblist` linked list is properly cleared. | Done — `error_recovery_concurrency_tests.yaml` |
 | 9 | **Webserver HTTP round-trip** | HTTP request → webserver dispatch → responder script → response. Currently skipped due to port conflicts. This is the primary external-facing interface. | Not started |
 | 10 | **bigstring boundary values** | No tests for strings at exactly 254, 255, and 256 bytes. The 255-byte bigstring limit (issue #475, #423) truncates silently — tests should document and verify this boundary behavior. | Not started |
 

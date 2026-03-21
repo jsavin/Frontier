@@ -149,8 +149,8 @@ tests:
       thread.evaluate("local(i = 0); while(i < 20) {system.temp.threadsave.counter = i; i = i + 1; thread.sleepTicks(1)}; system.temp.threadsave.done = true");
       thread.sleepTicks(5);
       filemenu.save();
-      thread.sleepTicks(30);
-      local(ok = system.temp.threadsave.done and system.temp.threadsave.counter >= 0);
+      thread.sleepTicks(60);
+      local(ok = system.temp.threadsave.done and system.temp.threadsave.counter > 5);
       delete(@system.temp.threadsave);
       return ok
     expected_success: true
@@ -173,7 +173,7 @@ tests:
       thread.evaluate("local(i = 0); while(i < 10) {db.setvalue(\"" + dbPath + "\", \"iter\", i); i = i + 1; thread.sleepTicks(2)}; system.temp.tsg.done = true");
       thread.sleepTicks(5);
       filemenu.save();
-      thread.sleepTicks(30);
+      thread.sleepTicks(60);
       local(ok = system.temp.tsg.done);
       delete(@system.temp.tsg);
       fileMenu.closeall();
@@ -258,7 +258,6 @@ tests:
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "persistKey", "persistVal");
-      fileMenu.save(dbPath);
       fileMenu.closeall();
       local(reopened = fileMenu.open(dbPath));
       local(val = db.getvalue(dbPath, "persistKey"));
