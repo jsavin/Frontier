@@ -196,12 +196,12 @@ tests:
   - name: "bigstring boundary - ODB content integrity at 256 bytes"
     description: "Verify stored string content is not corrupted past 255"
     script: |
-      local(s = "START" + string.filledString(".", 246) + "END");
+      local(s = "START" + string.filledString(".", 248) + "END");
       system.temp.bsIntegrity = s;
       local(retrieved = system.temp.bsIntegrity);
-      local(lenOK = string.length(retrieved) == 254);
+      local(lenOK = string.length(retrieved) == 256);
       local(startOK = string.mid(retrieved, 1, 5) == "START");
-      local(endOK = string.mid(retrieved, 252, 3) == "END");
+      local(endOK = string.mid(retrieved, 254, 3) == "END");
       delete(@system.temp.bsIntegrity);
       return lenOK and startOK and endOK
     expected_success: true

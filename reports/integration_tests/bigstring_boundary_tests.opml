@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Bigstring Boundary Tests (bigstring_boundary_tests) - 27 tests: 27 pass (100%)</title>
-    <dateCreated>Fri, 20 Mar 2026 23:28:37 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 00:12:43 GMT</dateCreated>
   </head>
   <body>
     <outline text="bigstring boundary - string of exactly 254 bytes - Create and verify a string of exactly 254 bytes (one below bigstring limit)">
@@ -175,12 +175,12 @@
         <outline text="notes: Verify no data corruption in ODB round-trip near boundary"/>
       </outline>
       <outline text="Script">
-        <outline text="local(s = &quot;START&quot; + string.filledString(&quot;.&quot;, 246) + &quot;END&quot;)"/>
+        <outline text="local(s = &quot;START&quot; + string.filledString(&quot;.&quot;, 248) + &quot;END&quot;)"/>
         <outline text="system.temp.bsIntegrity = s"/>
         <outline text="local(retrieved = system.temp.bsIntegrity)"/>
-        <outline text="local(lenOK = string.length(retrieved) == 254)"/>
+        <outline text="local(lenOK = string.length(retrieved) == 256)"/>
         <outline text="local(startOK = string.mid(retrieved, 1, 5) == &quot;START&quot;)"/>
-        <outline text="local(endOK = string.mid(retrieved, 252, 3) == &quot;END&quot;)"/>
+        <outline text="local(endOK = string.mid(retrieved, 254, 3) == &quot;END&quot;)"/>
         <outline text="delete(@system.temp.bsIntegrity)"/>
         <outline text="return lenOK and startOK and endOK"/>
       </outline>

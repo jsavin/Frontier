@@ -21,6 +21,11 @@
 #   callback thread time to execute (GIL yield) before the client starts
 #   reading. This matches the pattern in tcp_server_verbs.yaml.
 #
+# Error-path cleanup:
+#   All active tests wrap client-side operations in try/else blocks so that
+#   tcp.closeListen(listenID) runs even if the client fails. This prevents
+#   leaked listeners from causing port-conflict cascades in subsequent tests.
+#
 # References:
 #   - planning/INTEGRATION_TEST_GAPS.md (Gap #9)
 #   - tests/integration/test_cases/webserver_hello_world.yaml (existing webserver tests)
@@ -45,24 +50,30 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(11000, 5, @httpHandler));
+      local(listenID = tcp.listenStream(49200, 5, @httpHandler));
 
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11000));
-      tcp.writeStream(clientStream, "GET /test HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49200));
+        tcp.writeStream(clientStream, "GET /test HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 
-      thread.sleepFor(100);
+        thread.sleepFor(100);
 
-      local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
-        response = tcp.readStream(clientStream, 4096);
-        thread.sleepFor(10)
-      };
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
 
-      tcp.closeStream(clientStream);
-      tcp.closeListen(listenID);
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
 
-      return (response contains "200 OK") and (response contains "Hello, World!")
+        return (response contains "200 OK") and (response contains "Hello, World!")
+      }
+      else {
+        tcp.closeListen(listenID);
+        scriptError(tryError)
+      }
     expected_success: true
     expected_result: "true"
     notes: "Validates full HTTP GET round-trip over TCP transport layer"
@@ -79,24 +90,30 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(11001, 5, @httpHandler));
+      local(listenID = tcp.listenStream(49201, 5, @httpHandler));
 
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11001));
-      tcp.writeStream(clientStream, "GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49201));
+        tcp.writeStream(clientStream, "GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 
-      thread.sleepFor(100);
+        thread.sleepFor(100);
 
-      local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
-        response = tcp.readStream(clientStream, 4096);
-        thread.sleepFor(10)
-      };
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
 
-      tcp.closeStream(clientStream);
-      tcp.closeListen(listenID);
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
 
-      return (response contains "Content-Type: text/html") and (response contains "<html>Hello World!</html>")
+        return (response contains "Content-Type: text/html") and (response contains "<html>Hello World!</html>")
+      }
+      else {
+        tcp.closeListen(listenID);
+        scriptError(tryError)
+      }
     expected_success: true
     expected_result: "true"
     notes: "Validates HTTP headers and HTML body are received correctly"
@@ -122,30 +139,37 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(11002, 5, @httpHandler));
+      local(listenID = tcp.listenStream(49202, 5, @httpHandler));
 
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11002));
-      local(body = "name=test&value=hello");
-      local(httpRequest = "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + sizeOf(body) + "\r\nConnection: close\r\n\r\n" + body);
-      tcp.writeStream(clientStream, httpRequest);
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49202));
+        local(body = "name=test&value=hello");
+        local(httpRequest = "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + sizeOf(body) + "\r\nConnection: close\r\n\r\n" + body);
+        tcp.writeStream(clientStream, httpRequest);
 
-      thread.sleepFor(100);
+        thread.sleepFor(100);
 
-      local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
-        response = tcp.readStream(clientStream, 4096);
-        thread.sleepFor(10)
-      };
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
 
-      tcp.closeStream(clientStream);
-      tcp.closeListen(listenID);
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
 
-      local(bodyReceived = system.temp.httpTest.receivedBody == body);
-      local(responseOK = response contains "200 OK");
-      delete(@system.temp.httpTest);
+        local(bodyReceived = system.temp.httpTest.receivedBody == body);
+        local(responseOK = response contains "200 OK");
+        delete(@system.temp.httpTest);
 
-      return bodyReceived and responseOK
+        return bodyReceived and responseOK
+      }
+      else {
+        tcp.closeListen(listenID);
+        delete(@system.temp.httpTest);
+        scriptError(tryError)
+      }
     expected_success: true
     expected_result: "true"
     notes: "Validates HTTP POST body is received correctly by the server callback"
@@ -170,27 +194,34 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(11003, 5, @httpHandler));
+      local(listenID = tcp.listenStream(49203, 5, @httpHandler));
 
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11003));
-      tcp.writeStream(clientStream, "GET /helloworld HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49203));
+        tcp.writeStream(clientStream, "GET /helloworld HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 
-      thread.sleepFor(100);
+        thread.sleepFor(100);
 
-      local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
-        response = tcp.readStream(clientStream, 4096);
-        thread.sleepFor(10)
-      };
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
 
-      tcp.closeStream(clientStream);
-      tcp.closeListen(listenID);
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
 
-      local(pathCorrect = system.temp.httpTest.requestPath == "/helloworld");
-      delete(@system.temp.httpTest);
+        local(pathCorrect = system.temp.httpTest.requestPath == "/helloworld");
+        delete(@system.temp.httpTest);
 
-      return pathCorrect
+        return pathCorrect
+      }
+      else {
+        tcp.closeListen(listenID);
+        delete(@system.temp.httpTest);
+        scriptError(tryError)
+      }
     expected_success: true
     expected_result: "true"
     notes: "Validates HTTP request line parsing - path extraction is core to webserver dispatch"
@@ -213,36 +244,43 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(11004, 5, @httpHandler));
+      local(listenID = tcp.listenStream(49204, 5, @httpHandler));
 
-      local(allOK = true);
-      local(i);
-      for i = 1 to 3 {
-        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11004));
-        tcp.writeStream(clientStream, "GET /req" + i + " HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+      try {
+        local(allOK = true);
+        local(i);
+        for i = 1 to 3 {
+          local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49204));
+          tcp.writeStream(clientStream, "GET /req" + i + " HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 
-        thread.sleepFor(100);
+          thread.sleepFor(100);
 
-        local(response = "");
-        local(startTicks = clock.ticks());
-        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
-          response = tcp.readStream(clientStream, 4096);
-          thread.sleepFor(10)
+          local(response = "");
+          local(startTicks = clock.ticks());
+          while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+            response = tcp.readStream(clientStream, 4096);
+            thread.sleepFor(10)
+          };
+
+          tcp.closeStream(clientStream);
+
+          if not (response contains "200 OK") {
+            allOK = false
+          }
         };
 
-        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
 
-        if not (response contains "200 OK") {
-          allOK = false
-        }
-      };
+        local(count = system.temp.httpTest.requestCount);
+        delete(@system.temp.httpTest);
 
-      tcp.closeListen(listenID);
-
-      local(count = system.temp.httpTest.requestCount);
-      delete(@system.temp.httpTest);
-
-      return allOK and (count == 3)
+        return allOK and (count == 3)
+      }
+      else {
+        tcp.closeListen(listenID);
+        delete(@system.temp.httpTest);
+        scriptError(tryError)
+      }
     expected_success: true
     expected_result: "true"
     notes: "Validates server handles multiple sequential HTTP connections correctly"
@@ -258,24 +296,30 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(11005, 5, @httpHandler));
+      local(listenID = tcp.listenStream(49205, 5, @httpHandler));
 
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11005));
-      tcp.writeStream(clientStream, "GET /nonexistent HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49205));
+        tcp.writeStream(clientStream, "GET /nonexistent HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 
-      thread.sleepFor(100);
+        thread.sleepFor(100);
 
-      local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
-        response = tcp.readStream(clientStream, 4096);
-        thread.sleepFor(10)
-      };
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
 
-      tcp.closeStream(clientStream);
-      tcp.closeListen(listenID);
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
 
-      return (response contains "404 Not Found") and (response contains "Not Found")
+        return (response contains "404 Not Found") and (response contains "Not Found")
+      }
+      else {
+        tcp.closeListen(listenID);
+        scriptError(tryError)
+      }
     expected_success: true
     expected_result: "true"
     notes: "Validates HTTP 404 error response - server always returns 404 for this test"
@@ -293,27 +337,36 @@ tests:
         return true
       };
 
-      local(listenID = tcp.listenStream(11006, 5, @httpHandler));
+      local(listenID = tcp.listenStream(49206, 5, @httpHandler));
 
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11006));
-      tcp.writeStream(clientStream, "GET /big HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49206));
+        tcp.writeStream(clientStream, "GET /big HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 
-      thread.sleepFor(100);
+        thread.sleepFor(100);
 
-      local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
-        response = tcp.readStream(clientStream, 4096);
-        thread.sleepFor(10)
-      };
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
 
-      tcp.closeStream(clientStream);
-      tcp.closeListen(listenID);
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
 
-      return (response contains "200 OK") and (response contains "Content-Length: 500")
+        local(headersOK = (response contains "200 OK") and (response contains "Content-Length: 500"));
+        local(bodyDelivered = sizeOf(response) >= 500);
+        local(bodyContent = response contains string.filledString("X", 500));
+        return headersOK and bodyDelivered and bodyContent
+      }
+      else {
+        tcp.closeListen(listenID);
+        scriptError(tryError)
+      }
     expected_success: true
     expected_result: "true"
-    notes: "Validates responses larger than bigstring limit (255 bytes) work over TCP"
+    notes: "Validates responses larger than bigstring limit (255 bytes) work over TCP - checks headers, size, and body content"
 
   # =============================================================================
   # CATEGORY 2: Full Webserver Stack (inetd + webserver dispatch)
@@ -329,13 +382,13 @@ tests:
     timeout: 30
     script: |
       webserver.init();
-      user.inetd.config.http.port = 11007;
+      user.inetd.config.http.port = 49207;
       webserver.data.responders.helloWorld.enabled = true;
 
       inetd.startOne(@user.inetd.config.http);
       thread.sleepFor(100);
 
-      local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11007));
+      local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49207));
       tcp.writeStream(stream, "GET /helloworld HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 
       local(response = "");
@@ -365,12 +418,12 @@ tests:
     timeout: 30
     script: |
       webserver.init();
-      user.inetd.config.http.port = 11008;
+      user.inetd.config.http.port = 49208;
 
       inetd.startOne(@user.inetd.config.http);
       thread.sleepFor(100);
 
-      local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 11008));
+      local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49208));
       tcp.writeStream(stream, "GET /custom HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
 
       local(response = "");
