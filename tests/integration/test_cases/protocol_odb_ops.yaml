@@ -228,6 +228,9 @@ tests:
           success: true
           results:
             - type: "long"
+              # _strict_type prevents false positives from type coercion —
+              # e.g., integer 1 matching boolean true, or integer 0 matching
+              # boolean false. Ensures the JSON value type matches exactly.
               _strict_type:
                 value: 42
         description: "verify long"
