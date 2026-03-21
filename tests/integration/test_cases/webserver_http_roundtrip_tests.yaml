@@ -1,0 +1,457 @@
+# Integration tests for Webserver HTTP Round-Trip (Gap #9)
+#
+# Tests the HTTP request -> server dispatch -> responder -> HTTP response path.
+#
+# Background:
+#   The existing webserver_hello_world.yaml tests are partially skipped because
+#   inetd verb infrastructure causes port conflicts in batch test runs. The
+#   end-to-end tests (Category 3+) rely on fwsNetEvent* functions that were
+#   stubbed out for headless mode.
+#
+#   This file takes a different approach: rather than testing through the full
+#   inetd/webserver stack (which requires fwsNetEvent* migration), we test the
+#   HTTP round-trip at the TCP transport layer using tcp.listenStream callbacks.
+#   This validates the actual data path that HTTP requests follow.
+#
+# Callback pattern note:
+#   tcp.readStream() returns binary data type (not string) for empty reads.
+#   sizeOf() on empty binary returns -4, which breaks the sizeOf == 0 polling
+#   condition. To work around this, a thread.sleepFor(100) is placed between
+#   writing the request and starting the response poll loop. This gives the
+#   callback thread time to execute (GIL yield) before the client starts
+#   reading. This matches the pattern in tcp_server_verbs.yaml.
+#
+# Error-path cleanup:
+#   All active tests wrap client-side operations in try/else blocks so that
+#   tcp.closeListen(listenID) runs even if the client fails. This prevents
+#   leaked listeners from causing port-conflict cascades in subsequent tests.
+#
+# Port assignments (one per test to avoid parallel worker conflicts):
+#   49200 - basic GET request/response
+#   49201 - Content-Type header verification
+#   49202 - POST request with body
+#   49203 - request path extraction
+#   49204 - multiple sequential requests
+#   49205 - 404 Not Found response
+#   49206 - large response body (500 bytes)
+#   49207 - (skipped) full webserver stack inetd test
+#   49208 - (skipped) dynamic responder dispatch test
+#
+# References:
+#   - planning/INTEGRATION_TEST_GAPS.md (Gap #9)
+#   - tests/integration/test_cases/webserver_hello_world.yaml (existing webserver tests)
+#   - tests/integration/test_cases/tcp_server_verbs.yaml (TCP server patterns)
+
+tests:
+  # =============================================================================
+  # CATEGORY 1: TCP-Level HTTP Round-Trip
+  # These tests use tcp.listenStream to simulate an HTTP server and validate
+  # that HTTP request/response parsing works over the TCP transport.
+  # =============================================================================
+
+  - name: "HTTP round-trip - GET request and response via TCP"
+    description: "Send HTTP GET, receive HTTP response via raw TCP server callback"
+    timeout: 15
+    script: |
+      on httpHandler(streamID, remoteAddr, remotePort) {
+        local(request = tcp.readStream(streamID, 4096));
+        local(response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: close\r\n\r\nHello, World!");
+        tcp.writeStream(streamID, response);
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(49200, 5, @httpHandler));
+
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49200));
+        tcp.writeStream(clientStream, "GET /test HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+        thread.sleepFor(100);
+
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
+
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
+
+        return (response contains "200 OK") and (response contains "Hello, World!")
+      }
+      else {
+        tcp.closeListen(listenID);
+        scriptError(tryError)
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates full HTTP GET round-trip over TCP transport layer"
+
+  - name: "HTTP round-trip - response contains correct Content-Type header"
+    description: "Verify HTTP response headers are received intact"
+    timeout: 15
+    script: |
+      on httpHandler(streamID, remoteAddr, remotePort) {
+        local(request = tcp.readStream(streamID, 4096));
+        local(response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: 26\r\nConnection: close\r\n\r\n<html>Hello World!</html>");
+        tcp.writeStream(streamID, response);
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(49201, 5, @httpHandler));
+
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49201));
+        tcp.writeStream(clientStream, "GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+        thread.sleepFor(100);
+
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
+
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
+
+        return (response contains "Content-Type: text/html") and (response contains "<html>Hello World!</html>")
+      }
+      else {
+        tcp.closeListen(listenID);
+        scriptError(tryError)
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates HTTP headers and HTML body are received correctly"
+
+  - name: "HTTP round-trip - POST request with body"
+    description: "Send HTTP POST with body, verify server receives it"
+    timeout: 15
+    script: |
+      new(tableType, @system.temp.httpTest);
+      system.temp.httpTest.receivedBody = "";
+
+      on httpHandler(streamID, remoteAddr, remotePort) {
+        local(request = tcp.readStream(streamID, 4096));
+
+        local(bodyStart = string.patternMatch("\r\n\r\n", request));
+        if bodyStart > 0 {
+          system.temp.httpTest.receivedBody = string.mid(request, bodyStart + 4, sizeOf(request) - bodyStart - 3)
+        };
+
+        local(response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK");
+        tcp.writeStream(streamID, response);
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(49202, 5, @httpHandler));
+
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49202));
+        local(body = "name=test&value=hello");
+        local(httpRequest = "POST /submit HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + sizeOf(body) + "\r\nConnection: close\r\n\r\n" + body);
+        tcp.writeStream(clientStream, httpRequest);
+
+        thread.sleepFor(100);
+
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
+
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
+
+        local(bodyReceived = system.temp.httpTest.receivedBody == body);
+        local(responseOK = response contains "200 OK");
+        delete(@system.temp.httpTest);
+
+        return bodyReceived and responseOK
+      }
+      else {
+        tcp.closeListen(listenID);
+        delete(@system.temp.httpTest);
+        scriptError(tryError)
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates HTTP POST body is received correctly by the server callback"
+
+  - name: "HTTP round-trip - request path extraction"
+    description: "Verify server callback can extract the request path from GET request"
+    timeout: 15
+    script: |
+      new(tableType, @system.temp.httpTest);
+      system.temp.httpTest.requestPath = "";
+
+      on httpHandler(streamID, remoteAddr, remotePort) {
+        local(request = tcp.readStream(streamID, 4096));
+
+        local(firstLine = string.nthField(request, "\r\n", 1));
+        local(path = string.nthField(firstLine, " ", 2));
+        system.temp.httpTest.requestPath = path;
+
+        local(response = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK");
+        tcp.writeStream(streamID, response);
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(49203, 5, @httpHandler));
+
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49203));
+        tcp.writeStream(clientStream, "GET /helloworld HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+        thread.sleepFor(100);
+
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
+
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
+
+        local(pathCorrect = system.temp.httpTest.requestPath == "/helloworld");
+        delete(@system.temp.httpTest);
+
+        return pathCorrect
+      }
+      else {
+        tcp.closeListen(listenID);
+        delete(@system.temp.httpTest);
+        scriptError(tryError)
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates HTTP request line parsing - path extraction is core to webserver dispatch"
+
+  - name: "HTTP round-trip - multiple sequential requests on same port"
+    description: "Send multiple HTTP requests sequentially to the same server"
+    timeout: 20
+    script: |
+      new(tableType, @system.temp.httpTest);
+      system.temp.httpTest.requestCount = 0;
+
+      on httpHandler(streamID, remoteAddr, remotePort) {
+        local(request = tcp.readStream(streamID, 4096));
+        system.temp.httpTest.requestCount = system.temp.httpTest.requestCount + 1;
+
+        local(body = "Request #" + system.temp.httpTest.requestCount);
+        local(response = "HTTP/1.1 200 OK\r\nContent-Length: " + sizeOf(body) + "\r\nConnection: close\r\n\r\n" + body);
+        tcp.writeStream(streamID, response);
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(49204, 5, @httpHandler));
+
+      try {
+        local(allOK = true);
+        local(i);
+        for i = 1 to 3 {
+          local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49204));
+          tcp.writeStream(clientStream, "GET /req" + i + " HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+          thread.sleepFor(100);
+
+          local(response = "");
+          local(startTicks = clock.ticks());
+          while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+            response = tcp.readStream(clientStream, 4096);
+            thread.sleepFor(10)
+          };
+
+          tcp.closeStream(clientStream);
+
+          if not (response contains "200 OK") {
+            allOK = false
+          }
+        };
+
+        tcp.closeListen(listenID);
+
+        local(count = system.temp.httpTest.requestCount);
+        delete(@system.temp.httpTest);
+
+        return allOK and (count == 3)
+      }
+      else {
+        tcp.closeListen(listenID);
+        delete(@system.temp.httpTest);
+        scriptError(tryError)
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates server handles multiple sequential HTTP connections correctly"
+
+  - name: "HTTP round-trip - 404 Not Found response"
+    description: "Server returns HTTP 404 status line and error body"
+    timeout: 15
+    script: |
+      on httpHandler(streamID, remoteAddr, remotePort) {
+        local(request = tcp.readStream(streamID, 4096));
+        tcp.writeStream(streamID, "HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\nConnection: close\r\n\r\nNot Found");
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(49205, 5, @httpHandler));
+
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49205));
+        tcp.writeStream(clientStream, "GET /nonexistent HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+        thread.sleepFor(100);
+
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
+
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
+
+        return (response contains "404 Not Found") and (response contains "Not Found")
+      }
+      else {
+        tcp.closeListen(listenID);
+        scriptError(tryError)
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates HTTP 404 error response - server always returns 404 for this test"
+
+  - name: "HTTP round-trip - large response body"
+    description: "Server returns a response body larger than 255 bytes"
+    timeout: 15
+    script: |
+      on httpHandler(streamID, remoteAddr, remotePort) {
+        local(request = tcp.readStream(streamID, 4096));
+        local(body = string.filledString("X", 500));
+        local(response = "HTTP/1.1 200 OK\r\nContent-Length: 500\r\nConnection: close\r\n\r\n" + body);
+        tcp.writeStream(streamID, response);
+        tcp.closeStream(streamID);
+        return true
+      };
+
+      local(listenID = tcp.listenStream(49206, 5, @httpHandler));
+
+      try {
+        local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49206));
+        tcp.writeStream(clientStream, "GET /big HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+        thread.sleepFor(100);
+
+        local(response = "");
+        local(startTicks = clock.ticks());
+        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+          response = tcp.readStream(clientStream, 4096);
+          thread.sleepFor(10)
+        };
+
+        tcp.closeStream(clientStream);
+        tcp.closeListen(listenID);
+
+        local(headersOK = (response contains "200 OK") and (response contains "Content-Length: 500"));
+        local(bodyStart = string.patternMatch("\r\n\r\n", response) + 4);
+        local(body = string.mid(response, bodyStart, sizeOf(response) - bodyStart + 1));
+        local(bodyDelivered = sizeOf(body) >= 500);
+        local(bodyContent = response contains string.filledString("X", 500));
+        return headersOK and bodyDelivered and bodyContent
+      }
+      else {
+        tcp.closeListen(listenID);
+        scriptError(tryError)
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates responses larger than bigstring limit (255 bytes) work over TCP - checks headers, size, and body content"
+
+  # =============================================================================
+  # CATEGORY 2: Full Webserver Stack (inetd + webserver dispatch)
+  # These tests require the complete inetd/webserver infrastructure.
+  # Currently skipped because fwsNetEvent* functions are stubbed in headless mode.
+  # =============================================================================
+
+  - name: "webserver stack - inetd start and HTTP GET via webserver dispatch"
+    description: "Full stack: inetd.startOne -> HTTP request -> webserver.dispatch -> responder -> response"
+    skip: true
+    skip_reason: "fwsNetEvent* functions are stubbed in headless mode; requires migration to tcp_* API (see webserver_hello_world.yaml)"
+    requires_system_root: true
+    timeout: 30
+    script: |
+      webserver.init();
+      user.inetd.config.http.port = 49207;
+      webserver.data.responders.helloWorld.enabled = true;
+
+      inetd.startOne(@user.inetd.config.http);
+      thread.sleepFor(100);
+
+      local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49207));
+      tcp.writeStream(stream, "GET /helloworld HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+      local(response = "");
+      local(startTicks = clock.ticks());
+      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 300) {
+        response = tcp.readStream(stream, 4096);
+        thread.sleepFor(10)
+      };
+
+      tcp.closeStream(stream);
+      inetd.stopOne(@user.inetd.config.http);
+      webserver.data.responders.helloWorld.enabled = false;
+
+      return (response contains "200 OK") and (response contains "Hello World")
+    expected_success: true
+    expected_result: "true"
+    notes: |
+      Full webserver stack test. Blocked on fwsNetEvent* migration to tcp_* API.
+      When this migration is complete, remove skip and this test validates the
+      entire HTTP pipeline: inetd listener -> webserver.server -> webserver.dispatch -> responder.
+
+  - name: "webserver stack - dynamic responder script via dispatch"
+    description: "Test custom responder script invoked via webserver dispatch"
+    skip: true
+    skip_reason: "fwsNetEvent* functions are stubbed in headless mode; requires migration to tcp_* API"
+    requires_system_root: true
+    timeout: 30
+    script: |
+      webserver.init();
+      user.inetd.config.http.port = 49208;
+
+      inetd.startOne(@user.inetd.config.http);
+      thread.sleepFor(100);
+
+      local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49208));
+      tcp.writeStream(stream, "GET /custom HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+      local(response = "");
+      local(startTicks = clock.ticks());
+      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 300) {
+        response = tcp.readStream(stream, 4096);
+        thread.sleepFor(10)
+      };
+
+      tcp.closeStream(stream);
+      inetd.stopOne(@user.inetd.config.http);
+
+      return response contains "HTTP/1."
+    expected_success: true
+    expected_result: "true"
+    notes: |
+      Tests custom responder dispatch. Blocked on same fwsNetEvent* migration.
+      Purpose: verify webserver.dispatch routes to correct responder based on URL path.
