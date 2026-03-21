@@ -168,6 +168,8 @@ tests:
       db.setvalue(dbPath, "guestKey", "dual_db_guest_value");
       fileMenu.save();
       fileMenu.save(dbPath);
+      # fileMenu.closeall() only closes guest databases, not the system root.
+      # system.temp is part of the system root and remains accessible.
       fileMenu.closeall();
       db.open(dbPath, false);
       local(sysVal = system.temp.persist_dual_db);
@@ -193,6 +195,8 @@ tests:
       db.setvalue(dbPath, "key2", "interleaved_guest_2");
       fileMenu.save();
       fileMenu.save(dbPath);
+      # fileMenu.closeall() only closes guest databases, not the system root.
+      # system.temp is part of the system root and remains accessible.
       fileMenu.closeall();
       db.open(dbPath, false);
       local(sysVal = system.temp.persist_interleaved);
@@ -358,6 +362,8 @@ tests:
       db.setvalue(dbPath, "shutKey", "shutVal");
       fileMenu.save();
       fileMenu.save(dbPath);
+      # fileMenu.closeall() only closes guest databases, not the system root.
+      # system.temp is part of the system root and remains accessible.
       fileMenu.closeall();
       db.open(dbPath, false);
       local(sysOk = system.temp.persist_full_shutdown == "shutdown_sysroot");
