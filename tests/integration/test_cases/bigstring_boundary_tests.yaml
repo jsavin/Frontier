@@ -268,6 +268,12 @@ tests:
   # CATEGORY 7: File Path Boundary (bigstring truncation zone)
   # File paths pass through C bigstring buffers and ARE subject to truncation.
   # These tests document the current truncation behavior.
+  #
+  # NOTE: These tests verify UserTalk string construction at path-like lengths.
+  # The actual bigstring truncation (issue #475) occurs in C-level APIs
+  # (e.g., file.exists, file.readWholeFile) when paths flow through bigstring
+  # buffers. Testing that truncation requires actual file operations with
+  # 255+ character paths, which is tracked separately under issue #475.
   # =============================================================================
 
   - name: "bigstring boundary - file path at 254 chars works"
@@ -348,3 +354,23 @@ tests:
     expected_success: true
     expected_result: "true"
     notes: "Environment variable at exactly bigstring limit"
+
+  - name: "bigstring boundary - env var value at 256 bytes (beyond bigstring limit)"
+    description: |
+      Environment variable get/set passes through C bigstring buffers.
+      This test documents behavior at 256 bytes — if truncation occurs,
+      the returned value will be shorter than what was set.
+      See issues #475, #423, #380 for bigstring limit context.
+    script: |
+      local(val = string.filledString("E", 256));
+      sys.setenvironmentvariable("FRONTIER_TEST_BS256", val);
+      local(got = sys.getenvironmentvariable("FRONTIER_TEST_BS256"));
+      local(setLen = string.length(val));
+      local(gotLen = string.length(got));
+      if gotLen == setLen {
+        return "no_truncation:" + string(setLen)}
+      else {
+        return "truncated:" + string(gotLen) + "_from_" + string(setLen)}
+    expected_success: true
+    expected_result: "truncated:255_from_256"
+    notes: "Documents whether env var set/get truncates at the bigstring 255 limit"
