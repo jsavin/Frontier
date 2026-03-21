@@ -12,6 +12,9 @@
 # fileMenu verb errors are uncatchable (bypass try/else) — see
 # planning/FIX_TESTS_2026_02_16.md B2. Tests that need to catch fileMenu errors
 # are skipped with this reason.
+#
+# Guest DB files: Tests use static .root7 filenames. Defensive file.delete()
+# at test start handles leftover files from prior crashed runs.
 
 description: "Error Recovery & Concurrency Integration Tests (Gaps #6, #7, #8)"
 
@@ -91,6 +94,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "error_midtxn_db.root7");
+      try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
       try {
@@ -119,6 +123,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "error_db_recovery.root7");
+      try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
       try {
@@ -177,6 +182,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "thread_save_guest.root7");
+      try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
       new(tableType, @system.temp.tsg);
@@ -225,6 +231,9 @@ tests:
       local(db1 = tmpDir + "/" + "closeall_verify1.root7");
       local(db2 = tmpDir + "/" + "closeall_verify2.root7");
       local(db3 = tmpDir + "/" + "closeall_verify3.root7");
+      try {file.delete(db1)} else {1};
+      try {file.delete(db2)} else {1};
+      try {file.delete(db3)} else {1};
       db.new(db1);
       db.new(db2);
       db.new(db3);
@@ -247,6 +256,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "closeall_access_fail.root7");
+      try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "testKey", "testVal");
@@ -267,6 +277,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "closeall_reopen.root7");
+      try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "persistKey", "persistVal");
@@ -288,6 +299,8 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(db1 = tmpDir + "/" + "closeall_cycle1.root7");
       local(db2 = tmpDir + "/" + "closeall_cycle2.root7");
+      try {file.delete(db1)} else {1};
+      try {file.delete(db2)} else {1};
       db.new(db1);
       db.new(db2);
       fileMenu.open(db1);
@@ -308,6 +321,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "closeall_sysroot.root7");
+      try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
       fileMenu.closeall();
