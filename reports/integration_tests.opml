@@ -2,13 +2,13 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests - 2006 tests: 1816 pass (90%) 190 skip (9%)</title>
-    <dateCreated>Fri, 20 Mar 2026 23:02:45 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 00:13:56 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-03-20 at 22:58 UTC"/>
+      <outline text="Run: 2026-03-21 at 00:13 UTC"/>
       <outline text="Results: 1762 passed (89%), 190 skipped (10%), 36 failed (2%)"/>
-      <outline text="Duration: 33.5s (8 workers, batch mode)"/>
+      <outline text="Duration: 34.0s (8 workers, batch mode)"/>
       <outline text="YAML-defined: 2006 tests (1816 active, 190 marked skip) across 56 categories"/>
     </outline>
     <outline text="Builtins Priority (builtins_priority) - 24 tests: 24 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>

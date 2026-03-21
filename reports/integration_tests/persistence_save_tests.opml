@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Persistence Save Tests (persistence_save_tests) - 12 tests: 12 pass (100%)</title>
-    <dateCreated>Fri, 20 Mar 2026 23:02:45 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 00:13:56 GMT</dateCreated>
   </head>
   <body>
     <outline text="protocol filemenu.save - save system root via script/eval - Call filemenu.save() through protocol script/eval and verify success">
@@ -75,14 +75,14 @@
         <outline text="return exists and (val == &quot;innerValue&quot;)"/>
       </outline>
     </outline>
-    <outline text="dual DB - modify and save both system root and guest DB - Modify a value in the system root (workspace.scratchpad), open and modify a guest database, save the system root, save the guest DB, close/reopen the guest DB, and verify both values survived.&#10;">
+    <outline text="dual DB - modify and save both system root and guest DB - Modify a value in the system root (system.temp), open and modify a guest database, save the system root, save the guest DB, close/reopen the guest DB, and verify both values survived.&#10;">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;persist_dual_db.root7&quot;)"/>
-        <outline text="workspace.scratchpad = &quot;dual_db_sysroot_value&quot;"/>
+        <outline text="system.temp.persist_dual_db = &quot;dual_db_sysroot_value&quot;"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;guestKey&quot;, &quot;dual_db_guest_value&quot;)"/>
@@ -90,9 +90,10 @@
         <outline text="fileMenu.save(dbPath)"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="db.open(dbPath, false)"/>
-        <outline text="local(sysVal = workspace.scratchpad)"/>
+        <outline text="local(sysVal = system.temp.persist_dual_db)"/>
         <outline text="local(guestVal = db.getvalue(dbPath, &quot;guestKey&quot;))"/>
         <outline text="db.close(dbPath)"/>
+        <outline text="delete(@system.temp.persist_dual_db)"/>
         <outline text="return (sysVal == &quot;dual_db_sysroot_value&quot;) and (guestVal == &quot;dual_db_guest_value&quot;)"/>
       </outline>
     </outline>
@@ -105,18 +106,19 @@
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;persist_interleaved.root7&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
-        <outline text="workspace.scratchpad = &quot;interleaved_sys_1&quot;"/>
+        <outline text="system.temp.persist_interleaved = &quot;interleaved_sys_1&quot;"/>
         <outline text="db.setvalue(dbPath, &quot;key1&quot;, &quot;interleaved_guest_1&quot;)"/>
-        <outline text="workspace.scratchpad = &quot;interleaved_sys_2&quot;"/>
+        <outline text="system.temp.persist_interleaved = &quot;interleaved_sys_2&quot;"/>
         <outline text="db.setvalue(dbPath, &quot;key2&quot;, &quot;interleaved_guest_2&quot;)"/>
         <outline text="fileMenu.save()"/>
         <outline text="fileMenu.save(dbPath)"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="db.open(dbPath, false)"/>
-        <outline text="local(sysVal = workspace.scratchpad)"/>
+        <outline text="local(sysVal = system.temp.persist_interleaved)"/>
         <outline text="local(g1 = db.getvalue(dbPath, &quot;key1&quot;))"/>
         <outline text="local(g2 = db.getvalue(dbPath, &quot;key2&quot;))"/>
         <outline text="db.close(dbPath)"/>
+        <outline text="delete(@system.temp.persist_interleaved)"/>
         <outline text="return (sysVal == &quot;interleaved_sys_2&quot;) and (g1 == &quot;interleaved_guest_1&quot;) and (g2 == &quot;interleaved_guest_2&quot;)"/>
       </outline>
     </outline>
@@ -181,7 +183,7 @@
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;persist_full_shutdown.root7&quot;)"/>
-        <outline text="workspace.scratchpad = &quot;shutdown_sysroot&quot;"/>
+        <outline text="system.temp.persist_full_shutdown = &quot;shutdown_sysroot&quot;"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;shutKey&quot;, &quot;shutVal&quot;)"/>
@@ -189,9 +191,10 @@
         <outline text="fileMenu.save(dbPath)"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="db.open(dbPath, false)"/>
-        <outline text="local(sysOk = workspace.scratchpad == &quot;shutdown_sysroot&quot;)"/>
+        <outline text="local(sysOk = system.temp.persist_full_shutdown == &quot;shutdown_sysroot&quot;)"/>
         <outline text="local(guestVal = db.getvalue(dbPath, &quot;shutKey&quot;))"/>
         <outline text="db.close(dbPath)"/>
+        <outline text="delete(@system.temp.persist_full_shutdown)"/>
         <outline text="return sysOk and (guestVal == &quot;shutVal&quot;)"/>
       </outline>
     </outline>

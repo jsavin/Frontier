@@ -9,6 +9,10 @@
 #
 # Tests use a mix of protocol_ops (for protocol-layer coverage) and
 # script mode (for multi-step UserTalk sequences).
+#
+# Test framework isolation: Each parallel worker runs its own frontier-cli
+# process with a private .root7 copy. fileMenu.closeall() only affects the
+# current worker's process — no cross-worker interference.
 
 tests:
   # ========================================================================
@@ -152,13 +156,13 @@ tests:
 
   - name: "dual DB - modify and save both system root and guest DB"
     description: >
-      Modify a value in the system root (workspace.scratchpad), open and
+      Modify a value in the system root (system.temp), open and
       modify a guest database, save the system root, save the guest DB,
       close/reopen the guest DB, and verify both values survived.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "persist_dual_db.root7");
-      workspace.scratchpad = "dual_db_sysroot_value";
+      system.temp.persist_dual_db = "dual_db_sysroot_value";
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "guestKey", "dual_db_guest_value");
@@ -166,9 +170,10 @@ tests:
       fileMenu.save(dbPath);
       fileMenu.closeall();
       db.open(dbPath, false);
-      local(sysVal = workspace.scratchpad);
+      local(sysVal = system.temp.persist_dual_db);
       local(guestVal = db.getvalue(dbPath, "guestKey"));
       db.close(dbPath);
+      delete(@system.temp.persist_dual_db);
       return (sysVal == "dual_db_sysroot_value") and (guestVal == "dual_db_guest_value")
     expected_success: true
     expected_result: "true"
@@ -182,18 +187,19 @@ tests:
       local(dbPath = tmpDir + "/" + "persist_interleaved.root7");
       db.new(dbPath);
       fileMenu.open(dbPath);
-      workspace.scratchpad = "interleaved_sys_1";
+      system.temp.persist_interleaved = "interleaved_sys_1";
       db.setvalue(dbPath, "key1", "interleaved_guest_1");
-      workspace.scratchpad = "interleaved_sys_2";
+      system.temp.persist_interleaved = "interleaved_sys_2";
       db.setvalue(dbPath, "key2", "interleaved_guest_2");
       fileMenu.save();
       fileMenu.save(dbPath);
       fileMenu.closeall();
       db.open(dbPath, false);
-      local(sysVal = workspace.scratchpad);
+      local(sysVal = system.temp.persist_interleaved);
       local(g1 = db.getvalue(dbPath, "key1"));
       local(g2 = db.getvalue(dbPath, "key2"));
       db.close(dbPath);
+      delete(@system.temp.persist_interleaved);
       return (sysVal == "interleaved_sys_2") and (g1 == "interleaved_guest_1") and (g2 == "interleaved_guest_2")
     expected_success: true
     expected_result: "true"
@@ -346,7 +352,7 @@ tests:
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "persist_full_shutdown.root7");
-      workspace.scratchpad = "shutdown_sysroot";
+      system.temp.persist_full_shutdown = "shutdown_sysroot";
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "shutKey", "shutVal");
@@ -354,9 +360,10 @@ tests:
       fileMenu.save(dbPath);
       fileMenu.closeall();
       db.open(dbPath, false);
-      local(sysOk = workspace.scratchpad == "shutdown_sysroot");
+      local(sysOk = system.temp.persist_full_shutdown == "shutdown_sysroot");
       local(guestVal = db.getvalue(dbPath, "shutKey"));
       db.close(dbPath);
+      delete(@system.temp.persist_full_shutdown);
       return sysOk and (guestVal == "shutVal")
     expected_success: true
     expected_result: "true"
