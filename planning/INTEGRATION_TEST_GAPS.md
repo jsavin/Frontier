@@ -23,11 +23,11 @@ These gaps risk silent data loss or corruption.
 
 | # | Gap | Description | Status |
 |---|-----|-------------|--------|
-| 1 | **`filemenu.save()` via protocol** | No test verifies `script/eval "filemenu.save()"` through the protocol layer. This is the path a GUI client will use to trigger File > Save. Must verify the database file is actually updated on disk. | Not started |
-| 2 | **Guest DB full lifecycle round-trip** | Individual pieces are tested, but no single test covers: open guest DB → modify values → `filemenu.save()` → close → reopen → verify values survived. | Not started |
-| 3 | **System root + guest DB both modified and saved** | No test modifies BOTH databases, saves both, closes, reopens, and verifies both. Pack/unpack context switching between databases is a corruption risk area (cf. databasedata elimination work). | Not started |
-| 4 | **Protocol mutations are in-memory only** | No test verifies that `odb/set` changes are NOT persisted if the process exits without an explicit save. Users and client apps need to understand this contract. | Not started |
-| 5 | **Guest DBs flushed on shutdown** | No test verifies that guest databases are properly saved/closed when the process exits (via `shutdown` op or normal exit). Risk: data loss if guest DB handles not flushed. | Not started |
+| 1 | **`filemenu.save()` via protocol** | No test verifies `script/eval "filemenu.save()"` through the protocol layer. This is the path a GUI client will use to trigger File > Save. Must verify the database file is actually updated on disk. | Done — `persistence_save_tests.yaml` |
+| 2 | **Guest DB full lifecycle round-trip** | Individual pieces are tested, but no single test covers: open guest DB → modify values → `filemenu.save()` → close → reopen → verify values survived. | Done — `persistence_save_tests.yaml` |
+| 3 | **System root + guest DB both modified and saved** | No test modifies BOTH databases, saves both, closes, reopens, and verifies both. Pack/unpack context switching between databases is a corruption risk area (cf. databasedata elimination work). | Done — `persistence_save_tests.yaml` |
+| 4 | **Protocol mutations are in-memory only** | No test verifies that `odb/set` changes are NOT persisted if the process exits without an explicit save. Users and client apps need to understand this contract. | Partial — in-memory contract verified; restart non-persistence cannot be tested with current framework |
+| 5 | **Guest DBs flushed on shutdown** | No test verifies that guest databases are properly saved/closed when the process exits (via `shutdown` op or normal exit). Risk: data loss if guest DB handles not flushed. | Done — `persistence_save_tests.yaml` |
 
 ## P1: Error Recovery & Concurrency
 
