@@ -164,6 +164,7 @@ tests:
       modify a guest database, save the system root, save the guest DB,
       close/reopen the guest DB, and verify both values survived.
     script: |
+      try {delete(@system.temp.persist_dual_db)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "persist_dual_db.root7");
       system.temp.persist_dual_db = "dual_db_sysroot_value";
@@ -189,6 +190,7 @@ tests:
       Interleave modifications between system root and guest DB to stress
       the database context switching during pack/save operations.
     script: |
+      try {delete(@system.temp.persist_interleaved)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "persist_interleaved.root7");
       db.new(dbPath);
@@ -358,6 +360,7 @@ tests:
       Full shutdown sequence: save system root, save all guest DBs,
       close all guest DBs. Verifies the complete clean shutdown path.
     script: |
+      try {delete(@system.temp.persist_full_shutdown)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "persist_full_shutdown.root7");
       system.temp.persist_full_shutdown = "shutdown_sysroot";
