@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Bigstring Boundary Tests (bigstring_boundary_tests) - 28 tests: 28 pass (100%)</title>
-    <dateCreated>Sat, 21 Mar 2026 01:12:45 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 04:19:56 GMT</dateCreated>
   </head>
   <body>
     <outline text="bigstring boundary - string of exactly 254 bytes - Create and verify a string of exactly 254 bytes (one below bigstring limit)">
@@ -312,7 +312,9 @@
         <outline text="local(val = string.filledString(&quot;V&quot;, 255))"/>
         <outline text="sys.setenvironmentvariable(&quot;FRONTIER_BS_TEST&quot;, val)"/>
         <outline text="local(result = sys.getenvironmentvariable(&quot;FRONTIER_BS_TEST&quot;))"/>
-        <outline text="return string.length(result) == 255"/>
+        <outline text="local(ok = string.length(result) == 255)"/>
+        <outline text="sys.setenvironmentvariable(&quot;FRONTIER_BS_TEST&quot;, &quot;&quot;)"/>
+        <outline text="return ok"/>
       </outline>
     </outline>
     <outline text="bigstring boundary - env var value at 256 bytes (beyond bigstring limit) - Environment variable get/set passes through C bigstring buffers.&#10;This test documents behavior at 256 bytes — if truncation occurs,&#10;the returned value will be shorter than what was set.&#10;See issues #475, #423, #380 for bigstring limit context.&#10;">
@@ -326,6 +328,7 @@
         <outline text="local(got = sys.getenvironmentvariable(&quot;FRONTIER_TEST_BS256&quot;))"/>
         <outline text="local(setLen = string.length(val))"/>
         <outline text="local(gotLen = string.length(got))"/>
+        <outline text="sys.setenvironmentvariable(&quot;FRONTIER_TEST_BS256&quot;, &quot;&quot;)"/>
         <outline text="if gotLen == setLen">
           <outline text="return &quot;no_truncation:&quot; + string(setLen)}"/>
         </outline>

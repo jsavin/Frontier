@@ -1,0 +1,309 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Error Recovery Concurrency Tests (error_recovery_concurrency_tests) - 13 tests: 13 pass (100%)</title>
+    <dateCreated>Sat, 21 Mar 2026 04:19:13 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="error mid-transaction - first setvalue persists, second does not - Verify that when scriptError fires between two db.setvalue calls inside&#10;a try block, the first setvalue's effect persists but the second never&#10;executes. Uses system.temp as scratchpad.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.midtxn)"/>
+        <outline text="try">
+          <outline text="system.temp.midtxn.val1 = &quot;committed&quot;"/>
+          <outline text="scriptError(&quot;boom&quot;)"/>
+          <outline text="system.temp.midtxn.val2 = &quot;should_not_exist&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="local(has1 = defined(system.temp.midtxn.val1))"/>
+          <outline text="local(has2 = defined(system.temp.midtxn.val2))"/>
+          <outline text="local(v1 = system.temp.midtxn.val1)"/>
+          <outline text="delete(@system.temp.midtxn)"/>
+          <outline text="return has1 and (not has2) and (v1 == &quot;committed&quot;)}"/>
+        </outline>
+        <outline text="return false"/>
+      </outline>
+    </outline>
+    <outline text="error mid-transaction - error in nested function call - Verify partial state consistency when error occurs inside a nested call.&#10;The outer script sets val1, calls a helper that errors, val2 never set.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.nested)"/>
+        <outline text="script.newScriptObject(&quot;scriptError(\&quot;nested boom\&quot;)&quot;, @system.temp.nested.helper)"/>
+        <outline text="try">
+          <outline text="system.temp.nested.val1 = &quot;before_call&quot;"/>
+          <outline text="system.temp.nested.helper()"/>
+          <outline text="system.temp.nested.val2 = &quot;after_call&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="local(has1 = defined(system.temp.nested.val1))"/>
+          <outline text="local(has2 = defined(system.temp.nested.val2))"/>
+          <outline text="local(v1 = system.temp.nested.val1)"/>
+          <outline text="delete(@system.temp.nested)"/>
+          <outline text="return has1 and (not has2) and (v1 == &quot;before_call&quot;)}"/>
+        </outline>
+        <outline text="return false"/>
+      </outline>
+    </outline>
+    <outline text="error mid-transaction - recovery after try/else - After a try/else handles an error, normal operations should still work.&#10;This verifies the runtime is in a consistent state post-error.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.recovery)"/>
+        <outline text="try">
+          <outline text="system.temp.recovery.a = 1"/>
+          <outline text="scriptError(&quot;mid-error&quot;)"/>
+          <outline text="system.temp.recovery.b = 2}"/>
+        </outline>
+        <outline text="else">
+          <outline text="system.temp.recovery.caught = tryError}"/>
+        </outline>
+        <outline text="system.temp.recovery.postError = &quot;still_works&quot;"/>
+        <outline text="local(ok = system.temp.recovery.a == 1 and system.temp.recovery.postError == &quot;still_works&quot; and (system.temp.recovery.caught contains &quot;mid-error&quot;) and not(defined(system.temp.recovery.b)))"/>
+        <outline text="delete(@system.temp.recovery)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="error mid-transaction - db.setvalue partial commit - Verify db.setvalue on a guest database: first write persists, second&#10;does not execute due to scriptError. Database remains consistent.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;error_midtxn_db.root7&quot;)"/>
+        <outline text="try {file.delete(dbPath)} else {1}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="try">
+          <outline text="db.setvalue(dbPath, &quot;key1&quot;, &quot;value1&quot;)"/>
+          <outline text="scriptError(&quot;boom&quot;)"/>
+          <outline text="db.setvalue(dbPath, &quot;key2&quot;, &quot;value2&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="local(msg = tryError)}"/>
+        </outline>
+        <outline text="try">
+          <outline text="local(has1 = db.defined(dbPath, &quot;key1&quot;))"/>
+          <outline text="local(has2 = db.defined(dbPath, &quot;key2&quot;))"/>
+          <outline text="local(v1 = db.getvalue(dbPath, &quot;key1&quot;))"/>
+          <outline text="db.close(dbPath)"/>
+          <outline text="return has1 and (not has2) and (v1 == &quot;value1&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="db.close(dbPath)"/>
+          <outline text="return false}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="error mid-transaction - db still usable after error - After an error mid-transaction on a guest database, verify&#10;the database is still fully usable (read and write).&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;error_db_recovery.root7&quot;)"/>
+        <outline text="try {file.delete(dbPath)} else {1}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="try">
+          <outline text="db.setvalue(dbPath, &quot;pre&quot;, &quot;before&quot;)"/>
+          <outline text="scriptError(&quot;intentional&quot;)"/>
+          <outline text="db.setvalue(dbPath, &quot;unreachable&quot;, &quot;nope&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="local(msg = tryError)}"/>
+        </outline>
+        <outline text="try">
+          <outline text="db.setvalue(dbPath, &quot;post&quot;, &quot;after&quot;)"/>
+          <outline text="local(pre = db.getvalue(dbPath, &quot;pre&quot;))"/>
+          <outline text="local(post = db.getvalue(dbPath, &quot;post&quot;))"/>
+          <outline text="local(noUnreachable = not(db.defined(dbPath, &quot;unreachable&quot;)))"/>
+          <outline text="db.close(dbPath)"/>
+          <outline text="return (pre == &quot;before&quot;) and (post == &quot;after&quot;) and noUnreachable}"/>
+        </outline>
+        <outline text="else">
+          <outline text="db.close(dbPath)"/>
+          <outline text="return false}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="thread writes during save - no crash - Spawn a background thread that writes values to system.temp in a loop,&#10;then save from the main thread while the background thread is active.&#10;GIL serializes access, so this should be safe. Verify no crash and&#10;values are readable after save completes.&#10;">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.threadsave)"/>
+        <outline text="system.temp.threadsave.counter = 0"/>
+        <outline text="system.temp.threadsave.done = false"/>
+        <outline text="thread.evaluate(&quot;local(i = 0); while(i &lt; 20) {system.temp.threadsave.counter = i; i = i + 1; thread.sleepTicks(1)}; system.temp.threadsave.done = true&quot;)"/>
+        <outline text="thread.sleepTicks(12)"/>
+        <outline text="filemenu.save()"/>
+        <outline text="«Timing: background thread needs ~20 ticks (20 iterations * 1 tick). 60-tick wait provides 3x margin for GIL contention and save latency.»"/>
+        <outline text="thread.sleepTicks(60)"/>
+        <outline text="local(ok = system.temp.threadsave.done and system.temp.threadsave.counter &gt; 5)"/>
+        <outline text="delete(@system.temp.threadsave)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="thread writes to guest DB during main thread save - no crash - Spawn a background thread writing to a guest database while main thread&#10;calls filemenu.save() on the system root. GIL serializes, so both&#10;operations should complete without corruption.&#10;">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;thread_save_guest.root7&quot;)"/>
+        <outline text="try {file.delete(dbPath)} else {1}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="new(tableType, @system.temp.tsg)"/>
+        <outline text="system.temp.tsg.done = false"/>
+        <outline text="thread.evaluate(&quot;local(i = 0); while(i &lt; 10) {db.setvalue(\&quot;&quot; + dbPath + &quot;\&quot;, \&quot;iter\&quot;, i); i = i + 1; thread.sleepTicks(2)}; system.temp.tsg.done = true&quot;)"/>
+        <outline text="thread.sleepTicks(12)"/>
+        <outline text="filemenu.save()"/>
+        <outline text="«Timing: background thread needs ~20 ticks (10 iterations * 2 ticks). 60-tick wait provides 3x margin for GIL contention and save latency.»"/>
+        <outline text="thread.sleepTicks(60)"/>
+        <outline text="local(ok = system.temp.tsg.done)"/>
+        <outline text="delete(@system.temp.tsg)"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="concurrent thread and main thread both write - values readable - Both the main thread and a background thread write distinct values.&#10;After both complete, verify all values are readable (no lost writes).&#10;">
+      <outline text="Metadata">
+        <outline text="repl_mode: True"/>
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="new(tableType, @system.temp.conc)"/>
+        <outline text="system.temp.conc.threadDone = false"/>
+        <outline text="thread.evaluate(&quot;system.temp.conc.threadVal = \&quot;from_thread\&quot;; system.temp.conc.threadDone = true&quot;)"/>
+        <outline text="system.temp.conc.mainVal = &quot;from_main&quot;"/>
+        <outline text="thread.sleepTicks(12)"/>
+        <outline text="local(ok = system.temp.conc.threadDone and (system.temp.conc.threadVal == &quot;from_thread&quot;) and (system.temp.conc.mainVal == &quot;from_main&quot;))"/>
+        <outline text="delete(@system.temp.conc)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="closeall - closes multiple guest databases - Open 3 guest databases, write values to each, call fileMenu.closeall(),&#10;and verify it returns true.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(db1 = tmpDir + &quot;/&quot; + &quot;closeall_verify1.root7&quot;)"/>
+        <outline text="local(db2 = tmpDir + &quot;/&quot; + &quot;closeall_verify2.root7&quot;)"/>
+        <outline text="local(db3 = tmpDir + &quot;/&quot; + &quot;closeall_verify3.root7&quot;)"/>
+        <outline text="try {file.delete(db1)} else {1}"/>
+        <outline text="try {file.delete(db2)} else {1}"/>
+        <outline text="try {file.delete(db3)} else {1}"/>
+        <outline text="db.new(db1)"/>
+        <outline text="db.new(db2)"/>
+        <outline text="db.new(db3)"/>
+        <outline text="fileMenu.open(db1)"/>
+        <outline text="fileMenu.open(db2)"/>
+        <outline text="fileMenu.open(db3)"/>
+        <outline text="db.setvalue(db1, &quot;k&quot;, &quot;v1&quot;)"/>
+        <outline text="db.setvalue(db2, &quot;k&quot;, &quot;v2&quot;)"/>
+        <outline text="db.setvalue(db3, &quot;k&quot;, &quot;v3&quot;)"/>
+        <outline text="local(result = fileMenu.closeall())"/>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="closeall - access after close fails - After fileMenu.closeall(), attempting to read from a closed guest&#10;database should fail, confirming the handles are released.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: correctly_failed"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_access_fail.root7&quot;)"/>
+        <outline text="try {file.delete(dbPath)} else {1}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="db.setvalue(dbPath, &quot;testKey&quot;, &quot;testVal&quot;)"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="try { «db.getvalue errors ARE catchable via try/else (unlike fileMenu verb errors)»">
+          <outline text="local(val = db.getvalue(dbPath, &quot;testKey&quot;))"/>
+          <outline text="return &quot;should_have_failed&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;correctly_failed&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="closeall - reopen after close succeeds - After fileMenu.closeall(), reopening a previously closed database&#10;should succeed, confirming no lingering file locks.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_reopen.root7&quot;)"/>
+        <outline text="try {file.delete(dbPath)} else {1}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="db.setvalue(dbPath, &quot;persistKey&quot;, &quot;persistVal&quot;)"/>
+        <outline text="fileMenu.save(dbPath)"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="local(reopened = fileMenu.open(dbPath))"/>
+        <outline text="local(val = db.getvalue(dbPath, &quot;persistKey&quot;))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return reopened and (val == &quot;persistVal&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="closeall - multiple close cycles - Open databases, close all, reopen different databases, close all again.&#10;Verifies closeall works correctly across multiple cycles.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(db1 = tmpDir + &quot;/&quot; + &quot;closeall_cycle1.root7&quot;)"/>
+        <outline text="local(db2 = tmpDir + &quot;/&quot; + &quot;closeall_cycle2.root7&quot;)"/>
+        <outline text="try {file.delete(db1)} else {1}"/>
+        <outline text="try {file.delete(db2)} else {1}"/>
+        <outline text="db.new(db1)"/>
+        <outline text="db.new(db2)"/>
+        <outline text="fileMenu.open(db1)"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="fileMenu.open(db2)"/>
+        <outline text="db.setvalue(db2, &quot;cycle&quot;, &quot;two&quot;)"/>
+        <outline text="local(val = db.getvalue(db2, &quot;cycle&quot;))"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="return val == &quot;two&quot;"/>
+      </outline>
+    </outline>
+    <outline text="closeall - system root still accessible after closeall - fileMenu.closeall() should only close guest databases, not the system&#10;root. Verify system.temp is still accessible after closeall.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+        <outline text="timeout: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_sysroot.root7&quot;)"/>
+        <outline text="try {file.delete(dbPath)} else {1}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="fileMenu.closeall()"/>
+        <outline text="new(tableType, @system.temp.closeallTest)"/>
+        <outline text="system.temp.closeallTest.alive = true"/>
+        <outline text="local(ok = system.temp.closeallTest.alive)"/>
+        <outline text="delete(@system.temp.closeallTest)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

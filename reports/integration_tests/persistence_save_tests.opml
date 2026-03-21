@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Persistence Save Tests (persistence_save_tests) - 12 tests: 12 pass (100%)</title>
-    <dateCreated>Sat, 21 Mar 2026 00:35:42 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 04:19:56 GMT</dateCreated>
   </head>
   <body>
     <outline text="protocol filemenu.save - save system root via script/eval - Call filemenu.save() through protocol script/eval and verify success">
@@ -80,6 +80,7 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
+        <outline text="try {delete(@system.temp.persist_dual_db)} else {1}"/>
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;persist_dual_db.root7&quot;)"/>
         <outline text="system.temp.persist_dual_db = &quot;dual_db_sysroot_value&quot;"/>
@@ -104,6 +105,7 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
+        <outline text="try {delete(@system.temp.persist_interleaved)} else {1}"/>
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;persist_interleaved.root7&quot;)"/>
         <outline text="db.new(dbPath)"/>
@@ -185,6 +187,7 @@
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
+        <outline text="try {delete(@system.temp.persist_full_shutdown)} else {1}"/>
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;persist_full_shutdown.root7&quot;)"/>
         <outline text="system.temp.persist_full_shutdown = &quot;shutdown_sysroot&quot;"/>
