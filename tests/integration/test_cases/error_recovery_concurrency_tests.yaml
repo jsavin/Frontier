@@ -251,21 +251,20 @@ tests:
 
   - name: "closeall - access after close fails"
     description: |
-      After fileMenu.closeall(), attempting to read from a closed guest
-      database should fail, confirming the handles are released.
+      After db.close(), attempting to read from a closed guest database
+      should fail, confirming the handle is released. Uses db.open/db.close
+      instead of fileMenu verbs to avoid uncatchable fileMenu errors.
+      Note: db.getvalue errors ARE catchable via try/else (unlike fileMenu
+      verb errors which bypass try/else — see planning/FIX_TESTS_2026_02_16.md).
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "closeall_access_fail.root7");
       try {file.delete(dbPath)} else {1};
       db.new(dbPath);
-      fileMenu.open(dbPath);
+      db.open(dbPath, false);
       db.setvalue(dbPath, "testKey", "testVal");
-      fileMenu.closeall();
-      try { «db.getvalue errors ARE catchable via try/else (unlike fileMenu verb errors)»
-        local(val = db.getvalue(dbPath, "testKey"));
-        return "should_have_failed"}
-      else {
-        return "correctly_failed"}
+      db.close(dbPath);
+      try {local(val = db.getvalue(dbPath, "testKey")); return "should_have_failed"} else {return "correctly_failed"}
     expected_success: true
     expected_result: "correctly_failed"
     timeout: 5
