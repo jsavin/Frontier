@@ -356,7 +356,9 @@ tests:
         tcp.closeListen(listenID);
 
         local(headersOK = (response contains "200 OK") and (response contains "Content-Length: 500"));
-        local(bodyDelivered = sizeOf(response) >= 500);
+        local(bodyStart = string.patternMatch("\r\n\r\n", response) + 4);
+        local(body = string.mid(response, bodyStart, sizeOf(response) - bodyStart + 1));
+        local(bodyDelivered = sizeOf(body) >= 500);
         local(bodyContent = response contains string.filledString("X", 500));
         return headersOK and bodyDelivered and bodyContent
       }
