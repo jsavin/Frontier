@@ -26,6 +26,17 @@
 #   tcp.closeListen(listenID) runs even if the client fails. This prevents
 #   leaked listeners from causing port-conflict cascades in subsequent tests.
 #
+# Port assignments (one per test to avoid parallel worker conflicts):
+#   49200 - basic GET request/response
+#   49201 - Content-Type header verification
+#   49202 - POST request with body
+#   49203 - request path extraction
+#   49204 - multiple sequential requests
+#   49205 - 404 Not Found response
+#   49206 - large response body (500 bytes)
+#   49207 - (skipped) full webserver stack inetd test
+#   49208 - (skipped) dynamic responder dispatch test
+#
 # References:
 #   - planning/INTEGRATION_TEST_GAPS.md (Gap #9)
 #   - tests/integration/test_cases/webserver_hello_world.yaml (existing webserver tests)

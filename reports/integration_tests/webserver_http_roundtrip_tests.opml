@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Webserver Http Roundtrip Tests (webserver_http_roundtrip_tests) - 9 tests: 7 pass (77%) 2 skip (22%)</title>
-    <dateCreated>Sat, 21 Mar 2026 00:12:43 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 00:37:51 GMT</dateCreated>
   </head>
   <body>
     <outline text="HTTP round-trip - GET request and response via TCP - Send HTTP GET, receive HTTP response via raw TCP server callback">
@@ -277,7 +277,9 @@
           <outline text="tcp.closeStream(clientStream)"/>
           <outline text="tcp.closeListen(listenID)"/>
           <outline text="local(headersOK = (response contains &quot;200 OK&quot;) and (response contains &quot;Content-Length: 500&quot;))"/>
-          <outline text="local(bodyDelivered = sizeOf(response) &gt;= 500)"/>
+          <outline text="local(bodyStart = string.patternMatch(&quot;\r\n\r\n&quot;, response) + 4)"/>
+          <outline text="local(body = string.mid(response, bodyStart, sizeOf(response) - bodyStart + 1))"/>
+          <outline text="local(bodyDelivered = sizeOf(body) &gt;= 500)"/>
           <outline text="local(bodyContent = response contains string.filledString(&quot;X&quot;, 500))"/>
           <outline text="return headersOK and bodyDelivered and bodyContent"/>
         </outline>

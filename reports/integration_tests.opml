@@ -1,17 +1,17 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 2030 tests: 1838 pass (90%) 192 skip (9%)</title>
-    <dateCreated>Sat, 21 Mar 2026 00:12:43 GMT</dateCreated>
+    <title>Frontier Integration Tests - 2031 tests: 1839 pass (90%) 192 skip (9%)</title>
+    <dateCreated>Sat, 21 Mar 2026 01:12:45 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-03-21 at 00:12 UTC"/>
-      <outline text="Results: 1787 passed (89%), 192 skipped (10%), 33 failed (2%)"/>
-      <outline text="Duration: 34.8s (8 workers, batch mode)"/>
-      <outline text="YAML-defined: 2030 tests (1838 active, 192 marked skip) across 57 categories"/>
+      <outline text="Run: 2026-03-21 at 01:12 UTC"/>
+      <outline text="Results: 1787 passed (89%), 192 skipped (10%), 34 failed (2%)"/>
+      <outline text="Duration: 33.0s (8 workers, batch mode)"/>
+      <outline text="YAML-defined: 2031 tests (1839 active, 192 marked skip) across 57 categories"/>
     </outline>
-    <outline text="Bigstring Boundary Tests (bigstring_boundary_tests) - 27 tests: 27 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/bigstring_boundary_tests.opml"/>
+    <outline text="Bigstring Boundary Tests (bigstring_boundary_tests) - 28 tests: 28 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/bigstring_boundary_tests.opml"/>
     <outline text="Builtins Priority (builtins_priority) - 24 tests: 24 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
     <outline text="Callback Database (callback_database) - 29 tests: 29 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/callback_database.opml"/>
     <outline text="Callback Tcp (callback_tcp) - 20 tests: 20 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/callback_tcp.opml"/>

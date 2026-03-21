@@ -350,7 +350,9 @@ tests:
       local(val = string.filledString("V", 255));
       sys.setenvironmentvariable("FRONTIER_BS_TEST", val);
       local(result = sys.getenvironmentvariable("FRONTIER_BS_TEST"));
-      return string.length(result) == 255
+      local(ok = string.length(result) == 255);
+      sys.setenvironmentvariable("FRONTIER_BS_TEST", "");
+      return ok
     expected_success: true
     expected_result: "true"
     notes: "Environment variable at exactly bigstring limit"
@@ -367,6 +369,7 @@ tests:
       local(got = sys.getenvironmentvariable("FRONTIER_TEST_BS256"));
       local(setLen = string.length(val));
       local(gotLen = string.length(got));
+      sys.setenvironmentvariable("FRONTIER_TEST_BS256", "");
       if gotLen == setLen {
         return "no_truncation:" + string(setLen)}
       else {

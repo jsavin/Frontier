@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Bigstring Boundary Tests (bigstring_boundary_tests) - 27 tests: 27 pass (100%)</title>
-    <dateCreated>Sat, 21 Mar 2026 00:12:43 GMT</dateCreated>
+    <title>Bigstring Boundary Tests (bigstring_boundary_tests) - 28 tests: 28 pass (100%)</title>
+    <dateCreated>Sat, 21 Mar 2026 01:12:45 GMT</dateCreated>
   </head>
   <body>
     <outline text="bigstring boundary - string of exactly 254 bytes - Create and verify a string of exactly 254 bytes (one below bigstring limit)">
@@ -313,6 +313,25 @@
         <outline text="sys.setenvironmentvariable(&quot;FRONTIER_BS_TEST&quot;, val)"/>
         <outline text="local(result = sys.getenvironmentvariable(&quot;FRONTIER_BS_TEST&quot;))"/>
         <outline text="return string.length(result) == 255"/>
+      </outline>
+    </outline>
+    <outline text="bigstring boundary - env var value at 256 bytes (beyond bigstring limit) - Environment variable get/set passes through C bigstring buffers.&#10;This test documents behavior at 256 bytes — if truncation occurs,&#10;the returned value will be shorter than what was set.&#10;See issues #475, #423, #380 for bigstring limit context.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: truncated:255_from_256"/>
+        <outline text="notes: Documents whether env var set/get truncates at the bigstring 255 limit"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(val = string.filledString(&quot;E&quot;, 256))"/>
+        <outline text="sys.setenvironmentvariable(&quot;FRONTIER_TEST_BS256&quot;, val)"/>
+        <outline text="local(got = sys.getenvironmentvariable(&quot;FRONTIER_TEST_BS256&quot;))"/>
+        <outline text="local(setLen = string.length(val))"/>
+        <outline text="local(gotLen = string.length(got))"/>
+        <outline text="if gotLen == setLen">
+          <outline text="return &quot;no_truncation:&quot; + string(setLen)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;truncated:&quot; + string(gotLen) + &quot;_from_&quot; + string(setLen)}"/>
+        </outline>
       </outline>
     </outline>
   </body>
