@@ -258,6 +258,7 @@ tests:
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "persistKey", "persistVal");
+      fileMenu.save(dbPath);
       fileMenu.closeall();
       local(reopened = fileMenu.open(dbPath));
       local(val = db.getvalue(dbPath, "persistKey"));
