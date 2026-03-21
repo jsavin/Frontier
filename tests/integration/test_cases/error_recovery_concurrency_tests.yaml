@@ -159,6 +159,7 @@ tests:
       thread.evaluate("local(i = 0); while(i < 20) {system.temp.threadsave.counter = i; i = i + 1; thread.sleepTicks(1)}; system.temp.threadsave.done = true");
       thread.sleepTicks(12);
       filemenu.save();
+      «Timing: background thread needs ~20 ticks (20 iterations * 1 tick). 60-tick wait provides 3x margin for GIL contention and save latency.»
       thread.sleepTicks(60);
       local(ok = system.temp.threadsave.done and system.temp.threadsave.counter > 5);
       delete(@system.temp.threadsave);
@@ -183,6 +184,7 @@ tests:
       thread.evaluate("local(i = 0); while(i < 10) {db.setvalue(\"" + dbPath + "\", \"iter\", i); i = i + 1; thread.sleepTicks(2)}; system.temp.tsg.done = true");
       thread.sleepTicks(12);
       filemenu.save();
+      «Timing: background thread needs ~20 ticks (10 iterations * 2 ticks). 60-tick wait provides 3x margin for GIL contention and save latency.»
       thread.sleepTicks(60);
       local(ok = system.temp.tsg.done);
       delete(@system.temp.tsg);
@@ -217,7 +219,7 @@ tests:
   - name: "closeall - closes multiple guest databases"
     description: |
       Open 3 guest databases, write values to each, call fileMenu.closeall(),
-      verify it returns true. Then verify access to closed databases fails.
+      and verify it returns true.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(db1 = tmpDir + "/" + "closeall_verify1.root7");

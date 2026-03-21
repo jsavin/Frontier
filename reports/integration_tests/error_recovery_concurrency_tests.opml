@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Error Recovery Concurrency Tests (error_recovery_concurrency_tests) - 13 tests: 13 pass (100%)</title>
-    <dateCreated>Sat, 21 Mar 2026 00:36:30 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 01:11:30 GMT</dateCreated>
   </head>
   <body>
     <outline text="error mid-transaction - first setvalue persists, second does not - Verify that when scriptError fires between two db.setvalue calls inside&#10;a try block, the first setvalue's effect persists but the second never&#10;executes. Uses system.temp as scratchpad.&#10;">
@@ -89,11 +89,17 @@
         <outline text="else">
           <outline text="local(msg = tryError)}"/>
         </outline>
-        <outline text="local(has1 = db.defined(dbPath, &quot;key1&quot;))"/>
-        <outline text="local(has2 = db.defined(dbPath, &quot;key2&quot;))"/>
-        <outline text="local(v1 = db.getvalue(dbPath, &quot;key1&quot;))"/>
-        <outline text="db.close(dbPath)"/>
-        <outline text="return has1 and (not has2) and (v1 == &quot;value1&quot;)"/>
+        <outline text="try">
+          <outline text="local(has1 = db.defined(dbPath, &quot;key1&quot;))"/>
+          <outline text="local(has2 = db.defined(dbPath, &quot;key2&quot;))"/>
+          <outline text="local(v1 = db.getvalue(dbPath, &quot;key1&quot;))"/>
+          <outline text="db.close(dbPath)"/>
+          <outline text="return has1 and (not has2) and (v1 == &quot;value1&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="db.close(dbPath)"/>
+          <outline text="return false}"/>
+        </outline>
       </outline>
     </outline>
     <outline text="error mid-transaction - db still usable after error - After an error mid-transaction on a guest database, verify&#10;the database is still fully usable (read and write).&#10;">
@@ -114,12 +120,18 @@
         <outline text="else">
           <outline text="local(msg = tryError)}"/>
         </outline>
-        <outline text="db.setvalue(dbPath, &quot;post&quot;, &quot;after&quot;)"/>
-        <outline text="local(pre = db.getvalue(dbPath, &quot;pre&quot;))"/>
-        <outline text="local(post = db.getvalue(dbPath, &quot;post&quot;))"/>
-        <outline text="local(noUnreachable = not(db.defined(dbPath, &quot;unreachable&quot;)))"/>
-        <outline text="db.close(dbPath)"/>
-        <outline text="return (pre == &quot;before&quot;) and (post == &quot;after&quot;) and noUnreachable"/>
+        <outline text="try">
+          <outline text="db.setvalue(dbPath, &quot;post&quot;, &quot;after&quot;)"/>
+          <outline text="local(pre = db.getvalue(dbPath, &quot;pre&quot;))"/>
+          <outline text="local(post = db.getvalue(dbPath, &quot;post&quot;))"/>
+          <outline text="local(noUnreachable = not(db.defined(dbPath, &quot;unreachable&quot;)))"/>
+          <outline text="db.close(dbPath)"/>
+          <outline text="return (pre == &quot;before&quot;) and (post == &quot;after&quot;) and noUnreachable}"/>
+        </outline>
+        <outline text="else">
+          <outline text="db.close(dbPath)"/>
+          <outline text="return false}"/>
+        </outline>
       </outline>
     </outline>
     <outline text="thread writes during save - no crash - Spawn a background thread that writes values to system.temp in a loop,&#10;then save from the main thread while the background thread is active.&#10;GIL serializes access, so this should be safe. Verify no crash and&#10;values are readable after save completes.&#10;">
