@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Error Recovery Concurrency Tests (error_recovery_concurrency_tests) - 13 tests: 13 pass (100%)</title>
-    <dateCreated>Sat, 21 Mar 2026 00:12:45 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 00:36:30 GMT</dateCreated>
   </head>
   <body>
     <outline text="error mid-transaction - first setvalue persists, second does not - Verify that when scriptError fires between two db.setvalue calls inside&#10;a try block, the first setvalue's effect persists but the second never&#10;executes. Uses system.temp as scratchpad.&#10;">
@@ -24,6 +24,7 @@
           <outline text="delete(@system.temp.midtxn)"/>
           <outline text="return has1 and (not has2) and (v1 == &quot;committed&quot;)}"/>
         </outline>
+        <outline text="return false"/>
       </outline>
     </outline>
     <outline text="error mid-transaction - error in nested function call - Verify partial state consistency when error occurs inside a nested call.&#10;The outer script sets val1, calls a helper that errors, val2 never set.&#10;">
@@ -46,6 +47,7 @@
           <outline text="delete(@system.temp.nested)"/>
           <outline text="return has1 and (not has2) and (v1 == &quot;before_call&quot;)}"/>
         </outline>
+        <outline text="return false"/>
       </outline>
     </outline>
     <outline text="error mid-transaction - recovery after try/else - After a try/else handles an error, normal operations should still work.&#10;This verifies the runtime is in a consistent state post-error.&#10;">
@@ -78,7 +80,7 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;error_midtxn_db.root7&quot;)"/>
         <outline text="db.new(dbPath)"/>
-        <outline text="db.open(dbPath, false)"/>
+        <outline text="fileMenu.open(dbPath)"/>
         <outline text="try">
           <outline text="db.setvalue(dbPath, &quot;key1&quot;, &quot;value1&quot;)"/>
           <outline text="scriptError(&quot;boom&quot;)"/>
@@ -103,7 +105,7 @@
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;error_db_recovery.root7&quot;)"/>
         <outline text="db.new(dbPath)"/>
-        <outline text="db.open(dbPath, false)"/>
+        <outline text="fileMenu.open(dbPath)"/>
         <outline text="try">
           <outline text="db.setvalue(dbPath, &quot;pre&quot;, &quot;before&quot;)"/>
           <outline text="scriptError(&quot;intentional&quot;)"/>
@@ -130,7 +132,7 @@
         <outline text="system.temp.threadsave.counter = 0"/>
         <outline text="system.temp.threadsave.done = false"/>
         <outline text="thread.evaluate(&quot;local(i = 0); while(i &lt; 20) {system.temp.threadsave.counter = i; i = i + 1; thread.sleepTicks(1)}; system.temp.threadsave.done = true&quot;)"/>
-        <outline text="thread.sleepTicks(5)"/>
+        <outline text="thread.sleepTicks(12)"/>
         <outline text="filemenu.save()"/>
         <outline text="thread.sleepTicks(60)"/>
         <outline text="local(ok = system.temp.threadsave.done and system.temp.threadsave.counter &gt; 5)"/>
@@ -151,7 +153,7 @@
         <outline text="new(tableType, @system.temp.tsg)"/>
         <outline text="system.temp.tsg.done = false"/>
         <outline text="thread.evaluate(&quot;local(i = 0); while(i &lt; 10) {db.setvalue(\&quot;&quot; + dbPath + &quot;\&quot;, \&quot;iter\&quot;, i); i = i + 1; thread.sleepTicks(2)}; system.temp.tsg.done = true&quot;)"/>
-        <outline text="thread.sleepTicks(5)"/>
+        <outline text="thread.sleepTicks(12)"/>
         <outline text="filemenu.save()"/>
         <outline text="thread.sleepTicks(60)"/>
         <outline text="local(ok = system.temp.tsg.done)"/>
@@ -212,7 +214,7 @@
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;testKey&quot;, &quot;testVal&quot;)"/>
         <outline text="fileMenu.closeall()"/>
-        <outline text="try">
+        <outline text="try { «db.getvalue errors ARE catchable via try/else (unlike fileMenu verb errors)»">
           <outline text="local(val = db.getvalue(dbPath, &quot;testKey&quot;))"/>
           <outline text="return &quot;should_have_failed&quot;}"/>
         </outline>

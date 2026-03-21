@@ -99,11 +99,15 @@ tests:
         db.setvalue(dbPath, "key2", "value2")}
       else {
         local(msg = tryError)};
-      local(has1 = db.defined(dbPath, "key1"));
-      local(has2 = db.defined(dbPath, "key2"));
-      local(v1 = db.getvalue(dbPath, "key1"));
-      db.close(dbPath);
-      return has1 and (not has2) and (v1 == "value1")
+      try {
+        local(has1 = db.defined(dbPath, "key1"));
+        local(has2 = db.defined(dbPath, "key2"));
+        local(v1 = db.getvalue(dbPath, "key1"));
+        db.close(dbPath);
+        return has1 and (not has2) and (v1 == "value1")}
+      else {
+        db.close(dbPath);
+        return false}
     expected_success: true
     expected_result: "true"
     timeout: 5
@@ -123,12 +127,16 @@ tests:
         db.setvalue(dbPath, "unreachable", "nope")}
       else {
         local(msg = tryError)};
-      db.setvalue(dbPath, "post", "after");
-      local(pre = db.getvalue(dbPath, "pre"));
-      local(post = db.getvalue(dbPath, "post"));
-      local(noUnreachable = not(db.defined(dbPath, "unreachable")));
-      db.close(dbPath);
-      return (pre == "before") and (post == "after") and noUnreachable
+      try {
+        db.setvalue(dbPath, "post", "after");
+        local(pre = db.getvalue(dbPath, "pre"));
+        local(post = db.getvalue(dbPath, "post"));
+        local(noUnreachable = not(db.defined(dbPath, "unreachable")));
+        db.close(dbPath);
+        return (pre == "before") and (post == "after") and noUnreachable}
+      else {
+        db.close(dbPath);
+        return false}
     expected_success: true
     expected_result: "true"
     timeout: 5
