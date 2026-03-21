@@ -10,6 +10,10 @@
 # Tests use a mix of protocol_ops (for protocol-layer coverage) and
 # script mode (for multi-step UserTalk sequences).
 #
+# Test filenames: Each test uses static .root7 filenames (e.g., persist_lifecycle.root7).
+# The test framework provides a fresh FRONTIER_TEST_TMP_DIR per worker per run,
+# so filename collisions across runs are not a concern.
+#
 # Test framework isolation: Each parallel worker runs its own frontier-cli
 # process with a private .root7 copy. fileMenu.closeall() only affects the
 # current worker's process — no cross-worker interference.

@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Persistence Save Tests (persistence_save_tests) - 12 tests: 12 pass (100%)</title>
-    <dateCreated>Sat, 21 Mar 2026 00:13:56 GMT</dateCreated>
+    <dateCreated>Sat, 21 Mar 2026 00:35:42 GMT</dateCreated>
   </head>
   <body>
     <outline text="protocol filemenu.save - save system root via script/eval - Call filemenu.save() through protocol script/eval and verify success">
@@ -88,6 +88,8 @@
         <outline text="db.setvalue(dbPath, &quot;guestKey&quot;, &quot;dual_db_guest_value&quot;)"/>
         <outline text="fileMenu.save()"/>
         <outline text="fileMenu.save(dbPath)"/>
+        <outline text="# fileMenu.closeall() only closes guest databases, not the system root."/>
+        <outline text="# system.temp is part of the system root and remains accessible."/>
         <outline text="fileMenu.closeall()"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(sysVal = system.temp.persist_dual_db)"/>
@@ -112,6 +114,8 @@
         <outline text="db.setvalue(dbPath, &quot;key2&quot;, &quot;interleaved_guest_2&quot;)"/>
         <outline text="fileMenu.save()"/>
         <outline text="fileMenu.save(dbPath)"/>
+        <outline text="# fileMenu.closeall() only closes guest databases, not the system root."/>
+        <outline text="# system.temp is part of the system root and remains accessible."/>
         <outline text="fileMenu.closeall()"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(sysVal = system.temp.persist_interleaved)"/>
@@ -189,6 +193,8 @@
         <outline text="db.setvalue(dbPath, &quot;shutKey&quot;, &quot;shutVal&quot;)"/>
         <outline text="fileMenu.save()"/>
         <outline text="fileMenu.save(dbPath)"/>
+        <outline text="# fileMenu.closeall() only closes guest databases, not the system root."/>
+        <outline text="# system.temp is part of the system root and remains accessible."/>
         <outline text="fileMenu.closeall()"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(sysOk = system.temp.persist_full_shutdown == &quot;shutdown_sysroot&quot;)"/>
