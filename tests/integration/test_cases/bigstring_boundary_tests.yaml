@@ -1,0 +1,379 @@
+# Integration tests for bigstring boundary values (Gap #10)
+#
+# The C-level `bigstring` type (Pascal string) has a 255-byte limit defined by
+# `lenbigstring` in standard_portable.h. This limit affects:
+#   - File paths (which pass through bigstring buffers in C)
+#   - Some kernel verb parameters that use bigstring internally
+#   - Environment variable names/values passed through bigstring
+#
+# UserTalk string VARIABLES are heap-allocated and NOT subject to the 255 limit.
+# Strings >255 bytes work fine in UserTalk for general use. The boundary only
+# matters when strings cross into C APIs that use bigstring internally.
+#
+# These tests document current behavior at the 254/255/256 boundary:
+#   - UserTalk strings: no truncation (heap strings)
+#   - File paths: truncation at 255 (bigstring limit, issue #475)
+#   - ODB stored values: no truncation (stored as handles)
+#
+# References:
+#   - planning/INTEGRATION_TEST_GAPS.md (Gap #10)
+#   - portable/standard_portable.h (#define lenbigstring 255)
+#   - Issue #475 - bigstring 255-byte limit truncates long paths
+#   - Issue #423 / #380 - Refactor bigstring to remove 255-char limit
+
+tests:
+  # =============================================================================
+  # CATEGORY 1: UserTalk String Variables at Boundary
+  # UserTalk strings are heap-allocated — no 255 limit expected.
+  # =============================================================================
+
+  - name: "bigstring boundary - string of exactly 254 bytes"
+    description: "Create and verify a string of exactly 254 bytes (one below bigstring limit)"
+    script: |
+      local(s = string.filledString("A", 254));
+      return string.length(s)
+    expected_success: true
+    expected_result: "254"
+    notes: "254 bytes is one below the lenbigstring limit - should work everywhere"
+
+  - name: "bigstring boundary - string of exactly 255 bytes"
+    description: "Create and verify a string of exactly 255 bytes (at bigstring limit)"
+    script: |
+      local(s = string.filledString("B", 255));
+      return string.length(s)
+    expected_success: true
+    expected_result: "255"
+    notes: "255 bytes is the exact lenbigstring limit"
+
+  - name: "bigstring boundary - string of exactly 256 bytes"
+    description: "Create and verify a string of exactly 256 bytes (one above bigstring limit)"
+    script: |
+      local(s = string.filledString("C", 256));
+      return string.length(s)
+    expected_success: true
+    expected_result: "256"
+    notes: "256 bytes exceeds lenbigstring but UserTalk strings are heap-allocated, so no truncation"
+
+  - name: "bigstring boundary - string of 1000 bytes"
+    description: "Create and verify a string well beyond bigstring limit"
+    script: |
+      local(s = string.filledString("D", 1000));
+      return string.length(s)
+    expected_success: true
+    expected_result: "1000"
+    notes: "UserTalk strings are heap-allocated — no 255 limit for string variables"
+
+  # =============================================================================
+  # CATEGORY 2: String Concatenation at Boundary
+  # Verify concatenation across the 255 boundary works correctly.
+  # =============================================================================
+
+  - name: "bigstring boundary - concatenation reaching exactly 255"
+    description: "Concatenate two strings to reach exactly 255 bytes"
+    script: |
+      local(a = string.filledString("X", 200));
+      local(b = string.filledString("Y", 55));
+      local(c = a + b);
+      return string.length(c)
+    expected_success: true
+    expected_result: "255"
+    notes: "Concatenation to exactly 255 bytes"
+
+  - name: "bigstring boundary - concatenation crossing 255 boundary"
+    description: "Concatenate two strings to cross the 255 boundary"
+    script: |
+      local(a = string.filledString("X", 200));
+      local(b = string.filledString("Y", 100));
+      local(c = a + b);
+      return string.length(c)
+    expected_success: true
+    expected_result: "300"
+    notes: "Concatenation crossing 255-byte boundary produces 300-byte string"
+
+  - name: "bigstring boundary - repeated concatenation past 255"
+    description: "Build up a string past 255 bytes by repeated concatenation"
+    script: |
+      local(s = "");
+      local(i);
+      for i = 1 to 30 {
+        s = s + "0123456789"
+      };
+      return string.length(s)
+    expected_success: true
+    expected_result: "300"
+    notes: "30 iterations of 10-char append = 300 bytes, well past bigstring limit"
+
+  # =============================================================================
+  # CATEGORY 3: String Content Verification at Boundary
+  # Verify no data corruption at the 255 boundary.
+  # =============================================================================
+
+  - name: "bigstring boundary - content intact at 254 bytes"
+    description: "Verify first and last characters of 254-byte string are correct"
+    script: |
+      local(s = "A" + string.filledString(".", 252) + "Z");
+      return (string.length(s) == 254) and (string.nthCharacter(s, 1) == "A") and (string.nthCharacter(s, 254) == "Z")
+    expected_success: true
+    expected_result: "true"
+    notes: "Verify no data corruption at boundary - 1"
+
+  - name: "bigstring boundary - content intact at 255 bytes"
+    description: "Verify first and last characters of 255-byte string are correct"
+    script: |
+      local(s = "A" + string.filledString(".", 253) + "Z");
+      return (string.length(s) == 255) and (string.nthCharacter(s, 1) == "A") and (string.nthCharacter(s, 255) == "Z")
+    expected_success: true
+    expected_result: "true"
+    notes: "Verify no data corruption at boundary"
+
+  - name: "bigstring boundary - content intact at 256 bytes"
+    description: "Verify first and last characters of 256-byte string are correct"
+    script: |
+      local(s = "A" + string.filledString(".", 254) + "Z");
+      return (string.length(s) == 256) and (string.nthCharacter(s, 1) == "A") and (string.nthCharacter(s, 256) == "Z")
+    expected_success: true
+    expected_result: "true"
+    notes: "Verify no data corruption past bigstring limit"
+
+  # =============================================================================
+  # CATEGORY 4: ODB Storage at Boundary
+  # Strings stored in the ODB use handle-based storage, not bigstring.
+  # These tests verify round-trip through db.setValue/db.getValue.
+  # =============================================================================
+
+  - name: "bigstring boundary - ODB store/retrieve 254 bytes"
+    description: "Store and retrieve a 254-byte string via ODB"
+    script: |
+      local(s = string.filledString("A", 254));
+      system.temp.bs254 = s;
+      local(retrieved = system.temp.bs254);
+      local(ok = string.length(retrieved) == 254);
+      delete(@system.temp.bs254);
+      return ok
+    expected_success: true
+    expected_result: "true"
+    notes: "ODB round-trip at 254 bytes (below bigstring limit)"
+
+  - name: "bigstring boundary - ODB store/retrieve 255 bytes"
+    description: "Store and retrieve a 255-byte string via ODB"
+    script: |
+      local(s = string.filledString("B", 255));
+      system.temp.bs255 = s;
+      local(retrieved = system.temp.bs255);
+      local(ok = string.length(retrieved) == 255);
+      delete(@system.temp.bs255);
+      return ok
+    expected_success: true
+    expected_result: "true"
+    notes: "ODB round-trip at exactly 255 bytes (bigstring limit)"
+
+  - name: "bigstring boundary - ODB store/retrieve 256 bytes"
+    description: "Store and retrieve a 256-byte string via ODB"
+    script: |
+      local(s = string.filledString("C", 256));
+      system.temp.bs256 = s;
+      local(retrieved = system.temp.bs256);
+      local(ok = string.length(retrieved) == 256);
+      delete(@system.temp.bs256);
+      return ok
+    expected_success: true
+    expected_result: "true"
+    notes: "ODB round-trip at 256 bytes (past bigstring limit) - ODB uses handles, not bigstring"
+
+  - name: "bigstring boundary - ODB store/retrieve 1000 bytes"
+    description: "Store and retrieve a 1000-byte string via ODB"
+    script: |
+      local(s = string.filledString("D", 1000));
+      system.temp.bs1000 = s;
+      local(retrieved = system.temp.bs1000);
+      local(ok = string.length(retrieved) == 1000);
+      delete(@system.temp.bs1000);
+      return ok
+    expected_success: true
+    expected_result: "true"
+    notes: "ODB handles store strings well beyond 255 bytes"
+
+  - name: "bigstring boundary - ODB content integrity at 256 bytes"
+    description: "Verify stored string content is not corrupted past 255"
+    script: |
+      local(s = "START" + string.filledString(".", 248) + "END");
+      system.temp.bsIntegrity = s;
+      local(retrieved = system.temp.bsIntegrity);
+      local(lenOK = string.length(retrieved) == 256);
+      local(startOK = string.mid(retrieved, 1, 5) == "START");
+      local(endOK = string.mid(retrieved, 254, 3) == "END");
+      delete(@system.temp.bsIntegrity);
+      return lenOK and startOK and endOK
+    expected_success: true
+    expected_result: "true"
+    notes: "Verify no data corruption in ODB round-trip near boundary"
+
+  # =============================================================================
+  # CATEGORY 5: String Comparison at Boundary
+  # =============================================================================
+
+  - name: "bigstring boundary - equality comparison at 255"
+    description: "Two 255-byte strings with same content should be equal"
+    script: |
+      local(a = string.filledString("X", 255));
+      local(b = string.filledString("X", 255));
+      return a == b
+    expected_success: true
+    expected_result: "true"
+    notes: "String comparison at exactly bigstring limit"
+
+  - name: "bigstring boundary - equality comparison at 256"
+    description: "Two 256-byte strings with same content should be equal"
+    script: |
+      local(a = string.filledString("X", 256));
+      local(b = string.filledString("X", 256));
+      return a == b
+    expected_success: true
+    expected_result: "true"
+    notes: "String comparison past bigstring limit"
+
+  - name: "bigstring boundary - inequality at 256 (different last byte)"
+    description: "Two 256-byte strings differing only in last byte should not be equal"
+    script: |
+      local(a = string.filledString("X", 255) + "A");
+      local(b = string.filledString("X", 255) + "B");
+      return a != b
+    expected_success: true
+    expected_result: "true"
+    notes: "Ensures comparison looks past byte 255"
+
+  # =============================================================================
+  # CATEGORY 6: sizeOf() vs string.length() at Boundary
+  # =============================================================================
+
+  - name: "bigstring boundary - sizeOf matches string.length at 255"
+    description: "sizeOf and string.length agree for 255-byte string"
+    script: |
+      local(s = string.filledString("X", 255));
+      return (sizeOf(s) == 255) and (string.length(s) == 255) and (sizeOf(s) == string.length(s))
+    expected_success: true
+    expected_result: "true"
+    notes: "Both measurement functions should agree at the boundary"
+
+  - name: "bigstring boundary - sizeOf matches string.length at 256"
+    description: "sizeOf and string.length agree for 256-byte string"
+    script: |
+      local(s = string.filledString("X", 256));
+      return (sizeOf(s) == 256) and (string.length(s) == 256) and (sizeOf(s) == string.length(s))
+    expected_success: true
+    expected_result: "true"
+    notes: "Both measurement functions should agree past the boundary"
+
+  # =============================================================================
+  # CATEGORY 7: File Path Boundary (bigstring truncation zone)
+  # File paths pass through C bigstring buffers and ARE subject to truncation.
+  # These tests document the current truncation behavior.
+  #
+  # NOTE: These tests verify UserTalk string construction at path-like lengths.
+  # The actual bigstring truncation (issue #475) occurs in C-level APIs
+  # (e.g., file.exists, file.readWholeFile) when paths flow through bigstring
+  # buffers. Testing that truncation requires actual file operations with
+  # 255+ character paths, which is tracked separately under issue #475.
+  # =============================================================================
+
+  - name: "bigstring boundary - file path at 254 chars works"
+    description: "File path under 255 chars should work without truncation"
+    script: |
+      local(dir = "/tmp");
+      local(padding = string.filledString("a", 249));
+      local(path = dir + "/" + padding);
+      return string.length(path) == 254
+    expected_success: true
+    expected_result: "true"
+    notes: "File path construction at 254 chars - within bigstring limit"
+
+  - name: "bigstring boundary - file path at 255 chars"
+    description: "File path at exactly 255 chars - at bigstring limit"
+    script: |
+      local(dir = "/tmp");
+      local(padding = string.filledString("a", 250));
+      local(path = dir + "/" + padding);
+      return string.length(path) == 255
+    expected_success: true
+    expected_result: "true"
+    notes: "File path at exactly 255 - this is the max bigstring can hold"
+
+  - name: "bigstring boundary - file.exists with short path"
+    description: "file.exists works with path under 255 chars"
+    script: |
+      return typeof(file.exists("/tmp")) == booleanType
+    expected_success: true
+    expected_result: "true"
+    notes: "Baseline: file.exists works with short paths"
+
+  # =============================================================================
+  # CATEGORY 8: String Substring Operations at Boundary
+  # =============================================================================
+
+  - name: "bigstring boundary - string.mid spanning byte 255"
+    description: "Extract substring that spans the 255-byte boundary"
+    script: |
+      local(s = string.filledString("A", 253) + "XY" + string.filledString("B", 5));
+      local(sub = string.mid(s, 254, 2));
+      return sub == "XY"
+    expected_success: true
+    expected_result: "true"
+    notes: "Substring extraction spanning byte 254-255 - should work on heap strings"
+
+  - name: "bigstring boundary - string.mid past byte 255"
+    description: "Extract substring entirely past the 255-byte boundary"
+    script: |
+      local(s = string.filledString("A", 256) + "HELLO");
+      local(sub = string.mid(s, 257, 5));
+      return sub == "HELLO"
+    expected_success: true
+    expected_result: "true"
+    notes: "Substring extraction past byte 255 - heap strings have no boundary"
+
+  - name: "bigstring boundary - string.patternMatch past byte 255"
+    description: "Find pattern located past byte 255 in string"
+    script: |
+      local(s = string.filledString(".", 260) + "NEEDLE");
+      return string.patternMatch("NEEDLE", s)
+    expected_success: true
+    expected_result: "261"
+    notes: "Pattern matching works past byte 255 on heap strings"
+
+  # =============================================================================
+  # CATEGORY 9: Environment Variable Boundary (known bigstring path)
+  # Environment variable get/set passes through bigstring in C.
+  # =============================================================================
+
+  - name: "bigstring boundary - env var value at 255 bytes"
+    description: "Set and get environment variable with 255-byte value"
+    script: |
+      local(val = string.filledString("V", 255));
+      sys.setenvironmentvariable("FRONTIER_BS_TEST", val);
+      local(result = sys.getenvironmentvariable("FRONTIER_BS_TEST"));
+      local(ok = string.length(result) == 255);
+      sys.setenvironmentvariable("FRONTIER_BS_TEST", "");
+      return ok
+    expected_success: true
+    expected_result: "true"
+    notes: "Environment variable at exactly bigstring limit"
+
+  - name: "bigstring boundary - env var value at 256 bytes (beyond bigstring limit)"
+    description: |
+      Environment variable get/set passes through C bigstring buffers.
+      This test documents behavior at 256 bytes — if truncation occurs,
+      the returned value will be shorter than what was set.
+      See issues #475, #423, #380 for bigstring limit context.
+    script: |
+      local(val = string.filledString("E", 256));
+      sys.setenvironmentvariable("FRONTIER_TEST_BS256", val);
+      local(got = sys.getenvironmentvariable("FRONTIER_TEST_BS256"));
+      local(setLen = string.length(val));
+      local(gotLen = string.length(got));
+      sys.setenvironmentvariable("FRONTIER_TEST_BS256", "");
+      if gotLen == setLen {
+        return "no_truncation:" + string(setLen)}
+      else {
+        return "truncated:" + string(gotLen) + "_from_" + string(setLen)}
+    expected_success: true
+    expected_result: "truncated:255_from_256"
+    notes: "Documents whether env var set/get truncates at the bigstring 255 limit"

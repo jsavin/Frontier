@@ -23,11 +23,11 @@ These gaps risk silent data loss or corruption.
 
 | # | Gap | Description | Status |
 |---|-----|-------------|--------|
-| 1 | **`filemenu.save()` via protocol** | No test verifies `script/eval "filemenu.save()"` through the protocol layer. This is the path a GUI client will use to trigger File > Save. Must verify the database file is actually updated on disk. | Not started |
-| 2 | **Guest DB full lifecycle round-trip** | Individual pieces are tested, but no single test covers: open guest DB → modify values → `filemenu.save()` → close → reopen → verify values survived. | Not started |
-| 3 | **System root + guest DB both modified and saved** | No test modifies BOTH databases, saves both, closes, reopens, and verifies both. Pack/unpack context switching between databases is a corruption risk area (cf. databasedata elimination work). | Not started |
-| 4 | **Protocol mutations are in-memory only** | No test verifies that `odb/set` changes are NOT persisted if the process exits without an explicit save. Users and client apps need to understand this contract. | Not started |
-| 5 | **Guest DBs flushed on shutdown** | No test verifies that guest databases are properly saved/closed when the process exits (via `shutdown` op or normal exit). Risk: data loss if guest DB handles not flushed. | Not started |
+| 1 | **`filemenu.save()` via protocol** | No test verifies `script/eval "filemenu.save()"` through the protocol layer. This is the path a GUI client will use to trigger File > Save. Must verify the database file is actually updated on disk. | Done — `persistence_save_tests.yaml` |
+| 2 | **Guest DB full lifecycle round-trip** | Individual pieces are tested, but no single test covers: open guest DB → modify values → `filemenu.save()` → close → reopen → verify values survived. | Done — `persistence_save_tests.yaml` |
+| 3 | **System root + guest DB both modified and saved** | No test modifies BOTH databases, saves both, closes, reopens, and verifies both. Pack/unpack context switching between databases is a corruption risk area (cf. databasedata elimination work). | Done — `persistence_save_tests.yaml` |
+| 4 | **Protocol mutations are in-memory only** | No test verifies that `odb/set` changes are NOT persisted if the process exits without an explicit save. Users and client apps need to understand this contract. | Partial — in-memory contract verified; restart non-persistence cannot be tested with current framework |
+| 5 | **Guest DBs flushed on shutdown** | No test verifies that guest databases are properly saved/closed when the process exits (via `shutdown` op or normal exit). Risk: data loss if guest DB handles not flushed. | Done — `persistence_save_tests.yaml` |
 
 ## P1: Error Recovery & Concurrency
 
@@ -38,8 +38,8 @@ These gaps risk inconsistent state or resource leaks.
 | 6 | **Error mid-transaction** | No test for: `try { db.setvalue(x); error(); db.setvalue(y) }` — verify first setvalue committed and DB not left in inconsistent state. | Done — `error_recovery_concurrency_tests.yaml` |
 | 7 | **Thread modifying DB while main thread saves** | GIL serializes access, but no test proves databasedata global stays consistent when a background thread is actively modifying tables while `filemenu.save()` runs on the main thread. | Done — `error_recovery_concurrency_tests.yaml` |
 | 8 | **`fileMenu.closeall()` actually closes everything** | Tests check return value is true but don't verify all guest DB handles are actually released and the `hodblist` linked list is properly cleared. | Done — `error_recovery_concurrency_tests.yaml` |
-| 9 | **Webserver HTTP round-trip** | HTTP request → webserver dispatch → responder script → response. Currently skipped due to port conflicts. This is the primary external-facing interface. | Not started |
-| 10 | **bigstring boundary values** | No tests for strings at exactly 254, 255, and 256 bytes. The 255-byte bigstring limit (issue #475, #423) truncates silently — tests should document and verify this boundary behavior. | Not started |
+| 9 | **Webserver HTTP round-trip** | HTTP request → webserver dispatch → responder script → response. Currently skipped due to port conflicts. This is the primary external-facing interface. | **Done** — `webserver_http_roundtrip_tests.yaml` (7 active, 2 skipped for fwsNetEvent* migration) |
+| 10 | **bigstring boundary values** | No tests for strings at exactly 254, 255, and 256 bytes. The 255-byte bigstring limit (issue #475, #423) truncates silently — tests should document and verify this boundary behavior. | **Done** — `bigstring_boundary_tests.yaml` (27 tests covering variables, ODB, concatenation, substring, comparison, file paths, env vars) |
 
 ## P2: Verb Coverage Gaps
 
