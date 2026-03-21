@@ -36,7 +36,8 @@ tests:
         local(has2 = defined(system.temp.midtxn.val2));
         local(v1 = system.temp.midtxn.val1);
         delete(@system.temp.midtxn);
-        return has1 and (not has2) and (v1 == "committed")}
+        return has1 and (not has2) and (v1 == "committed")};
+      return false
     expected_success: true
     expected_result: "true"
     timeout: 5
@@ -57,7 +58,8 @@ tests:
         local(has2 = defined(system.temp.nested.val2));
         local(v1 = system.temp.nested.val1);
         delete(@system.temp.nested);
-        return has1 and (not has2) and (v1 == "before_call")}
+        return has1 and (not has2) and (v1 == "before_call")};
+      return false
     expected_success: true
     expected_result: "true"
     timeout: 5
@@ -90,7 +92,7 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "error_midtxn_db.root7");
       db.new(dbPath);
-      db.open(dbPath, false);
+      fileMenu.open(dbPath);
       try {
         db.setvalue(dbPath, "key1", "value1");
         scriptError("boom");
@@ -114,7 +116,7 @@ tests:
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "error_db_recovery.root7");
       db.new(dbPath);
-      db.open(dbPath, false);
+      fileMenu.open(dbPath);
       try {
         db.setvalue(dbPath, "pre", "before");
         scriptError("intentional");
@@ -147,7 +149,7 @@ tests:
       system.temp.threadsave.counter = 0;
       system.temp.threadsave.done = false;
       thread.evaluate("local(i = 0); while(i < 20) {system.temp.threadsave.counter = i; i = i + 1; thread.sleepTicks(1)}; system.temp.threadsave.done = true");
-      thread.sleepTicks(5);
+      thread.sleepTicks(12);
       filemenu.save();
       thread.sleepTicks(60);
       local(ok = system.temp.threadsave.done and system.temp.threadsave.counter > 5);
@@ -171,7 +173,7 @@ tests:
       new(tableType, @system.temp.tsg);
       system.temp.tsg.done = false;
       thread.evaluate("local(i = 0); while(i < 10) {db.setvalue(\"" + dbPath + "\", \"iter\", i); i = i + 1; thread.sleepTicks(2)}; system.temp.tsg.done = true");
-      thread.sleepTicks(5);
+      thread.sleepTicks(12);
       filemenu.save();
       thread.sleepTicks(60);
       local(ok = system.temp.tsg.done);
@@ -239,7 +241,7 @@ tests:
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "testKey", "testVal");
       fileMenu.closeall();
-      try {
+      try { «db.getvalue errors ARE catchable via try/else (unlike fileMenu verb errors)»
         local(val = db.getvalue(dbPath, "testKey"));
         return "should_have_failed"}
       else {
