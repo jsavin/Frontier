@@ -1,4 +1,21 @@
 on openURL (s, openURLIn=nil) {
+	//3/21/26 by JES
+		//Modernized for three runtime modes:
+			//GUI mode (isHeadless=false): use legacy AppleEvent path
+			//CLI mode (isHeadless=true, macOS with display): use "open" command
+			//Headless (isHeadless=true, no display): log URL to console
+	//2/15/26; 12:40:28 AM by JES
+		//Added Linux and headless macOS support.
+	if system.environment.isHeadless {
+		if system.environment.isMac {
+			try {
+				sys.unixShellCommand ("open \"" + s + "\"");
+				return (true)}};
+		if system.environment.isLinux {
+			try {
+				return (sys.unixShellCommand ("xdg-open \"" + s + "\""))}};
+		msg ("Open this URL in your browser: " + s);
+		return (false)};
 	local (id = webBrowser.launch ());
 	if id == false or id == 'NONE' {
 		return (false)};

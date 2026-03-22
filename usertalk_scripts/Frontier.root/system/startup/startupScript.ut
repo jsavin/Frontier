@@ -228,11 +228,15 @@ if flEnableHttpServer { //6.0, daemons don't start up until all the startup code
 	inetd.start ()}; //start up all daemons with startup set true
 
 bundle { //PBS 06/02/01: open the Control Panel the first time
+	//3/21/26 by JES
+		//Wrapped in try blocks for headless/CLI compatibility.
 	if defined (system.temp.installer.urlToOpen) {
 		window.update ("About Frontier");
-		webBrowser.openUrl (system.temp.installer.urlToOpen);
-		webBrowser.bringToFront ()}
+		try {
+			webBrowser.openUrl (system.temp.installer.urlToOpen);
+			webBrowser.bringToFront ()}}
 	else { //JES 4/14/02: do the trial version check
-		userland.trialVersionCheck ()}};
+		try {
+			userland.trialVersionCheck ()}}};
 
 system.temp.Frontier.startingUp = false //signal to all who care, let the hits begin!
