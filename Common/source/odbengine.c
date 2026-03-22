@@ -431,7 +431,7 @@ pascal boolean odbNewFile (hdlfilenum fnum) {
 	4.1b5 dmb: new routine. minimal db creation. does not leave it open
 
 	2026-01-07 Codex: Updated for v7 format - creates minimal database instead of Cancoon record.
-	Phase 1: Creates .root7 files with no Cancoon record, empty database.
+	Creates .root files with no Cancoon record, empty database.
 	*/
 
 	boolean fl;

@@ -166,10 +166,11 @@ main() {
     test_start "Copy v6 database to test location"
 
     V6_TEST_DB="$MIGRATION_TEST_DIR/test_migration_source.root"
-    V7_OUTPUT_DB="$MIGRATION_TEST_DIR/test_migration_source.root7"
+    V6_BACKUP_DB="$MIGRATION_TEST_DIR/test_migration_source.v6.root"
+    V7_OUTPUT_DB="$MIGRATION_TEST_DIR/test_migration_source.root"
 
     # Remove any existing test databases
-    rm -f "$V6_TEST_DB" "$V7_OUTPUT_DB"
+    rm -f "$V6_TEST_DB" "$V6_BACKUP_DB"
 
     # Copy source to test location
     cp "$V6_SOURCE" "$V6_TEST_DB"
@@ -218,23 +219,24 @@ main() {
     echo ""
 
     # =============================================================================
-    # Test 4: Verify v6 MD5 hash UNCHANGED after migration
+    # Test 4: Verify v6 backup preserves original data
+    # Migration renames v6 to .v6.root and writes v7 to original path.
     # =============================================================================
-    test_start "Verify v6 MD5 hash UNCHANGED after migration"
+    test_start "Verify v6 backup MD5 matches original"
 
-    V6_MD5_AFTER=$(calculate_md5 "$V6_TEST_DB")
+    V6_MD5_AFTER=$(calculate_md5 "$V6_BACKUP_DB")
     if [[ $? -ne 0 || "$V6_MD5_AFTER" == "FILE_NOT_FOUND" ]]; then
-        log_fail "Failed to calculate MD5 of v6 source after migration"
+        log_fail "Failed to calculate MD5 of v6 backup: $V6_BACKUP_DB"
         exit 1
     fi
 
     log_info "v6 MD5 before: $V6_MD5_BEFORE"
-    log_info "v6 MD5 after:  $V6_MD5_AFTER"
+    log_info "v6 backup MD5: $V6_MD5_AFTER"
 
     if [[ "$V6_MD5_BEFORE" == "$V6_MD5_AFTER" ]]; then
-        log_success "v6 source MD5 unchanged (CORRECT - PR #310 fix verified)"
+        log_success "v6 backup MD5 matches original (data preserved)"
     else
-        log_fail "v6 source MD5 CHANGED (BUG - PR #310 fix not working)"
+        log_fail "v6 backup MD5 does NOT match original (data corruption)"
         log_fail "  Before: $V6_MD5_BEFORE"
         log_fail "  After:  $V6_MD5_AFTER"
         exit 1
@@ -244,12 +246,12 @@ main() {
     # =============================================================================
     # Test 5: Verify v7 destination file exists
     # =============================================================================
-    test_start "Verify v7 destination file exists"
+    test_start "Verify v7 output file exists at original path"
 
     if verify_file_exists "$V7_OUTPUT_DB"; then
-        log_success "v7 destination file created"
+        log_success "v7 output file exists at original path"
     else
-        log_fail "v7 destination file NOT created"
+        log_fail "v7 output file NOT found at original path"
         exit 1
     fi
     echo ""

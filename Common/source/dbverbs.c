@@ -66,9 +66,8 @@
 #define DB_PATH_MAX 1024
 #endif
 
-/* Database file extension lengths */
+/* Database file extension length */
 #define ROOT_EXTENSION_LEN 5   /* ".root" */
-#define ROOT7_EXTENSION_LEN 6  /* ".root7" */
 
 /*
 if we're generating cfm (powerpc), we're linking to an odb engine shared
@@ -428,17 +427,14 @@ static boolean odberror (boolean flresult) {
 
 
 /* Forward declarations */
-static void odb_ensure_root7_extension(tyfilespec *fs);
+static void odb_ensure_root_extension(tyfilespec *fs);
 static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *version);
-static boolean odb_check_root7_exists(const tyfilespec *fs, tyfilespec *fs_root7);
 
 
 static boolean getodbparam (hdltreenode hparam1, short pnum, hdlodbrecord *hodbrecord) {
 
 	//
 	// 2006-06-23 creedon: for Mac, FSRef-zed
-	//
-	// 2026-01-10 Codex: Phase 1 - Transform .root to .root7 for lookup
 	//
 
 	bigstring bs;
@@ -458,17 +454,6 @@ static boolean getodbparam (hdltreenode hparam1, short pnum, hdlodbrecord *hodbr
 			return (true);
 			}
 		}
-
-	/* If .root path provided and not found, try .root7 fallback - skip sentinel */
-	tyfilespec fs_root7;
-	if (odb_check_root7_exists(ptrfs, &fs_root7)) {
-		for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
-			if ( equalfilespecs ( &( **hodb ).fs, &fs_root7 ) ) {
-				*hodbrecord = hodb;
-				return (true);
-				}
-			}
-	}
 
 	getfsfile ( ptrfs, bs );
 
@@ -590,66 +575,31 @@ static boolean odb_detect_database_version(const tyfilespec *fs, unsigned char *
 }
 
 /*
- * odb_check_root7_exists
+ * odb_ensure_root_extension
  *
- * Check if .root7 version of a .root file exists.
- * If input is "test.root" and "test.root7" exists, returns true and sets fs_root7.
- * If input doesn't end with .root, or .root7 doesn't exist, returns false.
+ * Ensures the filespec has a .root extension for new databases.
+ * - If path ends with .root, leave it alone.
+ * - If path ends with .root7 (legacy), replace with .root.
+ * - Otherwise, append .root.
  */
-static boolean odb_check_root7_exists(const tyfilespec *fs, tyfilespec *fs_root7) {
-	bigstring bspath, bspath7;
-
-	/* Get path as string */
-	filespectopath((tyfilespec *)fs, bspath);
-	long len = stringlength(bspath);
-
-	/* Only proceed if path ends with .root */
-	if (len < ROOT_EXTENSION_LEN)
-		return false;
-
-	bigstring bsext;
-	midstring(bspath, len - (ROOT_EXTENSION_LEN - 1), ROOT_EXTENSION_LEN, bsext);
-
-	if (!equalstrings(bsext, BIGSTRING("\x05.root")))
-		return false;  /* Doesn't end with .root */
-
-	/* Build .root7 version of the path */
-	copystring(bspath, bspath7);
-	setstringlength(bspath7, len - ROOT_EXTENSION_LEN);  /* Remove .root */
-	pushstring(BIGSTRING("\x06.root7"), bspath7);  /* Append .root7 */
-
-	/* Check if .root7 file exists */
-	if (!pathtofilespec(bspath7, fs_root7))
-		return false;
-
-	boolean flfolder = false;
-	return fileexists(fs_root7, &flfolder);
-}
-
-/*
- * odb_ensure_root7_extension
- *
- * Phase 1: Ensures the filespec has a .root7 extension (replaces .root if present).
- * This creates v7 databases with the temporary .root7 extension to coexist with v6.
- *
- * ONLY use this for db.new (creating new databases). For db.open/db.defined, use
- * odb_resolve_path_for_open which does smart fallback to support both v6 and v7.
- */
-static void odb_ensure_root7_extension(tyfilespec *fs) {
+static void odb_ensure_root_extension(tyfilespec *fs) {
 	bigstring bspath;
 
 	filespectopath(fs, bspath);
 
 	long len = stringlength(bspath);
 
-	/* Check if it ends with .root7 (6 characters) */
+	/* Check if it ends with .root7 (6 characters) -- legacy, convert to .root */
 	if (len >= 6) {
 		bigstring bsext7;
 		midstring(bspath, len - 5, 6, bsext7);  /* Extract last 6 chars */
 
 		if (equalstrings(bsext7, BIGSTRING("\x06.root7"))) {
-			/* Already has .root7 extension, nothing to do */
-			log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: already has .root7 extension");
+			/* Replace .root7 with .root */
+			setstringlength(bspath, len - 6);  /* Remove .root7 */
+			pushstring(BIGSTRING("\x05.root"), bspath);  /* Append .root */
+
+			log_debug(LOG_COMP_DB, "odb_ensure_root_extension: converted .root7 to .root");
 			pathtofilespec(bspath, fs);
 			return;
 		}
@@ -661,19 +611,15 @@ static void odb_ensure_root7_extension(tyfilespec *fs) {
 		midstring(bspath, len - 4, 5, bsext);  /* Extract last 5 chars */
 
 		if (equalstrings(bsext, BIGSTRING("\x05.root"))) {
-			/* Replace .root with .root7 */
-			setstringlength(bspath, len - 5);  /* Remove .root */
-			pushstring(BIGSTRING("\x06.root7"), bspath);  /* Append .root7 */
-
-			log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: converted .root to .root7");
-			pathtofilespec(bspath, fs);
+			/* Already has .root extension, nothing to do */
+			log_debug(LOG_COMP_DB, "odb_ensure_root_extension: already has .root extension");
 			return;
 		}
 	}
 
-	/* Doesn't end with .root or .root7, append .root7 */
-	pushstring(BIGSTRING("\x06.root7"), bspath);
-	log_debug(LOG_COMP_DB, "odb_ensure_root7_extension: appended .root7 extension");
+	/* Doesn't end with .root or .root7, append .root */
+	pushstring(BIGSTRING("\x05.root"), bspath);
+	log_debug(LOG_COMP_DB, "odb_ensure_root_extension: appended .root extension");
 
 	/* Update filespec with modified path */
 	pathtofilespec(bspath, fs);
@@ -687,7 +633,7 @@ static boolean dbnewverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	//
 	// 4.1b5 dmb: new verb
 	//
-	// 2026-01-07 Codex: Phase 1 - Ensure .root7 extension for v7 databases
+	// 2026-03-22 JES: Ensure .root extension for new v7 databases
 	//
 
 	tyodbrecord odbrec;
@@ -698,8 +644,8 @@ static boolean dbnewverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	if ( ! getfilespecvalue ( hparam1, 1, &odbrec.fs ) )
 		return (false);
 
-	/* Phase 1: Ensure .root7 extension (replaces .root if user provided it) */
-	odb_ensure_root7_extension(&odbrec.fs);
+	/* Ensure .root extension for new databases */
+	odb_ensure_root_extension(&odbrec.fs);
 
 	shellpushdefaultglobals (); // so that config is correct
 
@@ -744,7 +690,7 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	//
 	// 4.1b5 dmb: added ability to access already-open root in Frontier
 	//
-	// 2026-01-10 Codex: Phase 1 - Ensure .root7 extension for v7 databases
+	// 2026-03-22 JES: Simplified auto-migration, removed .root7 fallback
 	//
 
 	tyodbrecord odbrec;
@@ -773,112 +719,44 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 	log_debug(LOG_COMP_DB, "dbopenverb: readonly=%d", odbrec.flreadonly);
 
-	/* Auto-migration: If opening a v6 database in read-write mode, migrate to v7 */
+	/* Auto-migration: If opening a v6 database in read-write mode, migrate to v7.
+	 * ensure_database_v7 handles all cases: already v7, previous migration exists,
+	 * or fresh v6 needing migration. After migration, the v7 database is at the
+	 * original .root path and the v6 original is backed up to .v6.root. */
 	if (!odbrec.flreadonly) {
-		unsigned char version = 0;
-		tyfilespec fs_root7;
+		char cpath[DB_PATH_MAX];
+		char output_path[DB_PATH_MAX];
+		boolean migrated = false;
 
 		log_debug(LOG_COMP_DB, "dbopenverb: AUTO-MIGRATION CHECK START (read-write mode)");
 
-		/* Check if .root7 already exists */
-		if (odb_check_root7_exists(&odbrec.fs, &fs_root7)) {
-			/* .root7 exists, use it instead */
-			log_debug(LOG_COMP_DB, "dbopenverb: .root7 exists, using it");
+		filespectopath(&odbrec.fs, bspath);
+		copyptocstring(bspath, cpath);
 
-			/* Notify user that we're using the migrated v7 database */
-			bigstring bspath_orig, bspath_v7;
-			char cpath_orig[DB_PATH_MAX], cpath_v7[DB_PATH_MAX];
-			filespectopath(&odbrec.fs, bspath_orig);
-			copyptocstring(bspath_orig, cpath_orig);
-			filespectopath(&fs_root7, bspath_v7);
-			copyptocstring(bspath_v7, cpath_v7);
+		if (ensure_database_v7(cpath, &migrated, output_path, sizeof(output_path))) {
+			if (migrated) {
+				/* Fresh migration occurred */
+				log_info(LOG_COMP_DB, "dbopenverb: migrated v6 database to v7: %s", output_path);
 
-			fputs("Using migrated v7 database: ", stdout);
-			fputs(cpath_v7, stdout);
-			fputs("\n", stdout);
-			fputs("  (requested v6 database: ", stdout);
-			fputs(cpath_orig, stdout);
-			fputs(")\n", stdout);
-
-			odbrec.fs = fs_root7;
-		}
-		/* If no .root7, check if this is a v6 database */
-		else if (odb_detect_database_version(&odbrec.fs, &version)) {
-			log_debug(LOG_COMP_DB, "dbopenverb: detected database version=%d", version);
-
-			if (version <= 6) {
-				/* v6 database, need to migrate */
-				log_debug(LOG_COMP_DB, "dbopenverb: detected v6 database (version=%d), migrating to v7", version);
-
-				/*
-				 * TOCTOU race condition mitigation: Double-check that .root7 doesn't exist
-				 * before calling migration. Another process may have created it between
-				 * the initial check (line 785) and now.
-				 */
-				tyfilespec fs_root7_recheck;
-				if (odb_check_root7_exists(&odbrec.fs, &fs_root7_recheck)) {
-					/* Race detected: .root7 was created by another process */
-					log_info(LOG_COMP_DB, "dbopenverb: TOCTOU race detected - .root7 created by another process, using it");
-					odbrec.fs = fs_root7_recheck;
-				}
-				else {
-					/* Safe to migrate - .root7 still doesn't exist */
-					bigstring bspath_cstr;
-					char cpath[DB_PATH_MAX];
-					char output_path[DB_PATH_MAX];
-					boolean migrated = false;
-
-					filespectopath(&odbrec.fs, bspath_cstr);
-					copyptocstring(bspath_cstr, cpath);
-
-					log_trace(LOG_COMP_DB, "dbopenverb: calling ensure_database_v7 for %s", cpath);
-
-					/* Notify user that migration is starting */
-					fputs("Migrating v6 database to v7 format...\n", stdout);
-					fputs("  Source: ", stdout);
-					fputs(cpath, stdout);
-					fputs("\n", stdout);
-
-					/* Call migration function */
-					if (!ensure_database_v7(cpath, &migrated, output_path, sizeof(output_path))) {
-						log_error(LOG_COMP_DB, "dbopenverb: migration failed for %s", cpath);
-
-						/* Provide detailed error message to user */
-						char errmsg[512];
-						snprintf(errmsg, sizeof(errmsg), "Database migration failed for: %s", cpath);
-						bigstring bserr;
-						copyctopstring(errmsg, bserr);
-						langerrormessage(bserr);
-						return (false);
-					}
-
-					log_trace(LOG_COMP_DB, "dbopenverb: migration succeeded, output=%s", output_path);
-
-					/* Notify user that migration succeeded */
-					fputs("  Output: ", stdout);
-					fputs(output_path, stdout);
-					fputs("\n", stdout);
-					fputs("Migration complete.\n", stdout);
-
-					/* Update odbrec.fs to point to .root7 file */
-					if (output_path[0] == '\0') {
-						log_error(LOG_COMP_DB, "dbopenverb: migration returned empty output path");
-						return (false);
-					}
-
-					bigstring bsoutput;
-					copyctopstring(output_path, bsoutput);
-					if (!pathtofilespec(bsoutput, &odbrec.fs)) {
-						log_error(LOG_COMP_DB, "dbopenverb: pathtofilespec failed for migrated path %s", output_path);
-						return (false);
-					}
-
-					log_debug(LOG_COMP_DB, "dbopenverb: migration complete, will open %s", output_path);
-				}
+				fputs("Migrated v6 database to v7 format.\n", stdout);
+				fputs("  v7 database: ", stdout);
+				fputs(output_path, stdout);
+				fputs("\n", stdout);
+				fputs("  v6 backup preserved alongside.\n", stdout);
 			}
-		} else {
-			log_debug(LOG_COMP_DB, "dbopenverb: failed to detect database version");
+
+			if (output_path[0] != '\0' && strcmp(cpath, output_path) != 0) {
+				/* Output path differs from input -- update filespec */
+				bigstring bsoutput;
+				copyctopstring(output_path, bsoutput);
+				if (!pathtofilespec(bsoutput, &odbrec.fs)) {
+					log_error(LOG_COMP_DB, "dbopenverb: pathtofilespec failed for %s", output_path);
+					return (false);
+				}
+				log_debug(LOG_COMP_DB, "dbopenverb: using migrated path %s", output_path);
+			}
 		}
+		/* If ensure_database_v7 fails, fall through and try to open the original */
 	}
 
 	w = shellfindfilewindow ( &odbrec.fs );

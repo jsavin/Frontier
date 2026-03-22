@@ -165,11 +165,12 @@ fi
 setup
 
 echo "Test 1: Basic migration (default output path)"
-rm -f "$TMP_DIR/test.root7"
+rm -f "$TMP_DIR/test.root" "$TMP_DIR/test.v6.root"
 cp "$V6_SOURCE" "$TMP_DIR/test.root"
 run_test "Basic migration succeeds" 0 "$CLI" --migrate "$TMP_DIR/test.root"
-assert_file_exists "$TMP_DIR/test.root7" "Creates .root7 file"
-assert_v7_header "$TMP_DIR/test.root7" "Output is v7 format"
+assert_file_exists "$TMP_DIR/test.root" "v7 output at original path"
+assert_v7_header "$TMP_DIR/test.root" "Output is v7 format"
+assert_file_exists "$TMP_DIR/test.v6.root" "v6 backup created"
 echo ""
 
 echo "Test 2: Migration with custom output path"
@@ -204,26 +205,28 @@ echo "Test 7: Non-existent input file"
 run_test "Non-existent file fails" 1 "$CLI" --migrate "$TMP_DIR/nonexistent.root"
 echo ""
 
-echo "Test 8: Original v6 file unchanged"
-# Get hash of source before migration (portable for macOS and Linux)
+echo "Test 8: Original v6 file preserved as backup"
+# Copy a fresh v6 source and get its hash before migration
+cp "$V6_SOURCE" "$TMP_DIR/source_test8.root"
+rm -f "$TMP_DIR/source_test8.v6.root"
 if command -v md5sum >/dev/null 2>&1; then
-    src_hash_before=$(md5sum "$TMP_DIR/source.root" | cut -d' ' -f1)
+    src_hash_before=$(md5sum "$TMP_DIR/source_test8.root" | cut -d' ' -f1)
 else
-    src_hash_before=$(md5 -q "$TMP_DIR/source.root")
+    src_hash_before=$(md5 -q "$TMP_DIR/source_test8.root")
 fi
-rm -f "$TMP_DIR/source.root7"
-"$CLI" --migrate "$TMP_DIR/source.root" >/dev/null 2>&1
+"$CLI" --migrate "$TMP_DIR/source_test8.root" >/dev/null 2>&1
+# After migration, v6 backup is at .v6.root -- check its hash matches the original
 if command -v md5sum >/dev/null 2>&1; then
-    src_hash_after=$(md5sum "$TMP_DIR/source.root" | cut -d' ' -f1)
+    src_hash_after=$(md5sum "$TMP_DIR/source_test8.v6.root" | cut -d' ' -f1)
 else
-    src_hash_after=$(md5 -q "$TMP_DIR/source.root")
+    src_hash_after=$(md5 -q "$TMP_DIR/source_test8.v6.root")
 fi
 TESTS_RUN=$((TESTS_RUN + 1))
 if [ "$src_hash_before" = "$src_hash_after" ]; then
-    echo -e "${GREEN}PASS${NC}: Source file unchanged after migration"
+    echo -e "${GREEN}PASS${NC}: v6 backup matches original (data preserved)"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
-    echo -e "${RED}FAIL${NC}: Source file was modified by migration!"
+    echo -e "${RED}FAIL${NC}: v6 backup hash does not match original!"
     TESTS_FAILED=$((TESTS_FAILED + 1))
 fi
 echo ""

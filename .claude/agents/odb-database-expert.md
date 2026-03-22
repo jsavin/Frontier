@@ -180,7 +180,7 @@ Your specialized knowledge spans:
 
 **Migration Strategy & Plans**:
 - `planning/phase3/ODB_ENGINE_V7_MIGRATION_PLAN.md` - Complete v6→v7 migration execution plan
-  - Two-phase migration strategy (Phase 1: .root7 extension, Phase 2: .root standard)
+  - In-place migration: v6 backed up to `.v6.root`, v7 written to `.root`
   - Cancoon record handling and removal
   - Auto-migration workflows
   - Testing checkpoints and validation criteria

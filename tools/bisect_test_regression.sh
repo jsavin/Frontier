@@ -13,8 +13,8 @@ if [ ! -f frontier-cli/frontier-cli ]; then
     exit 125  # Skip this commit
 fi
 
-# Force fresh database migration
-rm -f databases/Frontier.root7
+# Clean up any legacy migration artifacts
+rm -f databases/Frontier.root7 databases/Frontier.v6.root
 
 # Run unit tests and count failures
 UNIT_OUTPUT=$(./tools/run_headless_tests.sh 2>&1)

@@ -1,6 +1,7 @@
 #!/bin/bash
 # CLI Positional .root Argument Tests
-# Tests positional .root/.root7 argument detection and handling
+# Tests positional .root/.root7 argument detection and handling.
+# .root7 recognition is kept for backward compatibility with legacy files.
 #
 # Feature: CLI should accept .root/.root7 files as positional arguments
 # and treat them as --system-root, while preserving existing .usertalk/.ut
@@ -117,9 +118,9 @@ fi
 echo ""
 
 # ============================================================================
-# Test Group 2: Positional .root7 file detection
+# Test Group 2: Positional .root7 file detection (backward compatibility)
 # ============================================================================
-echo "Test Group 2: Positional .root7 file detection"
+echo "Test Group 2: Positional .root7 file detection (backward compat)"
 echo "-----------------------------------------------"
 
 if [ -f "$FRONTIER_DB" ]; then

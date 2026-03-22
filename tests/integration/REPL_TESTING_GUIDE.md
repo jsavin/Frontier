@@ -238,9 +238,7 @@ make -C frontier-cli
 
 2. **System root available** (for most tests):
 ```bash
-ls databases/Frontier.root7  # Should exist
-# Or:
-./frontier-cli --system-root databases/Frontier.root -e "1"  # Auto-migrate
+ls databases/Frontier.root  # Should exist (v7 format)
 ```
 
 ### Run All REPL Tests

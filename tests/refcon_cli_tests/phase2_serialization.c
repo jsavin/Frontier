@@ -81,11 +81,11 @@ static int eval_cli(const char *script, char *output, size_t output_size, int *e
     }
 
     char db_path[PATH_MAX];
-    snprintf(db_path, sizeof(db_path), "%s/databases/Frontier.root7", root);
+    snprintf(db_path, sizeof(db_path), "%s/databases/Frontier.root", root);
 
     if (access(db_path, R_OK) != 0) {
         fprintf(stderr, "[refcon_phase2] ERROR: Database not found: %s\n", db_path);
-        fprintf(stderr, "[refcon_phase2] Ensure Frontier.root7 exists by running CLI once with Frontier.root\n");
+        fprintf(stderr, "[refcon_phase2] Ensure databases/Frontier.root exists\n");
         return 0;
     }
 
@@ -431,7 +431,7 @@ int main(int argc, char **argv) {
     printf("Phase 2: Refcon Serialization Tests\n");
     printf("========================================\n");
     printf("[refcon_phase2] Testing refcon persistence through pack/unpack\n");
-    printf("[refcon_phase2] Tests run via frontier-cli with Frontier.root7\n");
+    printf("[refcon_phase2] Tests run via frontier-cli with Frontier.root\n");
     printf("[refcon_phase2] Tests will SKIP if required verbs are not implemented\n");
     fflush(stdout);
 

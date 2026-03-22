@@ -1,14 +1,14 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Unit Tests - 302 tests: 258 pass (85%) 44 fail (14%)</title>
-    <dateCreated>Sun, 22 Mar 2026 07:09:33 GMT</dateCreated>
+    <title>Frontier Unit Tests - 152 tests: 108 pass (71%) 44 fail (28%)</title>
+    <dateCreated>Sun, 22 Mar 2026 07:48:05 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-03-22 at 06:56 UTC"/>
-      <outline text="Results: 258 passed (85%), 44 failed (15%)"/>
-      <outline text="Executables: 30 (302 tests total)"/>
+      <outline text="Run: 2026-03-22 at 07:46 UTC"/>
+      <outline text="Results: 108 passed (71%), 44 failed (29%)"/>
+      <outline text="Executables: 17 (152 tests total)"/>
     </outline>
     <outline text="Cli Runtime Tests (cli_runtime_tests) - 12 tests: 12 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/cli_runtime_tests.opml"/>
     <outline text="Core Tests (core_tests) - 3 tests: 3 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/core_tests.opml"/>
@@ -19,26 +19,13 @@
     <outline text="Handle Tests (handle_tests) - 6 tests: 6 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/handle_tests.opml"/>
     <outline text="Hash Corruption Tests (hash_corruption_tests) - 14 tests: 14 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/hash_corruption_tests.opml"/>
     <outline text="Hashpack Modern Tests (hashpack_modern_tests) - 3 tests: 3 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/hashpack_modern_tests.opml"/>
-    <outline text="Headless Selection Tests (headless_selection_tests) - 6 tests: 6 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/headless_selection_tests.opml"/>
-    <outline text="Headless Thread Registry Tests (headless_thread_registry_tests) - 19 tests: 19 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/headless_thread_registry_tests.opml"/>
     <outline text="Langvalue 64 Tests (langvalue_64_tests) - 11 tests: 11 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/langvalue_64_tests.opml"/>
-    <outline text="Menu V7 Refcon Tests (menu_v7_refcon_tests) - 9 tests: 9 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/menu_v7_refcon_tests.opml"/>
-    <outline text="Op Context Tests (op_context_tests) - 18 tests: 18 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/op_context_tests.opml"/>
-    <outline text="Opattributes Stub Tests (opattributes_stub_tests) - 1 tests: 1 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/opattributes_stub_tests.opml"/>
     <outline text="Oppack Tests (oppack_tests) - 5 tests: 5 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/oppack_tests.opml"/>
     <outline text="Paige Text Tests (paige_text_tests) - 1 tests: 1 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/paige_text_tests.opml"/>
     <outline text="Parser Tests (parser_tests) - 4 tests: 4 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/parser_tests.opml"/>
-    <outline text="Refcon Phase2 Tests (refcon_phase2_tests) - 4 tests: 4 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/refcon_phase2_tests.opml"/>
-    <outline text="Refcon Tests (refcon_tests) - 4 tests: 4 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/refcon_tests.opml"/>
     <outline text="Runtime Tests (runtime_tests) - 8 tests: 8 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/runtime_tests.opml"/>
     <outline text="Save Migration Tests (save_migration_tests) - 1 tests: 1 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/save_migration_tests.opml"/>
-    <outline text="Table Context Tests (table_context_tests) - 20 tests: 20 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/table_context_tests.opml"/>
     <outline text="Table Operations Integration (table_operations_integration) - 45 tests: 1 pass (2%) 44 fail (97%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/table_operations_integration.opml"/>
-    <outline text="Tcp Phase1A Unit Tests (tcp_phase1a_unit_tests) - 31 tests: 31 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/tcp_phase1a_unit_tests.opml"/>
-    <outline text="Test Callback Infrastructure (test_callback_infrastructure) - 14 tests: 14 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/test_callback_infrastructure.opml"/>
     <outline text="Test Efp Augmentation (test_efp_augmentation) - 1 tests: 1 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/test_efp_augmentation.opml"/>
-    <outline text="Test Stringerrorlist (test_stringerrorlist) - 1 tests: 1 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/test_stringerrorlist.opml"/>
-    <outline text="Test Sys Shell Command Verbs (test_sys_shell_command_verbs) - 16 tests: 16 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/test_sys_shell_command_verbs.opml"/>
-    <outline text="Time Portability Test (time_portability_test) - 7 tests: 7 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/unit_tests/time_portability_test.opml"/>
   </body>
 </opml>

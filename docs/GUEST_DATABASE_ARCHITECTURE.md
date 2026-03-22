@@ -2,7 +2,7 @@
 
 ## Overview
 
-In Frontier, the **system root** (`Frontier.root` or `Frontier.root7`) is the primary database opened at startup. It contains the UserTalk runtime, system tables, and built-in scripts. **Guest databases** are any additional ODB databases opened alongside the system root for script access.
+In Frontier, the **system root** (`Frontier.root`) is the primary database opened at startup. It contains the UserTalk runtime, system tables, and built-in scripts. **Guest databases** are any additional ODB databases opened alongside the system root for script access.
 
 Guest databases allow UserTalk scripts to read and modify external ODB files without affecting the system root. They can be opened in two ways, each providing different levels of access.
 
@@ -21,8 +21,8 @@ In GUI mode, this also opens a window; the `hidden` parameter controls window vi
 After opening, scripts can access the database using bracket syntax:
 
 ```usertalk
-fileMenu.open("/path/to/MyDB.root7")
-local (x = ["/path/to/MyDB.root7"].tableName.entryName)
+fileMenu.open("/path/to/MyDB.root")
+local (x = ["/path/to/MyDB.root"].tableName.entryName)
 ```
 
 ### db.open(path, readonly=false)
@@ -75,8 +75,8 @@ A global hash table (`filewindowtable`, declared in `Common/headers/tablestructu
 
 ```
 filewindowtable:
-  "/path/to/MyDB.root7"  -->  external value (hrootvariable of guest cancoon)
-  "/path/to/Other.root7" -->  external value (hrootvariable of guest cancoon)
+  "/path/to/MyDB.root"  -->  external value (hrootvariable of guest cancoon)
+  "/path/to/Other.root" -->  external value (hrootvariable of guest cancoon)
 ```
 
 ### odbref -- Database Reference
@@ -186,9 +186,9 @@ In `langgettarget()` (defined in `Common/source/langverbs.c`), the implementatio
 For `fileMenu.close()`, the target is expected to be an address into `system.compiler.files`. For example:
 
 ```usertalk
-fileMenu.open("/path/to/MyDB.root7")
-target.set(@["/path/to/MyDB.root7"])
-fileMenu.close()  «-- closes MyDB.root7
+fileMenu.open("/path/to/MyDB.root")
+target.set(@["/path/to/MyDB.root"])
+fileMenu.close()  «-- closes MyDB.root
 ```
 
 In GUI mode, the target typically represents the front window. In headless mode, there is no front window concept, so `target.set()` must be called explicitly.

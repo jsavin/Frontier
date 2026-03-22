@@ -2,7 +2,7 @@
 
 ## Overview
 
-This test suite validates the CLI positional .root argument feature, which allows users to pass `.root` or `.root7` database files as positional arguments instead of using the `--system-root` flag.
+This test suite validates the CLI positional .root argument feature, which allows users to pass `.root` database files as positional arguments instead of using the `--system-root` flag. (`.root7` is also recognized for backward compatibility but is deprecated.)
 
 ## Feature Specification
 
@@ -17,7 +17,7 @@ This test suite validates the CLI positional .root argument feature, which allow
 ```
 
 **Key Requirements**:
-1. Files with `.root` or `.root7` extensions should be treated as `--system-root` arguments
+1. Files with `.root` extension should be treated as `--system-root` arguments (`.root7` also accepted for backward compatibility)
 2. Files with `.usertalk` or `.ut` extensions should still be treated as script files (backward compatibility)
 3. Providing both a positional .root file AND `--system-root` flag should produce an error
 4. The positional .root argument should work at any position in the argument list
@@ -53,8 +53,8 @@ The test suite is organized into 6 groups:
 
 **Expected status**: FAIL (feature not implemented)
 
-#### Group 2: Positional .root7 file detection (3 tests)
-- Tests that `.root7` files are recognized as system root arguments
+#### Group 2: Positional .root7 file detection (3 tests) -- backward compatibility
+- Tests that `.root7` files are still recognized as system root arguments (deprecated extension)
 - Validates different argument positions
 
 **Expected status**: FAIL (feature not implemented)
@@ -118,7 +118,7 @@ Tests use existing project databases:
 - `databases/test.root` - Small test database for basic functionality
 - `databases/Frontier.root` - Full database for comprehensive testing
 
-A temporary `.root7` symlink is created for testing `.root7` extension handling.
+A temporary `.root7` symlink is created for testing backward-compatible `.root7` extension handling.
 
 ### Test Script Files
 

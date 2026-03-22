@@ -1860,8 +1860,10 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     uint16_t cancoon_primary = 0;
     db_format_mode entry_mode = db_format_mode_current();
     char output_path[1024];
+    char backup_path[1024];  /* v6 backup: e.g., Frontier.v6.root */
     char temp_path[1024];
     temp_path[0] = '\0';
+    backup_path[0] = '\0';
     bigstring bspath;
     bigstring bsdst;
     tyfilespec src_fs;
@@ -1889,24 +1891,29 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     if (db_trace_level() > 0)
         db_format_trace_database_path(db_path);
 
-    /* Derive output path: replace .root with .root7 (Phase 1 naming convention)
-     * Pattern: .root$ → .root7
-     * Examples: Frontier.root → Frontier.root7, test.root → test.root7 */
+    /* Derive output path and v6 backup path.
+     * The v7 output goes to the original .root path; the v6 original is
+     * renamed to .v6.root as a backup before the v7 file is put in place.
+     *
+     * Pattern: Frontier.root (v6) -> Frontier.v6.root (backup) + Frontier.root (v7 output)
+     * Safety: write v7 to temp first, THEN rename v6, THEN rename temp to final. */
     const char *ext = strrchr(db_path, '.');
     if (ext && strcmp(ext, ".root") == 0) {
-        /* Replace .root with .root7 */
+        /* Input has .root extension: backup = .v6.root, output = original path */
         size_t base_len = (size_t)(ext - db_path);
-        snprintf(output_path, sizeof output_path, "%.*s.root7", (int) base_len, db_path);
+        snprintf(backup_path, sizeof backup_path, "%.*s.v6.root", (int) base_len, db_path);
+        snprintf(output_path, sizeof output_path, "%s", db_path);
     } else {
-        /* No .root extension, append .root7 */
-        snprintf(output_path, sizeof output_path, "%s.root7", db_path);
+        /* No .root extension: backup = <path>.v6, output = <path>.root */
+        snprintf(backup_path, sizeof backup_path, "%s.v6", db_path);
+        snprintf(output_path, sizeof output_path, "%s.root", db_path);
     }
 
     strncpy(last_backup_path, output_path, sizeof last_backup_path);
     if (sizeof last_backup_path > 0)
         last_backup_path[sizeof last_backup_path - 1] = '\0';
 
-    snprintf(temp_path, sizeof temp_path, "%s.tmp", output_path);
+    snprintf(temp_path, sizeof temp_path, "%s.v7.tmp", output_path);
 
     copyctopstring(db_path, bspath);
     fail_step = "pathtofilespec(src)";
@@ -2207,9 +2214,26 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
     closefile(dst_fnum);
     dst_fnum = 0;
 
+    /* Atomic-ish placement: rename v6 original to .v6.root backup, then
+     * rename the completed temp file to the original path.  If the v6
+     * rename fails (e.g., output_path == db_path and the file is locked),
+     * we still have the temp and the untouched original.  If the temp
+     * rename fails we leave the .v6.root backup so nothing is lost. */
+    fail_step = "rename(v6->backup)";
+    if (backup_path[0] != '\0' && strcmp(output_path, db_path) == 0) {
+        /* Only rename original when output overwrites input */
+        if (rename(db_path, backup_path) != 0)
+            goto cleanup;
+    }
+
     fail_step = "rename(tmp->final)";
-    if (rename(temp_path, output_path) != 0)
+    if (rename(temp_path, output_path) != 0) {
+        /* Try to restore the v6 original if the final rename fails */
+        if (backup_path[0] != '\0' && strcmp(output_path, db_path) == 0) {
+            rename(backup_path, db_path);  /* best-effort restore */
+        }
         goto cleanup;
+    }
 
     dbaddress view_for_log = new_root_address;
 
@@ -2303,29 +2327,76 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
     if (db_path == NULL || db_path[0] == '\0')
         return false;
 
-    /* Check if a v7 file already exists (from previous migration).
-     * If user specifies "Frontier.root" but "Frontier.root7" exists, use the v7 file. */
-    char v7_path[1024];
-    if (strlen(db_path) >= sizeof(v7_path) - 1) {
-        return false;  /* Path too long for v7 suffix */
+    /* Check if a .v6.root backup exists from a previous migration.
+     * If "Frontier.v6.root" exists alongside "Frontier.root", the .root file
+     * is already v7 from a prior migration -- use it directly. */
+    char v6_backup_path[1024];
+    if (strlen(db_path) >= sizeof(v6_backup_path) - 9) { /* 8 chars for ".v6.root" + 1 for null terminator */
+        return false;  /* Path too long */
     }
-    snprintf(v7_path, sizeof v7_path, "%s7", db_path);
-    FILE *fp_v7 = fopen(v7_path, "rb");
-    if (fp_v7) {
-        tydatabaserecord header_v7;
-        boolean ok = fread(&header_v7, sizeof header_v7, 1, fp_v7) == 1;
-        fclose(fp_v7);
-        if (ok && header_v7.versionnumber >= 7) {
-            /* v7 file exists and is valid - use it instead of v6 source */
-            if (output_path && output_path_size > 0) {
-                strncpy(output_path, v7_path, output_path_size);
-                if (output_path_size > 0)
-                    output_path[output_path_size - 1] = '\0';
+    {
+        const char *dot = strrchr(db_path, '.');
+        if (dot && strcmp(dot, ".root") == 0) {
+            size_t base_len = (size_t)(dot - db_path);
+            snprintf(v6_backup_path, sizeof v6_backup_path, "%.*s.v6.root", (int)base_len, db_path);
+        } else {
+            snprintf(v6_backup_path, sizeof v6_backup_path, "%s.v6", db_path);
+        }
+    }
+    FILE *fp_v6_backup = fopen(v6_backup_path, "rb");
+    if (fp_v6_backup) {
+        fclose(fp_v6_backup);
+        /* .v6.root backup exists -- verify .root actually contains valid v7 data.
+         * A crash between the v6 rename and temp-to-final rename could leave
+         * .root as v6 or missing; in that case, fall through to re-migrate. */
+        FILE *fp_check = fopen(db_path, "rb");
+        if (fp_check) {
+            tydatabaserecord header_check;
+            boolean header_ok = fread(&header_check, sizeof header_check, 1, fp_check) == 1;
+            fclose(fp_check);
+            if (header_ok && header_check.versionnumber >= 7) {
+                /* Confirmed v7 -- return db_path as the output */
+                if (output_path && output_path_size > 0) {
+                    strncpy(output_path, db_path, output_path_size);
+                    if (output_path_size > 0)
+                        output_path[output_path_size - 1] = '\0';
+                }
+                if (migrated)
+                    *migrated = false;
+                return true;
             }
-            /* Explicitly confirm migrated=false - not a fresh migration */
-            if (migrated)
-                *migrated = false;
-            return true;
+        }
+        /* .root is not valid v7 -- fall through to migration path */
+    }
+
+    /* Transitional fallback: check for legacy .root7 file from previous migration.
+     * TODO (2026-03-22): Remove this fallback once all users have migrated away from .root7.
+     * If found, log an advisory message encouraging rename to the new convention. */
+    {
+        char legacy_root7_path[1024];
+        snprintf(legacy_root7_path, sizeof legacy_root7_path, "%s7", db_path);
+        FILE *fp_legacy = fopen(legacy_root7_path, "rb");
+        if (fp_legacy) {
+            tydatabaserecord header_v7;
+            boolean header_ok = fread(&header_v7, sizeof header_v7, 1, fp_legacy) == 1;
+            fclose(fp_legacy);
+            if (header_ok && header_v7.versionnumber >= 7) {
+                /* Legacy .root7 file exists and is valid v7 */
+#if defined(FRONTIER_HEADLESS)
+                log_info(LOG_COMP_DB,
+                    "ensure_database_v7: found legacy .root7 file: %s -- "
+                    "please rename to %s for forward compatibility",
+                    legacy_root7_path, db_path);
+#endif
+                if (output_path && output_path_size > 0) {
+                    strncpy(output_path, legacy_root7_path, output_path_size);
+                    if (output_path_size > 0)
+                        output_path[output_path_size - 1] = '\0';
+                }
+                if (migrated)
+                    *migrated = false;
+                return true;
+            }
         }
     }
 
